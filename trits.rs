@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter, Write, Error};
+
 /// Unsigned trit type with values in range 0..2. Used by Troika implementation.
 pub type Trit = u8; //0..2
 /// Unsigned tryte type.
@@ -368,7 +370,7 @@ impl<TW> TritConstSlice<TW> where TW: TritWord + Copy {
         assert!(self.d + 18 <= self.n);
         TW::get18(self.d, self.p)
     }
-    pub fn get_char(mut self) -> char {
+    pub fn get_char(self) -> char {
         let mut ts: [Trit; 3] = [0; 3];
         self.get_trits(&mut ts[0..self.size_min(3)]);
         let t = 0 + 1 * (ts[0] as Tryte) + 3 * (ts[1] as Tryte) + 9 * (ts[2] as Tryte);
@@ -592,7 +594,7 @@ impl<TW> TritMutSlice<TW> where TW: TritWord + Copy {
         assert!(self.d + 18 <= self.n);
         TW::put18(self.d, self.p, t)
     }
-    pub fn put_char(mut self, c: char) -> bool {
+    pub fn put_char(self, c: char) -> bool {
         if let Some(t) = tryte_from_char(c) {
             let t0 = (t % 3) as Trit;
             let t1 = ((t / 3) % 3) as Trit;
@@ -793,6 +795,25 @@ impl<TW> PartialEq for Trits<TW> where TW: TritWord + Copy {
     }
 }
 impl<TW> Eq for Trits<TW> where TW: TritWord + Copy {}
+
+impl<TW> Display for TritConstSlice<TW> where TW: TritWord + Copy {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        let mut this = *self;
+        while !this.is_empty() {
+            if let Err(e) = f.write_char(this.get_char()) {
+                return Err(e);
+            }
+            this = this.drop_min(3);
+        }
+        Ok(())
+    }
+}
+
+impl<TW> Display for TritMutSlice<TW> where TW: TritWord + Copy {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        self.as_const().fmt(f)
+    }
+}
 
 #[cfg(test)]
 mod test_trits {

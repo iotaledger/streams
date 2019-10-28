@@ -2,6 +2,10 @@ use crate::trits::{TritWord, TritConstSlice, TritMutSlice};
 use crate::spongos::{Spongos};
 use crate::trits as trits;
 use crate::spongos as spongos;
+use crate::prng as prng;
+use crate::wots as wots;
+use crate::mss as mss;
+use crate::ntru as ntru;
 
 pub trait PB3<TW> {
     fn sizeof(&self) -> usize;
@@ -236,3 +240,26 @@ impl<TW> PB3<TW> for Trits<TW> where TW: TritWord + Copy {
 impl<TW> Absorb<TW> for Trits<TW> where TW: TritWord + Copy {}
 impl<TW> Squeeze<TW> for Trits<TW> where TW: TritWord + Copy {}
 impl<TW> Crypt<TW> for Trits<TW> where TW: TritWord + Copy {}
+
+// size of types in *trits*
+pub fn sizeof_sizet(n: usize) -> usize { 3 * (size_trytes(n) + 1) }
+pub fn sizeof_tryte() -> usize { 3 }
+pub fn sizeof_trint9() -> usize { 9 }
+pub fn sizeof_ntrytes(n: usize) -> usize { 3 * n }
+pub fn sizeof_trytes(n: usize) -> usize { 0 + sizeof_sizet(n) + sizeof_ntrytes(n) }
+pub fn sizeof_oneof() -> usize { sizeof_tryte() }
+pub fn sizeof_repeated(n: usize) -> usize { sizeof_sizet(n) }
+
+
+pub fn sizeof_mssig<TW>(m: &mss::PrivateKey<TW>) -> usize where TW: TritWord + Copy {
+    0
+    // height
+        + 4
+    // skn
+        + 14
+    // wots
+        + wots::SIG_SIZE
+    // apath
+        + m.height() * 243
+}
+

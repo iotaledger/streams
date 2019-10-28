@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter, Error};
 use crate::trits::*;
 
 pub type PolyCoeff = u16;
@@ -5,43 +6,43 @@ pub type PolyDCoeff = u32;
 
 /// Prime modulus q = 3*2^12+1
 /// Some algorithms are specifically crafted for this value
-const MAM_POLY_Q: PolyCoeff = 12289;
+const Q: PolyCoeff = 12289;
 
 /// Degree `n` of polynomial `m(x) = (x^n+1)`
-const MAM_POLY_N_LOG: usize = 10;
-const MAM_POLY_N: usize = 1 << MAM_POLY_N_LOG;
+const N_LOG: usize = 10;
+const N: usize = 1 << N_LOG;
 
-const MAM_POLY_COEFF_GAMMA: PolyCoeff = 4059;
-const MAM_POLY_COEFF_GAMMA_INV: PolyCoeff = 2340;
-const MAM_POLY_COEFF_OMEGA: PolyCoeff = 3835;
-const MAM_POLY_COEFF_OMEGA_INV: PolyCoeff = 5601;
-const MAM_POLY_COEFF_N: PolyCoeff = 10924;
-const MAM_POLY_COEFF_N_INV: PolyCoeff = 64;
-const MAM_POLY_COEFF_ONE: PolyCoeff = 4091;
-const MAM_POLY_COEFF_MINUS_ONE: PolyCoeff = MAM_POLY_Q - MAM_POLY_COEFF_ONE;
+//const COEFF_GAMMA: PolyCoeff = 4059;
+//const COEFF_GAMMA_INV: PolyCoeff = 2340;
+//const COEFF_OMEGA: PolyCoeff = 3835;
+//const COEFF_OMEGA_INV: PolyCoeff = 5601;
+//const COEFF_N: PolyCoeff = 10924;
+const COEFF_N_INV: PolyCoeff = 64;
+const COEFF_ONE: PolyCoeff = 4091;
+const COEFF_MINUS_ONE: PolyCoeff = Q - COEFF_ONE;
 
 /// R = 2¹⁶.
-const MAM_POLY_MRED_R_LOG: usize = 16;
+const MRED_R_LOG: usize = 16;
 /// R⁻¹ = 9 2⁸ ≡ 2304 (mod q).
-const MAM_POLY_MRED_RI: PolyCoeff = 2304;
+const MRED_RI: PolyCoeff = 2304;
 /// q⁻¹ q - R R⁻¹ = 1
-const MAM_POLY_MRED_Q_INV: PolyCoeff = 12287;
+const MRED_Q_INV: PolyCoeff = 12287;
 
 fn coeff_mredd(m: PolyDCoeff) -> PolyCoeff {
     // q⁻¹ = 3*2^12 - 1
-    //println!("coeff_mredd {} {}", m, MAM_POLY_MRED_Q_INV);
+    //println!("coeff_mredd {} {}", m, MRED_Q_INV);
     let m0 = m as PolyCoeff;
-    let s: PolyCoeff = (m0 as PolyDCoeff * MAM_POLY_MRED_Q_INV as PolyDCoeff) as PolyCoeff;
+    let s: PolyCoeff = (m0 as PolyDCoeff * MRED_Q_INV as PolyDCoeff) as PolyCoeff;
     //s = (s << 12) + (s << 13) - s;
 
     // q = 3*2^12 + 1
-    let k: PolyDCoeff = m + s as PolyDCoeff * MAM_POLY_Q as PolyDCoeff;
+    let k: PolyDCoeff = m + s as PolyDCoeff * Q as PolyDCoeff;
     //k = m + (s << 12) + (s << 13) + s;
 
     // r := k div R
-    let t: PolyCoeff = (k >> MAM_POLY_MRED_R_LOG) as PolyCoeff;
-    let r: PolyCoeff = if t < MAM_POLY_Q { t } else { t - MAM_POLY_Q };
-    assert!(r < MAM_POLY_Q);
+    let t: PolyCoeff = (k >> MRED_R_LOG) as PolyCoeff;
+    let r: PolyCoeff = if t < Q { t } else { t - Q };
+    assert!(r < Q);
 
     r
 }
@@ -51,10 +52,10 @@ fn coeff_mredd(m: PolyDCoeff) -> PolyCoeff {
 /// TODO: return Option<PolyCoeff>
 fn coeff_from_trint9(t: Trint9) -> PolyCoeff {
     // `c*R (mod q)`
-    assert!(-(MAM_POLY_Q as Trint9 - 1) / 2 <= t && t <= (MAM_POLY_Q as Trint9 - 1) / 2);
+    assert!(-(Q as Trint9 - 1) / 2 <= t && t <= (Q as Trint9 - 1) / 2);
 
-    let d: PolyDCoeff = (if t < 0 { t + (MAM_POLY_Q as Trint9) } else { t }) as PolyDCoeff;
-    let c: PolyCoeff = ((d << MAM_POLY_MRED_R_LOG) % (MAM_POLY_Q as PolyDCoeff)) as PolyCoeff;
+    let d: PolyDCoeff = (if t < 0 { t + (Q as Trint9) } else { t }) as PolyDCoeff;
+    let c: PolyCoeff = ((d << MRED_R_LOG) % (Q as PolyDCoeff)) as PolyCoeff;
 
     c
 }
@@ -63,19 +64,19 @@ fn coeff_from_trint9(t: Trint9) -> PolyCoeff {
 /// The output integer will be within the range [-(Q-1)/2,...,(Q-1)/2].
 fn coeff_to_trint9(c: PolyCoeff) -> Trint9 {
     // `c/R (mods q)`
-    let d: PolyDCoeff = (c as PolyDCoeff) * (MAM_POLY_MRED_RI as PolyDCoeff);
-    let e: Trint9 = (d % (MAM_POLY_Q as PolyDCoeff)) as Trint9;
+    let d: PolyDCoeff = (c as PolyDCoeff) * (MRED_RI as PolyDCoeff);
+    let e: Trint9 = (d % (Q as PolyDCoeff)) as Trint9;
 
-    let t: Trint9 = if ((MAM_POLY_Q as Trint9) - 1) / 2 < e { e - (MAM_POLY_Q as Trint9) } else { e };
+    let t: Trint9 = if ((Q as Trint9) - 1) / 2 < e { e - (Q as Trint9) } else { e };
     t
 }
 
 fn coeff_from_trint1(t: Trint1) -> PolyCoeff {
   assert!(-1 <= t && t <= 1);
   if 0 < t {
-    MAM_POLY_COEFF_ONE
+    COEFF_ONE
   } else if t < 0 {
-    MAM_POLY_COEFF_MINUS_ONE
+    COEFF_MINUS_ONE
   } else {
       0
   }
@@ -86,13 +87,13 @@ fn coeff_from_trint1(t: Trint1) -> PolyCoeff {
 fn coeff_add(a: PolyCoeff, b: PolyCoeff) -> PolyCoeff {
     // u = a + b mod R
     let c: PolyCoeff = a + b;
-    if c < MAM_POLY_Q { c } else { c - MAM_POLY_Q }
+    if c < Q { c } else { c - Q }
 }
 
 /// a - b (mods q)
 fn coeff_sub(a: PolyCoeff, b: PolyCoeff) -> PolyCoeff {
     // u = a - b mod R
-    if a < b { MAM_POLY_Q + a - b } else { a - b }
+    if a < b { Q + a - b } else { a - b }
 }
 
 /// a * b (mods q)
@@ -111,7 +112,7 @@ fn coeff_inv(a: PolyCoeff) -> PolyCoeff {
     let mut t: PolyCoeff;
 
     assert!(0 != a);
-    assert!(MAM_POLY_Q == ((3 * (1 << 12)) + 1));
+    assert!(Q == ((3 * (1 << 12)) + 1));
     /* q-2 = 10111111111111b */
 
     for _ in 0..11 {
@@ -123,18 +124,18 @@ fn coeff_inv(a: PolyCoeff) -> PolyCoeff {
     t = coeff_mul(t, t);
     e = coeff_mul(t, e);
 
-    assert!(coeff_mul(e, a) == MAM_POLY_COEFF_ONE);
+    assert!(coeff_mul(e, a) == COEFF_ONE);
     e
 }
 
 #[derive(Copy,Clone)]
 pub struct Poly {
-    coeffs: [PolyCoeff; MAM_POLY_N],
+    coeffs: [PolyCoeff; N],
 }
 
 impl PartialEq for Poly {
     fn eq(&self, other: &Self) -> bool {
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             if self.coeffs[i] != other.coeffs[i] { return false; }
         }
         true
@@ -145,47 +146,47 @@ impl Eq for Poly {}
 impl Poly {
     pub fn new() -> Self {
         Self {
-            coeffs: [0; MAM_POLY_N],
+            coeffs: [0; N],
         }
     }
-    pub fn round_small(&self, h: &mut Self) {
-        for i in 0..MAM_POLY_N {
+    pub fn round_small(&mut self) {
+        for i in 0..N {
             let t = coeff_to_trint9(self.coeffs[i]);
-            h.coeffs[i] = coeff_from_trint1(mods1(t as i32).0);
+            self.coeffs[i] = coeff_from_trint1(mods1(t as i32).0);
         }
     }
     pub fn small3_add1(&mut self) {
-        self.coeffs[0] += MAM_POLY_COEFF_ONE;
+        self.coeffs[0] += COEFF_ONE;
     }
     pub fn small_mul3(&mut self) {
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             let c = coeff_add(self.coeffs[i], self.coeffs[i]);
             self.coeffs[i] = coeff_add(c, self.coeffs[i]);
         }
     }
     pub fn add(&mut self, g: &Self) {
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             self.coeffs[i] = coeff_add(self.coeffs[i], g.coeffs[i]);
         }
     }
     pub fn sub(&mut self, g: &Self) {
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             self.coeffs[i] = coeff_sub(self.coeffs[i], g.coeffs[i]);
         }
     }
     pub fn conv(&mut self, g: &Self) {
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             self.coeffs[i] = coeff_mul(self.coeffs[i], g.coeffs[i]);
         }
     }
     pub fn has_inv(&self) -> bool {
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             if 0 == self.coeffs[i] { return false; }
         }
         true
     }
     pub fn inv(&mut self) {
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             self.coeffs[i] = coeff_inv(self.coeffs[i]);
         }
     }
@@ -193,22 +194,22 @@ impl Poly {
     pub fn ntt(&mut self) {
         let mut u = Self::new();
 
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             //self.coeffs[i] = coeff_inv(self.coeffs[i]);
             u.coeffs[IDX_REV[i]] = coeff_mul(GAMMA_EXP[i], self.coeffs[i]);
         }
 
-        for i in (0..MAM_POLY_N_LOG).rev() {
-            for j in 0..MAM_POLY_N/2 {
+        for i in (0..N_LOG).rev() {
+            for j in 0..N/2 {
                 let r = j & !(((1 as usize) << i) - 1);
                 /*r = j - (j % (1 << i));*/
 
                 let c = u.coeffs[j+j];
                 let d = coeff_mul(u.coeffs[j+j+1], GAMMA_EXP[r+r]);
                 self.coeffs[j] = coeff_add(c, d);
-                self.coeffs[j+MAM_POLY_N/2] = coeff_sub(c, d);
+                self.coeffs[j+N/2] = coeff_sub(c, d);
             }
-            for j in 0..MAM_POLY_N {
+            for j in 0..N {
                 u.coeffs[j] = self.coeffs[j];
             }
         }
@@ -224,55 +225,55 @@ impl Poly {
     pub fn intt(&mut self) {
         let mut u = Self::new();
 
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             u.coeffs[IDX_REV[i]] = self.coeffs[i];
         }
 
-        for i in (0..MAM_POLY_N_LOG).rev() {
-            for j in 0..MAM_POLY_N/2 {
+        for i in (0..N_LOG).rev() {
+            for j in 0..N/2 {
                 let r = j & !(((1 as usize) << i) - 1);
                 /*r = j - (j % (1 << i));*/
 
                 let c = u.coeffs[j+j];
-                let d = coeff_mul(u.coeffs[j+j+1], GAMMA_EXP[2*MAM_POLY_N - (r+r)]);
+                let d = coeff_mul(u.coeffs[j+j+1], GAMMA_EXP[2*N - (r+r)]);
                 self.coeffs[j] = coeff_add(c, d);
-                self.coeffs[j+MAM_POLY_N/2] = coeff_sub(c, d);
+                self.coeffs[j+N/2] = coeff_sub(c, d);
             }
-            for j in 0..MAM_POLY_N {
+            for j in 0..N {
                 u.coeffs[j] = self.coeffs[j];
             }
         }
 
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             // TODO: precomp γ⁻ⁱn⁻¹?
-            let c = coeff_mul(MAM_POLY_COEFF_N_INV, GAMMA_EXP[2*MAM_POLY_N-i]);
+            let c = coeff_mul(COEFF_N_INV, GAMMA_EXP[2*N-i]);
             self.coeffs[i] = coeff_mul(c, self.coeffs[i]);
         }
     }
 
     pub fn round_to_trits<TW>(&self, mut t: TritMutSlice<TW>) where TW: TritWord + Copy {
-        assert!(t.size() == MAM_POLY_N);
+        assert!(t.size() == N);
 
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             let c = coeff_to_trint9(self.coeffs[i]);
             t.put1(mods1(c as i32).0);
             t = t.drop(1);
         }
     }
     pub fn small_from_trits<TW>(&mut self, mut t: TritConstSlice<TW>) where TW: TritWord + Copy {
-        assert!(t.size() == MAM_POLY_N);
+        assert!(t.size() == N);
 
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             self.coeffs[i] = coeff_from_trint1(t.get1());
             t = t.drop(1);
         }
     }
     pub fn from_trits<TW>(&mut self, mut t: TritConstSlice<TW>) -> bool where TW: TritWord + Copy {
-        assert!(t.size() == 9*MAM_POLY_N);
+        assert!(t.size() == 9*N);
 
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             let c = t.get9();
-            if (c < -(((MAM_POLY_Q as Trint9) - 1) / 2)) || ((((MAM_POLY_Q as Trint9) - 1) / 2) < c) {
+            if (c < -(((Q as Trint9) - 1) / 2)) || ((((Q as Trint9) - 1) / 2) < c) {
                 return false;
             }
             self.coeffs[i] = coeff_from_trint9(c);
@@ -281,9 +282,9 @@ impl Poly {
         true
     }
     pub fn to_trits<TW>(&self, mut t: TritMutSlice<TW>) where TW: TritWord + Copy {
-        assert!(t.size() == 9*MAM_POLY_N);
+        assert!(t.size() == 9*N);
 
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             t.put9(coeff_to_trint9(self.coeffs[i]));
             t = t.drop(9);
         }
@@ -291,40 +292,50 @@ impl Poly {
 
 
     fn mul(&mut self, g: &Self) {
-        let mut fg: [PolyCoeff; 2*MAM_POLY_N-1] = [0; 2*MAM_POLY_N-1];
+        let mut fg: [PolyCoeff; 2*N-1] = [0; 2*N-1];
 
-        for i in 0..MAM_POLY_N {
-            for j in 0..MAM_POLY_N {
+        for i in 0..N {
+            for j in 0..N {
                 fg[i+j] = coeff_mul_add(self.coeffs[i], g.coeffs[j], fg[i+j]);
             }
         }
 
-        for i in 0..MAM_POLY_N-1 {
-            self.coeffs[i] = coeff_sub(fg[i], fg[i + MAM_POLY_N]);
+        for i in 0..N-1 {
+            self.coeffs[i] = coeff_sub(fg[i], fg[i + N]);
         }
-        self.coeffs[MAM_POLY_N-1] = fg[MAM_POLY_N-1];
+        self.coeffs[N-1] = fg[N-1];
     }
     fn eval(&self, x: PolyCoeff) -> PolyCoeff {
         let mut r: PolyCoeff = 0;
-        for i in (0..MAM_POLY_N).rev() {
+        for i in (0..N).rev() {
             r = coeff_mul_add(x, r, self.coeffs[i]);
         }
         r
     }
     fn ntt2(&self, t: &mut Self) {
-        for i in 0..MAM_POLY_N {
+        for i in 0..N {
             t.coeffs[i] = self.eval(GAMMA_EXP[i+i+1]);
         }
     }
     fn intt2(&self, f: &mut Self) {
-        for i in 0..MAM_POLY_N {
-            f.coeffs[i] = coeff_mul(coeff_mul(MAM_POLY_COEFF_N_INV, GAMMA_EXP[2 * MAM_POLY_N - i]), self.eval(GAMMA_EXP[2 * MAM_POLY_N - (i + i)]));
+        for i in 0..N {
+            f.coeffs[i] = coeff_mul(coeff_mul(COEFF_N_INV, GAMMA_EXP[2 * N - i]), self.eval(GAMMA_EXP[2 * N - (i + i)]));
         }
     }
 }
 
+impl Display for Poly {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        for i in 0..N {
+            if let Err(e) = write!(f, "{} ", self.coeffs[i]) {
+                return Err(e);
+            }
+        }
+        Ok(())
+    }
+}
 
-const GAMMA_EXP: [PolyCoeff; 2*MAM_POLY_N+1] = [
+const GAMMA_EXP: [PolyCoeff; 2*N+1] = [
     4091, 4059, 3835, 2267, 3580, 482, 3374, 11329, 5569, 2116, 2523, 5372, 737, 5159, 11535, 7011, 
     12210, 11736, 8418, 9770, 6945, 11748, 8502, 10358, 11061, 3693, 1273, 8911, 932, 6524, 8801, 162, 
     1134, 7938, 6410, 8003, 6865, 11188, 4582, 7496, 3316, 10923, 2727, 6800, 10733, 1397, 9779, 7008, 
@@ -457,7 +468,7 @@ const GAMMA_EXP: [PolyCoeff; 2*MAM_POLY_N+1] = [
 ];
 
 /// (b₀,b₁,…,bₙ₋₁) → (bₙ₋₁,…,b₁,b₀)
-const IDX_REV: [usize; MAM_POLY_N] = [
+const IDX_REV: [usize; N] = [
   0x000, 0x200, 0x100, 0x300, 0x080, 0x280, 0x180, 0x380, 0x040, 0x240, 0x140, 0x340, 0x0c0, 0x2c0, 0x1c0, 0x3c0, 
   0x020, 0x220, 0x120, 0x320, 0x0a0, 0x2a0, 0x1a0, 0x3a0, 0x060, 0x260, 0x160, 0x360, 0x0e0, 0x2e0, 0x1e0, 0x3e0, 
   0x010, 0x210, 0x110, 0x310, 0x090, 0x290, 0x190, 0x390, 0x050, 0x250, 0x150, 0x350, 0x0d0, 0x2d0, 0x1d0, 0x3d0, 
@@ -532,11 +543,11 @@ mod test_poly {
     fn test_ntt() {
         let mut f = Poly::new();
         let mut g = Poly::new();
-        f.coeffs[0] = MAM_POLY_COEFF_ONE;
-        g.coeffs[0] = MAM_POLY_COEFF_MINUS_ONE;
-        let a = coeff_add(MAM_POLY_COEFF_ONE, MAM_POLY_COEFF_ONE);
-        let b = coeff_add(MAM_POLY_COEFF_ONE, a);
-        let c = coeff_add(MAM_POLY_COEFF_ONE, coeff_mul(a, b));
+        f.coeffs[0] = COEFF_ONE;
+        g.coeffs[0] = COEFF_MINUS_ONE;
+        let a = coeff_add(COEFF_ONE, COEFF_ONE);
+        let b = coeff_add(COEFF_ONE, a);
+        let c = coeff_add(COEFF_ONE, coeff_mul(a, b));
 
         for _ in 0..10 {
             let mut m = f;
@@ -553,7 +564,7 @@ mod test_poly {
             assert!(m == tm);
             assert!(g == tg);
 
-            for i in 0..MAM_POLY_N {
+            for i in 0..N {
                 f.coeffs[i] = coeff_add(a, coeff_mul(b, f.coeffs[i]));
                 g.coeffs[i] = coeff_add(b, coeff_mul(c, g.coeffs[i]));
             }

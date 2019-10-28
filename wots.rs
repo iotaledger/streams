@@ -22,7 +22,7 @@ pub const PRIVATE_KEY_SIZE: usize = SK_SIZE;
 pub const HASH_SIZE: usize = 234;
 
 /// Size of a WOTS signature.
-pub const SIG_SIZE: usize = PRIVATE_KEY_SIZE;
+pub const SIG_SIZE: usize = SK_SIZE;
 pub const SIGNATURE_SIZE: usize = SIG_SIZE;
 
 /// h := hash_data^n(h)

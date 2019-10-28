@@ -31,8 +31,6 @@ fn gen_step(f: &mut Poly, g: &mut Poly, h: &mut Poly) -> bool {
         h.conv(&g);
         h.intt();
 
-        //h.to_trits(pk);
-        //r.slice().take(SK_SIZE).copy(sk);
         true
     } else {
         false
@@ -48,11 +46,7 @@ fn gen_r<TW>(prng: &PRNG<TW>, nonce: TritConstSlice<TW>, f: &mut Poly, sk: TritM
     let mut g = Poly::new();
     let mut h = Poly::new();
 
-    let mut ii = 0usize;
     loop {
-        ii += 1;
-        assert!(ii < 100);
-
         {
             let nonces = [nonce, i.slice()];
             prng.gens(&nonces, r.mut_slice());
@@ -153,7 +147,7 @@ fn decr_r<TW>(s: &mut Spongos<TW>, f: &Poly, y: TritConstSlice<TW>, k: TritMutSl
     s.absorb(rh.slice());
     s.commit();
     s.decr(kt.slice().take(KEY_SIZE), k);
-    let mut m = Trits::<TW>::zero(KEY_SIZE);
+    let mut m = Trits::<TW>::zero(SK_SIZE - KEY_SIZE);
     s.squeeze(m.mut_slice());
     m.slice() == kt.slice().drop(KEY_SIZE)
 }
