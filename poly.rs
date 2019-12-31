@@ -1,4 +1,5 @@
-use std::fmt::{Display, Formatter, Error};
+use std::fmt::{Display, Error, Formatter};
+
 use crate::trits::*;
 
 pub type PolyCoeff = u16;
@@ -169,9 +170,25 @@ impl Poly {
             self.coeffs[i] = coeff_add(self.coeffs[i], g.coeffs[i]);
         }
     }
+    pub fn add_small(&mut self, mut t: TritConstSlice) {
+        assert!(t.size() == N);
+
+        for i in 0..N {
+            self.coeffs[i] = coeff_add(self.coeffs[i], coeff_from_trint1(t.get1()));
+            t = t.drop(1);
+        }
+    }
     pub fn sub(&mut self, g: &Self) {
         for i in 0..N {
             self.coeffs[i] = coeff_sub(self.coeffs[i], g.coeffs[i]);
+        }
+    }
+    pub fn sub_small(&mut self, mut t: TritConstSlice) {
+        assert!(t.size() == N);
+
+        for i in 0..N {
+            self.coeffs[i] = coeff_sub(self.coeffs[i], coeff_from_trint1(t.get1()));
+            t = t.drop(1);
         }
     }
     pub fn conv(&mut self, g: &Self) {
@@ -179,6 +196,7 @@ impl Poly {
             self.coeffs[i] = coeff_mul(self.coeffs[i], g.coeffs[i]);
         }
     }
+    // `self` must be in NTT form
     pub fn has_inv(&self) -> bool {
         for i in 0..N {
             if 0 == self.coeffs[i] { return false; }
@@ -216,7 +234,7 @@ impl Poly {
     }
     /// fₖ = γ⁻ᵏn⁻¹ t(γ⁻²ᵏ)
     ///
-    ///t(γ⁻²ᵏ)
+    /// t(γ⁻²ᵏ)
     /// ≡ Σⱼtⱼγ⁻²ᵏʲ
     /// ≡ Σⱼ(Σᵢfᵢγ⁽²ʲ⁺¹⁾ⁱ)γ⁻²ᵏʲ
     /// ≡ Σᵢfᵢ(Σⱼγ⁽²ʲ⁺¹⁾ⁱ⁻²ᵏʲ)
@@ -251,7 +269,7 @@ impl Poly {
         }
     }
 
-    pub fn round_to_trits<TW>(&self, mut t: TritMutSlice<TW>) where TW: TritWord + Copy {
+    pub fn round_to_trits(&self, mut t: TritMutSlice) {
         assert!(t.size() == N);
 
         for i in 0..N {
@@ -260,7 +278,7 @@ impl Poly {
             t = t.drop(1);
         }
     }
-    pub fn small_from_trits<TW>(&mut self, mut t: TritConstSlice<TW>) where TW: TritWord + Copy {
+    pub fn small_from_trits(&mut self, mut t: TritConstSlice) {
         assert!(t.size() == N);
 
         for i in 0..N {
@@ -268,7 +286,7 @@ impl Poly {
             t = t.drop(1);
         }
     }
-    pub fn from_trits<TW>(&mut self, mut t: TritConstSlice<TW>) -> bool where TW: TritWord + Copy {
+    pub fn from_trits(&mut self, mut t: TritConstSlice) -> bool {
         assert!(t.size() == 9*N);
 
         for i in 0..N {
@@ -281,7 +299,7 @@ impl Poly {
         }
         true
     }
-    pub fn to_trits<TW>(&self, mut t: TritMutSlice<TW>) where TW: TritWord + Copy {
+    pub fn to_trits(&self, mut t: TritMutSlice) {
         assert!(t.size() == 9*N);
 
         for i in 0..N {
@@ -536,11 +554,11 @@ const IDX_REV: [usize; N] = [
 ];
 
 #[cfg(test)]
-mod test_poly {
+mod test {
     use super::*;
 
     #[test]
-    fn test_ntt() {
+    fn ntt() {
         let mut f = Poly::new();
         let mut g = Poly::new();
         f.coeffs[0] = COEFF_ONE;

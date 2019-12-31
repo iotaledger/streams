@@ -24,8 +24,9 @@
 
 #![allow(dead_code)]
 
-use crate::trits::*;
-use core::fmt;
+use std::fmt;
+
+use crate::trits::{Trit};
 
 pub const NUM_ROUNDS: usize = 24;
 pub const TROIKA_RATE: usize = 243;
@@ -115,7 +116,6 @@ impl T27 {
     }
 }
 
-//TODO: use T27 here, move to troika as it's impl detail
 const FROUND_CONSTANTS: [[T27; COLUMNS]; NUM_ROUNDS] = [
     [
         T27(119734530, 1610953),
@@ -412,7 +412,7 @@ impl Troika {
         self.state[idx % SLICESIZE].set(idx / SLICESIZE, trit);
     }
     //#[inline]
-    pub fn get1(&mut self, idx: usize) -> Trit {
+    pub fn get1(&self, idx: usize) -> Trit {
         self.state[idx % SLICESIZE].get(idx / SLICESIZE)
     }
     //#[inline]
@@ -425,7 +425,7 @@ impl Troika {
         }
     }
     //#[inline]
-    fn get(&mut self, idx: usize, trits: &mut [Trit]) {
+    fn get(&self, idx: usize, trits: &mut [Trit]) {
         //assert!(self.avail() >= trits.len());
         let mut i = idx;
         for t in trits.iter_mut() {
@@ -536,11 +536,13 @@ impl fmt::Debug for Troika {
     }
 }
 
-/// The TroikaSponge struct is a Sponge that uses the Troika
-/// hashing algorithm.
+/// The TroikaSponge struct is a Sponge that uses the Troika permutation.
+///
+/// # Example
+///
 /// ```rust
 /// extern crate iota_mam;
-/// use iota_mam::TroikaSponge;
+/// use iota_mam::troika::TroikaSponge;
 /// // Create an array of 243 1s
 /// let input = [1; 243];
 /// // Create an array of 243 0s
@@ -623,7 +625,7 @@ impl TroikaSponge {
 }
 
 #[cfg(test)]
-mod test_ftroika {
+mod test {
     use super::*;
 
     const HASH: [u8; 243] = [
@@ -639,7 +641,7 @@ mod test_ftroika {
     ];
 
     #[test]
-    fn test_hash() {
+    fn hash() {
         let mut ftroika = TroikaSponge::default();
         let mut output = [0u8; 243];
         let input = [0u8; 243];
@@ -654,7 +656,7 @@ mod test_ftroika {
     }
 
     #[test]
-    fn test_hash1() {
+    fn stdtest1() {
         let input = [0u8; 1];
         const HASH: [u8; 243] = [
             0, 0, 2, 0, 0, 0, 2, 0, 2, 1, 0, 2, 2, 2, 0, 2, 0, 1, 0, 0, 1, 2, 2, 0, 1, 1, 1, 
@@ -680,7 +682,7 @@ mod test_ftroika {
     }
 
     #[test]
-    fn test_hash2() {
+    fn stdtest2() {
         let input = [0u8; 2];
         const HASH: [u8; 243] = [
             2, 0, 2, 0, 0, 2, 1, 1, 1, 1, 1, 0, 1, 2, 0, 0, 1, 1, 1, 0, 1, 2, 2, 1, 2, 2, 2, 
@@ -706,7 +708,7 @@ mod test_ftroika {
     }
 
     #[test]
-    fn test_hash3() {
+    fn stdtest3() {
         let mut input = [0u8; 243];
         input[0] = 1u8;
         input[242] = 2u8;

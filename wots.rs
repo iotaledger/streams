@@ -1,6 +1,6 @@
-use crate::trits::*;
-use crate::spongos::*;
-use crate::prng::*;
+use crate::prng::{self, PRNG};
+use crate::spongos::{hash_data, Spongos};
+use crate::trits::{mods3, Trint9, TritConstSlice, TritMutSlice, Trits};
 
 /// Size of a WOTS public key.
 pub const PK_SIZE: usize = 243;
@@ -26,25 +26,25 @@ pub const SIG_SIZE: usize = SK_SIZE;
 pub const SIGNATURE_SIZE: usize = SIG_SIZE;
 
 /// h := hash_data^n(h)
-fn rehash_data<TW>(n: usize, h: TritMutSlice<TW>) where TW: TritWord + Copy {
+fn rehash_data(n: usize, h: TritMutSlice) {
     for _ in 0..n {
         hash_data(h.as_const(), h);
     }
 }
 
 /// Generate WOTS secret private key with prng using a unique nonce.
-fn gen_sk<TW>(prng: &PRNG<TW>, nonces: &[TritConstSlice<TW>], sk: TritMutSlice<TW>) where TW: TritWord + Copy {
+fn gen_sk(prng: &PRNG, nonces: &[TritConstSlice], sk: TritMutSlice) {
     assert!(sk.size() == PRIVATE_KEY_SIZE);
     prng.gens(nonces, sk);
 }
 
 /// Generate WOTS signature.
-fn sign<TW>(mut sk: TritConstSlice<TW>, mut hash: TritConstSlice<TW>, mut sig: TritMutSlice<TW>) where TW: TritWord + Copy {
+fn sign(mut sk: TritConstSlice, mut hash: TritConstSlice, mut sig: TritMutSlice) {
     assert!(sk.size() == PRIVATE_KEY_SIZE);
     assert!(hash.size() == HASH_SIZE);
     assert!(sig.size() == SIGNATURE_SIZE);
     let mut t: Trint9 = 0;
-    let mut sig_part = Trits::<TW>::zero(PRIVATE_KEY_PART_SIZE);
+    let mut sig_part = Trits::zero(PRIVATE_KEY_PART_SIZE);
 
     for _ in 0..PRIVATE_KEY_PART_COUNT - 3 {
         let h = hash.get3();
@@ -74,12 +74,12 @@ fn sign<TW>(mut sk: TritConstSlice<TW>, mut hash: TritConstSlice<TW>, mut sig: T
 }
 
 /// Generate WOTS public key from secret key.
-fn calc_pk<TW>(mut sk: TritConstSlice<TW>, pk: TritMutSlice<TW>) where TW: TritWord + Copy {
+fn calc_pk(mut sk: TritConstSlice, pk: TritMutSlice) {
     assert!(sk.size() == PRIVATE_KEY_SIZE);
     assert!(pk.size() == PUBLIC_KEY_SIZE);
 
-    let mut sk_part = Trits::<TW>::zero(PRIVATE_KEY_PART_SIZE);
-    let mut s = Spongos::<TW>::init();
+    let mut sk_part = Trits::zero(PRIVATE_KEY_PART_SIZE);
+    let mut s = Spongos::init();
     for _ in 0..PRIVATE_KEY_PART_COUNT {
         sk.take(PRIVATE_KEY_PART_SIZE).copy(sk_part.mut_slice());
         sk = sk.drop(PRIVATE_KEY_PART_SIZE);
@@ -91,14 +91,14 @@ fn calc_pk<TW>(mut sk: TritConstSlice<TW>, pk: TritMutSlice<TW>) where TW: TritW
 }
 
 /// Recover WOTS signer's public key from signature.
-pub fn recover<TW>(mut hash: TritConstSlice<TW>, mut sig: TritConstSlice<TW>, pk: TritMutSlice<TW>) where TW: TritWord + Copy {
+pub fn recover(mut hash: TritConstSlice, mut sig: TritConstSlice, pk: TritMutSlice) {
     assert!(hash.size() == HASH_SIZE);
     assert!(sig.size() == SIGNATURE_SIZE);
     assert!(pk.size() == PUBLIC_KEY_SIZE);
     let mut t: Trint9 = 0;
 
-    let mut sig_part = Trits::<TW>::zero(PRIVATE_KEY_PART_SIZE);
-    let mut s = Spongos::<TW>::init();
+    let mut sig_part = Trits::zero(PRIVATE_KEY_PART_SIZE);
+    let mut s = Spongos::init();
 
     for _ in 0..PRIVATE_KEY_PART_COUNT - 3 {
         sig.take(PRIVATE_KEY_PART_SIZE).copy(sig_part.mut_slice());
@@ -128,67 +128,67 @@ pub fn recover<TW>(mut hash: TritConstSlice<TW>, mut sig: TritConstSlice<TW>, pk
     s.squeeze(pk);
 }
 
-pub struct PrivateKey<TW> {
+pub struct PrivateKey {
     /// Private key of size `PRIVATE_KEY_SIZE` trits
-    sk: Trits<TW>,
+    sk: Trits,
 }
 
-pub struct PublicKey<TW> {
+pub struct PublicKey {
     /// Public key of size `PUBLIC_KEY_SIZE` trits
-    pk: Trits<TW>,
+    pk: Trits,
 }
 
-impl<TW> PrivateKey<TW> where TW: TritWord + Copy {
+impl PrivateKey {
     /// Generate WOTS secret private key object.
-    pub fn gen(prng: &PRNG<TW>, nonces: &[TritConstSlice<TW>]) -> Self {
+    pub fn gen(prng: &PRNG, nonces: &[TritConstSlice]) -> Self {
         let mut sk = Self {
-            sk: Trits::<TW>::zero(PRIVATE_KEY_SIZE),
+            sk: Trits::zero(PRIVATE_KEY_SIZE),
         };
         gen_sk(prng, nonces, sk.sk.mut_slice());
         sk
     }
     /// Calculate WOTS public key trits.
-    pub fn calc_pk(&self, pk: TritMutSlice<TW>) {
+    pub fn calc_pk(&self, pk: TritMutSlice) {
         calc_pk(self.sk.slice(), pk);
     }
     /// Generate WOTS signature.
-    pub fn sign(&self, hash: TritConstSlice<TW>, sig: TritMutSlice<TW>) {
+    pub fn sign(&self, hash: TritConstSlice, sig: TritMutSlice) {
         sign(self.sk.slice(), hash, sig);
     }
 }
 
-impl<TW> PublicKey<TW> where TW: TritWord + Copy {
+impl PublicKey {
     /// Generate WOTS public key object.
-    pub fn gen(sk: &PrivateKey<TW>) -> Self {
+    pub fn gen(sk: &PrivateKey) -> Self {
         let mut pk = Self {
-            pk: Trits::<TW>::zero(PUBLIC_KEY_SIZE),
+            pk: Trits::zero(PUBLIC_KEY_SIZE),
         };
         sk.calc_pk(pk.pk.mut_slice());
         pk
     }
     /// Verify WOTS signature.
-    pub fn verify(&self, hash: TritConstSlice<TW>, sig: TritConstSlice<TW>) -> bool {
-        let mut pk = Trits::<TW>::zero(PUBLIC_KEY_SIZE);
+    pub fn verify(&self, hash: TritConstSlice, sig: TritConstSlice) -> bool {
+        let mut pk = Trits::zero(PUBLIC_KEY_SIZE);
         recover(hash, sig, pk.mut_slice());
         self.pk == pk
     }
 }
 
 #[cfg(test)]
-mod test_wots {
+mod test {
     use super::*;
 
     #[test]
-    fn test_wots() {
-        let k = Trits::<Trit>::zero(MAM_PRNG_SECRET_KEY_SIZE);
-        let prng = PRNG::<Trit>::init(k.slice());
-        let n = Trits::<Trit>::zero(33);
-        let sk = PrivateKey::<Trit>::gen(&prng, &[n.slice()]);
-        let pk = PublicKey::<Trit>::gen(&sk);
+    fn sign_verify() {
+        let k = Trits::zero(prng::KEY_SIZE);
+        let prng = PRNG::init(k.slice());
+        let n = Trits::zero(33);
+        let sk = PrivateKey::gen(&prng, &[n.slice()]);
+        let pk = PublicKey::gen(&sk);
 
-        let x = Trits::<Trit>::zero(123);
-        let mut h = Trits::<Trit>::zero(HASH_SIZE);
-        let mut s = Trits::<Trit>::zero(SIGNATURE_SIZE);
+        let x = Trits::zero(123);
+        let mut h = Trits::zero(HASH_SIZE);
+        let mut s = Trits::zero(SIGNATURE_SIZE);
 
         hash_data(x.slice(), h.mut_slice());
         sk.sign(h.slice(), s.mut_slice());

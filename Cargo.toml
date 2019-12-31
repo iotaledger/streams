@@ -10,12 +10,6 @@ edition = "2018"
 name = "iota_mam"
 path = "lib.rs"
 
-#TODO: make `iota-mam` a member of `bee` workspace?
-#TODO: add `mam-apps` crate?
-
-#[dependencies]
-#troika-rust = "0.1.1"
-
 [dev-dependencies]
 criterion = "0.2"
 
