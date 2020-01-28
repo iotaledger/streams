@@ -8,7 +8,7 @@ edition = "2018"
 
 [lib]
 name = "iota_mam"
-path = "lib.rs"
+path = "src/lib.rs"
 
 [dev-dependencies]
 criterion = "0.2"
