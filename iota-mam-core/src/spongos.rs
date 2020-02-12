@@ -383,6 +383,13 @@ impl TryFrom<&Spongos> for Inner {
     }
 }
 
+impl TryFrom<Spongos> for Inner {
+    type Error = ();
+    fn try_from(spongos: Spongos) -> Result<Self, ()> {
+        TryFrom::<&Spongos>::try_from(&spongos)
+    }
+}
+
 /// Hash (one piece of) data with Spongos.
 pub fn hash_data(x: TritSlice, y: TritSliceMut) {
     let mut s = Spongos::init();
