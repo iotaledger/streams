@@ -1,0 +1,17 @@
+[package]
+name = "iota-mam-protobuf3"
+version = "0.1.0"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
+edition = "2018"
+license = "Apache-2.0/MIT"
+readme = "README.md"
+keywords = ["iota", "mam", "protobuf3"]
+description = "A rust implementation of the IOTA MAM Protobuf3"
+
+[lib]
+name = "iota_mam_protobuf3"
+path = "src/lib.rs"
+
+[dependencies]
+iota-mam-core = { version = "0.1.0", path = "../iota-mam-core" }
+failure = "0.1"
