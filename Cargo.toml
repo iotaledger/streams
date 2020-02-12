@@ -1,25 +1,31 @@
 [package]
 name = "iota-mam"
 version = "0.1.0"
-authors = ["Vlad Semenov <semenov.vlad.by@gmail.com>"]
+authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+readme = "README.md"
+keywords = ["iota", "mam"]
+description = "A rust implementation of the IOTA MAM"
 
 [lib]
 name = "iota_mam"
-path = "src/lib.rs"
 
-[dev-dependencies]
-criterion = "0.2"
+[workspace]
+members = [
+    "iota-mam-core",
+    "iota-mam-protobuf3",
+    "iota-mam-app",
+]
 
-[[bench]]
-name = "bench"
-harness = false
+[dependencies]
+iota-mam-core = { version = "0.1.0", path = "iota-mam-core" }
+iota-mam-protobuf3 = { version = "0.1.0", path = "iota-mam-protobuf3" }
+iota-mam-app = { version = "0.1.0", path = "iota-mam-app" }
 
-[profile.dev]
-opt-level = 3
-#debug = false
+#[dev-dependencies]
+#iota-client = "0.3.0"
+#iota-model = "0.3.0"
 
-[profile.release]
-opt-level = 3
+[patch.crates-io]
+iota-client = { path = "../iota-lib-rs/iota-client" }

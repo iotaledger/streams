@@ -1,0 +1,32 @@
+[package]
+name = "iota-mam-core"
+version = "0.1.0"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
+edition = "2018"
+license = "Apache-2.0/MIT"
+readme = "README.md"
+keywords = ["iota", "mam", "core"]
+description = "A rust implementation of the IOTA MAM core utils"
+
+[lib]
+name = "iota_mam_core"
+path = "src/lib.rs"
+
+[dependencies]
+
+[dev-dependencies]
+criterion = "0.3"
+
+[features]
+
+# Enable traversal Merkle tree implementation for MSS private key.
+# By default a complete Merkle tree implementation is used.
+mss_merkle_tree_traversal = []
+
+[[bench]]
+name = "troika"
+harness = false
+
+[[bench]]
+name = "mss"
+harness = false
