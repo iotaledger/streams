@@ -148,8 +148,14 @@ pub trait LinkStore<Link> {
 }
 
 /// Empty "dummy" link store that stores no links.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct EmptyLinkStore<Link, Info>(std::marker::PhantomData<(Link, Info)>);
+
+impl<Link, Info> Default for EmptyLinkStore<Link, Info> {
+    fn default() -> Self {
+        Self(std::marker::PhantomData)
+    }
+}
 
 impl<Link, Info> LinkStore<Link> for EmptyLinkStore<Link, Info> {
     type Info = Info;

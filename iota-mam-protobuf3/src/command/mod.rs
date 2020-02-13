@@ -99,8 +99,13 @@ pub trait Repeated<I, F> {
     fn repeated(&mut self, values_iter: I, value_handle: F) -> Result<&mut Self>;
 }
 
+/// Implementation of command traits for message size calculation.
 pub mod sizeof;
+
+/// Implementation of command traits for wrapping messages.
 pub mod unwrap;
+
+/// Implementation of command traits for unwrapping messages.
 pub mod wrap;
 
 #[cfg(test)]

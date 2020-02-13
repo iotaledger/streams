@@ -167,7 +167,7 @@ impl<MT> PrivateKeyT<MT> where
     ///
     /// Note, call `next` in order to switch to the next WOTS sk, otherwise the current sk is going to be reused!
     pub fn sign(&self, hash: TritSlice, mut sig: TritSliceMut) {
-        assert!(self.skn_left() > 0);
+        assert!(self.private_keys_left() > 0);
         assert_eq!(sig.size(), sig_size(self.height()));
         self.encode_skn(sig.advance(SKN_SIZE));
         self.encode_wotsig(hash, sig.advance(wots::SIG_SIZE));
@@ -175,7 +175,7 @@ impl<MT> PrivateKeyT<MT> where
     }
 
     /// The number of WOTS secret private key left.
-    pub fn skn_left(&self) -> usize {
+    pub fn private_keys_left(&self) -> usize {
         max_idx(self.height()) - self.mt.skn()
     }
 

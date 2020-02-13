@@ -408,7 +408,7 @@ impl<OS> Commit for Context<OS> {
 impl<'a, OS: io::OStream> Mssig<&'a mss::PrivateKey, &'a External<NTrytes>> for Context<OS> {
     fn mssig(&mut self, sk: &'a mss::PrivateKey, hash: &'a External<NTrytes>) -> Result<&mut Self> {
         ensure!(mss::HASH_SIZE == ((hash.0).0).size(), "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.", mss::HASH_SIZE);
-        ensure!(sk.skn_left() > 0, "All WOTS private keys in MSS Merkle tree have been exhausted, nothing to sign hash with.");
+        ensure!(sk.private_keys_left() > 0, "All WOTS private keys in MSS Merkle tree have been exhausted, nothing to sign hash with.");
         let sig_slice = self.stream.try_advance(mss::sig_size(sk.height()))?;
         sk.sign(((hash.0).0).slice(), sig_slice);
         Ok(self)

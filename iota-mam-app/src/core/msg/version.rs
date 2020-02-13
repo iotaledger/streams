@@ -11,10 +11,10 @@
 //!
 //! Backwards compatibility of the MAM implementations is welcome and not mandatory.
 
-use iota_mam_protobuf3 as protobuf3;
+use iota_mam_protobuf3::types::Trint3;
 
 /// MAM1 version number.
-pub const MAM_1_VER: protobuf3::Trint3 = protobuf3::Trint3(0);
+pub const MAM_1_VER: Trint3 = Trint3(0);
 
 /// MAM1.1 version number.
-pub const MAM_1_1_VER: protobuf3::Trint3 = protobuf3::Trint3(1);
+pub const MAM_1_1_VER: Trint3 = Trint3(1);

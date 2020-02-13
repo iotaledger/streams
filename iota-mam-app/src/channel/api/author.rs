@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::str::FromStr;
@@ -5,8 +6,7 @@ use failure::{bail, ensure};
 
 use iota_mam_core::{signature::mss, key_encapsulation::ntru, prng, psk, spongos, trits::{Trits}};
 
-use iota_mam_protobuf3 as protobuf3;
-use iota_mam_protobuf3::{command::*, io, types::*, sizeof, wrap, unwrap};
+use iota_mam_protobuf3::{command::*, io, types::*};
 
 use crate::Result;
 use crate::channel::{api::*, msg::*};
@@ -49,7 +49,7 @@ pub struct AuthorT<Link, Store, LinkGen> {
     pub ntru_pks: NtruPks,
 
     /// Link store.
-    store: Store,
+    store: RefCell<Store>,
 
     /// Link generator.
     link_gen: LinkGen,
@@ -57,33 +57,6 @@ pub struct AuthorT<Link, Store, LinkGen> {
     /// Link to the announce message, ie. application instance.
     appinst: Link,
 }
-
-/// Message associated info, just message type indicator.
-#[derive(Copy, Clone)]
-pub enum MsgInfo {
-    Announce,
-    ChangeKey,
-    Keyload,
-    Subscribe,
-    Unsubscribe,
-    SignedPacket,
-    TaggedPacket,
-}
-
-/// Customize Author.
-use crate::core::transport::tangle::*;
-
-/// * Select Link type.
-pub type Address = TangleAddress;
-
-/// * Select Link Generator.
-pub type LinkGen = DefaultTangleLinkGenerator;
-
-/// * Select Link Store.
-pub type Store = DefaultLinkStore<Address, MsgInfo>;
-
-/// * Define Author type.
-pub type Author = AuthorT<Address, Store, LinkGen>;
 
 impl<Link, Store, LinkGen> AuthorT<Link, Store, LinkGen> where
     Link: HasLink + AbsorbExternalFallback + Default + Clone + Eq,
@@ -116,260 +89,201 @@ impl<Link, Store, LinkGen> AuthorT<Link, Store, LinkGen> where
             psks: HashMap::new(),
             ntru_pks: HashMap::new(),
 
-            store: store,
+            store: RefCell::new(store),
             link_gen: link_gen,
             appinst: appinst,
         }
     }
 
+    /// Create Header for the first (Announce) message in the channel.
     fn first_header(&mut self, content_type: &str) -> Header<Link> {
         let first_link = self.link_gen.link_from(self.mss_sk.public_key());
         Header::new(first_link, content_type)
     }
 
+    /// Create Header for the message linked to `link_to`.
     fn next_header(&mut self, link_to: &<Link as HasLink>::Rel, content_type: &str) -> Header<Link> {
         let next_link = self.link_gen.link_from(link_to);
         Header::new(next_link, content_type)
     }
 
+    /// Prepare Announcement message.
     pub fn prepare_announcement<'a>(&'a mut self) -> Result<PreparedMessage<'a, Link, Store, announce::ContentWrap>> {
         let header = self.first_header(announce::TYPE);
         let content = announce::ContentWrap {
             mss_sk: &self.mss_sk,
             ntru_pk: self.opt_ntru.as_ref().map(|key_pair| &key_pair.1),
         };
-        Ok(PreparedMessage::new(&mut self.store, header, content))
+        Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
 
     /// Create Announce message.
     pub fn announce<'a>(&'a mut self, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<TrinaryMessage<Link>> {
-        self.prepare_announcement()?.commit(info)
+        let wrapped = self
+            .prepare_announcement()?
+            .wrap()?;
+        wrapped
+            .commit(self.store.borrow_mut(), info)
     }
 
-    /*
-    pub fn prepare_change_key<'a>(&'a mut self, link_to: &'a <Link as HasLink>::Rel) -> Result<PreparedMessage<'a, Link, Store, change_key::ContentWrap<'a, <Link as HasLink>::Rel, Store>>> {
+    /// Prepare ChangeKey message: generate new MSS key pair.
+    pub fn prepare_change_key<'a>(&'a mut self, link_to: &'a <Link as HasLink>::Rel) -> Result<PreparedMessage<'a, Link, Store, change_key::ContentWrap<'a, Link>>> {
         let mss_nonce = self.mss_sk.nonce().clone();
         let mss_sk = mss::PrivateKey::gen(&self.prng, mss_nonce.slice(), self.default_mss_height);
 
         let header = self.next_header(link_to, change_key::TYPE);
 
-        let content = change_key::ContentWrap {
-            store: &self.store,
-            link: link_to,
-            mss_pk: mss_sk.public_key(),
-            mss_sk: &mss_sk,
-            mss_linked_sk: &self.mss_sk,
-        };
-        Ok(PreparedMessage::new(&mut self.store, header, content))
+        let content = change_key::ContentWrap::new(link_to, mss_sk, &self.mss_sk);
+        Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
-     */
 
     /// Generate a new MSS key pair, create change key message linked to the `link_to`
     /// and replace the current MSS key pair with the newly generated one.
-    pub fn change_key(&mut self, link_to: &<Link as HasLink>::Rel) -> Result<TrinaryMessage<Link>> {
-        let mss_nonce = self.mss_sk.nonce().clone();
-        let mss_sk = mss::PrivateKey::gen(&self.prng, mss_nonce.slice(), self.default_mss_height);
+    pub fn change_key(&mut self, link_to: &<Link as HasLink>::Rel, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<TrinaryMessage<Link>> {
+        let (wrapped, mss_sk) = {
+            let prepared = self.prepare_change_key(link_to)?;
+            let wrapped = prepared.wrap()?;
 
-        let header = self.next_header(link_to, change_key::TYPE);
-
-        let content = change_key::ContentWrap {
-            store: &self.store,
-            link: link_to,
-            mss_pk: mss_sk.public_key(),
-            mss_sk: &mss_sk,
-            mss_linked_sk: &self.mss_sk,
+            // Update MSS private key, drop the old one.
+            //TODO: Return the old MSS key or add a container of MSS private keys?
+            (wrapped, prepared.content.mss_sk)
         };
-
-        let buf_size = {
-            let mut ctx = sizeof::Context::new();
-            header.sizeof(&mut ctx)?;
-            content.sizeof(&mut ctx)?;
-            ctx.get_size()
-        };
-        let mut buf = Trits::zero(buf_size);
-
-        {
-            let mut ctx = wrap::Context::new(buf.slice_mut());
-            header.wrap(&mut ctx)?;
-            content.wrap(&mut ctx)?;
-            ensure!(ctx.stream.is_empty(), "OStream has not been exhausted.");
-        }
-
-        // Update MSS private key, drop the old one.
-        //TODO: Return the old MSS key or add a container of MSS private keys?
         self.mss_sk = mss_sk;
-
-        Ok(TrinaryMessage{ link: header.link, body: buf, })
+        wrapped.commit(self.store.borrow_mut(), info)
     }
 
-    /// Create keyload message with a new session key shared with recipients
-    /// identified by pre-shared key IDs and by NTRU public key IDs.
-    pub fn share_keyload(&mut self, link_to: &<Link as HasLink>::Rel, psk_ids: &PskIds, ntru_pkids: &NtruPkids) -> Result<TrinaryMessage<Link>> {
+    fn do_prepare_keyload<'a, Psks, NtruPks>(
+        &'a mut self,
+        link_to: &'a <Link as HasLink>::Rel,
+        psks: Psks,
+        ntru_pks: NtruPks)
+        -> Result<PreparedMessage<'a, Link, Store, keyload::ContentWrap<'a, Link, Psks, NtruPks>>> where
+        Psks: Clone + ExactSizeIterator<Item = (&'a psk::PskId, &'a psk::Psk)>,
+        NtruPks: Clone + ExactSizeIterator<Item = (&'a ntru::Pkid, &'a ntru::PublicKey)>,
+    {
         let header = self.next_header(link_to, keyload::TYPE);
 
+        //TODO: trait MessageWrap { fn wrap(header, content) -> TrinaryMessage<Link> }
+        //TODO: const NONCE_SIZE
+        //TODO: get new unique nonce!
+        let nonce = NTrytes::zero(3 * 27);
+        //TODO: generate new unique key!
+        //TODO: prng randomness hierarchy: domain (mss, ntru, session key, etc.), secret, counter
+        let key = NTrytes::zero(spongos::KEY_SIZE);
+        let content = keyload::ContentWrap {
+            link: link_to,
+            nonce: nonce,
+            key: key,
+            psks: psks,
+            prng: &self.prng,
+            ntru_pks: ntru_pks,
+            _phantom: std::marker::PhantomData,
+        };
+        Ok(PreparedMessage::new(self.store.borrow(), header, content))
+    }
+
+    /*
+    pub fn prepare_keyload<'a>(&'a mut self, link_to: &'a <Link as HasLink>::Rel, psk_ids: &PskIds, ntru_pkids: &NtruPkids) -> Result<PreparedMessage<'a, Link, Store, keyload::ContentWrap<'a, Link, IPsks<'a>, INtruPks<'a>>>> {
         let psks = filter_psks(&self.psks, psk_ids);
         let ipsks = psks.iter().cloned();
         let ntru_pks = filter_ntru_pks(&self.ntru_pks, ntru_pkids);
         let intru_pks = ntru_pks.iter().cloned();
+        self.do_prepare_keyload(link_to, ipsks, intru_pks)
+    }
 
-        //TODO: trait MessageWrap { fn wrap(header, content) -> TrinaryMessage<Link> }
-        //TODO: const NONCE_SIZE
-        //TODO: get new unique nonce!
-        let nonce = NTrytes::zero(3 * 27);
-        //TODO: generate new unique key!
-        //TODO: prng randomness hierarchy: domain (mss, ntru, session key, etc.), secret, counter
-        let key = NTrytes::zero(spongos::KEY_SIZE);
-        let content = keyload::ContentWrap {
-            store: &self.store,
-            link: link_to,
-            nonce: nonce,
-            key: key,
-            psks: ipsks,
-            prng: &self.prng,
-            ntru_pks: intru_pks,
-        };
+    pub fn prepare_keyload_for_everyone<'a>(&'a mut self, link_to: &'a <Link as HasLink>::Rel) -> Result<PreparedMessage<'a, Link, Store, keyload::ContentWrap<'a, Link, Psks, NtruPks>>> {
+        let ipsks = self.psks.iter();
+        let intru_pks = self.ntru_pks.iter();
+        self.do_prepare_keyload(link_to, ipsks, intru_pks)
+    }
 
-        let buf_size = {
-            let mut ctx = sizeof::Context::new();
-            header.sizeof(&mut ctx)?;
-            content.sizeof(&mut ctx)?;
-            ctx.get_size()
-        };
-        let mut buf = Trits::zero(buf_size);
-
-        {
-            let mut ctx = wrap::Context::new(buf.slice_mut());
-            header.wrap(&mut ctx)?;
-            content.wrap(&mut ctx)?;
-            ensure!(ctx.stream.is_empty(), "OStream has not been exhausted.");
-        }
-
-        Ok(TrinaryMessage{ link: header.link, body: buf, })
+    /// Create keyload message with a new session key shared with recipients
+    /// identified by pre-shared key IDs and by NTRU public key IDs.
+    pub fn share_keyload(&mut self, link_to: &<Link as HasLink>::Rel, psk_ids: &PskIds, ntru_pkids: &NtruPkids, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<TrinaryMessage<Link>> {
+        self
+            .prepare_keyload(link_to, psk_ids, ntru_pkids)?
+            .wrap()?
+            .commit(self.store.borrow_mut(), info)
     }
 
     /// Create keyload message with a new session key shared with all Subscribers
     /// known to Author.
-    pub fn share_keyload_with_all_subscribers(&mut self, link_to: &<Link as HasLink>::Rel) -> Result<TrinaryMessage<Link>> {
-        let header = self.next_header(link_to, keyload::TYPE);
-
-        let ipsks = self.psks.iter();
-        let intru_pks = self.ntru_pks.iter();
-
-        //TODO: trait MessageWrap { fn wrap(header, content) -> TrinaryMessage<Link> }
-        //TODO: const NONCE_SIZE
-        //TODO: get new unique nonce!
-        let nonce = NTrytes::zero(3 * 27);
-        //TODO: generate new unique key!
-        //TODO: prng randomness hierarchy: domain (mss, ntru, session key, etc.), secret, counter
-        let key = NTrytes::zero(spongos::KEY_SIZE);
-        let content = keyload::ContentWrap {
-            store: &self.store,
-            link: link_to,
-            nonce: nonce,
-            key: key,
-            psks: ipsks,
-            prng: &self.prng,
-            ntru_pks: intru_pks,
-        };
-
-        let buf_size = {
-            let mut ctx = sizeof::Context::new();
-            header.sizeof(&mut ctx)?;
-            content.sizeof(&mut ctx)?;
-            ctx.get_size()
-        };
-        let mut buf = Trits::zero(buf_size);
-
-        {
-            let mut ctx = wrap::Context::new(buf.slice_mut());
-            header.wrap(&mut ctx)?;
-            content.wrap(&mut ctx)?;
-            ensure!(ctx.stream.is_empty(), "OStream has not been exhausted.");
-        }
-
-        Ok(TrinaryMessage{ link: header.link, body: buf, })
+    pub fn share_keyload_for_everyone(&mut self, link_to: &<Link as HasLink>::Rel, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<TrinaryMessage<Link>> {
+        self
+            .prepare_keyload_for_everyone(link_to)?
+            .wrap()?
+            .commit(self.store.borrow_mut(), info)
     }
+     */
 
-    /// Create a signed message with public and masked payload.
-    pub fn sign_packet(&mut self, link_to: &<Link as HasLink>::Rel, public_payload: &Trytes, masked_payload: &Trytes) -> Result<TrinaryMessage<Link>> {
-        //TODO: Reserve a few WOTS keys for change key?
+    /// Prepare SignedPacket message.
+    pub fn prepare_signed_packet<'a>(&'a mut self, link_to: &'a <Link as HasLink>::Rel, public_payload: &'a Trytes, masked_payload: &'a Trytes) -> Result<PreparedMessage<'a, Link, Store, signed_packet::ContentWrap<'a, Link>>> {
         let header = self.next_header(link_to, signed_packet::TYPE);
         let content = signed_packet::ContentWrap {
-            store: &self.store,
             link: link_to,
             public_payload: public_payload,
             masked_payload: masked_payload,
             mss_sk: &self.mss_sk,
+            _phantom: std::marker::PhantomData,
         };
-
-        let buf_size = {
-            let mut ctx = sizeof::Context::new();
-            header.sizeof(&mut ctx)?;
-            content.sizeof(&mut ctx)?;
-            ctx.get_size()
-        };
-        let mut buf = Trits::zero(buf_size);
-
-        {
-            let mut ctx = wrap::Context::new(buf.slice_mut());
-            header.wrap(&mut ctx)?;
-            content.wrap(&mut ctx)?;
-            ensure!(ctx.stream.is_empty(), "OStream has not been exhausted.");
-        }
-
-        Ok(TrinaryMessage{ link: header.link, body: buf, })
+        Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
-    
-    /// Create a tagged (ie. MACed) message with public and masked payload.
-    /// Tagged messages must be linked to a secret spongos state, ie. keyload or a message linked to keyload.
-    pub fn tag_packet(&mut self, link_to: &<Link as HasLink>::Rel, public_payload: &Trytes, masked_payload: &Trytes) -> Result<TrinaryMessage<Link>> {
+
+    /// Create a signed message with public and masked payload.
+    pub fn sign_packet(&mut self, link_to: &<Link as HasLink>::Rel, public_payload: &Trytes, masked_payload: &Trytes, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<TrinaryMessage<Link>> {
+        let wrapped = self
+            .prepare_signed_packet(link_to, public_payload, masked_payload)?
+            .wrap()?;
+        wrapped
+            .commit(self.store.borrow_mut(), info)
+    }
+
+    /// Prepare TaggedPacket message.
+    pub fn prepare_tagged_packet<'a>(&'a mut self, link_to: &'a <Link as HasLink>::Rel, public_payload: &'a Trytes, masked_payload: &'a Trytes) -> Result<PreparedMessage<'a, Link, Store, tagged_packet::ContentWrap<'a, Link>>> {
         let header = self.next_header(link_to, tagged_packet::TYPE);
         let content = tagged_packet::ContentWrap {
-            store: &self.store,
             link: link_to,
             public_payload: public_payload,
             masked_payload: masked_payload,
+            _phantom: std::marker::PhantomData,
         };
-
-        let buf_size = {
-            let mut ctx = sizeof::Context::new();
-            header.sizeof(&mut ctx)?;
-            content.sizeof(&mut ctx)?;
-            ctx.get_size()
-        };
-        let mut buf = Trits::zero(buf_size);
-
-        {
-            let mut ctx = wrap::Context::new(buf.slice_mut());
-            header.wrap(&mut ctx)?;
-            content.wrap(&mut ctx)?;
-            ensure!(ctx.stream.is_empty(), "OStream has not been exhausted.");
-        }
-
-        Ok(TrinaryMessage{ link: header.link, body: buf, })
+        Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
-    
-    fn handle_tagged_packet<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<(Trytes, Trytes)> {
-        let mut content = tagged_packet::ContentUnwrap::new(&self.store);
-        content.unwrap(ctx)?;
+
+    /// Create a tagged (ie. MACed) message with public and masked payload.
+    /// Tagged messages must be linked to a secret spongos state, ie. keyload or a message linked to keyload.
+    pub fn tag_packet(&mut self, link_to: &<Link as HasLink>::Rel, public_payload: &Trytes, masked_payload: &Trytes, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<TrinaryMessage<Link>> {
+        let wrapped = self
+            .prepare_tagged_packet(link_to, public_payload, masked_payload)?
+            .wrap()?;
+        wrapped
+            .commit(self.store.borrow_mut(), info)
+    }
+
+
+    pub fn unwrap_tagged_packet<'a>(&self, preparsed: PreparsedMessage<'a, Link>) -> Result<UnwrappedMessage<Link, tagged_packet::ContentUnwrap<Link>>> {
+        let mut content = tagged_packet::ContentUnwrap::new();
+        preparsed.unwrap(&*self.store.borrow(), content)
+    }
+
+    /// Get public payload, decrypt masked payload and verify MAC.
+    pub fn handle_tagged_packet<'a>(&mut self, preparsed: PreparsedMessage<'a, Link>, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<(Trytes, Trytes)> {
+        let content = self
+            .unwrap_tagged_packet(preparsed)?
+            .commit(self.store.borrow_mut(), info)?;
         Ok((content.public_payload, content.masked_payload))
     }
 
     /// Unwrap message.
-    pub fn handle_msg(&mut self, msg: &TrinaryMessage<Link>) -> Result<()> {
-        ensure!(self.appinst.base() == msg.link().base(),
-                "Application instance is {}, but message is addressed to {}.",
-                self.appinst.base().to_string(), msg.link.base().to_string());
+    pub fn handle_msg(&mut self, msg: &TrinaryMessage<Link>, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<()> {
+        let preparsed = msg.parse_header()?;
 
-        let mut ctx = unwrap::Context::new(msg.body.slice());
-        let mut hdr = Header::<Link>::default();
-        hdr.unwrap(&mut ctx)?;
-
-        if (hdr.content_type.0).eq_str(tagged_packet::TYPE) {
-            self.handle_tagged_packet(&mut ctx)?;
+        if preparsed.check_content_type(tagged_packet::TYPE) {
+            self.handle_tagged_packet(preparsed, info)?;
             Ok(())
-        } else {
-            bail!("Unsupported content type: '{}'.", (hdr.content_type.0).to_string())
+        } else
+        {
+            bail!("Unsupported content type: '{}'.", preparsed.content_type())
         }
     }
 }

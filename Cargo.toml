@@ -3,7 +3,7 @@ name = "iota-mam"
 version = "0.1.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
-license = "MIT"
+license = "Apache-2.0/MIT"
 readme = "README.md"
 keywords = ["iota", "mam"]
 description = "A rust implementation of the IOTA MAM"
@@ -22,10 +22,3 @@ members = [
 iota-mam-core = { version = "0.1.0", path = "iota-mam-core" }
 iota-mam-protobuf3 = { version = "0.1.0", path = "iota-mam-protobuf3" }
 iota-mam-app = { version = "0.1.0", path = "iota-mam-app" }
-
-#[dev-dependencies]
-#iota-client = "0.3.0"
-#iota-model = "0.3.0"
-
-[patch.crates-io]
-iota-client = { path = "../iota-lib-rs/iota-client" }

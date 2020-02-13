@@ -26,28 +26,34 @@
 use failure::bail;
 
 use iota_mam_core::spongos;
-use iota_mam_protobuf3::{command::*, io, types::*, sizeof, wrap, unwrap};
+use iota_mam_protobuf3::{command::*, io, types::*};
 use crate::Result;
 use crate::core::HasLink;
+use crate::core::msg;
 
 /// Type of `TaggedPacket` message content.
 pub const TYPE: &str = "MAM9CHANNEL9TAGGEDPACKET";
 
-pub struct ContentWrap<'a, RelLink: 'a, Store: 'a> {
-    pub(crate) store: &'a Store,
-    pub(crate) link: &'a RelLink,
+pub struct ContentWrap<'a, Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a,
+{
+    pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) public_payload: &'a Trytes,
     pub(crate) masked_payload: &'a Trytes,
+    pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, RelLink: 'a, Store: 'a> ContentWrap<'a, RelLink, Store> where
-    RelLink: Eq + SkipFallback,
-    Store: LinkStore<RelLink>,
+impl<'a, Link, Store> msg::ContentWrap<Store> for ContentWrap<'a, Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback,
+    Store: LinkStore<<Link as HasLink>::Rel>,
 {
-    pub(crate) fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+        let store = EmptyLinkStore::<<Link as HasLink>::Rel, ()>::default();
         let mac = Mac(spongos::MAC_SIZE);
         ctx
-            .join(self.store, self.link)?
+            .join(&store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
@@ -56,10 +62,11 @@ impl<'a, RelLink: 'a, Store: 'a> ContentWrap<'a, RelLink, Store> where
         //TODO: Is bot public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
-    pub(crate) fn wrap<'c, OS: io::OStream>(&self, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
+
+    fn wrap<'c, OS: io::OStream>(&self, store: &Store, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
         let mac = Mac(spongos::MAC_SIZE);
         ctx
-            .join(self.store, self.link)?
+            .join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
@@ -69,30 +76,36 @@ impl<'a, RelLink: 'a, Store: 'a> ContentWrap<'a, RelLink, Store> where
     }
 }
 
-pub struct ContentUnwrap<'a, RelLink, Store> {
-    pub(crate) store: &'a Store,
-    pub(crate) link: RelLink,
+pub struct ContentUnwrap<Link: HasLink> {
+    pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) public_payload: Trytes,
     pub(crate) masked_payload: Trytes,
+    pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, RelLink: 'a, Store: 'a> ContentUnwrap<'a, RelLink, Store> where
-    RelLink: Eq + Default + SkipFallback,
-    Store: LinkStore<RelLink>,
+impl<Link> ContentUnwrap<Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback,
 {
-    pub fn new(store: &'a Store) -> Self {
+    pub fn new() -> Self {
         Self {
-            store: store,
-            link: RelLink::default(),
+            link: <<Link as HasLink>::Rel as Default>::default(),
             public_payload: Trytes::default(),
             masked_payload: Trytes::default(),
+            _phantom: std::marker::PhantomData,
         }
     }
+}
 
-    pub(crate) fn unwrap<'c, IS: io::IStream>(&mut self, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
+impl<Link, Store> msg::ContentUnwrap<Store> for ContentUnwrap<Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback,
+    Store: LinkStore<<Link as HasLink>::Rel>,
+{
+    fn unwrap<'c, IS: io::IStream>(&mut self, store: &Store, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
         let mac = Mac(spongos::MAC_SIZE);
         ctx
-            .join(self.store, &mut self.link)?
+            .join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
             .commit()?

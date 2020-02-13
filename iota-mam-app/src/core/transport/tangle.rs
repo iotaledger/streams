@@ -5,12 +5,11 @@ use std::hash;
 use std::string::ToString;
 
 use iota_mam_core::{signature::mss, trits::Trits};
-use iota_mam_protobuf3 as protobuf3;
-use protobuf3::{command::*, types::*, io, sizeof, wrap, unwrap};
+use iota_mam_protobuf3::{command::*, types::*, io};
 
 use crate::core::*;
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Default)]
 pub struct TangleAddress {
     appinst: AppInst,
     msgid: MsgId,

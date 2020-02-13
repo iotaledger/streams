@@ -1,3 +1,4 @@
+//!
 use std::iter;
 use failure::{ensure};
 
@@ -11,13 +12,16 @@ use crate::types::*;
 /// Message size counting context.
 #[derive(Debug)]
 pub struct Context {
-    pub size: usize,
+    /// The current message size in trits.
+    size: usize,
 }
 
 impl Context {
+    /// Creates a new Context.
     pub fn new() -> Self {
         Self { size: 0, }
     }
+    /// Returns calculated message size.
     pub fn get_size(&self) -> usize {
         self.size
     }
@@ -53,7 +57,7 @@ impl Absorb<Size> for Context {
     }
 }
 
-/// External values are not encoded.
+/// External values are not encoded in the trinary stream.
 impl<'a, T: 'a> Absorb<&'a External<T>> for Context where
     Self: Absorb<T>,
 {
@@ -62,6 +66,7 @@ impl<'a, T: 'a> Absorb<&'a External<T>> for Context where
     }
 }
 
+/// External values are not encoded in the trinary stream.
 impl<'a, T: 'a> Absorb<External<&'a T>> for Context where
     //Self: Absorb<&'a T>,
 {
@@ -69,10 +74,8 @@ impl<'a, T: 'a> Absorb<External<&'a T>> for Context where
         Ok(self)
     }
 }
-/*
-*/
 
-/// `trytes` is encoded with `sizeof_sizet(n) + 3 * n` trits.
+/// `trytes` has variable size thus the size is encoded before the content trytes.
 impl<'a> Absorb<&'a Trytes> for Context {
     fn absorb(&mut self, trytes: &'a Trytes) -> Result<&mut Self> {
         ensure!((trytes.0).size() % 3 == 0, "Trit size of `trytes` must be a multiple of 3.");
@@ -81,13 +84,14 @@ impl<'a> Absorb<&'a Trytes> for Context {
     }
 }
 
+/// `trytes` has variable size thus the size is encoded before the content trytes.
 impl Absorb<Trytes> for Context {
     fn absorb(&mut self, trytes: Trytes) -> Result<&mut Self> {
         self.absorb(&trytes)
     }
 }
 
-/// `tryte [n]` is encoded with `3 * n` trits.
+/// `tryte [n]` is fixed-size and is encoded with `3 * n` trits.
 impl<'a> Absorb<&'a NTrytes> for Context {
     fn absorb(&mut self, ntrytes: &'a NTrytes) -> Result<&mut Self> {
         ensure!((ntrytes.0).size() % 3 == 0, "Trit size of `tryte [n]` must be a multiple of 3.");
@@ -96,19 +100,14 @@ impl<'a> Absorb<&'a NTrytes> for Context {
     }
 }
 
+/// `tryte [n]` is fixed-size and is encoded with `3 * n` trits.
 impl Absorb<NTrytes> for Context {
     fn absorb(&mut self, ntrytes: NTrytes) -> Result<&mut Self> {
         self.absorb(&ntrytes)
     }
 }
-/*
-impl<'a> Absorb<&'a External<NTrytes>> for Context {
-    fn absorb(&mut self, _val: &'a External<NTrytes>) -> Result<&mut Self> {
-        Ok(self)
-    }
-}
- */
 
+/// MSS public key has fixed size.
 impl<'a> Absorb<&'a mss::PublicKey> for Context {
     fn absorb(&mut self, pk: &'a mss::PublicKey) -> Result<&mut Self> {
         ensure!(pk.pk.size() == mss::PK_SIZE);
@@ -117,6 +116,7 @@ impl<'a> Absorb<&'a mss::PublicKey> for Context {
     }
 }
 
+/// NTRU public key has fixed size.
 impl<'a> Absorb<&'a ntru::PublicKey> for Context {
     fn absorb(&mut self, pk: &'a ntru::PublicKey) -> Result<&mut Self> {
         ensure!(pk.pk.size() == ntru::PK_SIZE);
@@ -128,11 +128,11 @@ impl<'a> Absorb<&'a ntru::PublicKey> for Context {
 /// External values are not encoded.
 impl<'a> Squeeze<&'a External<NTrytes>> for Context {
     fn squeeze(&mut self, external_ntrytes: &'a External<NTrytes>) -> Result<&mut Self> {
-        ensure!(((external_ntrytes.0).0).size() % 3 == 0, "Trit size of `external tryte [n]` must be a multiple of 3.");
         Ok(self)
     }
 }
 
+/// External values are not encoded.
 impl Squeeze<&External<Mac>> for Context {
     fn squeeze(&mut self, mac: &External<Mac>) -> Result<&mut Self> {
         Ok(self)
@@ -193,7 +193,7 @@ impl Mask<&NTrytes> for Context {
     }
 }
 
-/// Mask trytes.
+/// Mask trytes, the size prefixed before the content trytes is also masked.
 impl Mask<&Trytes> for Context {
     fn mask(&mut self, trytes: &Trytes) -> Result<&mut Self> {
         ensure!((trytes.0).size() % 3 == 0, "Trit size of `trytes` must be a multiple of 3: {}.", (trytes.0).size());
@@ -244,6 +244,7 @@ impl<'a> Skip<&'a Trytes> for Context {
     }
 }
 
+/// `trytes` is encoded with `sizeof_sizet(n) + 3 * n` trits.
 impl Skip<Trytes> for Context {
     fn skip(&mut self, trytes: Trytes) -> Result<&mut Self> {
         self.skip(&trytes)
@@ -259,6 +260,7 @@ impl<'a> Skip<&'a NTrytes> for Context {
     }
 }
 
+/// `tryte [n]` is encoded with `3 * n` trits.
 impl Skip<NTrytes> for Context {
     fn skip(&mut self, ntrytes: NTrytes) -> Result<&mut Self> {
         self.skip(&ntrytes)
@@ -276,7 +278,7 @@ impl Commit for Context {
 impl Mssig<&mss::PrivateKey, &External<NTrytes>> for Context {
     fn mssig(&mut self, sk: &mss::PrivateKey, hash: &External<NTrytes>) -> Result<&mut Self> {
         ensure!(mss::HASH_SIZE == ((hash.0).0).size(), "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.", mss::HASH_SIZE);
-        ensure!(sk.skn_left() > 0, "All WOTS private keys in MSS Merkle tree have been exhausted, nothing to sign hash with.");
+        ensure!(sk.private_keys_left() > 0, "All WOTS private keys in MSS Merkle tree have been exhausted, nothing to sign hash with.");
         self.size += mss::sig_size(sk.height());
         Ok(self)
     }
@@ -285,7 +287,7 @@ impl Mssig<&mss::PrivateKey, &External<NTrytes>> for Context {
 impl Mssig<&mss::PrivateKey, &External<Mac>> for Context {
     fn mssig(&mut self, sk: &mss::PrivateKey, hash: &External<Mac>) -> Result<&mut Self> {
         ensure!(mss::HASH_SIZE == (hash.0).0, "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.", mss::HASH_SIZE);
-        ensure!(sk.skn_left() > 0, "All WOTS private keys in MSS Merkle tree have been exhausted, nothing to sign hash with.");
+        ensure!(sk.private_keys_left() > 0, "All WOTS private keys in MSS Merkle tree have been exhausted, nothing to sign hash with.");
         self.size += mss::sig_size(sk.height());
         Ok(self)
     }

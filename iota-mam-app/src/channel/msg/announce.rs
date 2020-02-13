@@ -31,7 +31,7 @@
 use failure::bail;
 
 use iota_mam_core::{signature::mss, key_encapsulation::ntru};
-use iota_mam_protobuf3::{command::*, io, types::*, sizeof, wrap, unwrap};
+use iota_mam_protobuf3::{command::*, io, types::*};
 use crate::Result;
 
 use crate::core::msg;
@@ -44,8 +44,8 @@ pub struct ContentWrap<'a> {
     pub(crate) ntru_pk: Option<&'a ntru::PublicKey>,
 }
 
-impl<'a> ContentWrap<'a> {
-    pub(crate) fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+impl<'a, Store> msg::ContentWrap<Store> for ContentWrap<'a> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
         ctx.absorb(self.mss_sk.public_key())?;
         let oneof: Trint3;
         if let Some(ntru_pk) = self.ntru_pk {
@@ -59,7 +59,7 @@ impl<'a> ContentWrap<'a> {
         Ok(ctx)
     }
 
-    pub(crate) fn wrap<'c, OS: io::OStream>(&self, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
+    fn wrap<'c, OS: io::OStream>(&self, _store: &Store, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
         ctx.absorb(self.mss_sk.public_key())?;
         let oneof: Trint3;
         if let Some(ntru_pk) = self.ntru_pk {
@@ -71,16 +71,6 @@ impl<'a> ContentWrap<'a> {
         }
         ctx.mssig(self.mss_sk, MssHashSig)?;
         Ok(ctx)
-    }
-}
-
-impl<'c> msg::ContentWrap for ContentWrap<'c> {
-    fn sizeof2<'a>(&self, ctx: &'a mut sizeof::Context) -> Result<&'a mut sizeof::Context> {
-        self.sizeof(ctx)
-    }
-
-    fn wrap2<'a, OS: io::OStream>(&'a self, ctx: &'a mut wrap::Context<OS>) -> Result<&'a mut wrap::Context<OS>> {
-        self.wrap(ctx)
     }
 }
 
@@ -90,8 +80,8 @@ pub struct ContentUnwrap {
     pub(crate) ntru_pk: Option<ntru::PublicKey>,
 }
 
-impl ContentUnwrap {
-    pub(crate) fn unwrap<'c, IS: io::IStream>(&mut self, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
+impl<Store> msg::ContentUnwrap<Store> for ContentUnwrap {
+    fn unwrap<'c, IS: io::IStream>(&mut self, store: &Store, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
         ctx.absorb(&mut self.mss_pk)?;
         let mut oneof = Trint3(-1);
         ctx.absorb(&mut oneof)?;

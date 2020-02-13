@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::str::FromStr;
@@ -6,8 +7,7 @@ use failure::{bail, ensure};
 
 use iota_mam_core::{signature::mss, key_encapsulation::ntru, prng, psk, spongos, trits::{Trits}};
 
-use iota_mam_protobuf3 as protobuf3;
-use iota_mam_protobuf3::{command::*, io, types::*, sizeof, wrap, unwrap};
+use iota_mam_protobuf3::{command::*, io, types::*};
 
 use crate::Result;
 use crate::channel::{api::*, msg::*};
@@ -52,28 +52,11 @@ pub struct SubscriberT<Link, Store, LinkGen> {
     author_ntru_pk: Option<ntru::PublicKey>,
 
     /// Link store.
-    store: Store,
+    store: RefCell<Store>,
 
     /// Link generator.
     link_gen: LinkGen,
 }
-
-pub enum MsgInfo {}
-
-/// Customize Subscriber.
-use crate::core::transport::tangle::*;
-
-/// * Select Link type.
-pub type Address = TangleAddress;
-
-/// * Select Link Generator.
-pub type LinkGen = DefaultTangleLinkGenerator;
-
-/// * Select Link Store.
-pub type Store = DefaultLinkStore<Address, MsgInfo>;
-
-/// * Define Subscriber type.
-pub type Subscriber = SubscriberT<Address, Store, LinkGen>;
 
 impl<Link, Store, LinkGen> SubscriberT<Link, Store, LinkGen> where
     Link: HasLink + AbsorbExternalFallback + Default + Clone + Eq,
@@ -83,7 +66,7 @@ impl<Link, Store, LinkGen> SubscriberT<Link, Store, LinkGen> where
     LinkGen: ChannelLinkGenerator<Link>,
 {
     /// Create a new Subscriber and optionally generate NTRU key pair.
-    pub fn gen(store: Store, link_gen: LinkGen, prng: prng::PRNG, nonce: &Trits, mss_height: usize, with_ntru: bool) -> Self {
+    pub fn gen(store: Store, link_gen: LinkGen, prng: prng::PRNG, nonce: &Trits, with_ntru: bool) -> Self {
         let opt_ntru = if with_ntru {
             let ntru_nonce = Trits::from_str("NTRUNONCE").unwrap();
             let key_pair = ntru::gen(&prng, ntru_nonce.slice());
@@ -101,34 +84,49 @@ impl<Link, Store, LinkGen> SubscriberT<Link, Store, LinkGen> where
             author_mss_pk: None,
             author_ntru_pk: None,
 
-            store: store,
+            store: RefCell::new(store),
             link_gen: link_gen,
         }
     }
 
+    pub fn unwrap_announcement<'a>(&self, preparsed: PreparsedMessage<'a, Link>) -> Result<UnwrappedMessage<Link, announce::ContentUnwrap>> {
+        let mut content = announce::ContentUnwrap::default();
+        preparsed.unwrap(&*self.store.borrow(), content)
+    }
+
     /// Bind Subscriber (or anonymously subscribe) to the channel announced
     /// in the message.
-    fn handle_announce<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
-        let mut content = announce::ContentUnwrap::default();
-        content.unwrap(ctx)?;
+    pub fn handle_announcement<'a>(&mut self, preparsed: PreparsedMessage<'a, Link>, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<()> {
+        let content = self
+            .unwrap_announcement(preparsed)?
+            .commit(self.store.borrow_mut(), info)?;
         //TODO: Verify trust to Author's MSS public key?
         self.author_mss_pk = Some(content.mss_pk);
         self.author_ntru_pk = content.ntru_pk;
+        /*
+         */
         Ok(())
     }
 
-    /// Verify new Author's MSS public key and update Author's MSS public key.
-    fn handle_change_key<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
-        ensure!(self.author_mss_pk.is_some(), "No Author's MSS public key found.");
+    pub fn unwrap_change_key<'a, 'b>(&'b self, preparsed: PreparsedMessage<'a, Link>) -> Result<UnwrappedMessage<Link, change_key::ContentUnwrap<'b, Link>>> {
         let mss_linked_pk = self.author_mss_pk.as_ref().unwrap();
-        let mut content = change_key::ContentUnwrap::new(&self.store, mss_linked_pk);
-        content.unwrap(ctx)?;
+        let mut content = change_key::ContentUnwrap::new(mss_linked_pk);
+        preparsed.unwrap(&*self.store.borrow(), content)
+    }
+
+    /// Verify new Author's MSS public key and update Author's MSS public key.
+    pub fn handle_change_key<'a>(&mut self, preparsed: PreparsedMessage<'a, Link>, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<()> {
+        ensure!(self.author_mss_pk.is_some(), "No Author's MSS public key found.");
+        let content = self
+            .unwrap_change_key(preparsed)?
+            .commit(self.store.borrow_mut(), info)?;
         self.author_mss_pk = Some(content.mss_pk);
         Ok(())
     }
 
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or NTRU private key (if any).
     fn handle_keyload<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
+        /*
         ensure!(self.opt_psk.is_some() || self.opt_ntru.is_some(),
                 "No key information (PSK or NTRU) to unwrap keyload.");
 
@@ -150,57 +148,71 @@ impl<Link, Store, LinkGen> SubscriberT<Link, Store, LinkGen> where
                 ),
         );
         content.unwrap(ctx)?;
+         */
         Ok(())
     }
 
-    /// Get public payload, decrypt masked payload and verify signature with Author's public key.
-    fn handle_signed_packet<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<(Trytes, Trytes)> {
+    pub fn unwrap_signed_packet<'a>(&self, preparsed: PreparsedMessage<'a, Link>) -> Result<UnwrappedMessage<Link, signed_packet::ContentUnwrap<Link>>> {
         ensure!(self.author_mss_pk.is_some(), "No Author's MSS public key found, can't verify signature.");
+        let mut content = signed_packet::ContentUnwrap::new();
+        preparsed.unwrap(&*self.store.borrow(), content)
+    }
 
-        let mut content = signed_packet::ContentUnwrap::new(&self.store);
-        content.unwrap(ctx)?;
+    /// Verify new Author's MSS public key and update Author's MSS public key.
+    pub fn handle_signed_packet<'a>(&mut self, preparsed: PreparsedMessage<'a, Link>, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<(Trytes, Trytes)> {
+        ensure!(self.author_mss_pk.is_some(), "No Author's MSS public key found.");
+        let content = self
+            .unwrap_signed_packet(preparsed)?
+            .commit(self.store.borrow_mut(), info)?;
         ensure!(self.author_mss_pk.as_ref().map_or(false, |mss_pk| *mss_pk == content.mss_pk), "Bad signed packet signature.");
         Ok((content.public_payload, content.masked_payload))
     }
 
+    pub fn unwrap_tagged_packet<'a>(&self, preparsed: PreparsedMessage<'a, Link>) -> Result<UnwrappedMessage<Link, tagged_packet::ContentUnwrap<Link>>> {
+        let mut content = tagged_packet::ContentUnwrap::new();
+        preparsed.unwrap(&*self.store.borrow(), content)
+    }
+
     /// Get public payload, decrypt masked payload and verify MAC.
-    fn handle_tagged_packet<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<(Trytes, Trytes)> {
-        let mut content = tagged_packet::ContentUnwrap::new(&self.store);
-        content.unwrap(ctx)?;
+    pub fn handle_tagged_packet<'a>(&mut self, preparsed: PreparsedMessage<'a, Link>, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<(Trytes, Trytes)> {
+        let content = self
+            .unwrap_tagged_packet(preparsed)?
+            .commit(self.store.borrow_mut(), info)?;
         Ok((content.public_payload, content.masked_payload))
     }
 
     /// Unwrap message.
-    pub fn handle_msg(&mut self, msg: &TrinaryMessage<Link>) -> Result<()> {
+    pub fn handle_msg(&mut self, msg: &TrinaryMessage<Link>, info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info) -> Result<()> {
         if self.appinst.is_some() {
             ensure!(self.appinst.as_ref().unwrap().base() == msg.link().base(), "Bad message application instance.");
         }
 
-        let mut ctx = unwrap::Context::new(msg.body.slice());
-        let mut hdr = Header::<Link>::default();
-        hdr.unwrap(&mut ctx)?;
+        let preparsed = msg.parse_header()?;
 
-        if (hdr.content_type.0).eq_str(announce::TYPE) {
-            self.handle_announce(&mut ctx)?;
+        if preparsed.check_content_type(announce::TYPE) {
+            self.handle_announcement(preparsed, info)?;
             Ok(())
         } else
-        if (hdr.content_type.0).eq_str(change_key::TYPE) {
-            self.handle_change_key(&mut ctx)?;
+        if preparsed.check_content_type(change_key::TYPE) {
+            self.handle_change_key(preparsed, info)?;
             Ok(())
         } else
-        if (hdr.content_type.0).eq_str(keyload::TYPE) {
-            self.handle_keyload(&mut ctx)?;
+        if preparsed.check_content_type(signed_packet::TYPE) {
+            self.handle_signed_packet(preparsed, info)?;
             Ok(())
         } else
-        if (hdr.content_type.0).eq_str(signed_packet::TYPE) {
-            self.handle_signed_packet(&mut ctx)?;
+        if preparsed.check_content_type(tagged_packet::TYPE) {
+            self.handle_tagged_packet(preparsed, info)?;
             Ok(())
         } else
-        if (hdr.content_type.0).eq_str(tagged_packet::TYPE) {
-            self.handle_tagged_packet(&mut ctx)?;
+        /*
+        if preparsed.check_content_type(keyload::TYPE) {
+            self.handle_keyload(preparsed, info)?;
             Ok(())
-        } else {
-            bail!("Unsupported content type: '{}'.", (hdr.content_type.0).to_string())
+        } else
+         */
+        {
+            bail!("Unsupported content type: '{}'.", preparsed.content_type())
         }
     }
 }

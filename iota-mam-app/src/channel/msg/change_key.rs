@@ -31,7 +31,7 @@
 use failure::bail;
 
 use iota_mam_core::{signature::mss, key_encapsulation::ntru};
-use iota_mam_protobuf3::{command::*, io, types::*, sizeof, wrap, unwrap};
+use iota_mam_protobuf3::{command::*, io, types::*};
 use crate::Result;
 use crate::core::HasLink;
 use crate::core::msg;
@@ -39,38 +39,58 @@ use crate::core::msg;
 /// Type of `ChangeKey` message content.
 pub const TYPE: &str = "MAM9CHANNEL9CHANGEKEY";
 
-pub struct ContentWrap<'a, RelLink: 'a, Store: 'a> {
-    pub(crate) store: &'a Store,
-    pub(crate) link: &'a RelLink,
-    pub(crate) mss_pk: &'a mss::PublicKey,
-    pub(crate) mss_sk: &'a mss::PrivateKey,
+pub struct ContentWrap<'a, Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a,
+{
+    pub(crate) link: &'a <Link as HasLink>::Rel,
+    pub(crate) mss_sk: mss::PrivateKey,
     pub(crate) mss_linked_sk: &'a mss::PrivateKey,
+    _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, RelLink: 'a, Store: 'a> ContentWrap<'a, RelLink, Store> where
-    RelLink: Eq + SkipFallback,
-    Store: LinkStore<RelLink>,
+impl<'a, Link> ContentWrap<'a, Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a,
 {
-    pub fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+    pub fn new(link: &'a <Link as HasLink>::Rel, mss_sk: mss::PrivateKey, mss_linked_sk: &'a mss::PrivateKey) -> Self {
+        Self {
+            link: link,
+            mss_sk: mss_sk,
+            mss_linked_sk: mss_linked_sk,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, Link, Store> msg::ContentWrap<Store> for ContentWrap<'a, Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback,
+    Store: LinkStore<<Link as HasLink>::Rel>,
+{
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+        // Store has no impact on wrapped size
+        let store = EmptyLinkStore::<<Link as HasLink>::Rel, ()>::default();
         let hash = External(Mac(mss::HASH_SIZE));
         ctx
-            .join(self.store, self.link)?
-            .absorb(self.mss_pk)?
+            .join(&store, self.link)?
+            .absorb(self.mss_sk.public_key())?
             .commit()?
             .squeeze(&hash)?
-            .mssig(self.mss_sk, &hash)?
+            .mssig(&self.mss_sk, &hash)?
             .mssig(self.mss_linked_sk, &hash)?
         ;
         Ok(ctx)
     }
-    pub fn wrap<'c, OS: io::OStream>(&self, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
+
+    fn wrap<'c, OS: io::OStream>(&self, store: &Store, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
         let mut hash = External(NTrytes::zero(mss::HASH_SIZE));
         ctx
-            .join(self.store, self.link)?
-            .absorb(self.mss_pk)?
+            .join(store, self.link)?
+            .absorb(self.mss_sk.public_key())?
             .commit()?
             .squeeze(&mut hash)?
-            .mssig(self.mss_sk, &hash)?
+            .mssig(&self.mss_sk, &hash)?
             .mssig(self.mss_linked_sk, &hash)?
         ;
         //TODO: Order: first mss_sk then mss_linked_sk or vice versa?
@@ -78,43 +98,38 @@ impl<'a, RelLink: 'a, Store: 'a> ContentWrap<'a, RelLink, Store> where
     }
 }
 
-impl<'c, RelLink: 'c, Store: 'c> msg::ContentWrap for ContentWrap<'c, RelLink, Store> where
-    RelLink: Eq + SkipFallback,
-    Store: LinkStore<RelLink>,
+pub struct ContentUnwrap<'a, Link> where
+    Link: HasLink,
 {
-    fn sizeof2<'a>(&self, ctx: &'a mut sizeof::Context) -> Result<&'a mut sizeof::Context> {
-        self.sizeof(ctx)
-    }
-
-    fn wrap2<'a, OS: io::OStream>(&'a self, ctx: &'a mut wrap::Context<OS>) -> Result<&'a mut wrap::Context<OS>> {
-        self.wrap(ctx)
-    }
-}
-
-pub struct ContentUnwrap<'a, RelLink, Store> {
-    pub(crate) store: &'a Store,
-    pub(crate) link: RelLink,
+    pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) mss_pk: mss::PublicKey,
     pub(crate) mss_linked_pk: &'a mss::PublicKey,
+    _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, RelLink: 'a, Store: 'a> ContentUnwrap<'a, RelLink, Store> where
-    RelLink: Eq + Default + SkipFallback,
-    Store: LinkStore<RelLink>,
+impl<'a, Link> ContentUnwrap<'a, Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Default,
 {
-    pub fn new(store: &'a Store, mss_linked_pk: &'a mss::PublicKey) -> Self {
+    pub fn new(mss_linked_pk: &'a mss::PublicKey) -> Self {
         Self {
-            store: store,
-            link: RelLink::default(),
+            link: <<Link as HasLink>::Rel as Default>::default(),
             mss_pk: mss::PublicKey::default(),
             mss_linked_pk: mss_linked_pk,
+            _phantom: std::marker::PhantomData,
         }
     }
+}
 
-    pub(crate) fn unwrap<'c, IS: io::IStream>(&mut self, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
+impl<'a, Link, Store> msg::ContentUnwrap<Store> for ContentUnwrap<'a, Link> where
+    Link: HasLink,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback,
+    Store: LinkStore<<Link as HasLink>::Rel>,
+{
+    fn unwrap<'c, IS: io::IStream>(&mut self, store: &Store, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
         let mut hash = External(NTrytes::zero(mss::HASH_SIZE));
         ctx
-            .join(self.store, &mut self.link)?
+            .join(store, &mut self.link)?
             .absorb(&mut self.mss_pk)?
             .commit()?
             .squeeze(&mut hash)?
