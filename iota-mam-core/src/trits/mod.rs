@@ -1,3 +1,5 @@
+//! Trinary slices, buffers, encodings and conversions.
+
 pub mod b1t1;
 pub mod b1t5;
 pub mod b8t32;

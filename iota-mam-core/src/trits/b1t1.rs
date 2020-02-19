@@ -1,4 +1,4 @@
-use super::{defs::*, util::*, word::*};
+use super::{defs::*, word::*};
 
 impl BasicTritWord for Trit {
     const SIZE: usize = 1;

@@ -1,9 +1,8 @@
+use std::convert::{AsMut, AsRef, From, TryFrom};
 use std::fmt;
 use std::hash;
-use std::str::FromStr;
-use std::convert::{AsRef, AsMut, From, TryFrom};
 
-use crate::trits::{defs::{Trit}, TritSlice, TritSliceMut, Trits};
+use crate::trits::{defs::Trit, TritSlice, TritSliceMut, Trits};
 use crate::troika::Troika;
 
 /// Rate -- size of outer part of the Spongos state.
@@ -425,6 +424,7 @@ pub fn rehash_trits(h: &mut Trits) {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::str::FromStr;
 
     fn trits_spongosn(n: usize) {
         let mut rng = Spongos::init();

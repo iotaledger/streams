@@ -25,6 +25,14 @@ where
         }
     }
 
+    /// Create an empty container.
+    pub fn new() -> Self {
+        Self {
+            n: 0,
+            buf: Vec::new(),
+        }
+    }
+
     /// Create container and initialize trits by copying from slice `t`.
     pub fn from_slice(t: TritSliceT<TW>) -> Self {
         let mut x = Self::zero(t.size());
@@ -41,7 +49,8 @@ where
     pub fn from_slices(ts: &[TritSliceT<TW>]) -> Self {
         let size = ts.iter().fold(0, |size, t| size + t.size());
         let mut x = Self::zero(size);
-        ts.iter().fold(x.slice_mut(), |slice, t| slice.drop(t.copy_min(slice)));
+        ts.iter()
+            .fold(x.slice_mut(), |slice, t| slice.drop(t.copy_min(slice)));
         x
     }
 
@@ -133,11 +142,10 @@ impl<TW> Eq for TritsT<TW> where TW: BasicTritWord + Copy {}
 
 impl<TW> hash::Hash for TritsT<TW>
 where
-    TW: TritWord + Copy + hash::Hash,
+    TW: BasicTritWord,
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.n.hash(state);
-        self.buf.hash(state);
+        self.slice().hash(state);
     }
 }
 
@@ -196,7 +204,10 @@ mod tests {
 
     #[test]
     fn add() {
-        assert_eq!(Trits::from_str("AB").unwrap(), &Trits::from_str("A").unwrap() + &Trits::from_str("B").unwrap());
+        assert_eq!(
+            Trits::from_str("AB").unwrap(),
+            &Trits::from_str("A").unwrap() + &Trits::from_str("B").unwrap()
+        );
         let mut a = Trits::from_str("A").unwrap();
         a += &Trits::from_str("B").unwrap();
         assert_eq!(a, Trits::from_str("AB").unwrap());
@@ -211,7 +222,13 @@ mod tests {
 
         let mut trits = vec![Trit(0); 15];
         ts.slice().get_trits(&mut trits);
-        assert_eq!(trits, vec![0, 0, 0, 1, 0, 0, 2, 2, 2, 1, 1, 1, 2, 0, 0].into_iter().map(|u| Trit(u)).collect::<Vec<Trit>>());
+        assert_eq!(
+            trits,
+            vec![0, 0, 0, 1, 0, 0, 2, 2, 2, 1, 1, 1, 2, 0, 0]
+                .into_iter()
+                .map(|u| Trit(u))
+                .collect::<Vec<Trit>>()
+        );
 
         assert_eq!(Trint3(0), Trits::from_str("9").unwrap().slice().get3());
         assert_eq!(Trint3(1), Trits::from_str("A").unwrap().slice().get3());
@@ -240,7 +257,10 @@ mod tests {
 
     #[test]
     fn mutate() {
-        let mut t = TritsT::<Trit> { n: 1, buf: vec![Trit(1)] };
+        let mut t = TritsT::<Trit> {
+            n: 1,
+            buf: vec![Trit(1)],
+        };
         let m = t.slice_mut();
         let s = m.as_const();
 

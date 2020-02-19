@@ -1,5 +1,5 @@
 //use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
-use std::convert::{From, TryFrom, Into, TryInto};
+use std::convert::{From, Into, TryFrom, TryInto};
 use std::fmt;
 use std::ops;
 use std::result;
@@ -63,7 +63,7 @@ fn coeff_mredd(m: PolyDCoeff) -> PolyCoeff {
 
 fn check_trint9_coeff_range(t: Trint9) -> bool {
     const R: i16 = ((Q - 1) / 2) as i16;
-    - R <= t.0 && t.0 <= R
+    -R <= t.0 && t.0 <= R
 }
 
 fn coeff_from_trint9(t: Trint9) -> PolyCoeff {
@@ -134,11 +134,7 @@ impl ops::Add for PolyCoeff {
     fn add(self, b: PolyCoeff) -> PolyCoeff {
         // u = a + b mod R
         let c = self.0 + b.0;
-        let r = if c < Q {
-            c
-        } else {
-            c - Q
-        };
+        let r = if c < Q { c } else { c - Q };
         PolyCoeff(r)
     }
 }
@@ -207,7 +203,9 @@ impl Eq for Poly {}
 
 impl Poly {
     pub fn new() -> Self {
-        Self { coeffs: [COEFF_ZERO; N] }
+        Self {
+            coeffs: [COEFF_ZERO; N],
+        }
     }
     pub fn round_small(&mut self) {
         for i in 0..N {
@@ -404,8 +402,8 @@ impl Poly {
     #[cfg(test)]
     fn intt2(&self, f: &mut Self) {
         for i in 0..N {
-            f.coeffs[i] = COEFF_N_INV * gamma_exp(2 * N - i) *
-                self.eval(gamma_exp(2 * N - (i + i)));
+            f.coeffs[i] =
+                COEFF_N_INV * gamma_exp(2 * N - i) * self.eval(gamma_exp(2 * N - (i + i)));
         }
     }
 }

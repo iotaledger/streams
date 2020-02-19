@@ -1,5 +1,5 @@
 use std::convert::{From, TryFrom};
-use std::num::{Wrapping};
+use std::num::Wrapping;
 
 use super::defs::*;
 use super::util::mods1;
@@ -33,8 +33,10 @@ impl From<[Trit; 3]> for Tryte {
 impl From<Tryte> for [Trit; 3] {
     fn from(t: Tryte) -> [Trit; 3] {
         let mut x = t.0;
-        let t0 = Trit(x % 3); x /= 3;
-        let t1 = Trit(x % 3); x /= 3;
+        let t0 = Trit(x % 3);
+        x /= 3;
+        let t1 = Trit(x % 3);
+        x /= 3;
         let t2 = Trit(x);
         [t0, t1, t2]
     }
@@ -170,8 +172,6 @@ impl TryFrom<char> for Trint3 {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,29 +197,28 @@ mod tests {
             assert_eq!(Ok(c), Tryte::try_from(c).map(char::from));
             assert_eq!(Ok(c), Trint3::try_from(c).map(char::from));
         }
-        for t in MIN_TRINT3 ..= MAX_TRINT3 {
+        for t in MIN_TRINT3..=MAX_TRINT3 {
             assert_eq!(t, Trint3::from(Tryte::from(t)));
             assert_eq!(Ok(t), Trint3::try_from(char::from(t)));
             assert_eq!(char::from(Tryte::from(t)), char::from(t));
         }
-        for t in MIN_TRYTE ..= MAX_TRYTE {
+        for t in MIN_TRYTE..=MAX_TRYTE {
             assert_eq!(t, Tryte::from(Trint3::from(t)));
             assert_eq!(Ok(t), Tryte::try_from(char::from(t)));
             assert_eq!(char::from(Trint3::from(t)), char::from(t));
         }
-       
     }
 
     #[test]
     fn trint3_trint1x3() {
-        for t in MIN_TRINT3 ..= MAX_TRINT3 {
+        for t in MIN_TRINT3..=MAX_TRINT3 {
             assert_eq!(t, Trint3::from(Into::<[Trint1; 3]>::into(t)));
         }
     }
 
     #[test]
     fn tryte_tritx3() {
-        for t in MIN_TRYTE ..= MAX_TRYTE {
+        for t in MIN_TRYTE..=MAX_TRYTE {
             assert_eq!(t, Tryte::from(<[Trit; 3]>::from(t)));
         }
     }

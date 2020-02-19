@@ -1,7 +1,8 @@
-use std::fmt;
 use std::convert::TryFrom;
+use std::fmt;
+use std::hash;
 
-use super::{defs::*, trits::*, util::*, word::*};
+use super::{defs::*, trits::*, word::*};
 
 #[derive(Copy, Clone, Debug)]
 struct SliceRange {
@@ -481,6 +482,15 @@ where
 }
 impl<'a, TW> Eq for TritSliceT<'a, TW> where TW: BasicTritWord + Copy {}
 
+impl<'a, TW> hash::Hash for TritSliceT<'a, TW>
+where
+    TW: BasicTritWord,
+{
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        <TW as BasicTritWord>::unsafe_fold_trits(self.r.n, self.r.d, self.p, |t| t.hash(state));
+    }
+}
+
 impl<'a, TW> fmt::Display for TritSliceT<'a, TW>
 where
     TW: TritWord + Copy,
@@ -496,7 +506,8 @@ where
     }
 }
 
-fn write_trits<TW>(n: usize, dx: usize, x: *const TW, f: &mut fmt::Formatter<'_>) -> fmt::Result where
+fn write_trits<TW>(n: usize, dx: usize, x: *const TW, f: &mut fmt::Formatter<'_>) -> fmt::Result
+where
     TW: BasicTritWord + Copy,
 {
     if n == 0 {
@@ -786,7 +797,6 @@ where
     pub fn eq_min(self, other: Self) -> (bool, usize) {
         self.as_const().eq_min(other.as_const())
     }
-
 }
 
 impl<'a, TW: 'a> TritSliceMutT<'a, TW>

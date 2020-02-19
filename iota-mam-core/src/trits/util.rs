@@ -51,7 +51,6 @@ pub fn mods9(t: i32) -> (Trint9, i32) {
     (Trint9(r as i16), q)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +101,4 @@ mod tests {
         mods_usize(std::usize::MAX-2);
          */
     }
-
 }

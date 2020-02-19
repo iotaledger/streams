@@ -99,7 +99,8 @@ fn merge_nodes(h0: &Trits, h1: &Trits) -> Trits {
     s.squeeze_trits(PK_SIZE)
 }
 
-impl<MT> PrivateKeyT<MT> where
+impl<MT> PrivateKeyT<MT>
+where
     MT: merkle_tree::TraversableMerkleTree<Trits>,
 {
     /// Generate MSS Merkle tree of height `d` with `prng` and a `nonce`.
@@ -137,7 +138,11 @@ impl<MT> PrivateKeyT<MT> where
     /// It has format: `height(4) || skn(14)`.
     fn encode_skn(&self, skn: TritSliceMut) {
         assert_eq!(SKN_SIZE, skn.size());
-        encode_skn(Trint6(self.height() as i16), Trint18(self.skn() as i32), skn);
+        encode_skn(
+            Trint6(self.height() as i16),
+            Trint18(self.skn() as i32),
+            skn,
+        );
     }
 
     /// Sign `hash` with the current WOTS private key and put it into `wotsig` slice.
@@ -188,7 +193,17 @@ impl<MT> PrivateKeyT<MT> where
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct PublicKey {
-    pub pk: Trits,
+    pub(crate) pk: Trits,
+}
+
+impl PublicKey {
+    pub fn trits(&self) -> &Trits {
+        &self.pk
+    }
+
+    pub fn trits_mut(&mut self) -> &mut Trits {
+        &mut self.pk
+    }
 }
 
 /// Default implementation for PublicKey, may be useful when public key is recovered.
@@ -252,7 +267,10 @@ pub fn parse_skn(t: TritSlice) -> Option<(Trint6, Trint18)> {
     t.drop(4).copy(ts.slice_mut().take(14));
     let skn = ts.slice().get18();
 
-    if Trint6(0) <= height && Trint18(0) <= skn && (skn.0 as usize) < max_idx(height.0 as usize) {
+    if Trint6(0) <= dbg!(height)
+        && Trint18(0) <= dbg!(skn)
+        && (skn.0 as usize) < max_idx(height.0 as usize)
+    {
         Some((height, skn))
     } else {
         None

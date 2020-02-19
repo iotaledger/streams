@@ -1,8 +1,8 @@
 #[macro_use]
 extern crate criterion;
 
-use iota_mam_core::troika::Troika;
 use criterion::Criterion;
+use iota_mam_core::troika::Troika;
 
 fn troika_benchmark(c: &mut Criterion) {
     let mut troika = Troika::default();

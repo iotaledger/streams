@@ -225,7 +225,6 @@ mod test {
             let apath = mt.apath();
             let h = g.gen_leaf(skn);
             let apk = apath.fold(m, &h);
-            println!("d={}, skn={}", mt.height(), mt.skn());
             assert_eq!(apk, *mt.root());
             skn += 1;
             if !mt.next(g, m) {
@@ -260,11 +259,17 @@ mod test {
         }
     }
 
-    pub fn commutative<MT>() where MT: Eq + TraversableMerkleTree<u64> {
+    pub fn commutative<MT>()
+    where
+        MT: Eq + TraversableMerkleTree<u64>,
+    {
         traverse_heights::<MT, _, _, _>(5, |idx| 1u64 << idx, |h0: &u64, h1: &u64| h0 | h1);
     }
 
-    pub fn non_commutative<MT>() where MT: Eq + TraversableMerkleTree<u64> {
+    pub fn non_commutative<MT>()
+    where
+        MT: Eq + TraversableMerkleTree<u64>,
+    {
         traverse_heights::<MT, _, _, _>(
             5,
             |idx| 1u64 << idx,

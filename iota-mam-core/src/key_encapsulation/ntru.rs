@@ -1,4 +1,7 @@
+use std::borrow::Borrow;
+use std::collections::HashSet;
 use std::fmt;
+use std::hash;
 
 use crate::prng::PRNG;
 use crate::spongos::Spongos;
@@ -239,7 +242,7 @@ pub struct PrivateKey {
 /// as well as it's NTT form in `h`.
 #[derive(Clone)]
 pub struct PublicKey {
-    pub pk: Trits,
+    pk: Trits,
     h: Poly, // NTT(3g/(1+3f))
 }
 
@@ -247,6 +250,7 @@ pub struct PublicKey {
 /// used for encapsulating keys. This instance exists in order to simplify deserialization
 /// of public keys. Once public key trits have been deserialized the object must be `validate`d. If the `validate` method returns `false` then the object is invalid.
 /// Otherwise it's valid and can be used for encapsulating secrets.
+//TODO: Introduce PrePublicKey with Default implementation and `fn validate(self) -> Option<PublicKey>`.
 impl Default for PublicKey {
     fn default() -> Self {
         Self {
@@ -275,7 +279,63 @@ impl PartialEq for PublicKey {
 }
 impl Eq for PublicKey {}
 
-pub type Pkid = Trits;
+/// Same implementation as for Pkid.
+/// The main property: `pk1 == pk2 => hash(pk1) == hash(pk2)` holds.
+impl hash::Hash for PublicKey {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        (self.trits().slice().take(PKID_SIZE)).hash(state);
+    }
+}
+
+/// For types implementing `Borrow` the following statement must be true:
+/// "x.borrow() == y.borrow() should give the same result as x == y".
+/// For `PublicKey` this doesn't hold but with neglegible probability.
+impl Borrow<Pkid> for PublicKey {
+    fn borrow(&self) -> &Pkid {
+        unsafe { std::mem::transmute(self.trits()) }
+    }
+}
+
+/// Thin wrapper around Trits which contains either a full public key or the first `PKID_SIZE` of the public key.
+pub struct Pkid(pub Trits);
+
+impl Pkid {
+    pub fn trits(&self) -> &Trits {
+        &self.0
+    }
+    pub fn trits_mut(&mut self) -> &mut Trits {
+        &mut self.0
+    }
+}
+
+impl AsRef<Trits> for Pkid {
+    fn as_ref(&self) -> &Trits {
+        &self.0
+    }
+}
+
+impl AsRef<Pkid> for Trits {
+    fn as_ref(&self) -> &Pkid {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+impl PartialEq for Pkid {
+    fn eq(&self, other: &Self) -> bool {
+        self.trits().slice().take(PKID_SIZE) == other.trits().slice().take(PKID_SIZE)
+    }
+}
+
+impl Eq for Pkid {}
+
+/// Hash of public key identifier (the first `PKID_SIZE` trits of the public key).
+/// This is implemented
+/// `k1 == k2 -> hash(k1) == hash(k2)`
+impl hash::Hash for Pkid {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        (self.trits().slice().take(PKID_SIZE)).hash(state);
+    }
+}
 
 /// Generate NTRU keypair with `prng` and `nonce`.
 pub fn gen(prng: &PRNG, nonce: TritSlice) -> (PrivateKey, PublicKey) {
@@ -315,8 +375,29 @@ impl PrivateKey {
 }
 
 impl PublicKey {
+    /// Public polinomial trits.
+    pub fn trits(&self) -> &Trits {
+        &self.pk
+    }
+
+    /// Public polinomial trits, once public key has been modified it must be `validate`d.
+    pub fn trits_mut(&mut self) -> &mut Trits {
+        &mut self.pk
+    }
+
+    /// Returns the actual Pkid value trimmed to PKID_SIZE, not the fake borrowed one.
+    pub fn get_pkid(&self) -> Pkid {
+        Pkid(Trits::from_slice(self.trits().slice().take(PKID_SIZE)))
+    }
+
+    pub fn cmp_pkid(&self, pkid: &Pkid) -> bool {
+        self.pk.size() == PK_SIZE
+            && pkid.trits().size() == PKID_SIZE
+            && self.pk.slice().take(PKID_SIZE) == pkid.trits().slice()
+    }
+
     /// Return public polinomial trits slice.
-    pub fn trits(&self) -> TritSlice {
+    pub fn slice(&self) -> TritSlice {
         self.pk.slice()
     }
 
@@ -377,6 +458,23 @@ impl PublicKey {
         let mut s = Spongos::init();
         self.encr_with_s(&mut s, prng, nonce, k, y);
     }
+}
+
+/// Container for NTRU public keys.
+pub type NtruPks = HashSet<PublicKey>;
+
+/// Entry in a container, just a convenience type synonym.
+pub type INtruPk<'a> = &'a PublicKey;
+
+/// Container (set) of NTRU public key identifiers.
+pub type NtruPkids = Vec<Pkid>;
+
+/// Select only NTRU public keys with given identifiers.
+pub fn filter_ntru_pks<'a>(ntru_pks: &'a NtruPks, ntru_pkids: &'_ NtruPkids) -> Vec<INtruPk<'a>> {
+    ntru_pkids
+        .iter()
+        .filter_map(|pkid| ntru_pks.get(pkid))
+        .collect::<Vec<INtruPk<'a>>>()
 }
 
 #[cfg(test)]

@@ -13,6 +13,7 @@ name = "iota_mam_core"
 path = "src/lib.rs"
 
 [dependencies]
+rand = "0.7"
 
 [dev-dependencies]
 criterion = "0.3"

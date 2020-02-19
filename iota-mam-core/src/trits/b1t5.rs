@@ -1,4 +1,4 @@
-use super::{defs::*, util::*, word::*};
+use super::{defs::*, word::*};
 
 /// 5 trits packed into a byte. It represents a "network" trinary word.
 ///
@@ -24,10 +24,14 @@ impl BasicTritWord for B1T5 {
     fn unsafe_word_to_trits(x: Self, ts: *mut u8) {
         unsafe {
             let mut u = x.0;
-            *ts.add(0) = u % 3; u /= 3;
-            *ts.add(1) = u % 3; u /= 3;
-            *ts.add(2) = u % 3; u /= 3;
-            *ts.add(3) = u % 3; u /= 3;
+            *ts.add(0) = u % 3;
+            u /= 3;
+            *ts.add(1) = u % 3;
+            u /= 3;
+            *ts.add(2) = u % 3;
+            u /= 3;
+            *ts.add(3) = u % 3;
+            u /= 3;
             *ts.add(4) = u % 3;
         }
     }

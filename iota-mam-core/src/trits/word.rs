@@ -15,7 +15,133 @@ pub trait BasicTritWord: Sized + Copy + PartialEq {
     /// All-zero trits word.
     fn zero() -> Self;
 
-    fn unsafe_to_trits(n: usize, dx: usize, x: *const Self, ts: *mut u8) {
+    fn unsafe_fold_trits<F>(n: usize, dx: usize, x: *const Self, mut f: F)
+    where
+        F: FnMut(&[Trit]),
+    {
+        if n == 0 {
+            return;
+        }
+
+        unsafe {
+            let mut v = vec![Trit(0u8); Self::SIZE];
+            let rx = dx % Self::SIZE;
+            let mut xx = x.add(dx / Self::SIZE);
+            let mut nn = n;
+            let mut d;
+
+            if rx != 0 {
+                d = std::cmp::min(n, Self::SIZE - rx);
+                Self::unsafe_word_to_trits(*xx, v.as_mut_ptr() as *mut u8);
+                f(&v[rx..rx + d]);
+                nn -= d;
+                xx = xx.add(1);
+            }
+
+            d = Self::SIZE;
+            while nn >= d {
+                Self::unsafe_word_to_trits(*xx, v.as_mut_ptr() as *mut u8);
+                f(&v[..]);
+                nn -= d;
+                xx = xx.add(1);
+            }
+
+            if nn > 0 {
+                Self::unsafe_word_to_trits(*xx, v.as_mut_ptr() as *mut u8);
+                f(&v[..nn]);
+            }
+        }
+    }
+
+    fn unsafe_refold_trits<F>(n: usize, dx: usize, x: *mut Self, mut f: F)
+    where
+        F: FnMut(&mut [Trit]),
+    {
+        if n == 0 {
+            return;
+        }
+
+        unsafe {
+            let mut v = vec![Trit(0u8); Self::SIZE];
+            let rx = dx % Self::SIZE;
+            let mut xx = x.add(dx / Self::SIZE);
+            let mut nn = n;
+            let mut d;
+
+            if rx != 0 {
+                d = std::cmp::min(n, Self::SIZE - rx);
+                Self::unsafe_word_to_trits(*xx, v.as_mut_ptr() as *mut u8);
+                f(&mut v[rx..rx + d]);
+                *xx = Self::unsafe_word_from_trits(v.as_ptr() as *const u8);
+                nn -= d;
+                xx = xx.add(1);
+            }
+
+            d = Self::SIZE;
+            while nn >= d {
+                Self::unsafe_word_to_trits(*xx, v.as_mut_ptr() as *mut u8);
+                f(&mut v[..]);
+                *xx = Self::unsafe_word_from_trits(v.as_ptr() as *const u8);
+                nn -= d;
+                xx = xx.add(1);
+            }
+
+            if nn > 0 {
+                Self::unsafe_word_to_trits(*xx, v.as_mut_ptr() as *mut u8);
+                f(&mut v[..nn]);
+                *xx = Self::unsafe_word_from_trits(v.as_ptr() as *const u8);
+            }
+        }
+    }
+
+    fn unsafe_unfold_trits<F>(n: usize, dx: usize, x: *mut Self, mut f: F)
+    where
+        F: FnMut(&mut [Trit]),
+    {
+        if n == 0 {
+            return;
+        }
+
+        unsafe {
+            let mut v = vec![Trit(0u8); Self::SIZE];
+            let rx = dx % Self::SIZE;
+            let mut xx = x.add(dx / Self::SIZE);
+            let mut nn = n;
+            let mut d;
+
+            if rx != 0 {
+                d = std::cmp::min(n, Self::SIZE - rx);
+                Self::unsafe_word_to_trits(*xx, v.as_mut_ptr() as *mut u8);
+                f(&mut v[rx..rx + d]);
+                *xx = Self::unsafe_word_from_trits(v.as_ptr() as *const u8);
+                nn -= d;
+                xx = xx.add(1);
+            }
+
+            d = Self::SIZE;
+            while nn >= d {
+                f(&mut v[..]);
+                *xx = Self::unsafe_word_from_trits(v.as_ptr() as *const u8);
+                nn -= d;
+                xx = xx.add(1);
+            }
+
+            if nn > 0 {
+                Self::unsafe_word_to_trits(*xx, v.as_mut_ptr() as *mut u8);
+                f(&mut v[..nn]);
+                *xx = Self::unsafe_word_from_trits(v.as_ptr() as *const u8);
+            }
+        }
+    }
+
+    fn unsafe_to_trits(n: usize, dx: usize, x: *const Self, mut ts: *mut u8) {
+        Self::unsafe_fold_trits(n, dx, x, |tx| unsafe {
+            std::ptr::copy(tx.as_ptr(), ts as *mut Trit, tx.len());
+            ts = ts.add(tx.len());
+        });
+        /*
+         */
+        /*
         if n == 0 {
             return;
         }
@@ -51,9 +177,20 @@ pub trait BasicTritWord: Sized + Copy + PartialEq {
                 std::ptr::copy(v.as_mut_ptr(), tt, nn);
             }
         }
+         */
     }
 
-    fn unsafe_from_trits(n: usize, dx: usize, x: *mut Self, ts: *const u8) {
+    fn unsafe_from_trits(n: usize, dx: usize, x: *mut Self, mut ts: *const u8) {
+        /*
+         */
+        Self::unsafe_unfold_trits(n, dx, x, |tx| unsafe {
+            //TODO: This cast here `ts as *const Trit` is unsafe, need to convert to 0..2.
+            println!("tx in ={:?}", tx);
+            std::ptr::copy(ts as *const Trit, tx.as_mut_ptr(), tx.len());
+            println!("tx out={:?}", tx);
+            ts = ts.add(tx.len());
+        });
+        /*
         if n == 0 {
             return;
         }
@@ -94,6 +231,7 @@ pub trait BasicTritWord: Sized + Copy + PartialEq {
                 *xx = Self::unsafe_word_from_trits(v.as_ptr());
             }
         }
+         */
     }
 
     /// Copy `n` trits from `(dx,x)` slice into `(dy,y)`.
@@ -117,7 +255,7 @@ pub trait BasicTritWord: Sized + Copy + PartialEq {
                     Self::unsafe_word_to_trits(*xx, xs.as_mut_ptr());
                     Self::unsafe_word_to_trits(*yy, ys.as_mut_ptr());
                     let d = std::cmp::min(n, Self::SIZE - rx);
-                    ys[ry..ry+d].copy_from_slice(&xs[rx..rx+d]);
+                    ys[ry..ry + d].copy_from_slice(&xs[rx..rx + d]);
                     *yy = Self::unsafe_word_from_trits(ys.as_ptr());
 
                     nn -= d;
@@ -161,7 +299,7 @@ pub trait BasicTritWord: Sized + Copy + PartialEq {
             if rx != 0 {
                 d = std::cmp::min(n, Self::SIZE - rx);
                 Self::unsafe_word_to_trits(*xx, v.as_mut_ptr());
-                for i in rx .. rx + d {
+                for i in rx..rx + d {
                     *v.as_mut_ptr().add(i) = 0;
                 }
                 *xx = Self::unsafe_word_from_trits(v.as_ptr());
@@ -178,7 +316,7 @@ pub trait BasicTritWord: Sized + Copy + PartialEq {
 
             if nn > 0 {
                 Self::unsafe_word_to_trits(*xx, v.as_mut_ptr());
-                for i in 0 .. nn {
+                for i in 0..nn {
                     *v.as_mut_ptr().add(i) = 0;
                 }
                 *xx = Self::unsafe_word_from_trits(v.as_ptr());
@@ -206,7 +344,7 @@ pub trait BasicTritWord: Sized + Copy + PartialEq {
                     Self::unsafe_word_to_trits(*xx, xs.as_mut_ptr());
                     Self::unsafe_word_to_trits(*yy, ys.as_mut_ptr());
                     let d = std::cmp::min(n, Self::SIZE - rx);
-                    if ys[ry..ry+d] != xs[rx..rx+d] {
+                    if ys[ry..ry + d] != xs[rx..rx + d] {
                         return false;
                     }
 
@@ -272,8 +410,10 @@ pub trait TritWord: BasicTritWord {
     fn put_tryte(d: usize, p: *mut Self, t: Tryte) {
         debug_assert!(t.0 < 27);
         let mut u = t.0;
-        let t0 = Trit(u % 3); u /= 3;
-        let t1 = Trit(u % 3); u /= 3;
+        let t0 = Trit(u % 3);
+        u /= 3;
+        let t1 = Trit(u % 3);
+        u /= 3;
         let t2 = Trit(u % 3);
         Self::put_trit(d + 0, p, t0);
         Self::put_trit(d + 1, p, t1);
@@ -380,10 +520,11 @@ pub trait TritWord: BasicTritWord {
 //#[cfg(test)]
 pub mod test {
     use super::*;
+    use crate::trits::{TritSliceT, TritsT};
     use std::num::Wrapping;
-    use crate::trits::{TritsT, TritSliceT};
 
     pub fn copy_range_trits<TW: BasicTritWord>(m: usize, n: usize, ts: &[Trit]) {
+        println!("copy_range_trits m={} n={} ts={:?}", m, n, ts);
         let t0 = TritsT::<TW>::from_trits(&ts[..m]);
         let t1 = TritsT::<TW>::from_trits(&ts[m..n]);
         let t2 = TritsT::<TW>::from_trits(&ts[n..]);
@@ -401,9 +542,13 @@ pub mod test {
         assert_eq!(ts, &to_trits(x0.slice())[..]);
 
         let mut x1 = TritsT::<TW>::zero(ts.len());
+        println!("x1 = {:?}", x1);
         x1.slice_mut().take(m).put_trits(&ts[..m]);
+        println!("x1 = {:?}", x1);
         x1.slice_mut().drop(m).take(n - m).put_trits(&ts[m..n]);
+        println!("x1 = {:?}", x1);
         x1.slice_mut().drop(n).put_trits(&ts[n..]);
+        println!("x1 = {:?}", x1);
         assert_eq!(t012, x1);
         assert_eq!(ts, &to_trits(x1.slice())[..]);
 
@@ -482,9 +627,9 @@ pub mod test {
     }
     fn copy_trits<TW: BasicTritWord>(ts: &[Trit]) {
         let s = ts.len();
-        for m in 0 .. (s / 7 * 2 + 1) {
-            for n in m .. (s / 7 * 5 + 1) {
-                for r in n .. s {
+        for m in 0..(s / 7 * 2 + 1) {
+            for n in m..(s / 7 * 5 + 1) {
+                for r in n..s {
                     copy_range_trits::<TW>(m, n, &ts[..r]);
                 }
             }
@@ -504,7 +649,7 @@ pub mod test {
          */
 
         let mut u = Wrapping(11u8);
-        for _ in 0 .. num_loops {
+        for _ in 0..num_loops {
             for v in ts.iter_mut() {
                 u = u * Wrapping(7) + Wrapping(0xcd);
                 *v = Trit((u.0 ^ 0xaa) % 3)

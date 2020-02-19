@@ -1,10 +1,12 @@
+//! Spongos-base pseudo-random trinary number generator.
+
 use crate::spongos::Spongos;
 use crate::trits::{TritSlice, TritSliceMut, Trits};
 
 /// Size of a PRNG secret key.
 pub const KEY_SIZE: usize = 243;
 
-///
+/// Spongos-based pseudo-random trinary number generator.
 #[derive(Clone)]
 pub struct PRNG {
     /// PRNG secret key.
