@@ -50,40 +50,36 @@ impl T27 {
     fn new(p: u32, n: u32) -> T27 {
         T27(p, n)
     }
-    //#[inline]
-    fn clean(&self) -> T27 {
-        T27::new(self.0 & 0x07ffffffu32, self.1 & 0x07ffffffu32)
-    }
-    //#[inline]
+    #[inline]
     fn add(&self, other: &T27) -> T27 {
-        let self_zero: u32 = !(self.0 | self.1);
-        let p = !((self.1 ^ other.1) | (self_zero ^ other.0));
-        let n = !((self.0 ^ other.0) | (self_zero ^ other.1));
+        let self_zero: u32 = self.0 | self.1;
+        let p = (!(self.1 ^ other.1)) & (self_zero ^ other.0);
+        let n = (!(self.0 ^ other.0)) & (self_zero ^ other.1);
         T27::new(p, n)
     }
-    //#[inline]
+    #[inline]
     fn mul(&self, other: &T27) -> T27 {
         let p = (self.0 & other.0) | (self.1 & other.1);
         let n = (self.0 & other.1) | (self.1 & other.0);
         T27::new(p, n)
     }
-    //#[inline]
+    #[inline]
     fn zero() -> T27 {
         T27::new(0, 0)
     }
-    //#[inline]
+    #[inline]
     fn one() -> T27 {
         T27::new(0x07ffffffu32, 0)
     }
-    //#[inline]
+    #[inline]
     fn minus() -> T27 {
         T27::new(0, 0x07ffffffu32)
     }
-    //#[inline]
+    #[inline]
     fn dec(&self) -> T27 {
         T27::minus().add(&self)
     }
-    //#[inline]
+    #[inline]
     fn inc(&self) -> T27 {
         T27::one().add(&self)
     }
@@ -108,7 +104,7 @@ impl T27 {
         }
         0
     }
-    //#[inline]
+    #[inline]
     fn roll(&self, by: usize) -> T27 {
         let p = ((self.0 << by) | (self.0 >> (27 - by))) & 0x07ffffff;
         let n = ((self.1 << by) | (self.1 >> (27 - by))) & 0x07ffffff;
@@ -444,15 +440,15 @@ impl Troika {
             self.add_round_constant(round);
         }
     }
-    //#[inline]
+    #[inline]
     fn sub_tryte(a: &mut [T27]) {
         let d = a[0].dec();
         let e = d.mul(&a[1]).add(&a[2]);
         let f = e.mul(&a[1]).add(&d);
         let g = e.mul(&f).add(&a[1]);
-        a[2] = e.clean();
-        a[1] = f.clean();
-        a[0] = g.clean();
+        a[2] = e;
+        a[1] = f;
+        a[0] = g;
     }
     //#[inline]
     fn sub_trytes(&mut self) {
@@ -490,21 +486,27 @@ impl Troika {
 
     //#[inline]
     fn add_column_parity(&mut self) {
-        let mut parity = [T27::zero(); COLUMNS];
+        let mut parity = [T27::zero(); COLUMNS + 2];
         for col in 0..COLUMNS {
             let mut col_sum = T27::zero();
+            let mut idx = col;
             for row in 0..ROWS {
-                col_sum = col_sum.add(&self.state[COLUMNS * row + col]);
+                col_sum = col_sum.add(&self.state[idx]);
+                idx += COLUMNS;
             }
-            parity[col] = col_sum;
+            parity[col + 1] = col_sum;
         }
-        for row in 0..ROWS {
-            for col in 0..COLUMNS {
-                let idx = COLUMNS * row + col;
-                let t1 = parity[if col == 0 { COLUMNS - 1 } else { col - 1 }];
-                let t2 = parity[if col == COLUMNS - 1 { 0 } else { col + 1 }].roll(SLICES - 1);
-                let sum_to_add = t1.add(&t2);
+        parity[0] = parity[COLUMNS];
+        parity[COLUMNS + 1] = parity[1];
+
+        for col in 0..COLUMNS {
+            let t1 = parity[col];
+            let t2 = parity[col + 2].roll(SLICES - 1);
+            let sum_to_add = t1.add(&t2);
+            let mut idx = col;
+            for row in 0..ROWS {
                 self.state[idx] = self.state[idx].add(&sum_to_add);
+                idx += COLUMNS;
             }
         }
     }
