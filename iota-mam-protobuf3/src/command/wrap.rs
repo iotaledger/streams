@@ -1,17 +1,20 @@
-use failure::{ensure};
+//! Implementation of command traits for wrapping.
+
+use failure::{ensure, Fallible};
 use std::convert::AsMut;
 use std::iter;
 use std::mem;
 
-use iota_mam_core::trits::{self, word::BasicTritWord, DefaultTritWord, Trits, TritSlice, TritSliceMut};
-use iota_mam_core::spongos::*;
+use iota_mam_core::key_encapsulation::ntru;
 use iota_mam_core::prng;
 use iota_mam_core::signature::mss;
-use iota_mam_core::key_encapsulation::ntru;
+use iota_mam_core::spongos::*;
+use iota_mam_core::trits::{
+    self, word::BasicTritWord, DefaultTritWord, TritSlice, TritSliceMut, Trits,
+};
 
-use crate::io;
-use crate::Result;
 use crate::command::*;
+use crate::io;
 use crate::types::*;
 
 #[derive(Debug)]
@@ -31,12 +34,12 @@ impl<OS> Context<OS> {
 
 /// Helper trait for wrapping (encoding/absorbing) trint3s.
 pub(crate) trait Wrap {
-    fn wrap3(&mut self, trint3: Trint3) -> Result<&mut Self>;
-    fn wrapn(&mut self, trits: TritSlice) -> Result<&mut Self>;
+    fn wrap3(&mut self, trint3: Trint3) -> Fallible<&mut Self>;
+    fn wrapn(&mut self, trits: TritSlice) -> Fallible<&mut Self>;
 }
 
 /// Helper function for wrapping (encoding/absorbing) size values.
-pub(crate) fn wrap_size<'a, Ctx: Wrap>(ctx: &'a mut Ctx, size: Size) -> Result<&'a mut Ctx> where
+pub(crate) fn wrap_size<'a, Ctx: Wrap>(ctx: &'a mut Ctx, size: Size) -> Fallible<&'a mut Ctx> where
 {
     let d = size_trytes(size.0);
     ctx.wrap3(Trint3(d as i8))?;
@@ -65,13 +68,13 @@ impl<OS> AsMut<Context<OS>> for AbsorbContext<OS> {
 }
 
 impl<OS: io::OStream> Wrap for AbsorbContext<OS> {
-    fn wrap3(&mut self, trint3: Trint3) -> Result<&mut Self> {
+    fn wrap3(&mut self, trint3: Trint3) -> Fallible<&mut Self> {
         let slice = self.ctx.stream.try_advance(3)?;
         slice.put3(trint3);
         self.ctx.spongos.absorb(slice.as_const());
         Ok(self)
     }
-    fn wrapn(&mut self, trits: TritSlice) -> Result<&mut Self> {
+    fn wrapn(&mut self, trits: TritSlice) -> Fallible<&mut Self> {
         self.ctx.spongos.absorb(trits);
         let slice = self.ctx.stream.try_advance(trits.size())?;
         trits.copy(slice);
@@ -79,70 +82,78 @@ impl<OS: io::OStream> Wrap for AbsorbContext<OS> {
     }
 }
 
-fn wrap_absorb_trint3<'a, OS: io::OStream>(ctx: &'a mut AbsorbContext<OS>, trint3: Trint3) -> Result<&'a mut AbsorbContext<OS>> where
+fn wrap_absorb_trint3<'a, OS: io::OStream>(
+    ctx: &'a mut AbsorbContext<OS>,
+    trint3: Trint3,
+) -> Fallible<&'a mut AbsorbContext<OS>> where
 {
     ctx.wrap3(trint3)
 }
-fn wrap_absorb_size<'a, OS: io::OStream>(ctx: &'a mut AbsorbContext<OS>, size: Size) -> Result<&'a mut AbsorbContext<OS>> where
+fn wrap_absorb_size<'a, OS: io::OStream>(
+    ctx: &'a mut AbsorbContext<OS>,
+    size: Size,
+) -> Fallible<&'a mut AbsorbContext<OS>> where
 {
     wrap_size(ctx, size)
 }
-fn wrap_absorb_trits<'a, OS: io::OStream>(ctx: &'a mut AbsorbContext<OS>, trits: TritSlice) -> Result<&'a mut AbsorbContext<OS>> where
+fn wrap_absorb_trits<'a, OS: io::OStream>(
+    ctx: &'a mut AbsorbContext<OS>,
+    trits: TritSlice,
+) -> Fallible<&'a mut AbsorbContext<OS>> where
 {
     ctx.wrapn(trits)
 }
 
 impl<'a, OS: io::OStream> Absorb<&'a Trint3> for Context<OS> {
-    fn absorb(&mut self, trint3: &'a Trint3) -> Result<&mut Self> {
+    fn absorb(&mut self, trint3: &'a Trint3) -> Fallible<&mut Self> {
         Ok(wrap_absorb_trint3(self.as_mut(), *trint3)?.as_mut())
     }
 }
 
 impl<OS: io::OStream> Absorb<Trint3> for Context<OS> {
-    fn absorb(&mut self, trint3: Trint3) -> Result<&mut Self> {
+    fn absorb(&mut self, trint3: Trint3) -> Fallible<&mut Self> {
         self.absorb(&trint3)
     }
 }
 
 impl<'a, OS: io::OStream> Absorb<&'a Size> for Context<OS> {
-    fn absorb(&mut self, size: &'a Size) -> Result<&mut Self> {
+    fn absorb(&mut self, size: &'a Size) -> Fallible<&mut Self> {
         Ok(wrap_absorb_size(self.as_mut(), *size)?.as_mut())
     }
 }
 
 impl<OS: io::OStream> Absorb<Size> for Context<OS> {
-    fn absorb(&mut self, size: Size) -> Result<&mut Self> {
+    fn absorb(&mut self, size: Size) -> Fallible<&mut Self> {
         self.absorb(&size)
     }
 }
 
 impl<'a, OS: io::OStream> Absorb<&'a NTrytes> for Context<OS> {
-    fn absorb(&mut self, ntrytes: &'a NTrytes) -> Result<&mut Self> {
+    fn absorb(&mut self, ntrytes: &'a NTrytes) -> Fallible<&mut Self> {
         Ok(wrap_absorb_trits(self.as_mut(), (ntrytes.0).slice())?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Absorb<&'a Trytes> for Context<OS> {
-    fn absorb(&mut self, trytes: &'a Trytes) -> Result<&mut Self> {
+    fn absorb(&mut self, trytes: &'a Trytes) -> Fallible<&mut Self> {
         self.absorb(Size((trytes.0).size() / 3))?;
         Ok(wrap_absorb_trits(self.as_mut(), (trytes.0).slice())?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Absorb<&'a mss::PublicKey> for Context<OS> {
-    fn absorb(&mut self, pk: &'a mss::PublicKey) -> Result<&mut Self> {
-        ensure!(pk.pk.size() == mss::PK_SIZE);
-        Ok(wrap_absorb_trits(self.as_mut(), pk.pk.slice())?.as_mut())
+    fn absorb(&mut self, pk: &'a mss::PublicKey) -> Fallible<&mut Self> {
+        ensure!(pk.trits().size() == mss::PK_SIZE);
+        Ok(wrap_absorb_trits(self.as_mut(), pk.trits().slice())?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Absorb<&'a ntru::PublicKey> for Context<OS> {
-    fn absorb(&mut self, pk: &'a ntru::PublicKey) -> Result<&mut Self> {
-        ensure!(pk.pk.size() == ntru::PK_SIZE);
-        Ok(wrap_absorb_trits(self.as_mut(), pk.pk.slice())?.as_mut())
+    fn absorb(&mut self, pk: &'a ntru::PublicKey) -> Fallible<&mut Self> {
+        ensure!(pk.trits().size() == ntru::PK_SIZE);
+        Ok(wrap_absorb_trits(self.as_mut(), pk.trits().slice())?.as_mut())
     }
 }
-
 
 struct AbsorbExternalContext<OS> {
     ctx: Context<OS>,
@@ -159,76 +170,91 @@ impl<OS> AsMut<Context<OS>> for AbsorbExternalContext<OS> {
 }
 
 impl<OS: io::OStream> Wrap for AbsorbExternalContext<OS> {
-    fn wrap3(&mut self, trint3: Trint3) -> Result<&mut Self> {
+    fn wrap3(&mut self, trint3: Trint3) -> Fallible<&mut Self> {
         let mut buf = [<DefaultTritWord as BasicTritWord>::zero(); 3];
         let t3 = TritSliceMut::from_slice_mut(3, &mut buf);
         t3.put3(trint3);
         self.ctx.spongos.absorb(t3.as_const());
         Ok(self)
     }
-    fn wrapn(&mut self, trits: TritSlice) -> Result<&mut Self> {
+    fn wrapn(&mut self, trits: TritSlice) -> Fallible<&mut Self> {
         self.ctx.spongos.absorb(trits);
         Ok(self)
     }
 }
 
-fn wrap_absorb_external_trint3<'a, OS: io::OStream>(ctx: &'a mut AbsorbExternalContext<OS>, trint3: Trint3) -> Result<&'a mut AbsorbExternalContext<OS>> where
+fn wrap_absorb_external_trint3<'a, OS: io::OStream>(
+    ctx: &'a mut AbsorbExternalContext<OS>,
+    trint3: Trint3,
+) -> Fallible<&'a mut AbsorbExternalContext<OS>> where
 {
     ctx.wrap3(trint3)
 }
-fn wrap_absorb_external_size<'a, OS: io::OStream>(ctx: &'a mut AbsorbExternalContext<OS>, size: Size) -> Result<&'a mut AbsorbExternalContext<OS>> where
+fn wrap_absorb_external_size<'a, OS: io::OStream>(
+    ctx: &'a mut AbsorbExternalContext<OS>,
+    size: Size,
+) -> Fallible<&'a mut AbsorbExternalContext<OS>> where
 {
     wrap_size(ctx, size)
 }
-fn wrap_absorb_external_trits<'a, OS: io::OStream>(ctx: &'a mut AbsorbExternalContext<OS>, trits: TritSlice) -> Result<&'a mut AbsorbExternalContext<OS>> where
+fn wrap_absorb_external_trits<'a, OS: io::OStream>(
+    ctx: &'a mut AbsorbExternalContext<OS>,
+    trits: TritSlice,
+) -> Fallible<&'a mut AbsorbExternalContext<OS>> where
 {
     ctx.wrapn(trits)
 }
 
-impl<'a, T: 'a, OS: io::OStream> Absorb<&'a External<T>> for Context<OS> where
-    Self: Absorb<External<&'a T>>
+impl<'a, T: 'a, OS: io::OStream> Absorb<&'a External<T>> for Context<OS>
+where
+    Self: Absorb<External<&'a T>>,
 {
-    fn absorb(&mut self, external: &'a External<T>) -> Result<&mut Self> {
+    fn absorb(&mut self, external: &'a External<T>) -> Fallible<&mut Self> {
         self.absorb(External(&external.0))
     }
 }
 
+impl<'a, OS: io::OStream> Absorb<External<&'a Trint3>> for Context<OS> {
+    fn absorb(&mut self, trint3: External<&'a Trint3>) -> Fallible<&mut Self> {
+        Ok(wrap_absorb_external_trint3(self.as_mut(), *trint3.0)?.as_mut())
+    }
+}
+
 impl<'a, OS: io::OStream> Absorb<External<&'a Size>> for Context<OS> {
-    fn absorb(&mut self, size: External<&'a Size>) -> Result<&mut Self> {
+    fn absorb(&mut self, size: External<&'a Size>) -> Fallible<&mut Self> {
         Ok(wrap_absorb_external_size(self.as_mut(), *size.0)?.as_mut())
     }
 }
 
 impl<OS: io::OStream> Absorb<External<Size>> for Context<OS> {
-    fn absorb(&mut self, size: External<Size>) -> Result<&mut Self> {
+    fn absorb(&mut self, size: External<Size>) -> Fallible<&mut Self> {
         self.absorb(&size)
     }
 }
 
 impl<'a, OS: io::OStream> Absorb<External<&'a NTrytes>> for Context<OS> {
-    fn absorb(&mut self, external_ntrytes: External<&'a NTrytes>) -> Result<&mut Self> {
+    fn absorb(&mut self, external_ntrytes: External<&'a NTrytes>) -> Fallible<&mut Self> {
         Ok(wrap_absorb_external_trits(self.as_mut(), ((external_ntrytes.0).0).slice())?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Absorb<External<&'a mss::PublicKey>> for Context<OS> {
-    fn absorb(&mut self, pk: External<&'a mss::PublicKey>) -> Result<&mut Self> {
-        ensure!((pk.0).pk.size() == mss::PK_SIZE);
-        Ok(wrap_absorb_trits(self.as_mut(), (pk.0).pk.slice())?.as_mut())
+    fn absorb(&mut self, pk: External<&'a mss::PublicKey>) -> Fallible<&mut Self> {
+        ensure!((pk.0).trits().size() == mss::PK_SIZE);
+        Ok(wrap_absorb_external_trits(self.as_mut(), (pk.0).trits().slice())?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Absorb<External<&'a ntru::PublicKey>> for Context<OS> {
-    fn absorb(&mut self, pk: External<&'a ntru::PublicKey>) -> Result<&mut Self> {
-        ensure!((pk.0).pk.size() == ntru::PK_SIZE);
-        Ok(wrap_absorb_trits(self.as_mut(), (pk.0).pk.slice())?.as_mut())
+    fn absorb(&mut self, pk: External<&'a ntru::PublicKey>) -> Fallible<&mut Self> {
+        ensure!((pk.0).trits().size() == ntru::PK_SIZE);
+        Ok(wrap_absorb_external_trits(self.as_mut(), (pk.0).trits().slice())?.as_mut())
     }
 }
 
-
 /// This is just an external tag or hash value to-be-signed.
 impl<'a, OS> Squeeze<&'a mut External<NTrytes>> for Context<OS> {
-    fn squeeze(&mut self, external_ntrytes: &'a mut External<NTrytes>) -> Result<&mut Self> {
+    fn squeeze(&mut self, external_ntrytes: &'a mut External<NTrytes>) -> Fallible<&mut Self> {
         self.spongos.squeeze(((external_ntrytes.0).0).slice_mut());
         Ok(self)
     }
@@ -236,7 +262,7 @@ impl<'a, OS> Squeeze<&'a mut External<NTrytes>> for Context<OS> {
 
 /// This is just an external tag or hash value to-be-signed.
 impl<'a, OS> Squeeze<External<&'a mut NTrytes>> for Context<OS> {
-    fn squeeze(&mut self, external_ntrytes: External<&'a mut NTrytes>) -> Result<&mut Self> {
+    fn squeeze(&mut self, external_ntrytes: External<&'a mut NTrytes>) -> Fallible<&mut Self> {
         self.spongos.squeeze(((external_ntrytes.0).0).slice_mut());
         Ok(self)
     }
@@ -244,12 +270,11 @@ impl<'a, OS> Squeeze<External<&'a mut NTrytes>> for Context<OS> {
 
 /// External values are not encoded.
 impl<'a, OS: io::OStream> Squeeze<&'a Mac> for Context<OS> {
-    fn squeeze(&mut self, mac: &'a Mac) -> Result<&mut Self> {
+    fn squeeze(&mut self, mac: &'a Mac) -> Fallible<&mut Self> {
         self.spongos.squeeze(self.stream.try_advance(mac.0)?);
         Ok(self)
     }
 }
-
 
 struct MaskContext<OS> {
     ctx: Context<OS>,
@@ -266,59 +291,83 @@ impl<OS> AsMut<Context<OS>> for MaskContext<OS> {
 }
 
 impl<OS: io::OStream> Wrap for MaskContext<OS> {
-    fn wrap3(&mut self, trint3: Trint3) -> Result<&mut Self> {
+    fn wrap3(&mut self, trint3: Trint3) -> Fallible<&mut Self> {
         let slice = self.ctx.stream.try_advance(3)?;
         slice.put3(trint3);
         self.ctx.spongos.encr_mut(slice);
         Ok(self)
     }
-    fn wrapn(&mut self, trits: TritSlice) -> Result<&mut Self> {
+    fn wrapn(&mut self, trits: TritSlice) -> Fallible<&mut Self> {
         let slice = self.ctx.stream.try_advance(trits.size())?;
         self.ctx.spongos.encr(trits, slice);
         Ok(self)
     }
 }
 
-fn wrap_mask_trint3<'a, OS: io::OStream>(ctx: &'a mut MaskContext<OS>, trint3: Trint3) -> Result<&'a mut MaskContext<OS>> where
+fn wrap_mask_trint3<'a, OS: io::OStream>(
+    ctx: &'a mut MaskContext<OS>,
+    trint3: Trint3,
+) -> Fallible<&'a mut MaskContext<OS>> where
 {
     ctx.wrap3(trint3)
 }
-fn wrap_mask_size<'a, OS: io::OStream>(ctx: &'a mut MaskContext<OS>, size: Size) -> Result<&'a mut MaskContext<OS>> where
+fn wrap_mask_size<'a, OS: io::OStream>(
+    ctx: &'a mut MaskContext<OS>,
+    size: Size,
+) -> Fallible<&'a mut MaskContext<OS>> where
 {
     wrap_size(ctx, size)
 }
-fn wrap_mask_trits<'a, OS: io::OStream>(ctx: &'a mut MaskContext<OS>, trits: TritSlice) -> Result<&'a mut MaskContext<OS>> where
+fn wrap_mask_trits<'a, OS: io::OStream>(
+    ctx: &'a mut MaskContext<OS>,
+    trits: TritSlice,
+) -> Fallible<&'a mut MaskContext<OS>> where
 {
     ctx.wrapn(trits)
 }
 
 impl<'a, OS: io::OStream> Mask<&'a Trint3> for Context<OS> {
-    fn mask(&mut self, trint3: &'a Trint3) -> Result<&mut Self> {
+    fn mask(&mut self, trint3: &'a Trint3) -> Fallible<&mut Self> {
         Ok(wrap_mask_trint3(self.as_mut(), *trint3)?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Mask<&'a Size> for Context<OS> {
-    fn mask(&mut self, size: &'a Size) -> Result<&mut Self> {
+    fn mask(&mut self, size: &'a Size) -> Fallible<&mut Self> {
         Ok(wrap_mask_size(self.as_mut(), *size)?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Mask<&'a NTrytes> for Context<OS> {
-    fn mask(&mut self, ntrytes: &'a NTrytes) -> Result<&mut Self> {
+    fn mask(&mut self, ntrytes: &'a NTrytes) -> Fallible<&mut Self> {
         Ok(wrap_mask_trits(self.as_mut(), (ntrytes.0).slice())?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Mask<&'a Trytes> for Context<OS> {
-    fn mask(&mut self, trytes: &'a Trytes) -> Result<&mut Self> {
-        ensure!((trytes.0).size() % 3 == 0, "Trit size of `trytes` must be a multiple of 3: {}.", (trytes.0).size());
+    fn mask(&mut self, trytes: &'a Trytes) -> Fallible<&mut Self> {
+        ensure!(
+            (trytes.0).size() % 3 == 0,
+            "Trit size of `trytes` must be a multiple of 3: {}.",
+            (trytes.0).size()
+        );
         let size = Size((trytes.0).size() / 3);
         self.mask(&size)?;
         Ok(wrap_mask_trits(self.as_mut(), (trytes.0).slice())?.as_mut())
     }
 }
 
+impl<'a, OS: io::OStream> Mask<&'a ntru::PublicKey> for Context<OS> {
+    fn mask(&mut self, ntru_pk: &'a ntru::PublicKey) -> Fallible<&mut Self> {
+        Ok(wrap_mask_trits(self.as_mut(), ntru_pk.trits().slice())?.as_mut())
+    }
+}
+
+impl<'a, OS: io::OStream> Mask<&'a mss::PublicKey> for Context<OS> {
+    fn mask(&mut self, mss_pk: &'a mss::PublicKey) -> Fallible<&mut Self> {
+        Ok(wrap_mask_trits(self.as_mut(), mss_pk.trits().slice())?.as_mut())
+    }
+}
 
 struct SkipContext<OS> {
     ctx: Context<OS>,
@@ -335,63 +384,72 @@ impl<OS> AsMut<Context<OS>> for SkipContext<OS> {
 }
 
 impl<OS: io::OStream> Wrap for SkipContext<OS> {
-    fn wrap3(&mut self, trint3: Trint3) -> Result<&mut Self> {
+    fn wrap3(&mut self, trint3: Trint3) -> Fallible<&mut Self> {
         let slice = self.ctx.stream.try_advance(3)?;
         slice.put3(trint3);
         Ok(self)
     }
-    fn wrapn(&mut self, trits: TritSlice) -> Result<&mut Self> {
+    fn wrapn(&mut self, trits: TritSlice) -> Fallible<&mut Self> {
         let slice = self.ctx.stream.try_advance(trits.size())?;
         trits.copy(slice);
         Ok(self)
     }
 }
 
-fn wrap_skip_trint3<'a, OS: io::OStream>(ctx: &'a mut SkipContext<OS>, trint3: Trint3) -> Result<&'a mut SkipContext<OS>> where
+fn wrap_skip_trint3<'a, OS: io::OStream>(
+    ctx: &'a mut SkipContext<OS>,
+    trint3: Trint3,
+) -> Fallible<&'a mut SkipContext<OS>> where
 {
     ctx.wrap3(trint3)
 }
-fn wrap_skip_size<'a, OS: io::OStream>(ctx: &'a mut SkipContext<OS>, size: Size) -> Result<&'a mut SkipContext<OS>> where
+fn wrap_skip_size<'a, OS: io::OStream>(
+    ctx: &'a mut SkipContext<OS>,
+    size: Size,
+) -> Fallible<&'a mut SkipContext<OS>> where
 {
     wrap_size(ctx, size)
 }
-fn wrap_skip_trits<'a, OS: io::OStream>(ctx: &'a mut SkipContext<OS>, trits: TritSlice) -> Result<&'a mut SkipContext<OS>> where
+fn wrap_skip_trits<'a, OS: io::OStream>(
+    ctx: &'a mut SkipContext<OS>,
+    trits: TritSlice,
+) -> Fallible<&'a mut SkipContext<OS>> where
 {
     ctx.wrapn(trits)
 }
 
 impl<'a, OS: io::OStream> Skip<&'a Trint3> for Context<OS> {
-    fn skip(&mut self, trint3: &'a Trint3) -> Result<&mut Self> {
+    fn skip(&mut self, trint3: &'a Trint3) -> Fallible<&mut Self> {
         Ok(wrap_skip_trint3(self.as_mut(), *trint3)?.as_mut())
     }
 }
 
 impl<OS: io::OStream> Skip<Trint3> for Context<OS> {
-    fn skip(&mut self, val: Trint3) -> Result<&mut Self> {
+    fn skip(&mut self, val: Trint3) -> Fallible<&mut Self> {
         self.skip(&val)
     }
 }
 
 impl<'a, OS: io::OStream> Skip<&'a Size> for Context<OS> {
-    fn skip(&mut self, size: &'a Size) -> Result<&mut Self> {
+    fn skip(&mut self, size: &'a Size) -> Fallible<&mut Self> {
         Ok(wrap_skip_size(self.as_mut(), *size)?.as_mut())
     }
 }
 
 impl<OS: io::OStream> Skip<Size> for Context<OS> {
-    fn skip(&mut self, val: Size) -> Result<&mut Self> {
+    fn skip(&mut self, val: Size) -> Fallible<&mut Self> {
         self.skip(&val)
     }
 }
 
 impl<'a, OS: io::OStream> Skip<&'a NTrytes> for Context<OS> {
-    fn skip(&mut self, ntrytes: &'a NTrytes) -> Result<&mut Self> {
+    fn skip(&mut self, ntrytes: &'a NTrytes) -> Fallible<&mut Self> {
         Ok(wrap_skip_trits(self.as_mut(), (ntrytes.0).slice())?.as_mut())
     }
 }
 
 impl<'a, OS: io::OStream> Skip<&'a Trytes> for Context<OS> {
-    fn skip(&mut self, trytes: &'a Trytes) -> Result<&mut Self> {
+    fn skip(&mut self, trytes: &'a Trytes) -> Fallible<&mut Self> {
         self.skip(Size((trytes.0).size() / 3))?;
         Ok(wrap_skip_trits(self.as_mut(), (trytes.0).slice())?.as_mut())
     }
@@ -399,15 +457,23 @@ impl<'a, OS: io::OStream> Skip<&'a Trytes> for Context<OS> {
 
 /// Commit Spongos.
 impl<OS> Commit for Context<OS> {
-    fn commit(&mut self) -> Result<&mut Self> {
+    fn commit(&mut self) -> Fallible<&mut Self> {
         self.spongos.commit();
         Ok(self)
     }
 }
 
 impl<'a, OS: io::OStream> Mssig<&'a mss::PrivateKey, &'a External<NTrytes>> for Context<OS> {
-    fn mssig(&mut self, sk: &'a mss::PrivateKey, hash: &'a External<NTrytes>) -> Result<&mut Self> {
-        ensure!(mss::HASH_SIZE == ((hash.0).0).size(), "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.", mss::HASH_SIZE);
+    fn mssig(
+        &mut self,
+        sk: &'a mss::PrivateKey,
+        hash: &'a External<NTrytes>,
+    ) -> Fallible<&mut Self> {
+        ensure!(
+            mss::HASH_SIZE == ((hash.0).0).size(),
+            "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.",
+            mss::HASH_SIZE
+        );
         ensure!(sk.private_keys_left() > 0, "All WOTS private keys in MSS Merkle tree have been exhausted, nothing to sign hash with.");
         let sig_slice = self.stream.try_advance(mss::sig_size(sk.height()))?;
         sk.sign(((hash.0).0).slice(), sig_slice);
@@ -416,7 +482,11 @@ impl<'a, OS: io::OStream> Mssig<&'a mss::PrivateKey, &'a External<NTrytes>> for 
 }
 
 impl<'a, OS: io::OStream> Mssig<&'a mut mss::PrivateKey, &'a External<NTrytes>> for Context<OS> {
-    fn mssig(&mut self, sk: &'a mut mss::PrivateKey, hash: &'a External<NTrytes>) -> Result<&mut Self> {
+    fn mssig(
+        &mut self,
+        sk: &'a mut mss::PrivateKey,
+        hash: &'a External<NTrytes>,
+    ) -> Fallible<&mut Self> {
         // Force convert to `&self` with a smaller life-time.
         <Self as Mssig<&'_ mss::PrivateKey, &'_ External<NTrytes>>>::mssig(self, sk, hash)?;
         sk.next();
@@ -425,53 +495,60 @@ impl<'a, OS: io::OStream> Mssig<&'a mut mss::PrivateKey, &'a External<NTrytes>> 
 }
 
 impl<'a, OS: io::OStream> Mssig<&'a mss::PrivateKey, MssHashSig> for Context<OS> {
-    fn mssig(&mut self, sk: &'a mss::PrivateKey, _hash: MssHashSig) -> Result<&mut Self> {
+    fn mssig(&mut self, sk: &'a mss::PrivateKey, _hash: MssHashSig) -> Fallible<&mut Self> {
         let mut hash = External(NTrytes(Trits::zero(mss::HASH_SIZE)));
-        self
-            .squeeze(&mut hash)?
-            .commit()?
-            .mssig(sk, &hash)
+        self.squeeze(&mut hash)?.commit()?.mssig(sk, &hash)
     }
 }
 
 impl<'a, OS: io::OStream> Mssig<&'a mut mss::PrivateKey, MssHashSig> for Context<OS> {
-    fn mssig(&mut self, sk: &'a mut mss::PrivateKey, _hash: MssHashSig) -> Result<&mut Self> {
+    fn mssig(&mut self, sk: &'a mut mss::PrivateKey, _hash: MssHashSig) -> Fallible<&mut Self> {
         let mut hash = External(NTrytes(Trits::zero(mss::HASH_SIZE)));
-        self
-            .squeeze(&mut hash)?
-            .commit()?
-            .mssig(sk, &hash)
+        self.squeeze(&mut hash)?.commit()?.mssig(sk, &hash)
     }
 }
 
-impl<'a, OS: io::OStream> Ntrukem<(&'a ntru::PublicKey, &'a prng::PRNG, &'a Trits), &'a NTrytes> for Context<OS> {
-    fn ntrukem(&mut self, key: (&'a ntru::PublicKey, &'a prng::PRNG, &'a Trits), secret: &'a NTrytes) -> Result<&mut Self> {
+impl<'a, OS: io::OStream> Ntrukem<(&'a ntru::PublicKey, &'a prng::PRNG, &'a Trits), &'a NTrytes>
+    for Context<OS>
+{
+    fn ntrukem(
+        &mut self,
+        key: (&'a ntru::PublicKey, &'a prng::PRNG, &'a Trits),
+        secret: &'a NTrytes,
+    ) -> Fallible<&mut Self> {
         ensure!(ntru::KEY_SIZE == (secret.0).size(), "Trit size of `external tryte secret[n]` to be encapsulated with NTRU must be equal {} trits.", ntru::KEY_SIZE);
 
         let ekey_slice = self.stream.try_advance(ntru::EKEY_SIZE)?;
-        (key.0).encr_with_s(&mut self.spongos, key.1, (key.2).slice(), (secret.0).slice(), ekey_slice);
+        (key.0).encr_with_s(
+            &mut self.spongos,
+            key.1,
+            (key.2).slice(),
+            (secret.0).slice(),
+            ekey_slice,
+        );
         Ok(self)
     }
 }
 
-
-impl<F, OS: io::OStream> Fork<F> for Context<OS> where
-    F: for<'a> FnMut(&'a mut Self) -> Result<&'a mut Self>
+impl<F, OS: io::OStream> Fork<F> for Context<OS>
+where
+    F: for<'a> FnMut(&'a mut Self) -> Fallible<&'a mut Self>,
 {
-    fn fork(&mut self, mut cont: F) -> Result<&mut Self> {
-        let mut saved_fork = self.spongos.fork();
+    fn fork(&mut self, mut cont: F) -> Fallible<&mut Self> {
+        let saved_fork = self.spongos.fork();
         cont(self)?;
         self.spongos = saved_fork;
         Ok(self)
     }
 }
 
-impl<I, F, OS: io::OStream> Repeated<I, F> for Context<OS> where
+impl<I, F, OS: io::OStream> Repeated<I, F> for Context<OS>
+where
     I: iter::Iterator,
-    F: for<'a> FnMut(&'a mut Self, <I as iter::Iterator>::Item) -> Result<&'a mut Self>,
+    F: for<'a> FnMut(&'a mut Self, <I as iter::Iterator>::Item) -> Fallible<&'a mut Self>,
 {
-    fn repeated(&mut self, values_iter: I, mut value_handle: F) -> Result<&mut Self> {
-        values_iter.fold(Ok(self), |rctx, item| -> Result<&mut Self> {
+    fn repeated(&mut self, values_iter: I, mut value_handle: F) -> Fallible<&mut Self> {
+        values_iter.fold(Ok(self), |rctx, item| -> Fallible<&mut Self> {
             match rctx {
                 Ok(ctx) => value_handle(ctx, item),
                 Err(e) => Err(e),
@@ -480,30 +557,29 @@ impl<I, F, OS: io::OStream> Repeated<I, F> for Context<OS> where
     }
 }
 
-
-
 impl<'a, T: 'a + AbsorbFallback, OS: io::OStream> Absorb<&'a T> for Context<OS> {
-    fn absorb(&mut self, val: &'a T) -> Result<&mut Self> {
+    fn absorb(&mut self, val: &'a T) -> Fallible<&mut Self> {
         val.wrap_absorb(self)?;
         Ok(self)
     }
 }
 impl<'a, T: 'a + AbsorbExternalFallback, OS: io::OStream> Absorb<External<&'a T>> for Context<OS> {
-    fn absorb(&mut self, val: External<&'a T>) -> Result<&mut Self> {
+    fn absorb(&mut self, val: External<&'a T>) -> Fallible<&mut Self> {
         (val.0).wrap_absorb_external(self)?;
         Ok(self)
     }
 }
 impl<'a, T: 'a + SkipFallback, OS: io::OStream> Skip<&'a T> for Context<OS> {
-    fn skip(&mut self, val: &'a T) -> Result<&mut Self> {
+    fn skip(&mut self, val: &'a T) -> Fallible<&mut Self> {
         val.wrap_skip(self)?;
         Ok(self)
     }
 }
 
 impl<'a, L: SkipFallback, S: LinkStore<L>, OS: io::OStream> Join<&'a L, &'a S> for Context<OS> {
-    fn join(&mut self, store: &'a S, link: &'a L) -> Result<&mut Self> {
-        let (mut s, i) = store.lookup(link)?;
+    fn join(&mut self, store: &'a S, link: &'a L) -> Fallible<&mut Self> {
+        //TODO: Return and use info.
+        let (mut s, _i) = store.lookup(link)?;
         link.wrap_skip(self)?;
         self.spongos.join(&mut s);
         Ok(self)
@@ -514,7 +590,7 @@ impl<'a, L: SkipFallback, S: LinkStore<L>, OS: io::OStream> Join<&'a L, &'a S> f
 impl<'a, L, S: LinkStore<L>, OS: io::OStream> Join<&'a L, &'a S> for Context<OS> where
     Self: Skip<&'a L>
 {
-    fn join(&mut self, store: &'a S, link: &'a L) -> Result<&mut Self> {
+    fn join(&mut self, store: &'a S, link: &'a L) -> Fallible<&mut Self> {
         let (mut s, i) = store.lookup(link)?;
         self.skip(link)?;
         self.spongos.join(&mut s);
@@ -522,3 +598,15 @@ impl<'a, L, S: LinkStore<L>, OS: io::OStream> Join<&'a L, &'a S> for Context<OS>
     }
 }
  */
+
+impl<OS: io::OStream> Dump for Context<OS> {
+    fn dump<'a>(&mut self, args: std::fmt::Arguments<'a>) -> Fallible<&mut Self> {
+        println!(
+            "{}: ostream=[{}] spongos=[{:?}]",
+            args,
+            self.stream.dump(),
+            self.spongos
+        );
+        Ok(self)
+    }
+}

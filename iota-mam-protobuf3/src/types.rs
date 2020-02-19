@@ -1,17 +1,16 @@
+use failure::{bail, Fallible};
 use std::convert::TryFrom;
 use std::hash;
 use std::string::ToString;
-use failure::bail;
 
-use iota_mam_core::trits::Trits;
 use iota_mam_core::spongos::{self, Spongos};
+use iota_mam_core::trits::Trits;
 
-use crate::Result;
 use crate::io;
 
 /// PB3 integer type `tryte` is signed and is represented with `Trint3`, not `Tryte` which is unsigned.
 /// PB3 integer type `trint` is 6-trit wide and is represented with `Trint6`.
-pub use iota_mam_core::trits::{Trint3, Trint6, Trint9, Trint18};
+pub use iota_mam_core::trits::{Trint18, Trint3, Trint6, Trint9};
 
 /// Fixed-size array of trytes, the size is known at compile time and is not encoded in trinary representation.
 /// The inner buffer size (in trits) must be multiple of 3.
@@ -29,6 +28,14 @@ impl ToString for NTrytes {
         (self.0).to_string()
     }
 }
+
+/*
+impl fmt::Display for NTrytes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:[{}]", (self.0).size(), (self.0).slice())
+    }
+}
+*/
 
 impl hash::Hash for NTrytes {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -52,6 +59,14 @@ impl ToString for Trytes {
         (self.0).to_string()
     }
 }
+
+/*
+impl fmt::Display for Trytes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:[{}]", (self.0).size(), (self.0).slice())
+    }
+}
+*/
 
 impl hash::Hash for Trytes {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -127,7 +142,7 @@ pub trait LinkStore<Link> {
     type Info;
 
     /// Lookup link in the store and return spongos state and associated info.
-    fn lookup(&self, link: &Link) -> Result<(Spongos, Self::Info)> {
+    fn lookup(&self, _link: &Link) -> Fallible<(Spongos, Self::Info)> {
         bail!("Link not found.");
     }
 
@@ -138,13 +153,12 @@ pub trait LinkStore<Link> {
     /// integrity violation (how exactly?), or internal error.
     ///
     /// Overwriting the spongos state means "forgetting the old and accepting the new".
-    /// 
+    ///
     /// Not updating the spongos state means immutability -- "the first one makes the history".
-    fn update(&mut self, link: &Link, spongos: Spongos, info: Self::Info) -> Result<()>;
+    fn update(&mut self, link: &Link, spongos: Spongos, info: Self::Info) -> Fallible<()>;
 
     /// Remove link and associated info from the store.
-    fn erase(&mut self, link: &Link) {
-    }
+    fn erase(&mut self, _link: &Link) {}
 }
 
 /// Empty "dummy" link store that stores no links.
@@ -159,7 +173,7 @@ impl<Link, Info> Default for EmptyLinkStore<Link, Info> {
 
 impl<Link, Info> LinkStore<Link> for EmptyLinkStore<Link, Info> {
     type Info = Info;
-    fn update(&mut self, _link: &Link, _spongos: Spongos, _info: Self::Info) -> Result<()> {
+    fn update(&mut self, _link: &Link, _spongos: Spongos, _info: Self::Info) -> Fallible<()> {
         Ok(())
     }
 }
@@ -168,7 +182,7 @@ impl<Link, Info> LinkStore<Link> for EmptyLinkStore<Link, Info> {
 /// This link store can be used in MAM Applications supporting a list-like "thread"
 /// of messages without access to the history as the link to the last message is stored.
 #[derive(Clone, Debug, Default)]
-pub struct SingleLinkStore<Link, Info>{
+pub struct SingleLinkStore<Link, Info> {
     /// The link to the last message in the thread.
     link: Link,
 
@@ -179,18 +193,20 @@ pub struct SingleLinkStore<Link, Info>{
     info: Info,
 }
 
-impl<Link, Info> LinkStore<Link> for SingleLinkStore<Link, Info> where
-    Link: Clone + Eq, Info: Clone,
+impl<Link, Info> LinkStore<Link> for SingleLinkStore<Link, Info>
+where
+    Link: Clone + Eq,
+    Info: Clone,
 {
     type Info = Info;
-    fn lookup(&self, link: &Link) -> Result<(Spongos, Self::Info)> {
+    fn lookup(&self, link: &Link) -> Fallible<(Spongos, Self::Info)> {
         if self.link == *link {
             Ok(((&self.spongos).into(), self.info.clone()))
         } else {
             bail!("Link not found.");
         }
     }
-    fn update(&mut self, link: &Link, spongos: Spongos, info: Self::Info) -> Result<()> {
+    fn update(&mut self, link: &Link, spongos: Spongos, info: Self::Info) -> Fallible<()> {
         if let Ok(inner) = spongos::Inner::try_from(&spongos) {
             self.link = link.clone();
             self.spongos = inner;
@@ -200,7 +216,7 @@ impl<Link, Info> LinkStore<Link> for SingleLinkStore<Link, Info> where
             bail!("Internal error: spongos state must be committed before being put into SingleLinkStore.")
         }
     }
-    fn erase(&mut self, link: &Link) {
+    fn erase(&mut self, _link: &Link) {
         // Can't really erase link.
     }
 }
@@ -211,19 +227,26 @@ pub struct DefaultLinkStore<Link, Info> {
     map: HashMap<Link, (spongos::Inner, Info)>,
 }
 
-impl<Link, Info> Default for DefaultLinkStore<Link, Info> where Link: Eq + hash::Hash {
+impl<Link, Info> Default for DefaultLinkStore<Link, Info>
+where
+    Link: Eq + hash::Hash,
+{
     fn default() -> Self {
-        Self { map: HashMap::new() }
+        Self {
+            map: HashMap::new(),
+        }
     }
 }
 
-impl<Link, Info> LinkStore<Link> for DefaultLinkStore<Link, Info> where
-    Link: Eq + hash::Hash + Clone, Info: Clone,
+impl<Link, Info> LinkStore<Link> for DefaultLinkStore<Link, Info>
+where
+    Link: Eq + hash::Hash + Clone,
+    Info: Clone,
 {
     type Info = Info;
 
     /// Add info for the link.
-    fn lookup(&self, link: &Link) -> Result<(Spongos, Info)> {
+    fn lookup(&self, link: &Link) -> Fallible<(Spongos, Info)> {
         if let Some((inner, info)) = self.map.get(link).cloned() {
             Ok((inner.into(), info))
         } else {
@@ -232,7 +255,7 @@ impl<Link, Info> LinkStore<Link> for DefaultLinkStore<Link, Info> where
     }
 
     /// Try to retrieve info for the link.
-    fn update(&mut self, link: &Link, spongos: Spongos, info: Info) -> Result<()> {
+    fn update(&mut self, link: &Link, spongos: Spongos, info: Info) -> Fallible<()> {
         if let Ok(inner) = spongos::Inner::try_from(&spongos) {
             self.map.insert(link.clone(), (inner, info));
             Ok(())
@@ -247,13 +270,13 @@ impl<Link, Info> LinkStore<Link> for DefaultLinkStore<Link, Info> where
     }
 }
 
-use crate::command::{sizeof, wrap, unwrap};
+use crate::command::{sizeof, unwrap, wrap};
 
 /// Trait allows for custom (non-standard Protobuf3) types to be Absorb.
 pub trait AbsorbFallback {
-    fn sizeof_absorb(&self, ctx: &mut sizeof::Context) -> Result<()>;
-    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()>;
-    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()>;
+    fn sizeof_absorb(&self, ctx: &mut sizeof::Context) -> Fallible<()>;
+    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()>;
+    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Fallible<()>;
 }
 
 /// Trait allows for custom (non-standard Protobuf3) types to be AbsorbExternal.
@@ -262,9 +285,12 @@ pub trait AbsorbFallback {
 ///
 /// Note, that "absolute" links are absorbed in the message header.
 pub trait AbsorbExternalFallback {
-    fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context) -> Result<()>;
-    fn wrap_absorb_external<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()>;
-    fn unwrap_absorb_external<IS: io::IStream>(&self, ctx: &mut unwrap::Context<IS>) -> Result<()>;
+    fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context) -> Fallible<()>;
+    fn wrap_absorb_external<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()>;
+    fn unwrap_absorb_external<IS: io::IStream>(
+        &self,
+        ctx: &mut unwrap::Context<IS>,
+    ) -> Fallible<()>;
 }
 
 /// Trait allows for custom (non-standard Protobuf3) types to be Absorb.
@@ -273,7 +299,7 @@ pub trait AbsorbExternalFallback {
 ///
 /// Note, that "relative" links are usually skipped and joined in the message content.
 pub trait SkipFallback {
-    fn sizeof_skip(&self, ctx: &mut sizeof::Context) -> Result<()>;
-    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()>;
-    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()>;
+    fn sizeof_skip(&self, ctx: &mut sizeof::Context) -> Fallible<()>;
+    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()>;
+    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Fallible<()>;
 }

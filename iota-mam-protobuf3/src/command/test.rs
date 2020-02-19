@@ -1,34 +1,35 @@
-use failure::{bail, ensure};
+use failure::{bail, ensure, Fallible};
+use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
-use std::convert::{TryInto, TryFrom};
 
-use iota_mam_core::trits::{defs::*, Trits};
+use iota_mam_core::key_encapsulation::ntru;
 use iota_mam_core::prng;
 use iota_mam_core::signature::mss;
-use iota_mam_core::key_encapsulation::ntru;
+use iota_mam_core::trits::{defs::*, Trits};
 
-use crate::{command::*, types::*, Result};
+use crate::{command::*, types::*};
 
-fn absorb_mask_trint3() -> Result<()> {
+fn absorb_mask_trint3() -> Fallible<()> {
     let mut buf = Trits::zero(6);
     let mut tag_wrap = External(NTrytes(Trits::zero(81)));
     let mut tag_unwrap = External(NTrytes(Trits::zero(81)));
 
-    for t in MIN_TRINT3 ..= MAX_TRINT3 {
+    for t in MIN_TRINT3..=MAX_TRINT3 {
         let buf_size = sizeof::Context::new().absorb(t)?.mask(t)?.get_size();
         let buf_size2 = sizeof::Context::new().absorb(&t)?.mask(&t)?.get_size();
-        ensure!(buf_size == buf_size2, "Buf sizes calcuated by value and by ref do not match.");
+        ensure!(
+            buf_size == buf_size2,
+            "Buf sizes calcuated by value and by ref do not match."
+        );
         ensure!(buf_size == 6, "Unexpected buf size.");
 
         {
             let mut ctx = wrap::Context::new(buf.slice_mut());
-            ctx
-                .commit()?
+            ctx.commit()?
                 .absorb(&t)?
                 .mask(&t)?
                 .commit()?
-                .squeeze(&mut tag_wrap)?
-            ;
+                .squeeze(&mut tag_wrap)?;
             ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
         }
 
@@ -36,13 +37,11 @@ fn absorb_mask_trint3() -> Result<()> {
         let mut t3 = Trint3::default();
         {
             let mut ctx = unwrap::Context::new(buf.slice());
-            ctx
-                .commit()?
+            ctx.commit()?
                 .absorb(&mut t2)?
                 .mask(&mut t3)?
                 .commit()?
-                .squeeze(&mut tag_unwrap)?
-            ;
+                .squeeze(&mut tag_unwrap)?;
             ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
         }
 
@@ -53,7 +52,7 @@ fn absorb_mask_trint3() -> Result<()> {
     Ok(())
 }
 
-fn absorb_mask_size() -> Result<()> {
+fn absorb_mask_size() -> Fallible<()> {
     let mut tag_wrap = External(NTrytes(Trits::zero(81)));
     let mut tag_unwrap = External(NTrytes(Trits::zero(81)));
 
@@ -80,19 +79,20 @@ fn absorb_mask_size() -> Result<()> {
         let s = Size(*n);
         let buf_size = sizeof::Context::new().absorb(s)?.mask(s)?.get_size();
         let buf_size2 = sizeof::Context::new().absorb(&s)?.mask(&s)?.get_size();
-        ensure!(buf_size == buf_size2, "Buf sizes calcuated by value and by ref do not match.");
+        ensure!(
+            buf_size == buf_size2,
+            "Buf sizes calcuated by value and by ref do not match."
+        );
 
         let mut buf = Trits::zero(buf_size);
 
         {
             let mut ctx = wrap::Context::new(buf.slice_mut());
-            ctx
-                .commit()?
+            ctx.commit()?
                 .absorb(&s)?
                 .mask(&s)?
                 .commit()?
-                .squeeze(&mut tag_wrap)?
-            ;
+                .squeeze(&mut tag_wrap)?;
             ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
         }
 
@@ -100,13 +100,11 @@ fn absorb_mask_size() -> Result<()> {
         let mut s3 = Size::default();
         {
             let mut ctx = unwrap::Context::new(buf.slice());
-            ctx
-                .commit()?
+            ctx.commit()?
                 .absorb(&mut s2)?
                 .mask(&mut s3)?
                 .commit()?
-                .squeeze(&mut tag_unwrap)?
-            ;
+                .squeeze(&mut tag_unwrap)?;
             ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
         }
 
@@ -127,7 +125,7 @@ fn size() {
     assert!(dbg!(absorb_mask_size()).is_ok());
 }
 
-fn absorb_mask_squeeze_trytes_mac() -> Result<()> {
+fn absorb_mask_squeeze_trytes_mac() -> Fallible<()> {
     const NS: [usize; 10] = [0, 3, 240, 243, 246, 483, 486, 489, 1002, 2001];
 
     let mut tag_wrap = External(NTrytes(Trits::zero(81)));
@@ -137,19 +135,23 @@ fn absorb_mask_squeeze_trytes_mac() -> Result<()> {
     let mut nonce = Trits::from_str("TESTPRNGNONCE").unwrap();
 
     for n in NS.iter() {
-        println!("n={}", n);
-        let ta = Trytes(prng.gen_trits(&nonce, *n)); nonce.inc();
-        let nta = NTrytes(prng.gen_trits(&nonce, *n)); nonce.inc();
-        let enta = External(NTrytes(prng.gen_trits(&nonce, *n))); nonce.inc();
-        let tm = Trytes(prng.gen_trits(&nonce, *n)); nonce.inc();
-        let ntm = NTrytes(prng.gen_trits(&nonce, *n)); nonce.inc();
-        let mut ents = External(NTrytes(Trits::zero(*n))); nonce.inc();
+        let ta = Trytes(prng.gen_trits(&nonce, *n));
+        nonce.inc();
+        let nta = NTrytes(prng.gen_trits(&nonce, *n));
+        nonce.inc();
+        let enta = External(NTrytes(prng.gen_trits(&nonce, *n)));
+        nonce.inc();
+        let tm = Trytes(prng.gen_trits(&nonce, *n));
+        nonce.inc();
+        let ntm = NTrytes(prng.gen_trits(&nonce, *n));
+        nonce.inc();
+        let mut ents = External(NTrytes(Trits::zero(*n)));
+        nonce.inc();
         let mac = Mac(*n);
 
         let buf_size = {
             let mut ctx = sizeof::Context::new();
-            ctx
-                .commit()?
+            ctx.commit()?
                 .absorb(&ta)?
                 .absorb(&nta)?
                 .absorb(&enta)?
@@ -162,16 +164,14 @@ fn absorb_mask_squeeze_trytes_mac() -> Result<()> {
                 /*
                  */
                 .commit()?
-                .squeeze(&tag_wrap)?
-            ;
+                .squeeze(&tag_wrap)?;
             ctx.get_size()
         };
         let mut buf = Trits::zero(dbg!(buf_size));
 
         {
             let mut ctx = wrap::Context::new(buf.slice_mut());
-            ctx
-                .commit()?
+            ctx.commit()?
                 .absorb(&ta)?
                 .absorb(&nta)?
                 .absorb(&enta)?
@@ -184,8 +184,7 @@ fn absorb_mask_squeeze_trytes_mac() -> Result<()> {
                 /*
                  */
                 .commit()?
-                .squeeze(&mut tag_wrap)?
-            ;
+                .squeeze(&mut tag_wrap)?;
             ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
         }
 
@@ -196,8 +195,7 @@ fn absorb_mask_squeeze_trytes_mac() -> Result<()> {
         let mut ents2 = External(NTrytes(Trits::zero(*n)));
         {
             let mut ctx = unwrap::Context::new(buf.slice());
-            ctx
-                .commit()?
+            ctx.commit()?
                 .absorb(&mut ta2)?
                 .absorb(&mut nta2)?
                 .absorb(&enta)?
@@ -210,8 +208,7 @@ fn absorb_mask_squeeze_trytes_mac() -> Result<()> {
                 /*
                  */
                 .commit()?
-                .squeeze(&mut tag_unwrap)?
-            ;
+                .squeeze(&mut tag_unwrap)?;
             ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
         }
 
@@ -231,7 +228,7 @@ fn trytes() {
     assert!(dbg!(absorb_mask_squeeze_trytes_mac()).is_ok());
 }
 
-fn mssig_traverse() -> Result<()> {
+fn mssig_traverse() -> Fallible<()> {
     let payload = Trytes(Trits::cycle_str(123, "PAYLOAD"));
     let mut hash = External(NTrytes(Trits::zero(mss::HASH_SIZE)));
     let prng = prng::dbg_init_str("TESTPRNGKEY");
@@ -244,47 +241,41 @@ fn mssig_traverse() -> Result<()> {
         loop {
             let buf_size = {
                 let mut ctx = sizeof::Context::new();
-                ctx
-                    .absorb(&payload)?
+                ctx.absorb(&payload)?
                     .commit()?
                     .squeeze(&hash)?
                     .commit()?
                     .mssig(&sk, &hash)?
-                    .mssig(&sk, MssHashSig)?
-                ;
+                    .mssig(&sk, MssHashSig)?;
                 ctx.get_size()
             };
 
             let mut buf = Trits::zero(dbg!(buf_size));
             {
                 let mut ctx = wrap::Context::new(buf.slice_mut());
-                ctx
-                    .absorb(&payload)?
+                ctx.absorb(&payload)?
                     .commit()?
                     .squeeze(&mut hash)?
                     .commit()?
                     .mssig(&sk, &hash)?
-                    .mssig(&mut sk, MssHashSig)?
-                ;
+                    .mssig(&mut sk, MssHashSig)?;
                 ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
             }
             let mut payload2 = Trytes::default();
             {
                 let mut ctx = unwrap::Context::new(buf.slice());
-                ctx
-                    .absorb(&mut payload2)?
+                ctx.absorb(&mut payload2)?
                     .commit()?
                     .squeeze(&mut hash)?
                     .commit()?
                     .mssig(&mut apk, &hash)?
-                    .mssig(sk.public_key(), MssHashSig)?
-                ;
+                    .mssig(sk.public_key(), MssHashSig)?;
                 ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
                 ensure!(payload == payload2, "Absorbed bad payload.");
                 ensure!(&apk == sk.public_key(), "Recovered bad key.");
             }
 
-            if 0 == sk.skn_left() {
+            if 0 == sk.private_keys_left() {
                 break;
             }
         }
@@ -297,7 +288,7 @@ fn mssig() {
     assert!(dbg!(mssig_traverse()).is_ok());
 }
 
-fn ntrukem_caps() -> Result<()> {
+fn ntrukem_caps() -> Fallible<()> {
     let prng = prng::dbg_init_str("TESTPRNGKEY");
     let nonce = Trits::zero(15);
     let (sk, pk) = ntru::gen(&prng, nonce.slice());
@@ -307,32 +298,24 @@ fn ntrukem_caps() -> Result<()> {
 
     let buf_size = {
         let mut ctx = sizeof::Context::new();
-        ctx
-            .absorb(&payload)?
-            .commit()?
-            .ntrukem(&pk, &key)?
-        ;
+        ctx.absorb(&payload)?.commit()?.ntrukem(&pk, &key)?;
         ctx.get_size()
     };
     let mut buf = Trits::zero(buf_size);
     {
         let mut ctx = wrap::Context::new(buf.slice_mut());
-        ctx
-            .absorb(&payload)?
+        ctx.absorb(&payload)?
             .commit()?
-            .ntrukem((&pk, &prng, &nonce), &key)?
-        ;
+            .ntrukem((&pk, &prng, &nonce), &key)?;
         ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
     }
     let mut payload2 = Trytes::default();
     let mut key2 = NTrytes(Trits::zero(ntru::KEY_SIZE));
     {
         let mut ctx = unwrap::Context::new(buf.slice());
-        ctx
-            .absorb(&mut payload2)?
+        ctx.absorb(&mut payload2)?
             .commit()?
-            .ntrukem(&sk, &mut key2)?
-        ;
+            .ntrukem(&sk, &mut key2)?;
         ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
     }
     ensure!(key == key2, "Secret and decapsulated secret differ.");
@@ -346,7 +329,7 @@ fn ntrukem() {
 
 use crate::io;
 use iota_mam_core::spongos::{self, Spongos};
-use std::convert::{From, Into, AsRef};
+use std::convert::{AsRef, From, Into};
 
 #[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
 struct TestRelLink(Trint3);
@@ -354,29 +337,29 @@ struct TestRelLink(Trint3);
 struct TestAbsLink(Trint3, TestRelLink);
 
 impl AbsorbFallback for TestAbsLink {
-    fn sizeof_absorb(&self, ctx: &mut sizeof::Context) -> Result<()> {
+    fn sizeof_absorb(&self, ctx: &mut sizeof::Context) -> Fallible<()> {
         ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
         Ok(())
     }
-    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
+    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()> {
         ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
         Ok(())
     }
-    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
+    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Fallible<()> {
         ctx.absorb(&mut self.0)?.absorb(&mut (self.1).0)?;
         Ok(())
     }
 }
 impl SkipFallback for TestRelLink {
-    fn sizeof_skip(&self, ctx: &mut sizeof::Context) -> Result<()> {
+    fn sizeof_skip(&self, ctx: &mut sizeof::Context) -> Fallible<()> {
         ctx.skip(&self.0)?;
         Ok(())
     }
-    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
+    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()> {
         ctx.skip(&self.0)?;
         Ok(())
     }
-    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
+    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Fallible<()> {
         ctx.skip(&mut self.0)?;
         Ok(())
     }
@@ -410,34 +393,32 @@ impl<Link, Info> TestStore<Link, Info> {
 
 impl<Link: PartialEq + Clone, Info: Clone> LinkStore<Link> for TestStore<Link, Info> {
     type Info = Info;
-    fn lookup(&self, l: &Link) -> Result<(Spongos, Self::Info)> {
-        if let Some((l,(s,i))) = &self.cell1 {
-            if l == l {
+    fn lookup(&self, link: &Link) -> Fallible<(Spongos, Self::Info)> {
+        if let Some((l, (s, i))) = &self.cell1 {
+            if link == l {
                 return Ok((s.into(), i.clone()));
             }
         }
-        if let Some((l,(s,i))) = &self.cell2 {
-            if l == l {
+        if let Some((l, (s, i))) = &self.cell2 {
+            if link == l {
                 return Ok((s.into(), i.clone()));
             }
         }
-        if let Some((l,(s,i))) = &self.cell3 {
-            if l == l {
+        if let Some((l, (s, i))) = &self.cell3 {
+            if link == l {
                 return Ok((s.into(), i.clone()));
             }
         }
         bail!("Link not found");
     }
-    fn update(&mut self, l: &Link, s: Spongos, i: Self::Info) -> Result<()> {
+    fn update(&mut self, l: &Link, s: Spongos, i: Self::Info) -> Fallible<()> {
         if let None = &self.cell1 {
             self.cell1 = Some((l.clone(), (s.try_into().unwrap(), i)));
             Ok(())
-        } else
-        if let None = &self.cell2 {
+        } else if let None = &self.cell2 {
             self.cell2 = Some((l.clone(), (s.try_into().unwrap(), i)));
             Ok(())
-        } else
-        if let None = &self.cell3 {
+        } else if let None = &self.cell3 {
             self.cell3 = Some((l.clone(), (s.try_into().unwrap(), i)));
             Ok(())
         } else {
@@ -464,7 +445,7 @@ impl<Link: PartialEq + Clone, Info: Clone> LinkStore<Link> for TestStore<Link, I
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
-struct TestMessageInfo;
+struct TestMessageInfo(usize);
 #[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
 struct TestMessage<AbsLink, RelLink> {
     addr: AbsLink,
@@ -481,65 +462,76 @@ struct WrapCtx<L, S, OS> where
 }
 */
 
-impl<AbsLink, RelLink> TestMessage<AbsLink, RelLink> where
+impl<AbsLink, RelLink> TestMessage<AbsLink, RelLink>
+where
     AbsLink: AbsorbFallback + AsRef<RelLink>,
     RelLink: SkipFallback,
 {
-    fn size<S: LinkStore<RelLink>>(&self, store: &S) -> Result<usize> {
+    fn size<S: LinkStore<RelLink>>(&self, store: &S) -> Fallible<usize> {
         let mut ctx = sizeof::Context::new();
-        ctx
-            .absorb(&self.addr)?
+        ctx.absorb(&self.addr)?
             .join(store, &self.link)?
-            .mask(&self.masked)?
-        ;
-        Ok(0)
+            .mask(&self.masked)?;
+        Ok(ctx.get_size())
     }
-    fn wrap<S: LinkStore<RelLink>, OS: io::OStream>(&self, store: &mut S, ctx: &mut wrap::Context<OS>, i: <S as LinkStore<RelLink>>::Info) -> Result<()> {
-        ctx
-            .absorb(&self.addr)?
+    fn wrap<S: LinkStore<RelLink>, OS: io::OStream>(
+        &self,
+        store: &mut S,
+        ctx: &mut wrap::Context<OS>,
+        i: <S as LinkStore<RelLink>>::Info,
+    ) -> Fallible<()> {
+        ctx.absorb(&self.addr)?
             .join(store, &self.link)?
-            .mask(&self.masked)?
-        ;
+            .mask(&self.masked)?;
         let mut spongos = ctx.spongos.fork();
         spongos.commit();
         store.update(self.addr.as_ref(), spongos, i)?;
         Ok(())
     }
-    fn unwrap<S: LinkStore<RelLink>, IS: io::IStream>(&mut self, store: &S, ctx: &mut unwrap::Context<IS>) -> Result<()> {
-        ctx
-            .absorb(&mut self.addr)?
+    fn unwrap<S: LinkStore<RelLink>, IS: io::IStream>(
+        &mut self,
+        store: &S,
+        ctx: &mut unwrap::Context<IS>,
+    ) -> Fallible<()> {
+        ctx.absorb(&mut self.addr)?
             .join(store, &mut self.link)?
-            .mask(&mut self.masked)?
-        ;
+            .mask(&mut self.masked)?;
         Ok(())
     }
 }
 
-#[test]
-fn join_link() {
+fn run_join_link() -> Fallible<()> {
     let msg = TestMessage::<TestAbsLink, TestRelLink> {
         addr: TestAbsLink(Trint3(1), TestRelLink(Trint3(2))),
         link: TestRelLink(Trint3(3)),
         masked: Trint3(4),
     };
     let mut store = TestStore::new();
+    store.update(&TestRelLink(Trint3(3)), Spongos::init(), TestMessageInfo(0))?;
 
     let buf_size = msg.size(&store).unwrap();
-    let mut buf = Trits::zero(buf_size);
+    let mut buf = Trits::zero(dbg!(buf_size));
 
     {
         let mut wrap_ctx = wrap::Context::new(buf.slice_mut());
-        let i = TestMessageInfo;
-        msg.wrap(&mut store, &mut wrap_ctx, i);
-        assert!(wrap_ctx.stream.is_empty());
+        let i = TestMessageInfo(1);
+        msg.wrap(&mut store, &mut wrap_ctx, i)?;
+        ensure!(wrap_ctx.stream.is_empty());
     }
 
     let mut msg2 = TestMessage::<TestAbsLink, TestRelLink>::default();
     {
         let mut unwrap_ctx = unwrap::Context::new(buf.slice());
-        msg2.unwrap(&store, &mut unwrap_ctx);
-        assert!(unwrap_ctx.stream.is_empty());
+        //TODO: unwrap and check.
+        msg2.unwrap(&store, &mut unwrap_ctx)?;
+        ensure!(unwrap_ctx.stream.is_empty());
     }
 
-    assert_eq!(msg, msg2);
+    ensure!(msg == msg2);
+    Ok(())
+}
+
+#[test]
+fn join_link() {
+    assert!(dbg!(run_join_link()).is_ok());
 }
