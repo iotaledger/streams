@@ -28,13 +28,11 @@
 //! * `sig` -- signature of `tag` field produced with the MSS private key corresponding to `msspk`.
 //!
 
-use failure::bail;
+use failure::{bail, Fallible};
 
-use iota_mam_core::{signature::mss, key_encapsulation::ntru};
+use iota_mam_app::message;
+use iota_mam_core::{key_encapsulation::ntru, signature::mss};
 use iota_mam_protobuf3::{command::*, io, types::*};
-use crate::Result;
-
-use crate::core::msg;
 
 /// Type of `Announce` message content.
 pub const TYPE: &str = "MAM9CHANNEL9ANNOUNCE";
@@ -44,8 +42,8 @@ pub struct ContentWrap<'a> {
     pub(crate) ntru_pk: Option<&'a ntru::PublicKey>,
 }
 
-impl<'a, Store> msg::ContentWrap<Store> for ContentWrap<'a> {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+impl<'a, Store> message::ContentWrap<Store> for ContentWrap<'a> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Fallible<&'c mut sizeof::Context> {
         ctx.absorb(self.mss_sk.public_key())?;
         let oneof: Trint3;
         if let Some(ntru_pk) = self.ntru_pk {
@@ -59,7 +57,11 @@ impl<'a, Store> msg::ContentWrap<Store> for ContentWrap<'a> {
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream>(&self, _store: &Store, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
+    fn wrap<'c, OS: io::OStream>(
+        &self,
+        _store: &Store,
+        ctx: &'c mut wrap::Context<OS>,
+    ) -> Fallible<&'c mut wrap::Context<OS>> {
         ctx.absorb(self.mss_sk.public_key())?;
         let oneof: Trint3;
         if let Some(ntru_pk) = self.ntru_pk {
@@ -80,19 +82,23 @@ pub struct ContentUnwrap {
     pub(crate) ntru_pk: Option<ntru::PublicKey>,
 }
 
-impl<Store> msg::ContentUnwrap<Store> for ContentUnwrap {
-    fn unwrap<'c, IS: io::IStream>(&mut self, store: &Store, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
+impl<Store> message::ContentUnwrap<Store> for ContentUnwrap {
+    fn unwrap<'c, IS: io::IStream>(
+        &mut self,
+        _store: &Store,
+        ctx: &'c mut unwrap::Context<IS>,
+    ) -> Fallible<&'c mut unwrap::Context<IS>> {
         ctx.absorb(&mut self.mss_pk)?;
         let mut oneof = Trint3(-1);
         ctx.absorb(&mut oneof)?;
         self.ntru_pk = match oneof {
-            Trint3(0) => { None },
+            Trint3(0) => None,
             Trint3(1) => {
                 let mut ntru_pk = ntru::PublicKey::default();
                 ctx.absorb(&mut ntru_pk)?;
                 Some(ntru_pk)
-            },
-            _ => { bail!("Announce: bad oneof: {:?}", oneof) }
+            }
+            _ => bail!("Announce: bad oneof: {:?}", oneof),
         };
         ctx.mssig(&self.mss_pk, MssHashSig)?;
         Ok(ctx)

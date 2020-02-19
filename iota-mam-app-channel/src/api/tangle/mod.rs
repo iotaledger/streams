@@ -1,9 +1,7 @@
 //! Default parameters for Author and Subscriber types.
 
+use iota_mam_app::{message::*, transport::tangle::*};
 use iota_mam_protobuf3::types::DefaultLinkStore;
-use crate::core::*;
-use crate::core::transport::tangle::*;
-use super::*;
 
 /// Link type.
 pub type Address = TangleAddress;
@@ -22,6 +20,8 @@ pub enum MsgInfo {
     Keyload,
     SignedPacket,
     TaggedPacket,
+    Subscribe,
+    Unsubscribe,
 }
 
 /// Link Store.

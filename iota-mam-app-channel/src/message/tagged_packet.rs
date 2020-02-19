@@ -23,18 +23,16 @@
 //! * `mac` -- MAC of the message.
 //!
 
-use failure::bail;
-
+use failure::Fallible;
+use iota_mam_app::message::{self, HasLink};
 use iota_mam_core::spongos;
 use iota_mam_protobuf3::{command::*, io, types::*};
-use crate::Result;
-use crate::core::HasLink;
-use crate::core::msg;
 
 /// Type of `TaggedPacket` message content.
 pub const TYPE: &str = "MAM9CHANNEL9TAGGEDPACKET";
 
-pub struct ContentWrap<'a, Link> where
+pub struct ContentWrap<'a, Link>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: 'a,
 {
@@ -44,34 +42,35 @@ pub struct ContentWrap<'a, Link> where
     pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, Link, Store> msg::ContentWrap<Store> for ContentWrap<'a, Link> where
+impl<'a, Link, Store> message::ContentWrap<Store> for ContentWrap<'a, Link>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback,
     Store: LinkStore<<Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Fallible<&'c mut sizeof::Context> {
         let store = EmptyLinkStore::<<Link as HasLink>::Rel, ()>::default();
         let mac = Mac(spongos::MAC_SIZE);
-        ctx
-            .join(&store, self.link)?
+        ctx.join(&store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
-            .squeeze(&mac)?
-        ;
+            .squeeze(&mac)?;
         //TODO: Is bot public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream>(&self, store: &Store, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
+    fn wrap<'c, OS: io::OStream>(
+        &self,
+        store: &Store,
+        ctx: &'c mut wrap::Context<OS>,
+    ) -> Fallible<&'c mut wrap::Context<OS>> {
         let mac = Mac(spongos::MAC_SIZE);
-        ctx
-            .join(store, self.link)?
+        ctx.join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
-            .squeeze(&mac)?
-        ;
+            .squeeze(&mac)?;
         Ok(ctx)
     }
 }
@@ -83,7 +82,8 @@ pub struct ContentUnwrap<Link: HasLink> {
     pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<Link> ContentUnwrap<Link> where
+impl<Link> ContentUnwrap<Link>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback,
 {
@@ -97,20 +97,23 @@ impl<Link> ContentUnwrap<Link> where
     }
 }
 
-impl<Link, Store> msg::ContentUnwrap<Store> for ContentUnwrap<Link> where
+impl<Link, Store> message::ContentUnwrap<Store> for ContentUnwrap<Link>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback,
     Store: LinkStore<<Link as HasLink>::Rel>,
 {
-    fn unwrap<'c, IS: io::IStream>(&mut self, store: &Store, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
+    fn unwrap<'c, IS: io::IStream>(
+        &mut self,
+        store: &Store,
+        ctx: &'c mut unwrap::Context<IS>,
+    ) -> Fallible<&'c mut unwrap::Context<IS>> {
         let mac = Mac(spongos::MAC_SIZE);
-        ctx
-            .join(store, &mut self.link)?
+        ctx.join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
             .commit()?
-            .squeeze(&mac)?
-        ;
+            .squeeze(&mac)?;
         Ok(ctx)
     }
 }

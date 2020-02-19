@@ -27,18 +27,16 @@
 //! * `sig` -- message signature generated with one of channel owner's private key.
 //!
 
-use failure::bail;
-
-use iota_mam_core::{signature::mss, key_encapsulation::ntru, psk, prng};
+use failure::Fallible;
+use iota_mam_app::message::{self, HasLink};
+use iota_mam_core::signature::mss;
 use iota_mam_protobuf3::{command::*, io, types::*};
-use crate::Result;
-use crate::core::HasLink;
-use crate::core::msg;
 
 /// Type of `SignedPacket` message content.
 pub const TYPE: &str = "MAM9CHANNEL9SIGNEDPACKET";
 
-pub struct ContentWrap<'a, Link> where
+pub struct ContentWrap<'a, Link>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: 'a,
 {
@@ -49,30 +47,31 @@ pub struct ContentWrap<'a, Link> where
     pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, Link, Store> msg::ContentWrap<Store> for ContentWrap<'a, Link> where
+impl<'a, Link, Store> message::ContentWrap<Store> for ContentWrap<'a, Link>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback,
     Store: LinkStore<<Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Fallible<&'c mut sizeof::Context> {
         let store = EmptyLinkStore::<<Link as HasLink>::Rel, ()>::default();
-        ctx
-            .join(&store, self.link)?
+        ctx.join(&store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            .mssig(self.mss_sk, MssHashSig)?
-        ;
+            .mssig(self.mss_sk, MssHashSig)?;
         //TODO: Is both public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream>(&self, store: &Store, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
-        ctx
-            .join(store, self.link)?
+    fn wrap<'c, OS: io::OStream>(
+        &self,
+        store: &Store,
+        ctx: &'c mut wrap::Context<OS>,
+    ) -> Fallible<&'c mut wrap::Context<OS>> {
+        ctx.join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            .mssig(self.mss_sk, MssHashSig)?
-        ;
+            .mssig(self.mss_sk, MssHashSig)?;
         Ok(ctx)
     }
 }
@@ -85,7 +84,8 @@ pub struct ContentUnwrap<Link: HasLink> {
     pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<Link> ContentUnwrap<Link> where
+impl<Link> ContentUnwrap<Link>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback,
 {
@@ -100,18 +100,21 @@ impl<Link> ContentUnwrap<Link> where
     }
 }
 
-impl<Link, Store> msg::ContentUnwrap<Store> for ContentUnwrap<Link> where
+impl<Link, Store> message::ContentUnwrap<Store> for ContentUnwrap<Link>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback,
     Store: LinkStore<<Link as HasLink>::Rel>,
 {
-    fn unwrap<'c, IS: io::IStream>(&mut self, store: &Store, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
-        ctx
-            .join(store, &mut self.link)?
+    fn unwrap<'c, IS: io::IStream>(
+        &mut self,
+        store: &Store,
+        ctx: &'c mut unwrap::Context<IS>,
+    ) -> Fallible<&'c mut unwrap::Context<IS>> {
+        ctx.join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
-            .mssig(&mut self.mss_pk, MssHashSig)?
-        ;
+            .mssig(&mut self.mss_pk, MssHashSig)?;
         Ok(ctx)
     }
 }

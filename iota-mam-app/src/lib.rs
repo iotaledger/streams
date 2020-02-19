@@ -22,13 +22,8 @@
 //! messages of your Application. And when Protobuf3 is not powerful enough,
 //! it can be extended with custom commands.
 
-#![allow(warnings)]
+/// MAM Message definitions and utils for wrapping/unwrapping.
+pub mod message;
 
-/// MAM core definitions.
-pub mod core;
-
-/// MAM Channel Application.
-pub mod channel;
-
-/// Result type of computations that can fail.
-pub use iota_mam_protobuf3::Result;
+/// Transport-related abstractions.
+pub mod transport;

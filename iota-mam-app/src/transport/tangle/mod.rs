@@ -1,18 +1,52 @@
 //! Tangle-specific transport definitions.
 
+use chrono::Utc;
+use failure::Fallible;
 use std::convert::AsRef;
 use std::hash;
 use std::string::ToString;
 
 use iota_mam_core::{signature::mss, trits::Trits};
-use iota_mam_protobuf3::{command::*, types::*, io};
+use iota_mam_protobuf3::{command::*, io, types::*};
 
-use crate::core::*;
+use crate::message::*;
+
+pub struct TangleMessage {
+    /// Encapsulated trinary encoded message.
+    pub trinary_message: TrinaryMessage<TangleAddress>,
+
+    /// Timestamp is not an intrinsic part of MAM message; it's a part of the bundle.
+    /// Timestamp is checked with Kerl as part of bundle essense trits.
+    pub timestamp: i64,
+}
+
+impl TangleMessage {
+    /// Create TangleMessage from TrinaryMessage and add the current timestamp.
+    pub fn new(msg: TrinaryMessage<TangleAddress>) -> Self {
+        Self {
+            trinary_message: msg,
+            timestamp: Utc::now().timestamp_millis(),
+        }
+    }
+    /// Create TangleMessage from TrinaryMessage and an explicit timestamp.
+    pub fn with_timestamp(msg: TrinaryMessage<TangleAddress>, timestamp: i64) -> Self {
+        Self {
+            trinary_message: msg,
+            timestamp,
+        }
+    }
+}
 
 #[derive(PartialEq, Eq, Clone, Debug, Default)]
 pub struct TangleAddress {
-    appinst: AppInst,
-    msgid: MsgId,
+    pub appinst: AppInst,
+    pub msgid: MsgId,
+}
+
+impl TangleAddress {
+    pub fn new(appinst: AppInst, msgid: MsgId) -> Self {
+        Self { appinst, msgid }
+    }
 }
 
 impl hash::Hash for TangleAddress {
@@ -48,26 +82,25 @@ pub struct DefaultTangleLinkGenerator {
 }
 
 impl DefaultTangleLinkGenerator {
-    fn try_gen_msgid(&self, msgid: &MsgId) -> Result<MsgId> {
+    fn try_gen_msgid(&self, msgid: &MsgId) -> Fallible<MsgId> {
         let mut new = MsgId::default();
         wrap::Context::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
             .absorb(External(&msgid.id))?
             .absorb(External(Size(self.counter)))?
             .commit()?
-            .squeeze(External(&mut new.id))?
-            ;
+            .squeeze(External(&mut new.id))?;
         Ok(new)
     }
     fn gen_msgid(&self, msgid: &MsgId) -> MsgId {
-        self.try_gen_msgid(msgid).map_or(MsgId::default(), |x|x)
+        self.try_gen_msgid(msgid).map_or(MsgId::default(), |x| x)
     }
 }
 
 impl LinkGenerator<TangleAddress, mss::PublicKey> for DefaultTangleLinkGenerator {
     fn link_from(&mut self, mss_pk: &mss::PublicKey) -> TangleAddress {
-        debug_assert_eq!(mss::PK_SIZE, mss_pk.pk.size());
-        self.appinst.id.0 = mss_pk.pk.clone();
+        debug_assert_eq!(mss::PK_SIZE, mss_pk.trits().size());
+        self.appinst.id.0 = mss_pk.trits().clone();
 
         self.counter += 1;
         TangleAddress {
@@ -87,7 +120,6 @@ impl LinkGenerator<TangleAddress, MsgId> for DefaultTangleLinkGenerator {
     }
 }
 
-
 pub const APPINST_SIZE: usize = 243;
 
 /// Application instance identifier.
@@ -98,7 +130,7 @@ pub struct AppInst {
 }
 
 impl AppInst {
-    pub fn id(&self) -> &Trits {
+    pub fn trits(&self) -> &Trits {
         &self.id.0
     }
 }
@@ -133,16 +165,22 @@ impl hash::Hash for AppInst {
 /// externally of message body, ie. in transaction header fields.
 /// Thus the trait implemntation absorbs appinst+msgid as `external`.
 impl AbsorbExternalFallback for TangleAddress {
-    fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context) -> Result<()> {
-        ctx.absorb(External(&self.appinst.id))?.absorb(External(&self.msgid.id))?;
+    fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context) -> Fallible<()> {
+        ctx.absorb(External(&self.appinst.id))?
+            .absorb(External(&self.msgid.id))?;
         Ok(())
     }
-    fn wrap_absorb_external<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
-        ctx.absorb(External(&self.appinst.id))?.absorb(External(&self.msgid.id))?;
+    fn wrap_absorb_external<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()> {
+        ctx.absorb(External(&self.appinst.id))?
+            .absorb(External(&self.msgid.id))?;
         Ok(())
     }
-    fn unwrap_absorb_external<IS: io::IStream>(&self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
-        ctx.absorb(External(&self.appinst.id))?.absorb(External(&self.msgid.id))?;
+    fn unwrap_absorb_external<IS: io::IStream>(
+        &self,
+        ctx: &mut unwrap::Context<IS>,
+    ) -> Fallible<()> {
+        ctx.absorb(External(&self.appinst.id))?
+            .absorb(External(&self.msgid.id))?;
         Ok(())
     }
 }
@@ -157,7 +195,7 @@ pub struct MsgId {
 }
 
 impl MsgId {
-    pub fn id(&self) -> &Trits {
+    pub fn trits(&self) -> &Trits {
         &self.id.0
     }
 }
@@ -191,18 +229,19 @@ impl hash::Hash for MsgId {
 /// Msgid is used for joinable links which in the trinary stream are simply
 /// encoded (`skip`ped).
 impl SkipFallback for MsgId {
-    fn sizeof_skip(&self, ctx: &mut sizeof::Context) -> Result<()> {
+    fn sizeof_skip(&self, ctx: &mut sizeof::Context) -> Fallible<()> {
         ctx.skip(&self.id)?;
         Ok(())
     }
-    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
+    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()> {
         ctx.skip(&self.id)?;
         Ok(())
     }
-    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
+    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Fallible<()> {
         ctx.skip(&mut self.id)?;
         Ok(())
     }
 }
 
-
+//#[cfg(feature = "tangle")]
+pub mod client;

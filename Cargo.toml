@@ -16,9 +16,15 @@ members = [
     "iota-mam-core",
     "iota-mam-protobuf3",
     "iota-mam-app",
+    "iota-mam-app-channel",
 ]
 
 [dependencies]
 iota-mam-core = { version = "0.1.0", path = "iota-mam-core" }
 iota-mam-protobuf3 = { version = "0.1.0", path = "iota-mam-protobuf3" }
 iota-mam-app = { version = "0.1.0", path = "iota-mam-app" }
+iota-mam-app-channel = { version = "0.1.0", path = "iota-mam-app-channel" }
+
+[patch.crates-io]
+# iota-lib-rs "0.4.0" has an issue with "Content-Type"
+iota-lib-rs = { path = '../iota-lib-rs' }

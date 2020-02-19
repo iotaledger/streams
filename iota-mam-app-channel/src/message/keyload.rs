@@ -51,129 +51,144 @@
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
 
-use failure::bail;
-
-use iota_mam_core::{signature::mss, key_encapsulation::ntru, psk, prng};
+use failure::Fallible;
+use iota_mam_app::message::{self, HasLink};
+use iota_mam_core::{key_encapsulation::ntru, prng, psk};
 use iota_mam_protobuf3::{command::*, io, types::*};
-use crate::Result;
-use crate::core::HasLink;
-use crate::core::msg;
 
 /// Type of `Keyload` message content.
 pub const TYPE: &str = "MAM9CHANNEL9KEYLOAD";
 
 pub struct ContentWrap<'a, Link: HasLink, Psks, NtruPks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) nonce: NTrytes,
-    pub(crate) key: NTrytes,
+    pub nonce: NTrytes,
+    pub key: NTrytes,
     pub(crate) psks: Psks,
     pub(crate) prng: &'a prng::PRNG,
     pub(crate) ntru_pks: NtruPks,
     pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, Link, Store, Psks, NtruPks> msg::ContentWrap<Store> for ContentWrap<'a, Link, Psks, NtruPks> where
+impl<'a, Link, Store, Psks, NtruPks> message::ContentWrap<Store>
+    for ContentWrap<'a, Link, Psks, NtruPks>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback,
     Store: LinkStore<<Link as HasLink>::Rel>,
-    Psks: Clone + ExactSizeIterator<Item = (&'a psk::PskId, &'a psk::Psk)>,
-    NtruPks: Clone + ExactSizeIterator<Item = (&'a ntru::Pkid, &'a ntru::PublicKey)>,
+    Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
+    NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a>>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Fallible<&'c mut sizeof::Context> {
         let store = EmptyLinkStore::<<Link as HasLink>::Rel, ()>::default();
         let repeated_psks = Size(self.psks.len());
         let repeated_ntru_pks = Size(self.ntru_pks.len());
-        ctx
-            .join(&store, self.link)?
+        ctx.join(&store, self.link)?
             .absorb(&self.nonce)?
             .skip(repeated_psks)?
-            .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
+            .repeated(self.psks.clone(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx
-                        .mask(&NTrytes(pskid.clone()))?
+                    ctx.mask(&NTrytes(pskid.clone()))?
                         .absorb(External(&NTrytes(psk.clone())))?
                         .commit()?
                         .mask(&self.key)
                 })
             })?
             .skip(repeated_ntru_pks)?
-            .repeated(self.ntru_pks.clone().into_iter(), |ctx, (ntru_pkid, ntru_pk)| {
+            .repeated(self.ntru_pks.clone(), |ctx, ntru_pk| {
                 ctx.fork(|ctx| {
-                    ctx
-                        .mask(&NTrytes(ntru_pkid.clone()))?
+                    ctx.mask(&NTrytes(ntru_pk.get_pkid().0))?
                         .ntrukem(ntru_pk, &self.key)
                 })
             })?
             .absorb(External(&self.key))?
-            .commit()?
-        ;
+            .commit()?;
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream>(&self, store: &Store, ctx: &'c mut wrap::Context<OS>) -> Result<&'c mut wrap::Context<OS>> {
+    fn wrap<'c, OS: io::OStream>(
+        &self,
+        store: &Store,
+        ctx: &'c mut wrap::Context<OS>,
+    ) -> Fallible<&'c mut wrap::Context<OS>> {
         let repeated_psks = Size(self.psks.len());
         let repeated_ntru_pks = Size(self.ntru_pks.len());
-        ctx
-            .join(store, self.link)?
+        ctx.join(store, self.link)?
             .absorb(&self.nonce)?
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx
-                        .mask(&NTrytes(pskid.clone()))?
+                    ctx.mask(&NTrytes(pskid.clone()))?
                         .absorb(External(&NTrytes(psk.clone())))?
                         .commit()?
                         .mask(&self.key)
                 })
             })?
             .skip(repeated_ntru_pks)?
-            .repeated(self.ntru_pks.clone().into_iter(), |ctx, (ntru_pkid, ntru_pk)| {
+            .repeated(self.ntru_pks.clone().into_iter(), |ctx, ntru_pk| {
                 ctx.fork(|ctx| {
-                    ctx
-                        .mask(&NTrytes(ntru_pkid.clone()))?
+                    ctx.mask(&NTrytes(ntru_pk.get_pkid().0))?
                         .ntrukem((ntru_pk, self.prng, &self.nonce.0), &self.key)
                 })
             })?
             .absorb(External(&self.key))?
-            .commit()?
-        ;
+            .commit()?;
         Ok(ctx)
     }
 }
 
-pub struct ContentUnwrap<Link: HasLink, LookupPsk, LookupNtruSk> {
-    pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) nonce: NTrytes,
+//This whole mess with `'a` and `LookupArg: 'a` is needed in order to allow `LookupPsk`
+//and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
+pub struct ContentUnwrap<'a, Link: HasLink, LookupArg: 'a, LookupPsk, LookupNtruSk> {
+    pub link: <Link as HasLink>::Rel,
+    pub nonce: NTrytes,
+    pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
     pub(crate) lookup_ntru_sk: LookupNtruSk,
-    pub(crate) key: NTrytes,
+    pub key: NTrytes,
+    _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<Link, LookupPsk, LookupNtruSk> ContentUnwrap<Link, LookupPsk, LookupNtruSk> where
+impl<'a, Link, LookupArg, LookupPsk, LookupNtruSk>
+    ContentUnwrap<'a, Link, LookupArg, LookupPsk, LookupNtruSk>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback,
-    LookupPsk: for<'a> Fn(&'a psk::PskId) -> Option<&'a psk::Psk>,
-    LookupNtruSk: for<'a> Fn(&'a ntru::Pkid) -> Option<&'a ntru::PrivateKey>,
+    LookupArg: 'a,
+    LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
+    LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid) -> Option<&'b ntru::PrivateKey>,
 {
-    pub fn new(lookup_psk: LookupPsk, lookup_ntru_sk: LookupNtruSk) -> Self {
+    pub fn new(
+        lookup_arg: &'a LookupArg,
+        lookup_psk: LookupPsk,
+        lookup_ntru_sk: LookupNtruSk,
+    ) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NTrytes::zero(27 * 3), //TODO: spongos::NONCE_SIZE?
-            lookup_psk: lookup_psk,
-            lookup_ntru_sk: lookup_ntru_sk,
+            lookup_arg,
+            lookup_psk,
+            lookup_ntru_sk,
             key: NTrytes::zero(ntru::KEY_SIZE),
+            _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<Link, Store, LookupPsk, LookupNtruSk> msg::ContentUnwrap<Store> for ContentUnwrap<Link, LookupPsk, LookupNtruSk> where
+impl<'a, Link, Store, LookupArg, LookupPsk, LookupNtruSk> message::ContentUnwrap<Store>
+    for ContentUnwrap<'a, Link, LookupArg, LookupPsk, LookupNtruSk>
+where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback,
     Store: LinkStore<<Link as HasLink>::Rel>,
-    LookupPsk: for<'a> Fn(&'a psk::PskId) -> Option<&'a psk::Psk>,
-    LookupNtruSk: for<'a> Fn(&'a ntru::Pkid) -> Option<&'a ntru::PrivateKey>,
+    LookupArg: 'a,
+    LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
+    LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid) -> Option<&'b ntru::PrivateKey>,
 {
-    fn unwrap<'c, IS: io::IStream>(&mut self, store: &Store, ctx: &'c mut unwrap::Context<IS>) -> Result<&'c mut unwrap::Context<IS>> {
+    fn unwrap<'c, IS: io::IStream>(
+        &mut self,
+        store: &Store,
+        ctx: &'c mut unwrap::Context<IS>,
+    ) -> Fallible<&'c mut unwrap::Context<IS>> {
         let mut repeated_psks = Size(0);
         let mut repeated_ntru_pks = Size(0);
         let mut pskid = NTrytes::zero(psk::PSKID_SIZE);
@@ -181,20 +196,17 @@ impl<Link, Store, LookupPsk, LookupNtruSk> msg::ContentUnwrap<Store> for Content
         let mut ntru_pkid = NTrytes::zero(ntru::PKID_SIZE);
         let mut key_found = false;
 
-        ctx
-            .join(store, &mut self.link)?
+        ctx.join(store, &mut self.link)?
             .absorb(&mut self.nonce)?
             .skip(&mut repeated_psks)?
             .repeated(repeated_psks, |ctx| {
                 if !key_found {
                     ctx.fork(|ctx| {
                         ctx.mask(&mut pskid)?;
-                        if let Some(psk) = (self.lookup_psk)(&pskid.0) {
-                            ctx
-                                .absorb(External(&NTrytes(psk.clone())))? //TODO: Get rid off clone()
+                        if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid.0) {
+                            ctx.absorb(External(&NTrytes(psk.clone())))? //TODO: Get rid off clone()
                                 .commit()?
-                                .mask(&mut self.key)?
-                            ;
+                                .mask(&mut self.key)?;
                             key_found = true;
                             Ok(ctx)
                         } else {
@@ -214,7 +226,9 @@ impl<Link, Store, LookupPsk, LookupNtruSk> msg::ContentUnwrap<Store> for Content
                 if !key_found {
                     ctx.fork(|ctx| {
                         ctx.mask(&mut ntru_pkid)?;
-                        if let Some(ntru_sk) = (self.lookup_ntru_sk)(&ntru_pkid.0) {
+                        if let Some(ntru_sk) =
+                            (self.lookup_ntru_sk)(self.lookup_arg, ntru_pkid.0.as_ref())
+                        {
                             ctx.ntrukem(ntru_sk, &mut self.key)?;
                             key_found = true;
                             Ok(ctx)
@@ -231,8 +245,7 @@ impl<Link, Store, LookupPsk, LookupNtruSk> msg::ContentUnwrap<Store> for Content
                 }
             })?
             .absorb(External(&self.key))?
-            .commit()?
-        ;
+            .commit()?;
         Ok(ctx)
     }
 }
