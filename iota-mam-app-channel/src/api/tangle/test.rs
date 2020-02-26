@@ -1,4 +1,4 @@
-use super::{author::Author, subscriber::Subscriber};
+use super::{Author, Subscriber};
 use crate::message;
 use failure::{ensure, Fallible};
 use iota_mam_app::message::HasLink;

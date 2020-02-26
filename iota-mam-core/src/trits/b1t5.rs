@@ -7,13 +7,13 @@ use super::{defs::*, word::*};
 pub struct B1T5(u8);
 
 impl B1T5 {
-    fn to_trits(self) -> [Trit; 5] {
+    pub fn to_trits(self) -> [Trit; 5] {
         let mut ts: [Trit; 5] = [Trit(0); 5];
         Self::unsafe_word_to_trits(self, ts.as_mut_ptr() as *mut u8);
         ts
     }
 
-    fn from_trits(ts: &[Trit; 5]) -> Self {
+    pub fn from_trits(ts: &[Trit; 5]) -> Self {
         Self::unsafe_word_from_trits(ts.as_ptr() as *const u8)
     }
 }

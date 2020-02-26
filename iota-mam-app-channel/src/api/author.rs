@@ -1,4 +1,4 @@
-use failure::{bail, Fallible};
+use failure::{bail, Fallible, ensure};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
@@ -354,6 +354,7 @@ where
             >,
         >,
     > {
+        ensure!(self.appinst.base() == preparsed.header.link.base(), "Message sent to another channel instance.");
         let content = keyload::ContentUnwrap::<
             'b,
             Link,
@@ -370,9 +371,11 @@ where
         preparsed: PreparsedMessage<'a, Link>,
         info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
-        let content = self
+        let _content = self
             .unwrap_keyload(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
+        // Unwrapped nonce and key in content are not used explicitly.
+        // The resulting spongos state is joined into a protected message state.
         Ok(())
     }
 
@@ -380,7 +383,8 @@ where
         &self,
         preparsed: PreparsedMessage<'a, Link>,
     ) -> Fallible<UnwrappedMessage<Link, tagged_packet::ContentUnwrap<Link>>> {
-        let mut content = tagged_packet::ContentUnwrap::new();
+        ensure!(self.appinst.base() == preparsed.header.link.base(), "Message sent to another channel instance.");
+        let content = tagged_packet::ContentUnwrap::new();
         preparsed.unwrap(&*self.store.borrow(), content)
     }
 
@@ -400,8 +404,9 @@ where
         &self,
         preparsed: PreparsedMessage<'a, Link>,
     ) -> Fallible<UnwrappedMessage<Link, subscribe::ContentUnwrap<Link>>> {
+        ensure!(self.appinst.base() == preparsed.header.link.base(), "Message sent to another channel instance.");
         if let Some((own_ntru_sk, _)) = &self.opt_ntru {
-            let mut content = subscribe::ContentUnwrap::new(own_ntru_sk);
+            let content = subscribe::ContentUnwrap::new(own_ntru_sk);
             preparsed.unwrap(&*self.store.borrow(), content)
         } else {
             bail!("Author doesn't have NTRU key pair.")
@@ -417,6 +422,10 @@ where
         let content = self
             .unwrap_subscribe(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
+        //TODO: trust content.subscriber_ntru_pk and add to the list of subscribers only if trusted.
+        let subscriber_ntru_pk = content.subscriber_ntru_pk;
+        self.ntru_pks.insert(subscriber_ntru_pk);
+        // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }
 
@@ -424,7 +433,8 @@ where
         &self,
         preparsed: PreparsedMessage<'a, Link>,
     ) -> Fallible<UnwrappedMessage<Link, unsubscribe::ContentUnwrap<Link>>> {
-        let mut content = unsubscribe::ContentUnwrap::new();
+        ensure!(self.appinst.base() == preparsed.header.link.base(), "Message sent to another channel instance.");
+        let content = unsubscribe::ContentUnwrap::new();
         preparsed.unwrap(&*self.store.borrow(), content)
     }
 
@@ -434,7 +444,8 @@ where
         preparsed: PreparsedMessage<'a, Link>,
         info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
-        let content = self
+        ensure!(self.appinst.base() == preparsed.header.link.base(), "Message sent to another channel instance.");
+        let _content = self
             .unwrap_unsubscribe(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
         Ok(())
@@ -447,6 +458,7 @@ where
         info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
         let preparsed = msg.parse_header()?;
+        ensure!(self.appinst.base() == preparsed.header.link.base(), "Message sent to another channel instance.");
 
         //TODO: Validate appinst.
         if preparsed.check_content_type(tagged_packet::TYPE) {

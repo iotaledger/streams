@@ -267,8 +267,8 @@ pub fn parse_skn(t: TritSlice) -> Option<(Trint6, Trint18)> {
     t.drop(4).copy(ts.slice_mut().take(14));
     let skn = ts.slice().get18();
 
-    if Trint6(0) <= dbg!(height)
-        && Trint18(0) <= dbg!(skn)
+    if Trint6(0) <= height
+        && Trint18(0) <= skn
         && (skn.0 as usize) < max_idx(height.0 as usize)
     {
         Some((height, skn))

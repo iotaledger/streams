@@ -1,5 +1,5 @@
 use failure::{bail, ensure, Fallible};
-use std::convert::{TryFrom, TryInto};
+use std::convert::{TryInto};
 use std::str::FromStr;
 
 use iota_mam_core::key_encapsulation::ntru;
@@ -167,7 +167,7 @@ fn absorb_mask_squeeze_trytes_mac() -> Fallible<()> {
                 .squeeze(&tag_wrap)?;
             ctx.get_size()
         };
-        let mut buf = Trits::zero(dbg!(buf_size));
+        let mut buf = Trits::zero(buf_size);
 
         {
             let mut ctx = wrap::Context::new(buf.slice_mut());
@@ -250,7 +250,7 @@ fn mssig_traverse() -> Fallible<()> {
                 ctx.get_size()
             };
 
-            let mut buf = Trits::zero(dbg!(buf_size));
+            let mut buf = Trits::zero(buf_size);
             {
                 let mut ctx = wrap::Context::new(buf.slice_mut());
                 ctx.absorb(&payload)?
@@ -510,7 +510,7 @@ fn run_join_link() -> Fallible<()> {
     store.update(&TestRelLink(Trint3(3)), Spongos::init(), TestMessageInfo(0))?;
 
     let buf_size = msg.size(&store).unwrap();
-    let mut buf = Trits::zero(dbg!(buf_size));
+    let mut buf = Trits::zero(buf_size);
 
     {
         let mut wrap_ctx = wrap::Context::new(buf.slice_mut());

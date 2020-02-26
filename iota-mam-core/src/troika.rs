@@ -490,7 +490,7 @@ impl Troika {
         for col in 0..COLUMNS {
             let mut col_sum = T27::zero();
             let mut idx = col;
-            for row in 0..ROWS {
+            for _row in 0..ROWS {
                 col_sum = col_sum.add(&self.state[idx]);
                 idx += COLUMNS;
             }
@@ -504,7 +504,7 @@ impl Troika {
             let t2 = parity[col + 2].roll(SLICES - 1);
             let sum_to_add = t1.add(&t2);
             let mut idx = col;
-            for row in 0..ROWS {
+            for _row in 0..ROWS {
                 self.state[idx] = self.state[idx].add(&sum_to_add);
                 idx += COLUMNS;
             }

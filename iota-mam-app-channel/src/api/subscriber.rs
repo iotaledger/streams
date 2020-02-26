@@ -72,7 +72,8 @@ where
         with_ntru: bool,
     ) -> Self {
         let opt_ntru = if with_ntru {
-            let ntru_nonce = Trits::from_str("NTRUNONCE").unwrap();
+            //TODO: Derive ntru nonce.
+            let ntru_nonce = &Trits::from_str("NTRUNONCE").unwrap() + nonce;
             let key_pair = ntru::gen(&prng, ntru_nonce.slice());
             Some(key_pair)
         } else {
@@ -377,9 +378,11 @@ where
         preparsed: PreparsedMessage<'a, Link>,
         info: <Store as LinkStore<<Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
-        let content = self
+        let _content = self
             .unwrap_keyload(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
+        // Unwrapped nonce and key in content are not used explicitly.
+        // The resulting spongos state is joined into a protected message state.
         Ok(())
     }
 

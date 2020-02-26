@@ -192,7 +192,6 @@ where
         let mut repeated_psks = Size(0);
         let mut repeated_ntru_pks = Size(0);
         let mut pskid = NTrytes::zero(psk::PSKID_SIZE);
-        let mut psk = NTrytes::zero(psk::PSK_SIZE);
         let mut ntru_pkid = NTrytes::zero(ntru::PKID_SIZE);
         let mut key_found = false;
 

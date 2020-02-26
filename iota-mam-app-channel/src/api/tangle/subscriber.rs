@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use super::*;
 use crate::api::subscriber::*;
-use iota_mam_app::message::*;
 use iota_mam_core::{key_encapsulation::ntru, prng, signature::mss, trits::Trits};
 use iota_mam_protobuf3::types::Trytes;
 

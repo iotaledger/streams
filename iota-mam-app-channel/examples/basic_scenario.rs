@@ -1,7 +1,7 @@
 use failure::{ensure, Fallible};
 use iota_mam_app::message::HasLink;
 use iota_mam_app_channel::{
-    api::tangle::{author::Author, subscriber::Subscriber},
+    api::tangle::{Author, Subscriber},
     message,
 };
 use iota_mam_core::trits::Trits;

@@ -11,7 +11,6 @@ The library is in the beta stage and the API is likely to change.
 |:----|
 | [MAM v1.1](#overview)|
 | [Prerequisites](#prerequisites)|
-| [Using the library](#installing-the-library)|
 | [Getting started](#getting-started)|
 | [API reference](#api-reference)
 | [Examples](#examples)|
@@ -29,16 +28,47 @@ To use the library, we recommend update your Rust to latest stable version [`rus
 
 `no_std` is not currently supported.
 
-## Using the library
+## Getting started
 
-Using the library is fairly easy, just add it as dependancy in `Cargo.toml`:
+To use the library in your crate you need to add it as a dependancy in `Cargo.toml`, as it's not on [crates.io](https://crates.io/) it must be added from git repository:
 
 ```
 [dependencies]
-iota-mam = "0.1"
+iota-mam = { git = "https://github.com/semenov-vladyslav/iota_mam" }
 ```
 
-## Getting started
+Or you can clone the repository locally:
+
+```
+git clone https://github.com/semenov-vladyslav/iota_mam
+```
+
+and add a dependency in `Cargo.toml` in the following way:
+
+```
+[dependencies]
+iota-mam = { version = "0.1", path = "../iota_mam" }
+```
+
+Optionally, you can run tests in the whole `iota-mam` project:
+
+```
+cd iota_mam/
+cargo test --all
+```
+
+Now you can use the MAM Channel Application in your code like this:
+
+```
+use iota_mam::channel::api::tangle::{Author, Subscriber};
+
+fn main() {
+    let mut author = Author::new("AUTHORSSEED", 3, false);
+    let mut subscriber = Subscriber::new("SUBSCRIBERSSEED", false);
+}
+```
+
+For a more comprehensive example of using the MAM Channel Application can be found [here](iota-mam-app-channel/examples/basic_scenario.rs).
 
 ## API reference
 
@@ -49,7 +79,7 @@ cargo doc --open
 
 ## Examples
 
-Examples of using Channel Application can be found [here](iota-mam-app/examples).
+Examples of using Channel Application can be found [here](iota-mam-app-channel/examples).
 
 ## License
 

@@ -27,7 +27,11 @@ pub enum MsgInfo {
 /// Link Store.
 pub type Store = DefaultLinkStore<MsgId, MsgInfo>;
 
-pub mod author;
-pub mod subscriber;
+mod author;
+mod subscriber;
+
+pub use author::Author;
+pub use subscriber::Subscriber;
+
 #[cfg(test)]
 mod test;

@@ -1,6 +1,6 @@
 use iota_mam_app::message::{HasLink, LinkGenerator};
 use iota_mam_app::transport::tangle::{DefaultTangleLinkGenerator, TangleAddress};
-use iota_mam_core::{key_encapsulation::ntru, signature::mss};
+use iota_mam_core::{signature::mss};
 
 pub trait ChannelLinkGenerator<Link>
 where

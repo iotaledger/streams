@@ -15,10 +15,6 @@ path = "src/lib.rs"
 [dependencies]
 iota-mam-core = { version = "0.1.0", path = "../iota-mam-core" }
 iota-mam-protobuf3 = { version = "0.1.0", path = "../iota-mam-protobuf3" }
-iota-lib-rs = { version = "0.4" }
+iota-lib-rs = { version = "^0.4.1" }
 chrono = "0.4"
 failure = "0.1"
-
-#[features]
-# Enable transport of MAM messages over the IOTA Tangle.
-#tangle = ["iota-lib-rs"]

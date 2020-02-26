@@ -105,17 +105,6 @@ fn make_txs(
     txs
 }
 
-fn msg_chunks(msg: &Trits) -> Vec<String> {
-    let msg_part_size = 6561;
-    let mut parts = Vec::new();
-    let mut m = msg.slice();
-    while !m.is_empty() {
-        parts.push(pad_trits(msg_part_size, m).to_str());
-        m = m.drop_min(msg_part_size);
-    }
-    parts
-}
-
 /// Convert bundle to a list of tryte string for each transaction in the bundle.
 /// The list is suitable for client's `send_trytes`.
 ///
