@@ -4,7 +4,7 @@ use std::fmt;
 use std::ops;
 use std::result;
 
-use crate::trits::*;
+use crate::tbits::{trinary::*, *};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
 pub struct PolyCoeff(pub u16);
@@ -169,7 +169,7 @@ fn coeff_inv(a: PolyCoeff) -> PolyCoeff {
 
     debug_assert!(0 != a.0);
     debug_assert!(Q == ((3 * (1 << 12)) + 1));
-    /* q-2 = 10111111111111b */
+    // q-2 = 10111111111111b
 
     for _ in 0..11 {
         t = e * e;
@@ -230,7 +230,9 @@ impl Poly {
             self.coeffs[i] = self.coeffs[i] + g.coeffs[i];
         }
     }
-    pub fn add_small(&mut self, mut t: TritSlice) {
+    pub fn add_small<TW>(&mut self, mut t: TbitSliceT<TW>) where
+        TW: TritWord,
+    {
         assert!(t.size() == N);
 
         for i in 0..N {
@@ -243,7 +245,9 @@ impl Poly {
             self.coeffs[i] = self.coeffs[i] - g.coeffs[i];
         }
     }
-    pub fn sub_small(&mut self, mut t: TritSlice) {
+    pub fn sub_small<TW>(&mut self, mut t: TbitSliceT<TW>) where
+        TW: TritWord,
+    {
         assert!(t.size() == N);
 
         for i in 0..N {
@@ -282,7 +286,7 @@ impl Poly {
         for i in (0..N_LOG).rev() {
             for j in 0..N / 2 {
                 let r = j & !(((1 as usize) << i) - 1);
-                /*r = j - (j % (1 << i));*/
+                //r = j - (j % (1 << i));
 
                 let c = u.coeffs[j + j];
                 let d = u.coeffs[j + j + 1] * gamma_exp(r + r);
@@ -312,7 +316,7 @@ impl Poly {
         for i in (0..N_LOG).rev() {
             for j in 0..N / 2 {
                 let r = j & !(((1 as usize) << i) - 1);
-                /*r = j - (j % (1 << i));*/
+                //r = j - (j % (1 << i));
 
                 let c = u.coeffs[j + j];
                 let d = u.coeffs[j + j + 1] * gamma_exp(2 * N - (r + r));
@@ -331,16 +335,21 @@ impl Poly {
         }
     }
 
-    pub fn round_to_trits(&self, mut t: TritSliceMut) {
+    pub fn round_to_trits<TW>(&self, t: &mut TbitSliceMutT<TW>) where
+        TW: TritWord,
+    {
         assert_eq!(N, t.size());
 
         for i in 0..N {
             let c = Trint9::from(self.coeffs[i]);
             t.put1(mods1(c.0 as i32).0);
-            t = t.drop(1);
+            t.advance(1);
         }
+        //t.pickup_mut(N);
     }
-    pub fn small_from_trits(&mut self, mut t: TritSlice) {
+    pub fn small_from_trits<TW>(&mut self, mut t: TbitSliceT<TW>) where
+        TW: TritWord,
+    {
         assert_eq!(N, t.size());
 
         for i in 0..N {
@@ -348,7 +357,9 @@ impl Poly {
             t = t.drop(1);
         }
     }
-    pub fn from_trits(&mut self, mut t: TritSlice) -> bool {
+    pub fn from_trits<TW>(&mut self, mut t: TbitSliceT<TW>) -> bool where
+        TW: TritWord,
+    {
         assert_eq!(9 * N, t.size());
 
         for i in 0..N {
@@ -361,13 +372,16 @@ impl Poly {
         }
         true
     }
-    pub fn to_trits(&self, mut t: TritSliceMut) {
+    pub fn to_trits<TW>(&self, t: &mut TbitSliceMutT<TW>) where
+        TW: TritWord,
+    {
         assert!(t.size() == 9 * N);
 
         for i in 0..N {
             t.put9(self.coeffs[i].into());
-            t = t.drop(9);
+            t.advance(9);
         }
+        //t.pickup_mut(9 * N);
     }
 
     #[cfg(test)]

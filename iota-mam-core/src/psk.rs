@@ -1,8 +1,9 @@
 //! Pre-shared key is a secret symmetric key shared between two parties and is used for
 //! (session) key exchange.
 
-use crate::trits::Trits;
 use std::collections::HashMap;
+use std::hash;
+use crate::tbits::{word::BasicTbitWord, TbitsT};
 
 /// Size of pre-shared key identifier.
 pub const PSKID_SIZE: usize = 81;
@@ -12,24 +13,28 @@ pub const PSK_SIZE: usize = 243;
 
 /// Type of pre-shared key identifiers: `tryte pskid[27]`.
 //TODO: Introduce NTrytes type in core and make a newtype. Same for Psk, NtruPkid.
-pub type PskId = Trits;
+pub type PskIdT<TW> = TbitsT<TW>;
 
 /// Type of pre-shared keys: `tryte pskid[81]`.
-pub type Psk = Trits;
+pub type PskT<TW> = TbitsT<TW>;
 
 /// Container for pre-shared keys.
-pub type Psks = HashMap<PskId, Psk>;
+pub type PsksT<TW> = HashMap<PskIdT<TW>, PskT<TW>>;
 
 /// Entry in a PSK container, just a convenience type synonym.
-pub type IPsk<'a> = (&'a PskId, &'a Psk);
+pub type IPskT<'a, TW> = (&'a PskIdT<TW>, &'a PskT<TW>);
 
 /// Container (set) of pre-shared key identifiers.
-pub type PskIds = Vec<PskId>;
+pub type PskIdsT<TW> = Vec<PskIdT<TW>>;
 
 /// Select only pre-shared keys with given identifiers.
-pub fn filter_psks<'a>(psks: &'a Psks, pskids: &'_ PskIds) -> Vec<IPsk<'a>> {
+pub fn filter_psks<'a, TW>(psks: &'a PsksT<TW>, pskids: &'_ PskIdsT<TW>) -> Vec<IPskT<'a, TW>>
+where
+    TW: BasicTbitWord,
+    TW::Tbit: hash::Hash,
+{
     pskids
         .iter()
         .filter_map(|pskid| psks.get_key_value(pskid))
-        .collect::<Vec<(&PskId, &Psk)>>()
+        .collect::<Vec<(&PskIdT<TW>, &PskT<TW>)>>()
 }

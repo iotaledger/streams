@@ -1,6 +1,6 @@
-use crate::prng::PRNG;
-use crate::spongos::{hash_data, Spongos};
-use crate::trits::{mods3, Trint9, TritSlice, TritSliceMut, Trits};
+use crate::prng::PRNGT;
+use crate::sponge::spongos::{hash_data, SpongosT, prp::PRP};
+use crate::tbits::{trinary::{util::mods3, Trint9}, TbitSliceT, TbitSliceMutT, TbitsT, SpongosTbitWord};
 
 /// Size of a WOTS public key.
 pub const PK_SIZE: usize = 243;
@@ -26,18 +26,25 @@ pub const SIG_SIZE: usize = SK_SIZE;
 pub const SIGNATURE_SIZE: usize = SIG_SIZE;
 
 /// h := hash_data^n(h)
-fn rehash_data(n: usize, h: TritSliceMut) {
+/*
+fn rehash_data<TW>(n: usize, h: TbitSliceMutT<TW>) {
     for _ in 0..n {
         hash_data(h.as_const(), h);
     }
 }
+ */
 
 /// Generate WOTS secret private key with prng using a unique nonce.
-fn gen_sk(prng: &PRNG, nonces: &[TritSlice], sk: TritSliceMut) {
+fn gen_sk<TW, G>(prng: &PRNGT<TW, G>, nonces: &[TbitSliceT<TW>], sk: TbitSliceMutT<TW>)
+where
+    TW: SpongosTbitWord,
+    G: PRP<TW> + Clone + Default,
+{
     debug_assert_eq!(SK_SIZE, sk.size());
     prng.gens(nonces, sk);
 }
 
+/*
 /// Generate WOTS signature.
 fn sign(mut sk: TritSlice, mut hash: TritSlice, mut sig: TritSliceMut) {
     debug_assert_eq!(SK_SIZE, sk.size());
@@ -198,3 +205,4 @@ mod test {
         //TODO: modify h, s, pk
     }
 }
+ */

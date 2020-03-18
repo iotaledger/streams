@@ -107,6 +107,7 @@ impl iter::Step for Trint3 {
             None
         }
     }
+
     fn replace_one(&mut self) -> Self {
         let this = *self;
         *self = Self(1);
@@ -117,6 +118,7 @@ impl iter::Step for Trint3 {
         *self = Self(0);
         this
     }
+
     fn add_one(&self) -> Self {
         debug_assert!(*self < MAX_TRINT3);
         Self(self.0 + 1)
@@ -125,6 +127,7 @@ impl iter::Step for Trint3 {
         debug_assert!(*self > MIN_TRINT3);
         Self(self.0 - 1)
     }
+
     fn add_usize(&self, n: usize) -> Option<Self> {
         if n < 27 && self.0 + n as i8 <= MAX_TRINT3.0 {
             Some(Self(self.0 + n as i8))
@@ -132,7 +135,6 @@ impl iter::Step for Trint3 {
             None
         }
     }
-
     fn sub_usize(&self, n: usize) -> Option<Self> {
         if n < 27 && self.0 - n as i8 >= MIN_TRINT3.0 {
             Some(Self(self.0 - n as i8))

@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use std::fmt;
 use std::hash;
 
-use crate::prng::PRNG;
-use crate::spongos::Spongos;
-use crate::trits::{TritSlice, TritSliceMut, Trits};
+use crate::prng::Prng;
+use crate::sponge::{prp::{PRP, Troika}, spongos::SpongosT};
+use crate::tbits::{word::{BasicTbitWord, SpongosTbitWord}, trinary::TritWord, TbitSliceT, TbitSliceMutT, TbitsT};
 
 use super::poly::*;
 
@@ -19,7 +19,7 @@ pub const PKID_SIZE: usize = 81;
 pub const SK_SIZE: usize = 1024;
 
 /// NTRU session symmetric key size.
-pub const KEY_SIZE: usize = crate::spongos::KEY_SIZE;
+pub const KEY_SIZE: usize = 243;//crate::spongos::KEY_SIZE;
 
 /// NTRU encrypted key size.
 pub const EKEY_SIZE: usize = 9216;
@@ -52,19 +52,22 @@ fn gen_step(f: &mut Poly, g: &mut Poly, h: &mut Poly) -> bool {
 
 /// Try generate NTRU key pair using `prng` and `nonce`.
 /// In case of success `sk` is private key, `pk` is public key, `f` is `NTT(1+3sk)`, `h` is `NTT(pk)`.
-fn gen_r(
-    prng: &PRNG,
-    nonce: TritSlice,
+fn gen_r<TW, F>(
+    prng: &Prng<TW, F>,
+    nonce: TbitSliceT<TW>,
     f: &mut Poly,
-    sk: TritSliceMut,
+    mut sk: TbitSliceMutT<TW>,
     h: &mut Poly,
-    pk: TritSliceMut,
-) -> bool {
+    mut pk: TbitSliceMutT<TW>,
+) -> bool where
+    TW: TritWord + SpongosTbitWord,
+    F: PRP<TW> + Clone + Default,
+{
     debug_assert_eq!(SK_SIZE, sk.size());
     debug_assert_eq!(PK_SIZE, pk.size());
 
-    let mut i = Trits::zero(81);
-    let mut r = Trits::zero(2 * SK_SIZE);
+    let mut i = TbitsT::zero(81);
+    let mut r = TbitsT::zero(2 * SK_SIZE);
     let mut g = Poly::new();
 
     loop {
@@ -72,15 +75,17 @@ fn gen_r(
             let nonces = [nonce, i.slice()];
             prng.gens(&nonces, r.slice_mut());
         }
-        f.small_from_trits(r.slice().take(SK_SIZE));
-        g.small_from_trits(r.slice().drop(SK_SIZE));
+        let (f_slice, g_slice) = r.slice().split_at(SK_SIZE);
+        f.small_from_trits(f_slice);
+        g.small_from_trits(g_slice);
 
         if gen_step(f, &mut g, h) {
             //h.intt();
             g = *h;
             g.intt();
-            g.to_trits(pk);
-            r.slice().take(SK_SIZE).copy(sk);
+            g.to_trits(&mut pk);
+            //TODO: copy r.slice to sk
+            r.slice().take(SK_SIZE).copy(&mut sk);
             break;
         }
 
@@ -91,45 +96,55 @@ fn gen_r(
     true
 }
 
-fn encr_fo<FO>(h: &Poly, r: TritSliceMut, y: TritSliceMut, fo: FO)
-where
-    FO: FnOnce(TritSlice, TritSliceMut) -> (),
+fn encrypt_with_fo_transform<TW, FO>(h: &Poly, r: &mut TbitSliceMutT<TW>, y: &mut TbitSliceMutT<TW>, fo: FO)
+    where
+    TW: TritWord,
+    FO: FnOnce(TbitSliceT<TW>, &mut TbitSliceMutT<TW>) -> (),
 {
     debug_assert_eq!(SK_SIZE, r.size());
     debug_assert_eq!(EKEY_SIZE, y.size());
 
-    let mut t = Poly::new();
+    unsafe {
+        let mut t = Poly::new();
 
-    // t(x) := r(x)*h(x)
-    t.small_from_trits(r.as_const());
-    t.ntt();
-    t.conv(&h);
-    t.intt();
+        // t(x) := r(x)*h(x)
+        t.small_from_trits(r.as_const());
+        t.ntt();
+        t.conv(&h);
+        t.intt();
 
-    // h(x) = AE(r*h;k)
-    t.to_trits(y);
-    fo(y.as_const(), r);
+        // h(x) = AE(r*h;k)
+        t.to_trits(y);
+        fo(y.as_const(), r);
 
-    // y = r*h + AE(r*h;k)
-    t.add_small(r.as_const());
-    t.to_trits(y);
+        // y = r*h + AE(r*h;k)
+        t.add_small(r.as_const());
+        t.to_trits(y);
+    }
 }
 
 /// Encrypt secret key `k` with NTRU public key `h`, randomness `r` with spongos instance `s` and put the encrypted key into `y`.
-fn encr_r(s: &mut Spongos, h: &Poly, r: TritSliceMut, k: TritSlice, y: TritSliceMut) {
+fn encrypt_with_randomness<TW, F>(s: &mut SpongosT<TW, F>, h: &Poly, r: &mut TbitSliceMutT<TW>, k: TbitSliceT<TW>, y: &mut TbitSliceMutT<TW>)
+    where
+    TW: TritWord + SpongosTbitWord,
+    F: PRP<TW> + Clone + Default,
+{
     debug_assert_eq!(KEY_SIZE, k.size());
-    let fo = |y: TritSlice, r: TritSliceMut| {
+    let fo = |y: TbitSliceT<TW>, r: &mut TbitSliceMutT<TW>| {
         //s.init();
         s.absorb(y);
         s.commit();
-        s.encr(k, r.take(KEY_SIZE));
-        s.squeeze(r.drop(KEY_SIZE));
+        s.encr(k, &mut r.advance(KEY_SIZE));
+        s.squeeze(r);
     };
-    encr_fo(h, r, y, fo);
+    encrypt_with_fo_transform(h, r, y, fo);
 }
 
-/// Create a public key polynomial `h = NTT(pk)` from trits `pk` and check it (for invertibility).
-fn pk_from_trits(pk: TritSlice) -> Option<Poly> {
+/// Create a public key polynomial `h = NTT(pk)` from tbits `pk` and check it (for invertibility).
+fn pk_from_trits<TW>(pk: TbitSliceT<TW>) -> Option<Poly>
+    where
+    TW: TritWord,
+{
     let mut h = Poly::new();
     if h.from_trits(pk) {
         h.ntt();
@@ -144,19 +159,25 @@ fn pk_from_trits(pk: TritSlice) -> Option<Poly> {
 }
 
 /// Encrypt secret key `k` with NTRU public key `pk`, public polynomial `h = NTT(pk)` using `prng`, nonce `n` and spongos instance `s`. Put encrypted key into `y`.
-pub fn encr_pk(
-    s: &mut Spongos,
-    prng: &PRNG,
-    pk: TritSlice,
+pub fn encrypt_with_pk<TW, F, G>(
+    s: &mut SpongosT<TW, F>,
+    prng: &Prng<TW, G>,
+    pk: TbitSliceT<TW>,
     h: &Poly,
-    n: TritSlice,
-    k: TritSlice,
-    y: TritSliceMut,
-) {
+    n: TbitSliceT<TW>,
+    k: TbitSliceT<TW>,
+    y: TbitSliceMutT<TW>,
+)
+    where
+    TW: TritWord + SpongosTbitWord,
+    F: PRP<TW> + Clone + Default,
+    G: PRP<TW> + Clone + Default,
+{
     debug_assert_eq!(PK_SIZE, pk.size());
     debug_assert_eq!(KEY_SIZE, k.size());
     debug_assert_eq!(EKEY_SIZE, y.size());
 
+    /*
     // Reuse `y` slice for randomness.
     let r = y.take(SK_SIZE);
     {
@@ -164,12 +185,15 @@ pub fn encr_pk(
         let nonces = [pk, k, n];
         prng.gens(&nonces, r);
     }
-    encr_r(s, h, r, k, y);
+    encrypt_with_randomness(s, h, &mut r, k, &mut y);
+     */
+    assert!(false, "ntru::encrypt_with_pk not implemented");
 }
 
-fn decr_fo<FO>(f: &Poly, y: TritSlice, fo: FO) -> bool
+fn decrypt_with_fo_transform<TW, FO>(f: &Poly, y: TbitSliceT<TW>, fo: FO) -> bool
 where
-    FO: FnOnce(TritSlice, TritSlice) -> bool,
+    TW: TritWord + SpongosTbitWord,
+    FO: FnOnce(TbitSliceT<TW>, TbitSliceT<TW>) -> bool,
 {
     debug_assert_eq!(EKEY_SIZE, y.size());
 
@@ -186,13 +210,13 @@ where
     r.ntt();
     r.conv(&f);
     r.intt();
-    let mut kt = Trits::zero(SK_SIZE);
-    r.round_to_trits(kt.slice_mut());
+    let mut kt = TbitsT::zero(SK_SIZE);
+    r.round_to_trits(&mut kt.slice_mut());
 
     // t(x) := Y - r(x)
     t.sub_small(kt.slice());
-    let mut rh = Trits::zero(EKEY_SIZE);
-    t.to_trits(rh.slice_mut());
+    let mut rh = TbitsT::zero(EKEY_SIZE);
+    t.to_trits(&mut rh.slice_mut());
 
     // K = AD(rh;kt)
     fo(rh.slice(), kt.slice())
@@ -200,21 +224,29 @@ where
 
 /// Try to decrypt encapsulated key `y` with private polynomial `f` using spongos instance `s`.
 /// In case of success `k` contains decrypted secret key.
-fn decr_r(s: &mut Spongos, f: &Poly, y: TritSlice, k: TritSliceMut) -> bool {
+fn decrypt_with_randomness<TW, F>(s: &mut SpongosT<TW, F>, f: &Poly, y: TbitSliceT<TW>, k: TbitSliceMutT<TW>) -> bool
+    where
+    TW: TritWord + SpongosTbitWord,
+    F: PRP<TW> + Clone + Default,
+{
     debug_assert_eq!(KEY_SIZE, k.size());
-    let fo = |rh: TritSlice, kt: TritSlice| -> bool {
+    let fo = |rh: TbitSliceT<TW>, kt: TbitSliceT<TW>| -> bool {
         //spongos_init(s);
         s.absorb(rh);
         s.commit();
         s.decr(kt.take(KEY_SIZE), k);
         s.squeeze_eq(kt.drop(KEY_SIZE))
     };
-    decr_fo(f, y, fo)
+    decrypt_with_fo_transform(f, y, fo)
 }
 
 /// Try to decrypt encapsulated key `y` with private key `sk` using spongos instance `s`.
 /// In case of success `k` contains decrypted secret key.
-pub fn decr_sk(s: &mut Spongos, sk: TritSlice, y: TritSlice, k: TritSliceMut) -> bool {
+pub fn decrypt_with_sk<TW, F>(s: &mut SpongosT<TW, F>, sk: TbitSliceT<TW>, y: TbitSliceT<TW>, k: TbitSliceMutT<TW>) -> bool
+    where
+    TW: TritWord + SpongosTbitWord,
+    F: PRP<TW> + Clone + Default,
+{
     debug_assert_eq!(SK_SIZE, sk.size());
     debug_assert_eq!(KEY_SIZE, k.size());
     debug_assert_eq!(EKEY_SIZE, y.size());
@@ -227,22 +259,22 @@ pub fn decr_sk(s: &mut Spongos, sk: TritSlice, y: TritSlice, k: TritSliceMut) ->
     f.small3_add1();
     f.ntt();
 
-    decr_r(s, &f, y, k)
+    decrypt_with_randomness(s, &f, y, k)
 }
 
 /// Private key object, contains secret trits `sk` and polynomial `f = NTT(1+3sk)`
 /// which serves as a precomputed value during decryption.
 #[derive(Clone)]
-pub struct PrivateKey {
-    sk: Trits,
+pub struct PrivateKeyT<TW> {
+    sk: TbitsT<TW>,
     f: Poly, // NTT(1+3f)
 }
 
 /// Public key object, contains trinary representation `pk` of public polynomial
 /// as well as it's NTT form in `h`.
 #[derive(Clone)]
-pub struct PublicKey {
-    pk: Trits,
+pub struct PublicKeyT<TW> {
+    pk: TbitsT<TW>,
     h: Poly, // NTT(3g/(1+3f))
 }
 
@@ -251,100 +283,136 @@ pub struct PublicKey {
 /// of public keys. Once public key trits have been deserialized the object must be `validate`d. If the `validate` method returns `false` then the object is invalid.
 /// Otherwise it's valid and can be used for encapsulating secrets.
 //TODO: Introduce PrePublicKey with Default implementation and `fn validate(self) -> Option<PublicKey>`.
-impl Default for PublicKey {
+impl<TW> Default for PublicKeyT<TW>
+    where
+    TW: BasicTbitWord,
+{
     fn default() -> Self {
         Self {
-            pk: Trits::zero(PK_SIZE),
+            pk: TbitsT::zero(PK_SIZE),
             h: Poly::new(),
         }
     }
 }
 
-impl fmt::Display for PublicKey {
+/*
+impl<TW> fmt::Display for PublicKeyT<TW>
+    where
+    TW: TritWord,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.pk)
     }
 }
+ */
 
-impl fmt::Debug for PublicKey {
+impl<TW> fmt::Debug for PublicKeyT<TW>
+    where
+    TW: BasicTbitWord,
+    TW::Tbit: fmt::Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.pk)
     }
 }
 
-impl PartialEq for PublicKey {
+impl<TW> PartialEq for PublicKeyT<TW>
+    where
+    TW: BasicTbitWord,
+{
     fn eq(&self, other: &Self) -> bool {
         self.pk.eq(&other.pk)
     }
 }
-impl Eq for PublicKey {}
+impl<TW> Eq for PublicKeyT<TW>
+    where
+    TW: BasicTbitWord,
+{}
 
 /// Same implementation as for Pkid.
 /// The main property: `pk1 == pk2 => hash(pk1) == hash(pk2)` holds.
-impl hash::Hash for PublicKey {
+impl<TW> hash::Hash for PublicKeyT<TW>
+where
+    TW: BasicTbitWord,
+    TW::Tbit: hash::Hash,
+{
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        (self.trits().slice().take(PKID_SIZE)).hash(state);
+        (self.tbits().slice().take(PKID_SIZE)).hash(state);
     }
 }
 
 /// For types implementing `Borrow` the following statement must be true:
 /// "x.borrow() == y.borrow() should give the same result as x == y".
 /// For `PublicKey` this doesn't hold but with neglegible probability.
-impl Borrow<Pkid> for PublicKey {
-    fn borrow(&self) -> &Pkid {
-        unsafe { std::mem::transmute(self.trits()) }
+impl<TW> Borrow<PkidT<TW>> for PublicKeyT<TW> {
+    fn borrow(&self) -> &PkidT<TW> {
+        unsafe { std::mem::transmute(self.tbits()) }
     }
 }
 
-/// Thin wrapper around Trits which contains either a full public key or the first `PKID_SIZE` of the public key.
-pub struct Pkid(pub Trits);
+/// Thin wrapper around Tbits which contains either a full public key or the first `PKID_SIZE` of the public key.
+pub struct PkidT<TW>(pub TbitsT<TW>);
 
-impl Pkid {
-    pub fn trits(&self) -> &Trits {
+impl<TW> PkidT<TW> {
+    pub fn tbits(&self) -> &TbitsT<TW> {
         &self.0
     }
-    pub fn trits_mut(&mut self) -> &mut Trits {
+    pub fn tbits_mut(&mut self) -> &mut TbitsT<TW> {
         &mut self.0
     }
 }
 
-impl AsRef<Trits> for Pkid {
-    fn as_ref(&self) -> &Trits {
+impl<TW> AsRef<TbitsT<TW>> for PkidT<TW> {
+    fn as_ref(&self) -> &TbitsT<TW> {
         &self.0
     }
 }
 
-impl AsRef<Pkid> for Trits {
-    fn as_ref(&self) -> &Pkid {
+impl<TW> AsRef<PkidT<TW>> for TbitsT<TW> {
+    fn as_ref(&self) -> &PkidT<TW> {
         unsafe { std::mem::transmute(self) }
     }
 }
 
-impl PartialEq for Pkid {
+impl<TW> PartialEq for PkidT<TW>
+where
+    TW: BasicTbitWord,
+{
     fn eq(&self, other: &Self) -> bool {
-        self.trits().slice().take(PKID_SIZE) == other.trits().slice().take(PKID_SIZE)
+        self.tbits().slice().take(PKID_SIZE) == other.tbits().slice().take(PKID_SIZE)
     }
 }
 
-impl Eq for Pkid {}
+impl<TW> Eq for PkidT<TW>
+where
+    TW: BasicTbitWord,
+{}
 
-/// Hash of public key identifier (the first `PKID_SIZE` trits of the public key).
+/// Hash of public key identifier (the first `PKID_SIZE` tbits of the public key).
 /// This is implemented
 /// `k1 == k2 -> hash(k1) == hash(k2)`
-impl hash::Hash for Pkid {
+impl<TW> hash::Hash for PkidT<TW>
+where
+    TW: BasicTbitWord,
+    TW::Tbit: hash::Hash,
+{
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        (self.trits().slice().take(PKID_SIZE)).hash(state);
+        (self.tbits().slice().take(PKID_SIZE)).hash(state);
     }
 }
 
 /// Generate NTRU keypair with `prng` and `nonce`.
-pub fn gen(prng: &PRNG, nonce: TritSlice) -> (PrivateKey, PublicKey) {
-    let mut sk = PrivateKey {
-        sk: Trits::zero(SK_SIZE),
+pub fn gen_keypair<TW, F>(prng: &Prng<TW, F>, nonce: TbitSliceT<TW>) -> (PrivateKeyT<TW>, PublicKeyT<TW>)
+    where
+    TW: TritWord + SpongosTbitWord,
+    F: PRP<TW> + Clone + Default,
+{
+    let mut sk = PrivateKeyT {
+        sk: TbitsT::zero(SK_SIZE),
         f: Poly::new(),
     };
-    let mut pk = PublicKey {
-        pk: Trits::zero(PK_SIZE),
+    let mut pk = PublicKeyT {
+        pk: TbitsT::zero(PK_SIZE),
         h: Poly::new(),
     };
 
@@ -361,52 +429,74 @@ pub fn gen(prng: &PRNG, nonce: TritSlice) -> (PrivateKey, PublicKey) {
     (sk, pk)
 }
 
-impl PrivateKey {
+impl<TW> PrivateKeyT<TW>
+where
+    TW: TritWord + SpongosTbitWord,
+{
     /// Decapsulate secret key `k` from "capsule" `y` with private key `self` using spongos instance `s`.
-    pub fn decr_with_s(&self, s: &mut Spongos, y: TritSlice, k: TritSliceMut) -> bool {
-        decr_sk(s, self.sk.slice(), y, k)
+    pub fn decrypt_with_s<F>(&self, s: &mut SpongosT<TW, F>, y: TbitSliceT<TW>, k: TbitSliceMutT<TW>) -> bool
+        where
+        F: PRP<TW> + Clone + Default,
+    {
+        decrypt_with_sk(s, self.sk.slice(), y, k)
     }
 
     /// Decapsulate secret key `k` from "capsule" `y` with private key `self` using new spongos instance.
-    pub fn decr(&self, y: TritSlice, k: TritSliceMut) -> bool {
-        let mut s = Spongos::init();
-        self.decr_with_s(&mut s, y, k)
+    pub fn decrypt_with_troika(&self, y: TbitSliceT<TW>, k: TbitSliceMutT<TW>) -> bool {
+        let mut s = SpongosT::<TW, Troika>::init();
+        self.decrypt_with_s(&mut s, y, k)
     }
 }
 
-impl PublicKey {
-    /// Public polinomial trits.
-    pub fn trits(&self) -> &Trits {
+impl<TW> PublicKeyT<TW>
+{
+    /// Public polinomial tbits.
+    pub fn tbits(&self) -> &TbitsT<TW> {
         &self.pk
     }
 
-    /// Public polinomial trits, once public key has been modified it must be `validate`d.
-    pub fn trits_mut(&mut self) -> &mut Trits {
+    /// Public polinomial tbits, once public key has been modified it must be `validate`d.
+    pub fn tbits_mut(&mut self) -> &mut TbitsT<TW> {
         &mut self.pk
     }
+}
 
+impl<TW> PublicKeyT<TW>
+where
+    TW: BasicTbitWord,
+{
     /// Returns the actual Pkid value trimmed to PKID_SIZE, not the fake borrowed one.
-    pub fn get_pkid(&self) -> Pkid {
-        Pkid(Trits::from_slice(self.trits().slice().take(PKID_SIZE)))
+    pub fn get_pkid(&self) -> PkidT<TW> {
+        PkidT(TbitsT::from_slice(self.tbits().slice().take(PKID_SIZE)))
     }
 
-    pub fn cmp_pkid(&self, pkid: &Pkid) -> bool {
+    pub fn cmp_pkid(&self, pkid: &PkidT<TW>) -> bool {
         self.pk.size() == PK_SIZE
-            && pkid.trits().size() == PKID_SIZE
-            && self.pk.slice().take(PKID_SIZE) == pkid.trits().slice()
+            && pkid.tbits().size() == PKID_SIZE
+            && self.pk.slice().take(PKID_SIZE) == pkid.tbits().slice()
     }
 
-    /// Return public polinomial trits slice.
-    pub fn slice(&self) -> TritSlice {
+    /// Return public polinomial tbits slice.
+    pub fn slice(&self) -> TbitSliceT<TW> {
         self.pk.slice()
     }
 
-    /// Try to create `PublicKey` object from trits `pk`. Fails in case `pk` has bad size
+    /// Public key identifier -- the first `PKID_SIZE` tbits of the public key.
+    pub fn id(&self) -> TbitSliceT<TW> {
+        self.pk.slice().take(PKID_SIZE)
+    }
+}
+
+impl<TW> PublicKeyT<TW>
+where
+    TW: TritWord,
+{
+    /// Try to create `PublicKey` object from tbits `pk`. Fails in case `pk` has bad size
     /// or corresponding polynomial is not invertible.
-    pub fn from_trits(pk: Trits) -> Option<Self> {
+    pub fn from_trits(pk: TbitsT<TW>) -> Option<Self> {
         if pk.size() == PK_SIZE {
             let h = pk_from_trits(pk.slice())?;
-            Some(PublicKey { pk, h })
+            Some(PublicKeyT { pk, h })
         } else {
             None
         }
@@ -414,11 +504,11 @@ impl PublicKey {
 
     /// Try to create `PublicKey` object from slice `pk`. Fails in case `pk` has bad size
     /// or corresponding polynomial is not invertible.
-    pub fn from_slice(pk: TritSlice) -> Option<Self> {
+    pub fn from_slice(pk: TbitSliceT<TW>) -> Option<Self> {
         if pk.size() == PK_SIZE {
             let h = pk_from_trits(pk)?;
-            Some(PublicKey {
-                pk: Trits::from_slice(pk),
+            Some(PublicKeyT {
+                pk: TbitsT::from_slice(pk),
                 h,
             })
         } else {
@@ -435,91 +525,126 @@ impl PublicKey {
             false
         }
     }
+}
 
-    /// Public key identifier -- the first `PKID_SIZE` trits of the public key.
-    pub fn id(&self) -> TritSlice {
-        self.pk.slice().take(PKID_SIZE)
-    }
-
+impl<TW> PublicKeyT<TW>
+where
+    TW: TritWord + SpongosTbitWord,
+{
     /// Encapsulate key `k` with `prng`, `nonce`, public key `self` using spongos instance `s` and put "capsule" into `y`.
-    pub fn encr_with_s(
+    pub fn encrypt_with_s<F, G>(
         &self,
-        s: &mut Spongos,
-        prng: &PRNG,
-        nonce: TritSlice,
-        k: TritSlice,
-        y: TritSliceMut,
-    ) {
-        encr_pk(s, prng, self.pk.slice(), &self.h, nonce, k, y);
+        s: &mut SpongosT<TW, F>,
+        prng: &Prng<TW, G>,
+        nonce: TbitSliceT<TW>,
+        k: TbitSliceT<TW>,
+        y: TbitSliceMutT<TW>,
+    )
+        where
+        F: PRP<TW> + Clone + Default,
+        G: PRP<TW> + Clone + Default,
+    {
+        encrypt_with_pk(s, prng, self.pk.slice(), &self.h, nonce, k, y);
     }
 
     /// Encapsulate key `k` with `prng`, `nonce`, public key `self` using new spongos instance and put "capsule" into `y`.
-    pub fn encr(&self, prng: &PRNG, nonce: TritSlice, k: TritSlice, y: TritSliceMut) {
-        let mut s = Spongos::init();
-        self.encr_with_s(&mut s, prng, nonce, k, y);
+    pub fn encrypt_with_troika<G>(&self, prng: &Prng<TW, G>, nonce: TbitSliceT<TW>, k: TbitSliceT<TW>, y: TbitSliceMutT<TW>)
+        where
+        G: PRP<TW> + Clone + Default,
+    {
+        let mut s = SpongosT::<TW, Troika>::init();
+        self.encrypt_with_s(&mut s, prng, nonce, k, y);
     }
 }
 
 /// Container for NTRU public keys.
-pub type NtruPks = HashSet<PublicKey>;
+pub type NtruPksT<TW> = HashSet<PublicKeyT<TW>>;
 
 /// Entry in a container, just a convenience type synonym.
-pub type INtruPk<'a> = &'a PublicKey;
+pub type INtruPkT<'a, TW> = &'a PublicKeyT<TW>;
 
 /// Container (set) of NTRU public key identifiers.
-pub type NtruPkids = Vec<Pkid>;
+pub type NtruPkidsT<TW> = Vec<PkidT<TW>>;
 
 /// Select only NTRU public keys with given identifiers.
-pub fn filter_ntru_pks<'a>(ntru_pks: &'a NtruPks, ntru_pkids: &'_ NtruPkids) -> Vec<INtruPk<'a>> {
+pub fn filter_ntru_pks<'a, TW>(ntru_pks: &'a NtruPksT<TW>, ntru_pkids: &'_ NtruPkidsT<TW>) -> Vec<INtruPkT<'a, TW>>
+    where
+    TW: BasicTbitWord,
+    TW::Tbit: hash::Hash,
+{
     ntru_pkids
         .iter()
         .filter_map(|pkid| ntru_pks.get(pkid))
-        .collect::<Vec<INtruPk<'a>>>()
+        .collect::<Vec<INtruPkT<'a, TW>>>()
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
+    use crate::tbits::trinary::Trit;
+    use crate::tbits::binary::Byte;
+    use crate::sponge::prp::Troika;
 
-    #[test]
-    fn encr_decr() {
-        let prng_key = Trits::zero(crate::prng::KEY_SIZE);
-        let prng = PRNG::init(prng_key.slice());
-        let nonce = Trits::zero(15);
-        let k = Trits::zero(KEY_SIZE);
-        let mut ek = Trits::zero(EKEY_SIZE);
-        let mut dek = Trits::zero(KEY_SIZE);
+    fn encrypt_decrypt_tbits<TW, F, G>()
+        where
+        TW: TritWord + SpongosTbitWord,
+        F: PRP<TW> + Clone + Default,
+        G: PRP<TW> + Clone + Default,
+    {
+        let prng_key = TbitsT::<TW>::zero(crate::prng::KEY_SIZE);
+        let prng = Prng::<TW, F>::init(prng_key.slice());
+        let nonce = TbitsT::<TW>::zero(15);
+        let k = TbitsT::<TW>::zero(KEY_SIZE);
+        let mut ek = TbitsT::<TW>::zero(EKEY_SIZE);
+        let mut dek = TbitsT::<TW>::zero(KEY_SIZE);
 
         /*
         let mut sk = PrivateKey {
-            sk: Trits::zero(SK_SIZE),
+            sk: Tbits::zero(SK_SIZE),
             f: Poly::new(),
         };
         let mut pk = PublicKey {
-            pk: Trits::zero(PK_SIZE),
+            pk: Tbits::zero(PK_SIZE),
         };
         {
-            let mut r = Trits::zero(SK_SIZE);
-            r.slice_mut().setTrit(1);
-            sk.f.small_from_trits(r.slice());
+            let mut r = Tbits::zero(SK_SIZE);
+            r.slice_mut().setTbit(1);
+            sk.f.small_from_tbits(r.slice());
             let mut g = Poly::new();
-            g.small_from_trits(r.slice());
+            g.small_from_tbits(r.slice());
             g.small3_add1();
             g.small3_add1();
             let mut h = Poly::new();
 
             if gen_step(&mut sk.f, &mut g, &mut h) {
-                h.to_trits(pk.pk.slice_mut());
+                h.to_tbits(pk.pk.slice_mut());
             } else {
                 debug_assert!(false);
             }
         }
          */
-        let (sk, pk) = gen(&prng, nonce.slice());
+        let (sk, pk) = gen_keypair(&prng, nonce.slice());
 
-        pk.encr(&prng, nonce.slice(), k.slice(), ek.slice_mut());
-        let ok = sk.decr(ek.slice(), dek.slice_mut());
+        {
+            let mut s = SpongosT::<TW, F>::init();
+            pk.encrypt_with_s(&mut s, &prng, nonce.slice(), k.slice(), ek.slice_mut());
+        }
+
+        let ok = {
+            let mut s = SpongosT::<TW, F>::init();
+            sk.decrypt_with_s(&mut s, ek.slice(), dek.slice_mut())
+        };
         assert!(ok);
         assert!(k == dek);
+    }
+
+    #[test]
+    fn encrypt_decrypt_b1t1() {
+        encrypt_decrypt_tbits::<Trit, Troika, Troika>();
+    }
+
+    #[test]
+    fn encrypt_decrypt_b1b8() {
+        //encrypt_decrypt_tbits::<Byte, KeccakF1600, KeccakF1600>();
     }
 }

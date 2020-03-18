@@ -172,9 +172,157 @@ impl TryFrom<char> for Trint3 {
     }
 }
 
+fn farey(x: f64, n: u64) -> (u64, u64) {
+    let mut a = 0;
+    let mut b = 1;
+    let mut c = 1;
+    let mut d = 1;
+
+    while b <= n && d <= n {
+        let m = (a+c) as f64 / (b+d) as f64;
+        //println!("a={} b={} c={} d={} m={}", a, b, c, d, m);
+        if x > m {
+            a += c;
+            b += d;
+        } else if x < m {
+            c += a;
+            d += b;
+        } else {
+            if b + d <= n {
+                return (a+c, b+d);
+            } else if d > b {
+                return (c, d);
+            } else {
+                return (a, b);
+            }
+        }
+    }
+
+    if b > n {
+        (c, d)
+    } else {
+        (a, b)
+    }
+}
+
+// For t<10000 return b such that 2ᵇ < 3ᵗ < 2ᵇ⁺¹.
+const fn log2e3(t: u64) -> u64 {
+    // T/B is a closest rational approximation of log(2)/log(3)
+    // calculated with Farey algorithm with respect to accuracy of f64 type.
+    const T: u64 = 96650392;
+    const B: u64 = 153187247;
+    //assert!(t < 14936);
+    B * t / T
+}
+
+// For b<15000 return t such that 3ᵗ < 2ᵇ < 3ᵗ⁺¹.
+const fn log3e2(b: u64) -> u64 {
+    // T/B is a closest rational approximation of log(2)/log(3)
+    // calculated with Farey algorithm with respect to accuracy of f64 type.
+    const T: u64 = 96650392;
+    const B: u64 = 153187247;
+    //assert!(t < 14936);
+    T * b / B
+}
+
+/*
+fn map_b8_into_t5_len(b8_len: usize) -> usize {
+    // Full input space size in bits.
+    let bit_count = b8_len * 8;
+    // The minimum amount of trits required to represent the input.
+    let min_trit_count = log3e2(bn) + 1;
+    // Round up to whole number of words, 5 trits per word.
+    let t5_len = (min_trit_count + 4) / 5;
+    t5_len
+}
+
+/// Injection of 2⁸ᵇ into 3⁵ᵗ: ∀ x∈2⁸ᵇ ∃ y∈3⁵ᵗ
+fn map_b8_into_t5(b8: &[u8], t5: &mut [u8]) {
+    let b8_len = b8.len();
+    let t5_len = map_b8_into_t5(b8_len);
+    assert_eq!(t5_len, t5.len());
+
+    const T: u8 = 243;
+    const R: u8 = 13; // B = 256; B = T + R
+
+    // Zeroize the high part of t5.
+    for t in t5[t5_len - b8_len ..] { *t = 0; }
+
+    for i in (0..b8_len).rev() {
+        let b = b8[i];
+        let mut q = (b / T) as u16;
+        let mut r = (b % T) as u16;
+        // b8[i..] ~ t5[i..] :=
+        //  := b + B * t5[i+1..]
+        //  == r + qT + (R + T) * t5[i+1..]
+        //  == r + R t5[i+1..] + T (q + t5[i+1..])
+        r = r + t5[i+1] as u16 * R as u16;
+        t5[i] = (r % T as u16) as u8;
+        r = q + (r / T as u16) + t5[i+2] * R;
+        t5[i+1] = (r % T as u16) as u8;
+        r = (r / T as u16) + t5[i+2] * R;
+        t5[i+1] = (r % T as u16) as u8;
+    }
+}
+/// Surjection of 2⁸ᵇ onto 3⁵ᵗ: ∀ y∈3⁵ᵗ ∃ x∈2⁸ᵇ
+fn mapB8ontoT5(b8: &[u8], t5: &mut [u8]) {
+    let tn = t5.len() * 5;
+    let bn = log2e3(tn) + 1;
+}
+ */
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn map_b8_to_u128(b8: &[u8]) -> u128 {
+        assert!(b8.len() <= 32);
+        b8.iter().rev().fold(0u128, |n, b| n * 256 + *b as u128)
+    }
+
+    fn map_u128_to_b8(n: u128, b8: &mut [u8]) {
+        let nn = b8.iter_mut().fold(n, |n, b| { *b = (n % 256) as u8; n / 256 });
+        assert_eq!(0, nn);
+    }
+
+    #[test]
+    fn map_b8_u128() {
+        let b8 = [1, 2, 3];
+        let n = map_b8_to_u128(&b8);
+        assert_eq!(n, 1 + 256 * (2 + 256 * 3));
+        let mut bb8 = [0u8; 3];
+        map_u128_to_b8(n, &mut bb8);
+        assert_eq!(b8, bb8);
+    }
+
+    fn map_t5_to_u128(t5: &[u8]) -> u128 {
+        assert!(t5.len() * 5 <= log3e2(128) as usize);
+        t5.iter().rev().fold(0u128, |n, t| n * 243 + *t as u128)
+    }
+
+    fn map_u128_to_t5(n: u128, t5: &mut [u8]) {
+        let nn = t5.iter_mut().fold(n, |n, t| { *t = (n % 243) as u8; n / 243 });
+        assert_eq!(0, nn);
+    }
+
+    #[test]
+    fn map_t5_u128() {
+        let t5 = [1, 2, 3];
+        let n = map_t5_to_u128(&t5);
+        assert_eq!(n, 1 + 243 * (2 + 243 * 3));
+        let mut tt5 = [0u8; 3];
+        map_u128_to_t5(n, &mut tt5);
+        assert_eq!(t5, tt5);
+    }
+
+    fn run_rational_approx() {
+        const NS: [u64; 7] = [1000, 10000, 100000, 1000000, 1200000, 1000000000, 1000000000000];
+        let e = (2 as f64).log2() / (3 as f64).log2();
+        for k in &NS {
+            let (n,d) = farey(e, *k);
+            println!("{} =~ {}/{} + {}", e, n, d, e - n as f64 / d as f64);
+        }
+    }
 
     #[test]
     fn trint3_tryte_char() {

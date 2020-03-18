@@ -1,91 +1,91 @@
 //! Spongos-base pseudo-random trinary number generator.
 
-use crate::spongos::Spongos;
-use crate::trits::{TritSlice, TritSliceMut, Trits};
+use crate::sponge::{spongos::SpongosT, prp::PRP};
+use crate::tbits::{word::SpongosTbitWord, TbitSliceT, TbitSliceMutT, TbitsT};
 
 /// Size of a PRNG secret key.
 pub const KEY_SIZE: usize = 243;
 
-/// Spongos-based pseudo-random trinary number generator.
+/// Spongos-based pseudo-random number generator.
 #[derive(Clone)]
-pub struct PRNG {
+pub struct Prng<TW, G> {
     /// PRNG secret key.
-    secret_key: Trits,
+    secret_key: TbitsT<TW>,
+    _phantom: std::marker::PhantomData<G>,
 }
 
-impl PRNG {
+impl<TW, G> Prng<TW, G>
+where
+    TW: SpongosTbitWord,
+    G: PRP<TW>,
+{
     /// Create PRNG instance and init with a secret key.
-    pub fn init<'a>(secret_key: TritSlice<'a>) -> Self {
+    pub fn init(secret_key: TbitsT<TW>) -> Self {
         assert!(secret_key.size() == KEY_SIZE);
-        PRNG {
-            secret_key: secret_key.clone_trits(),
+        Self {
+            secret_key,
+            _phantom: std::marker::PhantomData,
         }
     }
 
-    /// Create PRNG with Trits.
-    pub fn init_trits(secret_key: &Trits) -> Self {
-        Self::init(secret_key.slice())
-    }
-
-    fn gen_with_s<'a>(&self, s: &mut Spongos, nonce: TritSlice<'a>, rnd: TritSliceMut<'a>) {
+    fn gen_with_spongos<'a>(&self, s: &mut SpongosT::<TW, G>, nonce: &[TbitSliceT<'a, TW>], rnds: &mut [TbitSliceMutT<'a, TW>]) {
         //TODO: `dst` Tryte?
         //TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
-        s.absorb(self.secret_key.slice());
-        s.absorb(nonce);
-        s.commit();
-        s.squeeze(rnd);
-    }
-
-    /// Generate randomness with a unique nonce for the current PRNG instance.
-    pub fn gen<'a>(&self, nonce: TritSlice<'a>, rnd: TritSliceMut<'a>) {
-        //TODO: `dst` Tryte?
-        //TODO: Implement Sponge?
-        //TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
-        let mut s = Spongos::init();
-        self.gen_with_s(&mut s, nonce, rnd);
-    }
-
-    /// Generate Trits.
-    pub fn gen_trits(&self, nonce: &Trits, n: usize) -> Trits {
-        let mut rnd = Trits::zero(n);
-        self.gen(nonce.slice(), rnd.slice_mut());
-        rnd
-    }
-
-    /// Generate randomness with a list of nonces.
-    pub fn gens<'a>(&self, nonces: &[TritSlice<'a>], rnd: TritSliceMut<'a>) {
-        let mut s = Spongos::init();
-        s.absorb(self.secret_key.slice());
-        for nonce in nonces {
-            s.absorb(*nonce);
-        }
-        s.commit();
-        s.squeeze(rnd);
-    }
-
-    /// Generate randomness with a list of nonces.
-    pub fn genss<'a>(&self, nonces: &[TritSlice<'a>], rnds: &[TritSliceMut<'a>]) {
-        let mut s = Spongos::init();
         s.absorb(self.secret_key.slice());
         for nonce in nonces {
             s.absorb(*nonce);
         }
         s.commit();
         for rnd in rnds {
-            s.squeeze(*rnd);
+            s.squeeze(&mut *rnd);
         }
     }
 }
 
-pub fn init<'a>(secret_key: TritSlice<'a>) -> PRNG {
+impl<TW, G> Prng<TW, G>
+where
+    TW: SpongosTbitWord,
+    G: PRP<TW> + Default,
+{
+    /// Generate randomness with a unique nonce for the current PRNG instance.
+    pub fn gen<'a>(&self, nonce: TbitSliceT<'a, TW>, rnd: TbitSliceMutT<'a, TW>) {
+        //TODO: `dst` Tryte?
+        //TODO: Implement Sponge?
+        //TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
+        let mut s = SpongosT::<TW, G>::init();
+        self.gen_with_spongos(&mut s, nonce, rnd);
+    }
+
+    /// Generate Tbits.
+    pub fn gen_tbits(&self, nonce: &TbitsT<TW>, n: usize) -> TbitsT<TW> {
+        let mut rnd = TbitsT::zero(n);
+        self.gen(nonce.slice(), rnd.slice_mut());
+        rnd
+    }
+
+    /// Generate randomness with a list of nonces.
+    pub fn gens<'a>(&self, nonces: &[TbitSliceT<'a, TW>], mut rnd: TbitSliceMutT<'a, TW>) {
+        let mut s = SpongosT::<TW, G>::init();
+        s.absorb(self.secret_key.slice());
+        for nonce in nonces {
+            s.absorb(*nonce);
+        }
+        s.commit();
+        s.squeeze(&mut rnd);
+    }
+}
+
+/*
+pub fn init<'a>(secret_key: TbitSlice<'a>) -> PRNG {
     PRNG::init(secret_key)
 }
 
-pub fn init_trits(secret_key: &Trits) -> PRNG {
-    PRNG::init_trits(secret_key)
+pub fn init_tbits(secret_key: &Tbits) -> PRNG {
+    PRNG::init_tbits(secret_key)
 }
 
 //#[cfg(test)]
 pub fn dbg_init_str(secret_key: &str) -> PRNG {
-    PRNG::init_trits(&Trits::cycle_str(KEY_SIZE, secret_key))
+    PRNG::init_tbits(&Tbits::cycle_str(KEY_SIZE, secret_key))
 }
+ */

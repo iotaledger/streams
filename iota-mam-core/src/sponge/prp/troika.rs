@@ -540,7 +540,7 @@ impl fmt::Debug for Troika {
 ///
 /// ```rust
 /// extern crate iota_mam_core;
-/// use iota_mam_core::troika::TroikaSponge;
+/// use iota_mam_core::sponge::prp::troika::TroikaSponge;
 /// // Create an array of 243 1s
 /// let input = [1; 243];
 /// // Create an array of 243 0s
@@ -624,7 +624,7 @@ impl TroikaSponge {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     const HASH: [u8; 243] = [
