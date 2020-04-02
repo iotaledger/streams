@@ -23,7 +23,9 @@ The library is in the beta stage and the API is likely to change.
 
 ## Streams
 
-IOTA Streams is a framework for cryptographic protocols called Applications.
+IOTA Streams is a framework for cryptographic protocols called Applications. Streams ships with an existing application, called Channel. The Channel application builds on and extends functionality known from Masked Authenticated Messaging v0 and v1.0. 
+
+As a cryptographic protocol framework, Streams allows developers to build Applications for their specific needs. This process will be documented in how-tos that will be published as the develppment progresses. 
 
 ## Prerequisites
 
