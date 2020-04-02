@@ -1,6 +1,7 @@
 # IOTA Streams
 
 This is the **WIP** Rust IOTA Streams library, it consists of the following components:
+* [Channel Application](iota-streams-app-channel/README.md) featuring Channel Application.
 * [Core layers](iota-streams-core/README.md) featuring utils for trinary/binary manipulations, sponge-based authenticated encryption with Troika permutation, pre-shared keys, pseudo-random generator;
 * [Keccak for core layers](iota-streams-core-keccak/README.md) featuring Keccak-F[1600] as spongos transform;
 * [Traversable Merkle tree](iota-streams-core-merkletree/README.md) featuring traversable Merkle tree;
@@ -8,7 +9,6 @@ This is the **WIP** Rust IOTA Streams library, it consists of the following comp
 * [NTRU key encapsulation](iota-streams-core-ntru/README.md) featuring NTRU key encapsulation;
 * [Protobuf3 layer](iota-streams-protobuf3/README.md) (not to be confused with Google's Protocol Buffers, though it was an inspiration for Protobuf3) featuring cryptographic message definition language;
 * [Application layer](iota-streams-app/README.md) common Application definitions.
-* [Channel Application](iota-streams-app-channel/README.md) featuring Channel Application.
 
 The library is in the beta stage and the API is likely to change.
 
@@ -37,13 +37,13 @@ To use the library in your crate you need to add it as a dependancy in `Cargo.to
 
 ```
 [dependencies]
-iota-streams = { git = "https://github.com/iotaledger/iota_streams" }
+iota-streams = { git = "https://github.com/iotaledger/streams" }
 ```
 
 Or you can clone the repository locally:
 
 ```
-git clone https://github.com/iotaledger/iota_streams
+git clone https://github.com/iotaledger/streams
 ```
 
 and add a dependency in `Cargo.toml` in the following way:
