@@ -1,0 +1,46 @@
+[package]
+name = "iota-streams-core-mss"
+version = "0.1.0"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
+edition = "2018"
+license = "Apache-2.0/MIT"
+readme = "README.md"
+keywords = ["iota", "streams", "core", "mss"]
+description = "A rust implementation of the IOTA Streams Merkle signature scheme"
+
+[lib]
+name = "iota_streams_core_mss"
+path = "src/lib.rs"
+
+[dependencies]
+iota-streams-core-merkletree = { version = "0.1.0", path = "../iota-streams-core-merkletree" }
+iota-streams-core = { version = "0.1.0", path = "../iota-streams-core" }
+iota-streams-core-keccak = { version = "0.1.0", path = "../iota-streams-core-keccak" }
+rand = "0.7"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "wots_troika"
+harness = false
+
+[[bench]]
+name = "wots_keccakt"
+harness = false
+
+[[bench]]
+name = "wots_keccakb"
+harness = false
+
+[[bench]]
+name = "mss_troika"
+harness = false
+
+[[bench]]
+name = "mss_keccakt"
+harness = false
+
+[[bench]]
+name = "mss_keccakb"
+harness = false

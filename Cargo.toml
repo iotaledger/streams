@@ -1,28 +1,34 @@
 [package]
-name = "iota-mam"
+name = "iota-streams"
 version = "0.1.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
-keywords = ["iota", "mam"]
-description = "A rust implementation of the IOTA MAM"
+keywords = ["iota", "streams"]
+description = "A rust implementation of the IOTA Streams"
 
 [lib]
-name = "iota_mam"
+name = "iota_streams"
 
 [workspace]
 members = [
-    "iota-mam-core",
-    "iota-mam-core-keccak",
-    "iota-mam-protobuf3",
-    "iota-mam-app",
-    "iota-mam-app-channel",
+    "iota-streams-core",
+    "iota-streams-core-keccak",
+    "iota-streams-core-ntru",
+    "iota-streams-core-merkletree",
+    "iota-streams-core-mss",
+    "iota-streams-protobuf3",
+    "iota-streams-app",
+    "iota-streams-app-channel",
 ]
 
 [dependencies]
-iota-mam-core = { version = "0.1.0", path = "iota-mam-core" }
-iota-mam-core-keccak = { version = "0.1.0", path = "iota-mam-core-keccak" }
-iota-mam-protobuf3 = { version = "0.1.0", path = "iota-mam-protobuf3" }
-iota-mam-app = { version = "0.1.0", path = "iota-mam-app" }
-iota-mam-app-channel = { version = "0.1.0", path = "iota-mam-app-channel" }
+iota-streams-core = { version = "0.1.0", path = "iota-streams-core" }
+iota-streams-core-keccak = { version = "0.1.0", path = "iota-streams-core-keccak" }
+iota-streams-core-ntru = { version = "0.1.0", path = "iota-streams-core-ntru" }
+iota-streams-core-merkletree = { version = "0.1.0", path = "iota-streams-core-merkletree" }
+iota-streams-core-mss = { version = "0.1.0", path = "iota-streams-core-mss" }
+iota-streams-protobuf3 = { version = "0.1.0", path = "iota-streams-protobuf3" }
+iota-streams-app = { version = "0.1.0", path = "iota-streams-app" }
+iota-streams-app-channel = { version = "0.1.0", path = "iota-streams-app-channel" }

@@ -1,26 +1,29 @@
-# IOTA MAM v1.1
+# IOTA Streams
 
-This is the **WIP** Rust IOTA MAM library, it consists of the following components:
-* [Core layers](iota-mam-core/README.md) featuring utils for trits manipulations, sponge-based authenticated encryption with Troika permutation, Merkle signature scheme, NTRU-like key encapsulation;
-* [Protobuf3 layer](iota-mam-protobuf3/README.md) (not to be confused with Google's Protocol Buffers, though it was an inspiration for Protobuf3) featuring cryptographic message definition language;
-* [Application layer](iota-mam-app/README.md) featuring Channel Application.
+This is the **WIP** Rust IOTA Streams library, it consists of the following components:
+* [Core layers](iota-streams-core/README.md) featuring utils for trinary/binary manipulations, sponge-based authenticated encryption with Troika permutation, pre-shared keys, pseudo-random generator;
+* [Keccak for core layers](iota-streams-core-keccak/README.md) featuring Keccak-F[1600] as spongos transform;
+* [Traversable Merkle tree](iota-streams-core-merkletree/README.md) featuring traversable Merkle tree;
+* [Merkle signature](iota-streams-core-mss/README.md) featuring Merkle signature scheme over Winternitz one-time signature;
+* [NTRU key encapsulation](iota-streams-core-ntru/README.md) featuring NTRU key encapsulation;
+* [Protobuf3 layer](iota-streams-protobuf3/README.md) (not to be confused with Google's Protocol Buffers, though it was an inspiration for Protobuf3) featuring cryptographic message definition language;
+* [Application layer](iota-streams-app/README.md) common Application definitions.
+* [Channel Application](iota-streams-app-channel/README.md) featuring Channel Application.
 
 The library is in the beta stage and the API is likely to change.
 
 |Table of contents|
 |:----|
-| [MAM v1.1](#overview)|
+| [Streams](#overview)|
 | [Prerequisites](#prerequisites)|
 | [Getting started](#getting-started)|
 | [API reference](#api-reference)
 | [Examples](#examples)|
 | [License](#license)|
 
-## MAM v1.1
+## Streams
 
-IOTA MAM v1.1 is a framework for cryptographic protocols called Applications.
-
-The current specification can be found [here](spec.pdf). The slides providing a slight in-depth insight on MAM v1.1 can be found [here](slides.pdf).
+IOTA Streams is a framework for cryptographic protocols called Applications.
 
 ## Prerequisites
 
@@ -34,33 +37,33 @@ To use the library in your crate you need to add it as a dependancy in `Cargo.to
 
 ```
 [dependencies]
-iota-mam = { git = "https://github.com/semenov-vladyslav/iota_mam" }
+iota-streams = { git = "https://github.com/iotaledger/iota_streams" }
 ```
 
 Or you can clone the repository locally:
 
 ```
-git clone https://github.com/semenov-vladyslav/iota_mam
+git clone https://github.com/iotaledger/iota_streams
 ```
 
 and add a dependency in `Cargo.toml` in the following way:
 
 ```
 [dependencies]
-iota-mam = { version = "0.1", path = "../iota_mam" }
+iota-streams = { version = "0.1", path = "../iota_streams" }
 ```
 
-Optionally, you can run tests in the whole `iota-mam` project:
+Optionally, you can run tests in the whole `iota-streams` project:
 
 ```
-cd iota_mam/
+cd iota_streams/
 cargo test --all
 ```
 
-Now you can use the MAM Channel Application in your code like this:
+Now you can use the Streams Channel Application in your code like this:
 
 ```
-use iota_mam::channel::api::tangle::{Author, Subscriber};
+use iota_streams_app_channel::api::tangle::{Author, Subscriber};
 
 fn main() {
     let mut author = Author::new("AUTHORSSEED", 3, false);
@@ -68,7 +71,7 @@ fn main() {
 }
 ```
 
-For a more comprehensive example of using the MAM Channel Application can be found [here](iota-mam-app-channel/examples/basic_scenario.rs).
+For a more comprehensive example of using the Streams Channel Application can be found [here](iota-streams-app-channel/examples/basic_scenario.rs).
 
 ## API reference
 
@@ -79,7 +82,7 @@ cargo doc --open
 
 ## Examples
 
-Examples of using Channel Application can be found [here](iota-mam-app-channel/examples).
+Examples of using Channel Application can be found [here](iota-streams-app-channel/examples).
 
 ## License
 

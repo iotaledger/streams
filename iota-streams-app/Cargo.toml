@@ -1,0 +1,22 @@
+[package]
+name = "iota-streams-app"
+version = "0.1.0"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
+edition = "2018"
+license = "Apache-2.0/MIT"
+readme = "README.md"
+keywords = ["iota", "streams", "app"]
+description = "A rust implementation of the IOTA Streams applications"
+
+[lib]
+name = "iota_streams_app"
+path = "src/lib.rs"
+
+[dependencies]
+iota-streams-core = { version = "0.1.0", path = "../iota-streams-core" }
+iota-streams-core-ntru = { version = "0.1.0", path = "../iota-streams-core-ntru" }
+iota-streams-core-mss = { version = "0.1.0", path = "../iota-streams-core-mss" }
+iota-streams-protobuf3 = { version = "0.1.0", path = "../iota-streams-protobuf3" }
+iota-lib-rs = { version = "^0.4.1" }
+chrono = "0.4"
+failure = "0.1"

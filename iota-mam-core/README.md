@@ -1,2 +1,0 @@
-# IOTA MAM core layers
-
