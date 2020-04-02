@@ -10,7 +10,7 @@ This is the **WIP** Rust IOTA Streams library, it consists of the following comp
 * [Protobuf3 layer](iota-streams-protobuf3/README.md) (not to be confused with Google's Protocol Buffers, though it was an inspiration for Protobuf3) featuring cryptographic message definition language;
 * [Application layer](iota-streams-app/README.md) common Application definitions.
 
-The library is in the beta stage and the API is likely to change.
+The library is in the alpha stage and the API is likely to change.
 
 |Table of contents|
 |:----|
