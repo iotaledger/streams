@@ -99,6 +99,7 @@ impl<TW> IStream<TW> for NoIStream {
     fn commit(&mut self) {}
 }
 
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -151,3 +152,4 @@ mod test {
         assert_eq!(tag, tag2);
     }
 }
+ */
