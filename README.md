@@ -52,24 +52,24 @@ and add a dependency in `Cargo.toml` in the following way:
 
 ```
 [dependencies]
-iota-streams = { version = "0.1", path = "../iota_streams" }
+iota-streams = { version = "0.1", path = "../streams" }
 ```
 
 Optionally, you can run tests in the whole `iota-streams` project:
 
 ```
-cd iota_streams/
+cd streams/
 cargo test --all
 ```
 
 Now you can use the Streams Channel Application in your code like this:
 
 ```
-use iota_streams_app_channel::api::tangle::{Author, Subscriber};
+use iota_streams::app_channel::api::tangle::{Author, Subscriber};
 
 fn main() {
-    let mut author = Author::new("AUTHORSSEED", 3, false);
-    let mut subscriber = Subscriber::new("SUBSCRIBERSSEED", false);
+    let author = Author::new("AUTHORSSEED", 3, false);
+    let subscriber = Subscriber::new("SUBSCRIBERSSEED", false);
 }
 ```
 
