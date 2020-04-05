@@ -328,12 +328,14 @@ mod tests {
             assert_eq!(Ok(c), Tryte::try_from(c).map(char::from));
             assert_eq!(Ok(c), Trint3::try_from(c).map(char::from));
         }
-        for t in MIN_TRINT3..=MAX_TRINT3 {
+        for t in MIN_TRINT3.0..=MAX_TRINT3.0 {
+            let t = Trint3(t);
             assert_eq!(t, Trint3::from(Tryte::from(t)));
             assert_eq!(Ok(t), Trint3::try_from(char::from(t)));
             assert_eq!(char::from(Tryte::from(t)), char::from(t));
         }
-        for t in MIN_TRYTE..=MAX_TRYTE {
+        for t in MIN_TRYTE.0..=MAX_TRYTE.0 {
+            let t = Tryte(t);
             assert_eq!(t, Tryte::from(Trint3::from(t)));
             assert_eq!(Ok(t), Tryte::try_from(char::from(t)));
             assert_eq!(char::from(Trint3::from(t)), char::from(t));
@@ -342,14 +344,16 @@ mod tests {
 
     #[test]
     fn trint3_trint1x3() {
-        for t in MIN_TRINT3..=MAX_TRINT3 {
+        for t in MIN_TRINT3.0..=MAX_TRINT3.0 {
+            let t = Trint3(t);
             assert_eq!(t, Trint3::from(Into::<[Trint1; 3]>::into(t)));
         }
     }
 
     #[test]
     fn tryte_tritx3() {
-        for t in MIN_TRYTE..=MAX_TRYTE {
+        for t in MIN_TRYTE.0..=MAX_TRYTE.0 {
+            let t = Tryte(t);
             assert_eq!(t, Tryte::from(<[Trit; 3]>::from(t)));
         }
     }
