@@ -110,9 +110,9 @@ pub(crate) mod tests {
         let mut ts = vec![TW::ZERO_TBIT; s];
 
         copy_tbits::<TW>(&ts);
-        ts.iter_mut().map(|v| *v = Trit(1));
+        ts.iter_mut().for_each(|v| *v = Trit(1));
         copy_tbits::<TW>(&ts);
-        ts.iter_mut().map(|v| *v = Trit(2));
+        ts.iter_mut().for_each(|v| *v = Trit(2));
         copy_tbits::<TW>(&ts);
 
         let mut u = Wrapping(11u8);

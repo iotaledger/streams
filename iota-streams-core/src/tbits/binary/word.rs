@@ -36,15 +36,14 @@ pub(crate) mod tests {
     pub fn basic_copy_exhaustive<TW>(num_loops: usize)
     where
         TW: BasicTbitWord<Tbit = Bit>,
-        //TW::Tbit: fmt::Display + fmt::Debug,
     {
         let s = TW::SIZE * 7;
         let mut ts = vec![TW::ZERO_TBIT; s];
 
         copy_tbits::<TW>(&ts);
-        ts.iter_mut().map(|v| *v = Bit(0));
+        ts.iter_mut().for_each(|v| *v = Bit(0));
         copy_tbits::<TW>(&ts);
-        ts.iter_mut().map(|v| *v = Bit(1));
+        ts.iter_mut().for_each(|v| *v = Bit(1));
         copy_tbits::<TW>(&ts);
 
         let mut u = Wrapping(11u8);
