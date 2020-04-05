@@ -328,21 +328,11 @@ where
         }
     }
 
-    /// Check whether `x` slice points to the same tbit in memory as `self`.
-    ///
-    /// If you need `is_same` then your code is probably unsafe.
-    /// It should only be used in debug code.
-    //TODO: Remove `is_same`.
-    pub(crate) unsafe fn is_same(&self, x: &Self) -> bool {
-        self.p.add(self.r.d / TW::SIZE) == x.p.add(self.r.d / TW::SIZE)
-            && (self.r.d % TW::SIZE) == (x.r.d % TW::SIZE)
-        //self.p == x.p && self.r.d == x.r.d //&& self.r.n == x.r.n
-    }
-
     /// Check whether `self` and `x` slices are overlapping.
     ///
     /// If you need `is_overlapping` then your code is probably unsafe.
     /// It should only be used in debug code.
+    #[cfg(debug_assertions)]
     pub(crate) unsafe fn is_overlapping(&self, x: &Self) -> bool {
         let begin = self.p.add(self.r.d / TW::SIZE);
         let end = self.p.add((self.r.n + TW::SIZE - 1) / TW::SIZE);
@@ -831,30 +821,6 @@ where
         unsafe {
             TW::set_zero(self.size(), self.r.d, self.p);
         }
-    }
-
-    /// Check whether `x` slice points to the same tbit in memory as `self`.
-    ///
-    /// If you need `is_same` then your code is probably unsafe.
-    /// It should only be used in debug code.
-    //TODO: Remove `is_same`.
-    unsafe fn is_same(&self, x: Self) -> bool {
-        self.p.add(self.r.d / TW::SIZE) == x.p.add(self.r.d / TW::SIZE)
-            && (self.r.d % TW::SIZE) == (x.r.d % TW::SIZE)
-        //self.p == x.p && self.r.d == x.r.d //&& self.r.n == x.r.n
-    }
-
-    /// Check whether `self` and `x` slices are overlapping.
-    ///
-    /// If you need `is_overlapping` then your code is probably unsafe.
-    /// It should only be used in debug code.
-    //TODO: Remove `is_overlapping`.
-    unsafe fn is_overlapped(&self, x: Self) -> bool {
-        let begin = self.p.add(self.r.d / TW::SIZE);
-        let end = self.p.add((self.r.n + TW::SIZE - 1) / TW::SIZE);
-        let x_begin = x.p.add(x.r.d / TW::SIZE);
-        let x_end = x.p.add((x.r.n + TW::SIZE - 1) / TW::SIZE);
-        !(x_end <= begin || end <= x_begin)
     }
 
     /// Take `n` tbits from the current slice.

@@ -99,6 +99,7 @@ mod farey {
         }
     }
 
+    #[test]
     fn run_rational_approx() {
         const NS: [u64; 7] = [
             1000,
@@ -114,5 +115,7 @@ mod farey {
             let (n, d) = farey(e, *k);
             println!("{} =~ {}/{} + {}", e, n, d, e - n as f64 / d as f64);
         }
+
+        assert_eq!((96650392_u64, 153187247_u64), farey(e, 1000000000));
     }
 }
