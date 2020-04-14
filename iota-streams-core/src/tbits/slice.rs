@@ -313,7 +313,6 @@ where
     ///
     /// If you need `is_overlapping` then your code is probably unsafe.
     /// It should only be used in debug code.
-    #[cfg(debug_assertions)]
     pub(crate) unsafe fn is_overlapping(&self, x: &Self) -> bool {
         let begin = self.p.add(self.r.d / TW::SIZE);
         let end = self.p.add((self.r.n + TW::SIZE - 1) / TW::SIZE);
