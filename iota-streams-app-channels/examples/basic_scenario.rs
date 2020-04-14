@@ -38,7 +38,7 @@ where
     println!("announce");
     let (announcement_address, announcement_tag) = {
         let msg = &author.announce()?;
-        println!("  {}", msg);
+        println!("  {}", msg.link.msgid);
         transport.send_message_with_options(&msg, send_opt)?;
         (msg.link.appinst.to_string(), msg.link.msgid.to_string())
     };
@@ -65,7 +65,7 @@ where
     println!("sign packet");
     let signed_packet_link = {
         let msg = author.sign_packet(&announcement_link, &public_payload, &masked_payload)?;
-        println!("  {}", msg);
+        println!("  {}", msg.link.msgid);
         transport.send_message_with_options(&msg, send_opt)?;
         msg.link.clone()
     };
@@ -83,7 +83,7 @@ where
     println!("subscribe");
     let subscribeB_link = {
         let msg = subscriberB.subscribe(&announcement_link)?;
-        println!("  {}", msg);
+        println!("  {}", msg.link.msgid);
         transport.send_message_with_options(&msg, send_opt)?;
         msg.link.clone()
     };
@@ -98,7 +98,7 @@ where
     println!("share keyload for everyone");
     let keyload_link = {
         let msg = author.share_keyload_for_everyone(&announcement_link)?;
-        println!("  {}", msg);
+        println!("  {}", msg.link.msgid);
         transport.send_message_with_options(&msg, send_opt)?;
         msg.link
     };
@@ -115,7 +115,7 @@ where
     println!("tag packet");
     let tagged_packet_link = {
         let msg = author.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
-        println!("  {}", msg);
+        println!("  {}", msg.link.msgid);
         transport.send_message_with_options(&msg, send_opt)?;
         msg.link.clone()
     };
@@ -141,7 +141,7 @@ where
     println!("change key");
     let change_key_link = {
         let msg = author.change_key(&announcement_link)?;
-        println!("  {}", msg);
+        println!("  {}", msg.link.msgid);
         transport.send_message_with_options(&msg, send_opt)?;
         msg.link
     };
@@ -156,7 +156,7 @@ where
     println!("unsubscribe");
     let unsubscribe_link = {
         let msg = subscriberB.unsubscribe(&subscribeB_link)?;
-        println!("  {}", msg);
+        println!("  {}", msg.link.msgid);
         transport.send_message_with_options(&msg, send_opt)?;
         msg.link
     };
