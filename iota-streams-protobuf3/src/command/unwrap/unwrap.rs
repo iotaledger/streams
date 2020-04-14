@@ -21,7 +21,6 @@ pub(crate) fn unwrap_size<'a, TW, Ctx: Unwrap<TW>>(ctx: &'a mut Ctx, size: &mut 
 {
     let mut d = Trint3(0);
     ctx.unwrap3(&mut d)?;
-    print!("uws d={}", d.0);
     ensure!(Trint3(0) <= d && d <= Trint3(13), "Invalid size of `size_t`: {}.", d);
 
     let mut m: i64 = 0;
@@ -30,13 +29,11 @@ pub(crate) fn unwrap_size<'a, TW, Ctx: Unwrap<TW>>(ctx: &'a mut Ctx, size: &mut 
         d.0 -= 1;
         let mut t = Trint3(0);
         ctx.unwrap3(&mut t)?;
-        print!(" {}", t.0);
         m = t.0 as i64;
 
         while 0 < d.0 {
             d.0 -= 1;
             ctx.unwrap3(&mut t)?;
-            print!(" {}", t.0);
             r *= 27;
             m += r * t.0 as i64;
         }
@@ -51,6 +48,5 @@ pub(crate) fn unwrap_size<'a, TW, Ctx: Unwrap<TW>>(ctx: &'a mut Ctx, size: &mut 
     }
 
     size.0 = m as usize;
-    println!(" s={}", size.0);
     Ok(ctx)
 }

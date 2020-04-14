@@ -20,16 +20,13 @@ pub(crate) trait Wrap<TW> {
 pub(crate) fn wrap_size<'a, TW, Ctx: Wrap<TW>>(ctx: &'a mut Ctx, size: Size) -> Fallible<&'a mut Ctx> where
 {
     let d = size_trytes(size.0);
-    print!("ws s={} d={}:", size.0, d);
     ctx.wrap3(Trint3(d as i8))?;
 
     let mut n = size.0;
     for _ in 0..d {
         let (r, q) = trinary::mods3_usize(n);
-        print!(" {}", r);
         ctx.wrap3(r)?;
         n = q;
     }
-    println!("");
     Ok(ctx)
 }
