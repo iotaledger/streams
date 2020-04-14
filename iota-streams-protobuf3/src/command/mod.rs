@@ -99,6 +99,11 @@ pub trait Repeated<I, F> {
     fn repeated(&mut self, values_iter: I, value_handle: F) -> Fallible<&mut Self>;
 }
 
+/// Condition guard.
+pub trait Guard {
+    fn guard(&mut self, cond: bool, msg: &str) -> Fallible<&mut Self>;
+}
+
 /// Dump context info into stdout.
 /// Use it like this: `ctx.dump(format_args!("checkpoint"))`
 pub trait Dump {

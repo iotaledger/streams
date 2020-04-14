@@ -1,25 +1,56 @@
-/*
-use failure::{bail, ensure, Fallible};
-use std::convert::TryInto;
+use failure::{
+    ensure,
+    Fallible,
+};
 use std::str::FromStr;
 
 use iota_streams_core::{
     prng,
-    tbits::{defs::*, Tbits},
+    sponge::{
+        prp::{
+            troika::Troika,
+            PRP,
+        },
+        spongos::Spongos,
+    },
+    tbits::{
+        trinary::{
+            Trit,
+            TritWord,
+            MAX_TRINT3,
+            MIN_TRINT3,
+        },
+        word::{
+            IntTbitWord,
+            SpongosTbitWord,
+            StringTbitWord,
+        },
+        TbitSlice,
+        TbitSliceMut,
+        Tbits,
+    },
 };
 use iota_streams_core_mss::signature::mss;
 use iota_streams_core_ntru::key_encapsulation::ntru;
 
-use crate::{command::*, types::*};
+use crate::{
+    command::*,
+    types::*,
+};
 
-fn absorb_mask_trint3() -> Fallible<()> {
-    let mut buf = Trits::zero(6);
-    let mut tag_wrap = External(NTrytes(Trits::zero(81)));
-    let mut tag_unwrap = External(NTrytes(Trits::zero(81)));
+fn absorb_mask_trint3<TW, F>() -> Fallible<()>
+where
+    TW: SpongosTbitWord + TritWord,
+    F: PRP<TW> + Default,
+{
+    let mut buf = Tbits::<TW>::zero(6);
+    let mut tag_wrap = External(NTrytes::<TW>(Tbits::zero(81)));
+    let mut tag_unwrap = External(NTrytes::<TW>(Tbits::zero(81)));
 
-    for t in MIN_TRINT3..=MAX_TRINT3 {
-        let buf_size = sizeof::Context::new().absorb(t)?.mask(t)?.get_size();
-        let buf_size2 = sizeof::Context::new().absorb(&t)?.mask(&t)?.get_size();
+    for t in MIN_TRINT3.0..=MAX_TRINT3.0 {
+        let t = Trint3(t);
+        let buf_size = sizeof::Context::<TW, F>::new().absorb(t)?.mask(t)?.get_size();
+        let buf_size2 = sizeof::Context::<TW, F>::new().absorb(&t)?.mask(&t)?.get_size();
         ensure!(
             buf_size == buf_size2,
             "Buf sizes calcuated by value and by ref do not match."
@@ -27,19 +58,15 @@ fn absorb_mask_trint3() -> Fallible<()> {
         ensure!(buf_size == 6, "Unexpected buf size.");
 
         {
-            let mut ctx = wrap::Context::new(buf.slice_mut());
-            ctx.commit()?
-                .absorb(&t)?
-                .mask(&t)?
-                .commit()?
-                .squeeze(&mut tag_wrap)?;
+            let mut ctx = wrap::Context::<TW, F, TbitSliceMut<TW>>::new(buf.slice_mut());
+            ctx.commit()?.absorb(&t)?.mask(&t)?.commit()?.squeeze(&mut tag_wrap)?;
             ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
         }
 
         let mut t2 = Trint3::default();
         let mut t3 = Trint3::default();
         {
-            let mut ctx = unwrap::Context::new(buf.slice());
+            let mut ctx = unwrap::Context::<TW, F, TbitSlice<TW>>::new(buf.slice());
             ctx.commit()?
                 .absorb(&mut t2)?
                 .mask(&mut t3)?
@@ -55,9 +82,18 @@ fn absorb_mask_trint3() -> Fallible<()> {
     Ok(())
 }
 
-fn absorb_mask_size() -> Fallible<()> {
-    let mut tag_wrap = External(NTrytes(Trits::zero(81)));
-    let mut tag_unwrap = External(NTrytes(Trits::zero(81)));
+#[test]
+fn trint3() {
+    assert!(dbg!(absorb_mask_trint3::<Trit, Troika>()).is_ok());
+}
+
+fn absorb_mask_size<TW, F>() -> Fallible<()>
+where
+    TW: SpongosTbitWord + TritWord,
+    F: PRP<TW> + Default,
+{
+    let mut tag_wrap = External(NTrytes::<TW>(Tbits::zero(81)));
+    let mut tag_unwrap = External(NTrytes::<TW>(Tbits::zero(81)));
 
     let ns = [
         0,
@@ -80,29 +116,25 @@ fn absorb_mask_size() -> Fallible<()> {
 
     for n in ns.iter() {
         let s = Size(*n);
-        let buf_size = sizeof::Context::new().absorb(s)?.mask(s)?.get_size();
-        let buf_size2 = sizeof::Context::new().absorb(&s)?.mask(&s)?.get_size();
+        let buf_size = sizeof::Context::<TW, F>::new().absorb(s)?.mask(s)?.get_size();
+        let buf_size2 = sizeof::Context::<TW, F>::new().absorb(&s)?.mask(&s)?.get_size();
         ensure!(
             buf_size == buf_size2,
             "Buf sizes calcuated by value and by ref do not match."
         );
 
-        let mut buf = Trits::zero(buf_size);
+        let mut buf = Tbits::<TW>::zero(buf_size);
 
         {
-            let mut ctx = wrap::Context::new(buf.slice_mut());
-            ctx.commit()?
-                .absorb(&s)?
-                .mask(&s)?
-                .commit()?
-                .squeeze(&mut tag_wrap)?;
+            let mut ctx = wrap::Context::<TW, F, TbitSliceMut<TW>>::new(buf.slice_mut());
+            ctx.commit()?.absorb(&s)?.mask(&s)?.commit()?.squeeze(&mut tag_wrap)?;
             ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
         }
 
         let mut s2 = Size::default();
         let mut s3 = Size::default();
         {
-            let mut ctx = unwrap::Context::new(buf.slice());
+            let mut ctx = unwrap::Context::<TW, F, TbitSlice<TW>>::new(buf.slice());
             ctx.commit()?
                 .absorb(&mut s2)?
                 .mask(&mut s3)?
@@ -119,45 +151,44 @@ fn absorb_mask_size() -> Fallible<()> {
 }
 
 #[test]
-fn trint3() {
-    assert!(dbg!(absorb_mask_trint3()).is_ok());
-}
-
-#[test]
 fn size() {
-    assert!(dbg!(absorb_mask_size()).is_ok());
+    assert!(dbg!(absorb_mask_size::<Trit, Troika>()).is_ok());
 }
 
-fn absorb_mask_squeeze_trytes_mac() -> Fallible<()> {
+fn absorb_mask_squeeze_trytes_mac<TW, F>() -> Fallible<()>
+where
+    TW: StringTbitWord + IntTbitWord + SpongosTbitWord + TritWord,
+    F: PRP<TW> + Default,
+{
     const NS: [usize; 10] = [0, 3, 240, 243, 246, 483, 486, 489, 1002, 2001];
 
-    let mut tag_wrap = External(NTrytes(Trits::zero(81)));
-    let mut tag_unwrap = External(NTrytes(Trits::zero(81)));
+    let mut tag_wrap = External(NTrytes::<TW>(Tbits::zero(81)));
+    let mut tag_unwrap = External(NTrytes::<TW>(Tbits::zero(81)));
 
-    let prng = prng::dbg_init_str("TESTPRNGKEY");
-    let mut nonce = Trits::from_str("TESTPRNGNONCE").unwrap();
+    let prng = prng::dbg_init_str::<TW, F>("TESTPRNGKEY");
+    let mut nonce = Tbits::<TW>::from_str("TESTPRNGNONCE").unwrap();
 
     for n in NS.iter() {
-        let ta = Trytes(prng.gen_trits(&nonce, *n));
-        nonce.inc();
-        let nta = NTrytes(prng.gen_trits(&nonce, *n));
-        nonce.inc();
-        let enta = External(NTrytes(prng.gen_trits(&nonce, *n)));
-        nonce.inc();
-        let tm = Trytes(prng.gen_trits(&nonce, *n));
-        nonce.inc();
-        let ntm = NTrytes(prng.gen_trits(&nonce, *n));
-        nonce.inc();
-        let mut ents = External(NTrytes(Trits::zero(*n)));
-        nonce.inc();
+        let ta = Trytes::<TW>(prng.gen_tbits(&nonce, *n));
+        nonce.slice_mut().inc();
+        let nta = NTrytes::<TW>(prng.gen_tbits(&nonce, *n));
+        nonce.slice_mut().inc();
+        let enta = NTrytes::<TW>(prng.gen_tbits(&nonce, *n));
+        nonce.slice_mut().inc();
+        let tm = Trytes::<TW>(prng.gen_tbits(&nonce, *n));
+        nonce.slice_mut().inc();
+        let ntm = NTrytes::<TW>(prng.gen_tbits(&nonce, *n));
+        nonce.slice_mut().inc();
+        let mut ents = External(NTrytes::<TW>(Tbits::zero(*n)));
+        nonce.slice_mut().inc();
         let mac = Mac(*n);
 
         let buf_size = {
-            let mut ctx = sizeof::Context::new();
+            let mut ctx = sizeof::Context::<TW, F>::new();
             ctx.commit()?
                 .absorb(&ta)?
                 .absorb(&nta)?
-                .absorb(&enta)?
+                .absorb(External(&enta))?
                 .commit()?
                 .mask(&tm)?
                 .mask(&ntm)?
@@ -170,14 +201,14 @@ fn absorb_mask_squeeze_trytes_mac() -> Fallible<()> {
                 .squeeze(&tag_wrap)?;
             ctx.get_size()
         };
-        let mut buf = Trits::zero(buf_size);
+        let mut buf = Tbits::zero(buf_size);
 
         {
-            let mut ctx = wrap::Context::new(buf.slice_mut());
+            let mut ctx = wrap::Context::<TW, F, TbitSliceMut<TW>>::new(buf.slice_mut());
             ctx.commit()?
                 .absorb(&ta)?
                 .absorb(&nta)?
-                .absorb(&enta)?
+                .absorb(External(&enta))?
                 .commit()?
                 .mask(&tm)?
                 .mask(&ntm)?
@@ -191,17 +222,17 @@ fn absorb_mask_squeeze_trytes_mac() -> Fallible<()> {
             ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
         }
 
-        let mut ta2 = Trytes::default();
-        let mut nta2 = NTrytes(Trits::zero(*n));
-        let mut tm2 = Trytes::default();
-        let mut ntm2 = NTrytes(Trits::zero(*n));
-        let mut ents2 = External(NTrytes(Trits::zero(*n)));
+        let mut ta2 = Trytes::<TW>::default();
+        let mut nta2 = NTrytes::<TW>(Tbits::zero(*n));
+        let mut tm2 = Trytes::<TW>::default();
+        let mut ntm2 = NTrytes::<TW>(Tbits::zero(*n));
+        let mut ents2 = External(NTrytes::<TW>(Tbits::zero(*n)));
         {
-            let mut ctx = unwrap::Context::new(buf.slice());
+            let mut ctx = unwrap::Context::<TW, F, TbitSlice<TW>>::new(buf.slice());
             ctx.commit()?
                 .absorb(&mut ta2)?
                 .absorb(&mut nta2)?
-                .absorb(&enta)?
+                .absorb(External(&enta))?
                 .commit()?
                 .mask(&mut tm2)?
                 .mask(&mut ntm2)?
@@ -228,22 +259,27 @@ fn absorb_mask_squeeze_trytes_mac() -> Fallible<()> {
 
 #[test]
 fn trytes() {
-    assert!(dbg!(absorb_mask_squeeze_trytes_mac()).is_ok());
+    assert!(dbg!(absorb_mask_squeeze_trytes_mac::<Trit, Troika>()).is_ok());
 }
 
-fn mssig_traverse() -> Fallible<()> {
-    let payload = Trytes(Trits::cycle_str(123, "PAYLOAD"));
-    let mut hash = External(NTrytes(Trits::zero(mss::HASH_SIZE)));
+fn mssig_traverse<TW, F, P>() -> Fallible<()>
+where
+    TW: StringTbitWord + IntTbitWord + SpongosTbitWord + TritWord,
+    F: PRP<TW> + Default,
+    P: mss::Parameters<TW>,
+{
+    let payload = Trytes::<TW>(Tbits::cycle_str(123, "PAYLOAD"));
+    let mut hash = External(NTrytes::<TW>(Tbits::zero(P::HASH_SIZE)));
     let prng = prng::dbg_init_str("TESTPRNGKEY");
-    let n = Trits::zero(33);
-    let mut apk = mss::PublicKey::default();
+    let n = Tbits::zero(33);
+    let mut apk = mss::PublicKey::<TW, P>::default();
 
     for d in 0..2 {
-        let mut sk = mss::PrivateKey::gen(&prng, n.slice(), d);
+        let mut sk = mss::PrivateKey::<TW, P>::gen(&prng, n.slice(), d);
 
         loop {
             let buf_size = {
-                let mut ctx = sizeof::Context::new();
+                let mut ctx = sizeof::Context::<TW, F>::new();
                 ctx.absorb(&payload)?
                     .commit()?
                     .squeeze(&hash)?
@@ -253,9 +289,9 @@ fn mssig_traverse() -> Fallible<()> {
                 ctx.get_size()
             };
 
-            let mut buf = Trits::zero(buf_size);
+            let mut buf = Tbits::<TW>::zero(dbg!(buf_size));
             {
-                let mut ctx = wrap::Context::new(buf.slice_mut());
+                let mut ctx = wrap::Context::<TW, F, TbitSliceMut<TW>>::new(buf.slice_mut());
                 ctx.absorb(&payload)?
                     .commit()?
                     .squeeze(&mut hash)?
@@ -264,9 +300,9 @@ fn mssig_traverse() -> Fallible<()> {
                     .mssig(&mut sk, MssHashSig)?;
                 ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
             }
-            let mut payload2 = Trytes::default();
+            let mut payload2 = Trytes::<TW>::default();
             {
-                let mut ctx = unwrap::Context::new(buf.slice());
+                let mut ctx = unwrap::Context::<TW, F, TbitSlice<TW>>::new(buf.slice());
                 ctx.absorb(&mut payload2)?
                     .commit()?
                     .squeeze(&mut hash)?
@@ -288,37 +324,38 @@ fn mssig_traverse() -> Fallible<()> {
 
 #[test]
 fn mssig() {
-    assert!(dbg!(mssig_traverse()).is_ok());
+    assert!(dbg!(mssig_traverse::<Trit, Troika, mss::troika::ParametersMtTraversal<Trit>>()).is_ok());
+    assert!(dbg!(mssig_traverse::<Trit, Troika, mss::troika::ParametersMtComplete<Trit>>()).is_ok());
 }
 
-fn ntrukem_caps() -> Fallible<()> {
-    let prng = prng::dbg_init_str("TESTPRNGKEY");
-    let nonce = Trits::zero(15);
-    let (sk, pk) = ntru::gen(&prng, nonce.slice());
+fn ntrukem_caps<TW, F>() -> Fallible<()>
+where
+    TW: StringTbitWord + IntTbitWord + SpongosTbitWord + TritWord,
+    F: PRP<TW> + Clone + Default,
+{
+    let prng = prng::dbg_init_str::<TW, F>("TESTPRNGKEY");
+    let nonce = Tbits::<TW>::zero(15);
+    let (sk, pk) = ntru::gen_keypair(&prng, nonce.slice());
 
-    let payload = Trytes(Trits::cycle_str(123, "PAYLOAD"));
-    let key = NTrytes(prng.gen_trits(&nonce, ntru::KEY_SIZE));
+    let payload = Trytes::<TW>(Tbits::cycle_str(123, "PAYLOAD"));
+    let key = NTrytes::<TW>(prng.gen_tbits(&nonce, Spongos::<TW, F>::KEY_SIZE));
 
     let buf_size = {
-        let mut ctx = sizeof::Context::new();
+        let mut ctx = sizeof::Context::<TW, F>::new();
         ctx.absorb(&payload)?.commit()?.ntrukem(&pk, &key)?;
         ctx.get_size()
     };
-    let mut buf = Trits::zero(buf_size);
+    let mut buf = Tbits::<TW>::zero(buf_size);
     {
-        let mut ctx = wrap::Context::new(buf.slice_mut());
-        ctx.absorb(&payload)?
-            .commit()?
-            .ntrukem((&pk, &prng, &nonce), &key)?;
+        let mut ctx = wrap::Context::<TW, F, TbitSliceMut<TW>>::new(buf.slice_mut());
+        ctx.absorb(&payload)?.commit()?.ntrukem((&pk, &prng, &nonce), &key)?;
         ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
     }
-    let mut payload2 = Trytes::default();
-    let mut key2 = NTrytes(Trits::zero(ntru::KEY_SIZE));
+    let mut payload2 = Trytes::<TW>::default();
+    let mut key2 = NTrytes::<TW>(Tbits::zero(Spongos::<TW, F>::KEY_SIZE));
     {
-        let mut ctx = unwrap::Context::new(buf.slice());
-        ctx.absorb(&mut payload2)?
-            .commit()?
-            .ntrukem(&sk, &mut key2)?;
+        let mut ctx = unwrap::Context::<TW, F, TbitSlice<TW>>::new(buf.slice());
+        ctx.absorb(&mut payload2)?.commit()?.ntrukem(&sk, &mut key2)?;
         ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
     }
     ensure!(key == key2, "Secret and decapsulated secret differ.");
@@ -327,11 +364,12 @@ fn ntrukem_caps() -> Fallible<()> {
 
 #[test]
 fn ntrukem() {
-    assert!(dbg!(ntrukem_caps()).is_ok());
+    assert!(dbg!(ntrukem_caps::<Trit, Troika>()).is_ok());
 }
 
+/*
 use crate::io;
-use iota_streams_core::spongos::{self, Spongos};
+use iota_streams_core::sponge::spongos::{self, Spongos};
 use std::convert::{AsRef, From, Into};
 
 #[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
@@ -340,7 +378,7 @@ struct TestRelLink(Trint3);
 struct TestAbsLink(Trint3, TestRelLink);
 
 impl AbsorbFallback for TestAbsLink {
-    fn sizeof_absorb(&self, ctx: &mut sizeof::Context) -> Fallible<()> {
+    fn sizeof_absorb(&self, ctx: &mut sizeof::Context::<TW, F>) -> Fallible<()> {
         ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
         Ok(())
     }
@@ -354,7 +392,7 @@ impl AbsorbFallback for TestAbsLink {
     }
 }
 impl SkipFallback for TestRelLink {
-    fn sizeof_skip(&self, ctx: &mut sizeof::Context) -> Fallible<()> {
+    fn sizeof_skip(&self, ctx: &mut sizeof::Context::<TW, F>) -> Fallible<()> {
         ctx.skip(&self.0)?;
         Ok(())
     }
@@ -471,7 +509,7 @@ where
     RelLink: SkipFallback,
 {
     fn size<S: LinkStore<RelLink>>(&self, store: &S) -> Fallible<usize> {
-        let mut ctx = sizeof::Context::new();
+        let mut ctx = sizeof::Context::<TW, F>::new();
         ctx.absorb(&self.addr)?
             .join(store, &self.link)?
             .mask(&self.masked)?;
@@ -513,10 +551,10 @@ fn run_join_link() -> Fallible<()> {
     store.update(&TestRelLink(Trint3(3)), Spongos::init(), TestMessageInfo(0))?;
 
     let buf_size = msg.size(&store).unwrap();
-    let mut buf = Trits::zero(buf_size);
+    let mut buf = Tbits::zero(buf_size);
 
     {
-        let mut wrap_ctx = wrap::Context::new(buf.slice_mut());
+        let mut wrap_ctx = wrap::Context::<TW, F, TbitSliceMut<TW>>::new(buf.slice_mut());
         let i = TestMessageInfo(1);
         msg.wrap(&mut store, &mut wrap_ctx, i)?;
         ensure!(wrap_ctx.stream.is_empty());
@@ -524,7 +562,7 @@ fn run_join_link() -> Fallible<()> {
 
     let mut msg2 = TestMessage::<TestAbsLink, TestRelLink>::default();
     {
-        let mut unwrap_ctx = unwrap::Context::new(buf.slice());
+        let mut unwrap_ctx = unwrap::Context::<TW, F, TbitSlice<TW>>::new(buf.slice());
         //TODO: unwrap and check.
         msg2.unwrap(&store, &mut unwrap_ctx)?;
         ensure!(unwrap_ctx.stream.is_empty());
