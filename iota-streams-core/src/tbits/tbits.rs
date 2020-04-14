@@ -1,10 +1,14 @@
-use std::fmt;
-use std::hash;
-use std::ops;
-use std::str::FromStr;
-use std::string::ToString;
+use std::{
+    fmt,
+    hash,
+    ops,
+    str::FromStr,
+};
 
-use super::{slice::*, word::*};
+use super::{
+    slice::*,
+    word::*,
+};
 
 /// Container for tbits using a certain tbit encoding.
 /// Access to the individual tbits should be performed via `TbitConstSliceT` and `TbitMutSliceT` types.
@@ -28,10 +32,7 @@ where
 
     /// Create an empty container.
     pub fn new() -> Self {
-        Self {
-            n: 0,
-            buf: Vec::new(),
-        }
+        Self { n: 0, buf: Vec::new() }
     }
 
     /// Create container and initialize tbits by copying from slice `t`.
@@ -111,14 +112,19 @@ where
     pub fn eq_str(&self, s: &str) -> bool {
         self.slice().eq_str(s)
     }
+}
 
-    /*
+/*
+impl<TW> Tbits<TW>
+where
+    TW: IntTbitWord,
+{
     /// Increment tbits.
     pub fn inc(&mut self) -> bool {
         self.slice_mut().inc()
     }
-     */
 }
+ */
 
 impl<TW> FromStr for Tbits<TW>
 where
@@ -137,6 +143,7 @@ where
     }
 }
 
+/*
 impl<TW> ToString for Tbits<TW>
 where
     TW: StringTbitWord,
@@ -146,6 +153,7 @@ where
         self.slice().to_str()
     }
 }
+ */
 
 impl<TW> PartialEq for Tbits<TW>
 where
@@ -167,17 +175,14 @@ where
     }
 }
 
-/*
 impl<TW> fmt::Display for Tbits<TW>
 where
     TW: StringTbitWord,
-    TW::Tbit: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.slice().fmt(f)
     }
 }
- */
 
 impl<TW> fmt::Debug for Tbits<TW>
 where
@@ -211,8 +216,7 @@ where
     fn add_assign(&mut self, rhs: &Tbits<TW>) {
         let n = self.n;
         self.n += rhs.n;
-        self.buf
-            .resize((self.n + TW::SIZE - 1) / TW::SIZE, TW::ZERO_WORD);
+        self.buf.resize((self.n + TW::SIZE - 1) / TW::SIZE, TW::ZERO_WORD);
         let mut right = self.slice_mut().drop(n);
         rhs.slice().copy(&mut right);
     }

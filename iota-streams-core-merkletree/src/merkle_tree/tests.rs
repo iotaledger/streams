@@ -69,9 +69,5 @@ pub fn non_commutative<MT>()
 where
     MT: Eq + TraversableMerkleTree<u64>,
 {
-    traverse_heights::<MT, _, _, _>(
-        5,
-        |idx| 1u64 << idx,
-        |h0: &u64, h1: &u64| (h0 * 3 + h1) ^ 11,
-    );
+    traverse_heights::<MT, _, _, _>(5, |idx| 1u64 << idx, |h0: &u64, h1: &u64| (h0 * 3 + h1) ^ 11);
 }

@@ -1,6 +1,17 @@
-use iota_streams_core::sponge::prp::{inner, Mode, PRP};
-use iota_streams_core::tbits::{
-    binary::Byte, convert::*, word::BasicTbitWord, TbitSlice, TbitSliceMut, Tbits,
+use iota_streams_core::{
+    sponge::prp::{
+        inner,
+        Mode,
+        PRP,
+    },
+    tbits::{
+        binary::Byte,
+        convert::*,
+        word::BasicTbitWord,
+        TbitSlice,
+        TbitSliceMut,
+        Tbits,
+    },
 };
 use keccak;
 
@@ -152,7 +163,10 @@ where
 
 #[test]
 fn test_keccakf1600t_transform() {
-    use iota_streams_core::tbits::{trinary::Trit, Tbits};
+    use iota_streams_core::tbits::{
+        trinary::Trit,
+        Tbits,
+    };
     let mut s = KeccakF1600T::default();
     let mut outer = Tbits::<Trit>::zero(<KeccakF1600T as PRP<Trit>>::RATE);
     s.transform(&mut outer.slice_mut());

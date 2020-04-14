@@ -2,14 +2,24 @@ use iota_streams_core::{
     hash::Hash,
     sponge::spongos::Spongos,
     tbits::{
-        binary::{BitWord, Byte},
+        binary::{
+            BitWord,
+            Byte,
+        },
         convert::*,
         trinary::TritWord,
-        word::{IntTbitWord, SpongosTbitWord},
-        TbitSlice, TbitSliceMut,
+        word::{
+            IntTbitWord,
+            SpongosTbitWord,
+        },
+        TbitSlice,
+        TbitSliceMut,
     },
 };
-use iota_streams_core_keccak::sponge::prp::keccak::{KeccakF1600B, KeccakF1600T};
+use iota_streams_core_keccak::sponge::prp::keccak::{
+    KeccakF1600B,
+    KeccakF1600T,
+};
 
 pub struct KeyPartHashT<TW>(Spongos<TW, KeccakF1600T>);
 

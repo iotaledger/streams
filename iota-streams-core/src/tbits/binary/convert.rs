@@ -1,8 +1,12 @@
 use super::defs::*;
 use crate::tbits::{
-    convert::{log2e3, ConvertOnto},
+    convert::{
+        log2e3,
+        ConvertOnto,
+    },
     trinary::Trit,
-    TbitSlice, TbitSliceMut,
+    TbitSlice,
+    TbitSliceMut,
 };
 
 impl ConvertOnto<Trit> for Byte {
@@ -13,8 +17,7 @@ impl ConvertOnto<Trit> for Byte {
 
         // Reserve (b+1)-bit integer.
         let mut integer = vec![0_u32; (b + 32) / 32];
-        let integer_slice =
-            TbitSliceMut::<Byte>::from_raw_ptr(b + 1, integer.as_mut_ptr() as *mut Byte);
+        let integer_slice = TbitSliceMut::<Byte>::from_raw_ptr(b + 1, integer.as_mut_ptr() as *mut Byte);
         from.take(b + 1).copy(&integer_slice);
 
         while !onto.is_empty() {
@@ -36,7 +39,10 @@ impl ConvertOnto<Trit> for Byte {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tbits::{binary::Byte, Tbits};
+    use crate::tbits::{
+        binary::Byte,
+        Tbits,
+    };
 
     #[test]
     fn convert_onto_trit() {

@@ -1,8 +1,13 @@
 use std::fmt;
 //use std::str::FromStr;
-use super::prp::PRP;
-use super::spongos::*;
-use crate::tbits::{word::SpongosTbitWord, Tbits};
+use super::{
+    prp::PRP,
+    spongos::*,
+};
+use crate::tbits::{
+    word::SpongosTbitWord,
+    Tbits,
+};
 
 #[cfg(test)]
 use super::prp::troika::Troika;
@@ -24,6 +29,8 @@ where
     let mut z: Tbits<TW>;
     let t: Tbits<TW>;
     let u: Tbits<TW>;
+    let t2: Tbits<TW>;
+    let t3: Tbits<TW>;
 
     {
         let mut s = Spongos::<TW, F>::init();
@@ -33,6 +40,8 @@ where
         y = s.encrypt_tbits(&x);
         s.commit();
         t = s.squeeze_tbits(n);
+        t2 = s.squeeze_tbits(n);
+        t3 = s.squeeze_tbits(n);
     }
 
     {
@@ -44,6 +53,8 @@ where
         s.decrypt_mut_tbits(&mut z);
         s.commit();
         u = s.squeeze_tbits(n);
+        assert!(s.squeeze_eq_tbits(&t2));
+        assert!(s.squeeze_eq_tbits(&t3));
     }
 
     assert!(x == z, "{}: x != D(E(x))", n);
@@ -62,6 +73,7 @@ where
     let mut z = Tbits::zero(n);
     let mut t = Tbits::zero(n);
     let mut u = Tbits::zero(n);
+    let mut t23 = Tbits::zero(n + n);
 
     let mut s: Spongos<TW, F>;
     {
@@ -81,6 +93,8 @@ where
         s.encrypt2(x.slice(), y.slice_mut());
         s.commit();
         s.squeeze2(t.slice_mut());
+        s.squeeze2(t23.slice_mut().take(n));
+        s.squeeze2(t23.slice_mut().drop(n));
     }
 
     {
@@ -91,6 +105,8 @@ where
         s.decrypt2(y.slice(), z.slice_mut());
         s.commit();
         s.squeeze2(u.slice_mut());
+        assert!(s.squeeze_eq(t23.slice().take(n)));
+        assert!(s.squeeze_eq(t23.slice().drop(n)));
     }
 
     assert!(x == z, "{}: x != D(E(x))", n);

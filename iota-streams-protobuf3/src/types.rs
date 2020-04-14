@@ -1,13 +1,27 @@
-use failure::{bail, Fallible};
-use std::convert::{AsMut, AsRef};
-use std::fmt;
-use std::hash;
-use std::string::ToString;
+use failure::{
+    bail,
+    Fallible,
+};
+use std::{
+    convert::{
+        AsMut,
+        AsRef,
+    },
+    fmt,
+    hash,
+};
 
 use iota_streams_core::{
-    sponge::{prp::PRP, spongos::Spongos},
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
     tbits::{
-        word::{BasicTbitWord, SpongosTbitWord, StringTbitWord},
+        word::{
+            BasicTbitWord,
+            SpongosTbitWord,
+            StringTbitWord,
+        },
         Tbits,
     },
 };
@@ -16,7 +30,12 @@ use crate::io;
 
 /// PB3 integer type `tryte` is signed and is represented with `Trint3`, not `Tryte` which is unsigned.
 /// PB3 integer type `trint` is 6-trit wide and is represented with `Trint6`.
-pub use iota_streams_core::tbits::trinary::{Trint18, Trint3, Trint6, Trint9};
+pub use iota_streams_core::tbits::trinary::{
+    Trint18,
+    Trint3,
+    Trint6,
+    Trint9,
+};
 
 /// Fixed-size array of trytes, the size is known at compile time and is not encoded in trinary representation.
 /// The inner buffer size (in trits) must be multiple of 3.
@@ -31,6 +50,15 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
+    }
+}
+
+impl<TW> fmt::Display for NTrytes<TW>
+where
+    TW: StringTbitWord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -53,6 +81,7 @@ where
     }
 }
 
+/*
 impl<TW> ToString for NTrytes<TW>
 where
     TW: StringTbitWord,
@@ -61,14 +90,7 @@ where
         (self.0).to_string()
     }
 }
-
-/*
-impl fmt::Display for NTrytes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:[{}]", (self.0).size(), (self.0).slice())
-    }
-}
-*/
+ */
 
 impl<TW> hash::Hash for NTrytes<TW>
 where
@@ -105,6 +127,7 @@ where
 }
 impl<TW> Eq for Trytes<TW> where TW: BasicTbitWord {}
 
+/*
 impl<TW> ToString for Trytes<TW>
 where
     TW: StringTbitWord,
@@ -113,14 +136,26 @@ where
         (self.0).to_string()
     }
 }
+ */
 
-/*
-impl fmt::Display for Trytes {
+impl<TW> fmt::Debug for Trytes<TW>
+where
+    TW: BasicTbitWord,
+    TW::Tbit: fmt::Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:[{}]", (self.0).size(), (self.0).slice())
+        write!(f, "{:?}", self.0)
     }
 }
-*/
+
+impl<TW> fmt::Display for Trytes<TW>
+where
+    TW: StringTbitWord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl<TW> hash::Hash for Trytes<TW>
 where
@@ -187,6 +222,12 @@ pub fn sizeof_sizet(n: usize) -> usize {
     3 * (size_trytes(n) + 1)
 }
 
+impl fmt::Display for Size {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Size({})", self.0)
+    }
+}
+
 /// PB3 `external` modifier, it changes behaviour of commands in the following way.
 /// The external field is not encoded in trinary representation and the value is stored in the environment implicitly.
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Default)]
@@ -233,12 +274,7 @@ impl<TW, F, Link, Info> Default for EmptyLinkStore<TW, F, Link, Info> {
 
 impl<TW, F, Link, Info> LinkStore<TW, F, Link> for EmptyLinkStore<TW, F, Link, Info> {
     type Info = Info;
-    fn update(
-        &mut self,
-        _link: &Link,
-        _spongos: Spongos<TW, F>,
-        _info: Self::Info,
-    ) -> Fallible<()> {
+    fn update(&mut self, _link: &Link, _spongos: Spongos<TW, F>, _info: Self::Info) -> Fallible<()> {
         Ok(())
     }
 }
@@ -272,10 +308,7 @@ where
     type Info = Info;
     fn lookup(&self, link: &Link) -> Fallible<(Spongos<TW, F>, Self::Info)> {
         if self.link == *link {
-            Ok((
-                Spongos::<TW, F>::from_inner(self.spongos.clone()),
-                self.info.clone(),
-            ))
+            Ok((Spongos::<TW, F>::from_inner(self.spongos.clone()), self.info.clone()))
         } else {
             bail!("Link not found.");
         }
@@ -307,9 +340,7 @@ where
     Link: Eq + hash::Hash,
 {
     fn default() -> Self {
-        Self {
-            map: HashMap::new(),
-        }
+        Self { map: HashMap::new() }
     }
 }
 
@@ -345,7 +376,11 @@ where
     }
 }
 
-use crate::command::{sizeof, unwrap, wrap};
+use crate::command::{
+    sizeof,
+    unwrap,
+    wrap,
+};
 
 pub struct Fallback<T>(pub T);
 
@@ -391,10 +426,7 @@ impl<T> AsMut<T> for Fallback<T> {
 pub trait AbsorbFallback<TW, F> {
     fn sizeof_absorb(&self, ctx: &mut sizeof::Context<TW, F>) -> Fallible<()>;
     fn wrap_absorb<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()>;
-    fn unwrap_absorb<IS: io::IStream<TW>>(
-        &mut self,
-        ctx: &mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<()>;
+    fn unwrap_absorb<IS: io::IStream<TW>>(&mut self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()>;
 }
 
 /// Trait allows for custom (non-standard Protobuf3) types to be AbsorbExternal.
@@ -404,14 +436,8 @@ pub trait AbsorbFallback<TW, F> {
 /// Note, that "absolute" links are absorbed in the message header.
 pub trait AbsorbExternalFallback<TW, F> {
     fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<TW, F>) -> Fallible<()>;
-    fn wrap_absorb_external<OS: io::OStream<TW>>(
-        &self,
-        ctx: &mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<()>;
-    fn unwrap_absorb_external<IS: io::IStream<TW>>(
-        &self,
-        ctx: &mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<()>;
+    fn wrap_absorb_external<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()>;
+    fn unwrap_absorb_external<IS: io::IStream<TW>>(&self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()>;
 }
 
 /// Trait allows for custom (non-standard Protobuf3) types to be Absorb.
@@ -422,8 +448,5 @@ pub trait AbsorbExternalFallback<TW, F> {
 pub trait SkipFallback<TW, F> {
     fn sizeof_skip(&self, ctx: &mut sizeof::Context<TW, F>) -> Fallible<()>;
     fn wrap_skip<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()>;
-    fn unwrap_skip<IS: io::IStream<TW>>(
-        &mut self,
-        ctx: &mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<()>;
+    fn unwrap_skip<IS: io::IStream<TW>>(&mut self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()>;
 }

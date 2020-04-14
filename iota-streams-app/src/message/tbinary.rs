@@ -1,15 +1,22 @@
 use failure::Fallible;
+use std::fmt;
 
 use super::*;
 use iota_streams_core::{
     sponge::prp::PRP,
     tbits::{
         trinary,
-        word::{SpongosTbitWord, StringTbitWord},
+        word::{
+            SpongosTbitWord,
+            StringTbitWord,
+        },
         Tbits,
     },
 };
-use iota_streams_protobuf3::{command::unwrap, types::*};
+use iota_streams_protobuf3::{
+    command::unwrap,
+    types::*,
+};
 
 /// Trinary network Message representation.
 pub struct TbinaryMessage<TW, F, AbsLink> {
@@ -20,6 +27,16 @@ pub struct TbinaryMessage<TW, F, AbsLink> {
     pub body: Tbits<TW>,
 
     pub(crate) _phantom: std::marker::PhantomData<F>,
+}
+
+impl<TW, F, AbsLink> fmt::Display for TbinaryMessage<TW, F, AbsLink>
+where
+    TW: StringTbitWord,
+    AbsLink: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{link: {}, body: {}}}", self.link, self.body)
+    }
 }
 
 impl<TW, F, AbsLink> Clone for TbinaryMessage<TW, F, AbsLink>

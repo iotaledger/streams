@@ -1,4 +1,9 @@
-use crate::tbits::{word::BasicTbitWord, TbitSlice, TbitSliceMut, Tbits};
+use crate::tbits::{
+    word::BasicTbitWord,
+    TbitSlice,
+    TbitSliceMut,
+    Tbits,
+};
 
 pub trait Hash<TW>: Sized {
     /// Hash value size in tbits.

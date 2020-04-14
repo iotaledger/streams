@@ -1,7 +1,11 @@
 use failure::Fallible;
 
 use iota_streams_protobuf3::{
-    command::{sizeof, unwrap, wrap},
+    command::{
+        sizeof,
+        unwrap,
+        wrap,
+    },
     io,
 };
 
@@ -38,10 +42,7 @@ pub trait LinkGenerator<TW, Link, From> {
 }
 
 pub trait ContentWrap<TW, F, Store> {
-    fn sizeof<'c>(
-        &self,
-        ctx: &'c mut sizeof::Context<TW, F>,
-    ) -> Fallible<&'c mut sizeof::Context<TW, F>>;
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>>;
     fn wrap<'c, OS: io::OStream<TW>>(
         &self,
         store: &Store,

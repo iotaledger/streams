@@ -1,9 +1,15 @@
 use crate::signature::wots;
 use iota_streams_core::tbits::{
-    binary::{BitWord, Byte},
+    binary::{
+        BitWord,
+        Byte,
+    },
     convert::*,
     trinary::TritWord,
-    word::{IntTbitWord, SpongosTbitWord},
+    word::{
+        IntTbitWord,
+        SpongosTbitWord,
+    },
     Tbits,
 };
 use iota_streams_core_keccak::sponge::prp;

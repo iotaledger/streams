@@ -3,7 +3,10 @@ use iota_streams_core::{
     sponge::prp,
     tbits::{
         trinary::TritWord,
-        word::{IntTbitWord, SpongosTbitWord},
+        word::{
+            IntTbitWord,
+            SpongosTbitWord,
+        },
         Tbits,
     },
 };

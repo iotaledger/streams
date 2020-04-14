@@ -1,9 +1,14 @@
 //! Pre-shared key is a secret symmetric key shared between two parties and is used for
 //! (session) key exchange.
 
-use crate::tbits::{word::BasicTbitWord, Tbits};
-use std::collections::HashMap;
-use std::hash;
+use crate::tbits::{
+    word::BasicTbitWord,
+    Tbits,
+};
+use std::{
+    collections::HashMap,
+    hash,
+};
 
 /// Size of pre-shared key identifier.
 pub const PSKID_SIZE: usize = 81;

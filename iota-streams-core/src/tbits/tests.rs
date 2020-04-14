@@ -1,8 +1,12 @@
-use std::fmt;
-use std::str::FromStr;
-use std::string::ToString;
+use std::{
+    fmt,
+    str::FromStr,
+};
 
-use super::{word::*, *};
+use super::{
+    word::*,
+    *,
+};
 
 fn copy_range_tbits<TW>(m: usize, n: usize, ts: &[TW::Tbit])
 where

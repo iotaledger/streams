@@ -3,7 +3,10 @@ use std::cell::RefMut;
 
 use super::*;
 use iota_streams_core::{
-    sponge::{prp::PRP, spongos::Spongos},
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
     tbits::word::SpongosTbitWord,
 };
 use iota_streams_protobuf3::types::*;

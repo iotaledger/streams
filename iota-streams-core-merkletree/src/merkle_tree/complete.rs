@@ -1,5 +1,7 @@
-use std::fmt;
-use std::vec::Vec;
+use std::{
+    fmt,
+    vec::Vec,
+};
 
 use super::*;
 
@@ -29,7 +31,7 @@ impl<H> MT<H> {
         // Gen internal nodes
         for d in (0..self.height).rev() {
             for i in 0..max_skn(d) {
-                let h0 = self.node(d + 1, 2 * i + 0);
+                let h0 = self.node(d + 1, 2 * i);
                 let h1 = self.node(d + 1, 2 * i + 1);
                 let h01 = m.merge_nodes(h0, h1);
                 debug_assert_eq!(self.idx(d, i), self.nodes.len());
@@ -79,14 +81,12 @@ where
             self.skn += 1;
         }
 
-        if self.skn == max_skn(self.height) {
-            if self.height > 0 {
-                // Leave root only.
-                if let Some(root) = self.nodes.pop() {
-                    self.nodes[0] = root;
-                    self.nodes.resize_with(1, || g.gen_leaf(0));
-                    self.nodes.shrink_to_fit();
-                }
+        if self.skn == max_skn(self.height) && self.height > 0 {
+            // Leave root only.
+            if let Some(root) = self.nodes.pop() {
+                self.nodes[0] = root;
+                self.nodes.resize_with(1, || g.gen_leaf(0));
+                self.nodes.shrink_to_fit();
             }
         }
 
@@ -125,13 +125,11 @@ where
     }
 
     fn load(height: Height, skn: Idx, nodes: Vec<H>) -> Option<Self> {
-        if skn == max_skn(height) && nodes.len() == 1 {
-        } else if skn < max_skn(height) && tree_size(height) == nodes.len() {
+        if (skn == max_skn(height) && nodes.len() == 1) || (skn < max_skn(height) && tree_size(height) == nodes.len()) {
+            Some(Self { height, skn, nodes })
         } else {
-            return None;
+            None
         }
-
-        Some(Self { height, skn, nodes })
     }
 }
 

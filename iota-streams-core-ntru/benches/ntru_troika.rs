@@ -1,13 +1,26 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::{Benchmark, Criterion};
-use iota_streams_core::prng::Prng;
-use iota_streams_core::sponge::{prp::troika::Troika, spongos::Spongos};
-use iota_streams_core::tbits::{trinary::Trit, Tbits};
+use criterion::{
+    Benchmark,
+    Criterion,
+};
+use iota_streams_core::{
+    prng::Prng,
+    sponge::{
+        prp::troika::Troika,
+        spongos::Spongos,
+    },
+    tbits::{
+        trinary::Trit,
+        Tbits,
+    },
+};
 use iota_streams_core_ntru::key_encapsulation::ntru;
-use std::str::FromStr;
-use std::time::Duration;
+use std::{
+    str::FromStr,
+    time::Duration,
+};
 
 fn ntru_troika_benchmark(c: &mut Criterion) {
     let duration_ms = 1000;
@@ -55,13 +68,7 @@ fn ntru_troika_benchmark(c: &mut Criterion) {
                 Benchmark::new("encrypt", move |b| {
                     b.iter(|| {
                         let mut s = Spongos::<Trit, Troika>::init();
-                        pk.encrypt_with_spongos(
-                            &mut s,
-                            &prng,
-                            nonce.slice(),
-                            key.slice(),
-                            ekey2.slice_mut(),
-                        );
+                        pk.encrypt_with_spongos(&mut s, &prng, nonce.slice(), key.slice(), ekey2.slice_mut());
                     })
                 })
                 .sample_size(10)

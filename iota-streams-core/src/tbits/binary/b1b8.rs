@@ -1,8 +1,16 @@
 //! 8 bits per 1 byte.
 
-use super::defs::*;
-use super::word::BitWord;
-use crate::tbits::word::{BasicTbitWord, IntTbitWord, SpongosTbitWord, StringTbitWord};
+use super::{
+    defs::*,
+    word::BitWord,
+};
+use crate::tbits::word::{
+    BasicTbitWord,
+    IntTbitWord,
+    RngTbitWord,
+    SpongosTbitWord,
+    StringTbitWord,
+};
 
 impl BasicTbitWord for Byte {
     type Tbit = Bit;
@@ -90,6 +98,8 @@ impl StringTbitWord for Byte {
         }
     }
 }
+
+impl RngTbitWord for Byte {}
 
 #[test]
 fn test_byte_put_char() {

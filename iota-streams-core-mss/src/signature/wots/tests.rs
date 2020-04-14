@@ -1,9 +1,16 @@
 use super::*;
 use iota_streams_core::{
     prng::Prng,
-    sponge::{prp::PRP, spongos::hash_data},
+    sponge::{
+        prp::PRP,
+        spongos::hash_data,
+    },
     tbits::{
-        word::{BasicTbitWord, IntTbitWord, SpongosTbitWord},
+        word::{
+            BasicTbitWord,
+            IntTbitWord,
+            SpongosTbitWord,
+        },
         Tbits,
     },
 };

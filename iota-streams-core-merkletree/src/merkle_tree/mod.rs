@@ -1,6 +1,8 @@
-use std::borrow::Borrow;
-use std::fmt;
-use std::rc::Rc;
+use std::{
+    borrow::Borrow,
+    fmt,
+    rc::Rc,
+};
 
 /// Type of tree heights.
 pub type Height = usize;

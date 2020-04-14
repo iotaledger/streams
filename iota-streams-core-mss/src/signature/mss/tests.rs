@@ -2,7 +2,10 @@ use super::*;
 use iota_streams_core::{
     prng::Prng,
     tbits::{
-        word::{IntTbitWord, SpongosTbitWord},
+        word::{
+            IntTbitWord,
+            SpongosTbitWord,
+        },
         Tbits,
     },
 };
@@ -22,6 +25,7 @@ where
         let h = Tbits::<TW>::zero(P::HASH_SIZE);
         let mut sig = Tbits::<TW>::zero(P::signature_size(d));
         loop {
+            sk.sign(h.slice(), sig.slice_mut());
             sk.sign(h.slice(), sig.slice_mut());
             let ok = sk.public_key().verify(h.slice(), sig.slice());
             assert!(ok);

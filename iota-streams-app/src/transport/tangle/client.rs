@@ -1,19 +1,37 @@
 use chrono::Utc;
-use failure::{bail, Fallible};
-use std::convert::TryInto;
-use std::str::FromStr;
-use std::string::ToString;
+use failure::{
+    bail,
+    Fallible,
+};
+use std::{
+    convert::TryInto,
+    str::FromStr,
+    string::ToString,
+};
 
 use iota_constants::HASH_TRINARY_SIZE as HASH_LENGTH;
 use iota_conversion::Trinary;
-use iota_lib_rs::prelude::{iota_client, iota_constants, iota_conversion, iota_crypto, iota_model};
-
-use iota_streams_core::tbits::{
-    word::{BasicTbitWord, StringTbitWord},
-    TbitSlice, Tbits,
+use iota_lib_rs::prelude::{
+    iota_client,
+    iota_constants,
+    iota_conversion,
+    iota_crypto,
+    iota_model,
 };
 
-use crate::transport::{tangle::*, *};
+use iota_streams_core::tbits::{
+    word::{
+        BasicTbitWord,
+        StringTbitWord,
+    },
+    TbitSlice,
+    Tbits,
+};
+
+use crate::transport::{
+    tangle::*,
+    *,
+};
 
 fn make_empty_tx() -> iota_model::Transaction {
     //8019
@@ -61,12 +79,7 @@ fn make_empty_tx() -> iota_model::Transaction {
     tx
 }
 
-fn make_tx<TW>(
-    address: &Tbits<TW>,
-    tag: &Tbits<TW>,
-    msg: &Tbits<TW>,
-    timestamp: i64,
-) -> iota_model::Transaction
+fn make_tx<TW>(address: &Tbits<TW>, tag: &Tbits<TW>, msg: &Tbits<TW>, timestamp: i64) -> iota_model::Transaction
 where
     TW: StringTbitWord,
 {
@@ -95,12 +108,7 @@ where
     }
 }
 
-fn make_txs<TW>(
-    address: &Tbits<TW>,
-    tag: &Tbits<TW>,
-    msg: &Tbits<TW>,
-    timestamp: i64,
-) -> Vec<iota_model::Transaction>
+fn make_txs<TW>(address: &Tbits<TW>, tag: &Tbits<TW>, msg: &Tbits<TW>, timestamp: i64) -> Vec<iota_model::Transaction>
 where
     TW: StringTbitWord,
 {
@@ -144,7 +152,10 @@ pub fn bundle_to_trytes(bundle: &iota_model::Bundle) -> Vec<iota_conversion::Try
 
 /// This functions is missing from iota-lib-rs for some reason.
 fn calc_bundle_hash(bundle: &iota_model::Bundle) -> Fallible<String> {
-    use iota_crypto::{Kerl, Sponge};
+    use iota_crypto::{
+        Kerl,
+        Sponge,
+    };
     let mut kerl = Kerl::default();
     kerl.reset();
     for tx in bundle.iter() {
@@ -204,10 +215,7 @@ pub fn bundles_from_trytes(trytes: &Vec<iota_conversion::Trytes>) -> Vec<iota_mo
         let mut bundle = vec![tx];
         loop {
             if let Some(tx) = txs.pop() {
-                if bundle[0].address == tx.address
-                    && bundle[0].tag == tx.tag
-                    && bundle[0].bundle == tx.bundle
-                {
+                if bundle[0].address == tx.address && bundle[0].tag == tx.tag && bundle[0].bundle == tx.bundle {
                     bundle.push(tx);
                 } else {
                     bundles.push(bundle);
@@ -240,10 +248,7 @@ pub fn bundles_from_trytes(trytes: &Vec<iota_conversion::Trytes>) -> Vec<iota_mo
 /// So this function also takes into account `address` and `tag` fields.
 /// As STREAMS Messages can have the same message id (ie. `tag`) it is advised that STREAMS Message
 /// bundles have distinct nonces and/or timestamps.
-pub fn msg_to_bundle<TW, F>(
-    msg: &TbinaryMessage<TW, F, TangleAddress<TW>>,
-    timestamp: i64,
-) -> iota_model::Bundle
+pub fn msg_to_bundle<TW, F>(msg: &TbinaryMessage<TW, F, TangleAddress<TW>>, timestamp: i64) -> iota_model::Bundle
 where
     TW: StringTbitWord,
 {
@@ -262,9 +267,7 @@ where
 
 /// Reconstruct STREAMS Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-pub fn msg_from_bundle<TW, F>(
-    bundle: &iota_model::Bundle,
-) -> TbinaryMessage<TW, F, TangleAddress<TW>>
+pub fn msg_from_bundle<TW, F>(bundle: &iota_model::Bundle) -> TbinaryMessage<TW, F, TangleAddress<TW>>
 where
     TW: StringTbitWord,
 {
@@ -296,10 +299,7 @@ where
             id: NTrytes(Tbits::<TW>::cycle_str(MSGID_SIZE, "M")),
         };
         let body = &Tbits::<TW>::cycle_str(6561, "D") + &Tbits::<TW>::cycle_str(6561, "E");
-        TbinaryMessage::<TW, F, TangleAddress<TW>>::new(
-            TangleAddress::<TW>::new(appinst.clone(), msgid),
-            body,
-        )
+        TbinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body)
     };
     // A,N,[F,G]
     let m2 = {
@@ -307,10 +307,7 @@ where
             id: NTrytes(Tbits::<TW>::cycle_str(MSGID_SIZE, "N")),
         };
         let body = &Tbits::<TW>::cycle_str(6561, "F") + &Tbits::<TW>::cycle_str(6561, "G");
-        TbinaryMessage::<TW, F, TangleAddress<TW>>::new(
-            TangleAddress::<TW>::new(appinst.clone(), msgid),
-            body,
-        )
+        TbinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body)
     };
 
     let bundle1 = msg_to_bundle(&m1, 0);
@@ -347,14 +344,8 @@ where
         let n1 = msg_from_bundle::<TW, F>(&bundles[0]);
         let n2 = msg_from_bundle::<TW, F>(&bundles[1]);
         assert!(
-            (n1.link() == m1.link()
-                && n1.body == m1.body
-                && n2.link() == m2.link()
-                && n2.body == m2.body)
-                || (n1.link() == m2.link()
-                    && n1.body == m2.body
-                    && n2.link() == m1.link()
-                    && n2.body == m1.body)
+            (n1.link() == m1.link() && n1.body == m1.body && n2.link() == m2.link() && n2.body == m2.body)
+                || (n1.link() == m2.link() && n1.body == m2.body && n2.link() == m1.link() && n2.body == m1.body)
         );
     }
 }
@@ -362,19 +353,53 @@ where
 #[cfg(test)]
 #[test]
 fn test_bundle_from_to_trytes() {
-    use iota_streams_core::{sponge::prp::troika::Troika, tbits::trinary::Trit};
+    use iota_streams_core::{
+        sponge::prp::troika::Troika,
+        tbits::trinary::Trit,
+    };
     bundle_from_to_trytes::<Trit, Troika>();
+}
+
+/// Stripped version of `iota_client::options::SendTrytesOptions<'a>` due to lifetime parameter.
+#[derive(Clone, Copy)]
+pub struct SendTrytesOptions {
+    pub depth: usize,
+    pub min_weight_magnitude: usize,
+    pub local_pow: bool,
+    pub threads: usize,
+}
+
+impl Default for SendTrytesOptions {
+    fn default() -> Self {
+        Self {
+            depth: 3,
+            min_weight_magnitude: 14,
+            local_pow: true,
+            threads: num_cpus::get(),
+        }
+    }
 }
 
 impl<'a, TW, F> Transport<TW, F, TangleAddress<TW>> for iota_client::Client<'a>
 where
     TW: StringTbitWord,
 {
+    type SendOptions = SendTrytesOptions;
+
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
-    fn send_message(&mut self, msg: &TbinaryMessage<TW, F, TangleAddress<TW>>) -> Fallible<()> {
-        let opt = iota_client::options::SendTrytesOptions::default();
-        //TODO: Decrease mwm?
-        let timestamp = Utc::now().timestamp_millis();
+    fn send_message_with_options(
+        &mut self,
+        msg: &TbinaryMessage<TW, F, TangleAddress<TW>>,
+        opt: Self::SendOptions,
+    ) -> Fallible<()> {
+        let opt = iota_client::options::SendTrytesOptions {
+            depth: opt.depth,
+            min_weight_magnitude: opt.min_weight_magnitude,
+            local_pow: opt.local_pow,
+            threads: opt.threads,
+            reference: None,
+        };
+        let timestamp = Utc::now().timestamp();
         let bundle = msg_to_bundle(msg, timestamp);
         let trytes = bundle_to_trytes(&bundle);
         // Ignore PoWed transactions.
@@ -382,10 +407,13 @@ where
         Ok(())
     }
 
+    type RecvOptions = ();
+
     /// Receive a message.
-    fn recv_message(
+    fn recv_messages_with_options(
         &mut self,
         link: &TangleAddress<TW>,
+        _opt: Self::RecvOptions,
     ) -> Fallible<Vec<TbinaryMessage<TW, F, TangleAddress<TW>>>> {
         let find_opt = iota_client::options::FindTransactionsOptions {
             bundles: Vec::new(),

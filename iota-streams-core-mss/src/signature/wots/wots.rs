@@ -3,8 +3,14 @@ use iota_streams_core::{
     prng::Prng,
     sponge::prp::PRP,
     tbits::{
-        word::{BasicTbitWord, IntTbitWord, SpongosTbitWord},
-        TbitSlice, TbitSliceMut, Tbits,
+        word::{
+            BasicTbitWord,
+            IntTbitWord,
+            SpongosTbitWord,
+        },
+        TbitSlice,
+        TbitSliceMut,
+        Tbits,
     },
 };
 
@@ -37,8 +43,8 @@ pub trait Parameters<TW> {
     const PUBLIC_KEY_SIZE: usize = Self::J::HASH_SIZE; // 243
 }
 
-/// h := hash_data^n(h)
 /*
+/// h := hash_data^n(h)
 fn rehash_data<TW>(n: usize, h: TbitSliceMut<TW>) {
     for _ in 0..n {
         hash_data(h.as_const(), h);
@@ -82,26 +88,20 @@ where
         let r = hash.advance(P::HASH_PART_SIZE).get_usize();
         t += r;
 
-        sk.advance(P::PRIVATE_KEY_PART_SIZE)
-            .copy(&sig_part.slice_mut());
+        sk.advance(P::PRIVATE_KEY_PART_SIZE).copy(&sig_part.slice_mut());
         rehash::<TW, P::H>(P::HASH_PART_MODULUS - r, &mut sig_part);
 
-        sig_part
-            .slice()
-            .copy(&sig.advance(P::PRIVATE_KEY_PART_SIZE));
+        sig_part.slice().copy(&sig.advance(P::PRIVATE_KEY_PART_SIZE));
     }
 
     for _ in 0..P::CHECKSUM_PART_COUNT {
         let r = t % P::HASH_PART_MODULUS;
         t = t / P::HASH_PART_MODULUS;
 
-        sk.advance(P::PRIVATE_KEY_PART_SIZE)
-            .copy(&sig_part.slice_mut());
+        sk.advance(P::PRIVATE_KEY_PART_SIZE).copy(&sig_part.slice_mut());
         rehash::<TW, P::H>(r, &mut sig_part);
 
-        sig_part
-            .slice()
-            .copy(&sig.advance(P::PRIVATE_KEY_PART_SIZE));
+        sig_part.slice().copy(&sig.advance(P::PRIVATE_KEY_PART_SIZE));
     }
 }
 
@@ -117,8 +117,7 @@ where
     let mut sk_part = Tbits::<TW>::zero(P::PRIVATE_KEY_PART_SIZE);
     let mut s = P::J::init();
     for _ in 0..P::PRIVATE_KEY_PART_COUNT {
-        sk.advance(P::PRIVATE_KEY_PART_SIZE)
-            .copy(&sk_part.slice_mut());
+        sk.advance(P::PRIVATE_KEY_PART_SIZE).copy(&sk_part.slice_mut());
         rehash::<TW, P::H>(P::HASH_PART_MODULUS, &mut sk_part);
         s.update(sk_part.slice());
     }
@@ -142,8 +141,7 @@ where
     for _ in 0..P::HASH_PART_COUNT {
         let r = hash.advance(P::HASH_PART_SIZE).get_usize();
 
-        sig.advance(P::PRIVATE_KEY_PART_SIZE)
-            .copy(&sig_part.slice_mut());
+        sig.advance(P::PRIVATE_KEY_PART_SIZE).copy(&sig_part.slice_mut());
         rehash::<TW, P::H>(r, &mut sig_part);
         s.update(sig_part.slice());
         t += r;
@@ -154,8 +152,7 @@ where
         let r = t % P::HASH_PART_MODULUS;
         t = t / P::HASH_PART_MODULUS;
 
-        sig.advance(P::PRIVATE_KEY_PART_SIZE)
-            .copy(&sig_part.slice_mut());
+        sig.advance(P::PRIVATE_KEY_PART_SIZE).copy(&sig_part.slice_mut());
         rehash::<TW, P::H>(P::HASH_PART_MODULUS - r, &mut sig_part);
         s.update(sig_part.slice());
     }

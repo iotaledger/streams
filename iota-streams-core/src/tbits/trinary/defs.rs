@@ -1,8 +1,7 @@
 use std::fmt;
-use std::hash;
 
 /// Unsigned trit type with values in range 0..2. Used by Troika implementation.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default, Hash)]
 pub struct Trit(pub u8); //0..2
 pub const MAX_TRIT: Trit = Trit(2);
 pub const MIN_TRIT: Trit = Trit(0);
@@ -10,12 +9,6 @@ pub const MIN_TRIT: Trit = Trit(0);
 impl fmt::Display for Trit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-impl hash::Hash for Trit {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
     }
 }
 

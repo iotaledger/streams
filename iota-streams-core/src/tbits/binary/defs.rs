@@ -1,5 +1,7 @@
-use std::fmt;
-use std::hash;
+use std::{
+    fmt,
+    hash,
+};
 
 /// Bit type with values in range 0..1.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]

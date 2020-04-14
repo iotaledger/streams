@@ -1,11 +1,22 @@
 //! Spongos-base pseudo-random trinary number generator.
 
-use crate::sponge::{prp::PRP, spongos::Spongos};
-use crate::tbits::{
-    binary::Byte,
-    convert::ConvertOnto,
-    word::{BasicTbitWord, SpongosTbitWord, StringTbitWord},
-    TbitSlice, TbitSliceMut, Tbits,
+use crate::{
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
+    tbits::{
+        binary::Byte,
+        convert::IConvertOnto,
+        word::{
+            RngTbitWord,
+            SpongosTbitWord,
+            StringTbitWord,
+        },
+        TbitSlice,
+        TbitSliceMut,
+        Tbits,
+    },
 };
 
 /// Spongos-based pseudo-random number generator.
@@ -16,26 +27,31 @@ pub struct Prng<TW, G> {
     _phantom: std::marker::PhantomData<G>,
 }
 
-pub fn random_tbits<TW, R>(n: usize, rng: &mut R) -> Tbits<TW>
+fn random_tbits<TW, R>(n: usize, rng: &mut R) -> Tbits<TW>
 where
-    TW: BasicTbitWord,
-    Byte: ConvertOnto<TW>,
+    //TW: BasicTbitWord,
+    //Byte: ConvertOnto<TW>,
+    TW: RngTbitWord,
     R: rand::RngCore,
 {
     let mut random_bytes = vec![Byte(0); n];
-    rng.fill_bytes(unsafe {
-        std::mem::transmute::<&mut [Byte], &mut [u8]>(random_bytes.as_mut_slice())
-    });
+    rng.fill_bytes(unsafe { std::mem::transmute::<&mut [Byte], &mut [u8]>(random_bytes.as_mut_slice()) });
     let bytes = TbitSlice::<Byte>::from_slice(n * 8, random_bytes.as_slice());
     let mut tbits = Tbits::<TW>::zero(n);
-    <Byte as ConvertOnto<TW>>::cvt_onto(bytes, &mut tbits.slice_mut());
+    <TW as IConvertOnto<Byte>>::icvt_onto(bytes, &mut tbits.slice_mut());
     tbits
 }
 
 pub fn random_nonce<TW>(n: usize) -> Tbits<TW>
 where
-    TW: BasicTbitWord,
-    Byte: ConvertOnto<TW>,
+    TW: RngTbitWord,
+{
+    random_tbits::<TW, rand::rngs::ThreadRng>(n, &mut rand::thread_rng())
+}
+
+pub fn random_key<TW>(n: usize) -> Tbits<TW>
+where
+    TW: RngTbitWord,
 {
     random_tbits::<TW, rand::rngs::ThreadRng>(n, &mut rand::thread_rng())
 }
@@ -56,6 +72,8 @@ where
     /// Prng fixed key size.
     pub const KEY_SIZE: usize = G::CAPACITY;
 }
+
+//TODO: prng randomness hierarchy: domain (mss, ntru, session key, etc.), secret, counter
 
 impl<TW, G> Prng<TW, G>
 where

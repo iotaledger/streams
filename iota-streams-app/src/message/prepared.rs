@@ -1,10 +1,16 @@
-use failure::{ensure, Fallible};
+use failure::{
+    ensure,
+    Fallible,
+};
 use std::cell::Ref;
 
 use super::*;
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{word::SpongosTbitWord, Tbits},
+    tbits::{
+        word::SpongosTbitWord,
+        Tbits,
+    },
 };
 use iota_streams_protobuf3::types::*;
 

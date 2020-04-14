@@ -1,7 +1,12 @@
 use std::hash;
 
-use crate::sponge::prp::PRP;
-use crate::tbits::{word::BasicTbitWord, Tbits};
+use crate::{
+    sponge::prp::PRP,
+    tbits::{
+        word::BasicTbitWord,
+        Tbits,
+    },
+};
 
 /// Convenience wrapper for storing Spongos inner state.
 #[derive(Clone)]

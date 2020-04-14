@@ -1,6 +1,17 @@
-use super::prp::keccak::{KeccakF1600B, KeccakF1600T};
-use iota_streams_core::sponge::{prp::PRP, tests::*};
-use iota_streams_core::tbits::{binary::Byte, trinary::Trit};
+use super::prp::keccak::{
+    KeccakF1600B,
+    KeccakF1600T,
+};
+use iota_streams_core::{
+    sponge::{
+        prp::PRP,
+        tests::*,
+    },
+    tbits::{
+        binary::Byte,
+        trinary::Trit,
+    },
+};
 
 #[test]
 fn tbits_with_size_boundary_cases_keccak_byte() {

@@ -1,10 +1,17 @@
 use iota_streams_core::{
     hash::Hash,
-    sponge::{prp::troika::Troika, spongos::Spongos},
+    sponge::{
+        prp::troika::Troika,
+        spongos::Spongos,
+    },
     tbits::{
         trinary::TritWord,
-        word::{IntTbitWord, SpongosTbitWord},
-        TbitSlice, TbitSliceMut,
+        word::{
+            IntTbitWord,
+            SpongosTbitWord,
+        },
+        TbitSlice,
+        TbitSliceMut,
     },
 };
 

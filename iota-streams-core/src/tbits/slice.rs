@@ -1,5 +1,7 @@
-use std::fmt;
-use std::hash;
+use std::{
+    fmt,
+    hash,
+};
 
 use super::word::*;
 
@@ -132,16 +134,7 @@ impl SliceRange {
     pub fn split_at(self, n: usize) -> (Self, Self) {
         let middle = self.d + n;
         assert!(self.n >= middle);
-        (
-            Self {
-                n: middle,
-                d: self.d,
-            },
-            Self {
-                n: self.n,
-                d: middle,
-            },
-        )
+        (Self { n: middle, d: self.d }, Self { n: self.n, d: middle })
     }
 
     /// Take and drop no more than `n` tbits from the current range
@@ -149,16 +142,7 @@ impl SliceRange {
     #[inline]
     pub fn split_at_min(self, n: usize) -> (Self, Self) {
         let middle = self.offset_min(n);
-        (
-            Self {
-                n: middle,
-                d: self.d,
-            },
-            Self {
-                n: self.n,
-                d: middle,
-            },
-        )
+        (Self { n: middle, d: self.d }, Self { n: self.n, d: middle })
     }
 
     /// Pickup `n` tbits from the dropped range.
@@ -180,10 +164,7 @@ impl SliceRange {
     /// Drop all the current tbits.
     #[inline]
     pub fn drop_all(self) -> Self {
-        Self {
-            n: self.n,
-            d: self.n,
-        }
+        Self { n: self.n, d: self.n }
     }
 
     /// The dropped range.
@@ -481,8 +462,7 @@ where
     /// ASCII encode trytes at the current offset.
     /// The last incomplete tryte if any is padded with zero trits.
     pub fn to_str(&self) -> String {
-        let mut s =
-            String::with_capacity((self.size() + TW::TBITS_PER_CHAR - 1) / TW::TBITS_PER_CHAR);
+        let mut s = String::with_capacity((self.size() + TW::TBITS_PER_CHAR - 1) / TW::TBITS_PER_CHAR);
         unsafe {
             let mut d = self.r.d;
             while d < self.r.n {
@@ -541,7 +521,7 @@ where
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         unsafe {
-            <TW as BasicTbitWord>::fold_tbits(self.r.n, self.r.d, self.p, |t| t.hash(state));
+            <TW as BasicTbitWord>::fold_tbits(self.size(), self.r.d, self.p, |t| t.hash(state));
         }
     }
 }
@@ -551,7 +531,7 @@ where
     TW: StringTbitWord,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use std::fmt::Write as _;
+        use fmt::Write as _;
         let mut this = *self;
         while !this.is_empty() {
             f.write_char(this.get_char())?;
@@ -561,12 +541,7 @@ where
     }
 }
 
-unsafe fn write_tbits<TW>(
-    n: usize,
-    dx: usize,
-    x: *const TW,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result
+unsafe fn write_tbits<TW>(n: usize, dx: usize, x: *const TW, f: &mut fmt::Formatter<'_>) -> fmt::Result
 where
     TW: BasicTbitWord,
     TW::Tbit: fmt::Display,
@@ -948,13 +923,7 @@ where
         let n = self.size_min(other.size());
         unsafe {
             (
-                TW::equals(
-                    n,
-                    self.r.d,
-                    self.p as *const TW,
-                    other.r.d,
-                    other.p as *const TW,
-                ),
+                TW::equals(n, self.r.d, self.p as *const TW, other.r.d, other.p as *const TW),
                 n,
             )
         }
@@ -994,10 +963,10 @@ where
     TW: IntTbitWord,
 {
     pub fn put_isize(&self, i: isize) {
-        unsafe { TW::put_isize(self.r.n, self.r.d, self.p, i) }
+        unsafe { TW::put_isize(self.size(), self.r.d, self.p, i) }
     }
     pub fn put_usize(&self, u: usize) {
-        unsafe { TW::put_usize(self.r.n, self.r.d, self.p, u) }
+        unsafe { TW::put_usize(self.size(), self.r.d, self.p, u) }
     }
 }
 

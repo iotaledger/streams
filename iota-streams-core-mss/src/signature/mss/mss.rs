@@ -3,12 +3,21 @@ use iota_streams_core::{
     prng::Prng,
     sponge::prp::PRP,
     tbits::{
-        word::{BasicTbitWord, IntTbitWord, SpongosTbitWord},
-        TbitSlice, TbitSliceMut, Tbits,
+        word::{
+            BasicTbitWord,
+            IntTbitWord,
+            SpongosTbitWord,
+        },
+        TbitSlice,
+        TbitSliceMut,
+        Tbits,
     },
 };
 
-use crate::signature::wots::{self, Parameters as _};
+use crate::signature::wots::{
+    self,
+    Parameters as _,
+};
 use iota_streams_core_merkletree::merkle_tree::*;
 
 pub trait Parameters<TW> {
@@ -81,9 +90,7 @@ where
     TW: BasicTbitWord, //SpongosTbitWord + IntTbitWord,
     P: Parameters<TW>,
 {
-    let mut h = Tbits::<TW>::zero(
-        <<P as Parameters<TW>>::WotsParameters as wots::Parameters<TW>>::J::HASH_SIZE,
-    );
+    let mut h = Tbits::<TW>::zero(<<P as Parameters<TW>>::WotsParameters as wots::Parameters<TW>>::J::HASH_SIZE);
     merge_nodes::<TW, P>(h0.slice(), h1.slice(), h.slice_mut());
     h
 }
@@ -414,11 +421,7 @@ pub fn recover_apk<TW, P>(
 }
 
 /// Recover public key `apk` from signature buffer `sig` using signed `hash` value and return MSS signature size.
-pub fn recover<TW, P>(
-    apk: TbitSliceMut<TW>,
-    hash: TbitSlice<TW>,
-    mut sig: TbitSlice<TW>,
-) -> Option<usize>
+pub fn recover<TW, P>(apk: TbitSliceMut<TW>, hash: TbitSlice<TW>, mut sig: TbitSlice<TW>) -> Option<usize>
 where
     TW: BasicTbitWord + IntTbitWord,
     P: Parameters<TW>,

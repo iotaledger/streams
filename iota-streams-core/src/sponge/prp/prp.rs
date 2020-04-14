@@ -1,7 +1,10 @@
 /// Reexport sponge `Mode`.
 pub use crate::sponge::spongos::Mode;
 use crate::tbits::slice::*;
-use std::convert::{From, Into};
+use std::convert::{
+    From,
+    Into,
+};
 
 /// Pseudo-random permutation.
 ///

@@ -1,9 +1,20 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::{Benchmark, Criterion};
-use iota_streams_core::sponge::{prp::troika::Troika, spongos::Spongos};
-use iota_streams_core::tbits::{trinary::Trit, Tbits};
+use criterion::{
+    Benchmark,
+    Criterion,
+};
+use iota_streams_core::{
+    sponge::{
+        prp::troika::Troika,
+        spongos::Spongos,
+    },
+    tbits::{
+        trinary::Trit,
+        Tbits,
+    },
+};
 use std::time::Duration;
 
 fn step(key: &Tbits<Trit>, x: &Tbits<Trit>) {
@@ -23,9 +34,7 @@ fn keccakf1600t_benchmark(c: &mut Criterion) {
     {
         let key = Tbits::<Trit>::zero(KEY_SIZE);
         let x5T = Tbits::<Trit>::zero(5);
-        c.bench_function("Run Troika spongos (5T)", move |b| {
-            b.iter(|| step(&key, &x5T))
-        });
+        c.bench_function("Run Troika spongos (5T)", move |b| b.iter(|| step(&key, &x5T)));
     }
 
     {

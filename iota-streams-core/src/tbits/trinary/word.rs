@@ -1,5 +1,7 @@
-use super::defs::*;
-use super::util::*;
+use super::{
+    defs::*,
+    util::*,
+};
 use crate::tbits::word::BasicTbitWord;
 
 /// Representations supporting efficient integer conversions and spongos operations.

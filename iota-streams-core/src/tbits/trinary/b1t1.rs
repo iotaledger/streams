@@ -1,8 +1,16 @@
 //! 1 trit per 1 byte.
 
-use super::defs::*;
-use super::word::TritWord;
-use crate::tbits::word::{BasicTbitWord, IntTbitWord, SpongosTbitWord, StringTbitWord};
+use super::{
+    defs::*,
+    word::TritWord,
+};
+use crate::tbits::word::{
+    BasicTbitWord,
+    IntTbitWord,
+    RngTbitWord,
+    SpongosTbitWord,
+    StringTbitWord,
+};
 use std::convert::TryFrom;
 
 impl BasicTbitWord for Trit {
@@ -21,24 +29,24 @@ impl BasicTbitWord for Trit {
         *ts
     }
 
-    unsafe fn to_tbits(n: usize, dx: usize, x: *const Self, ts: *mut Self::Tbit) {
-        std::ptr::copy(x.add(dx), ts, n);
+    unsafe fn to_tbits(s: usize, dx: usize, x: *const Self, ts: *mut Self::Tbit) {
+        std::ptr::copy(x.add(dx), ts, s);
     }
 
-    unsafe fn from_tbits(n: usize, dx: usize, x: *mut Self, ts: *const Self::Tbit) {
-        std::ptr::copy(ts, x.add(dx), n);
+    unsafe fn from_tbits(s: usize, dx: usize, x: *mut Self, ts: *const Self::Tbit) {
+        std::ptr::copy(ts, x.add(dx), s);
     }
 
-    unsafe fn copy(n: usize, dx: usize, x: *const Self, dy: usize, y: *mut Self) {
-        std::ptr::copy(x.add(dx), y.add(dy), n);
+    unsafe fn copy(s: usize, dx: usize, x: *const Self, dy: usize, y: *mut Self) {
+        std::ptr::copy(x.add(dx), y.add(dy), s);
     }
 
-    unsafe fn set_zero(n: usize, d: usize, p: *mut Self) {
-        std::ptr::write_bytes(p.add(d), 0, n);
+    unsafe fn set_zero(s: usize, d: usize, p: *mut Self) {
+        std::ptr::write_bytes(p.add(d), 0, s);
     }
 
-    unsafe fn equals(n: usize, dx: usize, x: *const Self, dy: usize, y: *const Self) -> bool {
-        for i in 0..n {
+    unsafe fn equals(s: usize, dx: usize, x: *const Self, dy: usize, y: *const Self) -> bool {
+        for i in 0..s {
             if *x.add(dx + i) != *y.add(dy + i) {
                 return false;
             }
@@ -103,16 +111,16 @@ impl IntTbitWord for Trit {
         });
         i
     }
-    unsafe fn put_usize(n: usize, d: usize, p: *mut Self, mut u: usize) {
-        <Trit as BasicTbitWord>::unfold_tbits(n, d, p, |x| {
+    unsafe fn put_usize(s: usize, d: usize, p: *mut Self, mut u: usize) {
+        <Trit as BasicTbitWord>::unfold_tbits(s, d, p, |x| {
             x[0] = Trit((u % 3) as u8);
             u = u / 3;
         });
     }
-    unsafe fn get_usize(n: usize, d: usize, p: *const Self) -> usize {
+    unsafe fn get_usize(s: usize, d: usize, p: *const Self) -> usize {
         let mut m = 1_usize;
         let mut u = 0_usize;
-        <Trit as BasicTbitWord>::fold_tbits(n, d, p, |x| {
+        <Trit as BasicTbitWord>::fold_tbits(s, d, p, |x| {
             u += m * x[0].0 as usize;
             m *= 3;
         });
@@ -129,6 +137,8 @@ impl SpongosTbitWord for Trit {
         Trit((3 + x.0 - y.0) % 3)
     }
 }
+
+impl RngTbitWord for Trit {}
 
 impl TritWord for Trit {}
 

@@ -48,27 +48,50 @@
 //! hence solving the spam issue: spammed message will not
 //! check. To be discussed.
 
-use failure::{ensure, Fallible};
+use failure::{
+    ensure,
+    Fallible,
+};
 use std::str::FromStr;
 
 use iota_streams_core::{
     sponge::prp::PRP,
     tbits::{
         trinary,
-        word::{SpongosTbitWord, StringTbitWord},
+        word::{
+            SpongosTbitWord,
+            StringTbitWord,
+        },
         Tbits,
     },
 };
 use iota_streams_protobuf3 as protobuf3;
-use protobuf3::{command::*, io, types::*};
+use protobuf3::{
+    command::*,
+    io,
+    types::*,
+};
 
 use super::*;
 
-#[derive(Clone)]
 pub struct Header<TW, Link> {
     pub version: Trint3,
     pub link: Link,
     pub content_type: Trytes<TW>,
+}
+
+impl<TW, Link> Clone for Header<TW, Link>
+where
+    TW: Clone,
+    Link: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            version: self.version,
+            link: self.link.clone(),
+            content_type: self.content_type.clone(),
+        }
+    }
 }
 
 impl<TW, Link> Header<TW, Link>
@@ -98,10 +121,7 @@ where
     F: PRP<TW>,
     Link: AbsorbExternalFallback<TW, F>,
 {
-    fn sizeof<'c>(
-        &self,
-        ctx: &'c mut sizeof::Context<TW, F>,
-    ) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
         ctx.absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&self.content_type)?;

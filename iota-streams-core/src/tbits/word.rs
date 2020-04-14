@@ -32,269 +32,256 @@ pub trait BasicTbitWord: Sized + Copy + PartialEq {
         ts[d % Self::SIZE]
     }
 
-    unsafe fn fold_tbits<F>(n: usize, dx: usize, x: *const Self, mut f: F)
+    unsafe fn fold_tbits<F>(mut s: usize, mut dx: usize, mut x: *const Self, mut f: F)
     where
         F: FnMut(&[Self::Tbit]),
     {
-        if n == 0 {
+        if s == 0 {
             return;
         }
 
         // Primitive array `[Self::Tbit; Self::SIZE]` is not supported yet.
         let mut v = vec![Self::ZERO_TBIT; Self::SIZE];
-        let rx = dx % Self::SIZE;
-        let mut xx = x.add(dx / Self::SIZE);
-        let mut nn = n;
-        let mut d;
+        x = x.add(dx / Self::SIZE);
+        dx = dx % Self::SIZE;
 
-        if rx != 0 {
-            d = std::cmp::min(n, Self::SIZE - rx);
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
-            f(&v[rx..rx + d]);
-            nn -= d;
-            xx = xx.add(1);
+        if dx != 0 {
+            let d = std::cmp::min(s, Self::SIZE - dx);
+            Self::word_to_tbits(*x, v.as_mut_ptr());
+            f(&v[dx..dx + d]);
+            s -= d;
+            x = x.add(1);
         }
 
-        d = Self::SIZE;
-        while nn >= d {
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
+        while s >= Self::SIZE {
+            Self::word_to_tbits(*x, v.as_mut_ptr());
             f(&v[..]);
-            nn -= d;
-            xx = xx.add(1);
+            s -= Self::SIZE;
+            x = x.add(1);
         }
 
-        if nn > 0 {
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
-            f(&v[..nn]);
+        if s > 0 {
+            Self::word_to_tbits(*x, v.as_mut_ptr());
+            f(&v[..s]);
         }
     }
 
-    unsafe fn refold_tbits<F>(n: usize, dx: usize, x: *mut Self, mut f: F)
+    unsafe fn refold_tbits<F>(mut s: usize, mut dx: usize, mut x: *mut Self, mut f: F)
     where
         F: FnMut(&mut [Self::Tbit]),
     {
-        if n == 0 {
+        if s == 0 {
             return;
         }
 
         // Primitive array `[Self::Tbit; Self::SIZE]` is not supported yet.
         let mut v = vec![Self::ZERO_TBIT; Self::SIZE];
-        let rx = dx % Self::SIZE;
-        let mut xx = x.add(dx / Self::SIZE);
-        let mut nn = n;
-        let mut d;
+        x = x.add(dx / Self::SIZE);
+        dx = dx % Self::SIZE;
 
-        if rx != 0 {
-            d = std::cmp::min(n, Self::SIZE - rx);
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
-            f(&mut v[rx..rx + d]);
-            *xx = Self::word_from_tbits(v.as_ptr());
-            nn -= d;
-            xx = xx.add(1);
+        if dx != 0 {
+            let d = std::cmp::min(s, Self::SIZE - dx);
+            Self::word_to_tbits(*x, v.as_mut_ptr());
+            f(&mut v[dx..dx + d]);
+            *x = Self::word_from_tbits(v.as_ptr());
+            s -= d;
+            x = x.add(1);
         }
 
-        d = Self::SIZE;
-        while nn >= d {
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
+        while s >= Self::SIZE {
+            Self::word_to_tbits(*x, v.as_mut_ptr());
             f(&mut v[..]);
-            *xx = Self::word_from_tbits(v.as_ptr());
-            nn -= d;
-            xx = xx.add(1);
+            *x = Self::word_from_tbits(v.as_ptr());
+            s -= Self::SIZE;
+            x = x.add(1);
         }
 
-        if nn > 0 {
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
-            f(&mut v[..nn]);
-            *xx = Self::word_from_tbits(v.as_ptr());
+        if s > 0 {
+            Self::word_to_tbits(*x, v.as_mut_ptr());
+            f(&mut v[..s]);
+            *x = Self::word_from_tbits(v.as_ptr());
         }
     }
 
-    unsafe fn unfold_tbits<F>(n: usize, dx: usize, x: *mut Self, mut f: F)
+    unsafe fn unfold_tbits<F>(mut s: usize, mut dx: usize, mut x: *mut Self, mut f: F)
     where
         F: FnMut(&mut [Self::Tbit]),
     {
-        if n == 0 {
+        if s == 0 {
             return;
         }
 
         // Primitive array `[Self::Tbit; Self::SIZE]` is not supported yet.
         let mut v = vec![Self::ZERO_TBIT; Self::SIZE];
-        let rx = dx % Self::SIZE;
-        let mut xx = x.add(dx / Self::SIZE);
-        let mut nn = n;
-        let mut d;
+        x = x.add(dx / Self::SIZE);
+        dx = dx % Self::SIZE;
 
-        if rx != 0 {
-            d = std::cmp::min(n, Self::SIZE - rx);
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
-            f(&mut v[rx..rx + d]);
-            *xx = Self::word_from_tbits(v.as_ptr());
-            nn -= d;
-            xx = xx.add(1);
+        if dx != 0 {
+            let d = std::cmp::min(s, Self::SIZE - dx);
+            Self::word_to_tbits(*x, v.as_mut_ptr());
+            f(&mut v[dx..dx + d]);
+            *x = Self::word_from_tbits(v.as_ptr());
+            s -= d;
+            x = x.add(1);
         }
 
-        d = Self::SIZE;
-        while nn >= d {
+        while s >= Self::SIZE {
             f(&mut v[..]);
-            *xx = Self::word_from_tbits(v.as_ptr());
-            nn -= d;
-            xx = xx.add(1);
+            *x = Self::word_from_tbits(v.as_ptr());
+            s -= Self::SIZE;
+            x = x.add(1);
         }
 
-        if nn > 0 {
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
-            f(&mut v[..nn]);
-            *xx = Self::word_from_tbits(v.as_ptr());
+        if s > 0 {
+            Self::word_to_tbits(*x, v.as_mut_ptr());
+            f(&mut v[..s]);
+            *x = Self::word_from_tbits(v.as_ptr());
         }
     }
 
-    unsafe fn to_tbits(n: usize, dx: usize, x: *const Self, mut ts: *mut Self::Tbit) {
-        Self::fold_tbits(n, dx, x, |tx| {
+    unsafe fn to_tbits(s: usize, dx: usize, x: *const Self, mut ts: *mut Self::Tbit) {
+        Self::fold_tbits(s, dx, x, |tx| {
             std::ptr::copy(tx.as_ptr(), ts, tx.len());
             ts = ts.add(tx.len());
         });
     }
 
-    unsafe fn from_tbits(n: usize, dx: usize, x: *mut Self, mut ts: *const Self::Tbit) {
-        Self::unfold_tbits(n, dx, x, |tx| {
+    unsafe fn from_tbits(s: usize, dx: usize, x: *mut Self, mut ts: *const Self::Tbit) {
+        Self::unfold_tbits(s, dx, x, |tx| {
             std::ptr::copy(ts, tx.as_mut_ptr(), tx.len());
             ts = ts.add(tx.len());
         });
     }
 
-    /// Copy `n` tbits from `(dx,x)` slice into `(dy,y)`.
-    unsafe fn copy(n: usize, dx: usize, x: *const Self, dy: usize, y: *mut Self) {
-        if n == 0 {
+    /// Copy `s` tbits from `(dx,x)` slice into `(dy,y)`.
+    unsafe fn copy(mut s: usize, mut dx: usize, mut x: *const Self, mut dy: usize, mut y: *mut Self) {
+        if s == 0 {
             return;
         }
 
-        let rx = dx % Self::SIZE;
-        let mut xx = x.add(dx / Self::SIZE);
-        let ry = dy % Self::SIZE;
-        let mut yy = y.add(dy / Self::SIZE);
-        let mut nn = n;
+        if dx % Self::SIZE == dy % Self::SIZE {
+            x = x.add(dx / Self::SIZE);
+            dx = dx % Self::SIZE;
+            y = y.add(dy / Self::SIZE);
+            dy = dy % Self::SIZE;
 
-        if rx == ry {
             let mut xs = vec![Self::ZERO_TBIT; Self::SIZE];
             let mut ys = vec![Self::ZERO_TBIT; Self::SIZE];
 
-            if rx != 0 {
-                Self::word_to_tbits(*xx, xs.as_mut_ptr());
-                Self::word_to_tbits(*yy, ys.as_mut_ptr());
-                let d = std::cmp::min(n, Self::SIZE - rx);
-                ys[ry..ry + d].copy_from_slice(&xs[rx..rx + d]);
-                *yy = Self::word_from_tbits(ys.as_ptr());
+            if dx != 0 {
+                Self::word_to_tbits(*x, xs.as_mut_ptr());
+                Self::word_to_tbits(*y, ys.as_mut_ptr());
+                let d = std::cmp::min(s, Self::SIZE - dx);
+                ys[dy..dy + d].copy_from_slice(&xs[dx..dx + d]);
+                *y = Self::word_from_tbits(ys.as_ptr());
 
-                nn -= d;
-                xx = xx.add(1);
-                yy = yy.add(1);
+                s -= d;
+                x = x.add(1);
+                y = y.add(1);
             }
 
-            std::ptr::copy(xx, yy, nn / Self::SIZE);
+            std::ptr::copy(x, y, s / Self::SIZE);
 
-            xx = xx.add(nn / Self::SIZE);
-            yy = yy.add(nn / Self::SIZE);
-            nn = nn % Self::SIZE;
+            x = x.add(s / Self::SIZE);
+            y = y.add(s / Self::SIZE);
+            s = s % Self::SIZE;
 
-            if nn != 0 {
-                Self::word_to_tbits(*xx, xs.as_mut_ptr());
-                Self::word_to_tbits(*yy, ys.as_mut_ptr());
-                ys[0..nn].copy_from_slice(&xs[0..nn]);
-                *yy = Self::word_from_tbits(ys.as_ptr());
+            if s != 0 {
+                Self::word_to_tbits(*x, xs.as_mut_ptr());
+                Self::word_to_tbits(*y, ys.as_mut_ptr());
+                ys[0..s].copy_from_slice(&xs[0..s]);
+                *y = Self::word_from_tbits(ys.as_ptr());
             }
         } else {
             // Rare case, just convert via tbits.
-            let mut ts = vec![Self::ZERO_TBIT; n];
-            Self::to_tbits(n, dx, x, ts.as_mut_ptr());
-            Self::from_tbits(n, dy, y, ts.as_ptr());
+            let mut ts = vec![Self::ZERO_TBIT; s];
+            Self::to_tbits(s, dx, x, ts.as_mut_ptr());
+            Self::from_tbits(s, dy, y, ts.as_ptr());
         }
     }
 
     /// Set `n` tbits in `(dx,x)` slice to zero.
-    unsafe fn set_zero(n: usize, dx: usize, x: *mut Self) {
-        if n == 0 {
+    unsafe fn set_zero(mut s: usize, mut dx: usize, mut x: *mut Self) {
+        if s == 0 {
             return;
         }
 
         let mut v = vec![Self::ZERO_TBIT; Self::SIZE];
-        let rx = dx % Self::SIZE;
-        let mut xx = x.add(dx / Self::SIZE);
-        let mut nn = n;
-        let mut d;
+        x = x.add(dx / Self::SIZE);
+        dx = dx % Self::SIZE;
 
-        if rx != 0 {
-            d = std::cmp::min(n, Self::SIZE - rx);
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
-            for i in rx..rx + d {
+        if dx != 0 {
+            let d = std::cmp::min(s, Self::SIZE - dx);
+            Self::word_to_tbits(*x, v.as_mut_ptr());
+            for i in dx..dx + d {
+                // This should disable run-time bounds check.
                 *v.as_mut_ptr().add(i) = Self::ZERO_TBIT;
             }
-            *xx = Self::word_from_tbits(v.as_ptr());
-            nn -= d;
-            xx = xx.add(1);
+            *x = Self::word_from_tbits(v.as_ptr());
+            s -= d;
+            x = x.add(1);
         }
 
-        d = Self::SIZE;
-        while nn >= d {
-            *xx = Self::ZERO_WORD;
-            nn -= d;
-            xx = xx.add(1);
+        while s >= Self::SIZE {
+            *x = Self::ZERO_WORD;
+            s -= Self::SIZE;
+            x = x.add(1);
         }
 
-        if nn > 0 {
-            Self::word_to_tbits(*xx, v.as_mut_ptr());
-            for i in 0..nn {
+        if s > 0 {
+            Self::word_to_tbits(*x, v.as_mut_ptr());
+            for i in 0..s {
                 *v.as_mut_ptr().add(i) = Self::ZERO_TBIT;
             }
-            *xx = Self::word_from_tbits(v.as_ptr());
+            *x = Self::word_from_tbits(v.as_ptr());
         }
     }
 
     /// Compare `n` tbits from `(dx,x)` slice into `(dy,y)`.
-    unsafe fn equals(n: usize, dx: usize, x: *const Self, dy: usize, y: *const Self) -> bool {
-        if n == 0 {
+    unsafe fn equals(mut s: usize, mut dx: usize, mut x: *const Self, mut dy: usize, mut y: *const Self) -> bool {
+        if s == 0 {
             return true;
         }
 
-        let rx = dx % Self::SIZE;
-        let mut xx = x.add(dx / Self::SIZE);
-        let ry = dy % Self::SIZE;
-        let mut yy = y.add(dy / Self::SIZE);
-        let mut nn = n;
+        if dx % Self::SIZE == dy % Self::SIZE {
+            x = x.add(dx / Self::SIZE);
+            dx = dx % Self::SIZE;
+            y = y.add(dy / Self::SIZE);
+            dy = dy % Self::SIZE;
 
-        if rx == ry {
             let mut xs = vec![Self::ZERO_TBIT; Self::SIZE];
             let mut ys = vec![Self::ZERO_TBIT; Self::SIZE];
 
-            if rx != 0 {
-                Self::word_to_tbits(*xx, xs.as_mut_ptr());
-                Self::word_to_tbits(*yy, ys.as_mut_ptr());
-                let d = std::cmp::min(n, Self::SIZE - rx);
-                if ys[ry..ry + d] != xs[rx..rx + d] {
+            if dx != 0 {
+                Self::word_to_tbits(*x, xs.as_mut_ptr());
+                Self::word_to_tbits(*y, ys.as_mut_ptr());
+                let d = std::cmp::min(s, Self::SIZE - dx);
+                if ys[dy..dy + d] != xs[dx..dx + d] {
                     return false;
                 }
 
-                nn -= d;
-                xx = xx.add(1);
-                yy = yy.add(1);
+                s -= d;
+                x = x.add(1);
+                y = y.add(1);
             }
 
-            while nn >= Self::SIZE {
-                if *xx != *yy {
+            while s >= Self::SIZE {
+                if *x != *y {
                     return false;
                 }
-                nn -= Self::SIZE;
-                xx = xx.add(1);
-                yy = yy.add(1);
+                s -= Self::SIZE;
+                x = x.add(1);
+                y = y.add(1);
             }
 
-            xx = xx.add(nn / Self::SIZE);
-            yy = yy.add(nn / Self::SIZE);
-            nn = nn % Self::SIZE;
+            x = x.add(s / Self::SIZE);
+            y = y.add(s / Self::SIZE);
+            s = s % Self::SIZE;
 
-            if nn != 0 {
-                Self::word_to_tbits(*xx, xs.as_mut_ptr());
-                Self::word_to_tbits(*yy, ys.as_mut_ptr());
-                if ys[0..nn] != xs[0..nn] {
+            if s != 0 {
+                Self::word_to_tbits(*x, xs.as_mut_ptr());
+                Self::word_to_tbits(*y, ys.as_mut_ptr());
+                if ys[0..s] != xs[0..s] {
                     return false;
                 }
             }
@@ -302,10 +289,10 @@ pub trait BasicTbitWord: Sized + Copy + PartialEq {
             true
         } else {
             // Rare case, just convert via tbits.
-            let mut xs = vec![Self::ZERO_TBIT; n];
-            let mut ys = vec![Self::ZERO_TBIT; n];
-            Self::to_tbits(n, dx, x, xs.as_mut_ptr());
-            Self::to_tbits(n, dy, y, ys.as_mut_ptr());
+            let mut xs = vec![Self::ZERO_TBIT; s];
+            let mut ys = vec![Self::ZERO_TBIT; s];
+            Self::to_tbits(s, dx, x, xs.as_mut_ptr());
+            Self::to_tbits(s, dy, y, ys.as_mut_ptr());
             xs == ys
         }
     }
@@ -498,13 +485,7 @@ pub trait SpongosTbitWord: BasicTbitWord {
     }
 
     /// Squeeze tbits `y` from state `s`, OVERWRITE mode.
-    unsafe fn squeeze_eq_overwrite(
-        ds: usize,
-        s: *mut Self,
-        n: usize,
-        dy: usize,
-        y: *const Self,
-    ) -> bool {
+    unsafe fn squeeze_eq_overwrite(ds: usize, s: *mut Self, n: usize, dy: usize, y: *const Self) -> bool {
         let r = Self::equals(n, ds, s as *const Self, dy, y);
         Self::set_zero(n, ds, s);
         r
@@ -515,15 +496,7 @@ pub trait SpongosTbitWord: BasicTbitWord {
     }
 
     /// Encrypt tbits `x` into `y` with state `s`, OVERWRITE mode.
-    unsafe fn encrypt_overwrite(
-        ds: usize,
-        s: *mut Self,
-        n: usize,
-        dx: usize,
-        x: *const Self,
-        dy: usize,
-        y: *mut Self,
-    ) {
+    unsafe fn encrypt_overwrite(ds: usize, s: *mut Self, n: usize, dx: usize, x: *const Self, dy: usize, y: *mut Self) {
         Self::setx_add(ds, s, n, dx, x, dy, y);
     }
     /// Encrypt tbits `x` with state `s`, OVERWRITE mode.
@@ -531,15 +504,7 @@ pub trait SpongosTbitWord: BasicTbitWord {
         Self::setx_add_mut(ds, s, n, dx, x);
     }
     /// Encrypt tbits `y` with state `s`, ADD/XOR mode.
-    unsafe fn encrypt_xor(
-        ds: usize,
-        s: *mut Self,
-        n: usize,
-        dx: usize,
-        x: *const Self,
-        dy: usize,
-        y: *mut Self,
-    ) {
+    unsafe fn encrypt_xor(ds: usize, s: *mut Self, n: usize, dx: usize, x: *const Self, dy: usize, y: *mut Self) {
         Self::sety_add(ds, s, n, dx, x, dy, y);
     }
     /// Encrypt tbits `x` with state `s`, ADD/XOR mode.
@@ -548,15 +513,7 @@ pub trait SpongosTbitWord: BasicTbitWord {
     }
 
     /// Decrypt tbits `y` into `x` with state `s`, OVERWRITE mode.
-    unsafe fn decrypt_overwrite(
-        ds: usize,
-        s: *mut Self,
-        n: usize,
-        dy: usize,
-        y: *const Self,
-        dx: usize,
-        x: *mut Self,
-    ) {
+    unsafe fn decrypt_overwrite(ds: usize, s: *mut Self, n: usize, dy: usize, y: *const Self, dx: usize, x: *mut Self) {
         Self::setx_sub(ds, s, n, dy, y, dx, x);
     }
     /// Decrypt tbits `y` with state `s`, OVERWRITE mode.
@@ -564,15 +521,7 @@ pub trait SpongosTbitWord: BasicTbitWord {
         Self::setx_sub_mut(ds, s, n, dy, y);
     }
     /// Decrypt tbits `y` into `x` with state `s`, ADD/XOR mode.
-    unsafe fn decrypt_xor(
-        ds: usize,
-        s: *mut Self,
-        n: usize,
-        dy: usize,
-        y: *const Self,
-        dx: usize,
-        x: *mut Self,
-    ) {
+    unsafe fn decrypt_xor(ds: usize, s: *mut Self, n: usize, dy: usize, y: *const Self, dx: usize, x: *mut Self) {
         Self::sety_sub(ds, s, n, dy, y, dx, x);
     }
     /// Decrypt tbits `y` with state `s`, ADD/XOR mode.
@@ -580,3 +529,5 @@ pub trait SpongosTbitWord: BasicTbitWord {
         Self::sety_sub_mut(ds, s, n, dy, y);
     }
 }
+
+pub trait RngTbitWord: BasicTbitWord + super::convert::IConvertOnto<super::binary::Byte> {}

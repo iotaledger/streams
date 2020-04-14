@@ -1,12 +1,22 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::{Benchmark, Criterion};
-use iota_streams_core::prng;
-use iota_streams_core::tbits::{trinary::Trit, Tbits};
+use criterion::{
+    Benchmark,
+    Criterion,
+};
+use iota_streams_core::{
+    prng,
+    tbits::{
+        trinary::Trit,
+        Tbits,
+    },
+};
 use iota_streams_core_mss::signature::mss;
-use std::str::FromStr;
-use std::time::Duration;
+use std::{
+    str::FromStr,
+    time::Duration,
+};
 
 const MT_HEIGHT: usize = 2;
 

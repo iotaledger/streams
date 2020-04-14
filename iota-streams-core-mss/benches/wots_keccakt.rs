@@ -1,13 +1,23 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::{Benchmark, Criterion};
-use iota_streams_core::prng;
-use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core::tbits::{trinary::Trit, Tbits};
+use criterion::{
+    Benchmark,
+    Criterion,
+};
+use iota_streams_core::{
+    prng,
+    sponge::prp::PRP,
+    tbits::{
+        trinary::Trit,
+        Tbits,
+    },
+};
 use iota_streams_core_mss::signature::wots;
-use std::str::FromStr;
-use std::time::Duration;
+use std::{
+    str::FromStr,
+    time::Duration,
+};
 use wots::Parameters as _;
 
 fn wots_benchmark<P, G>(c: &mut Criterion, name: &str)

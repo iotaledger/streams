@@ -1,14 +1,27 @@
-use std::borrow::Borrow;
-use std::collections::HashSet;
-use std::fmt;
-use std::hash;
+use std::{
+    borrow::Borrow,
+    collections::HashSet,
+    fmt,
+    hash,
+};
 
-use iota_streams_core::prng::Prng;
-use iota_streams_core::sponge::{prp::PRP, spongos::Spongos};
-use iota_streams_core::tbits::{
-    trinary::TritWord,
-    word::{BasicTbitWord, SpongosTbitWord},
-    TbitSlice, TbitSliceMut, Tbits,
+use iota_streams_core::{
+    prng::Prng,
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
+    tbits::{
+        trinary::TritWord,
+        word::{
+            BasicTbitWord,
+            SpongosTbitWord,
+            StringTbitWord,
+        },
+        TbitSlice,
+        TbitSliceMut,
+        Tbits,
+    },
 };
 
 use super::poly::*;
@@ -176,6 +189,7 @@ where
         let rh = y.clone();
         rh_poly.to_trits2(rh.clone());
         // Encrypt `key` with r*h as key encryption key and nonce.
+        // Put `ekey` into the first `SK_SIZE` trits of `rh`, the rest of `rh` is not used.
         fo(rh);
     }
 
@@ -205,7 +219,7 @@ fn encrypt_with_randomness_mut<TW, F>(
             let rh = y.as_const();
             s.absorb(rh);
             s.commit();
-            let (ekey, tag) = y.split_at(key.size());
+            let (ekey, tag) = y.take(SK_SIZE).split_at(key.size());
             s.encrypt2(key, ekey);
             s.squeeze2(tag);
         }
@@ -229,7 +243,7 @@ pub fn encrypt_with_pk<TW, F, G>(
 {
     debug_assert_eq!(PK_SIZE, pk.size());
     //debug_assert_eq!(KEY_SIZE, k.size());
-    debug_assert!(key.size() < EKEY_SIZE);
+    debug_assert!(key.size() < SK_SIZE);
     debug_assert_eq!(EKEY_SIZE, encapsulated_key.size());
 
     /*
@@ -309,12 +323,7 @@ where
 
 /// Try to decrypt encapsulated key `y` with private polynomial `f` using spongos instance `s`.
 /// In case of success `k` contains decrypted secret key.
-fn decrypt_with_randomness<TW, F>(
-    s: &mut Spongos<TW, F>,
-    f: &Poly,
-    y: TbitSlice<TW>,
-    k: TbitSliceMut<TW>,
-) -> bool
+fn decrypt_with_randomness<TW, F>(s: &mut Spongos<TW, F>, f: &Poly, y: TbitSlice<TW>, k: TbitSliceMut<TW>) -> bool
 where
     TW: TritWord + SpongosTbitWord,
     F: PRP<TW>,
@@ -325,28 +334,23 @@ where
         //spongos_init(s);
         s.absorb(rh);
         s.commit();
-        let key_size = k.size();
-        s.decrypt2(kt.take(key_size), k);
-        s.squeeze_eq(kt.drop(key_size))
+        let (ekey, tag) = kt.split_at(k.size());
+        s.decrypt2(ekey, k);
+        s.squeeze_eq(tag)
     };
     decrypt_with_fo_transform(f, y, fo)
 }
 
 /// Try to decrypt encapsulated key `y` with private key `sk` using spongos instance `s`.
 /// In case of success `k` contains decrypted secret key.
-pub fn decrypt_with_sk<TW, F>(
-    s: &mut Spongos<TW, F>,
-    sk: TbitSlice<TW>,
-    y: TbitSlice<TW>,
-    k: TbitSliceMut<TW>,
-) -> bool
+pub fn decrypt_with_sk<TW, F>(s: &mut Spongos<TW, F>, sk: TbitSlice<TW>, y: TbitSlice<TW>, k: TbitSliceMut<TW>) -> bool
 where
     TW: TritWord + SpongosTbitWord,
     F: PRP<TW>,
 {
     debug_assert_eq!(SK_SIZE, sk.size());
     //debug_assert_eq!(KEY_SIZE, k.size());
-    debug_assert!(k.size() < EKEY_SIZE);
+    debug_assert!(k.size() < SK_SIZE);
     debug_assert_eq!(EKEY_SIZE, y.size());
 
     let mut f = Poly::new();
@@ -364,7 +368,7 @@ where
 /// which serves as a precomputed value during decryption.
 #[derive(Clone)]
 pub struct PrivateKey<TW, F> {
-    sk: Tbits<TW>,
+    pub sk: Tbits<TW>,
     f: Poly, // NTT(1+3f)
     _phantom: std::marker::PhantomData<F>,
 }
@@ -373,7 +377,7 @@ pub struct PrivateKey<TW, F> {
 /// as well as it's NTT form in `h`.
 #[derive(Clone)]
 pub struct PublicKey<TW, F> {
-    pk: Tbits<TW>,
+    pub pk: Tbits<TW>,
     h: Poly, // NTT(3g/(1+3f))
     _phantom: std::marker::PhantomData<F>,
 }
@@ -396,16 +400,14 @@ where
     }
 }
 
-/*
-impl<TW> fmt::Display for PublicKey<TW>
-    where
-    TW: TritWord,
+impl<TW, F> fmt::Display for PublicKey<TW, F>
+where
+    TW: StringTbitWord,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.pk)
     }
 }
- */
 
 impl<TW, F> fmt::Debug for PublicKey<TW, F>
 where
@@ -483,6 +485,25 @@ where
 
 impl<TW> Eq for Pkid<TW> where TW: BasicTbitWord {}
 
+impl<TW> fmt::Display for Pkid<TW>
+where
+    TW: StringTbitWord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl<TW> fmt::Debug for Pkid<TW>
+where
+    TW: BasicTbitWord,
+    TW::Tbit: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
 /// Hash of public key identifier (the first `PKID_SIZE` tbits of the public key).
 /// This is implemented
 /// `k1 == k2 -> hash(k1) == hash(k2)`
@@ -497,10 +518,7 @@ where
 }
 
 /// Generate NTRU keypair with `prng` and `nonce`.
-pub fn gen_keypair<TW, F, G>(
-    prng: &Prng<TW, G>,
-    nonce: TbitSlice<TW>,
-) -> (PrivateKey<TW, F>, PublicKey<TW, F>)
+pub fn gen_keypair<TW, F, G>(prng: &Prng<TW, G>, nonce: TbitSlice<TW>) -> (PrivateKey<TW, F>, PublicKey<TW, F>)
 where
     TW: TritWord + SpongosTbitWord,
     G: PRP<TW> + Default,
@@ -516,14 +534,7 @@ where
         _phantom: std::marker::PhantomData,
     };
 
-    let ok = gen_with_prng(
-        &prng,
-        nonce,
-        &mut sk.f,
-        sk.sk.slice_mut(),
-        &mut pk.h,
-        pk.pk.slice_mut(),
-    );
+    let ok = gen_with_prng(&prng, nonce, &mut sk.f, sk.sk.slice_mut(), &mut pk.h, pk.pk.slice_mut());
     // Public key generation should generally succeed.
     assert!(ok);
     (sk, pk)
@@ -535,12 +546,7 @@ where
     F: PRP<TW>,
 {
     /// Decapsulate secret key `k` from "capsule" `y` with private key `self` using spongos instance `s`.
-    pub fn decrypt_with_spongos(
-        &self,
-        s: &mut Spongos<TW, F>,
-        y: TbitSlice<TW>,
-        k: TbitSliceMut<TW>,
-    ) -> bool {
+    pub fn decrypt_with_spongos(&self, s: &mut Spongos<TW, F>, y: TbitSlice<TW>, k: TbitSliceMut<TW>) -> bool {
         decrypt_with_sk(s, self.sk.slice(), y, k)
     }
 
@@ -694,24 +700,29 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use iota_streams_core::prng;
-    use iota_streams_core::sponge::prp::troika::Troika;
-    use iota_streams_core::tbits::{binary::Byte, trinary::Trit};
-    use iota_streams_core_keccak::sponge::prp::keccak::{KeccakF1600B, KeccakF1600T};
+    use iota_streams_core::{
+        prng,
+        sponge::prp::troika::Troika,
+        tbits::{
+            trinary::Trit,
+            word::StringTbitWord,
+        },
+    };
+    use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600T;
 
-    fn encrypt_decrypt_tbits<TW, F, G>()
+    fn encrypt_decrypt_tbits<TW, F, G>(aad_size: usize, key_size: usize)
     where
-        TW: TritWord + SpongosTbitWord,
+        TW: TritWord + StringTbitWord + SpongosTbitWord,
         F: PRP<TW> + Clone + Default,
         G: PRP<TW> + Clone + Default,
     {
-        const KEY_SIZE: usize = 243;
         let prng_key = Tbits::<TW>::zero(prng::Prng::<TW, G>::KEY_SIZE);
         let prng = Prng::<TW, G>::init(prng_key);
-        let nonce = Tbits::<TW>::zero(15);
-        let k = Tbits::<TW>::zero(KEY_SIZE);
-        let mut ek = Tbits::<TW>::zero(EKEY_SIZE);
-        let mut dek = Tbits::<TW>::zero(KEY_SIZE);
+        let nonce = Tbits::<TW>::cycle_str(33, "ABC");
+        let k = Tbits::<TW>::cycle_str(key_size, "9DEF");
+        let aad = Tbits::<TW>::cycle_str(aad_size, "AAD");
+        let mut ek = Tbits::<TW>::zero(aad_size + EKEY_SIZE + aad_size);
+        let mut dek = Tbits::<TW>::zero(key_size);
 
         /*
         let mut sk = PrivateKey {
@@ -742,12 +753,20 @@ mod tests {
 
         {
             let mut s = Spongos::<TW, F>::init();
-            pk.encrypt_with_spongos(&mut s, &prng, nonce.slice(), k.slice(), ek.slice_mut());
+            let aad_slice = aad.slice();
+            s.absorb(aad_slice);
+            let mut ek_slice = ek.slice_mut();
+            aad_slice.copy(&ek_slice.advance(aad_size));
+            pk.encrypt_with_spongos(&mut s, &prng, nonce.slice(), k.slice(), ek_slice.advance(EKEY_SIZE));
+            s.squeeze2(ek_slice);
         }
 
         let ok = {
             let mut s = Spongos::<TW, F>::init();
-            sk.decrypt_with_spongos(&mut s, ek.slice(), dek.slice_mut())
+            let mut ek_slice = ek.slice();
+            s.absorb(ek_slice.advance(aad_size));
+            let r = sk.decrypt_with_spongos(&mut s, ek_slice.advance(EKEY_SIZE), dek.slice_mut());
+            s.squeeze_eq(ek_slice) && r
         };
         assert!(ok);
 
@@ -756,12 +775,13 @@ mod tests {
 
     #[test]
     fn encrypt_decrypt_troika_b1t1() {
-        encrypt_decrypt_tbits::<Trit, Troika, Troika>();
+        encrypt_decrypt_tbits::<Trit, Troika, Troika>(243, 243);
+        encrypt_decrypt_tbits::<Trit, Troika, Troika>(179, 381);
     }
     #[test]
     fn encrypt_decrypt_troika_b1t1_x100() {
-        for _ in 0..100 {
-            encrypt_decrypt_tbits::<Trit, Troika, Troika>();
+        for n in 0..100 {
+            encrypt_decrypt_tbits::<Trit, Troika, Troika>(100 + n, 10 + n + n);
         }
     }
 
@@ -774,12 +794,13 @@ mod tests {
 
     #[test]
     fn encrypt_decrypt_keccak_b1t1() {
-        encrypt_decrypt_tbits::<Trit, KeccakF1600T, KeccakF1600T>();
+        encrypt_decrypt_tbits::<Trit, KeccakF1600T, KeccakF1600T>(243, 243);
+        encrypt_decrypt_tbits::<Trit, KeccakF1600T, KeccakF1600T>(128, 128);
     }
     #[test]
     fn encrypt_decrypt_keccak_b1t1_x100() {
-        for _ in 0..100 {
-            encrypt_decrypt_tbits::<Trit, KeccakF1600T, KeccakF1600T>();
+        for n in 0..100 {
+            encrypt_decrypt_tbits::<Trit, KeccakF1600T, KeccakF1600T>(100 + n, 10 + n + n);
         }
     }
 }

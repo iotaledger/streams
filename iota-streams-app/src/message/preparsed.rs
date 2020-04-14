@@ -2,7 +2,10 @@ use failure::Fallible;
 use std::string::ToString;
 
 use super::*;
-use iota_streams_core::tbits::{word::StringTbitWord, TbitSlice};
+use iota_streams_core::tbits::{
+    word::StringTbitWord,
+    TbitSlice,
+};
 use iota_streams_protobuf3::command::unwrap;
 
 /// Message context preparsed for unwrapping.
@@ -38,5 +41,19 @@ where
             content: content,
             spongos: self.ctx.spongos,
         })
+    }
+}
+
+impl<'a, TW, F, Link> Clone for PreparsedMessage<'a, TW, F, Link>
+where
+    TW: Clone,
+    F: Clone,
+    Link: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            header: self.header.clone(),
+            ctx: self.ctx.clone(),
+        }
     }
 }

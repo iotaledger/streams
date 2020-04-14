@@ -6,8 +6,13 @@ pub mod troika;
 use troika::Troika;
 
 use crate::tbits::{
-    trinary::{Trit, TritWord},
-    TbitSlice, TbitSliceMut, Tbits,
+    trinary::{
+        Trit,
+        TritWord,
+    },
+    TbitSlice,
+    TbitSliceMut,
+    Tbits,
 };
 
 //TODO: Implement binary adapter for Troika.

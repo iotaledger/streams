@@ -2,21 +2,31 @@
 
 use chrono::Utc;
 use failure::Fallible;
-use std::convert::AsRef;
-use std::fmt;
-use std::hash;
-use std::string::ToString;
+use std::{
+    convert::AsRef,
+    fmt,
+    hash,
+    str::FromStr,
+};
 
 use iota_streams_core::{
     sponge::prp::PRP,
     tbits::{
         trinary,
-        word::{BasicTbitWord, SpongosTbitWord, StringTbitWord},
+        word::{
+            BasicTbitWord,
+            SpongosTbitWord,
+            StringTbitWord,
+        },
         Tbits,
     },
 };
 use iota_streams_core_mss::signature::mss;
-use iota_streams_protobuf3::{command::*, io, types::*};
+use iota_streams_protobuf3::{
+    command::*,
+    io,
+    types::*,
+};
 
 use crate::message::*;
 
@@ -52,6 +62,17 @@ pub struct TangleAddress<TW> {
     pub msgid: MsgId<TW>,
 }
 
+impl<TW> TangleAddress<TW>
+where
+    TW: StringTbitWord,
+{
+    pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self, ()> {
+        let appinst = AppInst::from_str(appinst_str)?;
+        let msgid = MsgId::from_str(msgid_str)?;
+        Ok(TangleAddress { appinst, msgid })
+    }
+}
+
 impl<TW> fmt::Debug for TangleAddress<TW>
 where
     TW: BasicTbitWord,
@@ -59,6 +80,15 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{appinst: {:?}, msgid:{:?}}}", self.appinst, self.msgid)
+    }
+}
+
+impl<TW> fmt::Display for TangleAddress<TW>
+where
+    TW: StringTbitWord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{appinst: {}, msgid:{}}}", self.appinst, self.msgid)
     }
 }
 
@@ -143,6 +173,12 @@ where
     }
 }
 
+impl<TW, F> DefaultTangleLinkGenerator<TW, F> {
+    pub fn reset_appinst(&mut self, appinst: AppInst<TW>) {
+        self.appinst = appinst;
+    }
+}
+
 impl<TW, F> DefaultTangleLinkGenerator<TW, F>
 where
     TW: SpongosTbitWord + trinary::TritWord,
@@ -159,13 +195,11 @@ where
         Ok(new)
     }
     fn gen_msgid(&self, msgid: &MsgId<TW>) -> MsgId<TW> {
-        self.try_gen_msgid(msgid)
-            .map_or(MsgId::<TW>::default(), |x| x)
+        self.try_gen_msgid(msgid).map_or(MsgId::<TW>::default(), |x| x)
     }
 }
 
-impl<TW, F, P> LinkGenerator<TW, TangleAddress<TW>, mss::PublicKey<TW, P>>
-    for DefaultTangleLinkGenerator<TW, F>
+impl<TW, F, P> LinkGenerator<TW, TangleAddress<TW>, mss::PublicKey<TW, P>> for DefaultTangleLinkGenerator<TW, F>
 where
     TW: StringTbitWord + SpongosTbitWord + trinary::TritWord,
     F: PRP<TW> + Default,
@@ -203,11 +237,7 @@ where
             msgid: self.gen_msgid(msgid),
         }
     }
-    fn header_from(
-        &mut self,
-        arg: &MsgId<TW>,
-        content_type: &str,
-    ) -> header::Header<TW, TangleAddress<TW>> {
+    fn header_from(&mut self, arg: &MsgId<TW>, content_type: &str) -> header::Header<TW, TangleAddress<TW>> {
         header::Header::new_with_type(self.link_from(arg), content_type)
     }
 }
@@ -221,6 +251,20 @@ pub struct AppInst<TW> {
     pub(crate) id: NTrytes<TW>,
 }
 
+impl<TW> FromStr for AppInst<TW>
+where
+    TW: StringTbitWord,
+{
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        if s.len() == APPINST_SIZE / 3 {
+            Tbits::<TW>::from_str(s).map(|x| AppInst { id: NTrytes(x) })
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl<TW> fmt::Debug for AppInst<TW>
 where
     TW: BasicTbitWord,
@@ -228,6 +272,15 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.id)
+    }
+}
+
+impl<TW> fmt::Display for AppInst<TW>
+where
+    TW: StringTbitWord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.id)
     }
 }
 
@@ -264,6 +317,7 @@ where
     }
 }
 
+/*
 impl<TW> ToString for AppInst<TW>
 where
     TW: StringTbitWord,
@@ -272,6 +326,7 @@ where
         self.id.to_string()
     }
 }
+ */
 
 impl<TW> hash::Hash for AppInst<TW>
 where
@@ -296,18 +351,12 @@ where
             .absorb(External(&self.msgid.id))?;
         Ok(())
     }
-    fn wrap_absorb_external<OS: io::OStream<TW>>(
-        &self,
-        ctx: &mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<()> {
+    fn wrap_absorb_external<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()> {
         ctx.absorb(External(&self.appinst.id))?
             .absorb(External(&self.msgid.id))?;
         Ok(())
     }
-    fn unwrap_absorb_external<IS: io::IStream<TW>>(
-        &self,
-        ctx: &mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<()> {
+    fn unwrap_absorb_external<IS: io::IStream<TW>>(&self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()> {
         ctx.absorb(External(&self.appinst.id))?
             .absorb(External(&self.msgid.id))?;
         Ok(())
@@ -323,6 +372,20 @@ pub struct MsgId<TW> {
     pub(crate) id: NTrytes<TW>,
 }
 
+impl<TW> FromStr for MsgId<TW>
+where
+    TW: StringTbitWord,
+{
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        if s.len() == MSGID_SIZE / 3 {
+            Tbits::<TW>::from_str(s).map(|x| MsgId { id: NTrytes(x) })
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl<TW> fmt::Debug for MsgId<TW>
 where
     TW: BasicTbitWord,
@@ -330,6 +393,15 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.id)
+    }
+}
+
+impl<TW> fmt::Display for MsgId<TW>
+where
+    TW: StringTbitWord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.id)
     }
 }
 
@@ -366,6 +438,7 @@ where
     }
 }
 
+/*
 impl<TW> ToString for MsgId<TW>
 where
     TW: StringTbitWord,
@@ -374,6 +447,7 @@ where
         self.id.to_string()
     }
 }
+ */
 
 impl<TW> hash::Hash for MsgId<TW>
 where
@@ -399,10 +473,7 @@ where
         ctx.skip(&self.id)?;
         Ok(())
     }
-    fn unwrap_skip<IS: io::IStream<TW>>(
-        &mut self,
-        ctx: &mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<()> {
+    fn unwrap_skip<IS: io::IStream<TW>>(&mut self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()> {
         ctx.skip(&mut self.id)?;
         Ok(())
     }

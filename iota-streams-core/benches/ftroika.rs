@@ -23,9 +23,7 @@ fn basic_ftroika() {
 }
 
 fn ftroika_benchmark(c: &mut Criterion) {
-    c.bench_function("Ftroika with input of 8019 trits", |b| {
-        b.iter(|| basic_ftroika())
-    });
+    c.bench_function("Ftroika with input of 8019 trits", |b| b.iter(|| basic_ftroika()));
 }
 
 criterion_group!(benches, ftroika_benchmark);

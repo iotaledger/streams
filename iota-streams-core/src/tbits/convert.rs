@@ -1,9 +1,27 @@
-use super::slice::{TbitSlice, TbitSliceMut};
-use super::word::BasicTbitWord;
+use super::{
+    slice::{
+        TbitSlice,
+        TbitSliceMut,
+    },
+    word::BasicTbitWord,
+};
 
 /// Injection
 pub trait ConvertInto<IntoW>: Sized {
     fn cvt_into(from: TbitSlice<Self>, into: &mut TbitSliceMut<IntoW>);
+}
+
+pub trait IConvertInto<FromW>: Sized {
+    fn icvt_into(from: TbitSlice<FromW>, into: &mut TbitSliceMut<Self>);
+}
+
+impl<IntoW, FromW> IConvertInto<FromW> for IntoW
+where
+    FromW: ConvertInto<IntoW>,
+{
+    fn icvt_into(from: TbitSlice<FromW>, into: &mut TbitSliceMut<Self>) {
+        ConvertInto::<IntoW>::cvt_into(from, into)
+    }
 }
 
 impl<TW> ConvertInto<TW> for TW
@@ -20,6 +38,19 @@ where
 /// Surjection
 pub trait ConvertOnto<OntoW>: Sized {
     fn cvt_onto(from: TbitSlice<Self>, onto: &mut TbitSliceMut<OntoW>);
+}
+
+pub trait IConvertOnto<FromW>: Sized {
+    fn icvt_onto(from: TbitSlice<FromW>, onto: &mut TbitSliceMut<Self>);
+}
+
+impl<OntoW, FromW> IConvertOnto<FromW> for OntoW
+where
+    FromW: ConvertOnto<OntoW>,
+{
+    fn icvt_onto(from: TbitSlice<FromW>, onto: &mut TbitSliceMut<Self>) {
+        ConvertOnto::<OntoW>::cvt_onto(from, onto)
+    }
 }
 
 impl<TW> ConvertOnto<TW> for TW
@@ -101,15 +132,7 @@ mod farey {
 
     #[test]
     fn run_rational_approx() {
-        const NS: [u64; 7] = [
-            1000,
-            10000,
-            100000,
-            1000000,
-            1200000,
-            1000000000,
-            1000000000000,
-        ];
+        const NS: [u64; 7] = [1000, 10000, 100000, 1000000, 1200000, 1000000000, 1000000000000];
         let e = 2.0_f64.log2() / 3.0_f64.log2();
         for k in &NS {
             let (n, d) = farey(e, *k);

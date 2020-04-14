@@ -1,8 +1,13 @@
 //! 1 bit per 1 byte.
 
-use super::defs::*;
-use super::word::BitWord;
-use crate::tbits::word::{BasicTbitWord, SpongosTbitWord};
+use super::{
+    defs::*,
+    word::BitWord,
+};
+use crate::tbits::word::{
+    BasicTbitWord,
+    SpongosTbitWord,
+};
 
 impl BasicTbitWord for Bit {
     type Tbit = Bit;

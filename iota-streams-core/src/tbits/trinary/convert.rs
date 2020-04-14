@@ -1,12 +1,24 @@
-use std::convert::{From, TryFrom};
-use std::num::Wrapping;
+use std::{
+    convert::{
+        From,
+        TryFrom,
+    },
+    num::Wrapping,
+};
 
-use super::defs::*;
-use super::util::mods1;
+use super::{
+    defs::*,
+    util::mods1,
+};
 use crate::tbits::{
     binary::Byte,
-    convert::{log2e3, ConvertInto, ConvertIso},
-    TbitSlice, TbitSliceMut,
+    convert::{
+        log2e3,
+        ConvertInto,
+        ConvertIso,
+    },
+    TbitSlice,
+    TbitSliceMut,
 };
 
 impl From<Trit> for Trint1 {
@@ -258,8 +270,15 @@ fn map_b8_onto_t5(b8: &[u8], t5: &mut [u8]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tbits::convert::{log2e3, log3e2};
-    use crate::tbits::{binary::Byte, convert::ConvertIso, Tbits};
+    use crate::tbits::{
+        binary::Byte,
+        convert::{
+            log2e3,
+            log3e2,
+            ConvertIso,
+        },
+        Tbits,
+    };
 
     fn map_b8_to_u128(b8: &[u8]) -> u128 {
         assert!(b8.len() <= 32);
@@ -375,14 +394,8 @@ mod tests {
         let mut bytes = Tbits::<Byte>::zero(250 * 8 / 5);
 
         let mut test = |n_trits, byte_str| {
-            <Trit as ConvertInto<Byte>>::cvt_into(
-                trits.slice().take(n_trits),
-                &mut bytes.slice_mut(),
-            );
-            assert!(bytes
-                .slice()
-                .take(log2e3(n_trits as u64) as usize + 1)
-                .eq_str(byte_str));
+            <Trit as ConvertInto<Byte>>::cvt_into(trits.slice().take(n_trits), &mut bytes.slice_mut());
+            assert!(bytes.slice().take(log2e3(n_trits as u64) as usize + 1).eq_str(byte_str));
         };
 
         test(1, "2");
@@ -402,14 +415,8 @@ mod tests {
         let mut bytes = Tbits::<Byte>::zero(NTRITS * 8 / 5);
 
         let mut test = |n_trits| {
-            <Trit as ConvertInto<Byte>>::cvt_into(
-                trits.slice().take(n_trits),
-                &mut bytes.slice_mut(),
-            );
-            <Trit as ConvertIso<Byte>>::cvt_from(
-                bytes.slice(),
-                &mut trits2.slice_mut().take(n_trits),
-            );
+            <Trit as ConvertInto<Byte>>::cvt_into(trits.slice().take(n_trits), &mut bytes.slice_mut());
+            <Trit as ConvertIso<Byte>>::cvt_from(bytes.slice(), &mut trits2.slice_mut().take(n_trits));
             assert_eq!(trits.slice().take(n_trits), trits2.slice().take(n_trits));
         };
 

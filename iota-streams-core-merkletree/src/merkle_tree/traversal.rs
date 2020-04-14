@@ -1,5 +1,7 @@
-use std::fmt;
-use std::vec::Vec;
+use std::{
+    fmt,
+    vec::Vec,
+};
 
 use super::*;
 
@@ -46,11 +48,7 @@ struct Stack<H> {
 impl<H> Stack<H> {
     /// Create an empty stack for level `d`.
     fn new(d: Height) -> Self {
-        Self {
-            d,
-            i: 0,
-            s: Vec::new(),
-        }
+        Self { d, i: 0, s: Vec::new() }
     }
     fn is_empty(&self) -> bool {
         self.s.is_empty()
@@ -253,13 +251,12 @@ where
         M: MergeNodes<H>,
     {
         let (root, apath, stacks) = gen_mt(g, m, height);
-        let mt = Self {
+        Self {
             height,
             root,
             apath,
             stacks,
-        };
-        mt
+        }
     }
 
     fn next<G, M>(&mut self, g: &G, m: &M) -> bool
@@ -323,10 +320,7 @@ where
                 return Some(Self {
                     height,
                     root,
-                    apath: APath {
-                        skn,
-                        nodes: Vec::new(),
-                    },
+                    apath: APath { skn, nodes: Vec::new() },
                     stacks: Vec::new(),
                 });
             } else {

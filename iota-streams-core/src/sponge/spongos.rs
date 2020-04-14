@@ -3,20 +3,38 @@ use std::fmt;
 //use std::hash;
 
 use super::prp::PRP;
-use crate::hash::Hash;
-use crate::tbits::{
-    word::{BasicTbitWord, SpongosTbitWord},
-    TbitSlice, TbitSliceMut, Tbits,
+use crate::{
+    hash::Hash,
+    tbits::{
+        word::{
+            BasicTbitWord,
+            SpongosTbitWord,
+        },
+        TbitSlice,
+        TbitSliceMut,
+        Tbits,
+    },
 };
 
 /// Implemented as a separate from `Spongos` struct in order to deal with life-times.
-#[derive(Clone)]
 pub struct Outer<TW> {
     /// Current position in the outer state.
     pos: usize,
     /// Outer state is stored externally due to Troika implementation.
     /// It is injected into Troika state before transform and extracted after.
     tbits: Tbits<TW>,
+}
+
+impl<TW> Clone for Outer<TW>
+where
+    TW: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            pos: self.pos,
+            tbits: self.tbits.clone(),
+        }
+    }
 }
 
 impl<TW> Outer<TW>
@@ -71,12 +89,24 @@ pub enum Mode {
     XOR,
 }
 
-#[derive(Clone)]
 pub struct Spongos<TW, F> {
     /// Spongos transform.
     s: F,
     /// Outer state.
     outer: Outer<TW>,
+}
+
+impl<TW, F> Clone for Spongos<TW, F>
+where
+    TW: Clone,
+    F: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            s: self.s.clone(),
+            outer: self.outer.clone(),
+        }
+    }
 }
 
 impl<TW, F> Spongos<TW, F>
@@ -85,6 +115,9 @@ where
 {
     /// Sponge fixed key size.
     pub const KEY_SIZE: usize = F::CAPACITY;
+
+    /// Sponge fixed nonce size.
+    pub const NONCE_SIZE: usize = Self::KEY_SIZE;
 
     /// Sponge fixed hash size.
     pub const HASH_SIZE: usize = F::CAPACITY;
@@ -207,7 +240,6 @@ where
             } else {
                 s.squeeze_eq_xor(head)
             };
-            // force constant-time equality
             eq = eqn && eq;
             self.update(n);
         }
