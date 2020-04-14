@@ -1,7 +1,7 @@
 /// Streams Application layer definitions.
 pub use iota_streams_app as app;
 /// Streams Channel Application implementation.
-pub use iota_streams_app_channel as app_channel;
+pub use iota_streams_app_channels as app_channels;
 /// Core binary/trinary and cryptographic tools.
 pub use iota_streams_core as core;
 /// Keccak-f\[1600\]-based sponge transform.

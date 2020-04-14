@@ -16,12 +16,25 @@
 //! * `mac` -- authentication tag proving knowledge of the `unsubscribe_key` from the `Subscribe` message.
 
 use failure::Fallible;
-use iota_streams_app::message::{self, HasLink};
-use iota_streams_core::{
-    sponge::{prp::PRP, spongos},
-    tbits::{trinary, word::SpongosTbitWord},
+use iota_streams_app::message::{
+    self,
+    HasLink,
 };
-use iota_streams_protobuf3::{command::*, io, types::*};
+use iota_streams_core::{
+    sponge::{
+        prp::PRP,
+        spongos,
+    },
+    tbits::{
+        trinary,
+        word::SpongosTbitWord,
+    },
+};
+use iota_streams_protobuf3::{
+    command::*,
+    io,
+    types::*,
+};
 
 /// Type of `Unsubscribe` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9UNSUBSCRIBE";
@@ -39,10 +52,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
     Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(
-        &self,
-        ctx: &'c mut sizeof::Context<TW, F>,
-    ) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
         let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(&store, self.link)?.commit()?.squeeze(&mac)?;

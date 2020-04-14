@@ -1,7 +1,7 @@
 # IOTA Streams
 
 This is the **WIP** Rust IOTA Streams library, it consists of the following components:
-* [Channel Application](iota-streams-app-channel/README.md) featuring Channel Application.
+* [Channels Application](iota-streams-app-channels/README.md) featuring Channels Application.
 * [Core layers](iota-streams-core/README.md) featuring utils for trinary/binary manipulations, sponge-based authenticated encryption with Troika permutation, pre-shared keys, pseudo-random generator;
 * [Keccak for core layers](iota-streams-core-keccak/README.md) featuring Keccak-F[1600] as spongos transform;
 * [Traversable Merkle tree](iota-streams-core-merkletree/README.md) featuring traversable Merkle tree;
@@ -17,15 +17,15 @@ The library is in the alpha stage and the API is likely to change.
 | [Streams](#overview)|
 | [Prerequisites](#prerequisites)|
 | [Getting started](#getting-started)|
-| [API reference](#api-reference)
+| [API reference](#api-reference)|
 | [Examples](#examples)|
 | [License](#license)|
 
 ## Streams
 
-IOTA Streams is a framework for cryptographic protocols called Applications. Streams ships with an existing application, called Channel. The Channel application builds on and extends functionality known from Masked Authenticated Messaging v0 and v1.0. 
+IOTA Streams is a framework for cryptographic protocols called Applications. Streams ships with an existing application, called Channels. The Channels application builds on and extends functionality known from Masked Authenticated Messaging v0 and v1.0. 
 
-As a cryptographic protocol framework, Streams allows developers to build Applications for their specific needs. This process will be documented in how-tos that will be published as the develppment progresses. 
+As a cryptographic protocol framework, Streams allows developers to build Applications for their specific needs. This process will be documented in how-tos that will be published as the development progresses.
 
 ## Prerequisites
 
@@ -62,10 +62,10 @@ cd streams/
 cargo test --all
 ```
 
-Now you can use the Streams Channel Application in your code like this:
+Now you can use the Streams Channels Application in your code like this:
 
 ```
-use iota_streams::app_channel::api::tangle::{Author, Subscriber};
+use iota_streams::app_channels::api::tangle::{Author, Subscriber};
 
 fn main() {
     let author = Author::new("AUTHORSSEED", 3, false);
@@ -73,7 +73,7 @@ fn main() {
 }
 ```
 
-For a more comprehensive example of using the Streams Channel Application can be found [here](iota-streams-app-channel/examples/basic_scenario.rs).
+For a more comprehensive example of using the Streams Channels Application can be found [here](iota-streams-app-channels/examples/basic_scenario.rs).
 
 ## API reference
 
@@ -84,7 +84,7 @@ cargo doc --open
 
 ## Examples
 
-Examples of using Channel Application can be found [here](iota-streams-app-channel/examples).
+Examples of using Channels Application can be found [here](iota-streams-app-channels/examples).
 
 ## License
 

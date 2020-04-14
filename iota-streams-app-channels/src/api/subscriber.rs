@@ -1,21 +1,36 @@
-use failure::{bail, ensure, Fallible};
-use std::cell::RefCell;
-use std::fmt::Debug;
-use std::str::FromStr;
+use failure::{
+    bail,
+    ensure,
+    Fallible,
+};
+use std::{
+    cell::RefCell,
+    fmt::Debug,
+    str::FromStr,
+};
 
 use iota_streams_core::{
-    prng, psk,
+    prng,
+    psk,
     sponge::spongos,
     tbits::{
         trinary,
-        word::{IntTbitWord, SpongosTbitWord, StringTbitWord},
+        word::{
+            IntTbitWord,
+            RngTbitWord,
+            SpongosTbitWord,
+            StringTbitWord,
+        },
         Tbits,
     },
 };
 use iota_streams_core_mss::signature::mss;
 use iota_streams_core_ntru::key_encapsulation::ntru;
 
-use iota_streams_app::message::{header::Header, *};
+use iota_streams_app::message::{
+    header::Header,
+    *,
+};
 use iota_streams_protobuf3::types::*;
 
 use super::*;
@@ -44,10 +59,10 @@ where
     prng: prng::Prng<TW, P::PrngG>,
 
     /// Own optional pre-shared key.
-    opt_psk: Option<(psk::PskId<TW>, psk::Psk<TW>)>,
+    pub(crate) opt_psk: Option<(psk::PskId<TW>, psk::Psk<TW>)>,
 
     /// Own optional NTRU key pair.
-    opt_ntru: Option<(ntru::PrivateKey<TW, F>, ntru::PublicKey<TW, F>)>,
+    pub(crate) opt_ntru: Option<(ntru::PrivateKey<TW, F>, ntru::PublicKey<TW, F>)>,
 
     /// Address of the Announce message or nothing if Subscriber is not registered to
     /// the channel instance.
@@ -65,12 +80,12 @@ where
     store: RefCell<Store>,
 
     /// Link generator.
-    link_gen: LinkGen,
+    pub(crate) link_gen: LinkGen,
 }
 
 impl<TW, F, P, Link, Store, LinkGen> SubscriberT<TW, F, P, Link, Store, LinkGen>
 where
-    TW: IntTbitWord + StringTbitWord + SpongosTbitWord + trinary::TritWord,
+    TW: RngTbitWord + IntTbitWord + StringTbitWord + SpongosTbitWord + trinary::TritWord,
     F: PRP<TW> + Clone + Default,
     P: mss::Parameters<TW>,
     Link: HasLink + AbsorbExternalFallback<TW, F> + Default + Clone + Eq,
@@ -110,33 +125,28 @@ where
         }
     }
 
+    fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, TW, F, Link>) -> Fallible<()> {
+        ensure!(self.appinst.is_some(), "Subscriber is not subscribed to a channel.");
+        ensure!(
+            self.appinst.as_ref().unwrap().base() == preparsed.header.link.base(),
+            "Bad message application instance."
+        );
+        Ok(())
+    }
+
     fn do_prepare_keyload<'a, Psks, NtruPks>(
         &'a self,
         header: Header<TW, Link>,
         link_to: &'a <Link as HasLink>::Rel,
         psks: Psks,
         ntru_pks: NtruPks,
-    ) -> Fallible<
-        PreparedMessage<
-            'a,
-            TW,
-            F,
-            Link,
-            Store,
-            keyload::ContentWrap<'a, TW, F, P::PrngG, Link, Psks, NtruPks>,
-        >,
-    >
+    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, keyload::ContentWrap<'a, TW, F, P::PrngG, Link, Psks, NtruPks>>>
     where
         Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a, TW>>,
         NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a, TW, F>>,
     {
-        //TODO: trait MessageWrap { fn wrap(header, content) -> TbinaryMessage<TW, F, Link> }
-        //TODO: const NONCE_SIZE
-        //TODO: get new unique nonce!
-        let nonce = NTrytes::zero(3 * 27);
-        //TODO: generate new unique key!
-        //TODO: prng randomness hierarchy: domain (mss, ntru, session key, etc.), secret, counter
-        let key = NTrytes::zero(spongos::Spongos::<TW, F>::KEY_SIZE);
+        let nonce = NTrytes(prng::random_nonce(spongos::Spongos::<TW, F>::NONCE_SIZE));
+        let key = NTrytes(prng::random_key(spongos::Spongos::<TW, F>::KEY_SIZE));
         let content = keyload::ContentWrap {
             link: link_to,
             nonce: nonce,
@@ -174,10 +184,7 @@ where
         self.do_prepare_keyload(
             header,
             link_to,
-            self.opt_psk
-                .as_ref()
-                .map(|(pskid, psk)| (pskid, psk))
-                .into_iter(),
+            self.opt_psk.as_ref().map(|(pskid, psk)| (pskid, psk)).into_iter(),
             self.author_ntru_pk.as_ref().into_iter(),
         )
     }
@@ -199,9 +206,7 @@ where
         link_to: &'a <Link as HasLink>::Rel,
         public_payload: &'a Trytes<TW>,
         masked_payload: &'a Trytes<TW>,
-    ) -> Fallible<
-        PreparedMessage<'a, TW, F, Link, Store, tagged_packet::ContentWrap<'a, TW, F, Link>>,
-    > {
+    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, tagged_packet::ContentWrap<'a, TW, F, Link>>> {
         let header = self.link_gen.header_from(link_to, tagged_packet::TYPE);
         let content = tagged_packet::ContentWrap {
             link: link_to,
@@ -231,16 +236,12 @@ where
     pub fn prepare_subscribe<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
-    ) -> Fallible<
-        PreparedMessage<'a, TW, F, Link, Store, subscribe::ContentWrap<'a, TW, F, P::PrngG, Link>>,
-    > {
+    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, subscribe::ContentWrap<'a, TW, F, P::PrngG, Link>>> {
         if let Some(author_ntru_pk) = &self.author_ntru_pk {
             if let Some((_, own_ntru_pk)) = &self.opt_ntru {
                 let header = self.link_gen.header_from(link_to, subscribe::TYPE);
-                //TODO: get unique nonce.
-                let nonce = NTrytes::zero(81);
-                //TODO: gen random key.
-                let unsubscribe_key = NTrytes::zero(spongos::Spongos::<TW, F>::KEY_SIZE);
+                let nonce = NTrytes(prng::random_nonce(spongos::Spongos::<TW, F>::NONCE_SIZE));
+                let unsubscribe_key = NTrytes(prng::random_key(spongos::Spongos::<TW, F>::KEY_SIZE));
                 let content = subscribe::ContentWrap {
                     link: link_to,
                     nonce,
@@ -273,8 +274,7 @@ where
     pub fn prepare_unsubscribe<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
-    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, unsubscribe::ContentWrap<'a, TW, F, Link>>>
-    {
+    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, unsubscribe::ContentWrap<'a, TW, F, Link>>> {
         let header = self.link_gen.header_from(link_to, unsubscribe::TYPE);
         let content = unsubscribe::ContentWrap {
             link: link_to,
@@ -297,6 +297,15 @@ where
         &self,
         preparsed: PreparsedMessage<'a, TW, F, Link>,
     ) -> Fallible<UnwrappedMessage<TW, F, Link, announce::ContentUnwrap<TW, F, P>>> {
+        if let Some(appinst) = &self.appinst {
+            ensure!(
+                appinst == &preparsed.header.link,
+                "Got Announce with address {:?}, but already registered to a channel {:?}",
+                preparsed.header.link.base(),
+                appinst.base()
+            );
+        }
+
         let content = announce::ContentUnwrap::<TW, F, P>::default();
         preparsed.unwrap(&*self.store.borrow(), content)
     }
@@ -308,17 +317,10 @@ where
         preparsed: PreparsedMessage<'a, TW, F, Link>,
         info: <Store as LinkStore<TW, F, <Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
-        if let Some(appinst) = &self.appinst {
-            bail!(
-                "Got Announce with address {:?}, but already registered to a channel {:?}",
-                preparsed.header.link.base(),
-                appinst.base()
-            );
-        }
-
         let unwrapped = self.unwrap_announcement(preparsed)?;
         let link = unwrapped.link.clone();
         let content = unwrapped.commit(self.store.borrow_mut(), info)?;
+        //TODO: check commit after message is done / before joined
 
         //TODO: Verify trust to Author's MSS public key?
         // At the moment the Author is trusted unconditionally.
@@ -336,6 +338,7 @@ where
         &'b self,
         preparsed: PreparsedMessage<'a, TW, F, Link>,
     ) -> Fallible<UnwrappedMessage<TW, F, Link, change_key::ContentUnwrap<'b, TW, P, Link>>> {
+        self.ensure_appinst(&preparsed)?;
         let mss_linked_pk = self.author_mss_pk.as_ref().unwrap();
         let content = change_key::ContentUnwrap::new(mss_linked_pk);
         preparsed.unwrap(&*self.store.borrow(), content)
@@ -347,10 +350,7 @@ where
         preparsed: PreparsedMessage<'a, TW, F, Link>,
         info: <Store as LinkStore<TW, F, <Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
-        ensure!(
-            self.author_mss_pk.is_some(),
-            "No Author's MSS public key found."
-        );
+        ensure!(self.author_mss_pk.is_some(), "No Author's MSS public key found.");
         let content = self
             .unwrap_change_key(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
@@ -359,28 +359,26 @@ where
     }
 
     fn lookup_psk<'b>(&'b self, pskid: &psk::PskId<TW>) -> Option<&'b psk::Psk<TW>> {
-        self.opt_psk.as_ref().map_or(None, |(own_pskid, own_psk)| {
-            if pskid == own_pskid {
-                Some(own_psk)
+        self.opt_psk.as_ref().map_or(
+            None,
+            |(own_pskid, own_psk)| {
+                if pskid == own_pskid {
+                    Some(own_psk)
+                } else {
+                    None
+                }
+            },
+        )
+    }
+
+    fn lookup_ntru_sk<'b>(&'b self, ntru_pkid: &ntru::Pkid<TW>) -> Option<&'b ntru::PrivateKey<TW, F>> {
+        self.opt_ntru.as_ref().map_or(None, |(own_ntru_sk, own_ntru_pk)| {
+            if own_ntru_pk.cmp_pkid(ntru_pkid) {
+                Some(own_ntru_sk)
             } else {
                 None
             }
         })
-    }
-
-    fn lookup_ntru_sk<'b>(
-        &'b self,
-        ntru_pkid: &ntru::Pkid<TW>,
-    ) -> Option<&'b ntru::PrivateKey<TW, F>> {
-        self.opt_ntru
-            .as_ref()
-            .map_or(None, |(own_ntru_sk, own_ntru_pk)| {
-                if own_ntru_pk.cmp_pkid(ntru_pkid) {
-                    Some(own_ntru_sk)
-                } else {
-                    None
-                }
-            })
     }
 
     pub fn unwrap_keyload<'a, 'b>(
@@ -402,6 +400,7 @@ where
             >,
         >,
     > {
+        self.ensure_appinst(&preparsed)?;
         let content = keyload::ContentUnwrap::<
             'b,
             TW,
@@ -420,9 +419,7 @@ where
         preparsed: PreparsedMessage<'a, TW, F, Link>,
         info: <Store as LinkStore<TW, F, <Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
-        let _content = self
-            .unwrap_keyload(preparsed)?
-            .commit(self.store.borrow_mut(), info)?;
+        let _content = self.unwrap_keyload(preparsed)?.commit(self.store.borrow_mut(), info)?;
         // Unwrapped nonce and key in content are not used explicitly.
         // The resulting spongos state is joined into a protected message state.
         Ok(())
@@ -432,6 +429,7 @@ where
         &self,
         preparsed: PreparsedMessage<'a, TW, F, Link>,
     ) -> Fallible<UnwrappedMessage<TW, F, Link, signed_packet::ContentUnwrap<TW, F, P, Link>>> {
+        self.ensure_appinst(&preparsed)?;
         ensure!(
             self.author_mss_pk.is_some(),
             "No Author's MSS public key found, can't verify signature."
@@ -446,10 +444,7 @@ where
         preparsed: PreparsedMessage<'a, TW, F, Link>,
         info: <Store as LinkStore<TW, F, <Link as HasLink>::Rel>>::Info,
     ) -> Fallible<(Trytes<TW>, Trytes<TW>)> {
-        ensure!(
-            self.author_mss_pk.is_some(),
-            "No Author's MSS public key found."
-        );
+        ensure!(self.author_mss_pk.is_some(), "No Author's MSS public key found.");
         let content = self
             .unwrap_signed_packet(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
@@ -466,6 +461,7 @@ where
         &self,
         preparsed: PreparsedMessage<'a, TW, F, Link>,
     ) -> Fallible<UnwrappedMessage<TW, F, Link, tagged_packet::ContentUnwrap<TW, F, Link>>> {
+        self.ensure_appinst(&preparsed)?;
         let content = tagged_packet::ContentUnwrap::new();
         preparsed.unwrap(&*self.store.borrow(), content)
     }

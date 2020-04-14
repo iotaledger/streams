@@ -39,17 +39,30 @@
 //! thus is not additionally `absorb`ed in this message.
 
 use failure::Fallible;
-use iota_streams_app::message::{self, HasLink};
+use iota_streams_app::message::{
+    self,
+    HasLink,
+};
 use iota_streams_core::{
     prng,
-    sponge::{prp::PRP, spongos},
+    sponge::{
+        prp::PRP,
+        spongos,
+    },
     tbits::{
         trinary,
-        word::{BasicTbitWord, SpongosTbitWord},
+        word::{
+            BasicTbitWord,
+            SpongosTbitWord,
+        },
     },
 };
 use iota_streams_core_ntru::key_encapsulation::ntru;
-use iota_streams_protobuf3::{command::*, io, types::*};
+use iota_streams_protobuf3::{
+    command::*,
+    io,
+    types::*,
+};
 
 /// Type of `Subscribe` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9SUBSCRIBE";
@@ -64,8 +77,7 @@ pub struct ContentWrap<'a, TW, F, G, Link: HasLink> {
     pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, TW, F, G, Link, Store> message::ContentWrap<TW, F, Store>
-    for ContentWrap<'a, TW, F, G, Link>
+impl<'a, TW, F, G, Link, Store> message::ContentWrap<TW, F, Store> for ContentWrap<'a, TW, F, G, Link>
 where
     TW: SpongosTbitWord + trinary::TritWord,
     F: PRP<TW>,
@@ -74,10 +86,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
     Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(
-        &self,
-        ctx: &'c mut sizeof::Context<TW, F>,
-    ) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
         let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(&store, self.link)?
@@ -96,10 +105,7 @@ where
     ) -> Fallible<&'c mut wrap::Context<TW, F, OS>> {
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(store, self.link)?
-            .ntrukem(
-                (self.author_ntru_pk, self.prng, &self.nonce.0),
-                &self.unsubscribe_key,
-            )?
+            .ntrukem((self.author_ntru_pk, self.prng, &self.nonce.0), &self.unsubscribe_key)?
             .commit()?
             .mask(self.subscriber_ntru_pk)?
             .commit()?

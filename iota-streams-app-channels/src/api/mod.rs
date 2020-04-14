@@ -1,10 +1,21 @@
-use iota_streams_app::message::{HasLink, LinkGenerator};
-use iota_streams_app::transport::tangle::{DefaultTangleLinkGenerator, TangleAddress};
+use iota_streams_app::{
+    message::{
+        HasLink,
+        LinkGenerator,
+    },
+    transport::tangle::{
+        DefaultTangleLinkGenerator,
+        TangleAddress,
+    },
+};
 use iota_streams_core::{
     sponge::prp::PRP,
     tbits::{
         trinary,
-        word::{SpongosTbitWord, StringTbitWord},
+        word::{
+            SpongosTbitWord,
+            StringTbitWord,
+        },
     },
 };
 use iota_streams_core_mss::signature::mss;
@@ -14,8 +25,7 @@ where
     TW: StringTbitWord + SpongosTbitWord + trinary::TritWord,
     P: mss::Parameters<TW>,
     Link: HasLink,
-    Self: LinkGenerator<TW, Link, mss::PublicKey<TW, P>>
-        + LinkGenerator<TW, Link, <Link as HasLink>::Rel>,
+    Self: LinkGenerator<TW, Link, mss::PublicKey<TW, P>> + LinkGenerator<TW, Link, <Link as HasLink>::Rel>,
 {
 }
 impl<TW, F, P> ChannelLinkGenerator<TW, P, TangleAddress<TW>> for DefaultTangleLinkGenerator<TW, F>

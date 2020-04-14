@@ -1,15 +1,15 @@
 [package]
-name = "iota-streams-app-channel"
-version = "0.1.0"
+name = "iota-streams-app-channels"
+version = "0.1.1"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
-keywords = ["iota", "streams", "app", "channel"]
-description = "A rust implementation of the IOTA Streams Channel Application"
+keywords = ["iota", "streams", "app", "channels"]
+description = "A rust implementation of the IOTA Streams Channels Application"
 
 [lib]
-name = "iota_streams_app_channel"
+name = "iota_streams_app_channels"
 path = "src/lib.rs"
 
 [dependencies]
@@ -19,3 +19,6 @@ iota-streams-core-mss = { version = "0.1.0", path = "../iota-streams-core-mss" }
 iota-streams-protobuf3 = { version = "0.1.0", path = "../iota-streams-protobuf3" }
 iota-streams-app = { version = "0.1.0", path = "../iota-streams-app" }
 failure = "0.1"
+
+[dev-dependencies]
+iota-lib-rs = { version = "^0.4.1" }

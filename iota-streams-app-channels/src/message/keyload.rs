@@ -52,18 +52,32 @@
 //!     via `SignedPacket`.
 
 use failure::Fallible;
-use iota_streams_app::message::{self, HasLink};
+use iota_streams_app::message::{
+    self,
+    HasLink,
+};
 use iota_streams_core::{
-    prng, psk,
-    sponge::prp::PRP,
-    sponge::spongos,
+    prng,
+    psk,
+    sponge::{
+        prp::PRP,
+        spongos,
+    },
     tbits::{
         trinary,
-        word::{BasicTbitWord, IntTbitWord, SpongosTbitWord},
+        word::{
+            BasicTbitWord,
+            IntTbitWord,
+            SpongosTbitWord,
+        },
     },
 };
 use iota_streams_core_ntru::key_encapsulation::ntru;
-use iota_streams_protobuf3::{command::*, io, types::*};
+use iota_streams_protobuf3::{
+    command::*,
+    io,
+    types::*,
+};
 
 /// Type of `Keyload` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9KEYLOAD";
@@ -91,10 +105,7 @@ where
     NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a, TW, F>>,
     //NtruPks: Clone + ExactSizeIterator<Item = &'a ntru::PublicKey<TW, F>>,
 {
-    fn sizeof<'c>(
-        &self,
-        ctx: &'c mut sizeof::Context<TW, F>,
-    ) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
         let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
         let repeated_psks = Size(self.psks.len());
         let repeated_ntru_pks = Size(self.ntru_pks.len());
@@ -111,10 +122,7 @@ where
             })?
             .skip(repeated_ntru_pks)?
             .repeated(self.ntru_pks.clone(), |ctx, ntru_pk| {
-                ctx.fork(|ctx| {
-                    ctx.mask(&NTrytes(ntru_pk.get_pkid().0))?
-                        .ntrukem(ntru_pk, &self.key)
-                })
+                ctx.fork(|ctx| ctx.mask(&NTrytes(ntru_pk.get_pkid().0))?.ntrukem(ntru_pk, &self.key))
             })?
             .absorb(External(&self.key))?
             .commit()?;
@@ -175,14 +183,10 @@ where
     LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId<TW>) -> Option<&'b psk::Psk<TW>>,
     LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid<TW>) -> Option<&'b ntru::PrivateKey<TW, F>>,
 {
-    pub fn new(
-        lookup_arg: &'a LookupArg,
-        lookup_psk: LookupPsk,
-        lookup_ntru_sk: LookupNtruSk,
-    ) -> Self {
+    pub fn new(lookup_arg: &'a LookupArg, lookup_psk: LookupPsk, lookup_ntru_sk: LookupNtruSk) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            nonce: NTrytes::zero(27 * 3), //TODO: spongos::NONCE_SIZE?
+            nonce: NTrytes::zero(spongos::Spongos::<TW, F>::NONCE_SIZE),
             lookup_arg,
             lookup_psk,
             lookup_ntru_sk,
@@ -192,8 +196,7 @@ where
     }
 }
 
-impl<'a, TW, F, Link, Store, LookupArg, LookupPsk, LookupNtruSk>
-    message::ContentUnwrap<TW, F, Store>
+impl<'a, TW, F, Link, Store, LookupArg, LookupPsk, LookupNtruSk> message::ContentUnwrap<TW, F, Store>
     for ContentUnwrap<'a, TW, F, Link, LookupArg, LookupPsk, LookupNtruSk>
 where
     TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
@@ -246,9 +249,7 @@ where
                 if !key_found {
                     ctx.fork(|ctx| {
                         ctx.mask(&mut ntru_pkid)?;
-                        if let Some(ntru_sk) =
-                            (self.lookup_ntru_sk)(self.lookup_arg, ntru_pkid.0.as_ref())
-                        {
+                        if let Some(ntru_sk) = (self.lookup_ntru_sk)(self.lookup_arg, ntru_pkid.0.as_ref()) {
                             ctx.ntrukem(ntru_sk, &mut self.key)?;
                             key_found = true;
                             Ok(ctx)
@@ -264,6 +265,7 @@ where
                     ctx.drop(n)
                 }
             })?
+            .guard(key_found, "Key not found")?
             .absorb(External(&self.key))?
             .commit()?;
         Ok(ctx)

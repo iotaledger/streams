@@ -7,7 +7,10 @@ use super::*;
 use crate::api::subscriber::SubscriberT;
 use iota_streams_app::message::HasLink as _;
 
-use iota_streams_core::{prng, tbits::Tbits};
+use iota_streams_core::{
+    prng,
+    tbits::Tbits,
+};
 
 type SubscriberImp = SubscriberT<DefaultTW, DefaultF, DefaultP, Address, Store, LinkGen>;
 
@@ -45,10 +48,7 @@ impl Subscriber {
 
     /// Return Channel app instance.
     pub fn channel_address(&self) -> Option<&ChannelAddress> {
-        self.imp
-            .appinst
-            .as_ref()
-            .map(|tangle_address| &tangle_address.appinst)
+        self.imp.appinst.as_ref().map(|tangle_address| &tangle_address.appinst)
     }
 
     /// Return Author's MSS public key.
@@ -68,12 +68,8 @@ impl Subscriber {
         public_payload: &Trytes,
         masked_payload: &Trytes,
     ) -> Fallible<Message> {
-        self.imp.tag_packet(
-            link_to.rel(),
-            public_payload,
-            masked_payload,
-            MsgInfo::TaggedPacket,
-        )
+        self.imp
+            .tag_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::TaggedPacket)
     }
 
     /// Subscribe to a Channel app instance.
@@ -91,6 +87,9 @@ impl Subscriber {
     /// Handle Channel app instance announcement.
     pub fn unwrap_announcement<'a>(&mut self, preparsed: Preparsed<'a>) -> Fallible<()> {
         self.imp.handle_announcement(preparsed, MsgInfo::Announce)?;
+        self.imp
+            .link_gen
+            .reset_appinst(self.imp.appinst.as_ref().unwrap().base().clone());
         Ok(())
     }
 
@@ -107,20 +106,12 @@ impl Subscriber {
     }
 
     /// Unwrap and verify signed packet.
-    pub fn unwrap_signed_packet<'a>(
-        &mut self,
-        preparsed: Preparsed<'a>,
-    ) -> Fallible<(Trytes, Trytes)> {
-        self.imp
-            .handle_signed_packet(preparsed, MsgInfo::SignedPacket)
+    pub fn unwrap_signed_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Fallible<(Trytes, Trytes)> {
+        self.imp.handle_signed_packet(preparsed, MsgInfo::SignedPacket)
     }
 
     /// Unwrap and verify tagged packet.
-    pub fn unwrap_tagged_packet<'a>(
-        &mut self,
-        preparsed: Preparsed<'a>,
-    ) -> Fallible<(Trytes, Trytes)> {
-        self.imp
-            .handle_tagged_packet(preparsed, MsgInfo::TaggedPacket)
+    pub fn unwrap_tagged_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Fallible<(Trytes, Trytes)> {
+        self.imp.handle_tagged_packet(preparsed, MsgInfo::TaggedPacket)
     }
 }

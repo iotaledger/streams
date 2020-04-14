@@ -29,16 +29,27 @@
 //!
 
 use failure::Fallible;
-use iota_streams_app::message::{self, HasLink};
+use iota_streams_app::message::{
+    self,
+    HasLink,
+};
 use iota_streams_core::{
     sponge::prp::PRP,
     tbits::{
         trinary,
-        word::{BasicTbitWord, IntTbitWord, SpongosTbitWord},
+        word::{
+            BasicTbitWord,
+            IntTbitWord,
+            SpongosTbitWord,
+        },
     },
 };
 use iota_streams_core_mss::signature::mss;
-use iota_streams_protobuf3::{command::*, io, types::*};
+use iota_streams_protobuf3::{
+    command::*,
+    io,
+    types::*,
+};
 
 /// Type of `ChangeKey` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9CHANGEKEY";
@@ -85,10 +96,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
     Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(
-        &self,
-        ctx: &'c mut sizeof::Context<TW, F>,
-    ) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
         // Store has no impact on wrapped size
         let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
         let hash = External(Mac(P::HASH_SIZE));
@@ -145,8 +153,7 @@ where
     }
 }
 
-impl<'a, TW, F, P, Link, Store> message::ContentUnwrap<TW, F, Store>
-    for ContentUnwrap<'a, TW, P, Link>
+impl<'a, TW, F, P, Link, Store> message::ContentUnwrap<TW, F, Store> for ContentUnwrap<'a, TW, P, Link>
 where
     TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
     F: PRP<TW>,

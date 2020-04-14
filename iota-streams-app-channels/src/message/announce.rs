@@ -28,19 +28,30 @@
 //! * `sig` -- signature of `tag` field produced with the MSS private key corresponding to `msspk`.
 //!
 
-use failure::{bail, Fallible};
+use failure::{
+    bail,
+    Fallible,
+};
 
 use iota_streams_app::message;
 use iota_streams_core::{
     sponge::prp::PRP,
     tbits::{
         trinary,
-        word::{BasicTbitWord, IntTbitWord, SpongosTbitWord},
+        word::{
+            BasicTbitWord,
+            IntTbitWord,
+            SpongosTbitWord,
+        },
     },
 };
 use iota_streams_core_mss::signature::mss;
 use iota_streams_core_ntru::key_encapsulation::ntru;
-use iota_streams_protobuf3::{command::*, io, types::*};
+use iota_streams_protobuf3::{
+    command::*,
+    io,
+    types::*,
+};
 
 /// Type of `Announce` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9ANNOUNCE";
@@ -50,17 +61,13 @@ pub struct ContentWrap<'a, TW, F, P: mss::Parameters<TW>> {
     pub(crate) ntru_pk: Option<&'a ntru::PublicKey<TW, F>>,
 }
 
-impl<'a, TW, F, P: mss::Parameters<TW>, Store> message::ContentWrap<TW, F, Store>
-    for ContentWrap<'a, TW, F, P>
+impl<'a, TW, F, P: mss::Parameters<TW>, Store> message::ContentWrap<TW, F, Store> for ContentWrap<'a, TW, F, P>
 where
     TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn sizeof<'c>(
-        &self,
-        ctx: &'c mut sizeof::Context<TW, F>,
-    ) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
         ctx.absorb(self.mss_sk.public_key())?;
         let oneof: Trint3;
         if let Some(ntru_pk) = self.ntru_pk {

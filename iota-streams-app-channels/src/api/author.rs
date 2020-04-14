@@ -1,22 +1,40 @@
-use failure::{bail, ensure, Fallible};
-use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
-use std::str::FromStr;
+use failure::{
+    bail,
+    ensure,
+    Fallible,
+};
+use std::{
+    cell::RefCell,
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    fmt::Debug,
+    str::FromStr,
+};
 
 use iota_streams_core::{
-    prng, psk,
+    prng,
+    psk,
     sponge::spongos,
     tbits::{
         trinary,
-        word::{IntTbitWord, SpongosTbitWord, StringTbitWord},
+        word::{
+            IntTbitWord,
+            RngTbitWord,
+            SpongosTbitWord,
+            StringTbitWord,
+        },
         Tbits,
     },
 };
 use iota_streams_core_mss::signature::mss;
 use iota_streams_core_ntru::key_encapsulation::ntru;
 
-use iota_streams_app::message::{header::Header, *};
+use iota_streams_app::message::{
+    header::Header,
+    *,
+};
 use iota_streams_protobuf3::types::*;
 
 use super::*;
@@ -49,10 +67,10 @@ where
     pub default_mss_height: usize,
 
     /// Own MSS private key.
-    mss_sk: mss::PrivateKey<TW, P>,
+    pub(crate) mss_sk: mss::PrivateKey<TW, P>,
 
     /// Own optional NTRU key pair.
-    opt_ntru: Option<(ntru::PrivateKey<TW, F>, ntru::PublicKey<TW, F>)>,
+    pub(crate) opt_ntru: Option<(ntru::PrivateKey<TW, F>, ntru::PublicKey<TW, F>)>,
 
     /// Subscribers' pre-shared keys.
     pub psks: psk::Psks<TW>,
@@ -64,17 +82,16 @@ where
     store: RefCell<Store>,
 
     /// Link generator.
-    link_gen: LinkGen,
+    pub(crate) link_gen: LinkGen,
 
     /// Link to the announce message, ie. application instance.
-    appinst: Link,
+    pub(crate) appinst: Link,
 }
 
 impl<TW, F, P, Link, Store, LinkGen> AuthorT<TW, F, P, Link, Store, LinkGen>
 where
-    TW: IntTbitWord + StringTbitWord + SpongosTbitWord + trinary::TritWord,
+    TW: RngTbitWord + IntTbitWord + StringTbitWord + SpongosTbitWord + trinary::TritWord,
     F: PRP<TW> + Clone + Default,
-    //G: PRP<TW> + Clone + Default,
     P: mss::Parameters<TW>,
     Link: HasLink + AbsorbExternalFallback<TW, F> + Default + Clone + Eq,
     <Link as HasLink>::Base: Eq + Debug,
@@ -124,9 +141,7 @@ where
         &'a mut self,
     ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, announce::ContentWrap<TW, F, P>>> {
         // Create Header for the first message in the channel.
-        let header = self
-            .link_gen
-            .header_from(self.mss_sk.public_key(), announce::TYPE);
+        let header = self.link_gen.header_from(self.mss_sk.public_key(), announce::TYPE);
         let content = announce::ContentWrap {
             mss_sk: &self.mss_sk,
             ntru_pk: self.opt_ntru.as_ref().map(|key_pair| &key_pair.1),
@@ -147,8 +162,7 @@ where
     pub fn prepare_change_key<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
-    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, change_key::ContentWrap<'a, TW, P, Link>>>
-    {
+    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, change_key::ContentWrap<'a, TW, P, Link>>> {
         let mss_nonce = self.mss_sk.nonce().clone();
         let mss_sk = mss::PrivateKey::gen(&self.prng, mss_nonce.slice(), self.default_mss_height);
 
@@ -183,27 +197,13 @@ where
         link_to: &'a <Link as HasLink>::Rel,
         psks: Psks,
         ntru_pks: NtruPks,
-    ) -> Fallible<
-        PreparedMessage<
-            'a,
-            TW,
-            F,
-            Link,
-            Store,
-            keyload::ContentWrap<'a, TW, F, P::PrngG, Link, Psks, NtruPks>,
-        >,
-    >
+    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, keyload::ContentWrap<'a, TW, F, P::PrngG, Link, Psks, NtruPks>>>
     where
         Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a, TW>>,
         NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a, TW, F>>,
     {
-        //TODO: trait MessageWrap { fn wrap(header, content) -> TbinaryMessage<TW, F, Link> }
-        //TODO: const NONCE_SIZE
-        //TODO: get new unique nonce!
-        let nonce = NTrytes::zero(spongos::Spongos::<TW, F>::KEY_SIZE);
-        //TODO: generate new unique key!
-        //TODO: prng randomness hierarchy: domain (mss, ntru, session key, etc.), secret, counter
-        let key = NTrytes::zero(spongos::Spongos::<TW, F>::KEY_SIZE);
+        let nonce = NTrytes(prng::random_nonce(spongos::Spongos::<TW, F>::NONCE_SIZE));
+        let key = NTrytes(prng::random_key(spongos::Spongos::<TW, F>::KEY_SIZE));
         let content = keyload::ContentWrap {
             link: link_to,
             nonce: nonce,
@@ -302,9 +302,7 @@ where
         link_to: &'a <Link as HasLink>::Rel,
         public_payload: &'a Trytes<TW>,
         masked_payload: &'a Trytes<TW>,
-    ) -> Fallible<
-        PreparedMessage<'a, TW, F, Link, Store, signed_packet::ContentWrap<'a, TW, F, P, Link>>,
-    > {
+    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, signed_packet::ContentWrap<'a, TW, F, P, Link>>> {
         let header = self.link_gen.header_from(link_to, signed_packet::TYPE);
         let content = signed_packet::ContentWrap {
             link: link_to,
@@ -336,9 +334,7 @@ where
         link_to: &'a <Link as HasLink>::Rel,
         public_payload: &'a Trytes<TW>,
         masked_payload: &'a Trytes<TW>,
-    ) -> Fallible<
-        PreparedMessage<'a, TW, F, Link, Store, tagged_packet::ContentWrap<'a, TW, F, Link>>,
-    > {
+    ) -> Fallible<PreparedMessage<'a, TW, F, Link, Store, tagged_packet::ContentWrap<'a, TW, F, Link>>> {
         let header = self.link_gen.header_from(link_to, tagged_packet::TYPE);
         let content = tagged_packet::ContentWrap {
             link: link_to,
@@ -364,23 +360,26 @@ where
         wrapped.commit(self.store.borrow_mut(), info)
     }
 
+    fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, TW, F, Link>) -> Fallible<()> {
+        ensure!(
+            self.appinst.base() == preparsed.header.link.base(),
+            "Message sent to another channel instance."
+        );
+        Ok(())
+    }
+
     fn lookup_psk<'b>(&'b self, pskid: &psk::PskId<TW>) -> Option<&'b psk::Psk<TW>> {
         self.psks.get(pskid)
     }
 
-    fn lookup_ntru_sk<'b>(
-        &'b self,
-        ntru_pkid: &ntru::Pkid<TW>,
-    ) -> Option<&'b ntru::PrivateKey<TW, F>> {
-        self.opt_ntru
-            .as_ref()
-            .map_or(None, |(own_ntru_sk, own_ntru_pk)| {
-                if own_ntru_pk.cmp_pkid(ntru_pkid) {
-                    Some(own_ntru_sk)
-                } else {
-                    None
-                }
-            })
+    fn lookup_ntru_sk<'b>(&'b self, ntru_pkid: &ntru::Pkid<TW>) -> Option<&'b ntru::PrivateKey<TW, F>> {
+        self.opt_ntru.as_ref().map_or(None, |(own_ntru_sk, own_ntru_pk)| {
+            if own_ntru_pk.cmp_pkid(ntru_pkid) {
+                Some(own_ntru_sk)
+            } else {
+                None
+            }
+        })
     }
 
     pub fn unwrap_keyload<'a, 'b>(
@@ -402,10 +401,7 @@ where
             >,
         >,
     > {
-        ensure!(
-            self.appinst.base() == preparsed.header.link.base(),
-            "Message sent to another channel instance."
-        );
+        self.ensure_appinst(&preparsed)?;
         let content = keyload::ContentUnwrap::<
             'b,
             TW,
@@ -424,9 +420,7 @@ where
         preparsed: PreparsedMessage<'a, TW, F, Link>,
         info: <Store as LinkStore<TW, F, <Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
-        let _content = self
-            .unwrap_keyload(preparsed)?
-            .commit(self.store.borrow_mut(), info)?;
+        let _content = self.unwrap_keyload(preparsed)?.commit(self.store.borrow_mut(), info)?;
         // Unwrapped nonce and key in content are not used explicitly.
         // The resulting spongos state is joined into a protected message state.
         Ok(())
@@ -436,10 +430,7 @@ where
         &self,
         preparsed: PreparsedMessage<'a, TW, F, Link>,
     ) -> Fallible<UnwrappedMessage<TW, F, Link, tagged_packet::ContentUnwrap<TW, F, Link>>> {
-        ensure!(
-            self.appinst.base() == preparsed.header.link.base(),
-            "Message sent to another channel instance."
-        );
+        self.ensure_appinst(&preparsed)?;
         let content = tagged_packet::ContentUnwrap::new();
         preparsed.unwrap(&*self.store.borrow(), content)
     }
@@ -460,10 +451,7 @@ where
         &self,
         preparsed: PreparsedMessage<'a, TW, F, Link>,
     ) -> Fallible<UnwrappedMessage<TW, F, Link, subscribe::ContentUnwrap<TW, F, Link>>> {
-        ensure!(
-            self.appinst.base() == preparsed.header.link.base(),
-            "Message sent to another channel instance."
-        );
+        self.ensure_appinst(&preparsed)?;
         if let Some((own_ntru_sk, _)) = &self.opt_ntru {
             let content = subscribe::ContentUnwrap::new(own_ntru_sk);
             preparsed.unwrap(&*self.store.borrow(), content)
@@ -492,10 +480,7 @@ where
         &self,
         preparsed: PreparsedMessage<'a, TW, F, Link>,
     ) -> Fallible<UnwrappedMessage<TW, F, Link, unsubscribe::ContentUnwrap<TW, F, Link>>> {
-        ensure!(
-            self.appinst.base() == preparsed.header.link.base(),
-            "Message sent to another channel instance."
-        );
+        self.ensure_appinst(&preparsed)?;
         let content = unsubscribe::ContentUnwrap::new();
         preparsed.unwrap(&*self.store.borrow(), content)
     }
@@ -506,10 +491,6 @@ where
         preparsed: PreparsedMessage<'a, TW, F, Link>,
         info: <Store as LinkStore<TW, F, <Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
-        ensure!(
-            self.appinst.base() == preparsed.header.link.base(),
-            "Message sent to another channel instance."
-        );
         let _content = self
             .unwrap_unsubscribe(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
@@ -523,12 +504,8 @@ where
         info: <Store as LinkStore<TW, F, <Link as HasLink>::Rel>>::Info,
     ) -> Fallible<()> {
         let preparsed = msg.parse_header()?;
-        ensure!(
-            self.appinst.base() == preparsed.header.link.base(),
-            "Message sent to another channel instance."
-        );
+        self.ensure_appinst(&preparsed)?;
 
-        //TODO: Validate appinst.
         if preparsed.check_content_type(tagged_packet::TYPE) {
             self.handle_tagged_packet(preparsed, info)?;
             Ok(())
