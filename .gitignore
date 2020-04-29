@@ -4,3 +4,4 @@
 *.rs~
 *.toml~
 *.md~
+Cargo.lock

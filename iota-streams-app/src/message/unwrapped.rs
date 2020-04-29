@@ -11,7 +11,7 @@ use iota_streams_core::{
 };
 use iota_streams_protobuf3::types::*;
 
-/// Result of wrapping the message.
+/// Result of unwrapping the message.
 pub struct UnwrappedMessage<TW, F, Link, Content> {
     pub link: Link,
     pub content: Content,
@@ -24,7 +24,7 @@ where
     F: PRP<TW>,
     Link: HasLink,
 {
-    /// Save link for the current wrapped message and accociated info into the store.
+    /// Save link for the current unwrapped message and accociated info into the store.
     pub fn commit<Store>(
         mut self,
         mut store: RefMut<Store>,
