@@ -136,11 +136,11 @@ cargo doc --open
 
 ## Examples
 
-We have a list of test cases in the [`examples` directory](iota-streams-app-channels/examples) that you can use as a reference when developing applications with IOTA Streams.
+We have an example in the [`examples` directory](iota-streams-app-channels/examples) that you can use as a reference when developing applications with IOTA Streams.
 
 ## Supporting the project
 
-If this library has been useful to you and you feel like contributing, consider posting a [bug report](https://github.com/iotaledger/streams/issues/new), [feature request](https://github.com/iotaledger/streams/issues/new) or a [pull request](https://github.com/iotaledger/streams/pulls/).
+If this library has been useful to you and you feel like contributing, please see our [contribution guidelines](CONTRIBUTING.md) for all the ways in which you can contribute.
 
 ### Running tests
 
@@ -152,8 +152,8 @@ cargo test --all
 
 ### Updating documentation
 
-Please update the documention when needed by editing the code comments according to the guidelines in [RFC 1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text).
+If you want to improve the code comments, please do so according to the guidelines in [RFC 1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text).
 
 ## Joining the discussion
 
-If you want to get involved in the community, need help with getting set up, have any issues related with the library or just want to discuss IOTA, Distributed Registry Technology (DRT) and IoT with other people, feel free to join our [Discord](https://discord.iota.org/).
+If you want to get involved in discussions about this technology, or you're looking for support, go to the #streams-discussion channel on [Discord](https://discord.iota.org/).

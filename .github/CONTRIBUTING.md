@@ -93,9 +93,12 @@ Make sure to discuss the feature in the #streams-discussion channel on [Discord]
 
 ### Building a new feature
 
-To build a new feature, check out a new branch based on the `master` branch, and be sure to consider the following:
+To build a new feature, check out a new branch based on the `master` branch.
 
-- If the feature has a public-facing API, make sure to document it, using the guidelines in this [Rust RFC](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text).
+If your feature has a public-facing API, please consider the following:
+
+- Make sure to document the feature, using the guidelines in this [Rust RFC](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text)
+- Makes sure to include [documentation tests](https://doc.rust-lang.org/rustdoc/documentation-tests.html)
 </details>
 
 <br>
