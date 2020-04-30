@@ -124,7 +124,7 @@ fn main() {
 }
 ```
 
- For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/0.1/introduction/get-started.md).
+ For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/iota-streams/0.1/channels/build-a-simple-app.md).
 
 ## API reference
 
