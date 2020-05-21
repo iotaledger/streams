@@ -1,12 +1,12 @@
 <h1 align="center">
   <br>
-  <a href="https://docs.iota.org/docs/iota-streams/0.1/introduction/overview.md"><img src="streams.png"></a>
+  <a href="https://docs.iota.org/docs/iota-streams/1.0/overview.md"><img src="streams.png"></a>
 </h1>
 
 <h2 align="center">A cryptographic framework for building secure messaging applications</h2>
 
 <p align="center">
-    <a href="https://docs.iota.org/docs/iota-streams/0.1/introduction/overview.md" style="text-decoration:none;">
+    <a href="https://docs.iota.org/docs/iota-streams/1.0/overview.md" style="text-decoration:none;">
     <img src="https://img.shields.io/badge/Documentation%20portal-blue.svg?style=for-the-badge"
          alt="Developer documentation portal">
       </p>
@@ -31,9 +31,9 @@
 
 ## About
 
-IOTA Streams is a **work-in-progress** framework for cryptographic messaging protocols called Applications. Streams ships with a built-in application called Channels for sending authenticated messages between two or more parties on the Tangle.
+IOTA Streams is a **work-in-progress** framework for building cryptographic messaging protocols. Streams ships with a built-in protocol called Channels for sending authenticated messages between two or more parties on the Tangle.
 
-As a cryptographic framework, Streams allows developers to build Applications for their specific needs.
+As a framework, Streams allows developers to build protocols for their specific needs.
 
 This process will be documented as the development progresses. However, since this crate is in an alpha stage of development it is still likely to change.
 
@@ -60,7 +60,7 @@ We also recommend updating Rust to the [latest stable version](https://github.co
 rustup update stable
 ```
 
-`no_std` is not currently supported.
+The `no_std` attribute is not currently supported.
 
 ## Installation
 
@@ -96,7 +96,7 @@ iota-streams = { git = "https://github.com/iotaledger/streams" }
 
 After you've [installed the library](#installation), you can use it in your own Cargo project.
 
-For example, you may want to use the Channels application to create a new channel like so:
+For example, you may want to use the Channels protocol to create a new channel like so:
 
 ```rust
 use iota_streams::app_channels::api::tangle::{Author, Transport};
@@ -124,7 +124,7 @@ fn main() {
 }
 ```
 
- For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/iota-streams/0.1/channels/build-a-simple-app.md).
+ For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.0/overview.md).
 
 ## API reference
 
