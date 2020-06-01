@@ -1,12 +1,12 @@
 <h1 align="center">
   <br>
-  <a href="https://docs.iota.org/docs/iota-streams/1.0/overview.md"><img src="streams.png"></a>
+  <a href="https://docs.iota.org/docs/iota-streams/1.0/overview"><img src="streams.png"></a>
 </h1>
 
-<h2 align="center">A cryptographic framework for building secure messaging applications</h2>
+<h2 align="center">A cryptographic framework for building secure messaging protocols</h2>
 
 <p align="center">
-    <a href="https://docs.iota.org/docs/iota-streams/1.0/overview.md" style="text-decoration:none;">
+    <a href="https://docs.iota.org/docs/iota-streams/1.0/overview" style="text-decoration:none;">
     <img src="https://img.shields.io/badge/Documentation%20portal-blue.svg?style=for-the-badge"
          alt="Developer documentation portal">
       </p>
@@ -39,8 +39,8 @@ This process will be documented as the development progresses. However, since th
 
 At the moment, IOTA Streams includes the following crates:
 
-- `iota_streams_app_channels`: An API for using the built-in Channels application
-- `iota_streams_app`: The `message` and `transport` modules for creating your own Streams applications
+- `iota_streams_app_channels`: An API for using the built-in Channels protocol
+- `iota_streams_app`: The `message` and `transport` modules for creating your own Streams protocols
 - `iota_streams_core`: Modules for the core cryptographic features used by Streams, including ternary to binary conversions
 - `iota_streams_core_keccak`: Modules for using sponge constructions with KeccakF1600B and KeccakF1600T permutations
 - `iota_streams_core_merkletree`: A module for working with traversable Merkle trees
@@ -124,7 +124,7 @@ fn main() {
 }
 ```
 
- For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.0/overview.md).
+ For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.0/overview).
 
 ## API reference
 
@@ -136,11 +136,11 @@ cargo doc --open
 
 ## Examples
 
-We have an example in the [`examples` directory](iota-streams-app-channels/examples) that you can use as a reference when developing applications with IOTA Streams.
+We have an example in the [`examples` directory](iota-streams-app-channels/examples) that you can use as a reference when developing your own protocols with IOTA Streams.
 
 ## Supporting the project
 
-If this library has been useful to you and you feel like contributing, please see our [contribution guidelines](CONTRIBUTING.md) for all the ways in which you can contribute.
+Please see our [contribution guidelines](CONTRIBUTING.md) for all the ways in which you can contribute.
 
 ### Running tests
 
