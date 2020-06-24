@@ -30,6 +30,6 @@ pub mod transport;
 
 /*
 pub trait TrustProvider<PublicKey> {
-    fn check_trusted(pk: &PublicKey) -> Fallible<()>;
+    fn check_trusted(pk: &PublicKey) -> Result<()>;
 }
  */

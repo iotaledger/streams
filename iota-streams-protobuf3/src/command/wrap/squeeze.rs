@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -8,19 +8,14 @@ use crate::{
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-    },
 };
 
 /// External values are not encoded.
-impl<'a, TW, F, OS: io::OStream<TW>> Squeeze<&'a Mac> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Squeeze<&'a Mac> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn squeeze(&mut self, mac: &'a Mac) -> Fallible<&mut Self> {
+    fn squeeze(&mut self, mac: &'a Mac) -> Result<&mut Self> {
         self.spongos.squeeze(&mut self.stream.try_advance(mac.0)?);
         Ok(self)
     }

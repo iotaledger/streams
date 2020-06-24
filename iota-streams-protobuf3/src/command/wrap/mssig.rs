@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use super::Context;
@@ -37,7 +37,7 @@ where
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, sk: &'a mss::PrivateKey<TW, P>, hash: &'a External<NTrytes<TW>>) -> Fallible<&mut Self> {
+    fn mssig(&mut self, sk: &'a mss::PrivateKey<TW, P>, hash: &'a External<NTrytes<TW>>) -> Result<&mut Self> {
         ensure!(
             P::HASH_SIZE == ((hash.0).0).size(),
             "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.",
@@ -60,7 +60,7 @@ where
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, sk: &'a mut mss::PrivateKey<TW, P>, hash: &'a External<NTrytes<TW>>) -> Fallible<&mut Self> {
+    fn mssig(&mut self, sk: &'a mut mss::PrivateKey<TW, P>, hash: &'a External<NTrytes<TW>>) -> Result<&mut Self> {
         // Force convert to `&self` with a smaller life-time.
         <Self as Mssig<&'_ mss::PrivateKey<TW, P>, &'_ External<NTrytes<TW>>>>::mssig(self, sk, hash)?;
         sk.next();
@@ -74,7 +74,7 @@ where
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, sk: &'a mss::PrivateKey<TW, P>, _hash: MssHashSig) -> Fallible<&mut Self> {
+    fn mssig(&mut self, sk: &'a mss::PrivateKey<TW, P>, _hash: MssHashSig) -> Result<&mut Self> {
         let mut hash = External(NTrytes(Tbits::<TW>::zero(P::HASH_SIZE)));
         self.squeeze(&mut hash)?.commit()?.mssig(sk, &hash)
     }
@@ -86,7 +86,7 @@ where
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, sk: &'a mut mss::PrivateKey<TW, P>, _hash: MssHashSig) -> Fallible<&mut Self> {
+    fn mssig(&mut self, sk: &'a mut mss::PrivateKey<TW, P>, _hash: MssHashSig) -> Result<&mut Self> {
         let mut hash = External(NTrytes(Tbits::<TW>::zero(P::HASH_SIZE)));
         self.squeeze(&mut hash)?.commit()?.mssig(sk, &hash)
     }

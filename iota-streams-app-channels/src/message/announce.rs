@@ -28,25 +28,16 @@
 //! * `sig` -- signature of `tag` field produced with the MSS private key corresponding to `msspk`.
 //!
 
-use failure::{
+use anyhow::{
     bail,
-    Fallible,
+    Result,
 };
 
 use iota_streams_app::message;
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::{
-            BasicTbitWord,
-            IntTbitWord,
-            SpongosTbitWord,
-        },
-    },
 };
-use iota_streams_core_mss::signature::mss;
-use iota_streams_core_ntru::key_encapsulation::ntru;
+use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -56,92 +47,91 @@ use iota_streams_protobuf3::{
 /// Type of `Announce` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9ANNOUNCE";
 
-pub struct ContentWrap<'a, TW, F, P: mss::Parameters<TW>> {
-    pub(crate) mss_sk: &'a mss::PrivateKey<TW, P>,
-    pub(crate) ntru_pk: Option<&'a ntru::PublicKey<TW, F>>,
+pub struct ContentWrap<'a, F> {
+    pub(crate) sig_sk: &'a ed25519::SecretKey,
+    pub(crate) ke_pk: Option<&'a x25519::PublicKey>,
+    _phantom: std::marker::PhantomData<F>,
 }
 
-impl<'a, TW, F, P: mss::Parameters<TW>, Store> message::ContentWrap<TW, F, Store> for ContentWrap<'a, TW, F, P>
+impl<'a, F, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F>
 where
-    TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    P: mss::Parameters<TW>,
+    F: PRP,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
-        ctx.absorb(self.mss_sk.public_key())?;
-        let oneof: Trint3;
-        if let Some(ntru_pk) = self.ntru_pk {
-            oneof = Trint3(1);
-            ctx.absorb(&oneof)?.absorb(ntru_pk)?;
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+        //TODO: ctx.absorb(self.sig_sk.public_key())?;
+        let oneof: Uint8;
+        if let Some(ke_pk) = self.ke_pk {
+            oneof = Uint8(1);
+            ctx.absorb(&oneof)?.absorb(ke_pk)?;
         } else {
-            oneof = Trint3(0);
+            oneof = Uint8(0);
             ctx.absorb(&oneof)?;
         }
-        ctx.mssig(self.mss_sk, MssHashSig)?;
+        //TODO: ctx.mssig(self.sig_sk, MssHashSig)?;
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream<TW>>(
+    fn wrap<'c, OS: io::OStream>(
         &self,
         _store: &Store,
-        ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<&'c mut wrap::Context<TW, F, OS>> {
-        ctx.absorb(self.mss_sk.public_key())?;
-        let oneof: Trint3;
-        if let Some(ntru_pk) = self.ntru_pk {
-            oneof = Trint3(1);
-            ctx.absorb(&oneof)?.absorb(ntru_pk)?;
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
+        //TODO: ctx.absorb(self.sig_sk.public_key())?;
+        let oneof: Uint8;
+        if let Some(ke_pk) = self.ke_pk {
+            oneof = Uint8(1);
+            ctx.absorb(&oneof)?.absorb(ke_pk)?;
         } else {
-            oneof = Trint3(0);
+            oneof = Uint8(0);
             ctx.absorb(&oneof)?;
         }
-        ctx.mssig(self.mss_sk, MssHashSig)?;
+        //TODO: ctx.mssig(self.sig_sk, MssHashSig)?;
         Ok(ctx)
     }
 }
 
-pub struct ContentUnwrap<TW, F, P> {
-    pub(crate) mss_pk: mss::PublicKey<TW, P>,
-    pub(crate) ntru_pk: Option<ntru::PublicKey<TW, F>>,
+pub struct ContentUnwrap<F> {
+    pub(crate) sig_pk: ed25519::PublicKey,
+    pub(crate) ke_pk: Option<x25519::PublicKey>,
+    _phantom: std::marker::PhantomData<F>,
 }
 
-impl<TW, F, P> Default for ContentUnwrap<TW, F, P>
-where
-    TW: BasicTbitWord,
-    P: mss::Parameters<TW>,
+impl<F> Default for ContentUnwrap<F>
 {
     fn default() -> Self {
         Self {
-            mss_pk: mss::PublicKey::<TW, P>::default(),
-            ntru_pk: None,
+            sig_pk: ed25519::PublicKey::default(),
+            ke_pk: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<TW, F, P, Store> message::ContentUnwrap<TW, F, Store> for ContentUnwrap<TW, F, P>
+impl<F, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F>
 where
-    TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    P: mss::Parameters<TW>,
+    F: PRP,
 {
-    fn unwrap<'c, IS: io::IStream<TW>>(
+    fn unwrap<'c, IS: io::IStream>(
         &mut self,
         _store: &Store,
-        ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<&'c mut unwrap::Context<TW, F, IS>> {
-        ctx.absorb(&mut self.mss_pk)?;
-        let mut oneof = Trint3(-1);
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        ctx.absorb(&mut self.sig_pk)?;
+        let mut oneof = Uint8(0);
         ctx.absorb(&mut oneof)?;
-        self.ntru_pk = match oneof {
-            Trint3(0) => None,
-            Trint3(1) => {
-                let mut ntru_pk = ntru::PublicKey::default();
-                ctx.absorb(&mut ntru_pk)?;
-                Some(ntru_pk)
+        self.ke_pk = match oneof {
+            Uint8(0) => None,
+            Uint8(1) => {
+                panic!("not implemented");
+                /*
+                let mut ke_pk = x25519::PublicKey::default();
+                ctx.absorb(&mut ke_pk)?;
+                Some(ke_pk)
+                 */
             }
             _ => bail!("Announce: bad oneof: {:?}", oneof),
         };
-        ctx.mssig(&self.mss_pk, MssHashSig)?;
+        //ctx.mssig(&self.sig_pk, MssHashSig)?;
         Ok(ctx)
     }
 }

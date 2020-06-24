@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 use std::str::FromStr;
 
@@ -38,7 +38,7 @@ use crate::{
     types::*,
 };
 
-fn absorb_mask_trint3<TW, F>() -> Fallible<()>
+fn absorb_mask_trint3<TW, F>() -> Result<()>
 where
     TW: SpongosTbitWord + TritWord,
     F: PRP<TW> + Default,
@@ -87,7 +87,7 @@ fn trint3() {
     assert!(dbg!(absorb_mask_trint3::<Trit, Troika>()).is_ok());
 }
 
-fn absorb_mask_size<TW, F>() -> Fallible<()>
+fn absorb_mask_size<TW, F>() -> Result<()>
 where
     TW: SpongosTbitWord + TritWord,
     F: PRP<TW> + Default,
@@ -155,7 +155,7 @@ fn size() {
     assert!(dbg!(absorb_mask_size::<Trit, Troika>()).is_ok());
 }
 
-fn absorb_mask_squeeze_trytes_mac<TW, F>() -> Fallible<()>
+fn absorb_mask_squeeze_trytes_mac<TW, F>() -> Result<()>
 where
     TW: StringTbitWord + IntTbitWord + SpongosTbitWord + TritWord,
     F: PRP<TW> + Default,
@@ -262,7 +262,7 @@ fn trytes() {
     assert!(dbg!(absorb_mask_squeeze_trytes_mac::<Trit, Troika>()).is_ok());
 }
 
-fn mssig_traverse<TW, F, P>() -> Fallible<()>
+fn mssig_traverse<TW, F, P>() -> Result<()>
 where
     TW: StringTbitWord + IntTbitWord + SpongosTbitWord + TritWord,
     F: PRP<TW> + Default,
@@ -328,7 +328,7 @@ fn mssig() {
     assert!(dbg!(mssig_traverse::<Trit, Troika, mss::troika::ParametersMtComplete<Trit>>()).is_ok());
 }
 
-fn ntrukem_caps<TW, F>() -> Fallible<()>
+fn ntrukem_caps<TW, F>() -> Result<()>
 where
     TW: StringTbitWord + IntTbitWord + SpongosTbitWord + TritWord,
     F: PRP<TW> + Clone + Default,
@@ -378,29 +378,29 @@ struct TestRelLink(Trint3);
 struct TestAbsLink(Trint3, TestRelLink);
 
 impl AbsorbFallback for TestAbsLink {
-    fn sizeof_absorb(&self, ctx: &mut sizeof::Context::<TW, F>) -> Fallible<()> {
+    fn sizeof_absorb(&self, ctx: &mut sizeof::Context::<TW, F>) -> Result<()> {
         ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
         Ok(())
     }
-    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()> {
+    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
         ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
         Ok(())
     }
-    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Fallible<()> {
+    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
         ctx.absorb(&mut self.0)?.absorb(&mut (self.1).0)?;
         Ok(())
     }
 }
 impl SkipFallback for TestRelLink {
-    fn sizeof_skip(&self, ctx: &mut sizeof::Context::<TW, F>) -> Fallible<()> {
+    fn sizeof_skip(&self, ctx: &mut sizeof::Context::<TW, F>) -> Result<()> {
         ctx.skip(&self.0)?;
         Ok(())
     }
-    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Fallible<()> {
+    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
         ctx.skip(&self.0)?;
         Ok(())
     }
-    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Fallible<()> {
+    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
         ctx.skip(&mut self.0)?;
         Ok(())
     }
@@ -434,7 +434,7 @@ impl<Link, Info> TestStore<Link, Info> {
 
 impl<Link: PartialEq + Clone, Info: Clone> LinkStore<Link> for TestStore<Link, Info> {
     type Info = Info;
-    fn lookup(&self, link: &Link) -> Fallible<(Spongos, Self::Info)> {
+    fn lookup(&self, link: &Link) -> Result<(Spongos, Self::Info)> {
         if let Some((l, (s, i))) = &self.cell1 {
             if link == l {
                 return Ok((s.into(), i.clone()));
@@ -452,7 +452,7 @@ impl<Link: PartialEq + Clone, Info: Clone> LinkStore<Link> for TestStore<Link, I
         }
         bail!("Link not found");
     }
-    fn update(&mut self, l: &Link, s: Spongos, i: Self::Info) -> Fallible<()> {
+    fn update(&mut self, l: &Link, s: Spongos, i: Self::Info) -> Result<()> {
         if let None = &self.cell1 {
             self.cell1 = Some((l.clone(), (s.try_into().unwrap(), i)));
             Ok(())
@@ -508,7 +508,7 @@ where
     AbsLink: AbsorbFallback + AsRef<RelLink>,
     RelLink: SkipFallback,
 {
-    fn size<S: LinkStore<RelLink>>(&self, store: &S) -> Fallible<usize> {
+    fn size<S: LinkStore<RelLink>>(&self, store: &S) -> Result<usize> {
         let mut ctx = sizeof::Context::<TW, F>::new();
         ctx.absorb(&self.addr)?
             .join(store, &self.link)?
@@ -520,7 +520,7 @@ where
         store: &mut S,
         ctx: &mut wrap::Context<OS>,
         i: <S as LinkStore<RelLink>>::Info,
-    ) -> Fallible<()> {
+    ) -> Result<()> {
         ctx.absorb(&self.addr)?
             .join(store, &self.link)?
             .mask(&self.masked)?;
@@ -533,7 +533,7 @@ where
         &mut self,
         store: &S,
         ctx: &mut unwrap::Context<IS>,
-    ) -> Fallible<()> {
+    ) -> Result<()> {
         ctx.absorb(&mut self.addr)?
             .join(store, &mut self.link)?
             .mask(&mut self.masked)?;
@@ -541,7 +541,7 @@ where
     }
 }
 
-fn run_join_link() -> Fallible<()> {
+fn run_join_link() -> Result<()> {
     let msg = TestMessage::<TestAbsLink, TestRelLink> {
         addr: TestAbsLink(Trint3(1), TestRelLink(Trint3(2))),
         link: TestRelLink(Trint3(3)),

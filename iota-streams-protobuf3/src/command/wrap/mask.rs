@@ -1,6 +1,5 @@
-use failure::{
-    ensure,
-    Fallible,
+use anyhow::{
+    Result,
 };
 use std::mem;
 
@@ -12,150 +11,130 @@ use crate::{
     command::Mask,
     io,
     types::{
-        NTrytes,
+        NBytes,
         Size,
-        Trint3,
-        Trytes,
+        Uint8,
+        Bytes,
     },
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-        TbitSlice,
-    },
 };
-use iota_streams_core_mss::signature::mss;
-use iota_streams_core_ntru::key_encapsulation::ntru;
+use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
-struct MaskContext<TW, F, OS> {
-    ctx: Context<TW, F, OS>,
+struct MaskContext<F, OS> {
+    ctx: Context<F, OS>,
 }
-impl<TW, F, OS> AsMut<MaskContext<TW, F, OS>> for Context<TW, F, OS> {
-    fn as_mut<'a>(&'a mut self) -> &'a mut MaskContext<TW, F, OS> {
-        unsafe { mem::transmute::<&'a mut Context<TW, F, OS>, &'a mut MaskContext<TW, F, OS>>(self) }
+impl<F, OS> AsMut<MaskContext<F, OS>> for Context<F, OS> {
+    fn as_mut<'a>(&'a mut self) -> &'a mut MaskContext<F, OS> {
+        unsafe { mem::transmute::<&'a mut Context<F, OS>, &'a mut MaskContext<F, OS>>(self) }
     }
 }
-impl<TW, F, OS> AsMut<Context<TW, F, OS>> for MaskContext<TW, F, OS> {
-    fn as_mut<'a>(&'a mut self) -> &'a mut Context<TW, F, OS> {
-        unsafe { mem::transmute::<&'a mut MaskContext<TW, F, OS>, &'a mut Context<TW, F, OS>>(self) }
+impl<F, OS> AsMut<Context<F, OS>> for MaskContext<F, OS> {
+    fn as_mut<'a>(&'a mut self) -> &'a mut Context<F, OS> {
+        unsafe { mem::transmute::<&'a mut MaskContext<F, OS>, &'a mut Context<F, OS>>(self) }
     }
 }
 
-impl<TW, F, OS: io::OStream<TW>> Wrap<TW> for MaskContext<TW, F, OS>
+impl<F, OS: io::OStream> Wrap for MaskContext<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn wrap3(&mut self, trint3: Trint3) -> Fallible<&mut Self> {
-        let mut slice = self.ctx.stream.try_advance(3)?;
-        slice.put3(trint3);
-        self.ctx.spongos.encrypt_mut(&mut slice);
+    fn wrap_u8(&mut self, u: u8) -> Result<&mut Self> {
+        let mut slice = self.ctx.stream.try_advance(1)?;
+        slice[0] = u;
+        self.ctx.spongos.encrypt_mut(slice);
         Ok(self)
     }
-    fn wrapn(&mut self, trits: TbitSlice<TW>) -> Fallible<&mut Self> {
-        let mut slice = self.ctx.stream.try_advance(trits.size())?;
-        self.ctx.spongos.encrypt(trits, &mut slice);
+    fn wrapn(&mut self, bytes: &[u8]) -> Result<&mut Self> {
+        let mut slice = self.ctx.stream.try_advance(bytes.len())?;
+        self.ctx.spongos.encrypt(bytes, &mut slice);
         Ok(self)
     }
 }
 
-fn wrap_mask_trint3<'a, TW, F, OS: io::OStream<TW>>(
-    ctx: &'a mut MaskContext<TW, F, OS>,
-    trint3: Trint3,
-) -> Fallible<&'a mut MaskContext<TW, F, OS>>
+fn wrap_mask_u8<'a, F, OS: io::OStream>(
+    ctx: &'a mut MaskContext<F, OS>,
+    u: Uint8,
+) -> Result<&'a mut MaskContext<F, OS>>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    ctx.wrap3(trint3)
+    ctx.wrap_u8(u.0)
 }
-fn wrap_mask_size<'a, TW, F, OS: io::OStream<TW>>(
-    ctx: &'a mut MaskContext<TW, F, OS>,
+fn wrap_mask_size<'a, F, OS: io::OStream>(
+    ctx: &'a mut MaskContext<F, OS>,
     size: Size,
-) -> Fallible<&'a mut MaskContext<TW, F, OS>>
+) -> Result<&'a mut MaskContext<F, OS>>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
     wrap_size(ctx, size)
 }
-fn wrap_mask_trits<'a, TW, F, OS: io::OStream<TW>>(
-    ctx: &'a mut MaskContext<TW, F, OS>,
-    trits: TbitSlice<TW>,
-) -> Fallible<&'a mut MaskContext<TW, F, OS>>
+fn wrap_mask_bytes<'a, F, OS: io::OStream>(
+    ctx: &'a mut MaskContext<F, OS>,
+    bytes: &[u8],
+) -> Result<&'a mut MaskContext<F, OS>>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    ctx.wrapn(trits)
+    ctx.wrapn(bytes)
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Mask<&'a Trint3> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Mask<&'a Uint8> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn mask(&mut self, trint3: &'a Trint3) -> Fallible<&mut Self> {
-        Ok(wrap_mask_trint3(self.as_mut(), *trint3)?.as_mut())
+    fn mask(&mut self, u: &'a Uint8) -> Result<&mut Self> {
+        Ok(wrap_mask_u8(self.as_mut(), *u)?.as_mut())
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Mask<&'a Size> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Mask<&'a Size> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn mask(&mut self, size: &'a Size) -> Fallible<&mut Self> {
+    fn mask(&mut self, size: &'a Size) -> Result<&mut Self> {
         Ok(wrap_mask_size(self.as_mut(), *size)?.as_mut())
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Mask<&'a NTrytes<TW>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Mask<&'a NBytes> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn mask(&mut self, ntrytes: &'a NTrytes<TW>) -> Fallible<&mut Self> {
-        Ok(wrap_mask_trits(self.as_mut(), (ntrytes.0).slice())?.as_mut())
+    fn mask(&mut self, nbytes: &'a NBytes) -> Result<&mut Self> {
+        Ok(wrap_mask_bytes(self.as_mut(), &(nbytes.0)[..])?.as_mut())
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Mask<&'a Trytes<TW>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Mask<&'a Bytes> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn mask(&mut self, trytes: &'a Trytes<TW>) -> Fallible<&mut Self> {
-        ensure!(
-            (trytes.0).size() % 3 == 0,
-            "Trit size of `trytes` must be a multiple of 3: {}.",
-            (trytes.0).size()
-        );
-        let size = Size((trytes.0).size() / 3);
+    fn mask(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
+        let size = Size((bytes.0).len());
         self.mask(&size)?;
-        Ok(wrap_mask_trits(self.as_mut(), (trytes.0).slice())?.as_mut())
+        Ok(wrap_mask_bytes(self.as_mut(), &(bytes.0)[..])?.as_mut())
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Mask<&'a ntru::PublicKey<TW, F>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn mask(&mut self, ntru_pk: &'a ntru::PublicKey<TW, F>) -> Fallible<&mut Self> {
-        Ok(wrap_mask_trits(self.as_mut(), ntru_pk.tbits().slice())?.as_mut())
+    fn mask(&mut self, pk: &'a x25519::PublicKey) -> Result<&mut Self> {
+        panic!("not implemented");
+        //Ok(wrap_mask_bytes(self.as_mut(), &pk)?.as_mut())
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>, P> Mask<&'a mss::PublicKey<TW, P>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    P: mss::Parameters<TW>,
+    F: PRP,
 {
-    fn mask(&mut self, mss_pk: &'a mss::PublicKey<TW, P>) -> Fallible<&mut Self> {
-        Ok(wrap_mask_trits(self.as_mut(), mss_pk.tbits().slice())?.as_mut())
+    fn mask(&mut self, pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
+        panic!("not implemented");
+        //Ok(wrap_mask_bytes(self.as_mut(), &pk)?.as_mut())
     }
 }

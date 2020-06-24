@@ -1,22 +1,17 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::command::Commit;
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-    },
 };
 
 /// Commit Spongos.
-impl<TW, F, OS> Commit for Context<TW, F, OS>
+impl<F, OS> Commit for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn commit(&mut self) -> Fallible<&mut Self> {
+    fn commit(&mut self) -> Result<&mut Self> {
         self.spongos.commit();
         Ok(self)
     }

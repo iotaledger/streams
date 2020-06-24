@@ -9,16 +9,16 @@ use crate::{
     },
     message,
 };
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 use iota_streams_app::message::HasLink;
 use iota_streams_core::tbits::Tbits;
 use iota_streams_protobuf3::types::Trytes;
 use std::str::FromStr;
 
-fn example<T: Transport>(transport: &mut T) -> Fallible<()>
+fn example<T: Transport>(transport: &mut T) -> Result<()>
 where
     T::SendOptions: Default,
     T::RecvOptions: Default,

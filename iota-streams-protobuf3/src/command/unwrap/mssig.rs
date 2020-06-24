@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use super::Context;
@@ -41,7 +41,7 @@ where
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, apk: &'a mut mss::PublicKey<TW, P>, hash: &'a External<NTrytes<TW>>) -> Fallible<&mut Self> {
+    fn mssig(&mut self, apk: &'a mut mss::PublicKey<TW, P>, hash: &'a External<NTrytes<TW>>) -> Result<&mut Self> {
         ensure!(
             P::HASH_SIZE == ((hash.0).0).size(),
             "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.",
@@ -72,7 +72,7 @@ where
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, pk: &'a mss::PublicKey<TW, P>, hash: &'a External<NTrytes<TW>>) -> Fallible<&mut Self> {
+    fn mssig(&mut self, pk: &'a mss::PublicKey<TW, P>, hash: &'a External<NTrytes<TW>>) -> Result<&mut Self> {
         let mut apk = mss::PublicKey::<TW, P>::default();
         self.mssig(&mut apk, hash)?;
         ensure!(apk == *pk, "Authenticity is violated, bad signature.");
@@ -86,7 +86,7 @@ where
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, apk: &'a mut mss::PublicKey<TW, P>, _hash: MssHashSig) -> Fallible<&mut Self> {
+    fn mssig(&mut self, apk: &'a mut mss::PublicKey<TW, P>, _hash: MssHashSig) -> Result<&mut Self> {
         let mut hash = External(NTrytes::<TW>(Tbits::<TW>::zero(P::HASH_SIZE)));
         self.squeeze(&mut hash)?.commit()?.mssig(apk, &hash)
     }
@@ -98,7 +98,7 @@ where
     F: PRP<TW>,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, pk: &'a mss::PublicKey<TW, P>, _hash: MssHashSig) -> Fallible<&mut Self> {
+    fn mssig(&mut self, pk: &'a mss::PublicKey<TW, P>, _hash: MssHashSig) -> Result<&mut Self> {
         let mut hash = External(NTrytes::<TW>(Tbits::<TW>::zero(P::HASH_SIZE)));
         self.squeeze(&mut hash)?.commit()?.mssig(pk, &hash)
     }

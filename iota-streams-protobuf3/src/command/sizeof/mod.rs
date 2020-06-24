@@ -2,14 +2,14 @@
 
 /// Message size counting context.
 #[derive(Debug)]
-pub struct Context<TW, F> {
+pub struct Context<F> {
     /// The current message size in trits.
     size: usize,
-    _phantom: std::marker::PhantomData<(TW, F)>,
+    _phantom: std::marker::PhantomData<F>,
 }
 
-impl<TW, F> Context<TW, F> {
-    /// Creates a new Context<TW, F>.
+impl<F> Context<F> {
+    /// Creates a new Context<F>.
     pub fn new() -> Self {
         Self {
             size: 0,
@@ -34,8 +34,10 @@ mod skip;
 mod squeeze;
 mod squeeze_external;
 
-mod mssig;
-mod ntrukem;
+/*
+mod ed25519;
+mod x25519;
+ */
 
 pub use absorb::*;
 pub use absorb_external::*;
@@ -49,5 +51,7 @@ pub use skip::*;
 pub use squeeze::*;
 pub use squeeze_external::*;
 
-pub use mssig::*;
-pub use ntrukem::*;
+/*
+pub use ed25519::*;
+pub use x25519::*;
+ */

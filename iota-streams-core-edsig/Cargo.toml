@@ -1,0 +1,21 @@
+[package]
+name = "iota-streams-core-edsig"
+version = "0.1.0"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
+edition = "2018"
+license = "Apache-2.0/MIT"
+readme = "README.md"
+keywords = ["iota", "streams", "core", "edsig"]
+description = "A rust implementation of the IOTA Streams Ed25519 signature scheme"
+
+[lib]
+name = "iota_streams_core_edsig"
+path = "src/lib.rs"
+
+[dependencies]
+iota-streams-core = { version = "0.2.0", path = "../iota-streams-core" }
+ed25519-dalek = "1.0.0-pre.3"
+x25519-dalek = "0.6"
+
+[dev-dependencies]
+criterion = "0.3"

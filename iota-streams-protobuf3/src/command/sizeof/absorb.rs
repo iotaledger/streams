@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use super::Context;
@@ -10,134 +10,118 @@ use crate::{
         sizeof_sizet,
         AbsorbFallback,
         Fallback,
-        NTrytes,
+        NBytes,
         Size,
-        Trint3,
-        Trytes,
+        Uint8,
+        Bytes,
     },
 };
-use iota_streams_core::tbits::word::BasicTbitWord;
-use iota_streams_core_mss::signature::mss;
-use iota_streams_core_ntru::key_encapsulation::ntru;
 
-/// All Trint3 values are encoded with 3 trits.
-impl<TW, F> Absorb<&Trint3> for Context<TW, F> {
-    fn absorb(&mut self, _trint3: &Trint3) -> Fallible<&mut Self> {
+use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
+
+/// All Uint8 values are encoded with 3 trits.
+impl<F> Absorb<&Uint8> for Context<F> {
+    fn absorb(&mut self, _u: &Uint8) -> Result<&mut Self> {
         self.size += 3;
         Ok(self)
     }
 }
 
 /// Size has var-size encoding.
-impl<TW, F> Absorb<&Size> for Context<TW, F> {
-    fn absorb(&mut self, size: &Size) -> Fallible<&mut Self> {
+impl<F> Absorb<&Size> for Context<F> {
+    fn absorb(&mut self, size: &Size) -> Result<&mut Self> {
         self.size += sizeof_sizet(size.0);
         Ok(self)
     }
 }
 
-/// All Trint3 values are encoded with 3 trits.
-impl<TW, F> Absorb<Trint3> for Context<TW, F> {
-    fn absorb(&mut self, trint3: Trint3) -> Fallible<&mut Self> {
-        self.absorb(&trint3)
+/// All Uint8 values are encoded with 3 trits.
+impl<F> Absorb<Uint8> for Context<F> {
+    fn absorb(&mut self, u: Uint8) -> Result<&mut Self> {
+        self.absorb(&u)
     }
 }
 
 /// Size has var-size encoding.
-impl<TW, F> Absorb<Size> for Context<TW, F> {
-    fn absorb(&mut self, size: Size) -> Fallible<&mut Self> {
+impl<F> Absorb<Size> for Context<F> {
+    fn absorb(&mut self, size: Size) -> Result<&mut Self> {
         self.absorb(&size)
     }
 }
 
-/// `trytes` has variable size thus the size is encoded before the content trytes.
-impl<'a, TW, F> Absorb<&'a Trytes<TW>> for Context<TW, F>
-where
-    TW: BasicTbitWord,
+/// `bytes` has variable size thus the size is encoded before the content bytes.
+impl<'a, F> Absorb<&'a Bytes> for Context<F>
 {
-    fn absorb(&mut self, trytes: &'a Trytes<TW>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
         ensure!(
-            (trytes.0).size() % 3 == 0,
-            "Trit size of `trytes` must be a multiple of 3."
+            (bytes.0).len() % 3 == 0,
+            "Trit size of `bytes` must be a multiple of 3."
         );
-        self.size += sizeof_sizet((trytes.0).size() / 3) + (trytes.0).size();
+        self.size += sizeof_sizet((bytes.0).len() / 3) + (bytes.0).len();
         Ok(self)
     }
 }
 
-/// `trytes` has variable size thus the size is encoded before the content trytes.
-impl<TW, F> Absorb<Trytes<TW>> for Context<TW, F>
-where
-    TW: BasicTbitWord,
+/// `bytes` has variable size thus the size is encoded before the content bytes.
+impl<F> Absorb<Bytes> for Context<F>
 {
-    fn absorb(&mut self, trytes: Trytes<TW>) -> Fallible<&mut Self> {
-        self.absorb(&trytes)
+    fn absorb(&mut self, bytes: Bytes) -> Result<&mut Self> {
+        self.absorb(&bytes)
     }
 }
 
 /// `tryte [n]` is fixed-size and is encoded with `3 * n` trits.
-impl<'a, TW, F> Absorb<&'a NTrytes<TW>> for Context<TW, F>
-where
-    TW: BasicTbitWord,
+impl<'a, F> Absorb<&'a NBytes> for Context<F>
 {
-    fn absorb(&mut self, ntrytes: &'a NTrytes<TW>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, nbytes: &'a NBytes) -> Result<&mut Self> {
         ensure!(
-            (ntrytes.0).size() % 3 == 0,
+            (nbytes.0).len() % 3 == 0,
             "Trit size of `tryte [n]` must be a multiple of 3."
         );
-        self.size += (ntrytes.0).size();
+        self.size += (nbytes.0).len();
         Ok(self)
     }
 }
 
 /// `tryte [n]` is fixed-size and is encoded with `3 * n` trits.
-impl<TW, F> Absorb<NTrytes<TW>> for Context<TW, F>
-where
-    TW: BasicTbitWord,
+impl<F> Absorb<NBytes> for Context<F>
 {
-    fn absorb(&mut self, ntrytes: NTrytes<TW>) -> Fallible<&mut Self> {
-        self.absorb(&ntrytes)
+    fn absorb(&mut self, nbytes: NBytes) -> Result<&mut Self> {
+        self.absorb(&nbytes)
     }
 }
 
 /// MSS public key has fixed size.
-impl<'a, TW, F, P> Absorb<&'a mss::PublicKey<TW, P>> for Context<TW, F>
-where
-    TW: BasicTbitWord,
-    P: mss::Parameters<TW>,
+impl<'a, F> Absorb<&'a ed25519::PublicKey> for Context<F>
 {
-    fn absorb(&mut self, pk: &'a mss::PublicKey<TW, P>) -> Fallible<&mut Self> {
-        ensure!(pk.tbits().size() == P::PUBLIC_KEY_SIZE);
-        self.size += P::PUBLIC_KEY_SIZE;
+    fn absorb(&mut self, pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
+        self.size += ed25519::PUBLIC_KEY_LENGTH;
         Ok(self)
     }
 }
 
 /// NTRU public key has fixed size.
-impl<'a, TW, F> Absorb<&'a ntru::PublicKey<TW, F>> for Context<TW, F>
-where
-    TW: BasicTbitWord,
+impl<'a, F> Absorb<&'a x25519::PublicKey> for Context<F>
 {
-    fn absorb(&mut self, pk: &'a ntru::PublicKey<TW, F>) -> Fallible<&mut Self> {
-        ensure!(pk.tbits().size() == ntru::PUBLIC_KEY_SIZE);
-        self.size += ntru::PUBLIC_KEY_SIZE;
+    fn absorb(&mut self, _pk: &'a x25519::PublicKey) -> Result<&mut Self> {
+        self.size += x25519::PUBLIC_KEY_LENGTH;
         Ok(self)
     }
 }
 
 /*
 /// It's the size of the link.
-impl<'a, TW, F, L: Link> Absorb<&'a L> for Context<TW, F> {
-    fn absorb(&mut self, link: &'a L) -> Fallible<&mut Self> {
-        self.size += link.size();
+impl<'a, F, L: Link> Absorb<&'a L> for Context<F> {
+    fn absorb(&mut self, link: &'a L) -> Result<&mut Self> {
+        self.size += link.len();
         Ok(self)
     }
 }
 */
 
 /// It's the size of the link.
-impl<'a, TW, F, T: 'a + AbsorbFallback<TW, F>> Absorb<&'a Fallback<T>> for Context<TW, F> {
-    fn absorb(&mut self, val: &'a Fallback<T>) -> Fallible<&mut Self> {
+impl<'a, F, T: 'a + AbsorbFallback<F>> Absorb<&'a Fallback<T>> for Context<F> {
+    fn absorb(&mut self, val: &'a Fallback<T>) -> Result<&mut Self> {
         (val.0).sizeof_absorb(self)?;
         Ok(self)
     }

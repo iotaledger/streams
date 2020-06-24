@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -8,19 +8,14 @@ use crate::{
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-    },
 };
 
-impl<C, TW, F, IS: io::IStream<TW>> Repeated<Size, C> for Context<TW, F, IS>
+impl<C, F, IS: io::IStream> Repeated<Size, C> for Context<F, IS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    C: for<'a> FnMut(&'a mut Self) -> Fallible<&'a mut Self>,
+    F: PRP,
+    C: for<'a> FnMut(&'a mut Self) -> Result<&'a mut Self>,
 {
-    fn repeated(&mut self, n: Size, mut value_handle: C) -> Fallible<&mut Self> {
+    fn repeated(&mut self, n: Size, mut value_handle: C) -> Result<&mut Self> {
         for _ in 0..(n.0) {
             value_handle(self)?;
         }

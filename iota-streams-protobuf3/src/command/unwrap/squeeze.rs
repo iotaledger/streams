@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use super::Context;
@@ -11,19 +11,14 @@ use crate::{
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-    },
 };
 
 /// External values are not encoded. Squeeze and compare tag trits.
-impl<'a, TW, F, IS: io::IStream<TW>> Squeeze<&'a Mac> for Context<TW, F, IS>
+impl<'a, F, IS: io::IStream> Squeeze<&'a Mac> for Context<F, IS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn squeeze(&mut self, val: &'a Mac) -> Fallible<&mut Self> {
+    fn squeeze(&mut self, val: &'a Mac) -> Result<&mut Self> {
         ensure!(
             self.spongos.squeeze_eq(self.stream.try_advance(val.0)?),
             "Integrity is violated, bad MAC."

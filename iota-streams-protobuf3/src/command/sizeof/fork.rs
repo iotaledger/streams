@@ -1,14 +1,14 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::command::Fork;
 
 /// Forks cost nothing in the trinary stream.
-impl<TW, F, C> Fork<C> for Context<TW, F>
+impl<F, C> Fork<C> for Context<F>
 where
-    C: for<'a> FnMut(&'a mut Self) -> Fallible<&'a mut Self>,
+    C: for<'a> FnMut(&'a mut Self) -> Result<&'a mut Self>,
 {
-    fn fork(&mut self, mut cont: C) -> Fallible<&mut Self> {
+    fn fork(&mut self, mut cont: C) -> Result<&mut Self> {
         cont(self)
     }
 }

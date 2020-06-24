@@ -1,11 +1,11 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::command::Commit;
 
 /// Commit costs nothing in the trinary stream.
-impl<TW, F> Commit for Context<TW, F> {
-    fn commit(&mut self) -> Fallible<&mut Self> {
+impl<F> Commit for Context<F> {
+    fn commit(&mut self) -> Result<&mut Self> {
         Ok(self)
     }
 }

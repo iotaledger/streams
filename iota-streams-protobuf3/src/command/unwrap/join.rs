@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -11,16 +11,14 @@ use crate::{
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::word::SpongosTbitWord,
 };
 
-impl<'a, TW, F, L: SkipFallback<TW, F>, S: LinkStore<TW, F, L>, IS: io::IStream<TW>> Join<&'a mut L, &S>
-    for Context<TW, F, IS>
+impl<'a, F, L: SkipFallback<F>, S: LinkStore<F, L>, IS: io::IStream> Join<&'a mut L, &S>
+    for Context<F, IS>
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn join(&mut self, store: &S, link: &'a mut L) -> Fallible<&mut Self> {
+    fn join(&mut self, store: &S, link: &'a mut L) -> Result<&mut Self> {
         //TODO: Move `skip` out of `join` and `skip` links explicitly.
         // That way it's easier to handle the case when the link is not found
         // and calling function can try to fetch and parse message for the link.
@@ -34,10 +32,10 @@ where
     }
 }
 /*
-impl<'a, L, S: LinkStore<L>, IS: io::IStream<TW>> Join<&'a mut L, &S> for Context<TW, F, IS> where
+impl<'a, L, S: LinkStore<L>, IS: io::IStream> Join<&'a mut L, &S> for Context<F, IS> where
     Self: Skip<&'a mut L>,
 {
-    fn join(&mut self, store: &S, link: &'a mut L) -> Fallible<&mut Self> {
+    fn join(&mut self, store: &S, link: &'a mut L) -> Result<&mut Self> {
         self.skip(link)?;
         let (mut s, i) = store.lookup(link)?;
         self.spongos.join(&mut s);

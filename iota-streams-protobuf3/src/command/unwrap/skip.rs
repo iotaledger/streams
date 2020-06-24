@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 use std::mem;
 
 use super::{
@@ -10,119 +10,97 @@ use crate::{
     io,
     types::{
         Fallback,
-        NTrytes,
+        NBytes,
         Size,
         SkipFallback,
-        Trint3,
-        Trytes,
+        Uint8,
+        Bytes,
     },
 };
-use iota_streams_core::tbits::{
-    trinary,
-    word::BasicTbitWord,
-    TbitSliceMut,
-    Tbits,
-};
 
-struct SkipContext<TW, F, IS> {
-    ctx: Context<TW, F, IS>,
+struct SkipContext<F, IS> {
+    ctx: Context<F, IS>,
 }
-impl<TW, F, IS> AsMut<SkipContext<TW, F, IS>> for Context<TW, F, IS> {
-    fn as_mut<'a>(&'a mut self) -> &'a mut SkipContext<TW, F, IS> {
-        unsafe { mem::transmute::<&'a mut Context<TW, F, IS>, &'a mut SkipContext<TW, F, IS>>(self) }
+impl<F, IS> AsMut<SkipContext<F, IS>> for Context<F, IS> {
+    fn as_mut<'a>(&'a mut self) -> &'a mut SkipContext<F, IS> {
+        unsafe { mem::transmute::<&'a mut Context<F, IS>, &'a mut SkipContext<F, IS>>(self) }
     }
 }
-impl<TW, F, IS> AsMut<Context<TW, F, IS>> for SkipContext<TW, F, IS> {
-    fn as_mut<'a>(&'a mut self) -> &'a mut Context<TW, F, IS> {
-        unsafe { mem::transmute::<&'a mut SkipContext<TW, F, IS>, &'a mut Context<TW, F, IS>>(self) }
+impl<F, IS> AsMut<Context<F, IS>> for SkipContext<F, IS> {
+    fn as_mut<'a>(&'a mut self) -> &'a mut Context<F, IS> {
+        unsafe { mem::transmute::<&'a mut SkipContext<F, IS>, &'a mut Context<F, IS>>(self) }
     }
 }
 
-impl<TW, F, IS: io::IStream<TW>> Unwrap<TW> for SkipContext<TW, F, IS>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+impl<F, IS: io::IStream> Unwrap for SkipContext<F, IS>
 {
-    fn unwrap3(&mut self, trint3: &mut Trint3) -> Fallible<&mut Self> {
-        let slice = self.ctx.stream.try_advance(3)?;
-        *trint3 = slice.get3();
+    fn unwrap_u8(&mut self, u: &mut u8) -> Result<&mut Self> {
+        let slice = self.ctx.stream.try_advance(1)?;
+        *u = slice[0];
         Ok(self)
     }
-    fn unwrapn(&mut self, trits: TbitSliceMut<TW>) -> Fallible<&mut Self> {
-        let slice = self.ctx.stream.try_advance(trits.size())?;
-        slice.copy(&trits);
+    fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
+        let slice = self.ctx.stream.try_advance(bytes.len())?;
+        //TODO: slice.copy(&bytes);
         Ok(self)
     }
 }
 
-fn unwrap_skip_trint3<'a, TW, F, IS: io::IStream<TW>>(
-    ctx: &'a mut SkipContext<TW, F, IS>,
-    trint3: &mut Trint3,
-) -> Fallible<&'a mut SkipContext<TW, F, IS>>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+fn unwrap_skip_u8<'a, F, IS: io::IStream>(
+    ctx: &'a mut SkipContext<F, IS>,
+    u: &mut Uint8,
+) -> Result<&'a mut SkipContext<F, IS>>
 {
-    ctx.unwrap3(trint3)
+    ctx.unwrap_u8(&mut u.0)
 }
-fn unwrap_skip_size<'a, TW, F, IS: io::IStream<TW>>(
-    ctx: &'a mut SkipContext<TW, F, IS>,
+fn unwrap_skip_size<'a, F, IS: io::IStream>(
+    ctx: &'a mut SkipContext<F, IS>,
     size: &mut Size,
-) -> Fallible<&'a mut SkipContext<TW, F, IS>>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+) -> Result<&'a mut SkipContext<F, IS>>
 {
     unwrap_size(ctx, size)
 }
-fn unwrap_skip_trits<'a, TW, F, IS: io::IStream<TW>>(
-    ctx: &'a mut SkipContext<TW, F, IS>,
-    trits: TbitSliceMut<TW>,
-) -> Fallible<&'a mut SkipContext<TW, F, IS>>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+fn unwrap_skip_bytes<'a, F, IS: io::IStream>(
+    ctx: &'a mut SkipContext<F, IS>,
+    bytes: &mut [u8],
+) -> Result<&'a mut SkipContext<F, IS>>
 {
-    ctx.unwrapn(trits)
+    ctx.unwrapn(bytes)
 }
 
-impl<'a, TW, F, IS: io::IStream<TW>> Skip<&'a mut Trint3> for Context<TW, F, IS>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+impl<'a, F, IS: io::IStream> Skip<&'a mut Uint8> for Context<F, IS>
 {
-    fn skip(&mut self, trint3: &'a mut Trint3) -> Fallible<&mut Self> {
-        Ok(unwrap_skip_trint3(self.as_mut(), trint3)?.as_mut())
+    fn skip(&mut self, u: &'a mut Uint8) -> Result<&mut Self> {
+        Ok(unwrap_skip_u8(self.as_mut(), u)?.as_mut())
     }
 }
 
-impl<'a, TW, F, IS: io::IStream<TW>> Skip<&'a mut Size> for Context<TW, F, IS>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+impl<'a, F, IS: io::IStream> Skip<&'a mut Size> for Context<F, IS>
 {
-    fn skip(&mut self, size: &'a mut Size) -> Fallible<&mut Self> {
+    fn skip(&mut self, size: &'a mut Size) -> Result<&mut Self> {
         Ok(unwrap_skip_size(self.as_mut(), size)?.as_mut())
     }
 }
 
-impl<'a, TW, F, IS: io::IStream<TW>> Skip<&'a mut NTrytes<TW>> for Context<TW, F, IS>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+impl<'a, F, IS: io::IStream> Skip<&'a mut NBytes> for Context<F, IS>
 {
-    fn skip(&mut self, ntrytes: &'a mut NTrytes<TW>) -> Fallible<&mut Self> {
-        Ok(unwrap_skip_trits(self.as_mut(), (ntrytes.0).slice_mut())?.as_mut())
+    fn skip(&mut self, ntrytes: &'a mut NBytes) -> Result<&mut Self> {
+        Ok(unwrap_skip_bytes(self.as_mut(), &mut (ntrytes.0))?.as_mut())
     }
 }
 
-impl<'a, TW, F, IS: io::IStream<TW>> Skip<&'a mut Trytes<TW>> for Context<TW, F, IS>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes> for Context<F, IS>
 {
-    fn skip(&mut self, trytes: &'a mut Trytes<TW>) -> Fallible<&mut Self> {
+    fn skip(&mut self, bytes: &'a mut Bytes) -> Result<&mut Self> {
         let mut size = Size(0);
         self.skip(&mut size)?;
-        trytes.0 = Tbits::<TW>::zero(size.0 * 3);
-        Ok(unwrap_skip_trits(self.as_mut(), (trytes.0).slice_mut())?.as_mut())
+        (bytes.0).resize(size.0, 0);
+        Ok(unwrap_skip_bytes(self.as_mut(), &mut (bytes.0)[..])?.as_mut())
     }
 }
 
-impl<'a, TW, F, T: 'a + SkipFallback<TW, F>, IS: io::IStream<TW>> Skip<&'a mut Fallback<T>> for Context<TW, F, IS> {
-    fn skip(&mut self, val: &'a mut Fallback<T>) -> Fallible<&mut Self> {
+impl<'a, F, T: 'a + SkipFallback<F>, IS: io::IStream> Skip<&'a mut Fallback<T>> for Context<F, IS> {
+    fn skip(&mut self, val: &'a mut Fallback<T>) -> Result<&mut Self> {
         (val.0).unwrap_skip(self)?;
         Ok(self)
     }

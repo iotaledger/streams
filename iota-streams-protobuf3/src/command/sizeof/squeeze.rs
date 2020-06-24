@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use super::Context;
@@ -10,17 +10,16 @@ use crate::{
 };
 
 /// Mac is just like NTrytes.
-impl<TW, F> Squeeze<&Mac> for Context<TW, F> {
-    fn squeeze(&mut self, mac: &Mac) -> Fallible<&mut Self> {
-        ensure!(mac.0 % 3 == 0, "Trit size of `mac` must be a multiple of 3: {}.", mac.0);
+impl<F> Squeeze<&Mac> for Context<F> {
+    fn squeeze(&mut self, mac: &Mac) -> Result<&mut Self> {
         self.size += mac.0;
         Ok(self)
     }
 }
 
 /// Mac is just like NTrytes.
-impl<TW, F> Squeeze<Mac> for Context<TW, F> {
-    fn squeeze(&mut self, val: Mac) -> Fallible<&mut Self> {
+impl<F> Squeeze<Mac> for Context<F> {
+    fn squeeze(&mut self, val: Mac) -> Result<&mut Self> {
         self.squeeze(&val)
     }
 }

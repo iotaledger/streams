@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     bail,
-    Fallible,
+    Result,
 };
 use std::{
     convert::{
@@ -16,75 +16,59 @@ use iota_streams_core::{
         prp::PRP,
         spongos::Spongos,
     },
-    tbits::{
-        word::{
-            BasicTbitWord,
-            SpongosTbitWord,
-            StringTbitWord,
-        },
-        Tbits,
-    },
 };
 
 use crate::io;
 
-/// PB3 integer type `tryte` is signed and is represented with `Trint3`, not `Tryte` which is unsigned.
-/// PB3 integer type `trint` is 6-trit wide and is represented with `Trint6`.
-pub use iota_streams_core::tbits::trinary::{
-    Trint18,
-    Trint3,
-    Trint6,
-    Trint9,
-};
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Uint8(pub u8);
 
-/// Fixed-size array of trytes, the size is known at compile time and is not encoded in trinary representation.
+impl fmt::Display for Uint8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct Uint16(pub u16);
+
+/// Fixed-size array of bytes, the size is known at compile time and is not encoded in trinary representation.
 /// The inner buffer size (in trits) must be multiple of 3.
 //TODO: PartialEq, Eq, Debug
 #[derive(Clone)]
-pub struct NTrytes<TW>(pub Tbits<TW>);
+pub struct NBytes(pub Vec<u8>);
 
-impl<TW> fmt::Debug for NTrytes<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: fmt::Display,
+impl fmt::Debug for NBytes
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }
 }
 
-impl<TW> fmt::Display for NTrytes<TW>
-where
-    TW: StringTbitWord,
+impl fmt::Display for NBytes
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{:?}", self.0)
     }
 }
 
-impl<TW> PartialEq for NTrytes<TW>
-where
-    TW: BasicTbitWord,
+impl PartialEq for NBytes
 {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
-impl<TW> Eq for NTrytes<TW> where TW: BasicTbitWord {}
+impl Eq for NBytes {}
 
-impl<TW> NTrytes<TW>
-where
-    TW: BasicTbitWord,
+impl NBytes
 {
     pub fn zero(n: usize) -> Self {
-        Self(Tbits::<TW>::zero(n))
+        Self(vec![0; n])
     }
 }
 
 /*
-impl<TW> ToString for NTrytes<TW>
-where
-    TW: StringTbitWord,
+impl ToString for NBytes
 {
     fn to_string(&self) -> String {
         (self.0).to_string()
@@ -92,45 +76,36 @@ where
 }
  */
 
-impl<TW> hash::Hash for NTrytes<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: hash::Hash,
+impl hash::Hash for NBytes
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.0).hash(state);
     }
 }
 
-/// Variable-size array of trytes, the size is not known at compile time and is encoded in trinary representation.
+/// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
 /// The inner buffer size (in trits) must be multiple of 3.
 //TODO: PartialEq, Eq, Clone, Debug
 #[derive(Clone)]
-pub struct Trytes<TW>(pub Tbits<TW>);
+pub struct Bytes(pub Vec<u8>);
 
-impl<TW> Default for Trytes<TW>
-where
-    TW: BasicTbitWord,
+impl Default for Bytes
 {
     fn default() -> Self {
-        Self(Tbits::<TW>::zero(0))
+        Self(Vec::new())
     }
 }
 
-impl<TW> PartialEq for Trytes<TW>
-where
-    TW: BasicTbitWord,
+impl PartialEq for Bytes
 {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
-impl<TW> Eq for Trytes<TW> where TW: BasicTbitWord {}
+impl Eq for Bytes {}
 
 /*
-impl<TW> ToString for Trytes<TW>
-where
-    TW: StringTbitWord,
+impl ToString for Bytes
 {
     fn to_string(&self) -> String {
         (self.0).to_string()
@@ -138,29 +113,22 @@ where
 }
  */
 
-impl<TW> fmt::Debug for Trytes<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: fmt::Display,
+impl fmt::Debug for Bytes
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }
 }
 
-impl<TW> fmt::Display for Trytes<TW>
-where
-    TW: StringTbitWord,
+impl fmt::Display for Bytes
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        //TODO:
+        write!(f, "{:?}", self.0)
     }
 }
 
-impl<TW> hash::Hash for Trytes<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: hash::Hash,
+impl hash::Hash for Bytes
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.0).hash(state);
@@ -195,31 +163,14 @@ pub struct Size(pub usize);
 /// Max value of `size_t` type: `(27^13 - 1) / 2`.
 pub const SIZE_MAX: usize = 2_026_277_576_509_488_133;
 
-/// Number of trytes needed to encode a value of `size_t` type.
-pub fn size_trytes(n: usize) -> usize {
-    // Larger values wouldn't fit into max of 13 trytes.
-    assert!(n <= SIZE_MAX);
-
-    // `(27^12 - 1) / 2`.
-    const M12: usize = 75_047_317_648_499_560;
-    if n > M12 {
-        // Handle special case in order to avoid overflow in `m` below.
-        return 13;
-    }
-
-    let mut d: usize = 0;
-    let mut m: usize = 1;
-    while n > (m - 1) / 2 {
-        // Can't overflow.
-        m *= 27;
-        d += 1;
-    }
-
-    d
+/// Number of bytes needed to encode a value of `size_t` type.
+pub fn size_bytes(n: usize) -> usize {
+    panic!("not implemented");
+    //0
 }
 
 pub fn sizeof_sizet(n: usize) -> usize {
-    3 * (size_trytes(n) + 1)
+    size_bytes(n) + 1
 }
 
 impl fmt::Display for Size {
@@ -236,14 +187,14 @@ pub struct External<T>(pub T);
 /// The `link` type is generic and transport-specific. Links can be address+tag pair
 /// when messages are published in the Tangle. Or links can be a URL when HTTP is used.
 /// Or links can be a message sequence number in a stream/socket.
-pub trait LinkStore<TW, F, Link> {
+pub trait LinkStore<F, Link> {
     /// Additional data associated with the current message link/spongos state.
     /// This type is implementation specific, meaning different configurations
     /// of a Streams Application can use different Info types.
     type Info;
 
     /// Lookup link in the store and return spongos state and associated info.
-    fn lookup(&self, _link: &Link) -> Fallible<(Spongos<TW, F>, Self::Info)> {
+    fn lookup(&self, _link: &Link) -> Result<(Spongos<F>, Self::Info)> {
         bail!("Link not found.");
     }
 
@@ -256,7 +207,7 @@ pub trait LinkStore<TW, F, Link> {
     /// Overwriting the spongos state means "forgetting the old and accepting the new".
     ///
     /// Not updating the spongos state means immutability -- "the first one makes the history".
-    fn update(&mut self, link: &Link, spongos: Spongos<TW, F>, info: Self::Info) -> Fallible<()>;
+    fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()>;
 
     /// Remove link and associated info from the store.
     fn erase(&mut self, _link: &Link) {}
@@ -264,17 +215,17 @@ pub trait LinkStore<TW, F, Link> {
 
 /// Empty "dummy" link store that stores no links.
 #[derive(Copy, Clone, Debug)]
-pub struct EmptyLinkStore<TW, F, Link, Info>(std::marker::PhantomData<(TW, F, Link, Info)>);
+pub struct EmptyLinkStore<F, Link, Info>(std::marker::PhantomData<(F, Link, Info)>);
 
-impl<TW, F, Link, Info> Default for EmptyLinkStore<TW, F, Link, Info> {
+impl<F, Link, Info> Default for EmptyLinkStore<F, Link, Info> {
     fn default() -> Self {
         Self(std::marker::PhantomData)
     }
 }
 
-impl<TW, F, Link, Info> LinkStore<TW, F, Link> for EmptyLinkStore<TW, F, Link, Info> {
+impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
     type Info = Info;
-    fn update(&mut self, _link: &Link, _spongos: Spongos<TW, F>, _info: Self::Info) -> Fallible<()> {
+    fn update(&mut self, _link: &Link, _spongos: Spongos<F>, _info: Self::Info) -> Result<()> {
         Ok(())
     }
 }
@@ -283,37 +234,35 @@ impl<TW, F, Link, Info> LinkStore<TW, F, Link> for EmptyLinkStore<TW, F, Link, I
 /// This link store can be used in Streams Applications supporting a list-like "thread"
 /// of messages without access to the history as the link to the last message is stored.
 #[derive(Clone, Debug, Default)]
-pub struct SingleLinkStore<TW, F, Link, Info>
-where
-    F: PRP<TW>,
+pub struct SingleLinkStore<F, Link, Info>
 {
     /// The link to the last message in the thread.
     link: Link,
 
     /// Inner spongos state is stored to save up space.
-    spongos: F::Inner,
+    spongos: Vec<u8>,
 
     /// Associated info.
     info: Info,
+
+    _phantom: std::marker::PhantomData<F>,
 }
 
-impl<TW, F, Link, Info> LinkStore<TW, F, Link> for SingleLinkStore<TW, F, Link, Info>
+impl<F, Link, Info> LinkStore<F, Link> for SingleLinkStore<F, Link, Info>
 where
-    TW: BasicTbitWord + SpongosTbitWord,
-    F: PRP<TW> + Clone,
-    F::Inner: Clone,
+    F: PRP + Clone,
     Link: Clone + Eq,
     Info: Clone,
 {
     type Info = Info;
-    fn lookup(&self, link: &Link) -> Fallible<(Spongos<TW, F>, Self::Info)> {
+    fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
         if self.link == *link {
-            Ok((Spongos::<TW, F>::from_inner(self.spongos.clone()), self.info.clone()))
+            Ok((Spongos::<F>::from_inner(self.spongos.clone()), self.info.clone()))
         } else {
             bail!("Link not found.");
         }
     }
-    fn update(&mut self, link: &Link, spongos: Spongos<TW, F>, info: Self::Info) -> Fallible<()> {
+    fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
         let inner = spongos.to_inner();
         self.link = link.clone();
         self.spongos = inner;
@@ -327,35 +276,32 @@ where
 
 use std::collections::HashMap;
 
-pub struct DefaultLinkStore<TW, F, Link, Info>
-where
-    F: PRP<TW>,
+pub struct DefaultLinkStore<F, Link, Info>
 {
-    map: HashMap<Link, (F::Inner, Info)>,
+    map: HashMap<Link, (Vec<u8>, Info)>,
+    _phantom: std::marker::PhantomData<F>,
 }
 
-impl<TW, F, Link, Info> Default for DefaultLinkStore<TW, F, Link, Info>
+impl<F, Link, Info> Default for DefaultLinkStore<F, Link, Info>
 where
-    F: PRP<TW>,
+    F: PRP,
     Link: Eq + hash::Hash,
 {
     fn default() -> Self {
-        Self { map: HashMap::new() }
+        Self { map: HashMap::new(), _phantom: std::marker::PhantomData, }
     }
 }
 
-impl<TW, F, Link, Info> LinkStore<TW, F, Link> for DefaultLinkStore<TW, F, Link, Info>
+impl<F, Link, Info> LinkStore<F, Link> for DefaultLinkStore<F, Link, Info>
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Clone,
-    F::Inner: Clone,
+    F: PRP + Clone,
     Link: Eq + hash::Hash + Clone,
     Info: Clone,
 {
     type Info = Info;
 
     /// Add info for the link.
-    fn lookup(&self, link: &Link) -> Fallible<(Spongos<TW, F>, Info)> {
+    fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
         if let Some((inner, info)) = self.map.get(link).cloned() {
             Ok((Spongos::from_inner(inner), info))
         } else {
@@ -364,7 +310,7 @@ where
     }
 
     /// Try to retrieve info for the link.
-    fn update(&mut self, link: &Link, spongos: Spongos<TW, F>, info: Info) -> Fallible<()> {
+    fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Info) -> Result<()> {
         let inner = spongos.to_inner();
         self.map.insert(link.clone(), (inner, info));
         Ok(())
@@ -423,10 +369,10 @@ impl<T> AsMut<T> for Fallback<T> {
 }
 
 /// Trait allows for custom (non-standard Protobuf3) types to be Absorb.
-pub trait AbsorbFallback<TW, F> {
-    fn sizeof_absorb(&self, ctx: &mut sizeof::Context<TW, F>) -> Fallible<()>;
-    fn wrap_absorb<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()>;
-    fn unwrap_absorb<IS: io::IStream<TW>>(&mut self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()>;
+pub trait AbsorbFallback<F> {
+    fn sizeof_absorb(&self, ctx: &mut sizeof::Context<F>) -> Result<()>;
+    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()>;
+    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()>;
 }
 
 /// Trait allows for custom (non-standard Protobuf3) types to be AbsorbExternal.
@@ -434,10 +380,10 @@ pub trait AbsorbFallback<TW, F> {
 /// in Protobuf3 and domain specific.
 ///
 /// Note, that "absolute" links are absorbed in the message header.
-pub trait AbsorbExternalFallback<TW, F> {
-    fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<TW, F>) -> Fallible<()>;
-    fn wrap_absorb_external<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()>;
-    fn unwrap_absorb_external<IS: io::IStream<TW>>(&self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()>;
+pub trait AbsorbExternalFallback<F> {
+    fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<F>) -> Result<()>;
+    fn wrap_absorb_external<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()>;
+    fn unwrap_absorb_external<IS: io::IStream>(&self, ctx: &mut unwrap::Context<F, IS>) -> Result<()>;
 }
 
 /// Trait allows for custom (non-standard Protobuf3) types to be Absorb.
@@ -445,8 +391,8 @@ pub trait AbsorbExternalFallback<TW, F> {
 /// in Protobuf3 and domain specific.
 ///
 /// Note, that "relative" links are usually skipped and joined in the message content.
-pub trait SkipFallback<TW, F> {
-    fn sizeof_skip(&self, ctx: &mut sizeof::Context<TW, F>) -> Fallible<()>;
-    fn wrap_skip<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()>;
-    fn unwrap_skip<IS: io::IStream<TW>>(&mut self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()>;
+pub trait SkipFallback<F> {
+    fn sizeof_skip(&self, ctx: &mut sizeof::Context<F>) -> Result<()>;
+    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()>;
+    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()>;
 }

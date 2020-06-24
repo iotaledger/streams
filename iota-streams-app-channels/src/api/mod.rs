@@ -10,29 +10,18 @@ use iota_streams_app::{
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::{
-            SpongosTbitWord,
-            StringTbitWord,
-        },
-    },
 };
-use iota_streams_core_mss::signature::mss;
+use iota_streams_core_edsig::signature::ed25519;
 
-pub trait ChannelLinkGenerator<TW, P, Link>
+pub trait ChannelLinkGenerator<Link>
 where
-    TW: StringTbitWord + SpongosTbitWord + trinary::TritWord,
-    P: mss::Parameters<TW>,
     Link: HasLink,
-    Self: LinkGenerator<TW, Link, mss::PublicKey<TW, P>> + LinkGenerator<TW, Link, <Link as HasLink>::Rel>,
+    Self: LinkGenerator<Link, ed25519::PublicKey> + LinkGenerator<Link, <Link as HasLink>::Rel>,
 {
 }
-impl<TW, F, P> ChannelLinkGenerator<TW, P, TangleAddress<TW>> for DefaultTangleLinkGenerator<TW, F>
+impl<F> ChannelLinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F>
 where
-    TW: StringTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW> + Default,
-    P: mss::Parameters<TW>,
+    F: PRP + Default,
 {
 }
 
@@ -42,5 +31,7 @@ pub mod author;
 /// Generic Channel Subscriber API.
 pub mod subscriber;
 
+/*
 /// Tangle-specific Channel API.
 pub mod tangle;
+ */

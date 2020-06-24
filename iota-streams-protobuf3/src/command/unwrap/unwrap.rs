@@ -1,46 +1,48 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use crate::types::{
     Size,
-    Trint3,
+    Uint8,
     SIZE_MAX,
 };
-use iota_streams_core::tbits::TbitSliceMut;
 
-/// Helper trait for unwrapping (decoding/absorbing) trint3s.
-pub(crate) trait Unwrap<TW> {
-    fn unwrap3(&mut self, trint3: &mut Trint3) -> Fallible<&mut Self>;
-    fn unwrapn(&mut self, trits: TbitSliceMut<TW>) -> Fallible<&mut Self>;
+/// Helper trait for unwrapping (decoding/absorbing) uint8s.
+pub(crate) trait Unwrap {
+    fn unwrap_u8(&mut self, uint8: &mut u8) -> Result<&mut Self>;
+    fn unwrapn(&mut self, trits: &mut [u8]) -> Result<&mut Self>;
 }
 
 /// Helper function for unwrapping (decoding/absorbing) size values.
-pub(crate) fn unwrap_size<'a, TW, Ctx: Unwrap<TW>>(ctx: &'a mut Ctx, size: &mut Size) -> Fallible<&'a mut Ctx> where
+pub(crate) fn unwrap_size<'a, Ctx: Unwrap>(ctx: &'a mut Ctx, size: &mut Size) -> Result<&'a mut Ctx> where
 {
-    let mut d = Trint3(0);
-    ctx.unwrap3(&mut d)?;
-    ensure!(Trint3(0) <= d && d <= Trint3(13), "Invalid size of `size_t`: {}.", d);
+    panic!("not implemented");
+
+    /*
+    let mut d = Uint8(0);
+    ctx.unwrap_u8(&mut d)?;
+    ensure!(Uint8(0) <= d && d <= Uint8(13), "Invalid size of `size_t`: {}.", d);
 
     let mut m: i64 = 0;
     let mut r: i64 = 1;
     if 0 < d.0 {
         d.0 -= 1;
-        let mut t = Trint3(0);
-        ctx.unwrap3(&mut t)?;
+        let mut t = Uint8(0);
+        ctx.unwrap_u8(&mut t)?;
         m = t.0 as i64;
 
         while 0 < d.0 {
             d.0 -= 1;
-            ctx.unwrap3(&mut t)?;
+            ctx.unwrap_u8(&mut t)?;
             r *= 27;
             m += r * t.0 as i64;
         }
 
         ensure!(
-            Trint3(0) < t,
-            "The last most significant trint3 is `size_t` can't be 0 or negative: {}.",
+            Uint8(0) < t,
+            "The last most significant uint8 is `size_t` can't be 0 or negative: {}.",
             t
         );
 
@@ -49,4 +51,5 @@ pub(crate) fn unwrap_size<'a, TW, Ctx: Unwrap<TW>>(ctx: &'a mut Ctx, size: &mut 
 
     size.0 = m as usize;
     Ok(ctx)
+     */
 }

@@ -21,37 +21,37 @@
 //!
 //! Command traits are implemented in modules `sizeof`, `wrap`, `unwrap`.
 
-use failure::Fallible;
+use anyhow::Result;
 
 /// Absorb command. Trinary representation of the field is absorbed into Spongos state.
 /// External fields are not encoded in the trinary stream. Non-trinary field is
 /// an input argument in Wrap command and an output argument in Unwrap command.
 pub trait Absorb<Type> {
-    fn absorb(&mut self, field: Type) -> Fallible<&mut Self>;
+    fn absorb(&mut self, field: Type) -> Result<&mut Self>;
 }
 
 /// Squeeze command. Trinary representation of the field is squeezed from Spongos state.
 /// The command supports fields of `tryte [n]` type (`NTryte`) and is usually used as
 /// MAC or externally stored hash value to be signed.
 pub trait Squeeze<Type> {
-    fn squeeze(&mut self, field: Type) -> Fallible<&mut Self>;
+    fn squeeze(&mut self, field: Type) -> Result<&mut Self>;
 }
 
 /// Mask command. Trinary representation is encrypted in Wrap command and decrypted
 /// in Unwrap command using Spongos.
 /// Formatted fields (eg. of `size_t` type or `oneof`) are checked after decryption.
 pub trait Mask<Type> {
-    fn mask(&mut self, field: Type) -> Fallible<&mut Self>;
+    fn mask(&mut self, field: Type) -> Result<&mut Self>;
 }
 
 /// Skip command. Trinary representation is just encoded/decoded and is not processed with Spongos.
 pub trait Skip<Type> {
-    fn skip(&mut self, field: Type) -> Fallible<&mut Self>;
+    fn skip(&mut self, field: Type) -> Result<&mut Self>;
 }
 
 /// Commit command. Commit Spongos state.
 pub trait Commit {
-    fn commit(&mut self) -> Fallible<&mut Self>;
+    fn commit(&mut self) -> Result<&mut Self>;
 }
 
 /// Mssig command. Sign/verify hash value. The signature is processed implicitly and is
@@ -64,22 +64,22 @@ pub trait Commit {
 /// public key refers to the recovered public key and an immutable reference to a MSS
 /// public key referes to the expected public key.
 pub trait Mssig<Key, Hash> {
-    fn mssig(&mut self, key: Key, hash: Hash) -> Fallible<&mut Self>;
+    fn mssig(&mut self, key: Key, hash: Hash) -> Result<&mut Self>;
 }
 
 /// Ntrukem command. Secret is encapsulated with NTRU key. For Wrap operation
 /// PRNG, nonce and NTRU public key are passed as tuple in `key` argument.
 /// For Unwrap operation NTRU private key is passed in `key` argument.
 pub trait Ntrukem<Key, Secret> {
-    fn ntrukem(&mut self, key: Key, secret: Secret) -> Fallible<&mut Self>;
+    fn ntrukem(&mut self, key: Key, secret: Secret) -> Result<&mut Self>;
 }
 
 /// Fork command. Fork Spongos state and continue processing `cont` commands.
 /// After the fork is finished the resulting Spongos state is discarded and
 /// field processing continues using the saved current Spongos state.
-/// The trait can be implemented for functions `Fn(&mut self) -> Fallible<&mut Self>`.
+/// The trait can be implemented for functions `Fn(&mut self) -> Result<&mut Self>`.
 pub trait Fork<F> {
-    fn fork(&mut self, cont: F) -> Fallible<&mut Self>;
+    fn fork(&mut self, cont: F) -> Result<&mut Self>;
 }
 
 /// Join command. Spongos state for the linked message is retrieved from the context
@@ -89,25 +89,25 @@ pub trait Fork<F> {
 /// Although it may be non-trivial to locate a link in the middle of a message,
 /// links are usually inserted at the start of message content (after header of course).
 pub trait Join<L, S> {
-    fn join(&mut self, store: S, link: L) -> Fallible<&mut Self>;
+    fn join(&mut self, store: S, link: L) -> Result<&mut Self>;
 }
 
 /// Repeated modifier.
 pub trait Repeated<I, F> {
     /// `values_iter` provides some iterated values or counter.
     /// `value_handler` handles one item.
-    fn repeated(&mut self, values_iter: I, value_handle: F) -> Fallible<&mut Self>;
+    fn repeated(&mut self, values_iter: I, value_handle: F) -> Result<&mut Self>;
 }
 
 /// Condition guard.
 pub trait Guard {
-    fn guard(&mut self, cond: bool, msg: &str) -> Fallible<&mut Self>;
+    fn guard(&mut self, cond: bool, msg: &str) -> Result<&mut Self>;
 }
 
 /// Dump context info into stdout.
 /// Use it like this: `ctx.dump(format_args!("checkpoint"))`
 pub trait Dump {
-    fn dump<'a>(&mut self, args: std::fmt::Arguments<'a>) -> Fallible<&mut Self> {
+    fn dump<'a>(&mut self, args: std::fmt::Arguments<'a>) -> Result<&mut Self> {
         //std::io::_print(args);
         println!("{}", args);
         Ok(self)
@@ -123,5 +123,7 @@ pub mod unwrap;
 /// Implementation of command traits for unwrapping messages.
 pub mod wrap;
 
+/*
 #[cfg(test)]
 mod test;
+ */

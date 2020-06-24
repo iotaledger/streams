@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use super::Context;
@@ -23,7 +23,7 @@ where
     TW: SpongosTbitWord + trinary::TritWord,
     F: PRP<TW>,
 {
-    fn ntrukem(&mut self, sk: &'a ntru::PrivateKey<TW, F>, secret: &'a mut NTrytes<TW>) -> Fallible<&mut Self> {
+    fn ntrukem(&mut self, sk: &'a ntru::PrivateKey<TW, F>, secret: &'a mut NTrytes<TW>) -> Result<&mut Self> {
         //TODO: ensure!(ntru::KEY_SIZE == (secret.0).size(), "Trit size of `external tryte secret[n]` to be encapsulated with NTRU must be equal {} trits.", ntru::KEY_SIZE);
 
         let ekey_slice = self.stream.try_advance(ntru::EKEY_SIZE)?;

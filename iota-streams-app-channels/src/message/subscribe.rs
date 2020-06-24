@@ -38,7 +38,7 @@
 //! Note, the `unsubscribe_key` is masked and verified in the `ntrukem` operation and
 //! thus is not additionally `absorb`ed in this message.
 
-use failure::Fallible;
+use anyhow::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
@@ -86,7 +86,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
     Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Result<&'c mut sizeof::Context<TW, F>> {
         let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(&store, self.link)?
@@ -102,7 +102,7 @@ where
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<&'c mut wrap::Context<TW, F, OS>> {
+    ) -> Result<&'c mut wrap::Context<TW, F, OS>> {
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(store, self.link)?
             .ntrukem((self.author_ntru_pk, self.prng, &self.nonce.0), &self.unsubscribe_key)?
@@ -152,7 +152,7 @@ where
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<&'c mut unwrap::Context<TW, F, IS>> {
+    ) -> Result<&'c mut unwrap::Context<TW, F, IS>> {
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(store, &mut self.link)?
             .ntrukem(self.author_ntru_sk, &mut self.unsubscribe_key)?

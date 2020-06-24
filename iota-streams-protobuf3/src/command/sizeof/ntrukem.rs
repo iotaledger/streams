@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -13,7 +13,7 @@ impl<TW, F> Ntrukem<&ntru::PublicKey<TW, F>, &NTrytes<TW>> for Context<TW, F>
 where
     TW: BasicTbitWord,
 {
-    fn ntrukem(&mut self, _key: &ntru::PublicKey<TW, F>, _secret: &NTrytes<TW>) -> Fallible<&mut Self> {
+    fn ntrukem(&mut self, _key: &ntru::PublicKey<TW, F>, _secret: &NTrytes<TW>) -> Result<&mut Self> {
         //TODO: Ensure key is valid.
         //TODO: ensure!(ntru::KEY_SIZE == (secret.0).size(), "Trit size of `external tryte secret[n]` to be encapsulated with NTRU must be equal {} trits.", ntru::KEY_SIZE);
         self.size += ntru::EKEY_SIZE;

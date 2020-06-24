@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -7,19 +7,14 @@ use crate::{
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-    },
 };
 
-impl<C, TW, F, OS: io::OStream<TW>> Fork<C> for Context<TW, F, OS>
+impl<C, F, OS: io::OStream> Fork<C> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW> + Clone,
-    C: for<'a> FnMut(&'a mut Self) -> Fallible<&'a mut Self>,
+    F: PRP + Clone,
+    C: for<'a> FnMut(&'a mut Self) -> Result<&'a mut Self>,
 {
-    fn fork(&mut self, mut cont: C) -> Fallible<&mut Self> {
+    fn fork(&mut self, mut cont: C) -> Result<&mut Self> {
         let saved_fork = self.spongos.fork();
         cont(self)?;
         self.spongos = saved_fork;

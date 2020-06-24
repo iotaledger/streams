@@ -4,20 +4,20 @@
 //! ```pb3
 //! message Keyload {
 //!     join link msgid;
-//!     absorb tryte nonce[27];
+//!     absorb byte nonce[27];
 //!     skip repeated {
 //!         fork;
-//!         mask tryte id[27];
-//!         absorb external tryte psk[81];
+//!         mask byte id[27];
+//!         absorb external byte psk[81];
 //!         commit;
-//!         mask(key) tryte ekey[81];
+//!         mask(key) byte ekey[81];
 //!     }
 //!     skip repeated {
 //!         fork;
-//!         mask tryte id[27];
-//!         ntrukem(key) tryte ekey[3072];
+//!         mask byte id[27];
+//!         ntrukem(key) byte ekey[3072];
 //!     }
-//!     absorb external tryte key[81];
+//!     absorb external byte key[81];
 //!     commit;
 //! }
 //! fork {
@@ -51,7 +51,7 @@
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
 
-use failure::Fallible;
+use anyhow::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
@@ -63,16 +63,8 @@ use iota_streams_core::{
         prp::PRP,
         spongos,
     },
-    tbits::{
-        trinary,
-        word::{
-            BasicTbitWord,
-            IntTbitWord,
-            SpongosTbitWord,
-        },
-    },
 };
-use iota_streams_core_ntru::key_encapsulation::ntru;
+use iota_streams_core_ed25519::key_exchange::x25519;
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -82,31 +74,30 @@ use iota_streams_protobuf3::{
 /// Type of `Keyload` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9KEYLOAD";
 
-pub struct ContentWrap<'a, TW, F, G, Link: HasLink, Psks, NtruPks> {
+pub struct ContentWrap<'a, F, G, Link: HasLink, Psks, NtruPks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub nonce: NTrytes<TW>,
-    pub key: NTrytes<TW>,
+    pub nonce: NBytes,
+    pub key: NBytes,
     pub(crate) psks: Psks,
-    pub(crate) prng: &'a prng::Prng<TW, G>,
+    pub(crate) prng: &'a prng::Prng<G>,
     pub(crate) ntru_pks: NtruPks,
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, TW, F, G, Link, Store, Psks, NtruPks> message::ContentWrap<TW, F, Store>
-    for ContentWrap<'a, TW, F, G, Link, Psks, NtruPks>
+impl<'a, F, G, Link, Store, Psks, NtruPks> message::ContentWrap<F, Store>
+    for ContentWrap<'a, F, G, Link, Psks, NtruPks>
 where
-    TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: 'a + PRP<TW> + Clone, // weird 'a constraint, but compiler requires it somehow?!
-    G: PRP<TW> + Clone + Default,
+    F: 'a + PRP + Clone, // weird 'a constraint, but compiler requires it somehow?!
+    G: PRP + Clone + Default,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
-    Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
-    Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a, TW>>,
-    NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a, TW, F>>,
-    //NtruPks: Clone + ExactSizeIterator<Item = &'a ntru::PublicKey<TW, F>>,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
+    NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a, F>>,
+    //NtruPks: Clone + ExactSizeIterator<Item = &'a ntru::PublicKey<F>>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
-        let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         let repeated_psks = Size(self.psks.len());
         let repeated_ntru_pks = Size(self.ntru_pks.len());
         ctx.join(&store, self.link)?
@@ -114,26 +105,26 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NTrytes(pskid.clone()))?
-                        .absorb(External(&NTrytes(psk.clone())))?
+                    ctx.mask(&NBytes(pskid.clone()))?
+                        .absorb(External(&NBytes(psk.clone())))?
                         .commit()?
                         .mask(&self.key)
                 })
             })?
             .skip(repeated_ntru_pks)?
             .repeated(self.ntru_pks.clone(), |ctx, ntru_pk| {
-                ctx.fork(|ctx| ctx.mask(&NTrytes(ntru_pk.get_pkid().0))?.ntrukem(ntru_pk, &self.key))
+                ctx.fork(|ctx| ctx.mask(&NBytes(ntru_pk.get_pkid().0))?.ntrukem(ntru_pk, &self.key))
             })?
             .absorb(External(&self.key))?
             .commit()?;
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream<TW>>(
+    fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
-        ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<&'c mut wrap::Context<TW, F, OS>> {
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
         let repeated_psks = Size(self.psks.len());
         let repeated_ntru_pks = Size(self.ntru_pks.len());
         ctx.join(store, self.link)?
@@ -141,8 +132,8 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NTrytes(pskid.clone()))?
-                        .absorb(External(&NTrytes(psk.clone())))?
+                    ctx.mask(&NBytes(pskid.clone()))?
+                        .absorb(External(&NBytes(psk.clone())))?
                         .commit()?
                         .mask(&self.key)
                 })
@@ -150,7 +141,7 @@ where
             .skip(repeated_ntru_pks)?
             .repeated(self.ntru_pks.clone().into_iter(), |ctx, ntru_pk| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NTrytes(ntru_pk.get_pkid().0))?
+                    ctx.mask(&NBytes(ntru_pk.get_pkid().0))?
                         .ntrukem((ntru_pk, self.prng, &self.nonce.0), &self.key)
                 })
             })?
@@ -162,61 +153,59 @@ where
 
 //This whole mess with `'a` and `LookupArg: 'a` is needed in order to allow `LookupPsk`
 //and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
-pub struct ContentUnwrap<'a, TW, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupNtruSk> {
+pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupNtruSk> {
     pub link: <Link as HasLink>::Rel,
-    pub nonce: NTrytes<TW>,
+    pub nonce: NBytes,
     pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
     pub(crate) lookup_ntru_sk: LookupNtruSk,
-    pub key: NTrytes<TW>,
+    pub key: NBytes,
     _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, TW, F, Link, LookupArg, LookupPsk, LookupNtruSk>
-    ContentUnwrap<'a, TW, F, Link, LookupArg, LookupPsk, LookupNtruSk>
+impl<'a, F, Link, LookupArg, LookupPsk, LookupNtruSk>
+    ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupNtruSk>
 where
-    TW: BasicTbitWord,
-    F: PRP<TW>,
+    F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<TW, F>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
     LookupArg: 'a,
-    LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId<TW>) -> Option<&'b psk::Psk<TW>>,
-    LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid<TW>) -> Option<&'b ntru::PrivateKey<TW, F>>,
+    LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
+    LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid) -> Option<&'b ntru::PrivateKey<F>>,
 {
     pub fn new(lookup_arg: &'a LookupArg, lookup_psk: LookupPsk, lookup_ntru_sk: LookupNtruSk) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            nonce: NTrytes::zero(spongos::Spongos::<TW, F>::NONCE_SIZE),
+            nonce: NBytes::zero(spongos::Spongos::<F>::NONCE_SIZE),
             lookup_arg,
             lookup_psk,
             lookup_ntru_sk,
-            key: NTrytes::zero(spongos::Spongos::<TW, F>::KEY_SIZE),
+            key: NBytes::zero(spongos::Spongos::<F>::KEY_SIZE),
             _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<'a, TW, F, Link, Store, LookupArg, LookupPsk, LookupNtruSk> message::ContentUnwrap<TW, F, Store>
-    for ContentUnwrap<'a, TW, F, Link, LookupArg, LookupPsk, LookupNtruSk>
+impl<'a, F, Link, Store, LookupArg, LookupPsk, LookupNtruSk> message::ContentUnwrap<F, Store>
+    for ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupNtruSk>
 where
-    TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW> + Clone,
+    F: PRP + Clone,
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<TW, F>,
-    Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
     LookupArg: 'a,
-    LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId<TW>) -> Option<&'b psk::Psk<TW>>,
-    LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid<TW>) -> Option<&'b ntru::PrivateKey<TW, F>>,
+    LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
+    LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid) -> Option<&'b ntru::PrivateKey<F>>,
 {
-    fn unwrap<'c, IS: io::IStream<TW>>(
+    fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
-        ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<&'c mut unwrap::Context<TW, F, IS>> {
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut repeated_psks = Size(0);
         let mut repeated_ntru_pks = Size(0);
-        let mut pskid = NTrytes::zero(psk::PSKID_SIZE);
-        let mut ntru_pkid = NTrytes::zero(ntru::PKID_SIZE);
+        let mut pskid = NBytes::zero(psk::PSKID_SIZE);
+        let mut ntru_pkid = NBytes::zero(ntru::PKID_SIZE);
         let mut key_found = false;
 
         ctx.join(store, &mut self.link)?
@@ -227,20 +216,20 @@ where
                     ctx.fork(|ctx| {
                         ctx.mask(&mut pskid)?;
                         if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid.0) {
-                            ctx.absorb(External(&NTrytes(psk.clone())))? //TODO: Get rid off clone()
+                            ctx.absorb(External(&NBytes(psk.clone())))? //TODO: Get rid off clone()
                                 .commit()?
                                 .mask(&mut self.key)?;
                             key_found = true;
                             Ok(ctx)
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
-                            let n = Size(0 + 0 + spongos::Spongos::<TW, F>::KEY_SIZE);
+                            let n = Size(0 + 0 + spongos::Spongos::<F>::KEY_SIZE);
                             ctx.drop(n)
                         }
                     })
                 } else {
                     // Drop entire fork.
-                    let n = Size(psk::PSKID_SIZE + 0 + 0 + spongos::Spongos::<TW, F>::KEY_SIZE);
+                    let n = Size(psk::PSKID_SIZE + 0 + 0 + spongos::Spongos::<F>::KEY_SIZE);
                     ctx.drop(n)
                 }
             })?

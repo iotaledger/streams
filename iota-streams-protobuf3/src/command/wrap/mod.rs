@@ -5,23 +5,21 @@ use iota_streams_core::{
         prp::PRP,
         spongos::*,
     },
-    tbits::word::SpongosTbitWord,
 };
 
 //#[derive(Debug)]
-pub struct Context<TW, F, OS> {
-    pub spongos: Spongos<TW, F>,
+pub struct Context<F, OS> {
+    pub spongos: Spongos<F>,
     pub stream: OS,
 }
 
-impl<TW, F, OS> Context<TW, F, OS>
+impl<F, OS> Context<F, OS>
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
+    F: PRP + Default,
 {
     pub fn new(stream: OS) -> Self {
         Self {
-            spongos: Spongos::<TW, F>::init(),
+            spongos: Spongos::<F>::init(),
             stream: stream,
         }
     }
@@ -43,8 +41,10 @@ mod skip;
 mod squeeze;
 mod squeeze_external;
 
-mod mssig;
-mod ntrukem;
+/*
+mod ed25519;
+mod x25519;
+ */
 
 pub use absorb::*;
 pub use absorb_external::*;
@@ -59,5 +59,7 @@ pub use skip::*;
 pub use squeeze::*;
 pub use squeeze_external::*;
 
-pub use mssig::*;
-pub use ntrukem::*;
+/*
+pub use ed25519::*;
+pub use x25519::*;
+ */

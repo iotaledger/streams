@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -28,7 +28,7 @@ where
         &mut self,
         key: (&'a ntru::PublicKey<TW, F>, &'a prng::Prng<TW, G>, &'a Tbits<TW>),
         secret: &'a NTrytes<TW>,
-    ) -> Fallible<&mut Self> {
+    ) -> Result<&mut Self> {
         //TODO: ensure!(ntru::KEY_SIZE == (secret.0).size(), "Trit size of `external tryte secret[n]` to be encapsulated with NTRU must be equal {} trits.", ntru::KEY_SIZE);
 
         let ekey_slice = self.stream.try_advance(ntru::EKEY_SIZE)?;

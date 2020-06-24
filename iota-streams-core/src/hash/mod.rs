@@ -1,62 +1,49 @@
-use crate::tbits::{
-    word::BasicTbitWord,
-    TbitSlice,
-    TbitSliceMut,
-    Tbits,
-};
-
-pub trait Hash<TW>: Sized {
-    /// Hash value size in tbits.
+pub trait Hash: Sized {
+    /// Hash value size in bytes.
     const HASH_SIZE: usize;
 
     fn init() -> Self;
-    fn update(&mut self, data: TbitSlice<TW>);
-    fn update_tbits(&mut self, data: &Tbits<TW>)
-    where
-        TW: BasicTbitWord,
+
+    fn update(&mut self, data: &[u8]);
+
+    fn update_bytes(&mut self, data: &Vec<u8>)
     {
-        self.update(data.slice());
+        self.update(&data[..]);
     }
-    fn done(&mut self, hash_value: &mut TbitSliceMut<TW>);
-    fn done_tbits(&mut self) -> Tbits<TW>
-    where
-        TW: BasicTbitWord,
+
+    fn done(&mut self, hash_value: &mut [u8]);
+
+    fn done_bytes(&mut self) -> Vec<u8>
     {
-        let mut hash_value = Tbits::<TW>::zero(Self::HASH_SIZE);
-        self.done(&mut hash_value.slice_mut());
+        let mut hash_value = Vec::with_capacity(Self::HASH_SIZE);
+        self.done(&mut hash_value[..]);
         hash_value
     }
 
     /// Hash data.
-    fn hash(data: TbitSlice<TW>, hash_value: &mut TbitSliceMut<TW>) {
+    fn hash(data: &[u8], hash_value: &mut [u8]) {
         let mut s = Self::init();
         s.update(data);
         s.done(hash_value);
     }
 
     /// Hash data.
-    fn hash_tbits(data: Tbits<TW>) -> Tbits<TW>
-    where
-        TW: BasicTbitWord,
+    fn hash_bytes(data: &Vec<u8>) -> Vec<u8>
     {
-        let mut hash_value = Tbits::zero(Self::HASH_SIZE);
-        Self::hash(data.slice(), &mut hash_value.slice_mut());
+        let mut hash_value = Vec::with_capacity(Self::HASH_SIZE);
+        Self::hash(&data[..], &mut hash_value[..]);
         hash_value
     }
 
-    fn rehash(value: &mut TbitSliceMut<TW>)
-    where
-        TW: BasicTbitWord,
+    fn rehash(value: &mut [u8])
     {
-        unsafe {
-            Self::hash(value.as_const(), value);
-        }
+        let mut s = Self::init();
+        s.update(value);
+        s.done(value);
     }
 
-    fn rehash_tbits(value: &mut Tbits<TW>)
-    where
-        TW: BasicTbitWord,
+    fn rehash_bytes(value: &mut Vec<u8>)
     {
-        Self::rehash(&mut value.slice_mut());
+        Self::rehash(&mut value[..]);
     }
 }

@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -6,20 +6,20 @@ use crate::{
     types::{
         External,
         Mac,
-        NTrytes,
+        NBytes,
     },
 };
 
 /// External values are not encoded.
-impl<'a, TW, F> Squeeze<&'a External<NTrytes<TW>>> for Context<TW, F> {
-    fn squeeze(&mut self, _external_ntrytes: &'a External<NTrytes<TW>>) -> Fallible<&mut Self> {
+impl<'a, F> Squeeze<&'a External<NBytes>> for Context<F> {
+    fn squeeze(&mut self, _external_ntrytes: &'a External<NBytes>) -> Result<&mut Self> {
         Ok(self)
     }
 }
 
 /// External values are not encoded.
-impl<TW, F> Squeeze<&External<Mac>> for Context<TW, F> {
-    fn squeeze(&mut self, _mac: &External<Mac>) -> Fallible<&mut Self> {
+impl<F> Squeeze<&External<Mac>> for Context<F> {
+    fn squeeze(&mut self, _mac: &External<Mac>) -> Result<&mut Self> {
         Ok(self)
     }
 }

@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use super::Context;
@@ -25,7 +25,7 @@ where
     TW: IntTbitWord + SpongosTbitWord,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, sk: &mss::PrivateKey<TW, P>, hash: &External<NTrytes<TW>>) -> Fallible<&mut Self> {
+    fn mssig(&mut self, sk: &mss::PrivateKey<TW, P>, hash: &External<NTrytes<TW>>) -> Result<&mut Self> {
         ensure!(
             P::HASH_SIZE == ((hash.0).0).size(),
             "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.",
@@ -45,7 +45,7 @@ where
     TW: IntTbitWord + SpongosTbitWord,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, sk: &mss::PrivateKey<TW, P>, hash: &External<Mac>) -> Fallible<&mut Self> {
+    fn mssig(&mut self, sk: &mss::PrivateKey<TW, P>, hash: &External<Mac>) -> Result<&mut Self> {
         ensure!(
             P::HASH_SIZE == (hash.0).0,
             "Trit size of `external tryte hash[n]` to be signed with MSS must be equal {} trits.",
@@ -65,7 +65,7 @@ where
     TW: IntTbitWord + SpongosTbitWord,
     P: mss::Parameters<TW>,
 {
-    fn mssig(&mut self, sk: &mss::PrivateKey<TW, P>, _hash: MssHashSig) -> Fallible<&mut Self> {
+    fn mssig(&mut self, sk: &mss::PrivateKey<TW, P>, _hash: MssHashSig) -> Result<&mut Self> {
         // Squeeze external and commit cost nothing in the stream.
         self.size += P::signature_size(sk.height());
         Ok(self)

@@ -1,17 +1,14 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
     command::Dump,
     io,
 };
-use iota_streams_core::tbits::word::BasicTbitWord;
 
-impl<TW, F, IS: io::IStream<TW>> Dump for Context<TW, F, IS>
-where
-    TW: BasicTbitWord,
+impl<F, IS: io::IStream> Dump for Context<F, IS>
 {
-    fn dump<'a>(&mut self, args: std::fmt::Arguments<'a>) -> Fallible<&mut Self> {
+    fn dump<'a>(&mut self, args: std::fmt::Arguments<'a>) -> Result<&mut Self> {
         #[cfg(not(test))]
         println!("dump: {}", args,);
 

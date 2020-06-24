@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-protobuf3"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -13,7 +13,6 @@ name = "iota_streams_protobuf3"
 path = "src/lib.rs"
 
 [dependencies]
-iota-streams-core = { version = "0.1.0", path = "../iota-streams-core" }
-iota-streams-core-ntru = { version = "0.1.0", path = "../iota-streams-core-ntru" }
-iota-streams-core-mss = { version = "0.1.0", path = "../iota-streams-core-mss" }
-failure = "0.1"
+iota-streams-core = { version = "0.2.0", path = "../iota-streams-core" }
+iota-streams-core-edsig = { version = "0.1.0", path = "../iota-streams-core-edsig" }
+anyhow = "1.0.26"

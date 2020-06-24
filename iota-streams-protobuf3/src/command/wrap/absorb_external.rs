@@ -1,6 +1,5 @@
-use failure::{
-    ensure,
-    Fallible,
+use anyhow::{
+    Result,
 };
 use std::mem;
 
@@ -15,167 +14,142 @@ use crate::{
         AbsorbExternalFallback,
         External,
         Fallback,
-        NTrytes,
+        NBytes,
         Size,
-        Trint3,
+        Uint8,
     },
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::{
-            BasicTbitWord,
-            SpongosTbitWord,
-        },
-        TbitSlice,
-        TbitSliceMut,
-    },
 };
-use iota_streams_core_mss::signature::mss;
-use iota_streams_core_ntru::key_encapsulation::ntru;
+use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
-struct AbsorbExternalContext<TW, F, OS> {
-    ctx: Context<TW, F, OS>,
+struct AbsorbExternalContext<F, OS> {
+    ctx: Context<F, OS>,
 }
-impl<TW, F, OS> AsMut<AbsorbExternalContext<TW, F, OS>> for Context<TW, F, OS> {
-    fn as_mut<'a>(&'a mut self) -> &'a mut AbsorbExternalContext<TW, F, OS> {
-        unsafe { mem::transmute::<&'a mut Context<TW, F, OS>, &'a mut AbsorbExternalContext<TW, F, OS>>(self) }
+impl<F, OS> AsMut<AbsorbExternalContext<F, OS>> for Context<F, OS> {
+    fn as_mut<'a>(&'a mut self) -> &'a mut AbsorbExternalContext<F, OS> {
+        unsafe { mem::transmute::<&'a mut Context<F, OS>, &'a mut AbsorbExternalContext<F, OS>>(self) }
     }
 }
-impl<TW, F, OS> AsMut<Context<TW, F, OS>> for AbsorbExternalContext<TW, F, OS> {
-    fn as_mut<'a>(&'a mut self) -> &'a mut Context<TW, F, OS> {
-        unsafe { mem::transmute::<&'a mut AbsorbExternalContext<TW, F, OS>, &'a mut Context<TW, F, OS>>(self) }
+impl<F, OS> AsMut<Context<F, OS>> for AbsorbExternalContext<F, OS> {
+    fn as_mut<'a>(&'a mut self) -> &'a mut Context<F, OS> {
+        unsafe { mem::transmute::<&'a mut AbsorbExternalContext<F, OS>, &'a mut Context<F, OS>>(self) }
     }
 }
 
-impl<TW, F, OS: io::OStream<TW>> Wrap<TW> for AbsorbExternalContext<TW, F, OS>
+impl<F, OS: io::OStream> Wrap for AbsorbExternalContext<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn wrap3(&mut self, trint3: Trint3) -> Fallible<&mut Self> {
-        let mut buf = [BasicTbitWord::ZERO_WORD; 3];
-        let mut t3 = TbitSliceMut::<TW>::from_slice_mut(3, &mut buf);
-        t3.put3(trint3);
-        self.ctx.spongos.absorb(unsafe { t3.as_const() });
+    fn wrap_u8(&mut self, u: u8) -> Result<&mut Self> {
+        self.ctx.spongos.absorb(&[u]);
         Ok(self)
     }
-    fn wrapn(&mut self, trits: TbitSlice<TW>) -> Fallible<&mut Self> {
-        self.ctx.spongos.absorb(trits);
+    fn wrapn(&mut self, bytes: &[u8]) -> Result<&mut Self> {
+        self.ctx.spongos.absorb(bytes);
         Ok(self)
     }
 }
 
-fn wrap_absorb_external_trint3<'a, TW, F, OS: io::OStream<TW>>(
-    ctx: &'a mut AbsorbExternalContext<TW, F, OS>,
-    trint3: Trint3,
-) -> Fallible<&'a mut AbsorbExternalContext<TW, F, OS>>
+fn wrap_absorb_external_u<'a, F, OS: io::OStream>(
+    ctx: &'a mut AbsorbExternalContext<F, OS>,
+    u: Uint8,
+) -> Result<&'a mut AbsorbExternalContext<F, OS>>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    ctx.wrap3(trint3)
+    ctx.wrap_u8(u.0)
 }
-fn wrap_absorb_external_size<'a, TW, F, OS: io::OStream<TW>>(
-    ctx: &'a mut AbsorbExternalContext<TW, F, OS>,
+fn wrap_absorb_external_size<'a, F, OS: io::OStream>(
+    ctx: &'a mut AbsorbExternalContext<F, OS>,
     size: Size,
-) -> Fallible<&'a mut AbsorbExternalContext<TW, F, OS>>
+) -> Result<&'a mut AbsorbExternalContext<F, OS>>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
     wrap_size(ctx, size)
 }
-fn wrap_absorb_external_trits<'a, TW, F, OS: io::OStream<TW>>(
-    ctx: &'a mut AbsorbExternalContext<TW, F, OS>,
-    trits: TbitSlice<TW>,
-) -> Fallible<&'a mut AbsorbExternalContext<TW, F, OS>>
+fn wrap_absorb_external_bytes<'a, F, OS: io::OStream>(
+    ctx: &'a mut AbsorbExternalContext<F, OS>,
+    bytes: &[u8],
+) -> Result<&'a mut AbsorbExternalContext<F, OS>>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    ctx.wrapn(trits)
+    ctx.wrapn(bytes)
 }
 
-impl<'a, T: 'a, TW, F, OS: io::OStream<TW>> Absorb<&'a External<T>> for Context<TW, F, OS>
+impl<'a, T: 'a, F, OS: io::OStream> Absorb<&'a External<T>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
     Self: Absorb<External<&'a T>>,
 {
-    fn absorb(&mut self, external: &'a External<T>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, external: &'a External<T>) -> Result<&mut Self> {
         self.absorb(External(&external.0))
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Absorb<External<&'a Trint3>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Absorb<External<&'a Uint8>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn absorb(&mut self, trint3: External<&'a Trint3>) -> Fallible<&mut Self> {
-        Ok(wrap_absorb_external_trint3(self.as_mut(), *trint3.0)?.as_mut())
+    fn absorb(&mut self, u: External<&'a Uint8>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_u(self.as_mut(), *u.0)?.as_mut())
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Absorb<External<&'a Size>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Absorb<External<&'a Size>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn absorb(&mut self, size: External<&'a Size>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, size: External<&'a Size>) -> Result<&mut Self> {
         Ok(wrap_absorb_external_size(self.as_mut(), *size.0)?.as_mut())
     }
 }
 
-impl<TW, F, OS: io::OStream<TW>> Absorb<External<Size>> for Context<TW, F, OS>
+impl<F, OS: io::OStream> Absorb<External<Size>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn absorb(&mut self, size: External<Size>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, size: External<Size>) -> Result<&mut Self> {
         self.absorb(&size)
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Absorb<External<&'a NTrytes<TW>>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Absorb<External<&'a NBytes>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn absorb(&mut self, external_ntrytes: External<&'a NTrytes<TW>>) -> Fallible<&mut Self> {
-        Ok(wrap_absorb_external_trits(self.as_mut(), ((external_ntrytes.0).0).slice())?.as_mut())
+    fn absorb(&mut self, external_ntrytes: External<&'a NBytes>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_bytes(self.as_mut(), &((external_ntrytes.0).0)[..])?.as_mut())
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>, P> Absorb<External<&'a mss::PublicKey<TW, P>>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Absorb<External<&'a ed25519::PublicKey>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    P: mss::Parameters<TW>,
+    F: PRP,
 {
-    fn absorb(&mut self, pk: External<&'a mss::PublicKey<TW, P>>) -> Fallible<&mut Self> {
-        ensure!((pk.0).tbits().size() == P::PUBLIC_KEY_SIZE);
-        Ok(wrap_absorb_external_trits(self.as_mut(), (pk.0).tbits().slice())?.as_mut())
+    fn absorb(&mut self, pk: External<&'a ed25519::PublicKey>) -> Result<&mut Self> {
+        panic!("not implemented");
+        //Ok(wrap_absorb_external_bytes(self.as_mut(), &pk)?.as_mut())
     }
 }
 
-impl<'a, TW, F, OS: io::OStream<TW>> Absorb<External<&'a ntru::PublicKey<TW, F>>> for Context<TW, F, OS>
+impl<'a, F, OS: io::OStream> Absorb<External<&'a x25519::PublicKey>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn absorb(&mut self, pk: External<&'a ntru::PublicKey<TW, F>>) -> Fallible<&mut Self> {
-        ensure!((pk.0).tbits().size() == ntru::PK_SIZE);
-        Ok(wrap_absorb_external_trits(self.as_mut(), (pk.0).tbits().slice())?.as_mut())
+    fn absorb(&mut self, pk: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
+        panic!("not implemented");
+        //Ok(wrap_absorb_external_bytes(self.as_mut(), &pk)?.as_mut())
     }
 }
 
-impl<'a, TW, F, T: 'a + AbsorbExternalFallback<TW, F>, OS: io::OStream<TW>> Absorb<External<Fallback<&'a T>>>
-    for Context<TW, F, OS>
+impl<'a, F, T: 'a + AbsorbExternalFallback<F>, OS: io::OStream> Absorb<External<Fallback<&'a T>>>
+    for Context<F, OS>
 {
-    fn absorb(&mut self, val: External<Fallback<&'a T>>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, val: External<Fallback<&'a T>>) -> Result<&mut Self> {
         ((val.0).0).wrap_absorb_external(self)?;
         Ok(self)
     }

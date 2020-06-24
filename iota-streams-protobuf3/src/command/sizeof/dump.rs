@@ -1,10 +1,10 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::command::Dump;
 
-impl<TW, F> Dump for Context<TW, F> {
-    fn dump<'a>(&mut self, args: std::fmt::Arguments<'a>) -> Fallible<&mut Self> {
+impl<F> Dump for Context<F> {
+    fn dump<'a>(&mut self, args: std::fmt::Arguments<'a>) -> Result<&mut Self> {
         println!("{}: size=[{}]", args, self.size);
         Ok(self)
     }

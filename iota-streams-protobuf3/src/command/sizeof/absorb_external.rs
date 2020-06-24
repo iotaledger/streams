@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -7,44 +7,44 @@ use crate::{
         AbsorbExternalFallback,
         External,
         Fallback,
-        NTrytes,
+        NBytes,
     },
 };
 
 /*
 /// External values are not encoded in the trinary stream.
-impl<'a, TW, F, T: 'a> Absorb<&'a External<T>> for Context<TW, F>
+impl<'a, F, T: 'a> Absorb<&'a External<T>> for Context<F>
 where
     Self: Absorb<T>,
 {
-    fn absorb(&mut self, _external: &'a External<T>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, _external: &'a External<T>) -> Result<&mut Self> {
         Ok(self)
     }
 }
 
 /// External values are not encoded in the trinary stream.
-impl<'a, TW, F, T: 'a> Absorb<External<&'a T>> for Context<TW, F>
+impl<'a, F, T: 'a> Absorb<External<&'a T>> for Context<F>
 where
 //Self: Absorb<&'a T>,
 {
-    fn absorb(&mut self, _external: External<&'a T>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, _external: External<&'a T>) -> Result<&mut Self> {
         Ok(self)
     }
 }
  */
 
 /// External values are not encoded in the trinary stream.
-impl<'a, TW, F> Absorb<External<&'a NTrytes<TW>>> for Context<TW, F>
+impl<'a, F> Absorb<External<&'a NBytes>> for Context<F>
 //where
 //Self: Absorb<&'a T>,
 {
-    fn absorb(&mut self, _external: External<&'a NTrytes<TW>>) -> Fallible<&mut Self> {
+    fn absorb(&mut self, _external: External<&'a NBytes>) -> Result<&mut Self> {
         Ok(self)
     }
 }
 
-impl<'a, TW, F, T: 'a + AbsorbExternalFallback<TW, F>> Absorb<External<Fallback<&'a T>>> for Context<TW, F> {
-    fn absorb(&mut self, val: External<Fallback<&'a T>>) -> Fallible<&mut Self> {
+impl<'a, F, T: 'a + AbsorbExternalFallback<F>> Absorb<External<Fallback<&'a T>>> for Context<F> {
+    fn absorb(&mut self, val: External<Fallback<&'a T>>) -> Result<&mut Self> {
         ((val.0).0).sizeof_absorb_external(self)?;
         Ok(self)
     }

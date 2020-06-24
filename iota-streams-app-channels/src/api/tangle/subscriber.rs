@@ -1,6 +1,6 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 
-use failure::Fallible;
+use anyhow::Result;
 use std::str::FromStr;
 
 use super::*;
@@ -67,25 +67,25 @@ impl Subscriber {
         link_to: &Address,
         public_payload: &Trytes,
         masked_payload: &Trytes,
-    ) -> Fallible<Message> {
+    ) -> Result<Message> {
         self.imp
             .tag_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::TaggedPacket)
     }
 
     /// Subscribe to a Channel app instance.
-    pub fn subscribe(&mut self, link_to: &Address) -> Fallible<Message> {
+    pub fn subscribe(&mut self, link_to: &Address) -> Result<Message> {
         //TODO: remove link_to
         self.imp.subscribe(link_to.rel(), MsgInfo::Subscribe)
     }
 
     /// Unsubscribe from the Channel app instance.
-    pub fn unsubscribe(&mut self, link_to: &Address) -> Fallible<Message> {
+    pub fn unsubscribe(&mut self, link_to: &Address) -> Result<Message> {
         //TODO: lookup link_to Subscribe message.
         self.imp.unsubscribe(link_to.rel(), MsgInfo::Unsubscribe)
     }
 
     /// Handle Channel app instance announcement.
-    pub fn unwrap_announcement<'a>(&mut self, preparsed: Preparsed<'a>) -> Fallible<()> {
+    pub fn unwrap_announcement<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<()> {
         self.imp.handle_announcement(preparsed, MsgInfo::Announce)?;
         self.imp
             .link_gen
@@ -94,24 +94,24 @@ impl Subscriber {
     }
 
     /// Handle key change.
-    pub fn unwrap_change_key<'a>(&mut self, preparsed: Preparsed<'a>) -> Fallible<()> {
+    pub fn unwrap_change_key<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<()> {
         self.imp.handle_change_key(preparsed, MsgInfo::ChangeKey)?;
         Ok(())
     }
 
     /// Handle keyload.
-    pub fn unwrap_keyload<'a>(&mut self, preparsed: Preparsed<'a>) -> Fallible<()> {
+    pub fn unwrap_keyload<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<()> {
         self.imp.handle_keyload(preparsed, MsgInfo::Keyload)?;
         Ok(())
     }
 
     /// Unwrap and verify signed packet.
-    pub fn unwrap_signed_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Fallible<(Trytes, Trytes)> {
+    pub fn unwrap_signed_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<(Trytes, Trytes)> {
         self.imp.handle_signed_packet(preparsed, MsgInfo::SignedPacket)
     }
 
     /// Unwrap and verify tagged packet.
-    pub fn unwrap_tagged_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Fallible<(Trytes, Trytes)> {
+    pub fn unwrap_tagged_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<(Trytes, Trytes)> {
         self.imp.handle_tagged_packet(preparsed, MsgInfo::TaggedPacket)
     }
 }

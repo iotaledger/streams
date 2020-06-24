@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 use iota_lib_rs::prelude::iota_client;
 use iota_streams_app::{
@@ -21,12 +21,12 @@ use iota_streams_core::tbits::Tbits;
 use iota_streams_protobuf3::types::Trytes;
 use std::str::FromStr;
 
-fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_opt: T::RecvOptions) -> Fallible<()>
+fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_opt: T::RecvOptions) -> Result<()>
 where
     T::SendOptions: Copy,
     T::RecvOptions: Copy,
 {
-    let mut author = Author::new("AUTHOR9SEED", 2, true);
+    let mut author = Author::new("AUTHOR9NEWSEED", 2, true);
     println!("Channel address = {}", author.channel_address());
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", false);
@@ -38,14 +38,18 @@ where
     println!("announce");
     let (announcement_address, announcement_tag) = {
         let msg = &author.announce()?;
-        println!("  {}", msg.link.msgid);
+        println!("  at {}", msg.link.msgid);
+        print!("  sending ... ");
         transport.send_message_with_options(&msg, send_opt)?;
+        println!("done");
         (msg.link.appinst.to_string(), msg.link.msgid.to_string())
     };
     let announcement_link = Address::from_str(&announcement_address, &announcement_tag).unwrap();
 
     {
+        print!("  recving ... ");
         let msg = transport.recv_message_with_options(&announcement_link, recv_opt)?;
+        println!("done");
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(message::announce::TYPE));
 
@@ -65,14 +69,18 @@ where
     println!("sign packet");
     let signed_packet_link = {
         let msg = author.sign_packet(&announcement_link, &public_payload, &masked_payload)?;
-        println!("  {}", msg.link.msgid);
+        println!("  at {}", msg.link.msgid);
+        print!("  sending ... ");
         transport.send_message_with_options(&msg, send_opt)?;
+        println!("done");
         msg.link.clone()
     };
     println!("  at {}", signed_packet_link.rel());
 
     {
+        print!("  recving ... ");
         let msg = transport.recv_message_with_options(&signed_packet_link, recv_opt)?;
+        println!("done");
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(message::signed_packet::TYPE));
         let (unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
@@ -83,13 +91,17 @@ where
     println!("subscribe");
     let subscribeB_link = {
         let msg = subscriberB.subscribe(&announcement_link)?;
-        println!("  {}", msg.link.msgid);
+        println!("  at {}", msg.link.msgid);
+        print!("  sending ... ");
         transport.send_message_with_options(&msg, send_opt)?;
+        println!("done");
         msg.link.clone()
     };
 
     {
+        print!("  recving ... ");
         let msg = transport.recv_message_with_options(&subscribeB_link, recv_opt)?;
+        println!("done");
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(message::subscribe::TYPE));
         author.unwrap_subscribe(preparsed)?;
@@ -98,13 +110,17 @@ where
     println!("share keyload for everyone");
     let keyload_link = {
         let msg = author.share_keyload_for_everyone(&announcement_link)?;
-        println!("  {}", msg.link.msgid);
+        println!("  at {}", msg.link.msgid);
+        print!("  sending ... ");
         transport.send_message_with_options(&msg, send_opt)?;
+        println!("done");
         msg.link
     };
 
     {
+        print!("  recving ... ");
         let msg = transport.recv_message_with_options(&keyload_link, recv_opt)?;
+        println!("done");
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(message::keyload::TYPE));
         let resultA = subscriberA.unwrap_keyload(preparsed.clone());
@@ -115,13 +131,17 @@ where
     println!("tag packet");
     let tagged_packet_link = {
         let msg = author.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
-        println!("  {}", msg.link.msgid);
+        println!("  at {}", msg.link.msgid);
+        print!("  sending ... ");
         transport.send_message_with_options(&msg, send_opt)?;
+        println!("done");
         msg.link.clone()
     };
 
     {
+        print!("  recving ... ");
         let msg = transport.recv_message_with_options(&tagged_packet_link, recv_opt)?;
+        println!("done");
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(message::tagged_packet::TYPE));
         let resultA = subscriberA.unwrap_tagged_packet(preparsed.clone());
@@ -132,7 +152,9 @@ where
     }
 
     {
+        print!("  recving ... ");
         let keyload = transport.recv_message_with_options(&keyload_link, recv_opt)?;
+        println!("done");
         let preparsed = keyload.parse_header()?;
         ensure!(preparsed.check_content_type(message::keyload::TYPE));
         subscriberB.unwrap_keyload(preparsed)?;
@@ -141,13 +163,17 @@ where
     println!("change key");
     let change_key_link = {
         let msg = author.change_key(&announcement_link)?;
-        println!("  {}", msg.link.msgid);
+        println!("  at {}", msg.link.msgid);
+        print!("  sending ... ");
         transport.send_message_with_options(&msg, send_opt)?;
+        println!("done");
         msg.link
     };
 
     {
+        print!("  recving ... ");
         let msg = transport.recv_message_with_options(&change_key_link, recv_opt)?;
+        println!("done");
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(message::change_key::TYPE));
         subscriberB.unwrap_change_key(preparsed)?;
@@ -156,13 +182,17 @@ where
     println!("unsubscribe");
     let unsubscribe_link = {
         let msg = subscriberB.unsubscribe(&subscribeB_link)?;
-        println!("  {}", msg.link.msgid);
+        println!("  at {}", msg.link.msgid);
+        print!("  sending ... ");
         transport.send_message_with_options(&msg, send_opt)?;
+        println!("done");
         msg.link
     };
 
     {
+        print!("  recving ... ");
         let msg = transport.recv_message_with_options(&unsubscribe_link, recv_opt)?;
+        println!("done");
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(message::unsubscribe::TYPE));
         author.unwrap_unsubscribe(preparsed)?;

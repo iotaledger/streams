@@ -7,10 +7,10 @@
 //!     commit;
 //! }
 //! message Header {
-//!     absorb tryte version;
-//!     absorb external tryte appinst[81];
-//!     absorb external tryte msgid[27];
-//!     absorb trytes type;
+//!     absorb byte version;
+//!     absorb external byte appinst[81];
+//!     absorb external byte msgid[27];
+//!     absorb bytes type;
 //! }
 //! ```
 //!
@@ -34,13 +34,13 @@
 //! message Message {
 //!     Header header;
 //!     Content content;
-//!     squeeze external tryte msgid[27];
+//!     squeeze external byte msgid[27];
 //!     commit;
 //! }
 //! message Header {
-//!     absorb tryte version;
-//!     absorb external tryte appinst[81];
-//!     absorb trytes type;
+//!     absorb byte version;
+//!     absorb external byte appinst[81];
+//!     absorb bytes type;
 //! }
 //! ```
 //!
@@ -48,22 +48,14 @@
 //! hence solving the spam issue: spammed message will not
 //! check. To be discussed.
 
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 use std::str::FromStr;
 
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::{
-            SpongosTbitWord,
-            StringTbitWord,
-        },
-        Tbits,
-    },
 };
 use iota_streams_protobuf3 as protobuf3;
 use protobuf3::{
@@ -74,15 +66,14 @@ use protobuf3::{
 
 use super::*;
 
-pub struct Header<TW, Link> {
-    pub version: Trint3,
+pub struct Header<Link> {
+    pub version: Uint8,
     pub link: Link,
-    pub content_type: Trytes<TW>,
+    pub content_type: Bytes,
 }
 
-impl<TW, Link> Clone for Header<TW, Link>
+impl<Link> Clone for Header<Link>
 where
-    TW: Clone,
     Link: Clone,
 {
     fn clone(&self) -> Self {
@@ -94,15 +85,14 @@ where
     }
 }
 
-impl<TW, Link> Header<TW, Link>
-where
-    TW: StringTbitWord,
+impl<Link> Header<Link>
 {
     pub fn new_with_type(link: Link, content_type: &str) -> Self {
         Self {
             version: STREAMS_1_VER,
             link: link,
-            content_type: Trytes(Tbits::<TW>::from_str(content_type).unwrap()),
+            //TODO: Bytes from str
+            content_type: Bytes(Vec::new()),
         }
     }
 
@@ -110,29 +100,28 @@ where
         Self {
             version: STREAMS_1_VER,
             link: link,
-            content_type: Trytes(Tbits::zero(0)),
+            content_type: Bytes(Vec::new()),
         }
     }
 }
 
-impl<TW, F, Link, Store> ContentWrap<TW, F, Store> for Header<TW, Link>
+impl<F, Link, Store> ContentWrap<F, Store> for Header<Link>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    Link: AbsorbExternalFallback<TW, F>,
+    F: PRP,
+    Link: AbsorbExternalFallback<F>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&self.content_type)?;
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream<TW>>(
+    fn wrap<'c, OS: io::OStream>(
         &self,
         _store: &Store,
-        ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<&'c mut wrap::Context<TW, F, OS>> {
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&self.content_type)?;
@@ -140,17 +129,16 @@ where
     }
 }
 
-impl<TW, F, Link, Store> ContentUnwrap<TW, F, Store> for Header<TW, Link>
+impl<F, Link, Store> ContentUnwrap<F, Store> for Header<Link>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    Link: AbsorbExternalFallback<TW, F>,
+    F: PRP,
+    Link: AbsorbExternalFallback<F>,
 {
-    fn unwrap<'c, IS: io::IStream<TW>>(
+    fn unwrap<'c, IS: io::IStream>(
         &mut self,
         _store: &Store,
-        ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<&'c mut unwrap::Context<TW, F, IS>> {
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.version)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&mut self.content_type)?;

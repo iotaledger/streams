@@ -1,6 +1,6 @@
-use failure::{
+use anyhow::{
     ensure,
-    Fallible,
+    Result,
 };
 
 use super::Context;
@@ -9,8 +9,8 @@ use crate::{
     io,
 };
 
-impl<TW, F, IS: io::OStream<TW>> Guard for Context<TW, F, IS> {
-    fn guard(&mut self, cond: bool, msg: &str) -> Fallible<&mut Self> {
+impl<F, IS: io::OStream> Guard for Context<F, IS> {
+fn guard(&mut self, cond: bool, msg: &str) -> Result<&mut Self> {
         ensure!(cond, "guard: {}", msg);
         Ok(self)
     }

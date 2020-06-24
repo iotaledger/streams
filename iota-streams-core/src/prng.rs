@@ -5,84 +5,58 @@ use crate::{
         prp::PRP,
         spongos::Spongos,
     },
-    tbits::{
-        binary::Byte,
-        convert::IConvertOnto,
-        word::{
-            RngTbitWord,
-            SpongosTbitWord,
-            StringTbitWord,
-        },
-        TbitSlice,
-        TbitSliceMut,
-        Tbits,
-    },
 };
 
 /// Spongos-based pseudo-random number generator.
 #[derive(Clone)]
-pub struct Prng<TW, G> {
+pub struct Prng<G> {
     /// PRNG secret key.
-    secret_key: Tbits<TW>,
+    secret_key: Vec<u8>,
     _phantom: std::marker::PhantomData<G>,
 }
 
-fn random_tbits<TW, R>(n: usize, rng: &mut R) -> Tbits<TW>
-where
-    //TW: BasicTbitWord,
-    //Byte: ConvertOnto<TW>,
-    TW: RngTbitWord,
+fn random_bytes<R>(n: usize, rng: &mut R) -> Vec<u8> where
     R: rand::RngCore,
 {
-    let mut random_bytes = vec![Byte(0); n];
-    rng.fill_bytes(unsafe { std::mem::transmute::<&mut [Byte], &mut [u8]>(random_bytes.as_mut_slice()) });
-    let bytes = TbitSlice::<Byte>::from_slice(n * 8, random_bytes.as_slice());
-    let mut tbits = Tbits::<TW>::zero(n);
-    <TW as IConvertOnto<Byte>>::icvt_onto(bytes, &mut tbits.slice_mut());
-    tbits
+    let mut rnd = vec![0; n];
+    rng.fill_bytes(rnd.as_mut_slice());
+    rnd
 }
 
-pub fn random_nonce<TW>(n: usize) -> Tbits<TW>
-where
-    TW: RngTbitWord,
+pub fn random_nonce(n: usize) -> Vec<u8>
 {
-    random_tbits::<TW, rand::rngs::ThreadRng>(n, &mut rand::thread_rng())
+    random_bytes::<rand::rngs::ThreadRng>(n, &mut rand::thread_rng())
 }
 
-pub fn random_key<TW>(n: usize) -> Tbits<TW>
-where
-    TW: RngTbitWord,
+pub fn random_key(n: usize) -> Vec<u8>
 {
-    random_tbits::<TW, rand::rngs::ThreadRng>(n, &mut rand::thread_rng())
+    random_bytes::<rand::rngs::ThreadRng>(n, &mut rand::thread_rng())
 }
 
 #[test]
 fn test_random_nonce() {
-    use crate::tbits::trinary::Trit;
     for n in 1..300 {
-        random_nonce::<Trit>(n);
-        random_nonce::<Byte>(n);
+        random_nonce(n);
     }
 }
 
-impl<TW, G> Prng<TW, G>
+impl<G> Prng<G>
 where
-    G: PRP<TW>,
+    G: PRP,
 {
     /// Prng fixed key size.
-    pub const KEY_SIZE: usize = G::CAPACITY;
+    pub const KEY_SIZE: usize = G::CAPACITY_BITS / 8;
 }
 
 //TODO: prng randomness hierarchy: domain (mss, ntru, session key, etc.), secret, counter
 
-impl<TW, G> Prng<TW, G>
+impl<G> Prng<G>
 where
-    TW: SpongosTbitWord,
-    G: PRP<TW>,
+    G: PRP,
 {
     /// Create PRNG instance and init with a secret key.
-    pub fn init(secret_key: Tbits<TW>) -> Self {
-        assert!(secret_key.size() == Self::KEY_SIZE);
+    pub fn init(secret_key: Vec<u8>) -> Self {
+        assert!(secret_key.len() == Self::KEY_SIZE);
         Self {
             secret_key,
             _phantom: std::marker::PhantomData,
@@ -91,13 +65,13 @@ where
 
     fn gen_with_spongos<'a>(
         &self,
-        s: &mut Spongos<TW, G>,
-        nonces: &[TbitSlice<'a, TW>],
-        rnds: &mut [&mut TbitSliceMut<'a, TW>],
+        s: &mut Spongos<G>,
+        nonces: &[&'a [u8]],
+        rnds: &mut [&'a mut [u8]],
     ) {
         //TODO: `dst` Tryte?
         //TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
-        s.absorb(self.secret_key.slice());
+        s.absorb(&self.secret_key[..]);
         for nonce in nonces {
             s.absorb(*nonce);
         }
@@ -108,59 +82,32 @@ where
     }
 }
 
-impl<TW, G> Prng<TW, G>
+impl<G> Prng<G>
 where
-    TW: SpongosTbitWord,
-    G: PRP<TW> + Default,
+    G: PRP + Default,
 {
     /// Generate randomness with a unique nonce for the current PRNG instance.
-    pub fn gen<'a>(&self, nonce: TbitSlice<'a, TW>, rnd: &mut TbitSliceMut<'a, TW>) {
-        //TODO: `dst` Tryte?
+    pub fn gen(&self, nonce: &[u8], rnd: &mut [u8]) {
+        //TODO: `dst` byte?
         //TODO: Implement Sponge?
         //TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
-        let mut s = Spongos::<TW, G>::init();
+        let mut s = Spongos::<G>::init();
         self.gen_with_spongos(&mut s, &[nonce], &mut [rnd]);
-    }
-    /// Gen consuming slice `rnd`.
-    pub fn gen2<'a>(&self, nonce: TbitSlice<'a, TW>, mut rnd: TbitSliceMut<'a, TW>) {
-        self.gen(nonce, &mut rnd);
     }
 
     /// Generate Tbits.
-    pub fn gen_tbits(&self, nonce: &Tbits<TW>, n: usize) -> Tbits<TW> {
-        let mut rnd = Tbits::zero(n);
-        self.gen(nonce.slice(), &mut rnd.slice_mut());
+    pub fn gen_bytes(&self, nonce: &Vec<u8>, n: usize) -> Vec<u8> {
+        let mut rnd = vec![0; n];
+        self.gen(&nonce[..], &mut rnd[..]);
         rnd
     }
-
-    /// Generate randomness with a list of nonces.
-    pub fn gens<'a>(&self, nonces: &[TbitSlice<'a, TW>], mut rnd: TbitSliceMut<'a, TW>) {
-        let mut s = Spongos::<TW, G>::init();
-        s.absorb(self.secret_key.slice());
-        for nonce in nonces {
-            s.absorb(*nonce);
-        }
-        s.commit();
-        s.squeeze(&mut rnd);
-    }
 }
-
-/*
-pub fn init<'a>(secret_key: TbitSlice<'a>) -> PRNG {
-    PRNG::init(secret_key)
-}
-
-pub fn init_tbits(secret_key: &Tbits) -> PRNG {
-    PRNG::init_tbits(secret_key)
-}
-
- */
 
 //#[cfg(test)]
-pub fn dbg_init_str<TW, G>(secret_key: &str) -> Prng<TW, G>
+pub fn dbg_init_str<G>(secret_key: &str) -> Prng<G>
 where
-    TW: StringTbitWord + SpongosTbitWord,
-    G: PRP<TW>,
+    G: PRP,
 {
-    Prng::init(Tbits::cycle_str(Prng::<TW, G>::KEY_SIZE, secret_key))
+    panic!("not implemented");
+    //Prng::init(Tbits::cycle_str(Prng::<G>::KEY_SIZE, secret_key))
 }

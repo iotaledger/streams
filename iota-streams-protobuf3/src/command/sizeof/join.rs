@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -11,25 +11,25 @@ use crate::{
 
 /*
 /// It's the size of the link.
-impl<'a, L: Link, S: LinkStore<L>> Join<&'a L, &'a S> for Context<TW, F> {
-    fn join(&mut self, store: &'a S, link: &'a L) -> Fallible<&mut Self> {
+impl<'a, L: Link, S: LinkStore<L>> Join<&'a L, &'a S> for Context<F> {
+    fn join(&mut self, store: &'a S, link: &'a L) -> Result<&mut Self> {
         self.size += link.size();
         Ok(self)
     }
 }
 
-impl<'a, TW, F, L, S: LinkStore<TW, F, L>> Join<&'a L, &'a S> for Context<TW, F> where
+impl<'a, F, L, S: LinkStore<F, L>> Join<&'a L, &'a S> for Context<F> where
     Self: Skip<&'a L>
 {
-    fn join(&mut self, _store: &'a S, link: &'a L) -> Fallible<&mut Self> {
+    fn join(&mut self, _store: &'a S, link: &'a L) -> Result<&mut Self> {
         self.skip(link)
     }
 }
 */
 
 /// It's the size of the link.
-impl<'a, TW, F, L: SkipFallback<TW, F>, S: LinkStore<TW, F, L>> Join<&'a L, &'a S> for Context<TW, F> {
-    fn join(&mut self, _store: &'a S, link: &'a L) -> Fallible<&mut Self> {
+impl<'a, F, L: SkipFallback<F>, S: LinkStore<F, L>> Join<&'a L, &'a S> for Context<F> {
+    fn join(&mut self, _store: &'a S, link: &'a L) -> Result<&mut Self> {
         link.sizeof_skip(self)?;
         Ok(self)
     }

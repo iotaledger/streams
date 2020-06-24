@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-core"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -17,17 +17,3 @@ rand = "0.7"
 
 [dev-dependencies]
 criterion = "0.3"
-
-[features]
-
-# Enable traversal Merkle tree implementation for MSS private key.
-# By default a complete Merkle tree implementation is used.
-mss_merkle_tree_traversal = []
-
-[[bench]]
-name = "troika"
-harness = false
-
-[[bench]]
-name = "ftroika"
-harness = false

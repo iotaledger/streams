@@ -28,7 +28,7 @@
 //! corresponding to the *trusted* public key contained in the linked message.
 //!
 
-use failure::Fallible;
+use anyhow::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
@@ -96,7 +96,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
     Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Result<&'c mut sizeof::Context<TW, F>> {
         // Store has no impact on wrapped size
         let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
         let hash = External(Mac(P::HASH_SIZE));
@@ -113,7 +113,7 @@ where
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<&'c mut wrap::Context<TW, F, OS>> {
+    ) -> Result<&'c mut wrap::Context<TW, F, OS>> {
         let mut hash = External(NTrytes::zero(P::HASH_SIZE));
         ctx.join(store, self.link)?
             .absorb(self.mss_sk.public_key())?
@@ -166,7 +166,7 @@ where
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<&'c mut unwrap::Context<TW, F, IS>> {
+    ) -> Result<&'c mut unwrap::Context<TW, F, IS>> {
         let mut hash = External(NTrytes::zero(P::HASH_SIZE));
         ctx.join(store, &mut self.link)?
             .absorb(&mut self.mss_pk)?

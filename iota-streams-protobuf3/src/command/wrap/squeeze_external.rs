@@ -1,41 +1,35 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
     command::Squeeze,
     types::{
         External,
-        NTrytes,
+        NBytes,
     },
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-    },
 };
 
 /// This is just an external tag or hash value to-be-signed.
-impl<'a, TW, F, OS> Squeeze<&'a mut External<NTrytes<TW>>> for Context<TW, F, OS>
+impl<'a, F, OS> Squeeze<&'a mut External<NBytes>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn squeeze(&mut self, external_ntrytes: &'a mut External<NTrytes<TW>>) -> Fallible<&mut Self> {
-        self.spongos.squeeze(&mut ((external_ntrytes.0).0).slice_mut());
+    fn squeeze(&mut self, external_nbytes: &'a mut External<NBytes>) -> Result<&mut Self> {
+        self.spongos.squeeze(&mut ((external_nbytes.0).0)[..]);
         Ok(self)
     }
 }
 
 /// This is just an external tag or hash value to-be-signed.
-impl<'a, TW, F, OS> Squeeze<External<&'a mut NTrytes<TW>>> for Context<TW, F, OS>
+impl<'a, F, OS> Squeeze<External<&'a mut NBytes>> for Context<F, OS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn squeeze(&mut self, external_ntrytes: External<&'a mut NTrytes<TW>>) -> Fallible<&mut Self> {
-        self.spongos.squeeze(&mut ((external_ntrytes.0).0).slice_mut());
+    fn squeeze(&mut self, external_nbytes: External<&'a mut NBytes>) -> Result<&mut Self> {
+        self.spongos.squeeze(&mut ((external_nbytes.0).0)[..]);
         Ok(self)
     }
 }

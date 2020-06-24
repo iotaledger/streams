@@ -6,10 +6,10 @@
 //! ```pb3
 //! message SignedPacket {
 //!     join link msgid;
-//!     absorb trytes public_payload;
-//!     mask trytes masked_payload;
+//!     absorb bytes public_payload;
+//!     mask bytes masked_payload;
 //!     commit;
-//!     squeeze external tryte hash[78];
+//!     squeeze external byte hash[78];
 //!     mssig(hash) sig;
 //! }
 //! ```
@@ -27,23 +27,15 @@
 //! * `sig` -- message signature generated with one of channel owner's private key.
 //!
 
-use failure::Fallible;
+use anyhow::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::{
-            BasicTbitWord,
-            IntTbitWord,
-            SpongosTbitWord,
-        },
-    },
 };
-use iota_streams_core_mss::signature::mss;
+use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -53,95 +45,91 @@ use iota_streams_protobuf3::{
 /// Type of `SignedPacket` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9SIGNEDPACKET";
 
-pub struct ContentWrap<'a, TW, F, P, Link>
+pub struct ContentWrap<'a, F, Link>
 where
-    P: mss::Parameters<TW>,
     Link: HasLink,
     <Link as HasLink>::Rel: 'a,
 {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) public_payload: &'a Trytes<TW>,
-    pub(crate) masked_payload: &'a Trytes<TW>,
-    pub(crate) mss_sk: &'a mss::PrivateKey<TW, P>,
+    pub(crate) public_payload: &'a Bytes,
+    pub(crate) masked_payload: &'a Bytes,
+    pub(crate) sig_sk: &'a ed25519::SecretKey,
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, TW, F, P, Link, Store> message::ContentWrap<TW, F, Store> for ContentWrap<'a, TW, F, P, Link>
+impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
-    TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    P: mss::Parameters<TW>,
+    F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
-    Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
-        let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            .mssig(self.mss_sk, MssHashSig)?;
+            //.edsig(self.sig_sk, MssHashSig)?
+        ;
         //TODO: Is both public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream<TW>>(
+    fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
-        ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<&'c mut wrap::Context<TW, F, OS>> {
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            .mssig(self.mss_sk, MssHashSig)?;
+            //.edsig(self.sig_sk, MssHashSig)?
+        ;
         Ok(ctx)
     }
 }
 
-pub struct ContentUnwrap<TW, F, P, Link: HasLink> {
+pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) public_payload: Trytes<TW>,
-    pub(crate) masked_payload: Trytes<TW>,
-    pub(crate) mss_pk: mss::PublicKey<TW, P>,
+    pub(crate) public_payload: Bytes,
+    pub(crate) masked_payload: Bytes,
+    pub(crate) sig_pk: ed25519::PublicKey,
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<TW, F, P, Link> ContentUnwrap<TW, F, P, Link>
+impl<F, Link> ContentUnwrap<F, Link>
 where
-    TW: BasicTbitWord,
-    P: mss::Parameters<TW>,
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<TW, F>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
     pub fn new() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            public_payload: Trytes::<TW>::default(),
-            masked_payload: Trytes::<TW>::default(),
-            mss_pk: mss::PublicKey::<TW, P>::default(),
+            public_payload: Bytes::default(),
+            masked_payload: Bytes::default(),
+            sig_pk: ed25519::PublicKey::default(),
             _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<TW, F, P, Link, Store> message::ContentUnwrap<TW, F, Store> for ContentUnwrap<TW, F, P, Link>
+impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
 where
-    TW: IntTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    P: mss::Parameters<TW>,
+    F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<TW, F>,
-    Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn unwrap<'c, IS: io::IStream<TW>>(
+    fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
-        ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<&'c mut unwrap::Context<TW, F, IS>> {
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
-            .mssig(&mut self.mss_pk, MssHashSig)?;
+            //.edsig(&mut self.sig_pk, MssHashSig)?
+        ;
         Ok(ctx)
     }
 }

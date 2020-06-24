@@ -1,29 +1,24 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
     command::Squeeze,
     types::{
         External,
-        NTrytes,
+        NBytes,
     },
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-    },
 };
 
 /// This is just an external tag or hash value to-be-signed.
-impl<'a, TW, F, IS> Squeeze<&'a mut External<NTrytes<TW>>> for Context<TW, F, IS>
+impl<'a, F, IS> Squeeze<&'a mut External<NBytes>> for Context<F, IS>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn squeeze(&mut self, val: &'a mut External<NTrytes<TW>>) -> Fallible<&mut Self> {
-        self.spongos.squeeze(&mut ((val.0).0).slice_mut());
+    fn squeeze(&mut self, val: &'a mut External<NBytes>) -> Result<&mut Self> {
+        self.spongos.squeeze(&mut ((val.0).0)[..]);
         Ok(self)
     }
 }

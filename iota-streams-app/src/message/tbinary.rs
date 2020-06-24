@@ -1,17 +1,9 @@
-use failure::Fallible;
+use anyhow::Result;
 use std::fmt;
 
 use super::*;
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::{
-            SpongosTbitWord,
-            StringTbitWord,
-        },
-        Tbits,
-    },
 };
 use iota_streams_protobuf3::{
     command::unwrap,
@@ -19,29 +11,45 @@ use iota_streams_protobuf3::{
 };
 
 /// Trinary network Message representation.
-pub struct TbinaryMessage<TW, F, AbsLink> {
+pub struct TbinaryMessage<F, AbsLink> {
     /// Link -- message address.
     pub link: AbsLink,
 
     /// Message body -- header + content.
-    pub body: Tbits<TW>,
+    pub body: Vec<u8>,
 
     pub(crate) _phantom: std::marker::PhantomData<F>,
 }
 
-impl<TW, F, AbsLink> fmt::Display for TbinaryMessage<TW, F, AbsLink>
+impl<F, AbsLink> PartialEq for TbinaryMessage<F, AbsLink>
 where
-    TW: StringTbitWord,
-    AbsLink: fmt::Display,
+    AbsLink: PartialEq,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{link: {}, body: {}}}", self.link, self.body)
+    fn eq(&self, other: &Self) -> bool {
+        self.link.eq(&other.link) && self.body.eq(&other.body)
     }
 }
 
-impl<TW, F, AbsLink> Clone for TbinaryMessage<TW, F, AbsLink>
+impl<F, AbsLink> fmt::Debug for TbinaryMessage<F, AbsLink>
 where
-    TW: Clone,
+    AbsLink: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{link: {:?}, body: {:?}}}", self.link, self.body)
+    }
+}
+
+impl<F, AbsLink> fmt::Display for TbinaryMessage<F, AbsLink>
+where
+    AbsLink: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{link: {}, body: {:?}}}", self.link, self.body)
+    }
+}
+
+impl<F, AbsLink> Clone for TbinaryMessage<F, AbsLink>
+where
     AbsLink: Clone,
 {
     fn clone(&self) -> Self {
@@ -53,8 +61,8 @@ where
     }
 }
 
-impl<TW, F, AbsLink> TbinaryMessage<TW, F, AbsLink> {
-    pub fn new(link: AbsLink, body: Tbits<TW>) -> Self {
+impl<F, AbsLink> TbinaryMessage<F, AbsLink> {
+    pub fn new(link: AbsLink, body: Vec<u8>) -> Self {
         Self {
             link,
             body,
@@ -66,16 +74,15 @@ impl<TW, F, AbsLink> TbinaryMessage<TW, F, AbsLink> {
     }
 }
 
-impl<TW, F, Link> TbinaryMessage<TW, F, Link>
+impl<F, Link> TbinaryMessage<F, Link>
 where
-    TW: SpongosTbitWord + StringTbitWord + trinary::TritWord,
-    F: PRP<TW> + Default,
-    Link: Clone + AbsorbExternalFallback<TW, F>,
+    F: PRP + Default,
+    Link: Clone + AbsorbExternalFallback<F>,
 {
-    pub fn parse_header<'a>(&'a self) -> Fallible<PreparsedMessage<'a, TW, F, Link>> {
-        let mut ctx = unwrap::Context::new(self.body.slice());
-        let mut header = Header::<TW, Link>::new(self.link().clone());
-        let store = EmptyLinkStore::<TW, F, Link, ()>::default();
+    pub fn parse_header<'a>(&'a self) -> Result<PreparsedMessage<'a, F, Link>> {
+        let mut ctx = unwrap::Context::new(&self.body[..]);
+        let mut header = Header::<Link>::new(self.link().clone());
+        let store = EmptyLinkStore::<F, Link, ()>::default();
         header.unwrap(&store, &mut ctx)?;
 
         Ok(PreparsedMessage {

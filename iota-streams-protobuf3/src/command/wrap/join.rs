@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -11,14 +11,13 @@ use crate::{
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::word::SpongosTbitWord,
 };
 
 /*
-impl<'a, TW, F, L, S: LinkStore<TW, F, L>, OS: io::OStream<TW>> Join<&'a L, &'a S> for Context<TW, F, OS> where
+impl<'a, F, L, S: LinkStore<F, L>, OS: io::OStream> Join<&'a L, &'a S> for Context<F, OS> where
     Self: Skip<&'a L>
 {
-    fn join(&mut self, store: &'a S, link: &'a L) -> Fallible<&mut Self> {
+    fn join(&mut self, store: &'a S, link: &'a L) -> Result<&mut Self> {
         let (mut s, i) = store.lookup(link)?;
         self.skip(link)?;
         self.spongos.join(&mut s);(self)
@@ -26,13 +25,11 @@ impl<'a, TW, F, L, S: LinkStore<TW, F, L>, OS: io::OStream<TW>> Join<&'a L, &'a 
 }
  */
 
-impl<'a, TW, F, L: SkipFallback<TW, F>, S: LinkStore<TW, F, L>, OS: io::OStream<TW>> Join<&'a L, &'a S>
-    for Context<TW, F, OS>
+impl<'a, F, L: SkipFallback<F>, S: LinkStore<F, L>, OS: io::OStream> Join<&'a L, &'a S> for Context<F, OS>
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn join(&mut self, store: &'a S, link: &'a L) -> Fallible<&mut Self> {
+    fn join(&mut self, store: &'a S, link: &'a L) -> Result<&mut Self> {
         //TODO: Return and use info.
         let (mut s, _i) = store.lookup(link)?;
         link.wrap_skip(self)?;

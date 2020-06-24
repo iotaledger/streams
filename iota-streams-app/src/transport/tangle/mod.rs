@@ -1,7 +1,7 @@
 //! Tangle-specific transport definitions.
 
 use chrono::Utc;
-use failure::Fallible;
+use anyhow::Result;
 use std::{
     convert::AsRef,
     fmt,
@@ -11,17 +11,8 @@ use std::{
 
 use iota_streams_core::{
     sponge::prp::PRP,
-    tbits::{
-        trinary,
-        word::{
-            BasicTbitWord,
-            SpongosTbitWord,
-            StringTbitWord,
-        },
-        Tbits,
-    },
 };
-use iota_streams_core_mss::signature::mss;
+use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -30,25 +21,25 @@ use iota_streams_protobuf3::{
 
 use crate::message::*;
 
-pub struct TangleMessage<TW, F> {
+pub struct TangleMessage<F> {
     /// Encapsulated tbinary encoded message.
-    pub tbinary_message: TbinaryMessage<TW, F, TangleAddress<TW>>,
+    pub tbinary_message: TbinaryMessage<F, TangleAddress>,
 
     /// Timestamp is not an intrinsic part of Streams message; it's a part of the bundle.
     /// Timestamp is checked with Kerl as part of bundle essense trits.
     pub timestamp: i64,
 }
 
-impl<TW, F> TangleMessage<TW, F> {
+impl<F> TangleMessage<F> {
     /// Create TangleMessage from TbinaryMessage and add the current timestamp.
-    pub fn new(msg: TbinaryMessage<TW, F, TangleAddress<TW>>) -> Self {
+    pub fn new(msg: TbinaryMessage<F, TangleAddress>) -> Self {
         Self {
             tbinary_message: msg,
             timestamp: Utc::now().timestamp_millis(),
         }
     }
     /// Create TangleMessage from TbinaryMessage and an explicit timestamp.
-    pub fn with_timestamp(msg: TbinaryMessage<TW, F, TangleAddress<TW>>, timestamp: i64) -> Self {
+    pub fn with_timestamp(msg: TbinaryMessage<F, TangleAddress>, timestamp: i64) -> Self {
         Self {
             tbinary_message: msg,
             timestamp,
@@ -57,14 +48,12 @@ impl<TW, F> TangleMessage<TW, F> {
 }
 
 #[derive(Clone)]
-pub struct TangleAddress<TW> {
-    pub appinst: AppInst<TW>,
-    pub msgid: MsgId<TW>,
+pub struct TangleAddress {
+    pub appinst: AppInst,
+    pub msgid: MsgId,
 }
 
-impl<TW> TangleAddress<TW>
-where
-    TW: StringTbitWord,
+impl TangleAddress
 {
     pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self, ()> {
         let appinst = AppInst::from_str(appinst_str)?;
@@ -73,57 +62,45 @@ where
     }
 }
 
-impl<TW> fmt::Debug for TangleAddress<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: fmt::Display,
+impl fmt::Debug for TangleAddress
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{appinst: {:?}, msgid:{:?}}}", self.appinst, self.msgid)
     }
 }
 
-impl<TW> fmt::Display for TangleAddress<TW>
-where
-    TW: StringTbitWord,
+impl fmt::Display for TangleAddress
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{appinst: {}, msgid:{}}}", self.appinst, self.msgid)
     }
 }
 
-impl<TW> Default for TangleAddress<TW>
-where
-    TW: BasicTbitWord,
+impl Default for TangleAddress
 {
     fn default() -> Self {
         Self {
-            appinst: AppInst::<TW>::default(),
-            msgid: MsgId::<TW>::default(),
+            appinst: AppInst::default(),
+            msgid: MsgId::default(),
         }
     }
 }
 
-impl<TW> PartialEq for TangleAddress<TW>
-where
-    TW: BasicTbitWord,
+impl PartialEq for TangleAddress
 {
     fn eq(&self, other: &Self) -> bool {
         self.appinst == other.appinst && self.msgid == other.msgid
     }
 }
-impl<TW> Eq for TangleAddress<TW> where TW: BasicTbitWord {}
+impl Eq for TangleAddress {}
 
-impl<TW> TangleAddress<TW> {
-    pub fn new(appinst: AppInst<TW>, msgid: MsgId<TW>) -> Self {
+impl TangleAddress {
+    pub fn new(appinst: AppInst, msgid: MsgId) -> Self {
         Self { appinst, msgid }
     }
 }
 
-impl<TW> hash::Hash for TangleAddress<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: hash::Hash,
+impl hash::Hash for TangleAddress
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.appinst.hash(state);
@@ -131,21 +108,19 @@ where
     }
 }
 
-impl<TW> HasLink for TangleAddress<TW>
-where
-    TW: BasicTbitWord,
+impl HasLink for TangleAddress
 {
-    type Base = AppInst<TW>;
-    fn base(&self) -> &AppInst<TW> {
+    type Base = AppInst;
+    fn base(&self) -> &AppInst {
         &self.appinst
     }
 
-    type Rel = MsgId<TW>;
-    fn rel(&self) -> &MsgId<TW> {
+    type Rel = MsgId;
+    fn rel(&self) -> &MsgId {
         &self.msgid
     }
 
-    fn from_base_rel(base: &AppInst<TW>, rel: &MsgId<TW>) -> Self {
+    fn from_base_rel(base: &AppInst, rel: &MsgId) -> Self {
         Self {
             appinst: base.clone(),
             msgid: rel.clone(),
@@ -154,39 +129,36 @@ where
 }
 
 #[derive(Clone)]
-pub struct DefaultTangleLinkGenerator<TW, F> {
-    appinst: AppInst<TW>,
+pub struct DefaultTangleLinkGenerator<F> {
+    appinst: AppInst,
     counter: usize,
     _phantom: std::marker::PhantomData<F>,
 }
 
-impl<TW, F> Default for DefaultTangleLinkGenerator<TW, F>
-where
-    TW: BasicTbitWord,
+impl<F> Default for DefaultTangleLinkGenerator<F>
 {
     fn default() -> Self {
         Self {
-            appinst: AppInst::<TW>::default(),
+            appinst: AppInst::default(),
             counter: 0,
             _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<TW, F> DefaultTangleLinkGenerator<TW, F> {
-    pub fn reset_appinst(&mut self, appinst: AppInst<TW>) {
+impl<F> DefaultTangleLinkGenerator<F> {
+    pub fn reset_appinst(&mut self, appinst: AppInst) {
         self.appinst = appinst;
     }
 }
 
-impl<TW, F> DefaultTangleLinkGenerator<TW, F>
+impl<F> DefaultTangleLinkGenerator<F>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW> + Default,
+    F: PRP + Default,
 {
-    fn try_gen_msgid(&self, msgid: &MsgId<TW>) -> Fallible<MsgId<TW>> {
+    fn try_gen_msgid(&self, msgid: &MsgId) -> Result<MsgId> {
         let mut new = MsgId::default();
-        wrap::Context::<TW, F, io::NoOStream>::new(io::NoOStream)
+        wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
             .absorb(External(&msgid.id))?
             .absorb(External(Size(self.counter)))?
@@ -194,50 +166,49 @@ where
             .squeeze(External(&mut new.id))?;
         Ok(new)
     }
-    fn gen_msgid(&self, msgid: &MsgId<TW>) -> MsgId<TW> {
-        self.try_gen_msgid(msgid).map_or(MsgId::<TW>::default(), |x| x)
+    fn gen_msgid(&self, msgid: &MsgId) -> MsgId {
+        self.try_gen_msgid(msgid).map_or(MsgId::default(), |x| x)
     }
 }
 
-impl<TW, F, P> LinkGenerator<TW, TangleAddress<TW>, mss::PublicKey<TW, P>> for DefaultTangleLinkGenerator<TW, F>
+impl<F> LinkGenerator<TangleAddress, ed25519::PublicKey> for DefaultTangleLinkGenerator<F>
 where
-    TW: StringTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW> + Default,
-    P: mss::Parameters<TW>,
+    F: PRP + Default,
 {
-    fn link_from(&mut self, mss_pk: &mss::PublicKey<TW, P>) -> TangleAddress<TW> {
-        debug_assert_eq!(P::PUBLIC_KEY_SIZE, mss_pk.tbits().size());
-        self.appinst.id.0 = mss_pk.tbits().clone();
+    fn link_from(&mut self, pk: &ed25519::PublicKey) -> TangleAddress {
+        panic!("not implemented");
+        /*
+        self.appinst.id.0 = pk.clone();
 
         self.counter += 1;
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(&MsgId::<TW>::default()),
+            msgid: self.gen_msgid(&MsgId::default()),
         }
+         */
     }
 
     fn header_from(
         &mut self,
-        arg: &mss::PublicKey<TW, P>,
+        arg: &ed25519::PublicKey,
         content_type: &str,
-    ) -> header::Header<TW, TangleAddress<TW>> {
+    ) -> header::Header<TangleAddress> {
         header::Header::new_with_type(self.link_from(arg), content_type)
     }
 }
 
-impl<TW, F> LinkGenerator<TW, TangleAddress<TW>, MsgId<TW>> for DefaultTangleLinkGenerator<TW, F>
+impl<F> LinkGenerator<TangleAddress, MsgId> for DefaultTangleLinkGenerator<F>
 where
-    TW: StringTbitWord + SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW> + Default,
+    F: PRP + Default,
 {
-    fn link_from(&mut self, msgid: &MsgId<TW>) -> TangleAddress<TW> {
+    fn link_from(&mut self, msgid: &MsgId) -> TangleAddress {
         self.counter += 1;
         TangleAddress {
             appinst: self.appinst.clone(),
             msgid: self.gen_msgid(msgid),
         }
     }
-    fn header_from(&mut self, arg: &MsgId<TW>, content_type: &str) -> header::Header<TW, TangleAddress<TW>> {
+    fn header_from(&mut self, arg: &MsgId, content_type: &str) -> header::Header<TangleAddress> {
         header::Header::new_with_type(self.link_from(arg), content_type)
     }
 }
@@ -245,82 +216,70 @@ where
 pub const APPINST_SIZE: usize = 243;
 
 /// Application instance identifier.
-/// Currently, 81-tryte string stored in `address` transaction field.
+/// Currently, 81-byte string stored in `address` transaction field.
 #[derive(Clone)]
-pub struct AppInst<TW> {
-    pub(crate) id: NTrytes<TW>,
+pub struct AppInst {
+    pub(crate) id: NBytes,
 }
 
-impl<TW> FromStr for AppInst<TW>
-where
-    TW: StringTbitWord,
+impl FromStr for AppInst
 {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
         if s.len() == APPINST_SIZE / 3 {
-            Tbits::<TW>::from_str(s).map(|x| AppInst { id: NTrytes(x) })
+            panic!("not implemented");
+            //Vec::from_str(s).map(|x| AppInst { id: NBytes(x) })
         } else {
             Err(())
         }
     }
 }
 
-impl<TW> fmt::Debug for AppInst<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: fmt::Display,
+impl fmt::Debug for AppInst
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.id)
     }
 }
 
-impl<TW> fmt::Display for AppInst<TW>
-where
-    TW: StringTbitWord,
+impl fmt::Display for AppInst
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.id)
     }
 }
 
-impl<TW> PartialEq for AppInst<TW>
-where
-    TW: BasicTbitWord,
+impl PartialEq for AppInst
 {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
-impl<TW> Eq for AppInst<TW> where TW: BasicTbitWord {}
+impl Eq for AppInst {}
 
-impl<TW> AppInst<TW> {
-    pub fn tbits(&self) -> &Tbits<TW> {
+impl AppInst {
+    pub fn tbits(&self) -> &Vec<u8> {
         &self.id.0
     }
 }
 
-impl<TW> AsRef<Tbits<TW>> for AppInst<TW> {
-    fn as_ref(&self) -> &Tbits<TW> {
+impl AsRef<Vec<u8>> for AppInst {
+    fn as_ref(&self) -> &Vec<u8> {
         &self.id.0
     }
 }
 
-impl<TW> Default for AppInst<TW>
-where
-    TW: BasicTbitWord,
+impl Default for AppInst
 {
     fn default() -> Self {
         Self {
-            id: NTrytes(Tbits::zero(APPINST_SIZE)),
+            id: NBytes(vec![0; APPINST_SIZE]),
         }
     }
 }
 
 /*
-impl<TW> ToString for AppInst<TW>
-where
-    TW: StringTbitWord,
+impl ToString for AppInst
 {
     fn to_string(&self) -> String {
         self.id.to_string()
@@ -328,10 +287,7 @@ where
 }
  */
 
-impl<TW> hash::Hash for AppInst<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: hash::Hash,
+impl hash::Hash for AppInst
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
@@ -341,22 +297,21 @@ where
 /// (appinst+msgid) is (address+tag) in terms of IOTA transaction which are stored
 /// externally of message body, ie. in transaction header fields.
 /// Thus the trait implemntation absorbs appinst+msgid as `external`.
-impl<TW, F> AbsorbExternalFallback<TW, F> for TangleAddress<TW>
+impl<F> AbsorbExternalFallback<F> for TangleAddress
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
 {
-    fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<TW, F>) -> Fallible<()> {
+    fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
         ctx.absorb(External(&self.appinst.id))?
             .absorb(External(&self.msgid.id))?;
         Ok(())
     }
-    fn wrap_absorb_external<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()> {
+    fn wrap_absorb_external<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()> {
         ctx.absorb(External(&self.appinst.id))?
             .absorb(External(&self.msgid.id))?;
         Ok(())
     }
-    fn unwrap_absorb_external<IS: io::IStream<TW>>(&self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()> {
+    fn unwrap_absorb_external<IS: io::IStream>(&self, ctx: &mut unwrap::Context<F, IS>) -> Result<()> {
         ctx.absorb(External(&self.appinst.id))?
             .absorb(External(&self.msgid.id))?;
         Ok(())
@@ -366,82 +321,71 @@ where
 pub const MSGID_SIZE: usize = 81;
 
 /// Message identifier unique within application instance.
-/// Currently, 27-tryte string stored in `tag` transaction field.
+/// Currently, 27-byte string stored in `tag` transaction field.
 #[derive(Clone)]
-pub struct MsgId<TW> {
-    pub(crate) id: NTrytes<TW>,
+pub struct MsgId {
+    //TODO: change to [u8; MSGID_SIZE],
+    pub(crate) id: NBytes,
 }
 
-impl<TW> FromStr for MsgId<TW>
-where
-    TW: StringTbitWord,
+impl FromStr for MsgId
 {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
         if s.len() == MSGID_SIZE / 3 {
-            Tbits::<TW>::from_str(s).map(|x| MsgId { id: NTrytes(x) })
+            panic!("not implemented");
+            //Vec::from_str(s).map(|x| MsgId { id: NBytes(x) })
         } else {
             Err(())
         }
     }
 }
 
-impl<TW> fmt::Debug for MsgId<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: fmt::Display,
+impl fmt::Debug for MsgId
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.id)
     }
 }
 
-impl<TW> fmt::Display for MsgId<TW>
-where
-    TW: StringTbitWord,
+impl fmt::Display for MsgId
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.id)
     }
 }
 
-impl<TW> PartialEq for MsgId<TW>
-where
-    TW: BasicTbitWord,
+impl PartialEq for MsgId
 {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
-impl<TW> Eq for MsgId<TW> where TW: BasicTbitWord {}
+impl Eq for MsgId {}
 
-impl<TW> MsgId<TW> {
-    pub fn tbits(&self) -> &Tbits<TW> {
+impl MsgId {
+    pub fn tbits(&self) -> &Vec<u8> {
         &self.id.0
     }
 }
 
-impl<TW> AsRef<Tbits<TW>> for MsgId<TW> {
-    fn as_ref(&self) -> &Tbits<TW> {
+impl AsRef<Vec<u8>> for MsgId {
+    fn as_ref(&self) -> &Vec<u8> {
         &self.id.0
     }
 }
 
-impl<TW> Default for MsgId<TW>
-where
-    TW: BasicTbitWord,
+impl Default for MsgId
 {
     fn default() -> Self {
         Self {
-            id: NTrytes(Tbits::zero(MSGID_SIZE)),
+            id: NBytes(vec![0; MSGID_SIZE]),
         }
     }
 }
 
 /*
-impl<TW> ToString for MsgId<TW>
-where
-    TW: StringTbitWord,
+impl ToString for MsgId
 {
     fn to_string(&self) -> String {
         self.id.to_string()
@@ -449,10 +393,7 @@ where
 }
  */
 
-impl<TW> hash::Hash for MsgId<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: hash::Hash,
+impl hash::Hash for MsgId
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
@@ -461,23 +402,21 @@ where
 
 /// Msgid is used for joinable links which in the tbinary stream are simply
 /// encoded (`skip`ped).
-impl<TW, F> SkipFallback<TW, F> for MsgId<TW>
-where
-    TW: BasicTbitWord + trinary::TritWord,
+impl<F> SkipFallback<F> for MsgId
 {
-    fn sizeof_skip(&self, ctx: &mut sizeof::Context<TW, F>) -> Fallible<()> {
+    fn sizeof_skip(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
         ctx.skip(&self.id)?;
         Ok(())
     }
-    fn wrap_skip<OS: io::OStream<TW>>(&self, ctx: &mut wrap::Context<TW, F, OS>) -> Fallible<()> {
+    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()> {
         ctx.skip(&self.id)?;
         Ok(())
     }
-    fn unwrap_skip<IS: io::IStream<TW>>(&mut self, ctx: &mut unwrap::Context<TW, F, IS>) -> Fallible<()> {
+    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()> {
         ctx.skip(&mut self.id)?;
         Ok(())
     }
 }
 
 //#[cfg(feature = "tangle")]
-pub mod client;
+//pub mod client;
