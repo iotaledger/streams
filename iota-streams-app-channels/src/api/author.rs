@@ -50,16 +50,16 @@ pub struct AuthorT<F, Link, Store, LinkGen>
     prng: prng::Prng<F>,
 
     /// Own Ed25519 private key.
-    pub(crate) sig_sk: ed25519::SecretKey,
+    pub(crate) sig_kp: ed25519::Keypair,
 
-    /// Own optional x25519 key pair.
-    pub(crate) opt_ke: Option<(x25519::StaticSecret, x25519::PublicKey)>,
+    /// Own x25519 key pair corresponding to Ed25519 keypair.
+    pub(crate) ke_kp: (x25519::StaticSecret, x25519::PublicKey),
 
     /// Subscribers' pre-shared keys.
     pub psks: psk::Psks,
 
-    ///// Subscribers' trusted X25519 public keys.
-    //pub ke_pks: x25519::Pks,
+    /// Subscribers' trusted X25519 public keys.
+    pub ke_pks: x25519::Pks,
 
     /// Link store.
     store: RefCell<Store>,
@@ -85,29 +85,17 @@ where
         store: Store,
         mut link_gen: LinkGen,
         prng: prng::Prng<F>,
-        nonce: &[u8],
-        mss_height: usize,
-        with_ntru: bool,
+        nonce: Vec<u8>,
     ) -> Self {
-        /*
-        let mss_nonce = nonce.clone();
-        let sig_sk = ed25519::PrivateKey::gen(&prng, mss_nonce.slice(), mss_height);
+        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
+        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
-        let appinst = link_gen.link_from(sig_sk.public_key());
-
-        let opt_ntru = if with_ntru {
-            let ntru_nonce = Tbits::::from_str("NTRUNONCE").unwrap();
-            let key_pair = x25519::gen_keypair(&prng, ntru_nonce.slice());
-            Some(key_pair)
-        } else {
-            None
-        };
+        let appinst = link_gen.link_from(&sig_kp.public);
 
         Self {
             prng: prng,
-            default_mss_height: mss_height,
-            sig_sk: sig_sk,
-            opt_ntru: opt_ntru,
+            sig_kp: sig_kp,
+            ke_kp: ke_kp,
 
             psks: HashMap::new(),
             ke_pks: HashSet::new(),
@@ -116,25 +104,19 @@ where
             link_gen: link_gen,
             appinst: appinst,
         }
-         */
-        panic!("not implemented");
     }
 
     /// Prepare Announcement message.
     pub fn prepare_announcement<'a>(
         &'a mut self,
     ) -> Result<PreparedMessage<'a, F, Link, Store, announce::ContentWrap<F>>> {
-        panic!("not implemented");
-        /*
         // Create Header for the first message in the channel.
-        let header = self.link_gen.header_from(self.sig_sk.public_key(), announce::TYPE);
+        let header = self.link_gen.header_from(&self.sig_kp.public, announce::TYPE);
         let content = announce::ContentWrap {
-            sig_sk: &self.sig_sk,
-            ke_pk: self.opt_ke.as_ref().map(|key_pair| &key_pair.1),
+            sig_kp: &self.sig_kp,
             _phantom: std::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
-         */
     }
 
     /// Create Announce message.
@@ -146,17 +128,16 @@ where
         wrapped.commit(self.store.borrow_mut(), info)
     }
 
-    /*
-    fn do_prepare_keyload<'a, Psks, NtruPks>(
+    fn do_prepare_keyload<'a, Psks, KePks>(
         &'a self,
         header: Header<Link>,
         link_to: &'a <Link as HasLink>::Rel,
         psks: Psks,
-        ke_pks: NtruPks,
-    ) -> Result<PreparedMessage<'a, F, Link, Store, keyload::ContentWrap<'a, F, P::PrngG, Link, Psks, NtruPks>>>
+        ke_pks: KePks,
+    ) -> Result<PreparedMessage<'a, F, Link, Store, keyload::ContentWrap<'a, F, Link, Psks, KePks>>>
     where
         Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
-        NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a, F>>,
+        KePks: Clone + ExactSizeIterator<Item = x25519::IPk<'a>>,
     {
         let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
         let key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
@@ -176,7 +157,7 @@ where
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
         psk_ids: &psk::PskIds,
-        ntru_pkids: &ntru::NtruPkids,
+        ke_pks: &'a Vec<x25519::PublicKeyWrap>,
     ) -> Result<
         PreparedMessage<
             'a,
@@ -188,13 +169,13 @@ where
                 F,
                 Link,
                 std::vec::IntoIter<psk::IPsk<'a>>,
-                std::vec::IntoIter<ntru::INtruPk<'a, F>>,
+                std::vec::IntoIter<x25519::IPk<'a>>,
             >,
         >,
     > {
         let header = self.link_gen.header_from(link_to, keyload::TYPE);
         let psks = psk::filter_psks(&self.psks, psk_ids);
-        let ke_pks = ntru::filter_ke_pks(&self.ke_pks, ntru_pkids);
+        let ke_pks = x25519::filter_ke_pks(&self.ke_pks, ke_pks);
         self.do_prepare_keyload(header, link_to, psks.into_iter(), ke_pks.into_iter())
     }
 
@@ -210,10 +191,9 @@ where
             keyload::ContentWrap<
                 'a,
                 F,
-                P::PrngG,
                 Link,
                 std::collections::hash_map::Iter<psk::PskId, psk::Psk>,
-                std::collections::hash_set::Iter<ntru::PublicKey<F>>,
+                std::collections::hash_set::Iter<x25519::PublicKeyWrap>,
             >,
         >,
     > {
@@ -229,10 +209,10 @@ where
         &mut self,
         link_to: &<Link as HasLink>::Rel,
         psk_ids: &psk::PskIds,
-        ntru_pkids: &ntru::NtruPkids,
+        ke_pks: &Vec<x25519::PublicKeyWrap>,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<TbinaryMessage<F, Link>> {
-        let wrapped = self.prepare_keyload(link_to, psk_ids, ntru_pkids)?.wrap()?;
+        let wrapped = self.prepare_keyload(link_to, psk_ids, ke_pks)?.wrap()?;
         wrapped.commit(self.store.borrow_mut(), info)
     }
 
@@ -246,7 +226,6 @@ where
         let wrapped = self.prepare_keyload_for_everyone(link_to)?.wrap()?;
         wrapped.commit(self.store.borrow_mut(), info)
     }
-     */
 
     /// Prepare SignedPacket message.
     pub fn prepare_signed_packet<'a>(
@@ -260,7 +239,7 @@ where
             link: link_to,
             public_payload: public_payload,
             masked_payload: masked_payload,
-            sig_sk: &self.sig_sk,
+            sig_kp: &self.sig_kp,
             _phantom: std::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
@@ -320,19 +299,16 @@ where
         Ok(())
     }
 
-    /*
     fn lookup_psk<'b>(&'b self, pskid: &psk::PskId) -> Option<&'b psk::Psk> {
         self.psks.get(pskid)
     }
 
-    fn lookup_ke_sk<'b>(&'b self, ke_pkid: &ntru::Pkid) -> Option<&'b ntru::PrivateKey<F>> {
-        self.opt_ntru.as_ref().map_or(None, |(own_ntru_sk, own_ntru_pk)| {
-            if own_ntru_pk.cmp_pkid(ntru_pkid) {
-                Some(own_ntru_sk)
-            } else {
-                None
-            }
-        })
+    fn lookup_ke_sk<'b>(&'b self, ke_pk: &x25519::PublicKey) -> Option<&'b x25519::StaticSecret> {
+        if (self.ke_kp.1).as_bytes() == ke_pk.as_bytes() {
+            Some(&self.ke_kp.0)
+        } else {
+            None
+        }
     }
 
     pub fn unwrap_keyload<'a, 'b>(
@@ -348,7 +324,7 @@ where
                 Link,
                 Self,
                 for<'c> fn(&'c Self, &psk::PskId) -> Option<&'c psk::Psk>,
-                for<'c> fn(&'c Self, &ntru::Pkid) -> Option<&'c ntru::PrivateKey<F>>,
+                for<'c> fn(&'c Self, &x25519::PublicKey) -> Option<&'c x25519::StaticSecret>,
             >,
         >,
     > {
@@ -359,7 +335,7 @@ where
             Link,
             Self,
             for<'c> fn(&'c Self, &psk::PskId) -> Option<&'c psk::Psk>,
-            for<'c> fn(&'c Self, &ntru::Pkid) -> Option<&'c ntru::PrivateKey<F>>,
+            for<'c> fn(&'c Self, &x25519::PublicKey) -> Option<&'c x25519::StaticSecret>,
         >::new(self, Self::lookup_psk, Self::lookup_ke_sk);
         preparsed.unwrap(&*self.store.borrow(), content)
     }
@@ -375,7 +351,6 @@ where
         // The resulting spongos state is joined into a protected message state.
         Ok(())
     }
-     */
 
     pub fn unwrap_tagged_packet<'a>(
         &self,
@@ -398,18 +373,13 @@ where
         Ok((content.public_payload, content.masked_payload))
     }
 
-    /*
     pub fn unwrap_subscribe<'a>(
         &self,
         preparsed: PreparsedMessage<'a, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, subscribe::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        if let Some((own_ke_sk, _)) = &self.opt_ke {
-            let content = subscribe::ContentUnwrap::new(own_ke_sk);
-            preparsed.unwrap(&*self.store.borrow(), content)
-        } else {
-            bail!("Author doesn't have X25519 key pair.")
-        }
+        let content = subscribe::ContentUnwrap::new(&self.ke_kp.0);
+        preparsed.unwrap(&*self.store.borrow(), content)
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
@@ -422,12 +392,13 @@ where
             .unwrap_subscribe(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
         //TODO: trust content.subscriber_ntru_pk and add to the list of subscribers only if trusted.
-        let subscriber_ntru_pk = content.subscriber_ntru_pk;
-        self.ke_pks.insert(subscriber_ntru_pk);
+        let subscriber_ke_pk = content.subscriber_ke_pk;
+        self.ke_pks.insert(x25519::PublicKeyWrap(subscriber_ke_pk));
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }
 
+    /*
     pub fn unwrap_unsubscribe<'a>(
         &self,
         preparsed: PreparsedMessage<'a, F, Link>,

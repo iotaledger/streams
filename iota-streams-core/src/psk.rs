@@ -3,20 +3,19 @@
 
 use std::{
     collections::HashMap,
-    hash,
 };
 
 /// Size of pre-shared key identifier.
-pub const PSKID_SIZE: usize = 81;
+pub const PSKID_SIZE: usize = 16;
 
 /// Size of pre-shared key.
-pub const PSK_SIZE: usize = 243;
+pub const PSK_SIZE: usize = 32;
 
-/// Type of pre-shared key identifiers: `tryte pskid[27]`.
-//TODO: Introduce NTrytes type in core and make a newtype. Same for Psk, NtruPkid.
+/// Type of pre-shared key identifiers: `byte pskid[16]`.
+//TODO: Introduce NBytes type in core and make a newtype. Same for Psk.
 pub type PskId = Vec<u8>;
 
-/// Type of pre-shared keys: `tryte pskid[81]`.
+/// Type of pre-shared keys: `byte psk[32]`.
 pub type Psk = Vec<u8>;
 
 /// Container for pre-shared keys.

@@ -14,8 +14,7 @@ use anyhow::{
     Result,
 };
 use iota_streams_app::message::HasLink;
-use iota_streams_core::tbits::Tbits;
-use iota_streams_protobuf3::types::Trytes;
+use iota_streams_protobuf3::types::*;
 use std::str::FromStr;
 
 fn example<T: Transport>(transport: &mut T) -> Result<()>
@@ -23,14 +22,15 @@ where
     T::SendOptions: Default,
     T::RecvOptions: Default,
 {
-    let mut author = Author::new("AUTHOR9SEED", 2, true);
+    println!("Creating Author");
+    let mut author = Author::new("AUTHOR9SEED");
     println!("Channel address = {}", author.channel_address());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", false);
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", true);
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
 
-    let public_payload = Trytes(Tbits::from_str("PUBLICPAYLOAD").unwrap());
-    let masked_payload = Trytes(Tbits::from_str("MASKEDPAYLOAD").unwrap());
+    let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
+    let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
 
     println!("announce");
     let (announcement_address, announcement_tag) = {
@@ -44,19 +44,23 @@ where
     {
         let msg = transport.recv_message(&announcement_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::announce::TYPE));
+        ensure!(preparsed.check_content_type(message::announce::TYPE), "bad message type");
 
         subscriberA.unwrap_announcement(preparsed.clone())?;
-        ensure!(author.channel_address() == subscriberA.channel_address().unwrap());
+        ensure!(author.channel_address() == subscriberA.channel_address().unwrap(), "bad channel address");
         subscriberB.unwrap_announcement(preparsed)?;
-        ensure!(subscriberA.channel_address() == subscriberB.channel_address());
+        ensure!(subscriberA.channel_address() == subscriberB.channel_address(), "bad channel address");
         ensure!(subscriberA
             .channel_address()
-            .map_or(false, |appinst| appinst == announcement_link.base()));
+            .map_or(false, |appinst| appinst == announcement_link.base()),
+            "bad announcement address");
+        /*
         ensure!(subscriberA
-            .author_mss_public_key()
+            .author_sig_public_key()
             .as_ref()
-            .map_or(false, |pk| pk.tbits() == announcement_link.base().tbits()));
+            .map_or(false, |pk| pk.bytes() == announcement_link.base().bytes()),
+            "bad announcement address");
+         */
     }
 
     println!("sign packet");
@@ -71,10 +75,10 @@ where
     {
         let msg = transport.recv_message(&signed_packet_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::signed_packet::TYPE));
+        ensure!(preparsed.check_content_type(message::signed_packet::TYPE), "bad message type");
         let (unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
-        ensure!(public_payload == unwrapped_public);
-        ensure!(masked_payload == unwrapped_masked);
+        ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
+        ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
     }
 
     println!("subscribe");
@@ -88,7 +92,7 @@ where
     {
         let msg = transport.recv_message(&subscribeB_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::subscribe::TYPE));
+        ensure!(preparsed.check_content_type(message::subscribe::TYPE), "bad message type");
         author.unwrap_subscribe(preparsed)?;
     }
 
@@ -103,9 +107,9 @@ where
     {
         let msg = transport.recv_message(&keyload_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::keyload::TYPE));
+        ensure!(preparsed.check_content_type(message::keyload::TYPE), "invalid message type");
         let resultA = subscriberA.unwrap_keyload(preparsed.clone());
-        ensure!(resultA.is_err());
+        ensure!(resultA.is_err(), "failed to unwrap keyload");
         subscriberB.unwrap_keyload(preparsed)?;
     }
 
@@ -120,36 +124,22 @@ where
     {
         let msg = transport.recv_message(&tagged_packet_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::tagged_packet::TYPE));
+        ensure!(preparsed.check_content_type(message::tagged_packet::TYPE), "bad message type");
         let resultA = subscriberA.unwrap_tagged_packet(preparsed.clone());
-        ensure!(resultA.is_err());
+        ensure!(resultA.is_err(), "failed to unwrap tagged packet");
         let (unwrapped_public, unwrapped_masked) = subscriberB.unwrap_tagged_packet(preparsed)?;
-        ensure!(public_payload == unwrapped_public);
-        ensure!(masked_payload == unwrapped_masked);
+        ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
+        ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
     }
 
     {
         let keyload = transport.recv_message(&keyload_link)?;
         let preparsed = keyload.parse_header()?;
-        ensure!(preparsed.check_content_type(message::keyload::TYPE));
+        ensure!(preparsed.check_content_type(message::keyload::TYPE), "bad message type");
         subscriberB.unwrap_keyload(preparsed)?;
     }
 
-    println!("change key");
-    let change_key_link = {
-        let msg = author.change_key(&announcement_link)?;
-        println!("  {}", msg);
-        transport.send_message(&msg)?;
-        msg.link
-    };
-
-    {
-        let msg = transport.recv_message(&change_key_link)?;
-        let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::change_key::TYPE));
-        subscriberB.unwrap_change_key(preparsed)?;
-    }
-
+    /*
     println!("unsubscribe");
     let unsubscribe_link = {
         let msg = subscriberB.unsubscribe(&subscribeB_link)?;
@@ -164,6 +154,7 @@ where
         ensure!(preparsed.check_content_type(message::unsubscribe::TYPE));
         author.unwrap_unsubscribe(preparsed)?;
     }
+     */
 
     Ok(())
 }

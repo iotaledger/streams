@@ -94,7 +94,7 @@ impl<F> Absorb<NBytes> for Context<F>
 /// MSS public key has fixed size.
 impl<'a, F> Absorb<&'a ed25519::PublicKey> for Context<F>
 {
-    fn absorb(&mut self, pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
+    fn absorb(&mut self, _pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
         self.size += ed25519::PUBLIC_KEY_LENGTH;
         Ok(self)
     }

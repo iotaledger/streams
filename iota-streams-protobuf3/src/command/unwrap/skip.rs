@@ -41,7 +41,7 @@ impl<F, IS: io::IStream> Unwrap for SkipContext<F, IS>
     }
     fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
         let slice = self.ctx.stream.try_advance(bytes.len())?;
-        //TODO: slice.copy(&bytes);
+        bytes.copy_from_slice(slice);
         Ok(self)
     }
 }

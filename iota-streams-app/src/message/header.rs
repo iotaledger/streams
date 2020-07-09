@@ -52,7 +52,7 @@ use anyhow::{
     ensure,
     Result,
 };
-use std::str::FromStr;
+//use std::str::FromStr;
 
 use iota_streams_core::{
     sponge::prp::PRP,
@@ -87,7 +87,7 @@ where
 
 impl<Link> Header<Link>
 {
-    pub fn new_with_type(link: Link, content_type: &str) -> Self {
+    pub fn new_with_type(link: Link, _content_type: &str) -> Self {
         Self {
             version: STREAMS_1_VER,
             link: link,

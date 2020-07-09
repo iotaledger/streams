@@ -42,11 +42,23 @@ use crate::message::*;
 /// mutable state and can derive link pseudorandomly.
 pub struct SubscriberT<F, Link, Store, LinkGen>
 {
-    /// PRNG used for NTRU, Spongos key generation, etc.
+    /// PRNG used for Spongos key generation, etc.
     prng: prng::Prng<F>,
+
+    /// Own Ed25519 private key.
+    pub(crate) sig_kp: ed25519::Keypair,
+
+    /// Own x25519 key pair corresponding to Ed25519 keypair.
+    pub(crate) ke_kp: (x25519::StaticSecret, x25519::PublicKey),
 
     /// Own optional pre-shared key.
     pub(crate) opt_psk: Option<(psk::PskId, psk::Psk)>,
+
+    /// Author's Ed25519 public key.
+    pub(crate) author_sig_pk: Option<ed25519::PublicKey>,
+
+    /// Author's x25519 public key corresponding to Ed25519 keypair.
+    pub(crate) author_ke_pk: Option<x25519::PublicKeyWrap>,
 
     /// Address of the Announce message or nothing if Subscriber is not registered to
     /// the channel instance.
@@ -61,44 +73,36 @@ pub struct SubscriberT<F, Link, Store, LinkGen>
 
 impl<F, Link, Store, LinkGen> SubscriberT<F, Link, Store, LinkGen>
 where
-    F: PRP + Clone + Default,
+    F: PRP,
     Link: HasLink + AbsorbExternalFallback<F> + Default + Clone + Eq,
     <Link as HasLink>::Base: Eq + Debug,
     <Link as HasLink>::Rel: Eq + Debug + Default + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     LinkGen: ChannelLinkGenerator<Link>,
 {
-    /// Create a new Subscriber and optionally generate NTRU key pair.
+    /// Create a new Subscriber.
     pub fn gen(
         store: Store,
         link_gen: LinkGen,
         prng: prng::Prng<F>,
-        nonce: &[u8],
+        nonce: Vec<u8>,
     ) -> Self {
-        /*
-        let opt_ntru = if with_ntru {
-            //TODO: Derive ntru nonce.
-            let ntru_nonce = &Tbits::::from_str("NTRUNONCE").unwrap() + nonce;
-            let key_pair = ntru::gen_keypair::<F, P::PrngG>(&prng, ntru_nonce.slice());
-            Some(key_pair)
-        } else {
-            None
-        };
+        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
+        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
         Self {
             prng: prng,
-            opt_ntru: opt_ntru,
+            sig_kp,
+            ke_kp,
             opt_psk: None,
 
             appinst: None,
-            author_mss_pk: None,
-            author_ntru_pk: None,
+            author_sig_pk: None,
+            author_ke_pk: None,
 
             store: RefCell::new(store),
             link_gen: link_gen,
         }
-         */
-        panic!("not implemented");
     }
 
     fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -110,17 +114,16 @@ where
         Ok(())
     }
 
-    /*
-    fn do_prepare_keyload<'a, Psks, NtruPks>(
+    fn do_prepare_keyload<'a, Psks, KePks>(
         &'a self,
         header: Header<Link>,
         link_to: &'a <Link as HasLink>::Rel,
         psks: Psks,
-        ntru_pks: NtruPks,
-    ) -> Result<PreparedMessage<'a, F, Link, Store, keyload::ContentWrap<'a, F, P::PrngG, Link, Psks, NtruPks>>>
+        ke_pks: KePks,
+    ) -> Result<PreparedMessage<'a, F, Link, Store, keyload::ContentWrap<'a, F, Link, Psks, KePks>>>
     where
         Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
-        NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a, F>>,
+        KePks: Clone + ExactSizeIterator<Item = x25519::IPk<'a>>,
     {
         let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
         let key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
@@ -130,11 +133,12 @@ where
             key: key,
             psks: psks,
             prng: &self.prng,
-            ntru_pks: ntru_pks,
+            ke_pks: ke_pks,
             _phantom: std::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
+
 
     pub fn prepare_keyload<'a>(
         &'a mut self,
@@ -150,7 +154,7 @@ where
                 F,
                 Link,
                 std::option::IntoIter<psk::IPsk<'a>>,
-                std::option::IntoIter<ntru::INtruPk<'a, F>>,
+                std::option::IntoIter<x25519::IPk<'a>>,
             >,
         >,
     > {
@@ -159,7 +163,7 @@ where
             header,
             link_to,
             self.opt_psk.as_ref().map(|(pskid, psk)| (pskid, psk)).into_iter(),
-            self.author_ntru_pk.as_ref().into_iter(),
+            self.author_ke_pk.as_ref().into_iter(),
         )
     }
 
@@ -173,7 +177,6 @@ where
         let wrapped = self.prepare_keyload(link_to)?.wrap()?;
         wrapped.commit(self.store.borrow_mut(), info)
     }
-     */
 
     /// Prepare TaggedPacket message.
     pub fn prepare_tagged_packet<'a>(
@@ -207,36 +210,28 @@ where
         wrapped.commit(self.store.borrow_mut(), info)
     }
 
-    /*
     /// Prepare Subscribe message.
     pub fn prepare_subscribe<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<'a, F, Link, Store, subscribe::ContentWrap<'a, F, Link>>> {
-        /*
-        if let Some(author_ntru_pk) = &self.author_ntru_pk {
-            if let Some((_, own_ntru_pk)) = &self.opt_ntru {
-                let header = self.link_gen.header_from(link_to, subscribe::TYPE);
-                let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
-                let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
-                let content = subscribe::ContentWrap {
-                    link: link_to,
-                    nonce,
-                    unsubscribe_key,
-                    subscriber_ntru_pk: own_ntru_pk,
-                    author_ntru_pk: author_ntru_pk,
-                    prng: &self.prng,
-                    _phantom: std::marker::PhantomData,
-                };
-                Ok(PreparedMessage::new(self.store.borrow(), header, content))
-            } else {
-                bail!("Subscriber doesn't have own NTRU key pair.");
-            }
+        if let Some(author_ke_pk) = &self.author_ke_pk {
+            let header = self.link_gen.header_from(link_to, subscribe::TYPE);
+            let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
+            let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
+            let content = subscribe::ContentWrap {
+                link: link_to,
+                nonce,
+                unsubscribe_key,
+                subscriber_ke_pk: &self.ke_kp.1,
+                author_ke_pk: &author_ke_pk.0,
+                prng: &self.prng,
+                _phantom: std::marker::PhantomData,
+            };
+            Ok(PreparedMessage::new(self.store.borrow(), header, content))
         } else {
-            bail!("Subscriber doesn't have channel Author's NTRU public key.");
+            bail!("Subscriber doesn't have channel Author's x25519 public key.");
         }
-         */
-        panic!("not implemented");
     }
 
     /// Subscribe to the channel.
@@ -249,6 +244,7 @@ where
         wrapped.commit(self.store.borrow_mut(), info)
     }
 
+    /*
     /// Prepare Unsubscribe message.
     pub fn prepare_unsubscribe<'a>(
         &'a mut self,
@@ -317,7 +313,6 @@ where
         panic!("not implemented");
     }
 
-    /*
     fn lookup_psk<'b>(&'b self, pskid: &psk::PskId) -> Option<&'b psk::Psk> {
         self.opt_psk.as_ref().map_or(
             None,
@@ -331,14 +326,12 @@ where
         )
     }
 
-    fn lookup_ntru_sk<'b>(&'b self, ntru_pkid: &ntru::Pkid) -> Option<&'b ntru::PrivateKey<F>> {
-        self.opt_ntru.as_ref().map_or(None, |(own_ntru_sk, own_ntru_pk)| {
-            if own_ntru_pk.cmp_pkid(ntru_pkid) {
-                Some(own_ntru_sk)
-            } else {
-                None
-            }
-        })
+    fn lookup_ke_sk<'b>(&'b self, ke_pk: &x25519::PublicKey) -> Option<&'b x25519::StaticSecret> {
+        if (self.ke_kp.1).as_bytes() == ke_pk.as_bytes() {
+            Some(&self.ke_kp.0)
+        } else {
+            None
+        }
     }
 
     pub fn unwrap_keyload<'a, 'b>(
@@ -354,7 +347,7 @@ where
                 Link,
                 Self,
                 for<'c> fn(&'c Self, &psk::PskId) -> Option<&'c psk::Psk>,
-                for<'c> fn(&'c Self, &ntru::Pkid) -> Option<&'c ntru::PrivateKey<F>>,
+                for<'c> fn(&'c Self, &x25519::PublicKey) -> Option<&'c x25519::StaticSecret>,
             >,
         >,
     > {
@@ -365,8 +358,8 @@ where
             Link,
             Self,
             for<'c> fn(&'c Self, &psk::PskId) -> Option<&'c psk::Psk>,
-            for<'c> fn(&'c Self, &ntru::Pkid) -> Option<&'c ntru::PrivateKey<F>>,
-        >::new(self, Self::lookup_psk, Self::lookup_ntru_sk);
+            for<'c> fn(&'c Self, &x25519::PublicKey) -> Option<&'c x25519::StaticSecret>,
+        >::new(self, Self::lookup_psk, Self::lookup_ke_sk);
         preparsed.unwrap(&*self.store.borrow(), content)
     }
 
@@ -381,7 +374,6 @@ where
         // The resulting spongos state is joined into a protected message state.
         Ok(())
     }
-     */
 
     pub fn unwrap_signed_packet<'a>(
         &self,

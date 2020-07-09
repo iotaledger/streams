@@ -41,7 +41,7 @@ where
     F: PRP,
 {
     fn wrap_u8(&mut self, u: u8) -> Result<&mut Self> {
-        let mut slice = self.ctx.stream.try_advance(1)?;
+        let slice = self.ctx.stream.try_advance(1)?;
         slice[0] = u;
         self.ctx.spongos.encrypt_mut(slice);
         Ok(self)
@@ -124,8 +124,7 @@ where
     F: PRP,
 {
     fn mask(&mut self, pk: &'a x25519::PublicKey) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(wrap_mask_bytes(self.as_mut(), &pk)?.as_mut())
+        Ok(wrap_mask_bytes(self.as_mut(), &pk.as_bytes()[..])?.as_mut())
     }
 }
 
@@ -134,7 +133,6 @@ where
     F: PRP,
 {
     fn mask(&mut self, pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(wrap_mask_bytes(self.as_mut(), &pk)?.as_mut())
+        Ok(wrap_mask_bytes(self.as_mut(), &pk.to_bytes()[..])?.as_mut())
     }
 }

@@ -9,10 +9,9 @@ use iota_streams_app::message::HasLink as _;
 
 use iota_streams_core::{
     prng,
-    tbits::Tbits,
 };
 
-type SubscriberImp = SubscriberT<DefaultTW, DefaultF, DefaultP, Address, Store, LinkGen>;
+type SubscriberImp = SubscriberT<DefaultF, Address, Store, LinkGen>;
 
 /// Subscriber type.
 pub struct Subscriber {
@@ -21,15 +20,14 @@ pub struct Subscriber {
 
 impl Subscriber {
     /// Create a new Subscriber instance, optionally generate NTRU keypair.
-    pub fn new(seed: &str, with_ntru: bool) -> Self {
-        let nonce = Tbits::from_str("TANGLESUBSCRIBER").unwrap();
+    pub fn new(seed: &str) -> Self {
+        let nonce = "TANGLESUBSCRIBERNONCE".as_bytes().to_vec();
         Self {
             imp: SubscriberT::gen(
                 Store::default(),
                 LinkGen::default(),
                 prng::dbg_init_str(seed),
-                &nonce,
-                with_ntru,
+                nonce,
             ),
         }
     }
@@ -42,8 +40,8 @@ impl Subscriber {
     /// Just clear inner state except for own keys and link store.
     pub fn unregister(&mut self) {
         self.imp.appinst = None;
-        self.imp.author_mss_pk = None;
-        self.imp.author_ntru_pk = None;
+        self.imp.author_sig_pk = None;
+        self.imp.author_ke_pk = None;
     }
 
     /// Return Channel app instance.
@@ -51,22 +49,22 @@ impl Subscriber {
         self.imp.appinst.as_ref().map(|tangle_address| &tangle_address.appinst)
     }
 
-    /// Return Author's MSS public key.
-    pub fn author_mss_public_key(&self) -> &Option<MssPublicKey> {
-        &self.imp.author_mss_pk
+    /// Return Author's Ed25519 public key.
+    pub fn author_sig_public_key(&self) -> &Option<ed25519::PublicKey> {
+        &self.imp.author_sig_pk
     }
 
     /// Return Author's NTRU public key.
-    pub fn author_ntru_public_key(&self) -> &Option<NtruPublicKey> {
-        &self.imp.author_ntru_pk
+    pub fn author_ke_public_key(&self) -> &Option<x25519::PublicKeyWrap> {
+        &self.imp.author_ke_pk
     }
 
     /// Create tagged packet.
     pub fn tag_packet(
         &mut self,
         link_to: &Address,
-        public_payload: &Trytes,
-        masked_payload: &Trytes,
+        public_payload: &Bytes,
+        masked_payload: &Bytes,
     ) -> Result<Message> {
         self.imp
             .tag_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::TaggedPacket)
@@ -78,11 +76,13 @@ impl Subscriber {
         self.imp.subscribe(link_to.rel(), MsgInfo::Subscribe)
     }
 
+    /*
     /// Unsubscribe from the Channel app instance.
     pub fn unsubscribe(&mut self, link_to: &Address) -> Result<Message> {
         //TODO: lookup link_to Subscribe message.
         self.imp.unsubscribe(link_to.rel(), MsgInfo::Unsubscribe)
     }
+     */
 
     /// Handle Channel app instance announcement.
     pub fn unwrap_announcement<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<()> {
@@ -93,12 +93,6 @@ impl Subscriber {
         Ok(())
     }
 
-    /// Handle key change.
-    pub fn unwrap_change_key<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<()> {
-        self.imp.handle_change_key(preparsed, MsgInfo::ChangeKey)?;
-        Ok(())
-    }
-
     /// Handle keyload.
     pub fn unwrap_keyload<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<()> {
         self.imp.handle_keyload(preparsed, MsgInfo::Keyload)?;
@@ -106,12 +100,12 @@ impl Subscriber {
     }
 
     /// Unwrap and verify signed packet.
-    pub fn unwrap_signed_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<(Trytes, Trytes)> {
+    pub fn unwrap_signed_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<(Bytes, Bytes)> {
         self.imp.handle_signed_packet(preparsed, MsgInfo::SignedPacket)
     }
 
     /// Unwrap and verify tagged packet.
-    pub fn unwrap_tagged_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<(Trytes, Trytes)> {
+    pub fn unwrap_tagged_packet<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<(Bytes, Bytes)> {
         self.imp.handle_tagged_packet(preparsed, MsgInfo::TaggedPacket)
     }
 }

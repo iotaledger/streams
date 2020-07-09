@@ -9,53 +9,41 @@ use iota_streams_app::{
 };
 use iota_streams_core::{
     psk,
-    sponge::prp::troika::Troika,
-    tbits::trinary::Trit,
 };
-use iota_streams_core_mss::signature::mss;
-use iota_streams_core_ntru::key_encapsulation::ntru;
+use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
+use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     types as pb3_types,
     types::DefaultLinkStore,
 };
 
-/// Default tbit word encoding.
-pub type DefaultTW = Trit;
-
 /// Default spongos PRP.
-pub type DefaultF = Troika;
-
-/// Default MSS parameters.
-pub type DefaultP = mss::troika::ParametersMtTraversal<DefaultTW>;
+pub type DefaultF = KeccakF1600;
 
 /// Default Tbit & PSK & MSS & NTRU types.
-pub type Trytes = pb3_types::Trytes<DefaultTW>;
-pub type PskIds = psk::PskIds<DefaultTW>;
-pub type MssPublicKey = mss::PublicKey<DefaultTW, DefaultP>;
-pub type MssPrivateKey = mss::PrivateKey<DefaultTW, DefaultP>;
-pub type NtruPublicKey = ntru::PublicKey<DefaultTW, DefaultF>;
-pub type NtruPrivateKey = ntru::PrivateKey<DefaultTW, DefaultF>;
-pub type NtruPkids = ntru::NtruPkids<DefaultTW>;
+pub type Bytes = pb3_types::Bytes;
+pub type PskIds = psk::PskIds;
 
 /// Link type.
-pub type Address = TangleAddress<DefaultTW>;
+pub type Address = TangleAddress;
 /// Channel address.
-pub type ChannelAddress = AppInst<DefaultTW>;
+pub type ChannelAddress = AppInst;
 
 /// Tbinary encoded message type.
-pub type Message = message::TbinaryMessage<DefaultTW, DefaultF, Address>;
+pub type Message = message::TbinaryMessage<DefaultF, Address>;
 /// Message type with parsed header.
-pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultTW, DefaultF, Address>;
+pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
 /// Link Generator specifies algorithm for generating new message addressed.
-pub type LinkGen = DefaultTangleLinkGenerator<DefaultTW, DefaultF>;
+pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
 
 /// Test Transport.
-pub type BucketTransport = transport::BucketTransport<DefaultTW, DefaultF, Address>;
+pub type BucketTransport = transport::BucketTransport<DefaultF, Address>;
 
-pub trait Transport: transport::Transport<DefaultTW, DefaultF, Address> {}
+pub trait Transport: transport::Transport<DefaultF, Address> {}
 
-impl<T> Transport for T where T: transport::Transport<DefaultTW, DefaultF, Address> {}
+impl<T> Transport for T where T: transport::Transport<DefaultF, Address> {}
 
 /// Message associated info, just message type indicator.
 #[derive(Copy, Clone)]
@@ -70,7 +58,7 @@ pub enum MsgInfo {
 }
 
 /// Link Store.
-pub type Store = DefaultLinkStore<DefaultTW, DefaultF, MsgId<DefaultTW>, MsgInfo>;
+pub type Store = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;
 
 mod author;
 mod subscriber;

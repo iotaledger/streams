@@ -4,36 +4,26 @@ use super::{
     prp::PRP,
     spongos::*,
 };
-use crate::tbits::{
-    word::SpongosTbitWord,
-    Tbits,
-};
 
-#[cfg(test)]
-use super::prp::troika::Troika;
-#[cfg(test)]
-use crate::tbits::trinary::Trit;
-
-fn tbits_spongosn<TW, F>(n: usize)
+fn bytes_spongosn<F>(n: usize)
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
+    F: PRP + Default,
 {
-    let mut rng = Spongos::<TW, F>::init();
-    rng.absorb_tbits(&Tbits::zero(n));
+    let mut rng = Spongos::<F>::init();
+    rng.absorb_bytes(&vec![0; n]);
     rng.commit();
-    let k = rng.squeeze_tbits(n);
-    let p = rng.squeeze_tbits(n);
-    let x = rng.squeeze_tbits(n);
-    let y: Tbits<TW>;
-    let mut z: Tbits<TW>;
-    let t: Tbits<TW>;
-    let u: Tbits<TW>;
-    let t2: Tbits<TW>;
-    let t3: Tbits<TW>;
+    let k = rng.squeeze_bytes(n);
+    let p = rng.squeeze_bytes(n);
+    let x = rng.squeeze_bytes(n);
+    let y: Vec<u8>;
+    let mut z: Vec<u8>;
+    let t: Vec<u8>;
+    let u: Vec<u8>;
+    let t2: Vec<u8>;
+    let t3: Vec<u8>;
 
     {
-        let mut s = Spongos::<TW, F>::init();
+        let mut s = Spongos::<F>::init();
         s.absorb_tbits(&k);
         s.absorb_tbits(&p);
         s.commit();
@@ -45,7 +35,7 @@ where
     }
 
     {
-        let mut s = Spongos::<TW, F>::init();
+        let mut s = Spongos::<F>::init();
         s.absorb_tbits(&k);
         s.absorb_tbits(&p);
         s.commit();
@@ -61,10 +51,9 @@ where
     assert!(t == u, "{}: MAC(x) != MAC(D(E(x)))", n);
 }
 
-fn slice_spongosn<TW, F>(n: usize)
+fn slice_spongosn<F>(n: usize)
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
+    F: PRP + Default,
 {
     let mut k = Tbits::zero(n);
     let mut p = Tbits::zero(n);
@@ -75,7 +64,7 @@ where
     let mut u = Tbits::zero(n);
     let mut t23 = Tbits::zero(n + n);
 
-    let mut s: Spongos<TW, F>;
+    let mut s: Spongos<F>;
     {
         s = Spongos::init();
         s.absorb(k.slice());
@@ -113,55 +102,51 @@ where
     assert!(t == u, "{}: MAC(x) != MAC(D(E(x)))", n);
 }
 
-pub fn tbits_with_size_boundary_cases<TW, F>()
+pub fn tbits_with_size_boundary_cases<F>()
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
+    F: PRP + Default,
 {
     for i in 1..100 {
-        tbits_spongosn::<TW, F>(i);
+        tbits_spongosn::<F>(i);
     }
-    tbits_spongosn::<TW, F>(F::RATE / 2 - 1);
-    tbits_spongosn::<TW, F>(F::RATE / 2);
-    tbits_spongosn::<TW, F>(F::RATE / 2 + 1);
-    tbits_spongosn::<TW, F>(F::RATE - 1);
-    tbits_spongosn::<TW, F>(F::RATE);
-    tbits_spongosn::<TW, F>(F::RATE + 1);
-    tbits_spongosn::<TW, F>(F::RATE * 2 - 1);
-    tbits_spongosn::<TW, F>(F::RATE * 2);
-    tbits_spongosn::<TW, F>(F::RATE * 2 + 1);
-    tbits_spongosn::<TW, F>(F::RATE * 5);
+    tbits_spongosn::<F>(F::RATE / 2 - 1);
+    tbits_spongosn::<F>(F::RATE / 2);
+    tbits_spongosn::<F>(F::RATE / 2 + 1);
+    tbits_spongosn::<F>(F::RATE - 1);
+    tbits_spongosn::<F>(F::RATE);
+    tbits_spongosn::<F>(F::RATE + 1);
+    tbits_spongosn::<F>(F::RATE * 2 - 1);
+    tbits_spongosn::<F>(F::RATE * 2);
+    tbits_spongosn::<F>(F::RATE * 2 + 1);
+    tbits_spongosn::<F>(F::RATE * 5);
 }
 
-pub fn slices_with_size_boundary_cases<TW, F>()
+pub fn slices_with_size_boundary_cases<F>()
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
+    F: PRP + Default,
 {
     for i in 1..100 {
-        slice_spongosn::<TW, F>(i);
+        slice_spongosn::<F>(i);
     }
-    slice_spongosn::<TW, F>(F::RATE / 2 - 1);
-    slice_spongosn::<TW, F>(F::RATE / 2);
-    slice_spongosn::<TW, F>(F::RATE / 2 + 1);
-    slice_spongosn::<TW, F>(F::RATE - 1);
-    slice_spongosn::<TW, F>(F::RATE);
-    slice_spongosn::<TW, F>(F::RATE + 1);
-    slice_spongosn::<TW, F>(F::RATE * 2 - 1);
-    slice_spongosn::<TW, F>(F::RATE * 2);
-    slice_spongosn::<TW, F>(F::RATE * 2 + 1);
-    slice_spongosn::<TW, F>(F::RATE * 5);
+    slice_spongosn::<F>(F::RATE / 2 - 1);
+    slice_spongosn::<F>(F::RATE / 2);
+    slice_spongosn::<F>(F::RATE / 2 + 1);
+    slice_spongosn::<F>(F::RATE - 1);
+    slice_spongosn::<F>(F::RATE);
+    slice_spongosn::<F>(F::RATE + 1);
+    slice_spongosn::<F>(F::RATE * 2 - 1);
+    slice_spongosn::<F>(F::RATE * 2);
+    slice_spongosn::<F>(F::RATE * 2 + 1);
+    slice_spongosn::<F>(F::RATE * 5);
 }
 
-pub fn encrypt_decrypt_n<TW, F>(n: usize)
+pub fn encrypt_decrypt_n<F>(n: usize)
 where
-    TW: SpongosTbitWord,
-    TW::Tbit: fmt::Display,
-    F: PRP<TW> + Default + Clone,
+    F: PRP + Default + Clone,
 {
-    let mut s = Spongos::<TW, F>::init();
-    //s.absorb_tbits(&Tbits::cycle_str(Spongos::<TW, F>::KEY_SIZE, "KEY"));
-    s.absorb_tbits(&Tbits::zero(Spongos::<TW, F>::KEY_SIZE));
+    let mut s = Spongos::<F>::init();
+    //s.absorb_tbits(&Tbits::cycle_str(Spongos::<F>::KEY_SIZE, "KEY"));
+    s.absorb_tbits(&Tbits::zero(Spongos::<F>::KEY_SIZE));
     s.commit();
 
     //let x = Tbits::cycle_str(n, "TEXT");

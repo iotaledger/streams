@@ -1,15 +1,10 @@
 use super::prp::keccak::{
-    KeccakF1600B,
-    KeccakF1600T,
+    KeccakF1600,
 };
 use iota_streams_core::{
     sponge::{
         prp::PRP,
         tests::*,
-    },
-    tbits::{
-        binary::Byte,
-        trinary::Trit,
     },
 };
 

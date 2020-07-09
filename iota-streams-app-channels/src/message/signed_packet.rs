@@ -53,7 +53,7 @@ where
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) public_payload: &'a Bytes,
     pub(crate) masked_payload: &'a Bytes,
-    pub(crate) sig_sk: &'a ed25519::SecretKey,
+    pub(crate) sig_kp: &'a ed25519::Keypair,
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
@@ -69,7 +69,7 @@ where
         ctx.join(&store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            //.edsig(self.sig_sk, MssHashSig)?
+            .ed25519(self.sig_kp, HashSig)?
         ;
         //TODO: Is both public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
@@ -83,7 +83,7 @@ where
         ctx.join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            //.edsig(self.sig_sk, MssHashSig)?
+            .ed25519(self.sig_kp, HashSig)?
         ;
         Ok(ctx)
     }

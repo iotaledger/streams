@@ -50,7 +50,7 @@ where
     }
     fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
         let slice = self.ctx.stream.try_advance(bytes.len())?;
-        //slice.copy(&bytes);
+        bytes.copy_from_slice(slice);
         self.ctx.spongos.absorb(bytes);
         Ok(self)
     }
@@ -127,7 +127,7 @@ impl<'a, F, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context<F, I
 where
     F: PRP,
 {
-    fn absorb(&mut self, pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
+    fn absorb(&mut self, _pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
         panic!("not implemented");
         //Ok(unwrap_absorb_bytes(self.as_mut(), &pk)?.as_mut())
     }
@@ -137,7 +137,7 @@ impl<'a, F, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<F, IS
 where
     F: PRP,
 {
-    fn absorb(&mut self, pk: &'a mut x25519::PublicKey) -> Result<&mut Self> {
+    fn absorb(&mut self, _pk: &'a mut x25519::PublicKey) -> Result<&mut Self> {
         panic!("not implemented");
         /*
         unwrap_absorb_bytes(self.as_mut(), &mut pk)?;

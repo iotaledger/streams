@@ -1,12 +1,9 @@
 use anyhow::{
-    ensure,
     Result,
 };
 
 use crate::types::{
     Size,
-    Uint8,
-    SIZE_MAX,
 };
 
 /// Helper trait for unwrapping (decoding/absorbing) uint8s.
@@ -16,7 +13,7 @@ pub(crate) trait Unwrap {
 }
 
 /// Helper function for unwrapping (decoding/absorbing) size values.
-pub(crate) fn unwrap_size<'a, Ctx: Unwrap>(ctx: &'a mut Ctx, size: &mut Size) -> Result<&'a mut Ctx> where
+pub(crate) fn unwrap_size<'a, Ctx: Unwrap>(_ctx: &'a mut Ctx, _size: &mut Size) -> Result<&'a mut Ctx> where
 {
     panic!("not implemented");
 

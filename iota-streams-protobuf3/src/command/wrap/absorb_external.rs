@@ -131,8 +131,7 @@ where
     F: PRP,
 {
     fn absorb(&mut self, pk: External<&'a ed25519::PublicKey>) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(wrap_absorb_external_bytes(self.as_mut(), &pk)?.as_mut())
+        Ok(wrap_absorb_external_bytes(self.as_mut(), &(pk.0).as_bytes()[..])?.as_mut())
     }
 }
 
@@ -141,8 +140,7 @@ where
     F: PRP,
 {
     fn absorb(&mut self, pk: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(wrap_absorb_external_bytes(self.as_mut(), &pk)?.as_mut())
+        Ok(wrap_absorb_external_bytes(self.as_mut(), &(pk.0).as_bytes()[..])?.as_mut())
     }
 }
 

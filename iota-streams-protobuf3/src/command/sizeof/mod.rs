@@ -34,10 +34,8 @@ mod skip;
 mod squeeze;
 mod squeeze_external;
 
-/*
 mod ed25519;
 mod x25519;
- */
 
 pub use absorb::*;
 pub use absorb_external::*;
@@ -51,7 +49,5 @@ pub use skip::*;
 pub use squeeze::*;
 pub use squeeze_external::*;
 
-/*
 pub use ed25519::*;
 pub use x25519::*;
- */

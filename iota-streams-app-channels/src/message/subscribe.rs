@@ -16,11 +16,11 @@
 //! ```pb3
 //! message Subscribe {
 //!     join link msgid;
-//!     ntrukem(key) tryte unsubscribe_key[3072];
+//!     ntrukem(key) byte unsubscribe_key[3072];
 //!     commit;
-//!     mask tryte ntrupk[3072];
+//!     mask byte ntrupk[3072];
 //!     commit;
-//!     squeeze tryte mac[27];
+//!     squeeze byte mac[27];
 //! }
 //! ```
 //!
@@ -49,15 +49,8 @@ use iota_streams_core::{
         prp::PRP,
         spongos,
     },
-    tbits::{
-        trinary,
-        word::{
-            BasicTbitWord,
-            SpongosTbitWord,
-        },
-    },
 };
-use iota_streams_core_ntru::key_encapsulation::ntru;
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -67,97 +60,93 @@ use iota_streams_protobuf3::{
 /// Type of `Subscribe` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9SUBSCRIBE";
 
-pub struct ContentWrap<'a, TW, F, G, Link: HasLink> {
+pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub nonce: NTrytes<TW>,
-    pub unsubscribe_key: NTrytes<TW>,
-    pub(crate) subscriber_ntru_pk: &'a ntru::PublicKey<TW, F>,
-    pub(crate) author_ntru_pk: &'a ntru::PublicKey<TW, F>,
-    pub(crate) prng: &'a prng::Prng<TW, G>,
+    pub nonce: NBytes,
+    pub unsubscribe_key: NBytes,
+    pub(crate) subscriber_ke_pk: &'a x25519::PublicKey,
+    pub(crate) author_ke_pk: &'a x25519::PublicKey,
+    pub(crate) prng: &'a prng::Prng<F>,
     pub(crate) _phantom: std::marker::PhantomData<Link>,
 }
 
-impl<'a, TW, F, G, Link, Store> message::ContentWrap<TW, F, Store> for ContentWrap<'a, TW, F, G, Link>
+impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
-    G: PRP<TW> + Clone + Default,
+    F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
-    Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Result<&'c mut sizeof::Context<TW, F>> {
-        let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
-        let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
+        let mac = Mac(spongos::Spongos::<F>::MAC_SIZE);
         ctx.join(&store, self.link)?
-            .ntrukem(self.author_ntru_pk, &self.unsubscribe_key)?
+            .x25519(self.author_ke_pk, &self.unsubscribe_key)?
             .commit()?
-            .mask(self.subscriber_ntru_pk)?
+            .mask(self.subscriber_ke_pk)?
             .commit()?
             .squeeze(&mac)?;
         Ok(ctx)
     }
 
-    fn wrap<'c, OS: io::OStream<TW>>(
+    fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
-        ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Result<&'c mut wrap::Context<TW, F, OS>> {
-        let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
+        let mac = Mac(spongos::Spongos::<F>::MAC_SIZE);
         ctx.join(store, self.link)?
-            .ntrukem((self.author_ntru_pk, self.prng, &self.nonce.0), &self.unsubscribe_key)?
+            .x25519(self.author_ke_pk, &self.unsubscribe_key)?
             .commit()?
-            .mask(self.subscriber_ntru_pk)?
+            .mask(self.subscriber_ke_pk)?
             .commit()?
             .squeeze(&mac)?;
         Ok(ctx)
     }
 }
 
-pub struct ContentUnwrap<'a, TW, F, Link: HasLink> {
+pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
-    pub unsubscribe_key: NTrytes<TW>,
-    pub subscriber_ntru_pk: ntru::PublicKey<TW, F>,
-    author_ntru_sk: &'a ntru::PrivateKey<TW, F>,
-    _phantom: std::marker::PhantomData<Link>,
+    pub unsubscribe_key: NBytes,
+    pub subscriber_ke_pk: x25519::PublicKey,
+    author_ke_sk: &'a x25519::StaticSecret,
+    _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, TW, F, Link> ContentUnwrap<'a, TW, F, Link>
+impl<'a, F, Link> ContentUnwrap<'a, F, Link>
 where
-    TW: BasicTbitWord,
-    F: PRP<TW>,
+    F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<TW, F>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(author_ntru_sk: &'a ntru::PrivateKey<TW, F>) -> Self {
+    pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            unsubscribe_key: NTrytes::<TW>::zero(spongos::Spongos::<TW, F>::KEY_SIZE),
-            subscriber_ntru_pk: ntru::PublicKey::<TW, F>::default(),
-            author_ntru_sk,
+            unsubscribe_key: NBytes::zero(spongos::Spongos::<F>::KEY_SIZE),
+            subscriber_ke_pk: x25519::PublicKey::from([0_u8; 32]),
+            author_ke_sk,
             _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<'a, TW, F, Link, Store> message::ContentUnwrap<TW, F, Store> for ContentUnwrap<'a, TW, F, Link>
+impl<'a, F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<'a, F, Link>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<TW, F>,
-    Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn unwrap<'c, IS: io::IStream<TW>>(
+    fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
-        ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Result<&'c mut unwrap::Context<TW, F, IS>> {
-        let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        let mac = Mac(spongos::Spongos::<F>::MAC_SIZE);
         ctx.join(store, &mut self.link)?
-            .ntrukem(self.author_ntru_sk, &mut self.unsubscribe_key)?
+            .x25519(self.author_ke_sk, &mut self.unsubscribe_key)?
             .commit()?
-            .mask(&mut self.subscriber_ntru_pk)?
+            .mask(&mut self.subscriber_ke_pk)?
             .commit()?
             .squeeze(&mac)?;
         Ok(ctx)

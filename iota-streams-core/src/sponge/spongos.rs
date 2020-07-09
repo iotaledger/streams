@@ -14,7 +14,7 @@ pub struct Outer {
 
     /// Outer state is stored externally due to Troika implementation.
     /// It is injected into Troika state before transform and extracted after.
-    bytes: Vec<u8>,
+    buf: Vec<u8>,
 }
 
 impl Clone for Outer
@@ -22,7 +22,7 @@ impl Clone for Outer
     fn clone(&self) -> Self {
         Self {
             pos: self.pos,
-            bytes: self.bytes.clone(),
+            buf: self.buf.clone(),
         }
     }
 }
@@ -33,7 +33,7 @@ impl Outer
     pub fn new(rate: usize) -> Self {
         Self {
             pos: 0,
-            bytes: Vec::with_capacity(rate),
+            buf: vec![0; rate],
         }
     }
 
@@ -41,31 +41,35 @@ impl Outer
     /// It must be used via `self.outer.slice_mut()` as `self.outer.pos` may change
     /// and it must be kept in sync with `outer_mut` object.
     pub fn slice_mut(&mut self) -> &mut [u8] {
-        //debug_assert!(self.trits.size() >= RATE);
-        //debug_assert!(self.pos <= RATE);
-        &mut self.bytes[self.pos..]
+        &mut self.buf[self.pos..]
     }
 
     pub fn slice_min_mut(&mut self, n: usize) -> &mut [u8] {
-        //TODO: test `_min` [..n]
-        &mut self.slice_mut()[..n]
+        let m = std::cmp::min(self.pos + n, self.buf.len());
+        &mut self.buf[self.pos..m]
+    }
+
+    pub fn commit(&mut self) -> &mut [u8] {
+        for o in &mut self.buf[self.pos..] { *o = 0 }
+        self.pos = 0;
+        &mut self.buf[..]
     }
 
     /// Rate (total size) of the outer state.
     pub fn rate(&self) -> usize {
-        self.bytes.len()
+        self.buf.len()
     }
 
     /// Available size of the outer tbits.
     pub fn avail(&self) -> usize {
-        self.bytes.len() - self.pos
+        self.buf.len() - self.pos
     }
 }
 
 impl fmt::Debug for Outer
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:[{:?}]", self.pos, self.bytes)
+        write!(f, "{}:[{:?}]", self.pos, self.buf)
     }
 }
 
@@ -142,42 +146,23 @@ impl<F> Spongos<F>
 where
     F: PRP,
 {
-    /// Sponge fixed key size in bytes.
+    /// Sponge fixed key size in buf.
     pub const KEY_SIZE: usize = F::CAPACITY_BITS / 8;
 
-    /// Sponge fixed nonce size in bytes.
+    /// Sponge fixed nonce size in buf.
     pub const NONCE_SIZE: usize = Self::KEY_SIZE;
 
-    /// Sponge fixed hash size in bytes.
+    /// Sponge fixed hash size in buf.
     pub const HASH_SIZE: usize = F::CAPACITY_BITS / 8;
 
-    /// Sponge fixed MAC size in bytes.
+    /// Sponge fixed MAC size in buf.
     pub const MAC_SIZE: usize = F::CAPACITY_BITS / 8;
-}
 
-impl<F> Spongos<F>
-where
-    F: PRP + Default,
-{
     /// Create a Spongos object, initialize state with zero trits.
     pub fn init() -> Self {
         Self::init_with_state(F::default())
     }
-}
 
-impl<F> Default for Spongos<F>
-where
-    F: PRP + Default,
-{
-    fn default() -> Self {
-        Self::init()
-    }
-}
-
-impl<F> Spongos<F>
-where
-    F: PRP,
-{
     /// Create a Spongos object with an explicit state.
     pub fn init_with_state(s: F) -> Self {
         Self {
@@ -210,8 +195,8 @@ where
         }
     }
 
-    /// Absorb bytes.
-    pub fn absorb_bytes(&mut self, x: &Vec<u8>) {
+    /// Absorb buf.
+    pub fn absorb_buf(&mut self, x: &Vec<u8>) {
         self.absorb(&x[..])
     }
 
@@ -239,15 +224,15 @@ where
         eq
     }
 
-    /// Squeeze bytes.
-    pub fn squeeze_bytes(&mut self, n: usize) -> Vec<u8> {
-        let mut y = Vec::with_capacity(n);
+    /// Squeeze buf.
+    pub fn squeeze_buf(&mut self, n: usize) -> Vec<u8> {
+        let mut y = vec![0; n];
         self.squeeze(&mut y[..]);
         y
     }
 
-    /// Squeeze bytes and compare.
-    pub fn squeeze_eq_bytes(&mut self, y: &Vec<u8>) -> bool {
+    /// Squeeze buf and compare.
+    pub fn squeeze_eq_buf(&mut self, y: &Vec<u8>) -> bool {
         self.squeeze_eq(&y[..])
     }
 
@@ -276,15 +261,15 @@ where
         }
     }
 
-    /// Encrypt bytes.
-    pub fn encrypt_bytes(&mut self, x: &Vec<u8>) -> Vec<u8> {
-        let mut y = Vec::with_capacity(x.len());
+    /// Encrypt buf.
+    pub fn encrypt_buf(&mut self, x: &Vec<u8>) -> Vec<u8> {
+        let mut y = vec![0; x.len()];
         self.encrypt(&x[..], &mut y[..]);
         y
     }
 
-    /// Encrypt bytes in-place.
-    pub fn encrypt_bytes_mut(&mut self, xy: &mut Vec<u8>) {
+    /// Encrypt buf in-place.
+    pub fn encrypt_buf_mut(&mut self, xy: &mut Vec<u8>) {
         self.encrypt_mut(&mut xy[..]);
     }
 
@@ -313,15 +298,15 @@ where
         }
     }
 
-    /// Decrypt bytes.
-    pub fn decrypt_bytes(&mut self, y: &Vec<u8>) -> Vec<u8> {
-        let mut x = Vec::with_capacity(y.len());
+    /// Decrypt buf.
+    pub fn decrypt_buf(&mut self, y: &Vec<u8>) -> Vec<u8> {
+        let mut x = vec![0; y.len()];
         self.decrypt(&y[..], &mut x[..]);
         x
     }
 
-    /// Decrypt bytes in-place.
-    pub fn decrypt_bytes_mut(&mut self, xy: &mut Vec<u8>) {
+    /// Decrypt buf in-place.
+    pub fn decrypt_buf_mut(&mut self, xy: &mut Vec<u8>) {
         self.decrypt_mut(&mut xy[..]);
     }
 
@@ -329,9 +314,8 @@ where
     /// Commit with empty outer state has no effect.
     pub fn commit(&mut self) {
         if self.outer.pos != 0 {
-            let mut o = self.outer.slice_mut();
-            self.s.transform(&mut o);
-            self.outer.pos = 0;
+            let o = self.outer.commit();
+            self.s.transform(o);
         }
     }
 
@@ -343,16 +327,11 @@ where
     /// Join two Spongos objects.
     /// Joiner -- self -- object absorbs data squeezed from joinee.
     pub fn join(&mut self, joinee: &mut Self) {
-        let mut x = Vec::with_capacity(F::CAPACITY_BITS / 8);
+        let mut x = vec![0; F::CAPACITY_BITS / 8];
         joinee.squeeze(&mut x[..]);
         self.absorb(&x[..]);
     }
-}
 
-impl<F> Spongos<F>
-where
-    F: PRP + Clone,
-{
     /// Fork Spongos object into another.
     /// Essentially this just creates a clone of self.
     pub fn fork_at(&self, fork: &mut Self) {
@@ -370,9 +349,16 @@ where
     pub fn to_inner(&self) -> Vec<u8> {
         assert!(self.is_committed());
         assert!(false, "Spongos::to_inner not implemented");
-        //TODO:
-        //self.s.clone().into()
-        Vec::new()
+        self.s.clone().into()
+    }
+}
+
+impl<F> Default for Spongos<F>
+where
+    F: PRP,
+{
+    fn default() -> Self {
+        Self::init()
     }
 }
 
@@ -386,20 +372,15 @@ impl<F> fmt::Debug for Spongos<F>
 /// Shortcut for `Spongos::init`.
 pub fn init<F>() -> Spongos<F>
 where
-    F: PRP + Default,
+    F: PRP,
 {
     Spongos::init()
 }
 
-/*
-/// Size of inner state.
-pub const INNER_SIZE: usize = CAPACITY;
- */
-
 /// Hash (one piece of) data with Spongos.
 pub fn hash_data<F>(x: &[u8], y: &mut [u8])
 where
-    F: PRP + Default,
+    F: PRP,
 {
     let mut s = Spongos::<F>::init();
     s.absorb(x);
@@ -407,23 +388,11 @@ where
     s.squeeze(y);
 }
 
-/*
-/// Hash a concatenation of pieces of data with Spongos.
-pub fn hash_datas(xs: &[TritSlice], y: TritSliceMut) {
-    let mut s = Spongos::init();
-    for x in xs {
-        s.absorb(*x);
-    }
-    s.commit();
-    s.squeeze(&mut y);
-}
- */
-
 impl<F> Hash for Spongos<F>
 where
-    F: PRP + Clone + Default,
+    F: PRP,
 {
-    /// Hash value size in bytes.
+    /// Hash value size in buf.
     const HASH_SIZE: usize = F::CAPACITY_BITS / 8;
 
     fn init() -> Self {
@@ -440,24 +409,12 @@ where
     }
 }
 
-/*
-pub fn hash_tbits<F>(data: &Tbits) -> Tbits
+pub fn rehash<F>(h: &mut [u8])
 where
-    F: PRP + Clone + Default,
+    F: PRP,
 {
     let mut s = Spongos::<F>::init();
-    s.absorb(data.slice());
+    s.absorb(h);
     s.commit();
-    s.squeeze_tbits(Spongos::<F>::HASH_SIZE)
+    s.squeeze(h);
 }
-
-pub fn rehash_tbits<F>(h: &mut Tbits)
-where
-    F: PRP + Clone + Default,
-{
-    let mut s = Spongos::<F>::init();
-    s.absorb(h.slice());
-    s.commit();
-    s.squeeze(&mut h.slice_mut());
-}
- */

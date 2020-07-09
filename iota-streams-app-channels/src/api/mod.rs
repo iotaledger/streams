@@ -21,7 +21,7 @@ where
 }
 impl<F> ChannelLinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F>
 where
-    F: PRP + Default,
+    F: PRP,
 {
 }
 
@@ -31,7 +31,5 @@ pub mod author;
 /// Generic Channel Subscriber API.
 pub mod subscriber;
 
-/*
 /// Tangle-specific Channel API.
 pub mod tangle;
- */

@@ -43,15 +43,16 @@ where
     F: PRP,
 {
     fn wrap_u8(&mut self, u: u8) -> Result<&mut Self> {
-        let mut slice = self.ctx.stream.try_advance(1)?;
+        let slice = self.ctx.stream.try_advance(1)?;
         slice[0] = u;
         self.ctx.spongos.absorb(slice);
         Ok(self)
     }
     fn wrapn(&mut self, bytes: &[u8]) -> Result<&mut Self> {
         self.ctx.spongos.absorb(bytes);
-        let slice = self.ctx.stream.try_advance(bytes.len())?;
-        //TODO: trits.copy(&slice);
+        self.ctx.stream
+            .try_advance(bytes.len())?
+            .copy_from_slice(bytes);
         Ok(self)
     }
 }
@@ -144,8 +145,7 @@ where
     F: PRP,
 {
     fn absorb(&mut self, pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(wrap_absorb_bytes(self.as_mut(), &pk)?.as_mut())
+        Ok(wrap_absorb_bytes(self.as_mut(), &pk.to_bytes()[..])?.as_mut())
     }
 }
 
@@ -154,8 +154,7 @@ where
     F: PRP,
 {
     fn absorb(&mut self, pk: &'a x25519::PublicKey) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(wrap_absorb_bytes(self.as_mut(), &pk)?.as_mut())
+        Ok(wrap_absorb_bytes(self.as_mut(), &pk.as_bytes()[..])?.as_mut())
     }
 }
 

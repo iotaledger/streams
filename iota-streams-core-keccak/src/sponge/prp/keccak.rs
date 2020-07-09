@@ -1,6 +1,5 @@
 use iota_streams_core::{
     sponge::prp::{
-        inner,
         PRP,
     },
 };
@@ -32,7 +31,25 @@ fn xor(s: &mut [u8], x: &[u8]) {
 impl From<Vec<u8>> for KeccakF1600
 {
     fn from(v: Vec<u8>) -> Self {
-        panic!("not implemented");
+        assert_eq!(200, v.len());
+        let mut s = Self::default();
+        unsafe {
+            let t = std::mem::transmute::<&mut [u64], &mut [u8]>(&mut s.state);
+            t.copy_from_slice(&v[..]);
+        }
+        s
+    }
+}
+
+impl Into<Vec<u8>> for KeccakF1600
+{
+    fn into(self) -> Vec<u8> {
+        let mut v = vec![0_u8; 1600];
+        unsafe {
+            let t = std::mem::transmute::<&[u64], &[u8]>(&self.state);
+            v.copy_from_slice(t);
+        }
+        v
     }
 }
 
@@ -44,13 +61,13 @@ impl PRP for KeccakF1600
 
     fn transform(&mut self, outer: &mut [u8]) {
         unsafe {
-            let s = std::mem::transmute::<&mut [u64], &mut [u8]>(&mut self.state);
-            xor(&mut s[..Self::RATE], &outer[..]);
+            let s = std::slice::from_raw_parts_mut(self.state.as_mut_ptr() as *mut u8, Self::RATE);
+            xor(s, &outer[..]);
         }
         keccak::f1600(&mut self.state);
         unsafe {
-            let s = std::mem::transmute::<&[u64], &[u8]>(&mut self.state);
-            xor(outer, &s[..Self::RATE]);
+            let s = std::slice::from_raw_parts(self.state.as_ptr() as *const u8, Self::RATE);
+            xor(outer, s);
         }
     }
 }

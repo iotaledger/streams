@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::string::ToString;
+//use std::string::ToString;
 
 use super::*;
 use iota_streams_protobuf3::command::unwrap;
@@ -12,7 +12,7 @@ pub struct PreparsedMessage<'a, F, Link> {
 
 impl<'a, F, Link> PreparsedMessage<'a, F, Link>
 {
-    pub fn check_content_type(&self, content_type: &str) -> bool {
+    pub fn check_content_type(&self, _content_type: &str) -> bool {
         panic!("not implemented");
         //(self.header.content_type.0).eq_str(content_type)
     }

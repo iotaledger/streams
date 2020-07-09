@@ -46,9 +46,8 @@ where
     F: PRP,
 {
     fn wrap_u8(&mut self, u: u8) -> Result<&mut Self> {
-        panic!("not implemented");
-        //self.ctx.spongos.absorb(&u);
-        //Ok(self)
+        self.ctx.spongos.absorb(&[u]);
+        Ok(self)
     }
     fn wrapn(&mut self, bytes: &[u8]) -> Result<&mut Self> {
         self.ctx.spongos.absorb(bytes);
@@ -134,7 +133,7 @@ impl<'a, F, IS: io::IStream> Absorb<External<&'a ed25519::PublicKey>> for Contex
 where
     F: PRP,
 {
-    fn absorb(&mut self, pk: External<&'a ed25519::PublicKey>) -> Result<&mut Self> {
+    fn absorb(&mut self, _pk: External<&'a ed25519::PublicKey>) -> Result<&mut Self> {
         panic!("not implemented");
         //Ok(wrap_absorb_external_bytes(self.as_mut(), &pk)?.as_mut())
     }
@@ -144,8 +143,9 @@ impl<'a, F, IS: io::IStream> Absorb<External<&'a x25519::PublicKey>> for Context
 where
     F: PRP,
 {
-    fn absorb(&mut self, pk: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
+    fn absorb(&mut self, _pk: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
         panic!("not implemented");
+        //TODO: validate pk
         //Ok(wrap_absorb_external_bytes(self.as_mut(), &mut pk)?.as_mut())
     }
 }

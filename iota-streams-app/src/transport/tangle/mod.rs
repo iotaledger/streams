@@ -154,7 +154,7 @@ impl<F> DefaultTangleLinkGenerator<F> {
 
 impl<F> DefaultTangleLinkGenerator<F>
 where
-    F: PRP + Default,
+    F: PRP,
 {
     fn try_gen_msgid(&self, msgid: &MsgId) -> Result<MsgId> {
         let mut new = MsgId::default();
@@ -173,9 +173,9 @@ where
 
 impl<F> LinkGenerator<TangleAddress, ed25519::PublicKey> for DefaultTangleLinkGenerator<F>
 where
-    F: PRP + Default,
+    F: PRP,
 {
-    fn link_from(&mut self, pk: &ed25519::PublicKey) -> TangleAddress {
+    fn link_from(&mut self, _pk: &ed25519::PublicKey) -> TangleAddress {
         panic!("not implemented");
         /*
         self.appinst.id.0 = pk.clone();
@@ -199,7 +199,7 @@ where
 
 impl<F> LinkGenerator<TangleAddress, MsgId> for DefaultTangleLinkGenerator<F>
 where
-    F: PRP + Default,
+    F: PRP,
 {
     fn link_from(&mut self, msgid: &MsgId) -> TangleAddress {
         self.counter += 1;

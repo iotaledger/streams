@@ -31,7 +31,7 @@ impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Conten
 
 impl<'a, F, Link, Store, Content> PreparedMessage<'a, F, Link, Store, Content>
 where
-    F: PRP + Default,
+    F: PRP,
 {
     pub fn wrap(&self) -> Result<WrappedMessage<F, Link>>
     where

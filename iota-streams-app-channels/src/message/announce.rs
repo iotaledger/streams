@@ -48,9 +48,8 @@ use iota_streams_protobuf3::{
 pub const TYPE: &str = "STREAMS9CHANNEL9ANNOUNCE";
 
 pub struct ContentWrap<'a, F> {
-    pub(crate) sig_sk: &'a ed25519::SecretKey,
-    pub(crate) ke_pk: Option<&'a x25519::PublicKey>,
-    _phantom: std::marker::PhantomData<F>,
+    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) _phantom: std::marker::PhantomData<F>,
 }
 
 impl<'a, F, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F>
@@ -58,16 +57,8 @@ where
     F: PRP,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        //TODO: ctx.absorb(self.sig_sk.public_key())?;
-        let oneof: Uint8;
-        if let Some(ke_pk) = self.ke_pk {
-            oneof = Uint8(1);
-            ctx.absorb(&oneof)?.absorb(ke_pk)?;
-        } else {
-            oneof = Uint8(0);
-            ctx.absorb(&oneof)?;
-        }
-        //TODO: ctx.mssig(self.sig_sk, MssHashSig)?;
+        ctx.absorb(&self.sig_kp.public)?;
+        ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
 
@@ -76,32 +67,26 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        //TODO: ctx.absorb(self.sig_sk.public_key())?;
-        let oneof: Uint8;
-        if let Some(ke_pk) = self.ke_pk {
-            oneof = Uint8(1);
-            ctx.absorb(&oneof)?.absorb(ke_pk)?;
-        } else {
-            oneof = Uint8(0);
-            ctx.absorb(&oneof)?;
-        }
-        //TODO: ctx.mssig(self.sig_sk, MssHashSig)?;
+        ctx.absorb(&self.sig_kp.public)?;
+        ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
 }
 
 pub struct ContentUnwrap<F> {
     pub(crate) sig_pk: ed25519::PublicKey,
-    pub(crate) ke_pk: Option<x25519::PublicKey>,
+    pub(crate) ke_pk: x25519::PublicKey,
     _phantom: std::marker::PhantomData<F>,
 }
 
 impl<F> Default for ContentUnwrap<F>
 {
     fn default() -> Self {
+        let sig_pk = ed25519::PublicKey::default();
+        let ke_pk = x25519::public_from_ed25519(&sig_pk);
         Self {
-            sig_pk: ed25519::PublicKey::default(),
-            ke_pk: None,
+            sig_pk,
+            ke_pk,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -117,21 +102,8 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.sig_pk)?;
-        let mut oneof = Uint8(0);
-        ctx.absorb(&mut oneof)?;
-        self.ke_pk = match oneof {
-            Uint8(0) => None,
-            Uint8(1) => {
-                panic!("not implemented");
-                /*
-                let mut ke_pk = x25519::PublicKey::default();
-                ctx.absorb(&mut ke_pk)?;
-                Some(ke_pk)
-                 */
-            }
-            _ => bail!("Announce: bad oneof: {:?}", oneof),
-        };
-        //ctx.mssig(&self.sig_pk, MssHashSig)?;
+        self.ke_pk = x25519::public_from_ed25519(&self.sig_pk);
+        ctx.ed25519(&self.sig_pk, HashSig)?;
         Ok(ctx)
     }
 }

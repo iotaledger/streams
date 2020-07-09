@@ -1,4 +1,5 @@
 use anyhow::{
+    bail,
     Result,
 };
 use std::mem;
@@ -41,14 +42,15 @@ where
     F: PRP,
 {
     fn unwrap_u8(&mut self, u: &mut u8) -> Result<&mut Self> {
-        panic!("not implemented");
-        //TODO: self.ctx.spongos.decrypt(slice, &mut [u]);
-        //Ok(self)
+        let y = self.ctx.stream.try_advance(1)?;
+        let mut x = [0_u8; 1];
+        self.ctx.spongos.decrypt(y, &mut x);
+        *u = x[0];
+        Ok(self)
     }
-    fn unwrapn(&mut self, mut bytes: &mut [u8]) -> Result<&mut Self> {
-        let slice = self.ctx.stream.try_advance(bytes.len())?;
-        //slice.copy(&bytes);
-        self.ctx.spongos.decrypt_mut(bytes);
+    fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
+        let y = self.ctx.stream.try_advance(bytes.len())?;
+        self.ctx.spongos.decrypt(y, bytes);
         Ok(self)
     }
 }
@@ -125,10 +127,11 @@ where
     F: PRP,
 {
     fn mask(&mut self, pk: &'a mut x25519::PublicKey) -> Result<&mut Self> {
-        panic!("not implemented");
-        //unwrap_mask_bytes(self.as_mut(), &mut pk)?;
-        //ensure!(pk.validate(), "Unmasked x25519 public key is not valid.");
-        //Ok(self)
+        let mut bytes = [0_u8; 32];
+        unwrap_mask_bytes(self.as_mut(), &mut bytes)?;
+        *pk = x25519::PublicKey::from(bytes);
+        //TODO: validate public key
+        Ok(self)
     }
 }
 
@@ -137,7 +140,14 @@ where
     F: PRP,
 {
     fn mask(&mut self, pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(unwrap_mask_bytes(self.as_mut(), &pk)?.as_mut())
+        let mut bytes = [0_u8; 32];
+        unwrap_mask_bytes(self.as_mut(), &mut bytes)?;
+        match ed25519::PublicKey::from_bytes(&bytes[..]) {
+            Ok(apk) => {
+                *pk = apk;
+                Ok(self)
+            },
+            Err(_err) => bail!("Bad ed25519 public key")
+        }
     }
 }

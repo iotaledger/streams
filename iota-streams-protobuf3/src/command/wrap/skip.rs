@@ -35,13 +35,12 @@ impl<F, OS> AsMut<Context<F, OS>> for SkipContext<F, OS> {
 impl<F, OS: io::OStream> Wrap for SkipContext<F, OS>
 {
     fn wrap_u8(&mut self, u: u8) -> Result<&mut Self> {
-        let mut slice = self.ctx.stream.try_advance(1)?;
+        let slice = self.ctx.stream.try_advance(1)?;
         slice[0] = u;
         Ok(self)
     }
     fn wrapn(&mut self, bytes: &[u8]) -> Result<&mut Self> {
-        let slice = self.ctx.stream.try_advance(bytes.len())?;
-        //bytes.copy(&slice);
+        self.ctx.stream.try_advance(bytes.len())?.copy_from_slice(bytes);
         Ok(self)
     }
 }

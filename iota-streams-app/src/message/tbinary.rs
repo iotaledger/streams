@@ -76,7 +76,7 @@ impl<F, AbsLink> TbinaryMessage<F, AbsLink> {
 
 impl<F, Link> TbinaryMessage<F, Link>
 where
-    F: PRP + Default,
+    F: PRP,
     Link: Clone + AbsorbExternalFallback<F>,
 {
     pub fn parse_header<'a>(&'a self) -> Result<PreparsedMessage<'a, F, Link>> {

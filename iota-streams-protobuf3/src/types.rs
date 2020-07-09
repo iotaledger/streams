@@ -33,7 +33,6 @@ impl fmt::Display for Uint8 {
 pub struct Uint16(pub u16);
 
 /// Fixed-size array of bytes, the size is known at compile time and is not encoded in trinary representation.
-/// The inner buffer size (in trits) must be multiple of 3.
 //TODO: PartialEq, Eq, Debug
 #[derive(Clone)]
 pub struct NBytes(pub Vec<u8>);
@@ -84,7 +83,6 @@ impl hash::Hash for NBytes
 }
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
-/// The inner buffer size (in trits) must be multiple of 3.
 //TODO: PartialEq, Eq, Clone, Debug
 #[derive(Clone)]
 pub struct Bytes(pub Vec<u8>);
@@ -146,7 +144,7 @@ pub struct Mac(pub usize);
 /// Mssig command modifier, it instructs Context to squeeze external hash value, commit
 /// spongos state, sign squeezed hash and encode (without absorbing!) signature.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct MssHashSig;
+pub struct HashSig;
 
 /*
 impl Default for Mac {
@@ -164,7 +162,7 @@ pub struct Size(pub usize);
 pub const SIZE_MAX: usize = 2_026_277_576_509_488_133;
 
 /// Number of bytes needed to encode a value of `size_t` type.
-pub fn size_bytes(n: usize) -> usize {
+pub fn size_bytes(_n: usize) -> usize {
     panic!("not implemented");
     //0
 }

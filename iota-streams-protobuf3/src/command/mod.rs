@@ -54,24 +54,17 @@ pub trait Commit {
     fn commit(&mut self) -> Result<&mut Self>;
 }
 
-/// Mssig command. Sign/verify hash value. The signature is processed implicitly and is
-/// not returned. MSS signature is variable size and it's size depends on the Merkle tree
-/// height.
-///
-/// MSS verify routine has two flavours: recover public key and check recovered public key
-/// against an expected one. It can supported with this trait for Unwrap operation and
-/// the two cases are distinguished by the `Key` type: a mutable reference to a MSS
-/// public key refers to the recovered public key and an immutable reference to a MSS
-/// public key referes to the expected public key.
-pub trait Mssig<Key, Hash> {
-    fn mssig(&mut self, key: Key, hash: Hash) -> Result<&mut Self>;
+/// Ed25519 command. Sign/verify hash value. The signature is processed implicitly and is
+/// not returned.
+pub trait Ed25519<Key, Hash> {
+    fn ed25519(&mut self, key: Key, hash: Hash) -> Result<&mut Self>;
 }
 
-/// Ntrukem command. Secret is encapsulated with NTRU key. For Wrap operation
-/// PRNG, nonce and NTRU public key are passed as tuple in `key` argument.
-/// For Unwrap operation NTRU private key is passed in `key` argument.
-pub trait Ntrukem<Key, Secret> {
-    fn ntrukem(&mut self, key: Key, secret: Secret) -> Result<&mut Self>;
+/// X25519 command. Secret is Diffie-Hellman key exhange over Edwrads curve25519. For Wrap operation
+/// PRNG, nonce and x25519 public key are passed as tuple in `key` argument.
+/// For Unwrap operation X25519 private key is passed in `key` argument.
+pub trait X25519<Key, Secret> {
+    fn x25519(&mut self, key: Key, secret: Secret) -> Result<&mut Self>;
 }
 
 /// Fork command. Fork Spongos state and continue processing `cont` commands.

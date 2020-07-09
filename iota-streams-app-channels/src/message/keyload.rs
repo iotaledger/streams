@@ -64,7 +64,7 @@ use iota_streams_core::{
         spongos,
     },
 };
-use iota_streams_core_ed25519::key_exchange::x25519;
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -74,32 +74,30 @@ use iota_streams_protobuf3::{
 /// Type of `Keyload` message content.
 pub const TYPE: &str = "STREAMS9CHANNEL9KEYLOAD";
 
-pub struct ContentWrap<'a, F, G, Link: HasLink, Psks, NtruPks> {
+pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub nonce: NBytes,
     pub key: NBytes,
     pub(crate) psks: Psks,
-    pub(crate) prng: &'a prng::Prng<G>,
-    pub(crate) ntru_pks: NtruPks,
+    pub(crate) prng: &'a prng::Prng<F>,
+    pub(crate) ke_pks: KePks,
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, F, G, Link, Store, Psks, NtruPks> message::ContentWrap<F, Store>
-    for ContentWrap<'a, F, G, Link, Psks, NtruPks>
+impl<'a, F, Link, Store, Psks, KePks> message::ContentWrap<F, Store>
+    for ContentWrap<'a, F, Link, Psks, KePks>
 where
-    F: 'a + PRP + Clone, // weird 'a constraint, but compiler requires it somehow?!
-    G: PRP + Clone + Default,
+    F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
-    NtruPks: Clone + ExactSizeIterator<Item = ntru::INtruPk<'a, F>>,
-    //NtruPks: Clone + ExactSizeIterator<Item = &'a ntru::PublicKey<F>>,
+    KePks: Clone + ExactSizeIterator<Item = x25519::IPk<'a>>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         let repeated_psks = Size(self.psks.len());
-        let repeated_ntru_pks = Size(self.ntru_pks.len());
+        let repeated_ke_pks = Size(self.ke_pks.len());
         ctx.join(&store, self.link)?
             .absorb(&self.nonce)?
             .skip(repeated_psks)?
@@ -111,9 +109,9 @@ where
                         .mask(&self.key)
                 })
             })?
-            .skip(repeated_ntru_pks)?
-            .repeated(self.ntru_pks.clone(), |ctx, ntru_pk| {
-                ctx.fork(|ctx| ctx.mask(&NBytes(ntru_pk.get_pkid().0))?.ntrukem(ntru_pk, &self.key))
+            .skip(repeated_ke_pks)?
+            .repeated(self.ke_pks.clone(), |ctx, ke_pk| {
+                ctx.fork(|ctx| ctx.mask(&NBytes((ke_pk.0).as_bytes().to_vec()))?.x25519(&ke_pk.0, &self.key))
             })?
             .absorb(External(&self.key))?
             .commit()?;
@@ -126,7 +124,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         let repeated_psks = Size(self.psks.len());
-        let repeated_ntru_pks = Size(self.ntru_pks.len());
+        let repeated_ke_pks = Size(self.ke_pks.len());
         ctx.join(store, self.link)?
             .absorb(&self.nonce)?
             .skip(repeated_psks)?
@@ -138,11 +136,11 @@ where
                         .mask(&self.key)
                 })
             })?
-            .skip(repeated_ntru_pks)?
-            .repeated(self.ntru_pks.clone().into_iter(), |ctx, ntru_pk| {
+            .skip(repeated_ke_pks)?
+            .repeated(self.ke_pks.clone().into_iter(), |ctx, ke_pk| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NBytes(ntru_pk.get_pkid().0))?
-                        .ntrukem((ntru_pk, self.prng, &self.nonce.0), &self.key)
+                    ctx.mask(&NBytes((ke_pk.0).as_bytes().to_vec()))?
+                        .x25519(&ke_pk.0, &self.key)
                 })
             })?
             .absorb(External(&self.key))?
@@ -153,41 +151,41 @@ where
 
 //This whole mess with `'a` and `LookupArg: 'a` is needed in order to allow `LookupPsk`
 //and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
-pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupNtruSk> {
+pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupKeSk> {
     pub link: <Link as HasLink>::Rel,
     pub nonce: NBytes,
     pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
-    pub(crate) lookup_ntru_sk: LookupNtruSk,
+    pub(crate) lookup_ke_sk: LookupKeSk,
     pub key: NBytes,
     _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, F, Link, LookupArg, LookupPsk, LookupNtruSk>
-    ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupNtruSk>
+impl<'a, F, Link, LookupArg, LookupPsk, LookupKeSk>
+    ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupKeSk>
 where
     F: PRP,
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
     LookupArg: 'a,
     LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
-    LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid) -> Option<&'b ntru::PrivateKey<F>>,
+    LookupKeSk: for<'b> Fn(&'b LookupArg, &x25519::PublicKey) -> Option<&'b x25519::StaticSecret>,
 {
-    pub fn new(lookup_arg: &'a LookupArg, lookup_psk: LookupPsk, lookup_ntru_sk: LookupNtruSk) -> Self {
+    pub fn new(lookup_arg: &'a LookupArg, lookup_psk: LookupPsk, lookup_ke_sk: LookupKeSk) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NBytes::zero(spongos::Spongos::<F>::NONCE_SIZE),
             lookup_arg,
             lookup_psk,
-            lookup_ntru_sk,
+            lookup_ke_sk,
             key: NBytes::zero(spongos::Spongos::<F>::KEY_SIZE),
             _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<'a, F, Link, Store, LookupArg, LookupPsk, LookupNtruSk> message::ContentUnwrap<F, Store>
-    for ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupNtruSk>
+impl<'a, F, Link, Store, LookupArg, LookupPsk, LookupKeSk> message::ContentUnwrap<F, Store>
+    for ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupKeSk>
 where
     F: PRP + Clone,
     Link: HasLink,
@@ -195,7 +193,7 @@ where
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     LookupArg: 'a,
     LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
-    LookupNtruSk: for<'b> Fn(&'b LookupArg, &ntru::Pkid) -> Option<&'b ntru::PrivateKey<F>>,
+    LookupKeSk: for<'b> Fn(&'b LookupArg, &x25519::PublicKey) -> Option<&'b x25519::StaticSecret>,
 {
     fn unwrap<'c, IS: io::IStream>(
         &mut self,
@@ -203,9 +201,9 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut repeated_psks = Size(0);
-        let mut repeated_ntru_pks = Size(0);
+        let mut repeated_ke_pks = Size(0);
         let mut pskid = NBytes::zero(psk::PSKID_SIZE);
-        let mut ntru_pkid = NBytes::zero(ntru::PKID_SIZE);
+        let mut ke_pk = NBytes::zero(x25519::PUBLIC_KEY_LENGTH);
         let mut key_found = false;
 
         ctx.join(store, &mut self.link)?
@@ -233,30 +231,37 @@ where
                     ctx.drop(n)
                 }
             })?
-            .skip(&mut repeated_ntru_pks)?
-            .repeated(repeated_ntru_pks, |ctx| {
+            .skip(&mut repeated_ke_pks)?
+            .repeated(repeated_ke_pks, |ctx| {
                 if !key_found {
                     ctx.fork(|ctx| {
-                        ctx.mask(&mut ntru_pkid)?;
-                        if let Some(ntru_sk) = (self.lookup_ntru_sk)(self.lookup_arg, ntru_pkid.0.as_ref()) {
-                            ctx.ntrukem(ntru_sk, &mut self.key)?;
+                        ctx.mask(&mut ke_pk)?;
+                        //TODO: check ke_pk size
+                        let mut ke_pk_bytes = [0_u8; 32];
+                        ke_pk_bytes.copy_from_slice(&ke_pk.0[..]);
+                        if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &x25519::PublicKey::from(ke_pk_bytes)) {
+                            ctx.x25519(ke_sk, &mut self.key)?;
                             key_found = true;
                             Ok(ctx)
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
-                            let n = Size(ntru::EKEY_SIZE);
+                            //TODO: key length
+                            let n = Size(x25519::PUBLIC_KEY_LENGTH);
                             ctx.drop(n)
                         }
                     })
                 } else {
                     // Drop entire fork.
-                    let n = Size(ntru::PKID_SIZE + ntru::EKEY_SIZE);
+                    //TODO: fork size
+                    let n = Size(64);
                     ctx.drop(n)
                 }
             })?
             .guard(key_found, "Key not found")?
             .absorb(External(&self.key))?
             .commit()?;
+        /*
+         */
         Ok(ctx)
     }
 }
