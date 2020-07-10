@@ -16,6 +16,8 @@ path = "src/lib.rs"
 iota-streams-core = { version = "0.2.0", path = "../iota-streams-core" }
 ed25519-dalek = "1.0.0-pre.3"
 x25519-dalek = "0.6"
+curve25519-dalek = "2.1.0"
 
 [dev-dependencies]
 criterion = "0.3"
+rand = "0.7"
