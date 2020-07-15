@@ -18,7 +18,7 @@ use iota_streams_core_edsig::signature::ed25519;
 impl<F> Ed25519<&ed25519::Keypair, &External<NBytes>> for Context<F>
 {
     fn ed25519(&mut self, _sk: &ed25519::Keypair, _hash: &External<NBytes>) -> Result<&mut Self> {
-        self.size += 64;
+        self.size += ed25519::SIGNATURE_LENGTH;
         Ok(self)
     }
 }
@@ -26,7 +26,7 @@ impl<F> Ed25519<&ed25519::Keypair, &External<NBytes>> for Context<F>
 impl<F> Ed25519<&ed25519::Keypair, &External<Mac>> for Context<F>
 {
     fn ed25519(&mut self, _sk: &ed25519::Keypair, _hash: &External<Mac>) -> Result<&mut Self> {
-        self.size += 64;
+        self.size += ed25519::SIGNATURE_LENGTH;
         Ok(self)
     }
 }

@@ -14,6 +14,7 @@ use crate::{
         External,
         HashSig,
         NBytes,
+        Prehashed,
     },
 };
 use iota_streams_core::{
@@ -26,11 +27,12 @@ impl<F, OS: io::OStream> Ed25519<&ed25519::Keypair, &External<NBytes>> for Conte
 where
     F: PRP,
 {
-    fn ed25519(&mut self, sk: &ed25519::Keypair, hash: &External<NBytes>) -> Result<&mut Self> {
-        self.stream
-            .try_advance(64)?
-            .copy_from_slice(&sk.sign(&((hash.0).0)[..]).to_bytes());
-        //TODO: sign_prehashed
+    fn ed25519(&mut self, kp: &ed25519::Keypair, hash: &External<NBytes>) -> Result<&mut Self> {
+        let context = "IOTAStreams".as_bytes();
+        let mut prehashed = Prehashed::default();
+        prehashed.0.as_mut_slice().copy_from_slice(&(hash.0).0[..]);
+        let signature = kp.sign_prehashed(prehashed, Some(&context[..]));
+        self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?.copy_from_slice(&signature.to_bytes());
         Ok(self)
     }
 }

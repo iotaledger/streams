@@ -1,5 +1,4 @@
 use anyhow::{
-    ensure,
     Result,
 };
 
@@ -19,13 +18,14 @@ use crate::{
 
 use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
-/// All Uint8 values are encoded with 3 trits.
+/// All Uint8 values are encoded with 1 byte.
 impl<F> Absorb<&Uint8> for Context<F> {
     fn absorb(&mut self, _u: &Uint8) -> Result<&mut Self> {
-        self.size += 3;
+        self.size += 1;
         Ok(self)
     }
 }
+
 
 /// Size has var-size encoding.
 impl<F> Absorb<&Size> for Context<F> {
@@ -35,7 +35,7 @@ impl<F> Absorb<&Size> for Context<F> {
     }
 }
 
-/// All Uint8 values are encoded with 3 trits.
+/// All Uint8 values are encoded with 1 byte.
 impl<F> Absorb<Uint8> for Context<F> {
     fn absorb(&mut self, u: Uint8) -> Result<&mut Self> {
         self.absorb(&u)
@@ -53,11 +53,7 @@ impl<F> Absorb<Size> for Context<F> {
 impl<'a, F> Absorb<&'a Bytes> for Context<F>
 {
     fn absorb(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
-        ensure!(
-            (bytes.0).len() % 3 == 0,
-            "Trit size of `bytes` must be a multiple of 3."
-        );
-        self.size += sizeof_sizet((bytes.0).len() / 3) + (bytes.0).len();
+        self.size += sizeof_sizet((bytes.0).len()) + (bytes.0).len();
         Ok(self)
     }
 }
@@ -70,20 +66,16 @@ impl<F> Absorb<Bytes> for Context<F>
     }
 }
 
-/// `tryte [n]` is fixed-size and is encoded with `3 * n` trits.
+/// `byte [n]` is fixed-size and is encoded with `n` bytes.
 impl<'a, F> Absorb<&'a NBytes> for Context<F>
 {
     fn absorb(&mut self, nbytes: &'a NBytes) -> Result<&mut Self> {
-        ensure!(
-            (nbytes.0).len() % 3 == 0,
-            "Trit size of `tryte [n]` must be a multiple of 3."
-        );
         self.size += (nbytes.0).len();
         Ok(self)
     }
 }
 
-/// `tryte [n]` is fixed-size and is encoded with `3 * n` trits.
+/// `byte [n]` is fixed-size and is encoded with `n` bytes.
 impl<F> Absorb<NBytes> for Context<F>
 {
     fn absorb(&mut self, nbytes: NBytes) -> Result<&mut Self> {

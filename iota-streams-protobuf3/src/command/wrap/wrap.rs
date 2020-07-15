@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::types::{
-    Size,
+    Size, size_bytes,
 };
 
 /// Helper trait for wrapping (encoding/absorbing) trint3s.
@@ -11,11 +11,15 @@ pub(crate) trait Wrap {
 }
 
 /// Helper function for wrapping (encoding/absorbing) size values.
-pub(crate) fn wrap_size<'a, Ctx: Wrap>(_ctx: &'a mut Ctx, _size: Size) -> Result<&'a mut Ctx> where
+pub(crate) fn wrap_size<'a, Ctx: Wrap>(ctx: &'a mut Ctx, size: Size) -> Result<&'a mut Ctx> where
 {
-    panic!("not implemented");
-    //let d = size_bytes(size.0);
-    //ctx.wrap_u8(Uint8(d as u8))?;
+    let d = size_bytes(size.0);
+    ctx.wrap_u8(d as u8)?;
+    let n = size.0;
+    for s in (0..d).rev() {
+        let r = ((n >> (s << 3)) & 0xff) as u8;
+        ctx.wrap_u8(r);
+    }
 
-    //Ok(ctx)
+    Ok(ctx)
 }

@@ -13,6 +13,8 @@ name = "iota_streams_core"
 path = "src/lib.rs"
 
 [dependencies]
+# digest version should correspond to curve25519-dalek's version
+digest = { version = "0.8", default-features = false }
 rand = "0.7"
 
 [dev-dependencies]

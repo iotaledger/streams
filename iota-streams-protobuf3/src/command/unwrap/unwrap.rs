@@ -13,40 +13,20 @@ pub(crate) trait Unwrap {
 }
 
 /// Helper function for unwrapping (decoding/absorbing) size values.
-pub(crate) fn unwrap_size<'a, Ctx: Unwrap>(_ctx: &'a mut Ctx, _size: &mut Size) -> Result<&'a mut Ctx> where
+pub(crate) fn unwrap_size<'a, Ctx: Unwrap>(ctx: &'a mut Ctx, size: &mut Size) -> Result<&'a mut Ctx> where
 {
-    panic!("not implemented");
-
-    /*
-    let mut d = Uint8(0);
+    let mut d = 0_u8;
     ctx.unwrap_u8(&mut d)?;
-    ensure!(Uint8(0) <= d && d <= Uint8(13), "Invalid size of `size_t`: {}.", d);
+    //ensure!(Uint8(0) <= d && d <= Uint8(13), "Invalid size of `size_t`: {}.", d);
 
-    let mut m: i64 = 0;
-    let mut r: i64 = 1;
-    if 0 < d.0 {
-        d.0 -= 1;
-        let mut t = Uint8(0);
+    let mut m = 0_usize;
+    while 0 < d {
+        d -= 1;
+        let mut t = 0_u8;
         ctx.unwrap_u8(&mut t)?;
-        m = t.0 as i64;
-
-        while 0 < d.0 {
-            d.0 -= 1;
-            ctx.unwrap_u8(&mut t)?;
-            r *= 27;
-            m += r * t.0 as i64;
-        }
-
-        ensure!(
-            Uint8(0) < t,
-            "The last most significant uint8 is `size_t` can't be 0 or negative: {}.",
-            t
-        );
-
-        ensure!(SIZE_MAX >= m as usize, "`size_t` value is overflown: {}.", m);
+        m = (m << 8) | (t as usize);
     }
 
-    size.0 = m as usize;
+    size.0 = m;
     Ok(ctx)
-     */
 }

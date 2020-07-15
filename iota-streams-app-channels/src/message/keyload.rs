@@ -103,7 +103,8 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NBytes(pskid.clone()))?
+                    ctx
+                        .mask(&NBytes(pskid.clone()))?
                         .absorb(External(&NBytes(psk.clone())))?
                         .commit()?
                         .mask(&self.key)
@@ -111,7 +112,11 @@ where
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone(), |ctx, ke_pk| {
-                ctx.fork(|ctx| ctx.mask(&NBytes((ke_pk.0).as_bytes().to_vec()))?.x25519(&ke_pk.0, &self.key))
+                ctx.fork(|ctx| {
+                    ctx
+                        .absorb(&ke_pk.0)?
+                        .x25519(&ke_pk.0, &self.key)
+                })
             })?
             .absorb(External(&self.key))?
             .commit()?;
@@ -130,7 +135,8 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NBytes(pskid.clone()))?
+                    ctx
+                        .mask(&NBytes(pskid.clone()))?
                         .absorb(External(&NBytes(psk.clone())))?
                         .commit()?
                         .mask(&self.key)
@@ -139,7 +145,8 @@ where
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone().into_iter(), |ctx, ke_pk| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NBytes((ke_pk.0).as_bytes().to_vec()))?
+                    ctx
+                        .absorb(&ke_pk.0)?
                         .x25519(&ke_pk.0, &self.key)
                 })
             })?
@@ -156,6 +163,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub nonce: NBytes,
     pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
+    pub(crate) ke_pk: x25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub key: NBytes,
     _phantom: std::marker::PhantomData<(F, Link)>,
@@ -177,6 +185,7 @@ where
             nonce: NBytes::zero(spongos::Spongos::<F>::NONCE_SIZE),
             lookup_arg,
             lookup_psk,
+            ke_pk: x25519::PublicKey::from([0_u8; 32]),
             lookup_ke_sk,
             key: NBytes::zero(spongos::Spongos::<F>::KEY_SIZE),
             _phantom: std::marker::PhantomData,
@@ -203,7 +212,7 @@ where
         let mut repeated_psks = Size(0);
         let mut repeated_ke_pks = Size(0);
         let mut pskid = NBytes::zero(psk::PSKID_SIZE);
-        let mut ke_pk = NBytes::zero(x25519::PUBLIC_KEY_LENGTH);
+        //let mut ke_pk = NBytes::zero(x25519::PUBLIC_KEY_LENGTH);
         let mut key_found = false;
 
         ctx.join(store, &mut self.link)?
@@ -235,18 +244,15 @@ where
             .repeated(repeated_ke_pks, |ctx| {
                 if !key_found {
                     ctx.fork(|ctx| {
-                        ctx.mask(&mut ke_pk)?;
-                        //TODO: check ke_pk size
-                        let mut ke_pk_bytes = [0_u8; 32];
-                        ke_pk_bytes.copy_from_slice(&ke_pk.0[..]);
-                        if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &x25519::PublicKey::from(ke_pk_bytes)) {
+                        ctx.absorb(&mut self.ke_pk)?;
+                        if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &self.ke_pk) {
                             ctx.x25519(ke_sk, &mut self.key)?;
                             key_found = true;
                             Ok(ctx)
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
                             //TODO: key length
-                            let n = Size(x25519::PUBLIC_KEY_LENGTH);
+                            let n = Size(32);
                             ctx.drop(n)
                         }
                     })

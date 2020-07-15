@@ -133,9 +133,8 @@ impl<'a, F, IS: io::IStream> Absorb<External<&'a ed25519::PublicKey>> for Contex
 where
     F: PRP,
 {
-    fn absorb(&mut self, _pk: External<&'a ed25519::PublicKey>) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(wrap_absorb_external_bytes(self.as_mut(), &pk)?.as_mut())
+    fn absorb(&mut self, pk: External<&'a ed25519::PublicKey>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_bytes(self.as_mut(), &pk.0.to_bytes()[..])?.as_mut())
     }
 }
 
@@ -143,10 +142,8 @@ impl<'a, F, IS: io::IStream> Absorb<External<&'a x25519::PublicKey>> for Context
 where
     F: PRP,
 {
-    fn absorb(&mut self, _pk: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
-        panic!("not implemented");
-        //TODO: validate pk
-        //Ok(wrap_absorb_external_bytes(self.as_mut(), &mut pk)?.as_mut())
+    fn absorb(&mut self, pk: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_bytes(self.as_mut(), &pk.0.as_bytes()[..])?.as_mut())
     }
 }
 

@@ -175,17 +175,14 @@ impl<F> LinkGenerator<TangleAddress, ed25519::PublicKey> for DefaultTangleLinkGe
 where
     F: PRP,
 {
-    fn link_from(&mut self, _pk: &ed25519::PublicKey) -> TangleAddress {
-        panic!("not implemented");
-        /*
-        self.appinst.id.0 = pk.clone();
+    fn link_from(&mut self, pk: &ed25519::PublicKey) -> TangleAddress {
+        self.appinst.id.0 = pk.as_bytes().to_vec();
 
         self.counter += 1;
         TangleAddress {
             appinst: self.appinst.clone(),
             msgid: self.gen_msgid(&MsgId::default()),
         }
-         */
     }
 
     fn header_from(
@@ -213,7 +210,8 @@ where
     }
 }
 
-pub const APPINST_SIZE: usize = 243;
+// ed25519 public key size in bytes
+pub const APPINST_SIZE: usize = 32;
 
 /// Application instance identifier.
 /// Currently, 81-byte string stored in `address` transaction field.
@@ -226,12 +224,9 @@ impl FromStr for AppInst
 {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
-        if s.len() == APPINST_SIZE / 3 {
-            panic!("not implemented");
-            //Vec::from_str(s).map(|x| AppInst { id: NBytes(x) })
-        } else {
-            Err(())
-        }
+        //TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
+        //currently lowercase hex
+        hex::decode(s).map_or(Err(()), |x| Ok(AppInst{id: NBytes(x)}))
     }
 }
 
@@ -245,7 +240,7 @@ impl fmt::Debug for AppInst
 impl fmt::Display for AppInst
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.id)
+        write!(f, "{}", hex::encode(&self.id.0))
     }
 }
 
@@ -318,7 +313,7 @@ where
     }
 }
 
-pub const MSGID_SIZE: usize = 81;
+pub const MSGID_SIZE: usize = 32;
 
 /// Message identifier unique within application instance.
 /// Currently, 27-byte string stored in `tag` transaction field.
@@ -332,12 +327,9 @@ impl FromStr for MsgId
 {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
-        if s.len() == MSGID_SIZE / 3 {
-            panic!("not implemented");
-            //Vec::from_str(s).map(|x| MsgId { id: NBytes(x) })
-        } else {
-            Err(())
-        }
+        //TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
+        //currently lowercase hex
+        hex::decode(s).map_or(Err(()), |x| Ok(MsgId{id: NBytes(x)}))
     }
 }
 
@@ -351,7 +343,7 @@ impl fmt::Debug for MsgId
 impl fmt::Display for MsgId
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.id)
+        write!(f, "{}", hex::encode(&self.id.0))
     }
 }
 

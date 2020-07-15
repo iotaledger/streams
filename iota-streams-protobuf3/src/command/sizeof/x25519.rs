@@ -7,12 +7,28 @@ use crate::{
 };
 use iota_streams_core_edsig::key_exchange::x25519;
 
-/// Sizeof encapsulated secret is fixed.
-impl<F> X25519<&x25519::PublicKey, &NBytes> for Context<F>
+impl<'a, F> X25519<&'a x25519::StaticSecret, &'a x25519::PublicKey> for Context<F>
 {
-    fn x25519(&mut self, _key: &x25519::PublicKey, _secret: &NBytes) -> Result<&mut Self> {
-        //TODO: Ensure key is valid.
-        self.size += 64;
+    fn x25519(&mut self, sk: &x25519::StaticSecret, pk: &x25519::PublicKey) -> Result<&mut Self> {
+        // only shared secret is absorbed externally
+        self.size += 0;
+        Ok(self)
+    }
+}
+
+impl<'a, F> X25519<&'a x25519::EphemeralSecret, &'a x25519::PublicKey> for Context<F>
+{
+    fn x25519(&mut self, sk: &x25519::EphemeralSecret, pk: &x25519::PublicKey) -> Result<&mut Self> {
+        // shared secret is absorbed externally
+        self.size += 0;
+        Ok(self)
+    }
+}
+
+impl<'a, F> X25519<&'a x25519::PublicKey, &'a NBytes> for Context<F>
+{
+    fn x25519(&mut self, pk: &x25519::PublicKey, key: &NBytes) -> Result<&mut Self> {
+        self.size += 32 + key.0.len();
         Ok(self)
     }
 }

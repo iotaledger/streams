@@ -125,7 +125,8 @@ where
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<TbinaryMessage<F, Link>> {
         let wrapped = self.prepare_announcement()?.wrap()?;
-        wrapped.commit(self.store.borrow_mut(), info)
+        let r = wrapped.commit(self.store.borrow_mut(), info);
+        r
     }
 
     fn do_prepare_keyload<'a, Psks, KePks>(
@@ -392,7 +393,8 @@ where
             .unwrap_subscribe(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
         //TODO: trust content.subscriber_ntru_pk and add to the list of subscribers only if trusted.
-        let subscriber_ke_pk = content.subscriber_ke_pk;
+        let subscriber_sig_pk = content.subscriber_sig_pk;
+        let subscriber_ke_pk = x25519::public_from_ed25519(&subscriber_sig_pk);
         self.ke_pks.insert(x25519::PublicKeyWrap(subscriber_ke_pk));
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())

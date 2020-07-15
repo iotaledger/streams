@@ -18,7 +18,7 @@ use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 /// Mask Uint8.
 impl<F> Mask<&Uint8> for Context<F> {
     fn mask(&mut self, _val: &Uint8) -> Result<&mut Self> {
-        self.size += 3;
+        self.size += 1;
         Ok(self)
     }
 }

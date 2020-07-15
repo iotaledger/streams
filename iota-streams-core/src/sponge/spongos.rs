@@ -1,6 +1,9 @@
 //use std::convert::{AsMut, AsRef, From, TryFrom};
 use std::fmt;
 //use std::hash;
+use digest::Digest;
+use digest::generic_array::GenericArray;
+use digest::generic_array::typenum::{U64};
 
 use super::prp::PRP;
 use crate::{
@@ -348,8 +351,8 @@ where
     /// State should be committed.
     pub fn to_inner(&self) -> Vec<u8> {
         assert!(self.is_committed());
-        assert!(false, "Spongos::to_inner not implemented");
-        self.s.clone().into()
+        let r = self.s.clone().into();
+        r
     }
 }
 
@@ -409,12 +412,56 @@ where
     }
 }
 
-pub fn rehash<F>(h: &mut [u8])
-where
-    F: PRP,
+pub fn rehash<F: PRP>(h: &mut [u8])
 {
     let mut s = Spongos::<F>::init();
     s.absorb(h);
     s.commit();
     s.squeeze(h);
+}
+
+impl<F: PRP> Digest for Spongos<F>
+{
+    type OutputSize = U64;
+
+    fn new() -> Self {
+        Spongos::init()
+    }
+
+    fn input<B: AsRef<[u8]>>(&mut self, data: B) {
+        self.absorb(data.as_ref());
+    }
+
+    fn chain<B: AsRef<[u8]>>(mut self, data: B) -> Self {
+        self.absorb(data.as_ref());
+        self
+    }
+
+    fn result(mut self) -> GenericArray<u8, Self::OutputSize> {
+        self.commit();
+        let mut data = GenericArray::default();
+        self.squeeze(data.as_mut_slice());
+        data
+    }
+
+    fn result_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
+        self.commit();
+        let mut data = GenericArray::default();
+        self.squeeze(data.as_mut_slice());
+        data
+    }
+
+    fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    fn output_size() -> usize {
+        64
+    }
+
+    fn digest(data: &[u8]) -> GenericArray<u8, Self::OutputSize> {
+        let mut result = GenericArray::default();
+        hash_data::<F>(data, result.as_mut_slice());
+        result
+    }
 }

@@ -10,6 +10,9 @@ use std::{
     fmt,
     hash,
 };
+use digest::Digest;
+use digest::generic_array::GenericArray;
+use digest::generic_array::typenum::{U64};
 
 use iota_streams_core::{
     sponge::{
@@ -162,9 +165,13 @@ pub struct Size(pub usize);
 pub const SIZE_MAX: usize = 2_026_277_576_509_488_133;
 
 /// Number of bytes needed to encode a value of `size_t` type.
-pub fn size_bytes(_n: usize) -> usize {
-    panic!("not implemented");
-    //0
+pub fn size_bytes(mut n: usize) -> usize {
+    let mut d = 0_usize;
+    while n > 0 {
+        n = n >> 8;
+        d += 1;
+    }
+    d
 }
 
 pub fn sizeof_sizet(n: usize) -> usize {
@@ -181,6 +188,43 @@ impl fmt::Display for Size {
 /// The external field is not encoded in trinary representation and the value is stored in the environment implicitly.
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Default)]
 pub struct External<T>(pub T);
+
+#[derive(Default)]
+pub(crate) struct Prehashed(pub GenericArray<u8, U64>);
+
+impl Digest for Prehashed {
+    type OutputSize = U64;
+
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn input<B: AsRef<[u8]>>(&mut self, data: B) {}
+
+    fn chain<B: AsRef<[u8]>>(self, data: B) -> Self {
+        self
+    }
+
+    fn result(self) -> GenericArray<u8, Self::OutputSize> {
+        self.0
+    }
+
+    fn result_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
+        self.0.clone()
+    }
+
+    fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    fn output_size() -> usize {
+        64
+    }
+
+    fn digest(data: &[u8]) -> GenericArray<u8, Self::OutputSize> {
+        GenericArray::default()
+    }
+}
 
 /// The `link` type is generic and transport-specific. Links can be address+tag pair
 /// when messages are published in the Tangle. Or links can be a URL when HTTP is used.

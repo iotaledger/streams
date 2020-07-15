@@ -87,12 +87,11 @@ where
 
 impl<Link> Header<Link>
 {
-    pub fn new_with_type(link: Link, _content_type: &str) -> Self {
+    pub fn new_with_type(link: Link, content_type: &str) -> Self {
         Self {
             version: STREAMS_1_VER,
             link: link,
-            //TODO: Bytes from str
-            content_type: Bytes(Vec::new()),
+            content_type: Bytes(content_type.as_bytes().to_vec()),
         }
     }
 
@@ -122,9 +121,11 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.absorb(&self.version)?
+        ctx
+            .absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
-            .absorb(&self.content_type)?;
+            .absorb(&self.content_type)?
+        ;
         Ok(ctx)
     }
 }

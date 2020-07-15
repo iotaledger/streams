@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::hash;
 use crate::signature::ed25519;
 
-pub use x25519_dalek::{StaticSecret, PublicKey};
+pub use x25519_dalek::{StaticSecret, EphemeralSecret, PublicKey, SharedSecret};
 use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;
 pub const PUBLIC_KEY_LENGTH: usize = 32;

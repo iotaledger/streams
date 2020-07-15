@@ -12,14 +12,13 @@ pub struct PreparsedMessage<'a, F, Link> {
 
 impl<'a, F, Link> PreparsedMessage<'a, F, Link>
 {
-    pub fn check_content_type(&self, _content_type: &str) -> bool {
-        panic!("not implemented");
-        //(self.header.content_type.0).eq_str(content_type)
+    pub fn check_content_type(&self, content_type: &str) -> bool {
+        &self.header.content_type.0[..] == content_type.as_bytes()
     }
 
     pub fn content_type(&self) -> String {
-        panic!("not implemented");
         //(self.header.content_type.0).to_string()
+        String::new()
     }
 
     pub fn unwrap<Store, Content>(

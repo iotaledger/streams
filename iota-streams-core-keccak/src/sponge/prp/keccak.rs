@@ -34,7 +34,7 @@ impl From<Vec<u8>> for KeccakF1600
         assert_eq!(200, v.len());
         let mut s = Self::default();
         unsafe {
-            let t = std::mem::transmute::<&mut [u64], &mut [u8]>(&mut s.state);
+            let t = std::slice::from_raw_parts_mut(s.state.as_mut_ptr() as *mut u8, 200);
             t.copy_from_slice(&v[..]);
         }
         s
@@ -44,9 +44,9 @@ impl From<Vec<u8>> for KeccakF1600
 impl Into<Vec<u8>> for KeccakF1600
 {
     fn into(self) -> Vec<u8> {
-        let mut v = vec![0_u8; 1600];
+        let mut v = vec![0_u8; 200];
         unsafe {
-            let t = std::mem::transmute::<&[u64], &[u8]>(&self.state);
+            let t = std::slice::from_raw_parts(self.state.as_ptr() as *const u8, 200);
             v.copy_from_slice(t);
         }
         v

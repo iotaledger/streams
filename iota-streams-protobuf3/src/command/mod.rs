@@ -60,11 +60,9 @@ pub trait Ed25519<Key, Hash> {
     fn ed25519(&mut self, key: Key, hash: Hash) -> Result<&mut Self>;
 }
 
-/// X25519 command. Secret is Diffie-Hellman key exhange over Edwrads curve25519. For Wrap operation
-/// PRNG, nonce and x25519 public key are passed as tuple in `key` argument.
-/// For Unwrap operation X25519 private key is passed in `key` argument.
-pub trait X25519<Key, Secret> {
-    fn x25519(&mut self, key: Key, secret: Secret) -> Result<&mut Self>;
+/// X25519 command. Absorb Diffie-Hellman shared key.
+pub trait X25519<SK, PK> {
+    fn x25519(&mut self, sk: SK, pk: PK) -> Result<&mut Self>;
 }
 
 /// Fork command. Fork Spongos state and continue processing `cont` commands.
@@ -116,7 +114,5 @@ pub mod unwrap;
 /// Implementation of command traits for unwrapping messages.
 pub mod wrap;
 
-/*
 #[cfg(test)]
 mod test;
- */

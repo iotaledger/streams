@@ -1,4 +1,5 @@
 use anyhow::{
+    bail,
     Result,
 };
 use std::mem;
@@ -127,9 +128,14 @@ impl<'a, F, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context<F, I
 where
     F: PRP,
 {
-    fn absorb(&mut self, _pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
-        panic!("not implemented");
-        //Ok(unwrap_absorb_bytes(self.as_mut(), &pk)?.as_mut())
+    fn absorb(&mut self, pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
+        let mut pk_bytes = [0_u8; 32];
+        unwrap_absorb_bytes(self.as_mut(), &mut pk_bytes)?;
+        match ed25519::PublicKey::from_bytes(&pk_bytes) {
+            Ok(apk) => *pk = apk,
+            Err(err) => bail!("Bad ed25519 public key: {}", err),
+        }
+        Ok(self)
     }
 }
 
@@ -137,13 +143,11 @@ impl<'a, F, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<F, IS
 where
     F: PRP,
 {
-    fn absorb(&mut self, _pk: &'a mut x25519::PublicKey) -> Result<&mut Self> {
-        panic!("not implemented");
-        /*
-        unwrap_absorb_bytes(self.as_mut(), &mut pk)?;
-        ensure!(pk.validate(), "x25519 public key is not valid.");
+    fn absorb(&mut self, pk: &'a mut x25519::PublicKey) -> Result<&mut Self> {
+        let mut pk_bytes = [0_u8; 32];
+        unwrap_absorb_bytes(self.as_mut(), &mut pk_bytes)?;
+        *pk = x25519::PublicKey::from(pk_bytes);
         Ok(self)
-         */
     }
 }
 

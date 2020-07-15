@@ -22,9 +22,7 @@ where
     T::SendOptions: Default,
     T::RecvOptions: Default,
 {
-    println!("Creating Author");
     let mut author = Author::new("AUTHOR9SEED");
-    println!("Channel address = {}", author.channel_address());
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
     let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
@@ -37,14 +35,18 @@ where
         let msg = &author.announce()?;
         println!("  {}", msg);
         transport.send_message(&msg)?;
+        println!("  sent");
         (msg.link.appinst.to_string(), msg.link.msgid.to_string())
     };
     let announcement_link = Address::from_str(&announcement_address, &announcement_tag).unwrap();
 
     {
+        println!("  recving");
         let msg = transport.recv_message(&announcement_link)?;
+        println!("  parsing header");
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::announce::TYPE), "bad message type");
+        println!("  header parsed");
+        ensure!(preparsed.check_content_type(message::announce::TYPE), "bad message type: {}", preparsed.header.content_type);
 
         subscriberA.unwrap_announcement(preparsed.clone())?;
         ensure!(author.channel_address() == subscriberA.channel_address().unwrap(), "bad channel address");

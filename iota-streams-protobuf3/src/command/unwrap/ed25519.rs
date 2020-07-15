@@ -1,4 +1,5 @@
 use anyhow::{
+    bail,
     Result,
 };
 
@@ -14,6 +15,7 @@ use crate::{
         External,
         HashSig,
         NBytes,
+        Prehashed,
     },
 };
 use iota_streams_core::{
@@ -27,10 +29,20 @@ impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes
 where
     F: PRP,
 {
-    fn ed25519(&mut self, _pk: &'a ed25519::PublicKey, _hash: &'a External<NBytes>) -> Result<&mut Self> {
-        let _sig = self.stream.try_advance(64)?;
-        //TODO: pk.verify_prehashed(hash, None, sig)?;
-        Ok(self)
+    fn ed25519(&mut self, pk: &'a ed25519::PublicKey, hash: &'a External<NBytes>) -> Result<&mut Self> {
+        let context = "IOTAStreams".as_bytes();
+        let mut prehashed = Prehashed::default();
+        prehashed.0.as_mut_slice().copy_from_slice(&(hash.0).0[..]);
+        let mut bytes = [0_u8; ed25519::SIGNATURE_LENGTH];
+        let slice = self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?;
+        bytes.copy_from_slice(slice);
+        match ed25519::Signature::from_bytes(&bytes) {
+            Ok(signature) => match pk.verify_prehashed(prehashed, Some(context), &signature) {
+                Ok(()) => Ok(self),
+                Err(err) => bail!("bad signature: {}", err),
+            },
+            Err(err) => bail!("bad signature: {}", err),
+        }
     }
 }
 

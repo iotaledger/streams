@@ -221,11 +221,9 @@ where
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
             let content = subscribe::ContentWrap {
                 link: link_to,
-                nonce,
                 unsubscribe_key,
-                subscriber_ke_pk: &self.ke_kp.1,
+                subscriber_sig_kp: &self.sig_kp,
                 author_ke_pk: &author_ke_pk.0,
-                prng: &self.prng,
                 _phantom: std::marker::PhantomData,
             };
             Ok(PreparedMessage::new(self.store.borrow(), header, content))
@@ -282,8 +280,12 @@ where
             );
         }
 
+        println!("unwrap announce 1");
         let content = announce::ContentUnwrap::<F>::default();
-        preparsed.unwrap(&*self.store.borrow(), content)
+        println!("unwrap announce 2");
+        let r = preparsed.unwrap(&*self.store.borrow(), content);
+        println!("unwrap announce 3");
+        r
     }
 
     /// Bind Subscriber (or anonymously subscribe) to the channel announced
@@ -304,13 +306,10 @@ where
         //TODO: Verify appinst (address) == MSS public key.
         // At the moment the Author is free to choose any address, not tied to MSS PK.
 
-        /*
         self.appinst = Some(link);
-        self.author_mss_pk = Some(content.mss_pk);
-        self.author_ntru_pk = content.ntru_pk;
+        self.author_sig_pk = Some(content.sig_pk);
+        self.author_ke_pk = Some(x25519::PublicKeyWrap(content.ke_pk));
         Ok(())
-         */
-        panic!("not implemented");
     }
 
     fn lookup_psk<'b>(&'b self, pskid: &psk::PskId) -> Option<&'b psk::Psk> {
