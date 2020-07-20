@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::iter;
+use core::iter;
 
 use super::Context;
 use crate::command::Repeated;

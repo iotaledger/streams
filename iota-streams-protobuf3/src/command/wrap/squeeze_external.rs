@@ -8,9 +8,7 @@ use crate::{
         NBytes,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
 /// This is just an external tag or hash value to-be-signed.
 impl<'a, F, OS> Squeeze<&'a mut External<NBytes>> for Context<F, OS>

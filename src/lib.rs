@@ -8,11 +8,5 @@ pub use iota_streams_core as core;
 pub use iota_streams_core_edsig as core_edsig;
 /// Keccak-f\[1600\]-based sponge transform.
 pub use iota_streams_core_keccak as core_keccak;
-/// Traversable Merkle tree.
-pub use iota_streams_core_merkletree as core_merkletree;
-/// WOTS and MSS hash-based signatures.
-pub use iota_streams_core_mss as core_mss;
-/// NTRU key encapsulation.
-pub use iota_streams_core_ntru as core_ntru;
 /// Protobuf3 EDSL for Streams Messages.
 pub use iota_streams_protobuf3 as protobuf3;

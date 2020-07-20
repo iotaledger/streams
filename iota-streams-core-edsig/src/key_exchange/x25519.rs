@@ -1,10 +1,16 @@
-use std::collections::HashSet;
-use std::hash;
 use crate::signature::ed25519;
+use core::hash;
 
-pub use x25519_dalek::{StaticSecret, EphemeralSecret, PublicKey, SharedSecret};
 use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;
+pub use x25519_dalek::{
+    EphemeralSecret,
+    PublicKey,
+    SharedSecret,
+    StaticSecret,
+};
+use iota_streams_core::prelude::{Vec, HashSet};
+
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 
 #[derive(Clone)]
@@ -19,7 +25,9 @@ impl PartialEq for PublicKeyWrap {
 impl Eq for PublicKeyWrap {}
 
 impl hash::Hash for PublicKeyWrap {
-    fn hash<H>(&self, state: &mut H) where H: hash::Hasher
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
     {
         self.0.as_bytes().hash(state)
     }
@@ -28,16 +36,14 @@ impl hash::Hash for PublicKeyWrap {
 pub type Pks = HashSet<PublicKeyWrap>;
 pub type IPk<'a> = &'a PublicKeyWrap;
 
-pub fn filter_ke_pks<'a>(allowed_pks: &'a Pks, target_pks: &'a Vec<PublicKeyWrap>) -> Vec<IPk<'a>>
-{
+pub fn filter_ke_pks<'a>(allowed_pks: &'a Pks, target_pks: &'a Vec<PublicKeyWrap>) -> Vec<IPk<'a>> {
     target_pks
         .iter()
         .filter_map(|pk| allowed_pks.get(pk))
         .collect::<Vec<IPk<'a>>>()
 }
 
-pub fn keypair_from_ed25519(kp: &ed25519::Keypair) -> (StaticSecret, PublicKey)
-{
+pub fn keypair_from_ed25519(kp: &ed25519::Keypair) -> (StaticSecret, PublicKey) {
     // PublicKey is derived from `ExpandedSecretKey`
     let mut key = [0_u8; 32];
     key.copy_from_slice(&ExpandedSecretKey::from(&kp.secret).to_bytes()[..32]);
@@ -46,14 +52,14 @@ pub fn keypair_from_ed25519(kp: &ed25519::Keypair) -> (StaticSecret, PublicKey)
     (sk, pk)
 }
 
-pub fn public_from_ed25519(pk: &ed25519::PublicKey) -> PublicKey
-{
+pub fn public_from_ed25519(pk: &ed25519::PublicKey) -> PublicKey {
     PublicKey::from(
         edwards::CompressedEdwardsY(pk.to_bytes()) // `pk.to_bytes` returns Y coordinate
             .decompress() // try reconstruct X,Y,Z,T coordinates of `EdwardsPoint`
             .unwrap() // pk is a valid `PublicKey` hence contains valid `EdwardsPoint`
             .to_montgomery() // x25519 uses Montgomery form, and `PublicKey` is just a `MontgomeryPoint`
-            .to_bytes())
+            .to_bytes(),
+    )
 }
 
 #[cfg(test)]
@@ -77,7 +83,7 @@ mod tests {
     impl rand::CryptoRng for FixedRng {}
 
     fn test_25519<R>(rng: &mut R)
-        where
+    where
         R: rand::CryptoRng + rand::RngCore,
     {
         let ed_kp = super::ed25519::Keypair::generate(rng);

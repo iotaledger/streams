@@ -1,18 +1,16 @@
-use anyhow::{
-    Result,
-};
+use anyhow::Result;
 
 use super::Context;
 use crate::{
     command::Skip,
     types::{
         sizeof_sizet,
+        Bytes,
         Fallback,
         NBytes,
         Size,
         SkipFallback,
         Uint8,
-        Bytes,
     },
 };
 
@@ -48,8 +46,7 @@ impl<F> Skip<Size> for Context<F> {
 }
 
 /// `trytes` is encoded with `sizeof_sizet(n) + 3 * n` trits.
-impl<'a, F> Skip<&'a Bytes> for Context<F>
-{
+impl<'a, F> Skip<&'a Bytes> for Context<F> {
     fn skip(&mut self, trytes: &'a Bytes) -> Result<&mut Self> {
         self.size += sizeof_sizet((trytes.0).len()) + (trytes.0).len();
         Ok(self)
@@ -57,16 +54,14 @@ impl<'a, F> Skip<&'a Bytes> for Context<F>
 }
 
 /// `trytes` is encoded with `sizeof_sizet(n) + 3 * n` trits.
-impl<F> Skip<Bytes> for Context<F>
-{
+impl<F> Skip<Bytes> for Context<F> {
     fn skip(&mut self, trytes: Bytes) -> Result<&mut Self> {
         self.skip(&trytes)
     }
 }
 
 /// `tryte [n]` is encoded with `3 * n` trits.
-impl<'a, F> Skip<&'a NBytes> for Context<F>
-{
+impl<'a, F> Skip<&'a NBytes> for Context<F> {
     fn skip(&mut self, ntrytes: &'a NBytes) -> Result<&mut Self> {
         self.size += (ntrytes.0).len();
         Ok(self)
@@ -74,8 +69,7 @@ impl<'a, F> Skip<&'a NBytes> for Context<F>
 }
 
 /// `tryte [n]` is encoded with `3 * n` trits.
-impl<F> Skip<NBytes> for Context<F>
-{
+impl<F> Skip<NBytes> for Context<F> {
     fn skip(&mut self, ntrytes: NBytes) -> Result<&mut Self> {
         self.skip(&ntrytes)
     }

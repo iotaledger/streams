@@ -1,10 +1,6 @@
-use anyhow::{
-    Result,
-};
+use anyhow::Result;
 
-use crate::types::{
-    Size,
-};
+use crate::types::Size;
 
 /// Helper trait for unwrapping (decoding/absorbing) uint8s.
 pub(crate) trait Unwrap {

@@ -3,10 +3,9 @@ use anyhow::{
     ensure,
     Result,
 };
-use std::{
-    collections::HashMap,
-    hash,
-};
+use core::hash;
+
+use iota_streams_core::prelude::{HashMap, Vec};
 
 use crate::message::TbinaryMessage;
 

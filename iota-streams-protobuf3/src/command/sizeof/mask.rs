@@ -1,19 +1,20 @@
-use anyhow::{
-    Result,
-};
+use anyhow::Result;
 
 use super::Context;
 use crate::{
     command::Mask,
     types::{
         sizeof_sizet,
+        Bytes,
         NBytes,
         Size,
         Uint8,
-        Bytes,
     },
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 
 /// Mask Uint8.
 impl<F> Mask<&Uint8> for Context<F> {
@@ -46,8 +47,7 @@ impl<F> Mask<Size> for Context<F> {
 }
 
 /// Mask `n` bytes.
-impl<F> Mask<&NBytes> for Context<F>
-{
+impl<F> Mask<&NBytes> for Context<F> {
     fn mask(&mut self, val: &NBytes) -> Result<&mut Self> {
         self.size += (val.0).len();
         Ok(self)
@@ -55,8 +55,7 @@ impl<F> Mask<&NBytes> for Context<F>
 }
 
 /// Mask bytes, the size prefixed before the content bytes is also masked.
-impl<F> Mask<&Bytes> for Context<F>
-{
+impl<F> Mask<&Bytes> for Context<F> {
     fn mask(&mut self, bytes: &Bytes) -> Result<&mut Self> {
         let size = Size((bytes.0).len());
         self.mask(&size)?;
@@ -65,16 +64,14 @@ impl<F> Mask<&Bytes> for Context<F>
     }
 }
 
-impl<F> Mask<&x25519::PublicKey> for Context<F>
-{
+impl<F> Mask<&x25519::PublicKey> for Context<F> {
     fn mask(&mut self, _pk: &x25519::PublicKey) -> Result<&mut Self> {
         self.size += x25519::PUBLIC_KEY_LENGTH;
         Ok(self)
     }
 }
 
-impl<F> Mask<&ed25519::PublicKey> for Context<F>
-{
+impl<F> Mask<&ed25519::PublicKey> for Context<F> {
     fn mask(&mut self, _pk: &ed25519::PublicKey) -> Result<&mut Self> {
         self.size += ed25519::PUBLIC_KEY_LENGTH;
         Ok(self)

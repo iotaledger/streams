@@ -6,6 +6,8 @@ use anyhow::{
     Result,
 };
 
+use iota_streams_core::prelude::String;
+
 /// Write
 pub trait OStream {
     /// Try advance and panic in case of error.
@@ -48,13 +50,12 @@ pub trait IStream {
     }
 }
 
-impl<'b> OStream for &'b mut [u8]
-{
+impl<'b> OStream for &'b mut [u8] {
     fn try_advance<'a>(&'a mut self, n: usize) -> Result<&'a mut [u8]> {
         ensure!(n <= self.len(), "Output slice too short.");
         let (head, tail) = (*self).split_at_mut(n);
         unsafe {
-            *self = std::mem::transmute::<&'a mut [u8], &'b mut [u8]>(tail);
+            *self = core::mem::transmute::<&'a mut [u8], &'b mut [u8]>(tail);
         }
         Ok(head)
     }
@@ -64,13 +65,12 @@ impl<'b> OStream for &'b mut [u8]
     }
 }
 
-impl<'b> IStream for &'b [u8]
-{
+impl<'b> IStream for &'b [u8] {
     fn try_advance<'a>(&'a mut self, n: usize) -> Result<&'a [u8]> {
         ensure!(n <= self.len(), "Input slice too short.");
         let (head, tail) = (*self).split_at(n);
         unsafe {
-            *self = std::mem::transmute::<&'a [u8], &'b [u8]>(tail);
+            *self = core::mem::transmute::<&'a [u8], &'b [u8]>(tail);
         }
         Ok(head)
     }

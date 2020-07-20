@@ -32,9 +32,7 @@ use iota_streams_app::message::{
     self,
     HasLink,
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_protobuf3::{
     command::*,
@@ -54,7 +52,7 @@ where
     pub(crate) public_payload: &'a Bytes,
     pub(crate) masked_payload: &'a Bytes,
     pub(crate) sig_kp: &'a ed25519::Keypair,
-    pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
+    pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
@@ -69,8 +67,7 @@ where
         ctx.join(&store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            .ed25519(self.sig_kp, HashSig)?
-        ;
+            .ed25519(self.sig_kp, HashSig)?;
         //TODO: Is both public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
@@ -80,11 +77,11 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?
+        ctx
+            .join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            .ed25519(self.sig_kp, HashSig)?
-        ;
+            .ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
 }
@@ -94,7 +91,7 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) public_payload: Bytes,
     pub(crate) masked_payload: Bytes,
     pub(crate) sig_pk: ed25519::PublicKey,
-    pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
+    pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
 impl<F, Link> ContentUnwrap<F, Link>
@@ -102,23 +99,13 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new() -> Self {
+    pub fn with_sig(sig_pk: ed25519::PublicKey) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             public_payload: Bytes::default(),
             masked_payload: Bytes::default(),
-            sig_pk: ed25519::PublicKey::default(),
-            _phantom: std::marker::PhantomData,
-        }
-    }
-
-    pub fn with_sig(sig: ed25519::PublicKey) -> Self {
-        Self {
-            link: <<Link as HasLink>::Rel as Default>::default(),
-            public_payload: Bytes::default(),
-            masked_payload: Bytes::default(),
-            sig_pk: sig,
-            _phantom: std::marker::PhantomData,
+            sig_pk,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
@@ -135,7 +122,8 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.join(store, &mut self.link)?
+        ctx
+            .join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
             .ed25519(&self.sig_pk, HashSig)?

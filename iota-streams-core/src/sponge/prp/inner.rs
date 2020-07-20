@@ -1,18 +1,16 @@
-use std::hash;
+use core::hash;
 
-use crate::{
-    sponge::prp::PRP,
-};
+use crate::sponge::prp::PRP;
+use crate::prelude::Vec;
 
 /// Convenience wrapper for storing Spongos inner state.
 #[derive(Clone)]
 pub struct Inner<F> {
     pub inner: Vec<u8>,
-    pub _phantom: std::marker::PhantomData<F>,
+    pub _phantom: core::marker::PhantomData<F>,
 }
 
-impl<F> PartialEq for Inner<F>
-{
+impl<F> PartialEq for Inner<F> {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
     }
@@ -26,13 +24,12 @@ where
     fn default() -> Self {
         Self {
             inner: Vec::with_capacity(F::CAPACITY_BITS / 8),
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
 
-impl<F> hash::Hash for Inner<F>
-{
+impl<F> hash::Hash for Inner<F> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.inner).hash(state);
     }
@@ -54,7 +51,7 @@ impl<F> From<Vec<u8>> for Inner<F> {
     fn from(bytes: Vec<u8>) -> Self {
         Self {
             inner: bytes,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 }

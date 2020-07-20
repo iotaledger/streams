@@ -82,8 +82,7 @@ pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, F, Link, Store, Psks, KePks> message::ContentWrap<F, Store>
-    for ContentWrap<'a, F, Link, Psks, KePks>
+impl<'a, F, Link, Store, Psks, KePks> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link, Psks, KePks>
 where
     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
     Link: HasLink,
@@ -101,8 +100,7 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx
-                        .mask(&NBytes(pskid.clone()))?
+                    ctx.mask(&NBytes(pskid.clone()))?
                         .absorb(External(&NBytes(psk.clone())))?
                         .commit()?
                         .mask(&self.key)
@@ -110,11 +108,7 @@ where
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone(), |ctx, ke_pk| {
-                ctx.fork(|ctx| {
-                    ctx
-                        .absorb(&ke_pk.0)?
-                        .x25519(&ke_pk.0, &self.key)
-                })
+                ctx.fork(|ctx| ctx.absorb(&ke_pk.0)?.x25519(&ke_pk.0, &self.key))
             })?
             .absorb(External(&self.key))?
             .commit()?;
@@ -133,8 +127,7 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx
-                        .mask(&NBytes(pskid.clone()))?
+                    ctx.mask(&NBytes(pskid.clone()))?
                         .absorb(External(&NBytes(psk.clone())))?
                         .commit()?
                         .mask(&self.key)
@@ -142,11 +135,7 @@ where
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone().into_iter(), |ctx, ke_pk| {
-                ctx.fork(|ctx| {
-                    ctx
-                        .absorb(&ke_pk.0)?
-                        .x25519(&ke_pk.0, &self.key)
-                })
+                ctx.fork(|ctx| ctx.absorb(&ke_pk.0)?.x25519(&ke_pk.0, &self.key))
             })?
             .absorb(External(&self.key))?
             .commit()?;
@@ -168,8 +157,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, F, Link, LookupArg, LookupPsk, LookupKeSk>
-    ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupKeSk>
+impl<'a, F, Link, LookupArg, LookupPsk, LookupKeSk> ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupKeSk>
 where
     F: PRP,
     Link: HasLink,

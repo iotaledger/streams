@@ -1,6 +1,4 @@
-use anyhow::{
-    Result,
-};
+use anyhow::Result;
 
 use super::Context;
 use crate::{

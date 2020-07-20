@@ -6,9 +6,7 @@ use crate::{
     io,
     types::Size,
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
 impl<C, F, IS: io::IStream> Repeated<Size, C> for Context<F, IS>
 where

@@ -6,9 +6,7 @@ use super::*;
 use crate::api::subscriber::SubscriberT;
 use iota_streams_app::message::HasLink as _;
 
-use iota_streams_core::{
-    prng,
-};
+use iota_streams_core::prng;
 
 type SubscriberImp = SubscriberT<DefaultF, Address, Store, LinkGen>;
 
@@ -22,12 +20,7 @@ impl Subscriber {
     pub fn new(seed: &str) -> Self {
         let nonce = "TANGLESUBSCRIBERNONCE".as_bytes().to_vec();
         Self {
-            imp: SubscriberT::gen(
-                Store::default(),
-                LinkGen::default(),
-                prng::dbg_init_str(seed),
-                nonce,
-            ),
+            imp: SubscriberT::gen(Store::default(), LinkGen::default(), prng::dbg_init_str(seed), nonce),
         }
     }
 

@@ -1,14 +1,12 @@
 use anyhow::Result;
-use std::iter;
+use core::iter;
 
 use super::Context;
 use crate::{
     command::Repeated,
     io,
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
 impl<I, C, F, OS: io::OStream> Repeated<I, C> for Context<F, OS>
 where

@@ -98,8 +98,9 @@ pub trait Guard {
 /// Dump context info into stdout.
 /// Use it like this: `ctx.dump(format_args!("checkpoint"))`
 pub trait Dump {
-    fn dump<'a>(&mut self, args: std::fmt::Arguments<'a>) -> Result<&mut Self> {
+    fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {
         //std::io::_print(args);
+        #[cfg(feature = "std")]
         println!("{}", args);
         Ok(self)
     }

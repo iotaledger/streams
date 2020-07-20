@@ -3,12 +3,8 @@ use anyhow::{
     ensure,
     Result,
 };
-use std::{
+use core::{
     cell::RefCell,
-    collections::{
-        HashMap,
-        HashSet,
-    },
     fmt::Debug,
 };
 
@@ -16,8 +12,19 @@ use iota_streams_core::{
     prng,
     psk,
     sponge::spongos,
+    prelude::{
+        vec,
+        Vec,
+        hash_map,
+        HashMap,
+        hash_set,
+        HashSet,
+    },
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 
 use iota_streams_app::message::{
     header::Header,
@@ -46,8 +53,7 @@ const SEQ_MESSAGE_NUM: usize = 1;
 ///
 /// `LinkGen` is a helper tool for deriving links for new messages. It maintains a
 /// mutable state and can derive link pseudorandomly.
-pub struct AuthorT<F, Link, Store, LinkGen>
-{
+pub struct AuthorT<F, Link, Store, LinkGen> {
     /// PRNG object used for Ed25519, X25519, Spongos key generation, etc.
     #[allow(dead_code)]
     prng: prng::Prng<F>,
@@ -150,7 +156,7 @@ where
         let content = announce::ContentWrap {
             sig_kp: &self.sig_kp,
             multi_branching: self.multi_branching.clone(),
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
@@ -184,7 +190,7 @@ where
             key: key,
             psks: psks,
             ke_pks: ke_pks,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
@@ -200,13 +206,7 @@ where
             F,
             Link,
             Store,
-            keyload::ContentWrap<
-                'a,
-                F,
-                Link,
-                std::vec::IntoIter<psk::IPsk<'a>>,
-                std::vec::IntoIter<x25519::IPk<'a>>,
-            >,
+            keyload::ContentWrap<'a, F, Link, vec::IntoIter<psk::IPsk<'a>>, vec::IntoIter<x25519::IPk<'a>>>,
         >,
     > {
         let header = self.link_gen.header_from(link_to,
@@ -232,8 +232,8 @@ where
                 'a,
                 F,
                 Link,
-                std::collections::hash_map::Iter<psk::PskId, psk::Psk>,
-                std::collections::hash_set::Iter<x25519::PublicKeyWrap>,
+                hash_map::Iter<psk::PskId, psk::Psk>,
+                hash_set::Iter<x25519::PublicKeyWrap>,
             >,
         >,
     > {
@@ -326,7 +326,7 @@ where
             public_payload: public_payload,
             masked_payload: masked_payload,
             sig_kp: &self.sig_kp,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
@@ -361,7 +361,7 @@ where
             link: link_to,
             public_payload: public_payload,
             masked_payload: masked_payload,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }

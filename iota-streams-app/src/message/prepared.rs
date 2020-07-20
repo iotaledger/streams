@@ -2,12 +2,10 @@ use anyhow::{
     ensure,
     Result,
 };
-use std::cell::Ref;
+use core::cell::Ref;
 
 use super::*;
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 use iota_streams_protobuf3::types::*;
 
 /// Message context prepared for wrapping.
@@ -15,7 +13,7 @@ pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {
     store: Ref<'a, Store>,
     pub header: Header<Link>,
     pub content: Content,
-    _phantom: std::marker::PhantomData<F>,
+    _phantom: core::marker::PhantomData<F>,
 }
 
 impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {
@@ -24,7 +22,7 @@ impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Conten
             store,
             header,
             content,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
@@ -65,7 +63,7 @@ where
                 link: self.header.link.clone(),
                 body: buf,
                 multi_branching: self.header.multi_branching.clone(),
-                _phantom: std::marker::PhantomData,
+                _phantom: core::marker::PhantomData,
             },
         })
     }

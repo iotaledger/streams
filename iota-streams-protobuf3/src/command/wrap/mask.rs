@@ -1,7 +1,5 @@
-use anyhow::{
-    Result,
-};
-use std::mem;
+use anyhow::Result;
+use core::mem;
 
 use super::{
     wrap::*,
@@ -11,16 +9,17 @@ use crate::{
     command::Mask,
     io,
     types::{
+        Bytes,
         NBytes,
         Size,
         Uint8,
-        Bytes,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
+use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
 struct MaskContext<F, OS> {
     ctx: Context<F, OS>,
@@ -53,10 +52,7 @@ where
     }
 }
 
-fn wrap_mask_u8<'a, F, OS: io::OStream>(
-    ctx: &'a mut MaskContext<F, OS>,
-    u: Uint8,
-) -> Result<&'a mut MaskContext<F, OS>>
+fn wrap_mask_u8<'a, F, OS: io::OStream>(ctx: &'a mut MaskContext<F, OS>, u: Uint8) -> Result<&'a mut MaskContext<F, OS>>
 where
     F: PRP,
 {

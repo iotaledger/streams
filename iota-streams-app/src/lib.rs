@@ -22,6 +22,16 @@
 //! messages of your Application. And when Protobuf3 is not powerful enough,
 //! it can be extended with custom commands.
 
+#![no_std]
+
+#[cfg(not(feature = "std"))]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
+
 /// Streams Message definitions and utils for wrapping/unwrapping.
 pub mod message;
 

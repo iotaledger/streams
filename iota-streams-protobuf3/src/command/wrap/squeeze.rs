@@ -6,9 +6,7 @@ use crate::{
     io,
     types::Mac,
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
 /// External values are not encoded.
 impl<'a, F, OS: io::OStream> Squeeze<&'a Mac> for Context<F, OS>

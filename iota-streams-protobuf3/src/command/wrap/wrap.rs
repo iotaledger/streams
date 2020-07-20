@@ -1,7 +1,8 @@
 use anyhow::Result;
 
 use crate::types::{
-    Size, size_bytes,
+    size_bytes,
+    Size,
 };
 
 /// Helper trait for wrapping (encoding/absorbing) trint3s.

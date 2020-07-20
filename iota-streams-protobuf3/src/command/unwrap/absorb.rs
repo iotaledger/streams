@@ -2,7 +2,7 @@ use anyhow::{
     bail,
     Result,
 };
-use std::mem;
+use core::mem;
 
 use super::{
     unwrap::*,
@@ -13,17 +13,18 @@ use crate::{
     io,
     types::{
         AbsorbFallback,
+        Bytes,
         Fallback,
         NBytes,
         Size,
         Uint8,
-        Bytes,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
+use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
 struct AbsorbContext<F, IS> {
     ctx: Context<F, IS>,

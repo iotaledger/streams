@@ -2,7 +2,7 @@ use anyhow::{
     bail,
     Result,
 };
-use std::mem;
+use core::mem;
 
 use super::{
     unwrap::*,
@@ -12,16 +12,17 @@ use crate::{
     command::Mask,
     io,
     types::{
+        Bytes,
         NBytes,
         Size,
         Uint8,
-        Bytes,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
+use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
 struct MaskContext<F, IS> {
     ctx: Context<F, IS>,
@@ -146,8 +147,8 @@ where
             Ok(apk) => {
                 *pk = apk;
                 Ok(self)
-            },
-            Err(_err) => bail!("Bad ed25519 public key")
+            }
+            Err(_err) => bail!("Bad ed25519 public key"),
         }
     }
 }

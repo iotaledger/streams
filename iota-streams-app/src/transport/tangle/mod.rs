@@ -1,17 +1,16 @@
 //! Tangle-specific transport definitions.
 
-use chrono::Utc;
 use anyhow::Result;
-use std::{
+use chrono::Utc;
+use core::{
     convert::AsRef,
     fmt,
     hash,
     str::FromStr,
 };
 
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::{prelude::Vec, sponge::prp::PRP};
+//TODO: should ed25519 or x25519 public key used for link generation?
 use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     command::*,
@@ -53,8 +52,7 @@ pub struct TangleAddress {
     pub msgid: MsgId,
 }
 
-impl TangleAddress
-{
+impl TangleAddress {
     pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self, ()> {
         let appinst = AppInst::from_str(appinst_str)?;
         let msgid = MsgId::from_str(msgid_str)?;
@@ -62,22 +60,19 @@ impl TangleAddress
     }
 }
 
-impl fmt::Debug for TangleAddress
-{
+impl fmt::Debug for TangleAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{appinst: {:?}, msgid:{:?}}}", self.appinst, self.msgid)
     }
 }
 
-impl fmt::Display for TangleAddress
-{
+impl fmt::Display for TangleAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{appinst: {}, msgid:{}}}", self.appinst, self.msgid)
     }
 }
 
-impl Default for TangleAddress
-{
+impl Default for TangleAddress {
     fn default() -> Self {
         Self {
             appinst: AppInst::default(),
@@ -86,8 +81,7 @@ impl Default for TangleAddress
     }
 }
 
-impl PartialEq for TangleAddress
-{
+impl PartialEq for TangleAddress {
     fn eq(&self, other: &Self) -> bool {
         self.appinst == other.appinst && self.msgid == other.msgid
     }
@@ -100,16 +94,14 @@ impl TangleAddress {
     }
 }
 
-impl hash::Hash for TangleAddress
-{
+impl hash::Hash for TangleAddress {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.appinst.hash(state);
         self.msgid.hash(state);
     }
 }
 
-impl HasLink for TangleAddress
-{
+impl HasLink for TangleAddress {
     type Base = AppInst;
     fn base(&self) -> &AppInst {
         &self.appinst
@@ -131,15 +123,14 @@ impl HasLink for TangleAddress
 #[derive(Clone)]
 pub struct DefaultTangleLinkGenerator<F> {
     appinst: AppInst,
-    _phantom: std::marker::PhantomData<F>,
+    _phantom: core::marker::PhantomData<F>,
 }
 
-impl<F> Default for DefaultTangleLinkGenerator<F>
-{
+impl<F> Default for DefaultTangleLinkGenerator<F> {
     fn default() -> Self {
         Self {
             appinst: AppInst::default(),
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
@@ -220,32 +211,28 @@ pub struct AppInst {
     pub(crate) id: NBytes,
 }
 
-impl FromStr for AppInst
-{
+impl FromStr for AppInst {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
         //TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
         //currently lowercase hex
-        hex::decode(s).map_or(Err(()), |x| Ok(AppInst{id: NBytes(x)}))
+        hex::decode(s).map_or(Err(()), |x| Ok(AppInst { id: NBytes(x) }))
     }
 }
 
-impl fmt::Debug for AppInst
-{
+impl fmt::Debug for AppInst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.id)
     }
 }
 
-impl fmt::Display for AppInst
-{
+impl fmt::Display for AppInst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", hex::encode(&self.id.0))
     }
 }
 
-impl PartialEq for AppInst
-{
+impl PartialEq for AppInst {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
@@ -264,8 +251,7 @@ impl AsRef<Vec<u8>> for AppInst {
     }
 }
 
-impl Default for AppInst
-{
+impl Default for AppInst {
     fn default() -> Self {
         Self {
             id: NBytes(vec![0; APPINST_SIZE]),
@@ -282,8 +268,7 @@ impl ToString for AppInst
 }
  */
 
-impl hash::Hash for AppInst
-{
+impl hash::Hash for AppInst {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
@@ -323,13 +308,12 @@ pub struct MsgId {
     pub(crate) id: NBytes,
 }
 
-impl FromStr for MsgId
-{
+impl FromStr for MsgId {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
         //TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
         //currently lowercase hex
-        hex::decode(s).map_or(Err(()), |x| Ok(MsgId{id: NBytes(x)}))
+        hex::decode(s).map_or(Err(()), |x| Ok(MsgId { id: NBytes(x) }))
     }
 }
 
@@ -347,15 +331,13 @@ impl fmt::Debug for MsgId
     }
 }
 
-impl fmt::Display for MsgId
-{
+impl fmt::Display for MsgId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", hex::encode(&self.id.0))
     }
 }
 
-impl PartialEq for MsgId
-{
+impl PartialEq for MsgId {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
@@ -374,8 +356,7 @@ impl AsRef<Vec<u8>> for MsgId {
     }
 }
 
-impl Default for MsgId
-{
+impl Default for MsgId {
     fn default() -> Self {
         Self {
             id: NBytes(vec![0; MSGID_SIZE]),
@@ -392,8 +373,7 @@ impl ToString for MsgId
 }
  */
 
-impl hash::Hash for MsgId
-{
+impl hash::Hash for MsgId {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
@@ -401,8 +381,7 @@ impl hash::Hash for MsgId
 
 /// Msgid is used for joinable links which in the tbinary stream are simply
 /// encoded (`skip`ped).
-impl<F> SkipFallback<F> for MsgId
-{
+impl<F> SkipFallback<F> for MsgId {
     fn sizeof_skip(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
         ctx.skip(&self.id)?;
         Ok(())

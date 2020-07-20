@@ -10,7 +10,7 @@ use crate::{
 };
 
 impl<F, IS: io::OStream> Guard for Context<F, IS> {
-fn guard(&mut self, cond: bool, msg: &str) -> Result<&mut Self> {
+    fn guard(&mut self, cond: bool, msg: &str) -> Result<&mut Self> {
         ensure!(cond, "guard: {}", msg);
         Ok(self)
     }

@@ -46,16 +46,28 @@ where
         println!("  parsing header");
         let preparsed = msg.parse_header()?;
         println!("  header parsed");
-        ensure!(preparsed.check_content_type(message::announce::TYPE), "bad message type: {}", preparsed.header.content_type);
+        ensure!(
+            preparsed.check_content_type(message::announce::TYPE),
+            "bad message type: {}",
+            preparsed.header.content_type
+        );
 
         subscriberA.unwrap_announcement(preparsed.clone())?;
-        ensure!(author.channel_address() == subscriberA.channel_address().unwrap(), "bad channel address");
+        ensure!(
+            author.channel_address() == subscriberA.channel_address().unwrap(),
+            "bad channel address"
+        );
         subscriberB.unwrap_announcement(preparsed)?;
-        ensure!(subscriberA.channel_address() == subscriberB.channel_address(), "bad channel address");
-        ensure!(subscriberA
-            .channel_address()
-            .map_or(false, |appinst| appinst == announcement_link.base()),
-            "bad announcement address");
+        ensure!(
+            subscriberA.channel_address() == subscriberB.channel_address(),
+            "bad channel address"
+        );
+        ensure!(
+            subscriberA
+                .channel_address()
+                .map_or(false, |appinst| appinst == announcement_link.base()),
+            "bad announcement address"
+        );
         /*
         ensure!(subscriberA
             .author_sig_public_key()
@@ -77,7 +89,10 @@ where
     {
         let msg = transport.recv_message(&signed_packet_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::signed_packet::TYPE), "bad message type");
+        ensure!(
+            preparsed.check_content_type(message::signed_packet::TYPE),
+            "bad message type"
+        );
         let (unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
         ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
         ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
@@ -94,7 +109,10 @@ where
     {
         let msg = transport.recv_message(&subscribeB_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::subscribe::TYPE), "bad message type");
+        ensure!(
+            preparsed.check_content_type(message::subscribe::TYPE),
+            "bad message type"
+        );
         author.unwrap_subscribe(preparsed)?;
     }
 
@@ -109,7 +127,10 @@ where
     {
         let msg = transport.recv_message(&keyload_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::keyload::TYPE), "invalid message type");
+        ensure!(
+            preparsed.check_content_type(message::keyload::TYPE),
+            "invalid message type"
+        );
         let resultA = subscriberA.unwrap_keyload(preparsed.clone());
         ensure!(resultA.is_err(), "failed to unwrap keyload");
         subscriberB.unwrap_keyload(preparsed)?;
@@ -126,7 +147,10 @@ where
     {
         let msg = transport.recv_message(&tagged_packet_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::tagged_packet::TYPE), "bad message type");
+        ensure!(
+            preparsed.check_content_type(message::tagged_packet::TYPE),
+            "bad message type"
+        );
         let resultA = subscriberA.unwrap_tagged_packet(preparsed.clone());
         ensure!(resultA.is_err(), "failed to unwrap tagged packet");
         let (unwrapped_public, unwrapped_masked) = subscriberB.unwrap_tagged_packet(preparsed)?;

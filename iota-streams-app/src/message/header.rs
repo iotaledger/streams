@@ -52,11 +52,8 @@ use anyhow::{
     ensure,
     Result,
 };
-//use std::str::FromStr;
 
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::{prelude::Vec, sponge::prp::PRP};
 use iota_streams_protobuf3 as protobuf3;
 use protobuf3::{
     command::*,
@@ -126,8 +123,7 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx
-            .absorb(&self.version)?
+        ctx.absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&NBytes(vec![self.multi_branching]))?
             .absorb(&self.content_type)?

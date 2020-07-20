@@ -28,11 +28,9 @@ use iota_streams_app::message::{
     self,
     HasLink,
 };
-use iota_streams_core::{
-    sponge::{
-        prp::PRP,
-        spongos,
-    },
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos,
 };
 use iota_streams_protobuf3::{
     command::*,

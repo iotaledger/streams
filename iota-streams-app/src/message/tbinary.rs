@@ -1,10 +1,9 @@
 use anyhow::Result;
-use std::fmt;
+use core::fmt;
 
 use super::*;
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::prelude::Vec;
+use iota_streams_core::sponge::prp::PRP;
 use iota_streams_protobuf3::{
     command::unwrap,
     types::*,
@@ -20,7 +19,7 @@ pub struct TbinaryMessage<F, AbsLink> {
 
     pub multi_branching: u8,
 
-    pub(crate) _phantom: std::marker::PhantomData<F>,
+    pub(crate) _phantom: core::marker::PhantomData<F>,
 }
 
 impl<F, AbsLink> PartialEq for TbinaryMessage<F, AbsLink>
@@ -59,7 +58,7 @@ where
             link: self.link.clone(),
             body: self.body.clone(),
             multi_branching: self.multi_branching.clone(),
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
@@ -70,7 +69,7 @@ impl<F, AbsLink> TbinaryMessage<F, AbsLink> {
             link,
             body,
             multi_branching,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
     pub fn link(&self) -> &AbsLink {

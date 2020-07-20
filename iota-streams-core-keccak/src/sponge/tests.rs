@@ -1,11 +1,7 @@
-use super::prp::keccak::{
-    KeccakF1600,
-};
-use iota_streams_core::{
-    sponge::{
-        prp::PRP,
-        tests::*,
-    },
+use super::prp::keccak::KeccakF1600;
+use iota_streams_core::sponge::{
+    prp::PRP,
+    tests::*,
 };
 
 #[test]

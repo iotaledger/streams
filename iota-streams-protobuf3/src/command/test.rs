@@ -7,14 +7,15 @@ use std::str::FromStr;
 use iota_streams_core::{
     prng,
     sponge::{
-        prp::{
-            PRP,
-        },
+        prp::PRP,
         spongos::Spongos,
     },
 };
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
 use crate::{
     command::*,
@@ -31,14 +32,8 @@ where
 
     for t in 0_u8..10_u8 {
         let t = Uint8(t);
-        let buf_size = sizeof::Context::<F>::new()
-            .absorb(t)?
-            .mask(t)?
-            .get_size();
-        let buf_size2 = sizeof::Context::<F>::new()
-            .absorb(&t)?
-            .mask(&t)?
-            .get_size();
+        let buf_size = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.get_size();
+        let buf_size2 = sizeof::Context::<F>::new().absorb(&t)?.mask(&t)?.get_size();
         ensure!(
             buf_size == buf_size2,
             "Buf sizes calcuated by value and by ref do not match."
@@ -47,12 +42,7 @@ where
 
         {
             let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-            ctx
-                .commit()?
-                .absorb(&t)?
-                .mask(&t)?
-                .commit()?
-                .squeeze(&mut tag_wrap)?;
+            ctx.commit()?.absorb(&t)?.mask(&t)?.commit()?.squeeze(&mut tag_wrap)?;
             ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
         }
 
@@ -87,22 +77,7 @@ where
     let mut tag_wrap = External(NBytes(vec![0_u8; 32]));
     let mut tag_unwrap = External(NBytes(vec![0_u8; 32]));
 
-    let ns = [
-        0,
-        1,
-        13,
-        14,
-        25,
-        26,
-        27,
-        39,
-        40,
-        81,
-        9840,
-        9841,
-        9842,
-        19683,
-    ];
+    let ns = [0, 1, 13, 14, 25, 26, 27, 39, 40, 81, 9840, 9841, 9842, 19683];
 
     for n in ns.iter() {
         let s = Size(*n);
@@ -240,7 +215,12 @@ where
         //ensure!(tm == tm2, "Invalid unwrapped tm value: {:?} != {:?}", tm, tm2);
         //ensure!(ntm == ntm2, "Invalid unwrapped ntm value: {:?} != {:?}", ntm, ntm2);
         //ensure!(ents == ents2, "Invalid unwrapped ents value: {:?} != {:?}", ents, ents2);
-        ensure!(tag_wrap == tag_unwrap, "Invalid squeezed tag value: {:?} != {:?}", tag_wrap, tag_unwrap);
+        ensure!(
+            tag_wrap == tag_unwrap,
+            "Invalid squeezed tag value: {:?} != {:?}",
+            tag_wrap,
+            tag_unwrap
+        );
     }
 
     Ok(())
@@ -257,7 +237,7 @@ where
 {
     let secret = ed25519::SecretKey::from_bytes(&[7; ed25519::SECRET_KEY_LENGTH]).unwrap();
     let public = ed25519::PublicKey::from(&secret);
-    let kp = ed25519::Keypair{ secret, public, };
+    let kp = ed25519::Keypair { secret, public };
 
     let ta = Bytes([3_u8; 17].to_vec());
     let mut uta = Bytes(Vec::new());
@@ -266,13 +246,11 @@ where
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
-        ctx
-            .absorb(&ta)?
+        ctx.absorb(&ta)?
             .commit()?
             .squeeze(&hash)?
             .ed25519(&kp, &hash)?
-            .ed25519(&kp, HashSig)?
-        ;
+            .ed25519(&kp, HashSig)?;
         ctx.get_size()
     };
 
@@ -280,25 +258,21 @@ where
 
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-        ctx
-            .absorb(&ta)?
+        ctx.absorb(&ta)?
             .commit()?
             .squeeze(&mut hash)?
             .ed25519(&kp, &hash)?
-            .ed25519(&kp, HashSig)?
-        ;
+            .ed25519(&kp, HashSig)?;
         ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
     }
 
     {
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-        ctx
-            .absorb(&mut uta)?
+        ctx.absorb(&mut uta)?
             .commit()?
             .squeeze(&mut uhash)?
             .ed25519(&public, &uhash)?
-            .ed25519(&public, HashSig)?
-        ;
+            .ed25519(&public, HashSig)?;
         ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
     }
 
@@ -309,8 +283,7 @@ where
 }
 
 #[test]
-fn test_ed25519()
-{
+fn test_ed25519() {
     assert!(dbg!(absorb_ed25519::<KeccakF1600>()).is_ok());
 }
 
@@ -329,12 +302,10 @@ where
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
-        ctx
-            .absorb(&public_b)?
+        ctx.absorb(&public_b)?
             .x25519(&secret_b, &public_a)?
             .commit()?
-            .mask(&ta)?
-        ;
+            .mask(&ta)?;
         ctx.get_size()
     };
 
@@ -342,23 +313,19 @@ where
 
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-        ctx
-            .absorb(&public_b)?
+        ctx.absorb(&public_b)?
             .x25519(&secret_b, &public_a)?
             .commit()?
-            .mask(&ta)?
-        ;
+            .mask(&ta)?;
         ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
     }
 
     {
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-        ctx
-            .absorb(&mut public_b2)?
+        ctx.absorb(&mut public_b2)?
             .x25519(&secret_a, &public_b2)?
             .commit()?
-            .mask(&mut uta)?
-        ;
+            .mask(&mut uta)?;
         ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
     }
 
@@ -382,12 +349,10 @@ where
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
-        ctx
-            .absorb(&public_b)?
+        ctx.absorb(&public_b)?
             .x25519(&secret_b, &public_a)?
             .commit()?
-            .mask(&ta)?
-        ;
+            .mask(&ta)?;
         ctx.get_size()
     };
 
@@ -395,23 +360,19 @@ where
 
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-        ctx
-            .absorb(&public_b)?
+        ctx.absorb(&public_b)?
             .x25519(secret_b, &public_a)?
             .commit()?
-            .mask(&ta)?
-        ;
+            .mask(&ta)?;
         ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
     }
 
     {
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-        ctx
-            .absorb(&mut public_b2)?
+        ctx.absorb(&mut public_b2)?
             .x25519(secret_a, &public_b2)?
             .commit()?
-            .mask(&mut uta)?
-        ;
+            .mask(&mut uta)?;
         ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
     }
 
@@ -432,9 +393,7 @@ where
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
-        ctx
-            .x25519(&public_a, &key)?
-        ;
+        ctx.x25519(&public_a, &key)?;
         ctx.get_size()
     };
 
@@ -442,17 +401,13 @@ where
 
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-        ctx
-            .x25519(&public_a, &key)?
-        ;
+        ctx.x25519(&public_a, &key)?;
         ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
     }
 
     {
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-        ctx
-            .x25519(&secret_a, &mut ukey)?
-        ;
+        ctx.x25519(&secret_a, &mut ukey)?;
         ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
     }
 
@@ -462,8 +417,7 @@ where
 }
 
 #[test]
-fn test_x25519()
-{
+fn test_x25519() {
     assert!(dbg!(x25519_static::<KeccakF1600>()).is_ok());
     assert!(dbg!(x25519_ephemeral::<KeccakF1600>()).is_ok());
     assert!(dbg!(x25519_transport::<KeccakF1600>()).is_ok());

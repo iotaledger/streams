@@ -9,12 +9,9 @@ use crate::{
         SkipFallback,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
-impl<'a, F, L: SkipFallback<F>, S: LinkStore<F, L>, IS: io::IStream> Join<&'a mut L, &S>
-    for Context<F, IS>
+impl<'a, F, L: SkipFallback<F>, S: LinkStore<F, L>, IS: io::IStream> Join<&'a mut L, &S> for Context<F, IS>
 where
     F: PRP,
 {

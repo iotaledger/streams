@@ -3,18 +3,21 @@ use anyhow::{
     ensure,
     Result,
 };
-use std::{
+use core::{
     cell::RefCell,
     fmt::Debug,
-    collections::HashMap,
 };
 
 use iota_streams_core::{
     prng,
     psk,
     sponge::spongos,
+    prelude::HashMap,
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 
 use iota_streams_app::message::{
     header::Header,
@@ -44,8 +47,7 @@ const SEQ_MESSAGE_NUM: usize = 1;
 ///
 /// `LinkGen` is a helper tool for deriving links for new messages. It maintains a
 /// mutable state and can derive link pseudorandomly.
-pub struct SubscriberT<F, Link, Store, LinkGen>
-{
+pub struct SubscriberT<F, Link, Store, LinkGen> {
     /// PRNG used for Spongos key generation, etc.
     #[allow(dead_code)]
     prng: prng::Prng<F>,
@@ -96,12 +98,7 @@ where
     LinkGen: ChannelLinkGenerator<Link>,
 {
     /// Create a new Subscriber.
-    pub fn gen(
-        store: Store,
-        link_gen: LinkGen,
-        prng: prng::Prng<F>,
-        nonce: Vec<u8>,
-    ) -> Self {
+    pub fn gen(store: Store, link_gen: LinkGen, prng: prng::Prng<F>, nonce: Vec<u8>) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
@@ -155,7 +152,6 @@ where
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
-
 
     pub fn prepare_keyload<'a>(
         &'a mut self,

@@ -7,12 +7,12 @@ use iota_streams_app::{
         tangle::*,
     },
 };
-use iota_streams_core::{
-    psk,
+use iota_streams_core::psk;
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
 };
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
-use iota_streams_core_edsig::signature::ed25519;
-use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     types as pb3_types,
     types::DefaultLinkStore,

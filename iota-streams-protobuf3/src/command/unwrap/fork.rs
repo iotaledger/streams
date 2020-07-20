@@ -5,9 +5,7 @@ use crate::{
     command::Fork,
     io,
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
 impl<C, F, IS: io::IStream> Fork<C> for Context<F, IS>
 where

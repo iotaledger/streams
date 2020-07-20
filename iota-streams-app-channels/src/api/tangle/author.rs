@@ -6,10 +6,8 @@ use super::*;
 use crate::api::author::AuthorT;
 use iota_streams_app::message::HasLink as _;
 
-use iota_streams_core_edsig::{key_exchange::x25519};
-use iota_streams_core::{
-    prng,
-};
+use iota_streams_core::prng;
+use iota_streams_core_edsig::key_exchange::x25519;
 
 type AuthorImp = AuthorT<DefaultF, Address, Store, LinkGen>;
 

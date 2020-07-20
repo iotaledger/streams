@@ -8,9 +8,7 @@ use iota_streams_app::{
         TangleAddress,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
 pub trait ChannelLinkGenerator<Link>
 where
@@ -18,11 +16,7 @@ where
     Self: LinkGenerator<Link, Vec<u8>> + LinkGenerator<Link, <Link as HasLink>::Rel>,
 {
 }
-impl<F> ChannelLinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F>
-where
-    F: PRP,
-{
-}
+impl<F> ChannelLinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> where F: PRP {}
 
 /// Generic Channel Author API.
 pub mod author;

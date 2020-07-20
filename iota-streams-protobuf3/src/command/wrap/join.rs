@@ -9,9 +9,7 @@ use crate::{
         SkipFallback,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
 /*
 impl<'a, F, L, S: LinkStore<F, L>, OS: io::OStream> Join<&'a L, &'a S> for Context<F, OS> where

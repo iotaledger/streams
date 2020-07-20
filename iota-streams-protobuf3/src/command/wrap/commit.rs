@@ -2,9 +2,7 @@ use anyhow::Result;
 
 use super::Context;
 use crate::command::Commit;
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 
 /// Commit Spongos.
 impl<F, OS> Commit for Context<F, OS>

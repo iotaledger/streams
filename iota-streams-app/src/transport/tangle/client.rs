@@ -4,7 +4,7 @@ use anyhow::{
     ensure,
     Result,
 };
-use std::{
+use core::{
     cmp::Ordering,
     convert::{TryInto, TryFrom},
 };
@@ -15,6 +15,8 @@ use iota::{
     bundle::*,
     ternary as iota_ternary,
 };
+
+use iota_streams_core::prelude::{String, ToString, Vec};
 
 use crate::transport::{
     tangle::*,
@@ -398,17 +400,23 @@ impl Default for SendTrytesOptions {
     }
 }
 
+fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
+    match result {
+        Ok(r) => Ok(r),
+        Err(err) => bail!("Failed iota_client: {}", err),
+    }
+}
 
 async fn get_bundles(tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>>{
-    let find_resp_addr = iota_client::Client::find_transactions()
+    let find_resp_addr = handle_client_result(iota_client::Client::find_transactions()
         .addresses(&vec![tx_address][..])
         .send()
-        .await?;
+        .await)?;
     ensure!(!find_resp_addr.hashes.is_empty(), "Transaction hashes not found.");
-    let find_resp_tags = iota_client::Client::find_transactions()
+    let find_resp_tags = handle_client_result(iota_client::Client::find_transactions()
         .tags(&vec![tx_tag][..])
         .send()
-        .await?;
+        .await)?;
     ensure!(!find_resp_tags.hashes.is_empty(), "Transaction hashes not found.");
 
     let mut hashes = Vec::new();
@@ -418,20 +426,20 @@ async fn get_bundles(tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction
         }
     }
 
-    let get_resp = iota_client::Client::get_trytes(&hashes)
-    .await?;
+    let get_resp = handle_client_result(iota_client::Client::get_trytes(&hashes)
+        .await)?;
     ensure!(!get_resp.trytes.is_empty(), "Transactions not found.");
     Ok(get_resp.trytes)
 }
 
 
 async fn send_trytes(opt: SendTrytesOptions, txs: Vec<Transaction>) -> Result<Vec<Transaction>> {
-    let attached_txs = iota_client::Client::send_trytes()
+    let attached_txs = handle_client_result(iota_client::Client::send_trytes()
         .min_weight_magnitude(opt.min_weight_magnitude)
         .depth(opt.depth)
         .trytes(txs)
         .send()
-        .await?;
+        .await)?;
     Ok(attached_txs)
 }
 

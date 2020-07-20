@@ -1,14 +1,15 @@
-//use std::convert::{AsMut, AsRef, From, TryFrom};
-use std::fmt;
-//use std::hash;
-use digest::Digest;
-use digest::generic_array::GenericArray;
-use digest::generic_array::typenum::{U64};
+use core::fmt;
+use digest::{
+    generic_array::{
+        typenum::U64,
+        GenericArray,
+    },
+    Digest,
+};
 
 use super::prp::PRP;
-use crate::{
-    hash::Hash,
-};
+use crate::hash::Hash;
+use crate::prelude::Vec;
 
 /// Implemented as a separate from `Spongos` struct in order to deal with life-times.
 pub struct Outer {
@@ -20,8 +21,7 @@ pub struct Outer {
     buf: Vec<u8>,
 }
 
-impl Clone for Outer
-{
+impl Clone for Outer {
     fn clone(&self) -> Self {
         Self {
             pos: self.pos,
@@ -30,8 +30,7 @@ impl Clone for Outer
     }
 }
 
-impl Outer
-{
+impl Outer {
     /// Create a new outer state with a given rate (size).
     pub fn new(rate: usize) -> Self {
         Self {
@@ -48,12 +47,14 @@ impl Outer
     }
 
     pub fn slice_min_mut(&mut self, n: usize) -> &mut [u8] {
-        let m = std::cmp::min(self.pos + n, self.buf.len());
+        let m = core::cmp::min(self.pos + n, self.buf.len());
         &mut self.buf[self.pos..m]
     }
 
     pub fn commit(&mut self) -> &mut [u8] {
-        for o in &mut self.buf[self.pos..] { *o = 0 }
+        for o in &mut self.buf[self.pos..] {
+            *o = 0
+        }
         self.pos = 0;
         &mut self.buf[..]
     }
@@ -69,8 +70,7 @@ impl Outer
     }
 }
 
-impl fmt::Debug for Outer
-{
+impl fmt::Debug for Outer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:[{:?}]", self.pos, self.buf)
     }
@@ -201,6 +201,10 @@ where
     /// Absorb buf.
     pub fn absorb_buf(&mut self, x: &Vec<u8>) {
         self.absorb(&x[..])
+    }
+
+    pub fn absorb_ref<X: AsRef<[u8]>>(&mut self, x: X) {
+        self.absorb(x.as_ref())
     }
 
     /// Squeeze a trit slice from Spongos object.
@@ -365,8 +369,7 @@ where
     }
 }
 
-impl<F> fmt::Debug for Spongos<F>
-{
+impl<F> fmt::Debug for Spongos<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.outer)
     }
@@ -412,16 +415,14 @@ where
     }
 }
 
-pub fn rehash<F: PRP>(h: &mut [u8])
-{
+pub fn rehash<F: PRP>(h: &mut [u8]) {
     let mut s = Spongos::<F>::init();
     s.absorb(h);
     s.commit();
     s.squeeze(h);
 }
 
-impl<F: PRP> Digest for Spongos<F>
-{
+impl<F: PRP> Digest for Spongos<F> {
     type OutputSize = U64;
 
     fn new() -> Self {

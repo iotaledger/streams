@@ -1,12 +1,10 @@
 use anyhow::Result;
-use std::cell::RefMut;
+use core::cell::RefMut;
 
 use super::*;
-use iota_streams_core::{
-    sponge::{
-        prp::PRP,
-        spongos::Spongos,
-    },
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos::Spongos,
 };
 use iota_streams_protobuf3::types::*;
 

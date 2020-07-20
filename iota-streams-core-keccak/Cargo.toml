@@ -8,12 +8,16 @@ readme = "README.md"
 keywords = ["iota", "streams", "core", "keccak"]
 description = "IOTA Streams Spongos adapter for Keccak"
 
+[features]
+default = ["std"]
+std = ["iota-streams-core/std"]
+
 [lib]
 name = "iota_streams_core_keccak"
 path = "src/lib.rs"
 
 [dependencies]
-iota-streams-core = { version = "0.2.0", path = "../iota-streams-core" }
+iota-streams-core = { version = "0.2.0", path = "../iota-streams-core", default-features = false }
 keccak = "0.1"
 
 [dev-dependencies]
@@ -25,8 +29,4 @@ harness = false
 
 [[bench]]
 name = "keccakb"
-harness = false
-
-[[bench]]
-name = "keccakt"
 harness = false

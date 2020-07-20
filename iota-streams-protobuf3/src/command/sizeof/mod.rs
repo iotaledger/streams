@@ -5,7 +5,7 @@
 pub struct Context<F> {
     /// The current message size in trits.
     size: usize,
-    _phantom: std::marker::PhantomData<F>,
+    _phantom: core::marker::PhantomData<F>,
 }
 
 impl<F> Context<F> {
@@ -13,7 +13,7 @@ impl<F> Context<F> {
     pub fn new() -> Self {
         Self {
             size: 0,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
     /// Returns calculated message size.

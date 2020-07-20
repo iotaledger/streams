@@ -2,7 +2,14 @@ use anyhow::{
     bail,
     Result,
 };
-use std::{
+use digest::{
+    generic_array::{
+        typenum::U64,
+        GenericArray,
+    },
+    Digest,
+};
+use core::{
     convert::{
         AsMut,
         AsRef,
@@ -10,16 +17,12 @@ use std::{
     fmt,
     hash,
 };
-use digest::Digest;
-use digest::generic_array::GenericArray;
-use digest::generic_array::typenum::{U64};
 
-use iota_streams_core::{
-    sponge::{
-        prp::PRP,
-        spongos::Spongos,
-    },
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos::Spongos,
 };
+use iota_streams_core::prelude::{Vec, HashMap};
 
 use crate::io;
 
@@ -40,30 +43,26 @@ pub struct Uint16(pub u16);
 #[derive(Clone)]
 pub struct NBytes(pub Vec<u8>);
 
-impl fmt::Debug for NBytes
-{
+impl fmt::Debug for NBytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }
 }
 
-impl fmt::Display for NBytes
-{
+impl fmt::Display for NBytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }
 }
 
-impl PartialEq for NBytes
-{
+impl PartialEq for NBytes {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 impl Eq for NBytes {}
 
-impl NBytes
-{
+impl NBytes {
     pub fn zero(n: usize) -> Self {
         Self(vec![0; n])
     }
@@ -78,8 +77,7 @@ impl ToString for NBytes
 }
  */
 
-impl hash::Hash for NBytes
-{
+impl hash::Hash for NBytes {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.0).hash(state);
     }
@@ -90,15 +88,13 @@ impl hash::Hash for NBytes
 #[derive(Clone)]
 pub struct Bytes(pub Vec<u8>);
 
-impl Default for Bytes
-{
+impl Default for Bytes {
     fn default() -> Self {
         Self(Vec::new())
     }
 }
 
-impl PartialEq for Bytes
-{
+impl PartialEq for Bytes {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -114,23 +110,20 @@ impl ToString for Bytes
 }
  */
 
-impl fmt::Debug for Bytes
-{
+impl fmt::Debug for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }
 }
 
-impl fmt::Display for Bytes
-{
+impl fmt::Display for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         //TODO:
         write!(f, "{:?}", self.0)
     }
 }
 
-impl hash::Hash for Bytes
-{
+impl hash::Hash for Bytes {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.0).hash(state);
     }
@@ -257,11 +250,11 @@ pub trait LinkStore<F, Link> {
 
 /// Empty "dummy" link store that stores no links.
 #[derive(Copy, Clone, Debug)]
-pub struct EmptyLinkStore<F, Link, Info>(std::marker::PhantomData<(F, Link, Info)>);
+pub struct EmptyLinkStore<F, Link, Info>(core::marker::PhantomData<(F, Link, Info)>);
 
 impl<F, Link, Info> Default for EmptyLinkStore<F, Link, Info> {
     fn default() -> Self {
-        Self(std::marker::PhantomData)
+        Self(core::marker::PhantomData)
     }
 }
 
@@ -276,8 +269,7 @@ impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
 /// This link store can be used in Streams Applications supporting a list-like "thread"
 /// of messages without access to the history as the link to the last message is stored.
 #[derive(Clone, Debug, Default)]
-pub struct SingleLinkStore<F, Link, Info>
-{
+pub struct SingleLinkStore<F, Link, Info> {
     /// The link to the last message in the thread.
     link: Link,
 
@@ -287,7 +279,7 @@ pub struct SingleLinkStore<F, Link, Info>
     /// Associated info.
     info: Info,
 
-    _phantom: std::marker::PhantomData<F>,
+    _phantom: core::marker::PhantomData<F>,
 }
 
 impl<F, Link, Info> LinkStore<F, Link> for SingleLinkStore<F, Link, Info>
@@ -316,12 +308,9 @@ where
     }
 }
 
-use std::collections::HashMap;
-
-pub struct DefaultLinkStore<F, Link, Info>
-{
+pub struct DefaultLinkStore<F, Link, Info> {
     map: HashMap<Link, (Vec<u8>, Info)>,
-    _phantom: std::marker::PhantomData<F>,
+    _phantom: core::marker::PhantomData<F>,
 }
 
 impl<F, Link, Info> Default for DefaultLinkStore<F, Link, Info>
@@ -330,7 +319,10 @@ where
     Link: Eq + hash::Hash,
 {
     fn default() -> Self {
-        Self { map: HashMap::new(), _phantom: std::marker::PhantomData, }
+        Self {
+            map: HashMap::new(),
+            _phantom: core::marker::PhantomData,
+        }
     }
 }
 
@@ -380,13 +372,13 @@ impl<T> From<T> for Fallback<T> {
 
 impl<'a, T> From<&'a T> for &'a Fallback<T> {
     fn from(t: &T) -> Self {
-        unsafe { std::mem::transmute(t) }
+        unsafe { core::mem::transmute(t) }
     }
 }
 
 impl<'a, T> From<&'a mut T> for &'a mut Fallback<T> {
     fn from(t: &mut T) -> Self {
-        unsafe { std::mem::transmute(t) }
+        unsafe { core::mem::transmute(t) }
     }
 }
 

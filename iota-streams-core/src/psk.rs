@@ -1,9 +1,7 @@
 //! Pre-shared key is a secret symmetric key shared between two parties and is used for
 //! (session) key exchange.
 
-use std::{
-    collections::HashMap,
-};
+use crate::prelude::{Vec, HashMap};
 
 /// Size of pre-shared key identifier.
 pub const PSKID_SIZE: usize = 16;
@@ -28,8 +26,7 @@ pub type IPsk<'a> = (&'a PskId, &'a Psk);
 pub type PskIds = Vec<PskId>;
 
 /// Select only pre-shared keys with given identifiers.
-pub fn filter_psks<'a>(psks: &'a Psks, pskids: &'_ PskIds) -> Vec<IPsk<'a>>
-{
+pub fn filter_psks<'a>(psks: &'a Psks, pskids: &'_ PskIds) -> Vec<IPsk<'a>> {
     pskids
         .iter()
         .filter_map(|pskid| psks.get_key_value(pskid))

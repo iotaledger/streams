@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::mem;
+use core::mem;
 
 use super::{
     unwrap::*,
@@ -9,12 +9,12 @@ use crate::{
     command::Skip,
     io,
     types::{
+        Bytes,
         Fallback,
         NBytes,
         Size,
         SkipFallback,
         Uint8,
-        Bytes,
     },
 };
 
@@ -32,8 +32,7 @@ impl<F, IS> AsMut<Context<F, IS>> for SkipContext<F, IS> {
     }
 }
 
-impl<F, IS: io::IStream> Unwrap for SkipContext<F, IS>
-{
+impl<F, IS: io::IStream> Unwrap for SkipContext<F, IS> {
     fn unwrap_u8(&mut self, u: &mut u8) -> Result<&mut Self> {
         let slice = self.ctx.stream.try_advance(1)?;
         *u = slice[0];
@@ -49,48 +48,41 @@ impl<F, IS: io::IStream> Unwrap for SkipContext<F, IS>
 fn unwrap_skip_u8<'a, F, IS: io::IStream>(
     ctx: &'a mut SkipContext<F, IS>,
     u: &mut Uint8,
-) -> Result<&'a mut SkipContext<F, IS>>
-{
+) -> Result<&'a mut SkipContext<F, IS>> {
     ctx.unwrap_u8(&mut u.0)
 }
 fn unwrap_skip_size<'a, F, IS: io::IStream>(
     ctx: &'a mut SkipContext<F, IS>,
     size: &mut Size,
-) -> Result<&'a mut SkipContext<F, IS>>
-{
+) -> Result<&'a mut SkipContext<F, IS>> {
     unwrap_size(ctx, size)
 }
 fn unwrap_skip_bytes<'a, F, IS: io::IStream>(
     ctx: &'a mut SkipContext<F, IS>,
     bytes: &mut [u8],
-) -> Result<&'a mut SkipContext<F, IS>>
-{
+) -> Result<&'a mut SkipContext<F, IS>> {
     ctx.unwrapn(bytes)
 }
 
-impl<'a, F, IS: io::IStream> Skip<&'a mut Uint8> for Context<F, IS>
-{
+impl<'a, F, IS: io::IStream> Skip<&'a mut Uint8> for Context<F, IS> {
     fn skip(&mut self, u: &'a mut Uint8) -> Result<&mut Self> {
         Ok(unwrap_skip_u8(self.as_mut(), u)?.as_mut())
     }
 }
 
-impl<'a, F, IS: io::IStream> Skip<&'a mut Size> for Context<F, IS>
-{
+impl<'a, F, IS: io::IStream> Skip<&'a mut Size> for Context<F, IS> {
     fn skip(&mut self, size: &'a mut Size) -> Result<&mut Self> {
         Ok(unwrap_skip_size(self.as_mut(), size)?.as_mut())
     }
 }
 
-impl<'a, F, IS: io::IStream> Skip<&'a mut NBytes> for Context<F, IS>
-{
+impl<'a, F, IS: io::IStream> Skip<&'a mut NBytes> for Context<F, IS> {
     fn skip(&mut self, ntrytes: &'a mut NBytes) -> Result<&mut Self> {
         Ok(unwrap_skip_bytes(self.as_mut(), &mut (ntrytes.0))?.as_mut())
     }
 }
 
-impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes> for Context<F, IS>
-{
+impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes> for Context<F, IS> {
     fn skip(&mut self, bytes: &'a mut Bytes) -> Result<&mut Self> {
         let mut size = Size(0);
         self.skip(&mut size)?;

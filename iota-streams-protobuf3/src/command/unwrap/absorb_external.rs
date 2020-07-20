@@ -1,7 +1,5 @@
-use anyhow::{
-    Result,
-};
-use std::mem;
+use anyhow::Result;
+use core::mem;
 
 use super::Context;
 use crate::{
@@ -22,10 +20,11 @@ use crate::{
         Uint8,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
+use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
 struct AbsorbExternalContext<F, IS> {
     ctx: Context<F, IS>,
@@ -147,9 +146,7 @@ where
     }
 }
 
-impl<'a, F, T: 'a + AbsorbExternalFallback<F>, IS: io::IStream> Absorb<External<Fallback<&'a T>>>
-    for Context<F, IS>
-{
+impl<'a, F, T: 'a + AbsorbExternalFallback<F>, IS: io::IStream> Absorb<External<Fallback<&'a T>>> for Context<F, IS> {
     fn absorb(&mut self, val: External<Fallback<&'a T>>) -> Result<&mut Self> {
         ((val.0).0).unwrap_absorb_external(self)?;
         Ok(self)

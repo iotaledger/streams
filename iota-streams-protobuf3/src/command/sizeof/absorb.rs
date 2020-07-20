@@ -1,6 +1,4 @@
-use anyhow::{
-    Result,
-};
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -8,15 +6,18 @@ use crate::{
     types::{
         sizeof_sizet,
         AbsorbFallback,
+        Bytes,
         Fallback,
         NBytes,
         Size,
         Uint8,
-        Bytes,
     },
 };
 
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 
 /// All Uint8 values are encoded with 1 byte.
 impl<F> Absorb<&Uint8> for Context<F> {
@@ -25,7 +26,6 @@ impl<F> Absorb<&Uint8> for Context<F> {
         Ok(self)
     }
 }
-
 
 /// Size has var-size encoding.
 impl<F> Absorb<&Size> for Context<F> {
@@ -50,8 +50,7 @@ impl<F> Absorb<Size> for Context<F> {
 }
 
 /// `bytes` has variable size thus the size is encoded before the content bytes.
-impl<'a, F> Absorb<&'a Bytes> for Context<F>
-{
+impl<'a, F> Absorb<&'a Bytes> for Context<F> {
     fn absorb(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
         self.size += sizeof_sizet((bytes.0).len()) + (bytes.0).len();
         Ok(self)
@@ -59,16 +58,14 @@ impl<'a, F> Absorb<&'a Bytes> for Context<F>
 }
 
 /// `bytes` has variable size thus the size is encoded before the content bytes.
-impl<F> Absorb<Bytes> for Context<F>
-{
+impl<F> Absorb<Bytes> for Context<F> {
     fn absorb(&mut self, bytes: Bytes) -> Result<&mut Self> {
         self.absorb(&bytes)
     }
 }
 
 /// `byte [n]` is fixed-size and is encoded with `n` bytes.
-impl<'a, F> Absorb<&'a NBytes> for Context<F>
-{
+impl<'a, F> Absorb<&'a NBytes> for Context<F> {
     fn absorb(&mut self, nbytes: &'a NBytes) -> Result<&mut Self> {
         self.size += (nbytes.0).len();
         Ok(self)
@@ -76,16 +73,14 @@ impl<'a, F> Absorb<&'a NBytes> for Context<F>
 }
 
 /// `byte [n]` is fixed-size and is encoded with `n` bytes.
-impl<F> Absorb<NBytes> for Context<F>
-{
+impl<F> Absorb<NBytes> for Context<F> {
     fn absorb(&mut self, nbytes: NBytes) -> Result<&mut Self> {
         self.absorb(&nbytes)
     }
 }
 
 /// MSS public key has fixed size.
-impl<'a, F> Absorb<&'a ed25519::PublicKey> for Context<F>
-{
+impl<'a, F> Absorb<&'a ed25519::PublicKey> for Context<F> {
     fn absorb(&mut self, _pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
         self.size += ed25519::PUBLIC_KEY_LENGTH;
         Ok(self)
@@ -93,8 +88,7 @@ impl<'a, F> Absorb<&'a ed25519::PublicKey> for Context<F>
 }
 
 /// NTRU public key has fixed size.
-impl<'a, F> Absorb<&'a x25519::PublicKey> for Context<F>
-{
+impl<'a, F> Absorb<&'a x25519::PublicKey> for Context<F> {
     fn absorb(&mut self, _pk: &'a x25519::PublicKey) -> Result<&mut Self> {
         self.size += x25519::PUBLIC_KEY_LENGTH;
         Ok(self)

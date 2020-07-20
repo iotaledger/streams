@@ -1,7 +1,5 @@
-use anyhow::{
-    Result,
-};
-use std::mem;
+use anyhow::Result;
+use core::mem;
 
 use super::{
     wrap::*,
@@ -12,17 +10,18 @@ use crate::{
     io,
     types::{
         AbsorbFallback,
+        Bytes,
         Fallback,
         NBytes,
         Size,
         Uint8,
-        Bytes,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
+use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
 struct AbsorbContext<F, OS> {
     ctx: Context<F, OS>,
@@ -50,9 +49,7 @@ where
     }
     fn wrapn(&mut self, bytes: &[u8]) -> Result<&mut Self> {
         self.ctx.spongos.absorb(bytes);
-        self.ctx.stream
-            .try_advance(bytes.len())?
-            .copy_from_slice(bytes);
+        self.ctx.stream.try_advance(bytes.len())?.copy_from_slice(bytes);
         Ok(self)
     }
 }

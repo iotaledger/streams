@@ -33,10 +33,11 @@ use anyhow::{
 };
 
 use iota_streams_app::message;
-use iota_streams_core::{
-    sponge::prp::PRP,
+use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
 };
-use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -82,8 +83,7 @@ pub struct ContentUnwrap<F> {
     _phantom: std::marker::PhantomData<F>,
 }
 
-impl<F> Default for ContentUnwrap<F>
-{
+impl<F> Default for ContentUnwrap<F> {
     fn default() -> Self {
         let sig_pk = ed25519::PublicKey::default();
         let ke_pk = x25519::public_from_ed25519(&sig_pk);

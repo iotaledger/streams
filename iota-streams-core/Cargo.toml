@@ -8,6 +8,11 @@ readme = "README.md"
 keywords = ["iota", "streams", "core"]
 description = "A rust implementation of the IOTA Streams core utils"
 
+[features]
+default = ["std"]
+# enable std
+std = ["rand/std", "digest/std"]
+
 [lib]
 name = "iota_streams_core"
 path = "src/lib.rs"
@@ -15,7 +20,9 @@ path = "src/lib.rs"
 [dependencies]
 # digest version should correspond to curve25519-dalek's version
 digest = { version = "0.8", default-features = false }
-rand = "0.7"
+#rand_core = { version = "0.5", default-features = false }
+rand = { version = "0.7", default-features = false }
+hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }
 
 [dev-dependencies]
 criterion = "0.3"
