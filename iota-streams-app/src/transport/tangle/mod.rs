@@ -171,12 +171,12 @@ where
     }
 }
 
-impl<F> LinkGenerator<TangleAddress, ed25519::PublicKey> for DefaultTangleLinkGenerator<F>
+impl<F> LinkGenerator<TangleAddress, Vec<u8>> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, pk: &ed25519::PublicKey) -> TangleAddress {
-        self.appinst.id.0 = pk.as_bytes().to_vec();
+    fn link_from(&mut self, appinst: &Vec<u8>) -> TangleAddress {
+        self.appinst.id.0 = appinst.to_vec();
 
         self.counter += 1;
         TangleAddress {
@@ -187,7 +187,7 @@ where
 
     fn header_from(
         &mut self,
-        arg: &ed25519::PublicKey,
+        arg: &Vec<u8>,
         content_type: &str,
     ) -> header::Header<TangleAddress> {
         header::Header::new_with_type(self.link_from(arg), content_type)
@@ -211,7 +211,7 @@ where
 }
 
 // ed25519 public key size in bytes
-pub const APPINST_SIZE: usize = 32;
+pub const APPINST_SIZE: usize = 40;
 
 /// Application instance identifier.
 /// Currently, 81-byte string stored in `address` transaction field.
@@ -313,7 +313,7 @@ where
     }
 }
 
-pub const MSGID_SIZE: usize = 32;
+pub const MSGID_SIZE: usize = 12;
 
 /// Message identifier unique within application instance.
 /// Currently, 27-byte string stored in `tag` transaction field.
@@ -411,4 +411,4 @@ impl<F> SkipFallback<F> for MsgId
 }
 
 //#[cfg(feature = "tangle")]
-//pub mod client;
+pub mod client;
