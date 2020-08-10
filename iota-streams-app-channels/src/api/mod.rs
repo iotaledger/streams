@@ -16,7 +16,7 @@ use iota_streams_core_edsig::signature::ed25519;
 pub trait ChannelLinkGenerator<Link>
 where
     Link: HasLink,
-    Self: LinkGenerator<Link, ed25519::PublicKey> + LinkGenerator<Link, <Link as HasLink>::Rel>,
+    Self: LinkGenerator<Link, Vec<u8>> + LinkGenerator<Link, <Link as HasLink>::Rel>,
 {
 }
 impl<F> ChannelLinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F>

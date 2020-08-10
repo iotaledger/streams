@@ -55,6 +55,9 @@ pub struct AuthorT<F, Link, Store, LinkGen>
     /// Own x25519 key pair corresponding to Ed25519 keypair.
     pub(crate) ke_kp: (x25519::StaticSecret, x25519::PublicKey),
 
+    /// Combined public key and nonce value used for app instance link generation
+    channel_addr: Vec<u8>,
+
     /// Subscribers' pre-shared keys.
     pub psks: psk::Psks,
 
@@ -90,7 +93,12 @@ where
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
-        let appinst = link_gen.link_from(&sig_kp.public);
+        //App instance link is generated using the 32 byte PubKey and the first 8 bytes of the nonce
+        let mut appinst_input = Vec::new();
+        appinst_input.extend_from_slice(&sig_kp.public.to_bytes()[..]);
+        appinst_input.extend_from_slice(&nonce[0..8]);
+
+        let appinst = link_gen.link_from(&appinst_input);
 
         Self {
             prng: prng,
@@ -103,6 +111,7 @@ where
             store: RefCell::new(store),
             link_gen: link_gen,
             appinst: appinst,
+            channel_addr: appinst_input,
         }
     }
 
@@ -111,7 +120,7 @@ where
         &'a mut self,
     ) -> Result<PreparedMessage<'a, F, Link, Store, announce::ContentWrap<F>>> {
         // Create Header for the first message in the channel.
-        let header = self.link_gen.header_from(&self.sig_kp.public, announce::TYPE);
+        let header = self.link_gen.header_from(&self.channel_addr, announce::TYPE);
         let content = announce::ContentWrap {
             sig_kp: &self.sig_kp,
             _phantom: std::marker::PhantomData,
