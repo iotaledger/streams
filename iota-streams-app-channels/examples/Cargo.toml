@@ -1,0 +1,35 @@
+[package]
+name = "iota-streams-basic-scenario"
+version = "0.1.0"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>"]
+edition = "2018"
+license = "Apache-2.0/MIT"
+readme = "README.md"
+keywords = ["iota", "streams"]
+description = "A rust implementation of the IOTA Streams"
+
+[workspace]
+
+[dependencies]
+iota-streams-core = { version = "0.2.0", path = "../../iota-streams-core" }
+iota-streams-core-edsig = { version = "^0.1.0", path = "../../iota-streams-core-edsig" }
+iota-streams-protobuf3 = { version = "0.2.0", path = "../../iota-streams-protobuf3" }
+iota-streams-app = { version = "0.2.0", path = "../../iota-streams-app" }
+iota-streams-app-channels = { version = "0.2.0", path = "../../iota-streams-app-channels"}
+anyhow = { version = "1.0", default-features = false }
+failure = "0.1"
+#iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+iota-core = { git = "https://github.com/DyrellC/iota.rs", rev = "ff6ccf5"}
+core-error = "0.0.0"
+heapless = "0.4.4"
+hex = "0.4.2"
+smol = {version = "0.1.18", features = ["tokio02"]}
+tokio = ""
+rand = "0.7.3"
+
+[profile.release]
+lto = true
+panic = 'abort'
+
+
+
