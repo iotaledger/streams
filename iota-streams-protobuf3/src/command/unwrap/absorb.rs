@@ -131,7 +131,6 @@ where
     fn absorb(&mut self, pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
         let mut pk_bytes = [0_u8; 32];
         unwrap_absorb_bytes(self.as_mut(), &mut pk_bytes)?;
-        println!("Unwrapping ED255: {:?}", &pk_bytes);
         match ed25519::PublicKey::from_bytes(&pk_bytes) {
             Ok(apk) => *pk = apk,
             Err(err) => bail!("Bad ed25519 public key: {}", err),

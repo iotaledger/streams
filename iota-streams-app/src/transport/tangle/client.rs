@@ -290,8 +290,11 @@ pub fn msg_from_bundle<F>(bundle: &iota_bundle::Bundle) -> TbinaryMessage<F, Tan
     let appinst = AppInst {
         id: NBytes(tbits_from_tritbuf(tx.address().to_inner())),
     };
+
+    let mut tbits = tbits_from_tritbuf(tx.tag().to_inner());
+    tbits.truncate(MSGID_SIZE);
     let msgid = MsgId {
-        id: NBytes(tbits_from_tritbuf(tx.tag().to_inner())),
+        id: NBytes(tbits),
     };
     let mut body = Vec::new();
     for tx in bundle.into_iter() {

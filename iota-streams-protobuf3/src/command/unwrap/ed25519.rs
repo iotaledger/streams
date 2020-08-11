@@ -36,9 +36,7 @@ where
         let mut bytes = [0_u8; ed25519::SIGNATURE_LENGTH];
         let slice = self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?;
         bytes.copy_from_slice(slice);
-        println!("\nBytes to verify in ed25519 unwrap: {:?}", &slice);
         let signature = ed25519::Signature::new(bytes);
-        println!("Signature in unwrap: {:?}", &signature);
         match pk.verify_prehashed(prehashed, Some(context), &signature) {
                 Ok(()) => Ok(self),
                 Err(err) => bail!("bad signature: {}", err),

@@ -43,7 +43,11 @@ fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_opt: 
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
     let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
-    let mut subscriberC = Subscriber::new("SUBSCRIBERB9SEED");
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED");
+
+    println!("SubA pk: {:?}", subscriberA.sub_sig_public_key().to_bytes());
+    println!("SubB pk: {:?}", subscriberB.sub_sig_public_key().to_bytes());
+    println!("SubC pk: {:?}", subscriberC.sub_sig_public_key().to_bytes());
 
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
@@ -152,7 +156,7 @@ fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_opt: 
     }
 
 
-    println!("Share keyload for everyone [SubscriberA, SubscriberB]");
+    println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
     let keyload_link = {
         let msg = author.share_keyload_for_everyone(&signed_packet_link).unwrap();
         transport.send_message_with_options(&msg, send_opt);
@@ -172,7 +176,7 @@ fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_opt: 
 
     }
 
-    println!("Tagged packet - SubscriberA");
+    println!("\nTagged packet - SubscriberA");
     let tagged_packet_link = {
         let msg = subscriberA.tag_packet(&keyload_link, &public_payload, &masked_payload).unwrap();
         transport.send_message_with_options(&msg, send_opt);
@@ -190,7 +194,7 @@ fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_opt: 
         ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
     }
 
-    println!("Tagged packet - SubscriberB");
+    println!("\nTagged packet - SubscriberB");
     let tagged_packet_link = {
         let msg = subscriberB.tag_packet(&keyload_link, &public_payload, &masked_payload).unwrap();
         transport.send_message_with_options(&msg, send_opt);

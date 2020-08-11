@@ -59,6 +59,8 @@ impl Subscriber {
         &self.imp.author_ke_pk
     }
 
+    pub fn sub_sig_public_key(&self) -> &ed25519::PublicKey { &self.imp.sig_kp.public }
+
     /// Create tagged packet.
     pub fn tag_packet(
         &mut self,

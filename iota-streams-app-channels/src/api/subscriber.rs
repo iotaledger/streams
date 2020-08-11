@@ -280,11 +280,8 @@ where
             );
         }
 
-        println!("unwrap announce 1");
         let content = announce::ContentUnwrap::<F>::default();
-        println!("unwrap announce 2");
         let r = preparsed.unwrap(&*self.store.borrow(), content);
-        println!("unwrap announce 3");
         r
     }
 

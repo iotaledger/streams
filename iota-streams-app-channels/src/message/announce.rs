@@ -67,7 +67,6 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        println!("Sig PK in wrap: {:?}", self.sig_kp.public);
         ctx.absorb(&self.sig_kp.public)?;
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
@@ -103,7 +102,6 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.sig_pk)?;
-        println!("Sig PK in unwrap: {:?}", self.sig_pk);
         self.ke_pk = x25519::public_from_ed25519(&self.sig_pk);
         ctx.ed25519(&self.sig_pk, HashSig)?;
         Ok(ctx)
