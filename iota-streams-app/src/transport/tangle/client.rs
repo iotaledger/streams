@@ -18,7 +18,10 @@ use iota_conversion::Trinary;
 use iota::{
     client as iota_client,
     crypto as iota_crypto,
-    transaction::bundled as iota_bundle,
+    transaction::{
+        Vertex,
+        bundled as iota_bundle
+    },
     ternary as iota_ternary,
 };
 
@@ -237,13 +240,45 @@ pub fn bundles_from_trytes(mut txs: Vec<iota_bundle::BundledTransaction>) -> Vec
     bundles
         .into_iter()
         .filter_map(|txs| {
-            let mut bundle_builder = iota_bundle::IncomingBundleBuilder::new();
-            //TODO: Investigate why map didn't work here properly?
+            //TODO: This needs a proper incoming bundle building implementation, but it is not currently available
+            let mut bundle_builder = iota_bundle::OutgoingBundleBuilder::new();
+            let mut trunk = Hash::zeros();
+            let mut branch = Hash::zeros();
             for tx in txs.into_iter() {
-                bundle_builder.push(tx.clone());
+                let mut tx_builder = BundledTransactionBuilder::new();
+
+                let tx_builder = tx_builder
+                    .with_payload(tx.payload().clone())
+                    .with_address(tx.address().clone())
+                    .with_value(tx.value().clone())
+                    .with_obsolete_tag(tx.obsolete_tag().clone())
+                    .with_timestamp(tx.timestamp().clone())
+                    .with_index(tx.index().clone())
+                    .with_last_index(tx.last_index().clone())
+                    .with_tag(tx.tag().clone())
+                    .with_attachment_ts(tx.attachment_ts().clone())
+                    .with_bundle(tx.bundle().clone())
+                    .with_trunk(trunk.clone())
+                    .with_branch(branch.clone())
+                    .with_attachment_lbts(tx.attachment_lbts().clone())
+                    .with_attachment_ubts(tx.attachment_ubts().clone())
+                    .with_nonce(tx.nonce().clone());
+
+                trunk = *tx.trunk();
+                branch = *tx.branch();
+
+                bundle_builder.push(tx_builder);
             };
-            let bundle_builder = bundle_builder.validate();
-            bundle_builder.map(|b| b.build()).ok()
+
+            let bundle_builder = bundle_builder
+                .seal()
+                .map_err(|e| anyhow!("Failed to seal incoming bundle: {:?}.", e)).unwrap()
+                .attach_remote(trunk, branch)
+                .map_err(|e| anyhow!("Failed to attach bundle: {:?}.", e)).unwrap()
+                .build()
+                .map_err(|e| anyhow!("Failed to build incoming bundle: {:?}.", e)).unwrap();
+
+            Some(bundle_builder)
         })
         .collect()
 }
