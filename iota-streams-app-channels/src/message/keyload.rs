@@ -252,7 +252,7 @@ where
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
                             //TODO: key length
-                            let n = Size(32);
+                            let n = Size(64);
                             ctx.drop(n)
                         }
                     })

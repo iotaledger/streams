@@ -64,6 +64,7 @@ where
             message: TbinaryMessage {
                 link: self.header.link.clone(),
                 body: buf,
+                multi_branching: self.header.multi_branching.clone(),
                 _phantom: std::marker::PhantomData,
             },
         })

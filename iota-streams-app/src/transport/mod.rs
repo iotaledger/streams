@@ -33,6 +33,7 @@ pub trait Transport<F, Link> /* where Link: HasLink */ {
     fn recv_messages_with_options(
         &mut self,
         link: &Link,
+        multi_branching: u8,
         opt: Self::RecvOptions,
     ) -> Result<Vec<TbinaryMessage<F, Link>>>;
 
@@ -40,9 +41,10 @@ pub trait Transport<F, Link> /* where Link: HasLink */ {
     fn recv_message_with_options(
         &mut self,
         link: &Link,
+        multi_branching: u8,
         opt: Self::RecvOptions,
     ) -> Result<TbinaryMessage<F, Link>> {
-        let mut msgs = self.recv_messages_with_options(link, opt)?;
+        let mut msgs = self.recv_messages_with_options(link, multi_branching, opt)?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
             Ok(msg)
@@ -52,19 +54,19 @@ pub trait Transport<F, Link> /* where Link: HasLink */ {
     }
 
     /// Receive messages with default options.
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<TbinaryMessage<F, Link>>>
+    fn recv_messages(&mut self, link: &Link, multi_branching: u8) -> Result<Vec<TbinaryMessage<F, Link>>>
     where
         Self::RecvOptions: Default,
     {
-        self.recv_messages_with_options(link, Self::RecvOptions::default())
+        self.recv_messages_with_options(link, multi_branching, Self::RecvOptions::default())
     }
 
     /// Receive a message with default options.
-    fn recv_message(&mut self, link: &Link) -> Result<TbinaryMessage<F, Link>>
+    fn recv_message(&mut self, link: &Link, multi_branching: u8) -> Result<TbinaryMessage<F, Link>>
     where
         Self::RecvOptions: Default,
     {
-        self.recv_message_with_options(link, Self::RecvOptions::default())
+        self.recv_message_with_options(link, multi_branching, Self::RecvOptions::default())
     }
 }
 
@@ -99,7 +101,7 @@ where
 
     type RecvOptions = ();
 
-    fn recv_messages_with_options(&mut self, link: &Link, _opt: ()) -> Result<Vec<TbinaryMessage<F, Link>>> {
+    fn recv_messages_with_options(&mut self, link: &Link, multi_branching: u8, _opt: ()) -> Result<Vec<TbinaryMessage<F, Link>>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {

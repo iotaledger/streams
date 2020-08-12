@@ -285,7 +285,7 @@ pub fn bundles_from_trytes(mut txs: Vec<iota_bundle::BundledTransaction>) -> Vec
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-pub fn msg_from_bundle<F>(bundle: &iota_bundle::Bundle) -> TbinaryMessage<F, TangleAddress>{
+pub fn msg_from_bundle<F>(bundle: &iota_bundle::Bundle, multi_branching: u8) -> TbinaryMessage<F, TangleAddress>{
     let tx = bundle.head();
     let appinst = AppInst {
         id: NBytes(tbits_from_tritbuf(tx.address().to_inner())),
@@ -300,7 +300,7 @@ pub fn msg_from_bundle<F>(bundle: &iota_bundle::Bundle) -> TbinaryMessage<F, Tan
     for tx in bundle.into_iter() {
         body.extend_from_slice(&tbits_from_tritbuf(tx.payload().to_inner()));
     }
-    TbinaryMessage::new(TangleAddress { appinst, msgid }, body)
+    TbinaryMessage::new(TangleAddress { appinst, msgid }, body, multi_branching)
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -361,7 +361,7 @@ mod tests {
                 id: NTrytes(Tbits::<TW>::cycle_str(MSGID_SIZE, "M")),
             };
             let body = &Tbits::<TW>::cycle_str(6561, "D") + &Tbits::<TW>::cycle_str(6561, "E");
-            TbinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body)
+            TbinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body, 0)
         };
         // A,N,[F,G]
         let m2 = {
@@ -369,7 +369,7 @@ mod tests {
                 id: NTrytes(Tbits::<TW>::cycle_str(MSGID_SIZE, "N")),
             };
             let body = &Tbits::<TW>::cycle_str(6561, "F") + &Tbits::<TW>::cycle_str(6561, "G");
-            TbinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body)
+            TbinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body, 0)
         };
 
         let bundle1 = msg_to_bundle(&m1, 0, trunk.clone(), branch.clone()).unwrap();
@@ -392,7 +392,7 @@ mod tests {
             let trytes = vec![tx2_1.clone(), tx1_0.clone(), tx2_0.clone()];
             let bundles = bundles_from_trytes(trytes);
             assert_eq!(1, bundles.len());
-            let m = msg_from_bundle(&bundles[0]);
+            let m = msg_from_bundle(&bundles[0], 0);
             assert_eq!(m, m2);
         }
 
@@ -400,8 +400,8 @@ mod tests {
             let trytes = vec![tx1_1.clone(), tx2_1.clone(), tx1_0.clone(), tx2_0.clone()];
             let bundles = bundles_from_trytes(trytes);
             assert_eq!(bundles.len(), 2);
-            let n1 = msg_from_bundle(&bundles[0]);
-            let n2 = msg_from_bundle(&bundles[1]);
+            let n1 = msg_from_bundle(&bundles[0], 0);
+            let n2 = msg_from_bundle(&bundles[1], 0);
             assert!(
                 (n1 == m1 && n2 == m2) || (n1 == m2 && n1 == m1)
             );
@@ -493,6 +493,7 @@ impl<F> Transport<F, TangleAddress> for iota_client::Client {
     fn recv_messages_with_options(
         &mut self,
         link: &TangleAddress,
+        multi_branching: u8,
         _opt: Self::RecvOptions,
     ) -> Result<Vec<TbinaryMessage<F, TangleAddress>>> {
         //println!("Receiving...");
@@ -505,7 +506,7 @@ impl<F> Transport<F, TangleAddress> for iota_client::Client {
         let txs = block_on(get_bundles(self, tx_address, tx_tag));
         Ok(bundles_from_trytes(txs.unwrap())
             .into_iter()
-            .map(|b| msg_from_bundle(&b))
+            .map(|b| msg_from_bundle(&b, multi_branching))
             .collect())
     }
 }

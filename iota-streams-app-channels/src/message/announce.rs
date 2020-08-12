@@ -49,6 +49,7 @@ pub const TYPE: &str = "STREAMS9CHANNEL9ANNOUNCE";
 
 pub struct ContentWrap<'a, F> {
     pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub multi_branching: u8,
     pub(crate) _phantom: std::marker::PhantomData<F>,
 }
 
@@ -58,6 +59,7 @@ where
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.sig_kp.public)?;
+        ctx.absorb(NBytes::zero(1));
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
@@ -68,6 +70,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.absorb(&self.sig_kp.public)?;
+        ctx.absorb(&NBytes(vec![self.multi_branching]));
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
@@ -76,6 +79,7 @@ where
 pub struct ContentUnwrap<F> {
     pub(crate) sig_pk: ed25519::PublicKey,
     pub(crate) ke_pk: x25519::PublicKey,
+    pub multi_branching: u8,
     _phantom: std::marker::PhantomData<F>,
 }
 
@@ -87,6 +91,7 @@ impl<F> Default for ContentUnwrap<F>
         Self {
             sig_pk,
             ke_pk,
+            multi_branching: 0,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -101,8 +106,13 @@ where
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        let mut input_byte = NBytes::zero(1);
         ctx.absorb(&mut self.sig_pk)?;
         self.ke_pk = x25519::public_from_ed25519(&self.sig_pk);
+        ctx.absorb(&mut input_byte);
+        if input_byte.0[0] == 1_u8 {
+            self.multi_branching = 1;
+        }
         ctx.ed25519(&self.sig_pk, HashSig)?;
         Ok(ctx)
     }

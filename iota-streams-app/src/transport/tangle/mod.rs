@@ -12,7 +12,7 @@ use std::{
 use iota_streams_core::{
     sponge::prp::PRP,
 };
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -20,6 +20,7 @@ use iota_streams_protobuf3::{
 };
 
 use crate::message::*;
+use bee_crypto::ternary::sponge::Sponge;
 
 pub struct TangleMessage<F> {
     /// Encapsulated tbinary encoded message.
@@ -131,7 +132,6 @@ impl HasLink for TangleAddress
 #[derive(Clone)]
 pub struct DefaultTangleLinkGenerator<F> {
     appinst: AppInst,
-    counter: usize,
     _phantom: std::marker::PhantomData<F>,
 }
 
@@ -140,7 +140,6 @@ impl<F> Default for DefaultTangleLinkGenerator<F>
     fn default() -> Self {
         Self {
             appinst: AppInst::default(),
-            counter: 0,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -156,18 +155,20 @@ impl<F> DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn try_gen_msgid(&self, msgid: &MsgId) -> Result<MsgId> {
+    fn try_gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> Result<MsgId> {
         let mut new = MsgId::default();
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
+            .absorb(External(&pk))?
             .absorb(External(&msgid.id))?
-            .absorb(External(Size(self.counter)))?
+            .absorb(External(Size(seq)))?
+            .absorb(External(&NBytes(vec![multi_branch])))?
             .commit()?
             .squeeze(External(&mut new.id))?;
         Ok(new)
     }
-    fn gen_msgid(&self, msgid: &MsgId) -> MsgId {
-        self.try_gen_msgid(msgid).map_or(MsgId::default(), |x| x)
+    fn gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> MsgId {
+        self.try_gen_msgid(msgid, pk, multi_branch, seq).map_or(MsgId::default(), |x| x)
     }
 }
 
@@ -175,22 +176,23 @@ impl<F> LinkGenerator<TangleAddress, Vec<u8>> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, appinst: &Vec<u8>) -> TangleAddress {
+    fn link_from(&mut self, appinst: &Vec<u8>, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> TangleAddress {
         self.appinst.id.0 = appinst.to_vec();
-
-        self.counter += 1;
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(&MsgId::default()),
+            msgid: self.gen_msgid(&MsgId::default(), pk, multi_branch, seq),
         }
     }
 
     fn header_from(
         &mut self,
         arg: &Vec<u8>,
+        pk: x25519::PublicKey,
+        multi_branching: u8,
+        seq: usize,
         content_type: &str,
     ) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(self.link_from(arg), content_type)
+        header::Header::new_with_type(self.link_from(arg, pk, multi_branching, seq), multi_branching, content_type)
     }
 }
 
@@ -198,15 +200,14 @@ impl<F> LinkGenerator<TangleAddress, MsgId> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, msgid: &MsgId) -> TangleAddress {
-        self.counter += 1;
+    fn link_from(&mut self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> TangleAddress {
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(msgid),
+            msgid: self.gen_msgid(msgid, pk, multi_branch, seq),
         }
     }
-    fn header_from(&mut self, arg: &MsgId, content_type: &str) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(self.link_from(arg), content_type)
+    fn header_from(&mut self, arg: &MsgId, pk: x25519::PublicKey, multi_branching: u8, seq: usize, content_type: &str) -> header::Header<TangleAddress> {
+        header::Header::new_with_type(self.link_from(arg, pk, multi_branching, seq), multi_branching, content_type)
     }
 }
 

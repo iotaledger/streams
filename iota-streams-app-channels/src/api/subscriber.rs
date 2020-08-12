@@ -7,6 +7,7 @@ use std::{
     cell::RefCell,
     fmt::Debug,
     str::FromStr,
+    collections::HashMap,
 };
 
 use iota_streams_core::{
@@ -24,6 +25,10 @@ use iota_streams_protobuf3::types::*;
 
 use super::*;
 use crate::message::*;
+
+const SUB_MESSAGE_NUM: usize = 0;
+const SEQ_MESSAGE_NUM: usize = 1;
+
 
 /// Generic Channel Subscriber type parametrised by the type of links, link store and
 /// link generator.
@@ -54,6 +59,9 @@ pub struct SubscriberT<F, Link, Store, LinkGen>
     /// Own optional pre-shared key.
     pub(crate) opt_psk: Option<(psk::PskId, psk::Psk)>,
 
+    /// Subscribers' trusted X25519 public keys.
+    pub ke_pks: x25519::Pks,
+
     /// Author's Ed25519 public key.
     pub(crate) author_sig_pk: Option<ed25519::PublicKey>,
 
@@ -69,6 +77,13 @@ pub struct SubscriberT<F, Link, Store, LinkGen>
 
     /// Link generator.
     pub(crate) link_gen: LinkGen,
+
+    /// u8 indicating if multi_branching is used (0 = false, 1 = true)
+    pub multi_branching: u8,
+
+    /// Mapping of publisher id to sequence state
+    pub(crate) seq_states: HashMap<Vec<u8> , (Link, usize)>,
+
 }
 
 impl<F, Link, Store, LinkGen> SubscriberT<F, Link, Store, LinkGen>
@@ -99,9 +114,12 @@ where
             appinst: None,
             author_sig_pk: None,
             author_ke_pk: None,
+            ke_pks: x25519::Pks::new(),
 
             store: RefCell::new(store),
             link_gen: link_gen,
+            multi_branching: 0,
+            seq_states: HashMap::new(),
         }
     }
 
@@ -158,7 +176,11 @@ where
             >,
         >,
     > {
-        let header = self.link_gen.header_from(link_to, keyload::TYPE);
+        let header = self.link_gen.header_from(link_to,
+                                               self.ke_kp.1,
+                                               self.multi_branching,
+                                               self.get_seq_num(),
+                                               keyload::TYPE);
         self.do_prepare_keyload(
             header,
             link_to,
@@ -178,6 +200,46 @@ where
         wrapped.commit(self.store.borrow_mut(), info)
     }
 
+
+    pub fn prepare_sequence<'a>(
+        &'a mut self,
+        link_to: &'a <Link as HasLink>::Rel,
+        seq_num: usize,
+        ref_link: NBytes,
+    ) -> Result<PreparedMessage<'a, F, Link, Store, sequence::ContentWrap<'a, Link>>> {
+        let header = self.link_gen.header_from(
+            link_to,
+            self.ke_kp.1,
+            self.multi_branching,
+            SEQ_MESSAGE_NUM,
+            sequence::TYPE
+        );
+
+        let content = sequence::ContentWrap {
+            link: link_to,
+            pubkey: &self.ke_kp.1,
+            seq_num: seq_num,
+            ref_link: ref_link,
+        };
+
+        Ok(PreparedMessage::new(self.store.borrow(), header, content))
+    }
+
+    /// Send sequence message to show referenced message
+    pub fn sequence<'a>(
+        &mut self,
+        ref_link: Vec<u8>,
+        seq_link: <Link as HasLink>::Rel,
+        seq_num: usize,
+        info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+    ) -> Result<TbinaryMessage<F, Link>> {
+        let wrapped = self
+            .prepare_sequence(&seq_link, seq_num, NBytes(ref_link))?
+            .wrap()?;
+
+        wrapped.commit(self.store.borrow_mut(), info)
+    }
+
     /// Prepare TaggedPacket message.
     pub fn prepare_tagged_packet<'a>(
         &'a mut self,
@@ -185,7 +247,11 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
-        let header = self.link_gen.header_from(link_to, tagged_packet::TYPE);
+        let header = self.link_gen.header_from(link_to,
+                                               self.ke_kp.1,
+                                               self.multi_branching,
+                                               self.get_seq_num(),
+                                               tagged_packet::TYPE);
         let content = tagged_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -216,7 +282,11 @@ where
         link_to: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<'a, F, Link, Store, subscribe::ContentWrap<'a, F, Link>>> {
         if let Some(author_ke_pk) = &self.author_ke_pk {
-            let header = self.link_gen.header_from(link_to, subscribe::TYPE);
+            let header = self.link_gen.header_from(link_to,
+                                                   self.ke_kp.1,
+                                                   self.multi_branching,
+                                                   self.get_seq_num(),
+                                                   subscribe::TYPE);
             let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
             let content = subscribe::ContentWrap {
@@ -306,6 +376,8 @@ where
         self.appinst = Some(link);
         self.author_sig_pk = Some(content.sig_pk);
         self.author_ke_pk = Some(x25519::PublicKeyWrap(content.ke_pk));
+        self.ke_pks.insert(x25519::PublicKeyWrap(content.ke_pk));
+        self.multi_branching = content.multi_branching;
         Ok(())
     }
 
@@ -412,6 +484,56 @@ where
             .unwrap_tagged_packet(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
         Ok((content.public_payload, content.masked_payload))
+    }
+
+    pub fn unwrap_sequence<'a>(
+        &self,
+        preparsed: PreparsedMessage<'a, F, Link>,
+    ) -> Result<UnwrappedMessage<F, Link, sequence::ContentUnwrap<Link>>> {
+        self.ensure_appinst(&preparsed)?;
+        let content = sequence::ContentUnwrap::default();
+        preparsed.unwrap(&*self.store.borrow(), content)
+    }
+
+    //Fetch unwrapped sequence message to fetch referenced message
+    pub fn handle_sequence<'a>(
+        &mut self,
+        preparsed: PreparsedMessage<'a, F, Link>,
+        info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+    ) -> Result<sequence::ContentUnwrap<Link>> {
+        let content = self
+            .unwrap_sequence(preparsed)?
+            .commit(self.store.borrow_mut(), info)?;
+        Ok(content)
+    }
+
+    pub fn get_branching_flag<'a>(&self) -> &u8 {
+        &self.multi_branching
+    }
+
+    pub fn gen_msg_id(&mut self, link: &<Link as HasLink>::Rel, pk: x25519::PublicKey, seq: usize) -> Link {
+        let mut multi_branch = self.multi_branching.clone();
+        self.link_gen.link_from(link, pk, multi_branch, seq)
+    }
+
+    pub fn get_pks(&self) -> x25519::Pks {
+        self.ke_pks.clone()
+    }
+
+    /// Store the sequence state of a given publisher
+    pub fn store_state (&mut self, pubkey: x25519::PublicKey, msg_link: Link, seq_num: usize) {
+        self.seq_states.insert(pubkey.as_bytes().to_vec(), (msg_link, seq_num));
+    }
+
+    /// Retrieve the sequence state fo a given publisher
+    pub fn get_seq_state (&self, pubkey: x25519::PublicKey) -> Result<(Link, usize)> {
+        let seq_link = self.seq_states.get(&pubkey.as_bytes().to_vec()).unwrap().0.clone();
+        let seq_num = self.seq_states.get(&pubkey.as_bytes().to_vec()).unwrap().1;
+        Ok((seq_link, seq_num))
+    }
+
+    pub fn get_seq_num(&self) -> usize {
+        self.get_seq_state(self.ke_kp.1).unwrap().1
     }
 
     /*
