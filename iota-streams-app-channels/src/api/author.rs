@@ -152,7 +152,6 @@ where
             multi_branching: self.multi_branching.clone(),
             _phantom: std::marker::PhantomData,
         };
-        println!("Made a content");
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
 
@@ -487,7 +486,7 @@ where
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let subscriber_ke_pk = x25519::public_from_ed25519(&subscriber_sig_pk);
         self.ke_pks.insert(x25519::PublicKeyWrap(subscriber_ke_pk));
-        self.store_state(subscriber_ke_pk, self.appinst.clone(), 2);
+        self.store_state(subscriber_ke_pk, self.appinst.clone(), SEQ_MESSAGE_NUM);
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }

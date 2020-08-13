@@ -444,6 +444,7 @@ where
         for pkid in content.ke_pks {
             if !self.seq_states.contains_key(&pkid.0.as_bytes().to_vec()) {
                 // Store at state 2 since 0 and 1 are reserved states
+                self.ke_pks.insert(pkid.clone());
                 self.store_state(pkid.0, self.appinst.clone().unwrap(), 2)
             }
         }

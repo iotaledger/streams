@@ -148,7 +148,7 @@ impl Author {
     pub fn unwrap_sequence<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<Address> {
         let seq_msg = self.imp.handle_sequence(preparsed, MsgInfo::Sequence).unwrap();
         let msg_id = self.gen_msg_id(
-            &Address::from_str(&self.imp.appinst.appinst.to_string(), &seq_msg.ref_link.to_string()).unwrap(),
+            &Address::new(self.imp.appinst.appinst.clone(), MsgId::from(seq_msg.ref_link)),
             seq_msg.pubkey,
             seq_msg.seq_num.0,
         );
@@ -178,7 +178,7 @@ impl Author {
             seq_num = seq_state_num;
             if branching {
                 seq_num = 1;
-            } else if retry {
+            } else if retry && seq_num > 2 {
                 seq_num -= 1
             }
 

@@ -243,7 +243,6 @@ where
             })?
             .skip(&mut repeated_ke_pks)?
             .repeated(repeated_ke_pks, |ctx| {
-                if !key_found {
                     ctx.fork(|ctx| {
                         ctx.absorb(&mut self.ke_pk)?;
                         self.ke_pks.insert(x25519::PublicKeyWrap(self.ke_pk));
@@ -258,12 +257,6 @@ where
                             ctx.drop(n)
                         }
                     })
-                } else {
-                    // Drop entire fork.
-                    //TODO: fork size
-                    let n = Size(64);
-                    ctx.drop(n)
-                }
             })?
             .guard(key_found, "Key not found")?
             .absorb(External(&self.key))?

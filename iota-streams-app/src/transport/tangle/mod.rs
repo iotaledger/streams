@@ -157,7 +157,6 @@ where
 {
     fn try_gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> Result<MsgId> {
         let mut new = MsgId::default();
-        //println!("Genning new message id with: {:?}, {:?}, {:?}, {:?}", &msgid, &pk.as_bytes(), &multi_branch, &seq);
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
             .absorb(External(&pk))?
@@ -332,6 +331,13 @@ impl FromStr for MsgId
         //TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
         //currently lowercase hex
         hex::decode(s).map_or(Err(()), |x| Ok(MsgId{id: NBytes(x)}))
+    }
+}
+
+impl From<NBytes> for MsgId
+{
+    fn from(b: NBytes) -> Self {
+        Self{id: b}
     }
 }
 

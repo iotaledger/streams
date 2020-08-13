@@ -65,7 +65,7 @@ impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
             .absorb(self.pubkey)?
-            .absorb(Size(self.seq_num))?
+            .skip(Size(self.seq_num))?
             .absorb(&self.ref_link)?
             .commit()?;
         Ok(ctx)
@@ -78,7 +78,7 @@ impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
             .absorb(self.pubkey)?
-            .absorb(Size(self.seq_num))?
+            .skip(Size(self.seq_num))?
             .absorb(&self.ref_link)?
             .commit()?;
         Ok(ctx)
@@ -89,7 +89,7 @@ pub struct ContentUnwrap<Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) pubkey: x25519::PublicKey,
     pub(crate) seq_num: Size,
-    pub(crate) ref_link: Bytes,
+    pub(crate) ref_link: NBytes,
 }
 
 impl<Link> Default for ContentUnwrap<Link>
@@ -102,8 +102,7 @@ impl<Link> Default for ContentUnwrap<Link>
             link: <<Link as HasLink>::Rel as Default>::default(),
             pubkey: x25519::PublicKey::from([0_u8; 32]),
             seq_num: Size(0),
-            ref_link: Bytes::default(),
-
+            ref_link: NBytes::zero(12),
         }
     }
 }
