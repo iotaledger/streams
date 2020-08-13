@@ -487,6 +487,7 @@ where
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let subscriber_ke_pk = x25519::public_from_ed25519(&subscriber_sig_pk);
         self.ke_pks.insert(x25519::PublicKeyWrap(subscriber_ke_pk));
+        self.store_state(subscriber_ke_pk, self.appinst.clone(), 2);
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }

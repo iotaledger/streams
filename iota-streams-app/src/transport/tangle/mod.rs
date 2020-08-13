@@ -157,6 +157,7 @@ where
 {
     fn try_gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> Result<MsgId> {
         let mut new = MsgId::default();
+        //println!("Genning new message id with: {:?}, {:?}, {:?}, {:?}", &msgid, &pk.as_bytes(), &multi_branch, &seq);
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
             .absorb(External(&pk))?

@@ -111,6 +111,16 @@ where
             _phantom: std::marker::PhantomData,
         }
     }
+
+    pub fn with_sig(sig: ed25519::PublicKey) -> Self {
+        Self {
+            link: <<Link as HasLink>::Rel as Default>::default(),
+            public_payload: Bytes::default(),
+            masked_payload: Bytes::default(),
+            sig_pk: sig,
+            _phantom: std::marker::PhantomData,
+        }
+    }
 }
 
 impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
@@ -128,7 +138,7 @@ where
         ctx.join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
-            //.edsig(&mut self.sig_pk, MssHashSig)?
+            .ed25519(&self.sig_pk, HashSig)?
         ;
         Ok(ctx)
     }

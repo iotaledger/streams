@@ -504,9 +504,13 @@ impl<F> Transport<F, TangleAddress> for iota_client::Client {
 
 
         let txs = block_on(get_bundles(self, tx_address, tx_tag));
-        Ok(bundles_from_trytes(txs.unwrap())
-            .into_iter()
-            .map(|b| msg_from_bundle(&b, multi_branching))
-            .collect())
+        if !txs.is_err() {
+            Ok(bundles_from_trytes(txs.unwrap())
+                .into_iter()
+                .map(|b| msg_from_bundle(&b, multi_branching))
+                .collect())
+        } else {
+            Ok(Vec::new())
+        }
     }
 }

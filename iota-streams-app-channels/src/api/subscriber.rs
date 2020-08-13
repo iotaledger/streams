@@ -285,7 +285,7 @@ where
             let header = self.link_gen.header_from(link_to,
                                                    self.ke_kp.1,
                                                    self.multi_branching,
-                                                   self.get_seq_num(),
+                                                   SUB_MESSAGE_NUM,
                                                    subscribe::TYPE);
             let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
@@ -437,9 +437,17 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
-        let _content = self.unwrap_keyload(preparsed)?.commit(self.store.borrow_mut(), info)?;
+        let content = self.unwrap_keyload(preparsed)?.commit(self.store.borrow_mut(), info)?;
         // Unwrapped nonce and key in content are not used explicitly.
         // The resulting spongos state is joined into a protected message state.
+        // Store any unknown publishers
+        for pkid in content.ke_pks {
+            if !self.seq_states.contains_key(&pkid.0.as_bytes().to_vec()) {
+                // Store at state 2 since 0 and 1 are reserved states
+                self.store_state(pkid.0, self.appinst.clone().unwrap(), 2)
+            }
+        }
+
         Ok(())
     }
 
@@ -448,7 +456,7 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, signed_packet::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = signed_packet::ContentUnwrap::new();
+        let content = signed_packet::ContentUnwrap::with_sig(self.author_sig_pk.unwrap());
         preparsed.unwrap(&*self.store.borrow(), content)
     }
 

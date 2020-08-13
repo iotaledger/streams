@@ -39,6 +39,8 @@ impl Author {
         &self.imp.appinst.appinst
     }
 
+    pub fn get_pk(&self) -> &x25519::PublicKey { &self.imp.ke_kp.1 }
+
     /// Announce creation of a new Channel.
     pub fn announce(&mut self) -> Result<Message> {
         self.imp.announce(MsgInfo::Announce)
@@ -65,7 +67,6 @@ impl Author {
     /// Sends a sequence message referencing the supplied message if sequencing is enabled.
     pub fn send_sequence(&mut self, msg_link: &Address) -> Option<Message> {
         let sequenced: Option<Message>;
-        println!("Sending sequence");
         let (seq_link, seq_num) = self.imp.get_seq_state(self.imp.ke_kp.1).unwrap();
 
         if self.imp.get_branching_flag() == &1_u8 {
