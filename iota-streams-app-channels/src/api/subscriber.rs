@@ -6,7 +6,6 @@ use anyhow::{
 use std::{
     cell::RefCell,
     fmt::Debug,
-    str::FromStr,
     collections::HashMap,
 };
 
@@ -48,6 +47,7 @@ const SEQ_MESSAGE_NUM: usize = 1;
 pub struct SubscriberT<F, Link, Store, LinkGen>
 {
     /// PRNG used for Spongos key generation, etc.
+    #[allow(dead_code)]
     prng: prng::Prng<F>,
 
     /// Own Ed25519 private key.
@@ -150,7 +150,6 @@ where
             nonce: nonce,
             key: key,
             psks: psks,
-            prng: &self.prng,
             ke_pks: ke_pks,
             _phantom: std::marker::PhantomData,
         };
@@ -287,7 +286,7 @@ where
                                                    self.multi_branching,
                                                    SUB_MESSAGE_NUM,
                                                    subscribe::TYPE);
-            let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
+            //let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
             let content = subscribe::ContentWrap {
                 link: link_to,
@@ -521,7 +520,7 @@ where
     }
 
     pub fn gen_msg_id(&mut self, link: &<Link as HasLink>::Rel, pk: x25519::PublicKey, seq: usize) -> Link {
-        let mut multi_branch = self.multi_branching.clone();
+        let multi_branch = self.multi_branching.clone();
         self.link_gen.link_from(link, pk, multi_branch, seq)
     }
 

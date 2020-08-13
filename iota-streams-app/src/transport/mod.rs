@@ -101,7 +101,7 @@ where
 
     type RecvOptions = ();
 
-    fn recv_messages_with_options(&mut self, link: &Link, multi_branching: u8, _opt: ()) -> Result<Vec<TbinaryMessage<F, Link>>> {
+    fn recv_messages_with_options(&mut self, link: &Link, _multi_branching: u8, _opt: ()) -> Result<Vec<TbinaryMessage<F, Link>>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {

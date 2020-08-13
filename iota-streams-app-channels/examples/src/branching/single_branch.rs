@@ -40,15 +40,15 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nAnnounce Channel");
     let (announcement_address, announcement_tag) = {
         let msg = &author.announce().unwrap();
-        transport.send_message_with_options(&msg, send_opt);
+        transport.send_message_with_options(&msg, send_opt)?;
         (msg.link.appinst.tbits().clone(), msg.link.msgid.tbits().clone())
     };
 
     let mut v1 = Vec::<u8, U256>::new();
-    v1.extend_from_slice(&announcement_address);
+    v1.extend_from_slice(&announcement_address).unwrap();
 
     let mut v2 = Vec::<u8, U256>::new();
-    v2.extend_from_slice(&announcement_tag);
+    v2.extend_from_slice(&announcement_tag).unwrap();
 
     let announcement_link = Address::from_str(&hex::encode(announcement_address), &hex::encode(announcement_tag)).unwrap();
     println!("Announcement link at: {}", &announcement_link);
@@ -108,7 +108,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
     let previous_msg_link = {
         let msg = author.share_keyload_for_everyone(&announcement_link).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Keyload message at {}", &msg.0.link.msgid);
         msg.0.link
     };
@@ -128,7 +128,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nSigned packet");
     let previous_msg_link = {
         let msg = author.sign_packet(&previous_msg_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Signed packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
@@ -149,7 +149,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
         let msg = subscriberA.tag_packet(&previous_msg_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
@@ -170,7 +170,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nTagged packet 2 - SubscriberA");
     let previous_msg_link = {
         let msg = subscriberA.tag_packet(&previous_msg_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
@@ -184,7 +184,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nTagged packet 3 - SubscriberA");
     let previous_msg_link = {
         let msg = subscriberA.tag_packet(&previous_msg_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
@@ -201,7 +201,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nTagged packet 4 - SubscriberB");
     let previous_msg_link = {
         let msg = subscriberB.tag_packet(&previous_msg_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
@@ -225,7 +225,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nSigned packet");
     let previous_msg_link = {
         let msg = author.sign_packet(&previous_msg_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Signed packet at {}", &msg.0.link.msgid);
         msg.0.link
     };

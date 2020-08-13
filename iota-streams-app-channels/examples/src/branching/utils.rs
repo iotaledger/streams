@@ -14,6 +14,7 @@ use iota_streams_app::{
 
 use std::string::String as stdString;
 
+#[allow(dead_code)]
 pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber, transport: &mut T, recv_opt: T::RecvOptions, multi_branching_flag: u8)
     where
         T::RecvOptions: Copy,
@@ -91,6 +92,7 @@ pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber, transpor
     }
 }
 
+#[allow(dead_code)]
 pub fn a_fetch_next_messages<T: Transport>(author: &mut Author, transport: &mut T, recv_opt: T::RecvOptions, multi_branching_flag: u8)
     where
         T::RecvOptions: Copy,

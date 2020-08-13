@@ -17,8 +17,6 @@ use anyhow::{
 
 use heapless::consts::U256;
 use heapless::Vec;
-use iota_streams_app_channels::api::tangle::Preparsed;
-use std::borrow::BorrowMut;
 
 #[path = "utils.rs"]
 mod utils;
@@ -42,15 +40,15 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nAnnounce Channel");
     let (announcement_address, announcement_tag) = {
         let msg = &author.announce().unwrap();
-        transport.send_message_with_options(&msg, send_opt);
+        transport.send_message_with_options(&msg, send_opt)?;
         (msg.link.appinst.tbits().clone(), msg.link.msgid.tbits().clone())
     };
 
     let mut v1 = Vec::<u8, U256>::new();
-    v1.extend_from_slice(&announcement_address);
+    v1.extend_from_slice(&announcement_address).unwrap();
 
     let mut v2 = Vec::<u8, U256>::new();
-    v2.extend_from_slice(&announcement_tag);
+    v2.extend_from_slice(&announcement_tag).unwrap();
 
     let announcement_link = Address::from_str(&hex::encode(announcement_address), &hex::encode(announcement_tag)).unwrap();
     println!("Announcement link at: {}", &announcement_link);
@@ -80,7 +78,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nSubscribe A");
     let subscribeA_link = {
         let msg = subscriberA.subscribe(&announcement_link)?;
-        transport.send_message_with_options(&msg, send_opt);
+        transport.send_message_with_options(&msg, send_opt)?;
         println!("Subscribe at {}", msg.link.msgid);
         msg.link
     };
@@ -95,8 +93,8 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nShare keyload for everyone [SubscriberA]");
     let keyload_link = {
         let msg = author.share_keyload_for_everyone(&announcement_link).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
-        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
+        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Keyload message at {}", &msg.0.link.msgid);
         println!("Sequenced message at {}", &msg.1.clone().unwrap().link.msgid);
         msg.1.clone().unwrap().link
@@ -128,8 +126,8 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nTagged packet 1 - SubscriberA");
     let tagged_packet_link = {
         let msg = subscriberA.tag_packet(&keyload_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
-        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
+        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         println!("Sequenced message at {}", &msg.1.clone().unwrap().link.msgid);
         msg.1.clone().unwrap().link
@@ -164,8 +162,8 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nSigned packet");
     let signed_packet_link = {
         let msg = author.sign_packet(&tagged_packet_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
-        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
+        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Signed packet at {}", &msg.0.link.msgid);
         println!("Sequenced message at {}", &msg.1.clone().unwrap().link.msgid);
         msg.1.clone().unwrap().link
@@ -190,7 +188,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nSubscribe B");
     let subscribeB_link = {
         let msg = subscriberB.subscribe(&announcement_link)?;
-        transport.send_message_with_options(&msg, send_opt);
+        transport.send_message_with_options(&msg, send_opt)?;
         println!("Subscribe at {}", msg.link.msgid);
         msg.link
     };
@@ -205,8 +203,8 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
     let keyload_link = {
         let msg = author.share_keyload_for_everyone(&announcement_link).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
-        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
+        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Keyload message at {}", &msg.0.link.msgid);
         println!("Sequenced message at {}", &msg.1.clone().unwrap().link.msgid);
         msg.1.clone().unwrap().link
@@ -235,8 +233,8 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nTagged packet 2 - SubscriberA");
     let tagged_packet_link = {
         let msg = subscriberA.tag_packet(&keyload_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
-        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
+        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         println!("Sequenced message at {}", &msg.1.clone().unwrap().link.msgid);
         msg.1.clone().unwrap().link
@@ -267,8 +265,8 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nTagged packet 3 - SubscriberB");
     let tagged_packet_link = {
         let msg = subscriberB.tag_packet(&keyload_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
-        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
+        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         println!("Sequenced message at {}", &msg.1.clone().unwrap().link.msgid);
         msg.1.clone().unwrap().link
@@ -299,8 +297,8 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     println!("\nSigned packet");
     let signed_packet_link = {
         let msg = author.sign_packet(&tagged_packet_link, &public_payload, &masked_payload).unwrap();
-        transport.send_message_with_options(&msg.0, send_opt);
-        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt);
+        transport.send_message_with_options(&msg.0, send_opt)?;
+        transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Signed packet at {}", &msg.0.link.msgid);
         println!("Sequenced message at {}", &msg.1.clone().unwrap().link.msgid);
         msg.1.clone().unwrap().link
@@ -308,7 +306,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
 
     {
         let msg = transport.recv_message_with_options(&signed_packet_link, multi_branching_flag.clone(), recv_opt).unwrap();
-        let mut preparsed = msg.parse_header()?;
+        let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::sequence::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
         let msg_tag = author.unwrap_sequence(preparsed.clone())?;

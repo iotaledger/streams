@@ -57,7 +57,6 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
-    prng,
     psk,
     sponge::{
         prp::PRP,
@@ -79,7 +78,6 @@ pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub nonce: NBytes,
     pub key: NBytes,
     pub(crate) psks: Psks,
-    pub(crate) prng: &'a prng::Prng<F>,
     pub(crate) ke_pks: KePks,
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
@@ -214,8 +212,8 @@ where
         let mut repeated_psks = Size(0);
         let mut repeated_ke_pks = Size(0);
         let mut pskid = NBytes::zero(psk::PSKID_SIZE);
-        //let mut ke_pk = NBytes::zero(x25519::PUBLIC_KEY_LENGTH);
         let mut key_found = false;
+
         ctx.join(store, &mut self.link)?
             .absorb(&mut self.nonce)?
             .skip(&mut repeated_psks)?

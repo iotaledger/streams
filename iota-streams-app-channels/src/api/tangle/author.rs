@@ -1,7 +1,6 @@
 //! Customize Author with default implementation for use over the Tangle.
 
 use anyhow::Result;
-use std::str::FromStr;
 
 use super::*;
 use crate::api::author::AuthorT;

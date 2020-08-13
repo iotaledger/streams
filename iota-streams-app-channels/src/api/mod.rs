@@ -11,7 +11,6 @@ use iota_streams_app::{
 use iota_streams_core::{
     sponge::prp::PRP,
 };
-use iota_streams_core_edsig::signature::ed25519;
 
 pub trait ChannelLinkGenerator<Link>
 where

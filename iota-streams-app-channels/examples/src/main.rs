@@ -4,9 +4,6 @@
 use rand::Rng;
 use iota::client as iota_client;
 
-use anyhow::{
-    Result,
-};
 
 use iota_streams_app::{
     transport::tangle::client::SendTrytesOptions,

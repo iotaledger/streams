@@ -29,7 +29,6 @@
 //!
 
 use anyhow::{
-    bail,
     Result,
 };
 
@@ -59,7 +58,7 @@ where
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.sig_kp.public)?;
-        ctx.absorb(NBytes::zero(1));
+        ctx.absorb(NBytes::zero(1))?;
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
@@ -70,7 +69,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.absorb(&self.sig_kp.public)?;
-        ctx.absorb(&NBytes(vec![self.multi_branching]));
+        ctx.absorb(&NBytes(vec![self.multi_branching]))?;
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
@@ -109,7 +108,7 @@ where
         let mut input_byte = NBytes::zero(1);
         ctx.absorb(&mut self.sig_pk)?;
         self.ke_pk = x25519::public_from_ed25519(&self.sig_pk);
-        ctx.absorb(&mut input_byte);
+        ctx.absorb(&mut input_byte)?;
         if input_byte.0[0] == 1_u8 {
             self.multi_branching = 1;
         }

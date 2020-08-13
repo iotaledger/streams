@@ -26,7 +26,6 @@ use iota_streams_app::message::{
 };
 
 use anyhow::{
-    bail,
     Result,
 };
 

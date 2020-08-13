@@ -1,7 +1,6 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 
 use anyhow::Result;
-use std::str::FromStr;
 
 use super::*;
 use crate::api::subscriber::SubscriberT;

@@ -20,7 +20,7 @@ iota-streams-protobuf3 = { version = "0.2.0", path = "../iota-streams-protobuf3"
 iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "ed04249" }
 
 iota-constants = { version = "0.2.1" }
-iota-conversion = { version = "0.5.0" }
+#iota-conversion = { version = "0.5.0" }
 # bee-crypto to provide Hash type used in the iota client through iota-core
 bee-crypto = { git = "https://github.com/iotaledger/bee.git" }
 

@@ -10,7 +10,6 @@ use std::{
         HashSet,
     },
     fmt::Debug,
-    str::FromStr,
 };
 
 use iota_streams_core::{
@@ -50,6 +49,7 @@ const SEQ_MESSAGE_NUM: usize = 1;
 pub struct AuthorT<F, Link, Store, LinkGen>
 {
     /// PRNG object used for Ed25519, X25519, Spongos key generation, etc.
+    #[allow(dead_code)]
     prng: prng::Prng<F>,
 
     /// Own Ed25519 private key.
@@ -183,7 +183,6 @@ where
             nonce: nonce,
             key: key,
             psks: psks,
-            prng: &self.prng,
             ke_pks: ke_pks,
             _phantom: std::marker::PhantomData,
         };
@@ -561,7 +560,7 @@ where
     }
 
     pub fn gen_msg_id(&mut self, link: &<Link as HasLink>::Rel, pk: x25519::PublicKey, seq: usize) -> Link {
-        let mut multi_branch = self.multi_branching.clone();
+        let multi_branch = self.multi_branching.clone();
         self.link_gen.link_from(link, pk, multi_branch, seq)
     }
 

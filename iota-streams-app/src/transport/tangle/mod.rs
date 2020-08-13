@@ -20,7 +20,6 @@ use iota_streams_protobuf3::{
 };
 
 use crate::message::*;
-use bee_crypto::ternary::sponge::Sponge;
 
 pub struct TangleMessage<F> {
     /// Encapsulated tbinary encoded message.

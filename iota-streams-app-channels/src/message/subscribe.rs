@@ -44,7 +44,6 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
-    prng,
     sponge::{
         prp::PRP,
         spongos,
@@ -77,7 +76,6 @@ where
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        let mac = Mac(spongos::Spongos::<F>::MAC_SIZE);
         ctx
             .join(&store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?
@@ -91,7 +89,6 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        let mac = Mac(spongos::Spongos::<F>::MAC_SIZE);
         ctx
             .join(store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?
@@ -138,7 +135,6 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mut eph_ke_pk = x25519::PublicKey::from([0_u8; 32]);
         ctx
             .join(store, &mut self.link)?
             .x25519(self.author_ke_sk, &mut self.unsubscribe_key)?

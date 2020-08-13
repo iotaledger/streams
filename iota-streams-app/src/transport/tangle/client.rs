@@ -1,23 +1,17 @@
 use chrono::Utc;
 use anyhow::{
     anyhow,
-    bail,
     ensure,
     Result,
 };
 use std::{
     cmp::Ordering,
-    convert::{TryInto, TryFrom},
-    str::FromStr,
-    string::ToString,
+    convert::TryInto,
 };
 use smol::block_on;
 
-use iota_constants::HASH_TRINARY_SIZE as HASH_LENGTH;
-use iota_conversion::Trinary;
 use iota::{
     client as iota_client,
-    crypto as iota_crypto,
     transaction::{
         Vertex,
         bundled as iota_bundle
@@ -33,20 +27,13 @@ use crate::transport::{
 use {
     iota_bundle::{
         Address,
-        IncomingBundleBuilder,
-        Index,
-        Nonce,
         OutgoingBundleBuilder,
         Payload,
         Tag,
         Timestamp,
         BundledTransaction,
         BundledTransactionBuilder,
-        BundledTransactionBuilders,
-        BundledTransactionError,
         BundledTransactionField,
-        BundledTransactions,
-        Value,
     },
 };
 
@@ -132,10 +119,6 @@ fn tbits_from_tritbuf(buf: &iota_ternary::Trits<iota_ternary::T1B1>) -> Vec<u8> 
     tbitslice_from_tritbuf(buf)
 }
 
-fn cmp_tritbuf(a: &iota_ternary::TritBuf<iota_ternary::T1B1Buf>, b: &iota_ternary::TritBuf<iota_ternary::T1B1Buf>) -> Ordering {
-    a.iter().cmp(b.iter())
-}
-
 fn cmp_trits(a: &iota_ternary::Trits<iota_ternary::T1B1>, b: &iota_ternary::Trits<iota_ternary::T1B1>) -> Ordering {
     a.iter().cmp(b.iter())
 }
@@ -143,7 +126,7 @@ fn cmp_trits(a: &iota_ternary::Trits<iota_ternary::T1B1>, b: &iota_ternary::Trit
 fn make_tx(tx_address: Address, tx_tag: Tag, tx_timestamp: Timestamp, tx_payload: Payload) -> iota_bundle::BundledTransactionBuilder {
     use iota_bundle::*;
 
-    let mut tx_builder = BundledTransactionBuilder::new();
+    let tx_builder = BundledTransactionBuilder::new();
 
     tx_builder
         .with_payload(tx_payload)
@@ -245,7 +228,7 @@ pub fn bundles_from_trytes(mut txs: Vec<iota_bundle::BundledTransaction>) -> Vec
             let mut trunk = Hash::zeros();
             let mut branch = Hash::zeros();
             for tx in txs.into_iter() {
-                let mut tx_builder = BundledTransactionBuilder::new();
+                let tx_builder = BundledTransactionBuilder::new();
 
                 let tx_builder = tx_builder
                     .with_payload(tx.payload().clone())
@@ -483,7 +466,7 @@ impl<F> Transport<F, TangleAddress> for iota_client::Client {
         //TODO: Get transactions from bundle without copying.
         let txs = bundle.into_iter().collect::<Vec<iota_bundle::BundledTransaction>>();
         // Ignore attached transactions.
-        block_on(send_trytes(self, opt, txs));
+        block_on(send_trytes(self, opt, txs))?;
         Ok(())
     }
 
