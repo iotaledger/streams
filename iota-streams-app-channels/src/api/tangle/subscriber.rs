@@ -173,7 +173,7 @@ impl Subscriber {
         self.imp.gen_msg_id(link.rel(), pk, seq)
     }
 
-    pub fn gen_next_msg_ids(&mut self, branching: bool, retry: bool) -> Vec<(x25519::PublicKey, Address, usize)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(x25519::PublicKey, Address, usize)> {
         let mut pks = self.imp.get_pks();
         let mut ids =Vec::new();
         let self_pk = x25519::PublicKeyWrap(self.imp.ke_kp.1);
@@ -182,17 +182,18 @@ impl Subscriber {
             pks.insert(self_pk);
         }
 
-        let mut seq_num: usize;
         for pk in pks.iter() {
-            let (seq_link, seq_state_num) = self.imp.get_seq_state(pk.0).unwrap();
-            seq_num = seq_state_num;
+            let (seq_link, seq_num) = self.imp.get_seq_state(pk.0).unwrap();
             if branching {
-                seq_num = 1;
-            } else if retry && seq_num > 2 {
-                seq_num -= 1
+                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, 1), 1));
+            } else {
+                // In Single Branching instances, while issuing transactions, the sequence state is
+                // set to the next message that will be sent, when fetching transactions sent by
+                // another publisher, it is necessary to check the current sequence state along with
+                // the link rather than the next state. To simplify the search we return both ids
+                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, seq_num), seq_num));
+                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, seq_num - 1), seq_num - 1));
             }
-            let id = self.gen_msg_id(&seq_link, pk.0, seq_num.clone());
-            ids.push((pk.0, id, seq_num));
         }
         ids
     }

@@ -21,12 +21,10 @@ pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber, transpor
 {
     let mut next_id: Address;
     let mut seq_num: usize;
-
     let mut exists = true;
-    let mut retry = false;
 
     while exists {
-        let ids = subscriber.gen_next_msg_ids(multi_branching_flag == 1_u8, retry.clone());
+        let ids = subscriber.gen_next_msg_ids(multi_branching_flag == 1_u8);
         exists = false;
 
         for id in ids.iter() {
@@ -77,16 +75,10 @@ pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber, transpor
             if !(multi_branching_flag == 1_u8) {
                 subscriber.store_state_for_all(next_id.clone(), seq_num);
             }
-            retry = false;
             exists = true;
         }
 
         if !exists {
-            if !&retry {
-                exists = true;
-                retry = true;
-                continue;
-            }
             println!("No more messages in sequence.");
         }
     }
@@ -99,12 +91,10 @@ pub fn a_fetch_next_messages<T: Transport>(author: &mut Author, transport: &mut 
 {
     let mut next_id: Address;
     let mut seq_num: usize;
-
     let mut exists = true;
-    let mut retry = false;
 
     while exists {
-        let ids = author.gen_next_msg_ids(multi_branching_flag == 1_u8, retry.clone());
+        let ids = author.gen_next_msg_ids(multi_branching_flag == 1_u8);
         exists = false;
         for id in ids.iter() {
             next_id = id.1.clone();
@@ -147,16 +137,10 @@ pub fn a_fetch_next_messages<T: Transport>(author: &mut Author, transport: &mut 
             if !(multi_branching_flag == 1_u8) {
                 author.store_state_for_all(next_id.clone(), seq_num);
             }
-            retry = false;
             exists = true;
         }
 
         if !exists {
-            if !&retry {
-                exists = true;
-                retry = true;
-                continue;
-            }
             println!("No more messages in sequence.");
         }
     }
