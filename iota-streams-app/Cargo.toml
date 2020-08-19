@@ -17,12 +17,10 @@ iota-streams-core = { version = "0.2.0", path = "../iota-streams-core" }
 iota-streams-core-edsig = { version = "0.1.0", path = "../iota-streams-core-edsig" }
 iota-streams-protobuf3 = { version = "0.2.0", path = "../iota-streams-protobuf3" }
 # `iota-core` crate is WIP with unstable API atm of writing.
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "ed04249" }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
 
 iota-constants = { version = "0.2.1" }
 #iota-conversion = { version = "0.5.0" }
-# bee-crypto to provide Hash type used in the iota client through iota-core
-bee-crypto = { git = "https://github.com/iotaledger/bee.git" }
 
 # anyhow and chrono are kept in sync with versions used in iota-core
 anyhow = "1.0.26"
