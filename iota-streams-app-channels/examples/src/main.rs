@@ -13,10 +13,10 @@ mod branching;
 
 fn main() {
     let mut client = iota_client::Client::get();
-    iota_client::Client::add_node("http://192.168.1.68:14265").unwrap();
+    iota_client::Client::add_node("http://localhost:14265").unwrap();
 
     let mut send_opt = SendTrytesOptions::default();
-    send_opt.min_weight_magnitude = 3;
+    send_opt.min_weight_magnitude = 14;
     let recv_opt = ();
 
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
