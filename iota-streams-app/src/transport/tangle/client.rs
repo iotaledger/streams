@@ -400,13 +400,25 @@ impl Default for SendTrytesOptions {
 
 
 async fn get_bundles(tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>>{
-    let find_resp = iota_client::Client::find_transactions()
+    let find_resp_addr = iota_client::Client::find_transactions()
         .addresses(&vec![tx_address][..])
+        .send()
+        .await?;
+    ensure!(!find_resp_addr.hashes.is_empty(), "Transaction hashes not found.");
+    let find_resp_tags = iota_client::Client::find_transactions()
         .tags(&vec![tx_tag][..])
         .send()
         .await?;
-    ensure!(!find_resp.hashes.is_empty(), "Transaction hashes not found.");
-    let get_resp = iota_client::Client::get_trytes(&find_resp.hashes[..])
+    ensure!(!find_resp_tags.hashes.is_empty(), "Transaction hashes not found.");
+
+    let mut hashes = Vec::new();
+    for hash in find_resp_tags.hashes {
+        if find_resp_addr.hashes.contains(&hash) {
+            hashes.push(hash);
+        }
+    }
+
+    let get_resp = iota_client::Client::get_trytes(&hashes)
     .await?;
     ensure!(!get_resp.trytes.is_empty(), "Transactions not found.");
     Ok(get_resp.trytes)
