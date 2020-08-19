@@ -18,7 +18,7 @@ pub(crate) fn wrap_size<'a, Ctx: Wrap>(ctx: &'a mut Ctx, size: Size) -> Result<&
     let n = size.0;
     for s in (0..d).rev() {
         let r = ((n >> (s << 3)) & 0xff) as u8;
-        ctx.wrap_u8(r);
+        ctx.wrap_u8(r)?;
     }
 
     Ok(ctx)

@@ -17,11 +17,16 @@ iota-streams-core = { version = "0.2.0", path = "../iota-streams-core" }
 iota-streams-core-edsig = { version = "0.1.0", path = "../iota-streams-core-edsig" }
 iota-streams-protobuf3 = { version = "0.2.0", path = "../iota-streams-protobuf3" }
 # `iota-core` crate is WIP with unstable API atm of writing.
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "d5592273" }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+
 iota-constants = { version = "0.2.1" }
-iota-conversion = { version = "0.5.0" }
+#iota-conversion = { version = "0.5.0" }
+
 # anyhow and chrono are kept in sync with versions used in iota-core
 anyhow = "1.0.26"
 chrono = "0.4.11"
-smol = "0.1.7"
+
+# feature tokio02 explicitly required for block_on calls
+smol = {version = "0.1.18", features = ["tokio02"]}
+num_cpus = "1.10"
 hex = "0.4.2"

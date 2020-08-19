@@ -7,6 +7,7 @@ use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 
+#[derive(Clone)]
 pub struct PublicKeyWrap(pub PublicKey);
 
 impl PartialEq for PublicKeyWrap {

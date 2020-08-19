@@ -12,7 +12,7 @@ use std::{
 use iota_streams_core::{
     sponge::prp::PRP,
 };
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     command::*,
     io,
@@ -131,7 +131,6 @@ impl HasLink for TangleAddress
 #[derive(Clone)]
 pub struct DefaultTangleLinkGenerator<F> {
     appinst: AppInst,
-    counter: usize,
     _phantom: std::marker::PhantomData<F>,
 }
 
@@ -140,7 +139,6 @@ impl<F> Default for DefaultTangleLinkGenerator<F>
     fn default() -> Self {
         Self {
             appinst: AppInst::default(),
-            counter: 0,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -156,41 +154,44 @@ impl<F> DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn try_gen_msgid(&self, msgid: &MsgId) -> Result<MsgId> {
+    fn try_gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> Result<MsgId> {
         let mut new = MsgId::default();
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
+            .absorb(External(&pk))?
             .absorb(External(&msgid.id))?
-            .absorb(External(Size(self.counter)))?
+            .absorb(External(Size(seq)))?
+            .absorb(External(&NBytes(vec![multi_branch])))?
             .commit()?
             .squeeze(External(&mut new.id))?;
         Ok(new)
     }
-    fn gen_msgid(&self, msgid: &MsgId) -> MsgId {
-        self.try_gen_msgid(msgid).map_or(MsgId::default(), |x| x)
+    fn gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> MsgId {
+        self.try_gen_msgid(msgid, pk, multi_branch, seq).map_or(MsgId::default(), |x| x)
     }
 }
 
-impl<F> LinkGenerator<TangleAddress, ed25519::PublicKey> for DefaultTangleLinkGenerator<F>
+impl<F> LinkGenerator<TangleAddress, Vec<u8>> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, pk: &ed25519::PublicKey) -> TangleAddress {
-        self.appinst.id.0 = pk.as_bytes().to_vec();
-
-        self.counter += 1;
+    fn link_from(&mut self, appinst: &Vec<u8>, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> TangleAddress {
+        self.appinst.id.0 = appinst.to_vec();
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(&MsgId::default()),
+            msgid: self.gen_msgid(&MsgId::default(), pk, multi_branch, seq),
         }
     }
 
     fn header_from(
         &mut self,
-        arg: &ed25519::PublicKey,
+        arg: &Vec<u8>,
+        pk: x25519::PublicKey,
+        multi_branching: u8,
+        seq: usize,
         content_type: &str,
     ) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(self.link_from(arg), content_type)
+        header::Header::new_with_type(self.link_from(arg, pk, multi_branching, seq), multi_branching, content_type)
     }
 }
 
@@ -198,20 +199,19 @@ impl<F> LinkGenerator<TangleAddress, MsgId> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, msgid: &MsgId) -> TangleAddress {
-        self.counter += 1;
+    fn link_from(&mut self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> TangleAddress {
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(msgid),
+            msgid: self.gen_msgid(msgid, pk, multi_branch, seq),
         }
     }
-    fn header_from(&mut self, arg: &MsgId, content_type: &str) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(self.link_from(arg), content_type)
+    fn header_from(&mut self, arg: &MsgId, pk: x25519::PublicKey, multi_branching: u8, seq: usize, content_type: &str) -> header::Header<TangleAddress> {
+        header::Header::new_with_type(self.link_from(arg, pk, multi_branching, seq), multi_branching, content_type)
     }
 }
 
 // ed25519 public key size in bytes
-pub const APPINST_SIZE: usize = 32;
+pub const APPINST_SIZE: usize = 40;
 
 /// Application instance identifier.
 /// Currently, 81-byte string stored in `address` transaction field.
@@ -313,7 +313,7 @@ where
     }
 }
 
-pub const MSGID_SIZE: usize = 32;
+pub const MSGID_SIZE: usize = 12;
 
 /// Message identifier unique within application instance.
 /// Currently, 27-byte string stored in `tag` transaction field.
@@ -330,6 +330,13 @@ impl FromStr for MsgId
         //TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
         //currently lowercase hex
         hex::decode(s).map_or(Err(()), |x| Ok(MsgId{id: NBytes(x)}))
+    }
+}
+
+impl From<NBytes> for MsgId
+{
+    fn from(b: NBytes) -> Self {
+        Self{id: b}
     }
 }
 
@@ -411,4 +418,4 @@ impl<F> SkipFallback<F> for MsgId
 }
 
 //#[cfg(feature = "tangle")]
-//pub mod client;
+pub mod client;

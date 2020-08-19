@@ -199,9 +199,9 @@ impl Digest for Prehashed {
         Self::default()
     }
 
-    fn input<B: AsRef<[u8]>>(&mut self, data: B) {}
+    fn input<B: AsRef<[u8]>>(&mut self, _data: B) {}
 
-    fn chain<B: AsRef<[u8]>>(self, data: B) -> Self {
+    fn chain<B: AsRef<[u8]>>(self, _data: B) -> Self {
         self
     }
 
@@ -221,7 +221,7 @@ impl Digest for Prehashed {
         64
     }
 
-    fn digest(data: &[u8]) -> GenericArray<u8, Self::OutputSize> {
+    fn digest(_data: &[u8]) -> GenericArray<u8, Self::OutputSize> {
         GenericArray::default()
     }
 }

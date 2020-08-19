@@ -15,6 +15,8 @@ pub mod tagged_packet;
 /// Subscribe message.
 pub mod subscribe;
 
+/// Sequence message.
+pub mod sequence;
 /*
 /// Unsubscribe message.
 pub mod unsubscribe;

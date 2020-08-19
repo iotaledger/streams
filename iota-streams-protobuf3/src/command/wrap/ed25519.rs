@@ -31,7 +31,7 @@ where
         let context = "IOTAStreams".as_bytes();
         let mut prehashed = Prehashed::default();
         prehashed.0.as_mut_slice().copy_from_slice(&(hash.0).0[..]);
-        let signature = kp.sign_prehashed(prehashed, Some(&context[..]));
+        let signature = kp.sign_prehashed(prehashed, Some(&context[..]))?;
         self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?.copy_from_slice(&signature.to_bytes());
         Ok(self)
     }

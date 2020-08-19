@@ -69,6 +69,7 @@ use super::*;
 pub struct Header<Link> {
     pub version: Uint8,
     pub link: Link,
+    pub multi_branching: u8,
     pub content_type: Bytes,
 }
 
@@ -80,6 +81,7 @@ where
         Self {
             version: self.version,
             link: self.link.clone(),
+            multi_branching: self.multi_branching.clone(),
             content_type: self.content_type.clone(),
         }
     }
@@ -87,18 +89,20 @@ where
 
 impl<Link> Header<Link>
 {
-    pub fn new_with_type(link: Link, content_type: &str) -> Self {
+    pub fn new_with_type(link: Link, multi_branching: u8, content_type: &str) -> Self {
         Self {
             version: STREAMS_1_VER,
             link: link,
+            multi_branching: multi_branching,
             content_type: Bytes(content_type.as_bytes().to_vec()),
         }
     }
 
-    pub fn new(link: Link) -> Self {
+    pub fn new(link: Link, multi_branching: u8) -> Self {
         Self {
             version: STREAMS_1_VER,
             link: link,
+            multi_branching: multi_branching,
             content_type: Bytes(Vec::new()),
         }
     }
@@ -112,6 +116,7 @@ where
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
+            .absorb(NBytes(vec![self.multi_branching]))?
             .absorb(&self.content_type)?;
         Ok(ctx)
     }
@@ -124,6 +129,7 @@ where
         ctx
             .absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
+            .absorb(&NBytes(vec![self.multi_branching]))?
             .absorb(&self.content_type)?
         ;
         Ok(ctx)
@@ -142,6 +148,7 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.version)?
             .absorb(External(Fallback(&self.link)))?
+            .absorb(&mut NBytes(vec![self.multi_branching]))?
             .absorb(&mut self.content_type)?;
         ensure!(
             self.version == STREAMS_1_VER,

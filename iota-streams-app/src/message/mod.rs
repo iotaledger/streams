@@ -9,6 +9,8 @@ use iota_streams_protobuf3::{
     io,
 };
 
+use iota_streams_core_edsig::key_exchange::x25519;
+
 /// Type of "absolute" links. For http it's the absolute URL.
 pub trait HasLink: Sized {
     /// Type of "base" links. For http it's domain name.
@@ -30,10 +32,10 @@ pub trait HasLink: Sized {
 /// Abstraction-helper to generate message links.
 pub trait LinkGenerator<Link, From> {
     /// Derive a new link using an arg.
-    fn link_from(&mut self, arg: &From) -> Link;
+    fn link_from(&mut self, arg: &From, pk: x25519::PublicKey, multi_branching: u8, seq: usize) -> Link;
 
     /// Derive a new link and construct a header with given content type.
-    fn header_from(&mut self, arg: &From, content_type: &str) -> header::Header<Link>;
+    fn header_from(&mut self, arg: &From, pk: x25519::PublicKey, multi_branching: u8, seq: usize, content_type: &str) -> header::Header<Link>;
     /*
     {
         header::Header::new_with_type(self.link_from(arg), content_type)

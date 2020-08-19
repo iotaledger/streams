@@ -55,6 +55,7 @@ pub enum MsgInfo {
     TaggedPacket,
     Subscribe,
     Unsubscribe,
+    Sequence,
 }
 
 /// Link Store.

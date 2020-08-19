@@ -57,7 +57,6 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
-    prng,
     psk,
     sponge::{
         prp::PRP,
@@ -79,7 +78,6 @@ pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub nonce: NBytes,
     pub key: NBytes,
     pub(crate) psks: Psks,
-    pub(crate) prng: &'a prng::Prng<F>,
     pub(crate) ke_pks: KePks,
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
@@ -165,6 +163,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub(crate) lookup_psk: LookupPsk,
     pub(crate) ke_pk: x25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
+    pub(crate) ke_pks: x25519::Pks,
     pub key: NBytes,
     _phantom: std::marker::PhantomData<(F, Link)>,
 }
@@ -188,6 +187,7 @@ where
             ke_pk: x25519::PublicKey::from([0_u8; 32]),
             lookup_ke_sk,
             key: NBytes::zero(spongos::Spongos::<F>::KEY_SIZE),
+            ke_pks: x25519::Pks::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -212,7 +212,6 @@ where
         let mut repeated_psks = Size(0);
         let mut repeated_ke_pks = Size(0);
         let mut pskid = NBytes::zero(psk::PSKID_SIZE);
-        //let mut ke_pk = NBytes::zero(x25519::PUBLIC_KEY_LENGTH);
         let mut key_found = false;
 
         ctx.join(store, &mut self.link)?
@@ -242,9 +241,9 @@ where
             })?
             .skip(&mut repeated_ke_pks)?
             .repeated(repeated_ke_pks, |ctx| {
-                if !key_found {
                     ctx.fork(|ctx| {
                         ctx.absorb(&mut self.ke_pk)?;
+                        self.ke_pks.insert(x25519::PublicKeyWrap(self.ke_pk));
                         if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &self.ke_pk) {
                             ctx.x25519(ke_sk, &mut self.key)?;
                             key_found = true;
@@ -252,16 +251,10 @@ where
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
                             //TODO: key length
-                            let n = Size(32);
+                            let n = Size(64);
                             ctx.drop(n)
                         }
                     })
-                } else {
-                    // Drop entire fork.
-                    //TODO: fork size
-                    let n = Size(64);
-                    ctx.drop(n)
-                }
             })?
             .guard(key_found, "Key not found")?
             .absorb(External(&self.key))?
