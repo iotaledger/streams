@@ -12,11 +12,8 @@ use iota_streams_app::{
 mod branching;
 
 fn main() {
-    let mut client = iota_client::ClientBuilder::new()
-        .node("http://192.168.1.68:14265")
-        .unwrap()
-        .build()
-        .unwrap();
+    let mut client = iota_client::Client::get();
+    iota_client::Client::add_node("http://192.168.1.68:14265").unwrap();
 
     let mut send_opt = SendTrytesOptions::default();
     send_opt.min_weight_magnitude = 3;
