@@ -2,13 +2,6 @@ use anyhow::{
     bail,
     Result,
 };
-use digest::{
-    generic_array::{
-        typenum::U64,
-        GenericArray,
-    },
-    Digest,
-};
 use core::{
     convert::{
         AsMut,
@@ -17,12 +10,24 @@ use core::{
     fmt,
     hash,
 };
-
-use iota_streams_core::sponge::{
-    prp::PRP,
-    spongos::Spongos,
+use digest::{
+    generic_array::{
+        typenum::U64,
+        GenericArray,
+    },
+    Digest,
 };
-use iota_streams_core::prelude::{Vec, HashMap};
+
+use iota_streams_core::{
+    prelude::{
+        HashMap,
+        Vec,
+    },
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
+};
 
 use crate::io;
 
@@ -39,7 +44,7 @@ impl fmt::Display for Uint8 {
 pub struct Uint16(pub u16);
 
 /// Fixed-size array of bytes, the size is known at compile time and is not encoded in trinary representation.
-//TODO: PartialEq, Eq, Debug
+// TODO: PartialEq, Eq, Debug
 #[derive(Clone)]
 pub struct NBytes(pub Vec<u8>);
 
@@ -68,14 +73,12 @@ impl NBytes {
     }
 }
 
-/*
-impl ToString for NBytes
-{
-    fn to_string(&self) -> String {
-        (self.0).to_string()
-    }
-}
- */
+// impl ToString for NBytes
+// {
+// fn to_string(&self) -> String {
+// (self.0).to_string()
+// }
+// }
 
 impl hash::Hash for NBytes {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -84,7 +87,7 @@ impl hash::Hash for NBytes {
 }
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
-//TODO: PartialEq, Eq, Clone, Debug
+// TODO: PartialEq, Eq, Clone, Debug
 #[derive(Clone)]
 pub struct Bytes(pub Vec<u8>);
 
@@ -101,14 +104,12 @@ impl PartialEq for Bytes {
 }
 impl Eq for Bytes {}
 
-/*
-impl ToString for Bytes
-{
-    fn to_string(&self) -> String {
-        (self.0).to_string()
-    }
-}
- */
+// impl ToString for Bytes
+// {
+// fn to_string(&self) -> String {
+// (self.0).to_string()
+// }
+// }
 
 impl fmt::Debug for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -118,7 +119,7 @@ impl fmt::Debug for Bytes {
 
 impl fmt::Display for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        //TODO:
+        // TODO:
         write!(f, "{:?}", self.0)
     }
 }
@@ -142,13 +143,11 @@ pub struct Mac(pub usize);
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct HashSig;
 
-/*
-impl Default for Mac {
-    fn default() -> Self {
-        Self(spongos::MAC_SIZE)
-    }
-}
- */
+// impl Default for Mac {
+// fn default() -> Self {
+// Self(spongos::MAC_SIZE)
+// }
+// }
 
 /// PB3 `size_t` type, unsigned.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]
@@ -382,13 +381,11 @@ impl<'a, T> From<&'a mut T> for &'a mut Fallback<T> {
     }
 }
 
-/*
-impl<T> Into<T> for Fallback<T> {
-    fn into(t: Self) -> T {
-        t.0
-    }
-}
- */
+// impl<T> Into<T> for Fallback<T> {
+// fn into(t: Self) -> T {
+// t.0
+// }
+// }
 
 impl<T> AsRef<T> for Fallback<T> {
     fn as_ref(&self) -> &T {

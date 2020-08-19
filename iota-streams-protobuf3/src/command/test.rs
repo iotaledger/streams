@@ -134,17 +134,17 @@ where
 
     for n in NS.iter() {
         let ta = Bytes(prng.gen_bytes(&nonce, *n));
-        //nonce.slice_mut().inc();
+        // nonce.slice_mut().inc();
         let nta = NBytes(prng.gen_bytes(&nonce, *n));
-        //nonce.slice_mut().inc();
+        // nonce.slice_mut().inc();
         let enta = NBytes(prng.gen_bytes(&nonce, *n));
-        //nonce.slice_mut().inc();
+        // nonce.slice_mut().inc();
         let tm = Bytes(prng.gen_bytes(&nonce, *n));
-        //nonce.slice_mut().inc();
+        // nonce.slice_mut().inc();
         let ntm = NBytes(prng.gen_bytes(&nonce, *n));
-        //nonce.slice_mut().inc();
+        // nonce.slice_mut().inc();
         let mut ents = External(NBytes(vec![0; *n]));
-        //nonce.slice_mut().inc();
+        // nonce.slice_mut().inc();
         let mac = Mac(*n);
 
         let buf_size = {
@@ -159,8 +159,7 @@ where
                 .commit()?
                 .squeeze(&ents)?
                 .squeeze(&mac)?
-                /*
-                 */
+                //
                 .commit()?
                 .squeeze(&tag_wrap)?;
             ctx.get_size()
@@ -179,8 +178,7 @@ where
                 .commit()?
                 .squeeze(&mut ents)?
                 .squeeze(&mac)?
-                /*
-                 */
+                //
                 .commit()?
                 .squeeze(&mut tag_wrap)?;
             ensure!(ctx.stream.is_empty(), "Output stream is not exhausted.");
@@ -203,8 +201,7 @@ where
                 .commit()?
                 .squeeze(&mut ents2)?
                 .squeeze(&mac)?
-                /*
-                 */
+                //
                 .commit()?
                 .squeeze(&mut tag_unwrap)?;
             ensure!(ctx.stream.is_empty(), "Input stream is not exhausted.");
@@ -212,9 +209,9 @@ where
 
         ensure!(ta == ta2, "Invalid unwrapped ta value: {:?} != {:?}", ta, ta2);
         ensure!(nta == nta2, "Invalid unwrapped nta value: {:?} != {:?}", nta, nta2);
-        //ensure!(tm == tm2, "Invalid unwrapped tm value: {:?} != {:?}", tm, tm2);
-        //ensure!(ntm == ntm2, "Invalid unwrapped ntm value: {:?} != {:?}", ntm, ntm2);
-        //ensure!(ents == ents2, "Invalid unwrapped ents value: {:?} != {:?}", ents, ents2);
+        // ensure!(tm == tm2, "Invalid unwrapped tm value: {:?} != {:?}", tm, tm2);
+        // ensure!(ntm == ntm2, "Invalid unwrapped ntm value: {:?} != {:?}", ntm, ntm2);
+        // ensure!(ents == ents2, "Invalid unwrapped ents value: {:?} != {:?}", ents, ents2);
         ensure!(
             tag_wrap == tag_unwrap,
             "Invalid squeezed tag value: {:?} != {:?}",
@@ -423,213 +420,211 @@ fn test_x25519() {
     assert!(dbg!(x25519_transport::<KeccakF1600>()).is_ok());
 }
 
-/*
-use crate::io;
-use iota_streams_core::sponge::spongos::{self, Spongos};
-use std::convert::{AsRef, From, Into};
-
-#[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
-struct TestRelLink(Trint3);
-#[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
-struct TestAbsLink(Trint3, TestRelLink);
-
-impl AbsorbFallback for TestAbsLink {
-    fn sizeof_absorb(&self, ctx: &mut sizeof::Context::<F>) -> Result<()> {
-        ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
-        Ok(())
-    }
-    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
-        ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
-        Ok(())
-    }
-    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
-        ctx.absorb(&mut self.0)?.absorb(&mut (self.1).0)?;
-        Ok(())
-    }
-}
-impl SkipFallback for TestRelLink {
-    fn sizeof_skip(&self, ctx: &mut sizeof::Context::<F>) -> Result<()> {
-        ctx.skip(&self.0)?;
-        Ok(())
-    }
-    fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
-        ctx.skip(&self.0)?;
-        Ok(())
-    }
-    fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
-        ctx.skip(&mut self.0)?;
-        Ok(())
-    }
-}
-
-impl From<TestAbsLink> for TestRelLink {
-    fn from(a: TestAbsLink) -> TestRelLink {
-        a.1
-    }
-}
-impl AsRef<TestRelLink> for TestAbsLink {
-    fn as_ref(&self) -> &TestRelLink {
-        &self.1
-    }
-}
-
-struct TestStore<Link, Info> {
-    cell1: Option<(Link, (spongos::Inner, Info))>,
-    cell2: Option<(Link, (spongos::Inner, Info))>,
-    cell3: Option<(Link, (spongos::Inner, Info))>,
-}
-impl<Link, Info> TestStore<Link, Info> {
-    fn new() -> Self {
-        Self {
-            cell1: None,
-            cell2: None,
-            cell3: None,
-        }
-    }
-}
-
-impl<Link: PartialEq + Clone, Info: Clone> LinkStore<Link> for TestStore<Link, Info> {
-    type Info = Info;
-    fn lookup(&self, link: &Link) -> Result<(Spongos, Self::Info)> {
-        if let Some((l, (s, i))) = &self.cell1 {
-            if link == l {
-                return Ok((s.into(), i.clone()));
-            }
-        }
-        if let Some((l, (s, i))) = &self.cell2 {
-            if link == l {
-                return Ok((s.into(), i.clone()));
-            }
-        }
-        if let Some((l, (s, i))) = &self.cell3 {
-            if link == l {
-                return Ok((s.into(), i.clone()));
-            }
-        }
-        bail!("Link not found");
-    }
-    fn update(&mut self, l: &Link, s: Spongos, i: Self::Info) -> Result<()> {
-        if let None = &self.cell1 {
-            self.cell1 = Some((l.clone(), (s.try_into().unwrap(), i)));
-            Ok(())
-        } else if let None = &self.cell2 {
-            self.cell2 = Some((l.clone(), (s.try_into().unwrap(), i)));
-            Ok(())
-        } else if let None = &self.cell3 {
-            self.cell3 = Some((l.clone(), (s.try_into().unwrap(), i)));
-            Ok(())
-        } else {
-            bail!("Link store is full");
-        }
-    }
-    fn erase(&mut self, l: &Link) {
-        if let Some(lsi) = &self.cell1 {
-            if lsi.0 == *l {
-                self.cell1 = None;
-            }
-        }
-        if let Some(lsi) = &self.cell2 {
-            if lsi.0 == *l {
-                self.cell2 = None;
-            }
-        }
-        if let Some(lsi) = &self.cell3 {
-            if lsi.0 == *l {
-                self.cell3 = None;
-            }
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
-struct TestMessageInfo(usize);
-#[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
-struct TestMessage<AbsLink, RelLink> {
-    addr: AbsLink,
-    link: RelLink,
-    masked: Trint3,
-}
-
-/*
-struct WrapCtx<L, S, OS> where
-    L: Link, S: LinkStore<L>, OS: io::OStream,
-{
-    ss: wrap::Context<OS>,
-    store: S,
-}
-*/
-
-impl<AbsLink, RelLink> TestMessage<AbsLink, RelLink>
-where
-    AbsLink: AbsorbFallback + AsRef<RelLink>,
-    RelLink: SkipFallback,
-{
-    fn size<S: LinkStore<RelLink>>(&self, store: &S) -> Result<usize> {
-        let mut ctx = sizeof::Context::<F>::new();
-        ctx.absorb(&self.addr)?
-            .join(store, &self.link)?
-            .mask(&self.masked)?;
-        Ok(ctx.get_size())
-    }
-    fn wrap<S: LinkStore<RelLink>, OS: io::OStream>(
-        &self,
-        store: &mut S,
-        ctx: &mut wrap::Context<OS>,
-        i: <S as LinkStore<RelLink>>::Info,
-    ) -> Result<()> {
-        ctx.absorb(&self.addr)?
-            .join(store, &self.link)?
-            .mask(&self.masked)?;
-        let mut spongos = ctx.spongos.fork();
-        spongos.commit();
-        store.update(self.addr.as_ref(), spongos, i)?;
-        Ok(())
-    }
-    fn unwrap<S: LinkStore<RelLink>, IS: io::IStream>(
-        &mut self,
-        store: &S,
-        ctx: &mut unwrap::Context<IS>,
-    ) -> Result<()> {
-        ctx.absorb(&mut self.addr)?
-            .join(store, &mut self.link)?
-            .mask(&mut self.masked)?;
-        Ok(())
-    }
-}
-
-fn run_join_link() -> Result<()> {
-    let msg = TestMessage::<TestAbsLink, TestRelLink> {
-        addr: TestAbsLink(Trint3(1), TestRelLink(Trint3(2))),
-        link: TestRelLink(Trint3(3)),
-        masked: Trint3(4),
-    };
-    let mut store = TestStore::new();
-    store.update(&TestRelLink(Trint3(3)), Spongos::init(), TestMessageInfo(0))?;
-
-    let buf_size = msg.size(&store).unwrap();
-    let mut buf = Tbits::zero(buf_size);
-
-    {
-        let mut wrap_ctx = wrap::Context::<F, TbitSliceMut<TW>>::new(buf.slice_mut());
-        let i = TestMessageInfo(1);
-        msg.wrap(&mut store, &mut wrap_ctx, i)?;
-        ensure!(wrap_ctx.stream.is_empty());
-    }
-
-    let mut msg2 = TestMessage::<TestAbsLink, TestRelLink>::default();
-    {
-        let mut unwrap_ctx = unwrap::Context::<F, TbitSlice<TW>>::new(buf.slice());
-        //TODO: unwrap and check.
-        msg2.unwrap(&store, &mut unwrap_ctx)?;
-        ensure!(unwrap_ctx.stream.is_empty());
-    }
-
-    ensure!(msg == msg2);
-    Ok(())
-}
-
-#[test]
-fn join_link() {
-    assert!(dbg!(run_join_link()).is_ok());
-}
- */
+// use crate::io;
+// use iota_streams_core::sponge::spongos::{self, Spongos};
+// use std::convert::{AsRef, From, Into};
+//
+// #[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
+// struct TestRelLink(Trint3);
+// #[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
+// struct TestAbsLink(Trint3, TestRelLink);
+//
+// impl AbsorbFallback for TestAbsLink {
+// fn sizeof_absorb(&self, ctx: &mut sizeof::Context::<F>) -> Result<()> {
+// ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
+// Ok(())
+// }
+// fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
+// ctx.absorb(&self.0)?.absorb(&(self.1).0)?;
+// Ok(())
+// }
+// fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
+// ctx.absorb(&mut self.0)?.absorb(&mut (self.1).0)?;
+// Ok(())
+// }
+// }
+// impl SkipFallback for TestRelLink {
+// fn sizeof_skip(&self, ctx: &mut sizeof::Context::<F>) -> Result<()> {
+// ctx.skip(&self.0)?;
+// Ok(())
+// }
+// fn wrap_skip<OS: io::OStream>(&self, ctx: &mut wrap::Context<OS>) -> Result<()> {
+// ctx.skip(&self.0)?;
+// Ok(())
+// }
+// fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<IS>) -> Result<()> {
+// ctx.skip(&mut self.0)?;
+// Ok(())
+// }
+// }
+//
+// impl From<TestAbsLink> for TestRelLink {
+// fn from(a: TestAbsLink) -> TestRelLink {
+// a.1
+// }
+// }
+// impl AsRef<TestRelLink> for TestAbsLink {
+// fn as_ref(&self) -> &TestRelLink {
+// &self.1
+// }
+// }
+//
+// struct TestStore<Link, Info> {
+// cell1: Option<(Link, (spongos::Inner, Info))>,
+// cell2: Option<(Link, (spongos::Inner, Info))>,
+// cell3: Option<(Link, (spongos::Inner, Info))>,
+// }
+// impl<Link, Info> TestStore<Link, Info> {
+// fn new() -> Self {
+// Self {
+// cell1: None,
+// cell2: None,
+// cell3: None,
+// }
+// }
+// }
+//
+// impl<Link: PartialEq + Clone, Info: Clone> LinkStore<Link> for TestStore<Link, Info> {
+// type Info = Info;
+// fn lookup(&self, link: &Link) -> Result<(Spongos, Self::Info)> {
+// if let Some((l, (s, i))) = &self.cell1 {
+// if link == l {
+// return Ok((s.into(), i.clone()));
+// }
+// }
+// if let Some((l, (s, i))) = &self.cell2 {
+// if link == l {
+// return Ok((s.into(), i.clone()));
+// }
+// }
+// if let Some((l, (s, i))) = &self.cell3 {
+// if link == l {
+// return Ok((s.into(), i.clone()));
+// }
+// }
+// bail!("Link not found");
+// }
+// fn update(&mut self, l: &Link, s: Spongos, i: Self::Info) -> Result<()> {
+// if let None = &self.cell1 {
+// self.cell1 = Some((l.clone(), (s.try_into().unwrap(), i)));
+// Ok(())
+// } else if let None = &self.cell2 {
+// self.cell2 = Some((l.clone(), (s.try_into().unwrap(), i)));
+// Ok(())
+// } else if let None = &self.cell3 {
+// self.cell3 = Some((l.clone(), (s.try_into().unwrap(), i)));
+// Ok(())
+// } else {
+// bail!("Link store is full");
+// }
+// }
+// fn erase(&mut self, l: &Link) {
+// if let Some(lsi) = &self.cell1 {
+// if lsi.0 == *l {
+// self.cell1 = None;
+// }
+// }
+// if let Some(lsi) = &self.cell2 {
+// if lsi.0 == *l {
+// self.cell2 = None;
+// }
+// }
+// if let Some(lsi) = &self.cell3 {
+// if lsi.0 == *l {
+// self.cell3 = None;
+// }
+// }
+// }
+// }
+//
+// #[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
+// struct TestMessageInfo(usize);
+// #[derive(PartialEq, Eq, Copy, Clone, Default, Debug)]
+// struct TestMessage<AbsLink, RelLink> {
+// addr: AbsLink,
+// link: RelLink,
+// masked: Trint3,
+// }
+//
+//
+// struct WrapCtx<L, S, OS> where
+// L: Link, S: LinkStore<L>, OS: io::OStream,
+// {
+// ss: wrap::Context<OS>,
+// store: S,
+// }
+// /
+//
+// impl<AbsLink, RelLink> TestMessage<AbsLink, RelLink>
+// where
+// AbsLink: AbsorbFallback + AsRef<RelLink>,
+// RelLink: SkipFallback,
+// {
+// fn size<S: LinkStore<RelLink>>(&self, store: &S) -> Result<usize> {
+// let mut ctx = sizeof::Context::<F>::new();
+// ctx.absorb(&self.addr)?
+// .join(store, &self.link)?
+// .mask(&self.masked)?;
+// Ok(ctx.get_size())
+// }
+// fn wrap<S: LinkStore<RelLink>, OS: io::OStream>(
+// &self,
+// store: &mut S,
+// ctx: &mut wrap::Context<OS>,
+// i: <S as LinkStore<RelLink>>::Info,
+// ) -> Result<()> {
+// ctx.absorb(&self.addr)?
+// .join(store, &self.link)?
+// .mask(&self.masked)?;
+// let mut spongos = ctx.spongos.fork();
+// spongos.commit();
+// store.update(self.addr.as_ref(), spongos, i)?;
+// Ok(())
+// }
+// fn unwrap<S: LinkStore<RelLink>, IS: io::IStream>(
+// &mut self,
+// store: &S,
+// ctx: &mut unwrap::Context<IS>,
+// ) -> Result<()> {
+// ctx.absorb(&mut self.addr)?
+// .join(store, &mut self.link)?
+// .mask(&mut self.masked)?;
+// Ok(())
+// }
+// }
+//
+// fn run_join_link() -> Result<()> {
+// let msg = TestMessage::<TestAbsLink, TestRelLink> {
+// addr: TestAbsLink(Trint3(1), TestRelLink(Trint3(2))),
+// link: TestRelLink(Trint3(3)),
+// masked: Trint3(4),
+// };
+// let mut store = TestStore::new();
+// store.update(&TestRelLink(Trint3(3)), Spongos::init(), TestMessageInfo(0))?;
+//
+// let buf_size = msg.size(&store).unwrap();
+// let mut buf = Tbits::zero(buf_size);
+//
+// {
+// let mut wrap_ctx = wrap::Context::<F, TbitSliceMut<TW>>::new(buf.slice_mut());
+// let i = TestMessageInfo(1);
+// msg.wrap(&mut store, &mut wrap_ctx, i)?;
+// ensure!(wrap_ctx.stream.is_empty());
+// }
+//
+// let mut msg2 = TestMessage::<TestAbsLink, TestRelLink>::default();
+// {
+// let mut unwrap_ctx = unwrap::Context::<F, TbitSlice<TW>>::new(buf.slice());
+// TODO: unwrap and check.
+// msg2.unwrap(&store, &mut unwrap_ctx)?;
+// ensure!(unwrap_ctx.stream.is_empty());
+// }
+//
+// ensure!(msg == msg2);
+// Ok(())
+// }
+//
+// #[test]
+// fn join_link() {
+// assert!(dbg!(run_join_link()).is_ok());
+// }

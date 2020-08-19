@@ -6,7 +6,10 @@ use super::*;
 use crate::api::author::AuthorT;
 use iota_streams_app::message::HasLink as _;
 
-use iota_streams_core::prng;
+use iota_streams_core::{
+    prelude::Vec,
+    prng,
+};
 use iota_streams_core_edsig::key_exchange::x25519;
 
 type AuthorImp = AuthorT<DefaultF, Address, Store, LinkGen>;
@@ -26,7 +29,7 @@ impl Author {
                 LinkGen::default(),
                 prng::dbg_init_str(seed),
                 nonce,
-                multi_branching
+                multi_branching,
             ),
         }
     }
@@ -36,7 +39,9 @@ impl Author {
         &self.imp.appinst.appinst
     }
 
-    pub fn get_pk(&self) -> &x25519::PublicKey { &self.imp.ke_kp.1 }
+    pub fn get_pk(&self) -> &x25519::PublicKey {
+        &self.imp.ke_kp.1
+    }
 
     /// Announce creation of a new Channel.
     pub fn announce(&mut self) -> Result<Message> {
@@ -44,19 +49,26 @@ impl Author {
     }
 
     /// Create a new keyload for a list of subscribers.
-    pub fn share_keyload(&mut self, link_to: &Address,
-                         psk_ids: &PskIds,
-                         ke_pks: &Vec<x25519::PublicKeyWrap>
+    pub fn share_keyload(
+        &mut self,
+        link_to: &Address,
+        psk_ids: &PskIds,
+        ke_pks: &Vec<x25519::PublicKeyWrap>,
     ) -> Result<(Message, Option<Message>)> {
-        let keyload = self.imp
-            .share_keyload(link_to.rel(), psk_ids, ke_pks, MsgInfo::Keyload).unwrap();
+        let keyload = self
+            .imp
+            .share_keyload(link_to.rel(), psk_ids, ke_pks, MsgInfo::Keyload)
+            .unwrap();
         let sequenced = self.send_sequence(&link_to);
         Ok((keyload, sequenced))
     }
 
     /// Create keyload for all subscribed subscribers.
     pub fn share_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Message, Option<Message>)> {
-        let keyload = self.imp.share_keyload_for_everyone(link_to.rel(), MsgInfo::Keyload).unwrap();
+        let keyload = self
+            .imp
+            .share_keyload_for_everyone(link_to.rel(), MsgInfo::Keyload)
+            .unwrap();
         let sequenced = self.send_sequence(&link_to);
         Ok((keyload, sequenced))
     }
@@ -67,7 +79,15 @@ impl Author {
         let (seq_link, seq_num) = self.imp.get_seq_state(self.imp.ke_kp.1).unwrap();
 
         if self.imp.get_branching_flag() == &1_u8 {
-            let msg = self.imp.sequence(msg_link.rel().tbits().clone(), seq_link.rel().clone(), seq_num, MsgInfo::Sequence).unwrap();
+            let msg = self
+                .imp
+                .sequence(
+                    msg_link.rel().tbits().clone(),
+                    seq_link.rel().clone(),
+                    seq_num,
+                    MsgInfo::Sequence,
+                )
+                .unwrap();
             self.store_state(self.imp.ke_kp.1, msg.link.clone());
             sequenced = Some(msg);
         } else {
@@ -106,8 +126,10 @@ impl Author {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Message, Option<Message>)> {
-        let signed = self.imp
-            .sign_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::SignedPacket).unwrap();
+        let signed = self
+            .imp
+            .sign_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::SignedPacket)
+            .unwrap();
         let sequenced = self.send_sequence(&link_to);
         Ok((signed, sequenced))
     }
@@ -119,8 +141,10 @@ impl Author {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Message, Option<Message>)> {
-        let tagged = self.imp
-            .tag_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::TaggedPacket).unwrap();
+        let tagged = self
+            .imp
+            .tag_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::TaggedPacket)
+            .unwrap();
         let sequenced = self.send_sequence(&link_to);
         Ok((tagged, sequenced))
     }
@@ -135,12 +159,10 @@ impl Author {
         self.imp.handle_subscribe(preparsed, MsgInfo::Subscribe)
     }
 
-    /*
-    /// Unsubscribe a subscriber
-    pub fn unwrap_unsubscribe<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<()> {
-        self.imp.handle_unsubscribe(preparsed, MsgInfo::Unsubscribe)
-    }
-     */
+    // Unsubscribe a subscriber
+    // pub fn unwrap_unsubscribe<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<()> {
+    // self.imp.handle_unsubscribe(preparsed, MsgInfo::Unsubscribe)
+    // }
 
     pub fn unwrap_sequence<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<Address> {
         let seq_msg = self.imp.handle_sequence(preparsed, MsgInfo::Sequence).unwrap();
@@ -162,7 +184,7 @@ impl Author {
 
     pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(x25519::PublicKey, Address, usize)> {
         let mut pks = self.imp.get_pks();
-        let mut ids =Vec::new();
+        let mut ids = Vec::new();
         let self_pk = x25519::PublicKeyWrap(self.imp.ke_kp.1);
 
         if !pks.contains(&self_pk) {

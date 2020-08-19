@@ -8,8 +8,10 @@ use digest::{
 };
 
 use super::prp::PRP;
-use crate::hash::Hash;
-use crate::prelude::Vec;
+use crate::{
+    hash::Hash,
+    prelude::Vec,
+};
 
 /// Implemented as a separate from `Spongos` struct in order to deal with life-times.
 pub struct Outer {

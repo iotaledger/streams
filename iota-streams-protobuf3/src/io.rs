@@ -106,81 +106,79 @@ impl IStream for NoIStream {
     fn commit(&mut self) {}
 }
 
-/*
-#[cfg(test)]
-mod test {
-    use super::*;
-    use iota_streams_core::{
-        sponge::{
-            prp::PRP,
-            spongos::Spongos,
-        },
-    };
-    use std::str::FromStr;
-
-    fn wrap_absorb_tbits<F, OS: OStream>(x: TbitSlice, s: &mut Spongos<F>, os: &mut OS) -> ()
-    where
-        TW: SpongosTbitWord,
-        F: PRP,
-    {
-        let n = x.size();
-        let t = os.advance(n);
-        x.copy(&t);
-        s.absorb(x);
-    }
-
-    fn unwrap_absorb_tbits<F, IS: IStream>(
-        x: TbitSliceMut,
-        s: &mut Spongos<F>,
-        is: &mut IS,
-    ) -> Result<()>
-    where
-        TW: SpongosTbitWord,
-        F: PRP,
-    {
-        let n = x.size();
-        let t = is.try_advance(n)?;
-        t.copy(&x);
-        s.absorb(unsafe { x.as_const() });
-        Ok(())
-    }
-
-    fn do_wrap_unwrap<F>()
-    where
-        TW: SpongosTbitWord + StringTbitWord,
-        F: PRP + Default,
-    {
-        let x = Tbits::::from_str("ABC").unwrap();
-        let mut y = Tbits::::zero(x.size());
-
-        let mut buf = Tbits::::zero(x.size());
-
-        let tag = {
-            let mut s = Spongos::<F>::init();
-            let mut b = buf.slice_mut();
-            wrap_absorb_tbits(x.slice(), &mut s, &mut b);
-            s.squeeze_tbits(81);
-        };
-
-        let tag2 = {
-            let mut s = Spongos::<F>::init();
-            let mut b = buf.slice();
-            let r = unwrap_absorb_tbits(y.slice_mut(), &mut s, &mut b);
-            assert!(r.is_ok());
-            s.squeeze_tbits(81);
-        };
-
-        assert_eq!(x, y);
-        assert_eq!(tag, tag2);
-    }
-
-    #[test]
-    pub fn wrap_unwrap() {
-        use iota_streams_core::{
-            sponge::prp::troika::Troika,
-            tbits::trinary::Trit,
-        };
-        do_wrap_unwrap::<Trit, Troika>();
-    }
-}
- */
+// #[cfg(test)]
+// mod test {
+// use super::*;
+// use iota_streams_core::{
+// sponge::{
+// prp::PRP,
+// spongos::Spongos,
+// },
+// };
+// use std::str::FromStr;
+//
+// fn wrap_absorb_tbits<F, OS: OStream>(x: TbitSlice, s: &mut Spongos<F>, os: &mut OS) -> ()
+// where
+// TW: SpongosTbitWord,
+// F: PRP,
+// {
+// let n = x.size();
+// let t = os.advance(n);
+// x.copy(&t);
+// s.absorb(x);
+// }
+//
+// fn unwrap_absorb_tbits<F, IS: IStream>(
+// x: TbitSliceMut,
+// s: &mut Spongos<F>,
+// is: &mut IS,
+// ) -> Result<()>
+// where
+// TW: SpongosTbitWord,
+// F: PRP,
+// {
+// let n = x.size();
+// let t = is.try_advance(n)?;
+// t.copy(&x);
+// s.absorb(unsafe { x.as_const() });
+// Ok(())
+// }
+//
+// fn do_wrap_unwrap<F>()
+// where
+// TW: SpongosTbitWord + StringTbitWord,
+// F: PRP + Default,
+// {
+// let x = Tbits::::from_str("ABC").unwrap();
+// let mut y = Tbits::::zero(x.size());
+//
+// let mut buf = Tbits::::zero(x.size());
+//
+// let tag = {
+// let mut s = Spongos::<F>::init();
+// let mut b = buf.slice_mut();
+// wrap_absorb_tbits(x.slice(), &mut s, &mut b);
+// s.squeeze_tbits(81);
+// };
+//
+// let tag2 = {
+// let mut s = Spongos::<F>::init();
+// let mut b = buf.slice();
+// let r = unwrap_absorb_tbits(y.slice_mut(), &mut s, &mut b);
+// assert!(r.is_ok());
+// s.squeeze_tbits(81);
+// };
+//
+// assert_eq!(x, y);
+// assert_eq!(tag, tag2);
+// }
+//
+// #[test]
+// pub fn wrap_unwrap() {
+// use iota_streams_core::{
+// sponge::prp::troika::Troika,
+// tbits::trinary::Trit,
+// };
+// do_wrap_unwrap::<Trit, Troika>();
+// }
+// }

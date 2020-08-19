@@ -2,8 +2,10 @@ use anyhow::Result;
 use core::fmt;
 
 use super::*;
-use iota_streams_core::prelude::Vec;
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    prelude::Vec,
+    sponge::prp::PRP,
+};
 use iota_streams_protobuf3::{
     command::unwrap,
     types::*,

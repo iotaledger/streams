@@ -11,32 +11,30 @@ use crate::{
     },
 };
 
-/*
-/// External values are not encoded in the trinary stream.
-impl<'a, F, T: 'a> Absorb<&'a External<T>> for Context<F>
-where
-    Self: Absorb<T>,
-{
-    fn absorb(&mut self, _external: &'a External<T>) -> Result<&mut Self> {
-        Ok(self)
-    }
-}
-
-/// External values are not encoded in the trinary stream.
-impl<'a, F, T: 'a> Absorb<External<&'a T>> for Context<F>
-where
-//Self: Absorb<&'a T>,
-{
-    fn absorb(&mut self, _external: External<&'a T>) -> Result<&mut Self> {
-        Ok(self)
-    }
-}
- */
+// External values are not encoded in the trinary stream.
+// impl<'a, F, T: 'a> Absorb<&'a External<T>> for Context<F>
+// where
+// Self: Absorb<T>,
+// {
+// fn absorb(&mut self, _external: &'a External<T>) -> Result<&mut Self> {
+// Ok(self)
+// }
+// }
+//
+// External values are not encoded in the trinary stream.
+// impl<'a, F, T: 'a> Absorb<External<&'a T>> for Context<F>
+// where
+// Self: Absorb<&'a T>,
+// {
+// fn absorb(&mut self, _external: External<&'a T>) -> Result<&mut Self> {
+// Ok(self)
+// }
+// }
 
 /// External values are not encoded in the trinary stream.
 impl<'a, F> Absorb<External<&'a NBytes>> for Context<F>
-//where
-//Self: Absorb<&'a T>,
+// where
+// Self: Absorb<&'a T>,
 {
     fn absorb(&mut self, _external: External<&'a NBytes>) -> Result<&mut Self> {
         Ok(self)

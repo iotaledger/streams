@@ -1,7 +1,10 @@
 //! Pre-shared key is a secret symmetric key shared between two parties and is used for
 //! (session) key exchange.
 
-use crate::prelude::{Vec, HashMap};
+use crate::prelude::{
+    HashMap,
+    Vec,
+};
 
 /// Size of pre-shared key identifier.
 pub const PSKID_SIZE: usize = 16;
@@ -10,7 +13,7 @@ pub const PSKID_SIZE: usize = 16;
 pub const PSK_SIZE: usize = 32;
 
 /// Type of pre-shared key identifiers: `byte pskid[16]`.
-//TODO: Introduce NBytes type in core and make a newtype. Same for Psk.
+// TODO: Introduce NBytes type in core and make a newtype. Same for Psk.
 pub type PskId = Vec<u8>;
 
 /// Type of pre-shared keys: `byte psk[32]`.

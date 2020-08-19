@@ -17,7 +17,5 @@ pub mod subscribe;
 
 /// Sequence message.
 pub mod sequence;
-/*
-/// Unsubscribe message.
-pub mod unsubscribe;
- */
+// Unsubscribe message.
+// pub mod unsubscribe;

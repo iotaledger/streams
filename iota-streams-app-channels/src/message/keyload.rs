@@ -79,7 +79,7 @@ pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub key: NBytes,
     pub(crate) psks: Psks,
     pub(crate) ke_pks: KePks,
-    pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
+    pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
 impl<'a, F, Link, Store, Psks, KePks> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link, Psks, KePks>
@@ -143,8 +143,8 @@ where
     }
 }
 
-//This whole mess with `'a` and `LookupArg: 'a` is needed in order to allow `LookupPsk`
-//and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
+// This whole mess with `'a` and `LookupArg: 'a` is needed in order to allow `LookupPsk`
+// and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
 pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupKeSk> {
     pub link: <Link as HasLink>::Rel,
     pub nonce: NBytes,
@@ -154,7 +154,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub(crate) ke_pks: x25519::Pks,
     pub key: NBytes,
-    _phantom: std::marker::PhantomData<(F, Link)>,
+    _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
 impl<'a, F, Link, LookupArg, LookupPsk, LookupKeSk> ContentUnwrap<'a, F, Link, LookupArg, LookupPsk, LookupKeSk>
@@ -176,7 +176,7 @@ where
             lookup_ke_sk,
             key: NBytes::zero(spongos::Spongos::<F>::KEY_SIZE),
             ke_pks: x25519::Pks::new(),
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
@@ -210,7 +210,7 @@ where
                     ctx.fork(|ctx| {
                         ctx.mask(&mut pskid)?;
                         if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid.0) {
-                            ctx.absorb(External(&NBytes(psk.clone())))? //TODO: Get rid off clone()
+                            ctx.absorb(External(&NBytes(psk.clone())))? // TODO: Get rid off clone()
                                 .commit()?
                                 .mask(&mut self.key)?;
                             key_found = true;
@@ -229,26 +229,25 @@ where
             })?
             .skip(&mut repeated_ke_pks)?
             .repeated(repeated_ke_pks, |ctx| {
-                    ctx.fork(|ctx| {
-                        ctx.absorb(&mut self.ke_pk)?;
-                        self.ke_pks.insert(x25519::PublicKeyWrap(self.ke_pk));
-                        if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &self.ke_pk) {
-                            ctx.x25519(ke_sk, &mut self.key)?;
-                            key_found = true;
-                            Ok(ctx)
-                        } else {
-                            // Just drop the rest of the forked message so not to waste Spongos operations
-                            //TODO: key length
-                            let n = Size(64);
-                            ctx.drop(n)
-                        }
-                    })
+                ctx.fork(|ctx| {
+                    ctx.absorb(&mut self.ke_pk)?;
+                    self.ke_pks.insert(x25519::PublicKeyWrap(self.ke_pk));
+                    if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &self.ke_pk) {
+                        ctx.x25519(ke_sk, &mut self.key)?;
+                        key_found = true;
+                        Ok(ctx)
+                    } else {
+                        // Just drop the rest of the forked message so not to waste Spongos operations
+                        // TODO: key length
+                        let n = Size(64);
+                        ctx.drop(n)
+                    }
+                })
             })?
             .guard(key_found, "Key not found")?
             .absorb(External(&self.key))?
             .commit()?;
-        /*
-         */
+        //
         Ok(ctx)
     }
 }

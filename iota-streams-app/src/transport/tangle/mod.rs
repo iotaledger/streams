@@ -9,8 +9,11 @@ use core::{
     str::FromStr,
 };
 
-use iota_streams_core::{prelude::Vec, sponge::prp::PRP};
-//TODO: should ed25519 or x25519 public key used for link generation?
+use iota_streams_core::{
+    prelude::Vec,
+    sponge::prp::PRP,
+};
+// TODO: should ed25519 or x25519 public key used for link generation?
 use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     command::*,
@@ -158,7 +161,8 @@ where
         Ok(new)
     }
     fn gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> MsgId {
-        self.try_gen_msgid(msgid, pk, multi_branch, seq).map_or(MsgId::default(), |x| x)
+        self.try_gen_msgid(msgid, pk, multi_branch, seq)
+            .map_or(MsgId::default(), |x| x)
     }
 }
 
@@ -182,7 +186,11 @@ where
         seq: usize,
         content_type: &str,
     ) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(self.link_from(arg, pk, multi_branching, seq), multi_branching, content_type)
+        header::Header::new_with_type(
+            self.link_from(arg, pk, multi_branching, seq),
+            multi_branching,
+            content_type,
+        )
     }
 }
 
@@ -196,8 +204,19 @@ where
             msgid: self.gen_msgid(msgid, pk, multi_branch, seq),
         }
     }
-    fn header_from(&mut self, arg: &MsgId, pk: x25519::PublicKey, multi_branching: u8, seq: usize, content_type: &str) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(self.link_from(arg, pk, multi_branching, seq), multi_branching, content_type)
+    fn header_from(
+        &mut self,
+        arg: &MsgId,
+        pk: x25519::PublicKey,
+        multi_branching: u8,
+        seq: usize,
+        content_type: &str,
+    ) -> header::Header<TangleAddress> {
+        header::Header::new_with_type(
+            self.link_from(arg, pk, multi_branching, seq),
+            multi_branching,
+            content_type,
+        )
     }
 }
 
@@ -214,8 +233,8 @@ pub struct AppInst {
 impl FromStr for AppInst {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
-        //TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
-        //currently lowercase hex
+        // TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
+        // currently lowercase hex
         hex::decode(s).map_or(Err(()), |x| Ok(AppInst { id: NBytes(x) }))
     }
 }
@@ -259,14 +278,12 @@ impl Default for AppInst {
     }
 }
 
-/*
-impl ToString for AppInst
-{
-    fn to_string(&self) -> String {
-        self.id.to_string()
-    }
-}
- */
+// impl ToString for AppInst
+// {
+// fn to_string(&self) -> String {
+// self.id.to_string()
+// }
+// }
 
 impl hash::Hash for AppInst {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -304,28 +321,26 @@ pub const MSGID_SIZE: usize = 12;
 /// Currently, 27-byte string stored in `tag` transaction field.
 #[derive(Clone)]
 pub struct MsgId {
-    //TODO: change to [u8; MSGID_SIZE],
+    // TODO: change to [u8; MSGID_SIZE],
     pub(crate) id: NBytes,
 }
 
 impl FromStr for MsgId {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
-        //TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
-        //currently lowercase hex
+        // TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
+        // currently lowercase hex
         hex::decode(s).map_or(Err(()), |x| Ok(MsgId { id: NBytes(x) }))
     }
 }
 
-impl From<NBytes> for MsgId
-{
+impl From<NBytes> for MsgId {
     fn from(b: NBytes) -> Self {
-        Self{id: b}
+        Self { id: b }
     }
 }
 
-impl fmt::Debug for MsgId
-{
+impl fmt::Debug for MsgId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.id)
     }
@@ -364,14 +379,12 @@ impl Default for MsgId {
     }
 }
 
-/*
-impl ToString for MsgId
-{
-    fn to_string(&self) -> String {
-        self.id.to_string()
-    }
-}
- */
+// impl ToString for MsgId
+// {
+// fn to_string(&self) -> String {
+// self.id.to_string()
+// }
+// }
 
 impl hash::Hash for MsgId {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {

@@ -13,7 +13,7 @@ pub(crate) fn unwrap_size<'a, Ctx: Unwrap>(ctx: &'a mut Ctx, size: &mut Size) ->
 {
     let mut d = 0_u8;
     ctx.unwrap_u8(&mut d)?;
-    //ensure!(Uint8(0) <= d && d <= Uint8(13), "Invalid size of `size_t`: {}.", d);
+    // ensure!(Uint8(0) <= d && d <= Uint8(13), "Invalid size of `size_t`: {}.", d);
 
     let mut m = 0_usize;
     while 0 < d {

@@ -5,14 +5,18 @@ use anyhow::{
 };
 use core::hash;
 
-use iota_streams_core::prelude::{HashMap, Vec};
+use iota_streams_core::prelude::{
+    HashMap,
+    Vec,
+};
 
 use crate::message::TbinaryMessage;
 
 /// Network transport abstraction.
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
-pub trait Transport<F, Link> /* where Link: HasLink */ {
+pub trait Transport<F, Link> // where Link: HasLink
+{
     type SendOptions;
 
     /// Send a message with explicit options.
@@ -100,7 +104,12 @@ where
 
     type RecvOptions = ();
 
-    fn recv_messages_with_options(&mut self, link: &Link, _multi_branching: u8, _opt: ()) -> Result<Vec<TbinaryMessage<F, Link>>> {
+    fn recv_messages_with_options(
+        &mut self,
+        link: &Link,
+        _multi_branching: u8,
+        _opt: (),
+    ) -> Result<Vec<TbinaryMessage<F, Link>>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {

@@ -38,8 +38,6 @@ pub mod message;
 /// Transport-related abstractions.
 pub mod transport;
 
-/*
-pub trait TrustProvider<PublicKey> {
-    fn check_trusted(pk: &PublicKey) -> Result<()>;
-}
- */
+// pub trait TrustProvider<PublicKey> {
+// fn check_trusted(pk: &PublicKey) -> Result<()>;
+// }

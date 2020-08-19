@@ -35,8 +35,8 @@ where
         bytes.copy_from_slice(slice);
         let signature = ed25519::Signature::new(bytes);
         match pk.verify_prehashed(prehashed, Some(context), &signature) {
-                Ok(()) => Ok(self),
-                Err(err) => bail!("bad signature: {}", err),
+            Ok(()) => Ok(self),
+            Err(err) => bail!("bad signature: {}", err),
         }
     }
 }

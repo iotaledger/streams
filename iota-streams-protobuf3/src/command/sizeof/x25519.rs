@@ -7,8 +7,7 @@ use crate::{
 };
 use iota_streams_core_edsig::key_exchange::x25519;
 
-impl<'a, F> X25519<&'a x25519::StaticSecret, &'a x25519::PublicKey> for Context<F>
-{
+impl<'a, F> X25519<&'a x25519::StaticSecret, &'a x25519::PublicKey> for Context<F> {
     fn x25519(&mut self, _sk: &x25519::StaticSecret, _pk: &x25519::PublicKey) -> Result<&mut Self> {
         // only shared secret is absorbed externally
         self.size += 0;
@@ -16,8 +15,7 @@ impl<'a, F> X25519<&'a x25519::StaticSecret, &'a x25519::PublicKey> for Context<
     }
 }
 
-impl<'a, F> X25519<&'a x25519::EphemeralSecret, &'a x25519::PublicKey> for Context<F>
-{
+impl<'a, F> X25519<&'a x25519::EphemeralSecret, &'a x25519::PublicKey> for Context<F> {
     fn x25519(&mut self, _sk: &x25519::EphemeralSecret, _pk: &x25519::PublicKey) -> Result<&mut Self> {
         // shared secret is absorbed externally
         self.size += 0;
@@ -25,8 +23,7 @@ impl<'a, F> X25519<&'a x25519::EphemeralSecret, &'a x25519::PublicKey> for Conte
     }
 }
 
-impl<'a, F> X25519<&'a x25519::PublicKey, &'a NBytes> for Context<F>
-{
+impl<'a, F> X25519<&'a x25519::PublicKey, &'a NBytes> for Context<F> {
     fn x25519(&mut self, _pk: &x25519::PublicKey, key: &NBytes) -> Result<&mut Self> {
         self.size += 32 + key.0.len();
         Ok(self)

@@ -99,7 +99,7 @@ pub trait Guard {
 /// Use it like this: `ctx.dump(format_args!("checkpoint"))`
 pub trait Dump {
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {
-        //std::io::_print(args);
+        // std::io::_print(args);
         #[cfg(feature = "std")]
         println!("{}", args);
         Ok(self)

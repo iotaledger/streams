@@ -8,8 +8,8 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
+pub mod hash;
 pub mod prelude;
+pub mod prng;
 pub mod psk;
 pub mod sponge;
-pub mod hash;
-pub mod prng;

@@ -3,13 +3,16 @@ use core::hash;
 
 use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;
+use iota_streams_core::prelude::{
+    HashSet,
+    Vec,
+};
 pub use x25519_dalek::{
     EphemeralSecret,
     PublicKey,
     SharedSecret,
     StaticSecret,
 };
-use iota_streams_core::prelude::{Vec, HashSet};
 
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 

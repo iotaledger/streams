@@ -49,7 +49,7 @@ where
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) public_payload: &'a Bytes,
     pub(crate) masked_payload: &'a Bytes,
-    pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
+    pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
@@ -67,7 +67,7 @@ where
             .mask(self.masked_payload)?
             .commit()?
             .squeeze(&mac)?;
-        //TODO: Is bot public and masked payloads are ok? Leave public only or masked only?
+        // TODO: Is bot public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
 
@@ -90,7 +90,7 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) public_payload: Bytes,
     pub(crate) masked_payload: Bytes,
-    pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
+    pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
 impl<F, Link> ContentUnwrap<F, Link>
@@ -103,7 +103,7 @@ where
             link: <<Link as HasLink>::Rel as Default>::default(),
             public_payload: Bytes::default(),
             masked_payload: Bytes::default(),
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 }

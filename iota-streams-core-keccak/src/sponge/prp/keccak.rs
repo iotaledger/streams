@@ -1,4 +1,7 @@
-use iota_streams_core::{ prelude::Vec, sponge::prp::PRP };
+use iota_streams_core::{
+    prelude::Vec,
+    sponge::prp::PRP,
+};
 use keccak;
 
 #[derive(Clone)]

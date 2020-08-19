@@ -28,9 +28,7 @@
 //! * `sig` -- signature of `tag` field produced with the MSS private key corresponding to `msspk`.
 //!
 
-use anyhow::{
-    Result,
-};
+use anyhow::Result;
 
 use iota_streams_app::message;
 use iota_streams_core::sponge::prp::PRP;
@@ -50,7 +48,7 @@ pub const TYPE: &str = "STREAMS9CHANNEL9ANNOUNCE";
 pub struct ContentWrap<'a, F> {
     pub(crate) sig_kp: &'a ed25519::Keypair,
     pub multi_branching: u8,
-    pub(crate) _phantom: std::marker::PhantomData<F>,
+    pub(crate) _phantom: core::marker::PhantomData<F>,
 }
 
 impl<'a, F, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F>
@@ -80,7 +78,7 @@ pub struct ContentUnwrap<F> {
     pub(crate) sig_pk: ed25519::PublicKey,
     pub(crate) ke_pk: x25519::PublicKey,
     pub multi_branching: u8,
-    _phantom: std::marker::PhantomData<F>,
+    _phantom: core::marker::PhantomData<F>,
 }
 
 impl<F> Default for ContentUnwrap<F> {
@@ -91,7 +89,7 @@ impl<F> Default for ContentUnwrap<F> {
             sig_pk,
             ke_pk,
             multi_branching: 0,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 }

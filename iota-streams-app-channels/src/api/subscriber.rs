@@ -9,10 +9,13 @@ use core::{
 };
 
 use iota_streams_core::{
+    prelude::{
+        HashMap,
+        Vec,
+    },
     prng,
     psk,
     sponge::spongos,
-    prelude::HashMap,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -30,7 +33,6 @@ use crate::message::*;
 
 const SUB_MESSAGE_NUM: usize = 0;
 const SEQ_MESSAGE_NUM: usize = 1;
-
 
 /// Generic Channel Subscriber type parametrised by the type of links, link store and
 /// link generator.
@@ -84,8 +86,7 @@ pub struct SubscriberT<F, Link, Store, LinkGen> {
     pub multi_branching: u8,
 
     /// Mapping of publisher id to sequence state
-    pub(crate) seq_states: HashMap<Vec<u8> , (Link, usize)>,
-
+    pub(crate) seq_states: HashMap<Vec<u8>, (Link, usize)>,
 }
 
 impl<F, Link, Store, LinkGen> SubscriberT<F, Link, Store, LinkGen>
@@ -148,7 +149,7 @@ where
             key: key,
             psks: psks,
             ke_pks: ke_pks,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
@@ -166,16 +167,18 @@ where
                 'a,
                 F,
                 Link,
-                std::option::IntoIter<psk::IPsk<'a>>,
-                std::option::IntoIter<x25519::IPk<'a>>,
+                core::option::IntoIter<psk::IPsk<'a>>,
+                core::option::IntoIter<x25519::IPk<'a>>,
             >,
         >,
     > {
-        let header = self.link_gen.header_from(link_to,
-                                               self.ke_kp.1,
-                                               self.multi_branching,
-                                               self.get_seq_num(),
-                                               keyload::TYPE);
+        let header = self.link_gen.header_from(
+            link_to,
+            self.ke_kp.1,
+            self.multi_branching,
+            self.get_seq_num(),
+            keyload::TYPE,
+        );
         self.do_prepare_keyload(
             header,
             link_to,
@@ -195,7 +198,6 @@ where
         wrapped.commit(self.store.borrow_mut(), info)
     }
 
-
     pub fn prepare_sequence<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
@@ -207,7 +209,7 @@ where
             self.ke_kp.1,
             self.multi_branching,
             SEQ_MESSAGE_NUM,
-            sequence::TYPE
+            sequence::TYPE,
         );
 
         let content = sequence::ContentWrap {
@@ -228,9 +230,7 @@ where
         seq_num: usize,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<TbinaryMessage<F, Link>> {
-        let wrapped = self
-            .prepare_sequence(&seq_link, seq_num, NBytes(ref_link))?
-            .wrap()?;
+        let wrapped = self.prepare_sequence(&seq_link, seq_num, NBytes(ref_link))?.wrap()?;
 
         wrapped.commit(self.store.borrow_mut(), info)
     }
@@ -242,16 +242,18 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
-        let header = self.link_gen.header_from(link_to,
-                                               self.ke_kp.1,
-                                               self.multi_branching,
-                                               self.get_seq_num(),
-                                               tagged_packet::TYPE);
+        let header = self.link_gen.header_from(
+            link_to,
+            self.ke_kp.1,
+            self.multi_branching,
+            self.get_seq_num(),
+            tagged_packet::TYPE,
+        );
         let content = tagged_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
             masked_payload: masked_payload,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
@@ -277,19 +279,21 @@ where
         link_to: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<'a, F, Link, Store, subscribe::ContentWrap<'a, F, Link>>> {
         if let Some(author_ke_pk) = &self.author_ke_pk {
-            let header = self.link_gen.header_from(link_to,
-                                                   self.ke_kp.1,
-                                                   self.multi_branching,
-                                                   SUB_MESSAGE_NUM,
-                                                   subscribe::TYPE);
-            //let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
+            let header = self.link_gen.header_from(
+                link_to,
+                self.ke_kp.1,
+                self.multi_branching,
+                SUB_MESSAGE_NUM,
+                subscribe::TYPE,
+            );
+            // let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
             let content = subscribe::ContentWrap {
                 link: link_to,
                 unsubscribe_key,
                 subscriber_sig_kp: &self.sig_kp,
                 author_ke_pk: &author_ke_pk.0,
-                _phantom: std::marker::PhantomData,
+                _phantom: core::marker::PhantomData,
             };
             Ok(PreparedMessage::new(self.store.borrow(), header, content))
         } else {
@@ -307,30 +311,28 @@ where
         wrapped.commit(self.store.borrow_mut(), info)
     }
 
-    /*
-    /// Prepare Unsubscribe message.
-    pub fn prepare_unsubscribe<'a>(
-        &'a mut self,
-        link_to: &'a <Link as HasLink>::Rel,
-    ) -> Result<PreparedMessage<'a, F, Link, Store, unsubscribe::ContentWrap<'a, F, Link>>> {
-        let header = self.link_gen.header_from(link_to, unsubscribe::TYPE);
-        let content = unsubscribe::ContentWrap {
-            link: link_to,
-            _phantom: std::marker::PhantomData,
-        };
-        Ok(PreparedMessage::new(self.store.borrow(), header, content))
-    }
-
-    /// Unsubscribe from the channel.
-    pub fn unsubscribe(
-        &mut self,
-        link_to: &<Link as HasLink>::Rel,
-        info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
-        let wrapped = self.prepare_unsubscribe(link_to)?.wrap()?;
-        wrapped.commit(self.store.borrow_mut(), info)
-    }
-     */
+    // Prepare Unsubscribe message.
+    // pub fn prepare_unsubscribe<'a>(
+    // &'a mut self,
+    // link_to: &'a <Link as HasLink>::Rel,
+    // ) -> Result<PreparedMessage<'a, F, Link, Store, unsubscribe::ContentWrap<'a, F, Link>>> {
+    // let header = self.link_gen.header_from(link_to, unsubscribe::TYPE);
+    // let content = unsubscribe::ContentWrap {
+    // link: link_to,
+    // _phantom: core::marker::PhantomData,
+    // };
+    // Ok(PreparedMessage::new(self.store.borrow(), header, content))
+    // }
+    //
+    // Unsubscribe from the channel.
+    // pub fn unsubscribe(
+    // &mut self,
+    // link_to: &<Link as HasLink>::Rel,
+    // info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+    // ) -> Result<TbinaryMessage<F, Link>> {
+    // let wrapped = self.prepare_unsubscribe(link_to)?.wrap()?;
+    // wrapped.commit(self.store.borrow_mut(), info)
+    // }
 
     pub fn unwrap_announcement<'a>(
         &self,
@@ -360,12 +362,12 @@ where
         let unwrapped = self.unwrap_announcement(preparsed)?;
         let link = unwrapped.link.clone();
         let content = unwrapped.commit(self.store.borrow_mut(), info)?;
-        //TODO: check commit after message is done / before joined
+        // TODO: check commit after message is done / before joined
 
-        //TODO: Verify trust to Author's MSS public key?
+        // TODO: Verify trust to Author's MSS public key?
         // At the moment the Author is trusted unconditionally.
 
-        //TODO: Verify appinst (address) == MSS public key.
+        // TODO: Verify appinst (address) == MSS public key.
         // At the moment the Author is free to choose any address, not tied to MSS PK.
 
         self.appinst = Some(link);
@@ -462,7 +464,7 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<(Bytes, Bytes)> {
-        //TODO: pass author_pk to unwrap
+        // TODO: pass author_pk to unwrap
         let content = self
             .unwrap_signed_packet(preparsed)?
             .commit(self.store.borrow_mut(), info)?;
@@ -499,15 +501,13 @@ where
         preparsed.unwrap(&*self.store.borrow(), content)
     }
 
-    //Fetch unwrapped sequence message to fetch referenced message
+    // Fetch unwrapped sequence message to fetch referenced message
     pub fn handle_sequence<'a>(
         &mut self,
         preparsed: PreparsedMessage<'a, F, Link>,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<sequence::ContentUnwrap<Link>> {
-        let content = self
-            .unwrap_sequence(preparsed)?
-            .commit(self.store.borrow_mut(), info)?;
+        let content = self.unwrap_sequence(preparsed)?.commit(self.store.borrow_mut(), info)?;
         Ok(content)
     }
 
@@ -525,12 +525,12 @@ where
     }
 
     /// Store the sequence state of a given publisher
-    pub fn store_state (&mut self, pubkey: x25519::PublicKey, msg_link: Link, seq_num: usize) {
+    pub fn store_state(&mut self, pubkey: x25519::PublicKey, msg_link: Link, seq_num: usize) {
         self.seq_states.insert(pubkey.as_bytes().to_vec(), (msg_link, seq_num));
     }
 
     /// Retrieve the sequence state fo a given publisher
-    pub fn get_seq_state (&self, pubkey: x25519::PublicKey) -> Result<(Link, usize)> {
+    pub fn get_seq_state(&self, pubkey: x25519::PublicKey) -> Result<(Link, usize)> {
         let seq_link = self.seq_states.get(&pubkey.as_bytes().to_vec()).unwrap().0.clone();
         let seq_num = self.seq_states.get(&pubkey.as_bytes().to_vec()).unwrap().1;
         Ok((seq_link, seq_num))
@@ -540,44 +540,42 @@ where
         self.get_seq_state(self.ke_kp.1).unwrap().1
     }
 
-    /*
-       /// Unwrap message.
-       pub fn handle_msg(
-           &mut self,
-           msg: &TbinaryMessage<F, Link>,
-           info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-       ) -> Result<()> {
-           if self.appinst.is_some() {
-               ensure!(
-                   self.appinst.as_ref().unwrap().base() == msg.link().base(),
-                   "Bad message application instance."
-               );
-           }
-
-           let preparsed = msg.parse_header()?;
-
-           if preparsed.check_content_type(announce::TYPE) {
-               self.handle_announcement(preparsed, info)?;
-               Ok(())
-           } else if preparsed.check_content_type(change_key::TYPE) {
-               self.handle_change_key(preparsed, info)?;
-               Ok(())
-           } else if preparsed.check_content_type(signed_packet::TYPE) {
-               self.handle_signed_packet(preparsed, info)?;
-               Ok(())
-           } else if preparsed.check_content_type(tagged_packet::TYPE) {
-               self.handle_tagged_packet(preparsed, info)?;
-               Ok(())
-           } else
-           /*
-           if preparsed.check_content_type(keyload::TYPE) {
-               self.handle_keyload(preparsed, info)?;
-               Ok(())
-           } else
-            */
-           {
-               bail!("Unsupported content type: '{}'.", preparsed.content_type())
-           }
-       }
-    */
+    // Unwrap message.
+    // pub fn handle_msg(
+    // &mut self,
+    // msg: &TbinaryMessage<F, Link>,
+    // info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+    // ) -> Result<()> {
+    // if self.appinst.is_some() {
+    // ensure!(
+    // self.appinst.as_ref().unwrap().base() == msg.link().base(),
+    // "Bad message application instance."
+    // );
+    // }
+    //
+    // let preparsed = msg.parse_header()?;
+    //
+    // if preparsed.check_content_type(announce::TYPE) {
+    // self.handle_announcement(preparsed, info)?;
+    // Ok(())
+    // } else if preparsed.check_content_type(change_key::TYPE) {
+    // self.handle_change_key(preparsed, info)?;
+    // Ok(())
+    // } else if preparsed.check_content_type(signed_packet::TYPE) {
+    // self.handle_signed_packet(preparsed, info)?;
+    // Ok(())
+    // } else if preparsed.check_content_type(tagged_packet::TYPE) {
+    // self.handle_tagged_packet(preparsed, info)?;
+    // Ok(())
+    // } else
+    //
+    // if preparsed.check_content_type(keyload::TYPE) {
+    // self.handle_keyload(preparsed, info)?;
+    // Ok(())
+    // } else
+    // /
+    // {
+    // bail!("Unsupported content type: '{}'.", preparsed.content_type())
+    // }
+    // }
 }

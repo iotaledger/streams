@@ -35,12 +35,17 @@ pub trait LinkGenerator<Link, From> {
     fn link_from(&mut self, arg: &From, pk: x25519::PublicKey, multi_branching: u8, seq: usize) -> Link;
 
     /// Derive a new link and construct a header with given content type.
-    fn header_from(&mut self, arg: &From, pk: x25519::PublicKey, multi_branching: u8, seq: usize, content_type: &str) -> header::Header<Link>;
-    /*
-    {
-        header::Header::new_with_type(self.link_from(arg), content_type)
-    }
-     */
+    fn header_from(
+        &mut self,
+        arg: &From,
+        pk: x25519::PublicKey,
+        multi_branching: u8,
+        seq: usize,
+        content_type: &str,
+    ) -> header::Header<Link>;
+    // {
+    // header::Header::new_with_type(self.link_from(arg), content_type)
+    // }
 }
 
 pub trait ContentWrap<F, Store> {

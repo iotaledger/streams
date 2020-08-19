@@ -68,13 +68,11 @@ where
                 .map_or(false, |appinst| appinst == announcement_link.base()),
             "bad announcement address"
         );
-        /*
-        ensure!(subscriberA
-            .author_sig_public_key()
-            .as_ref()
-            .map_or(false, |pk| pk.bytes() == announcement_link.base().bytes()),
-            "bad announcement address");
-         */
+        // ensure!(subscriberA
+        // .author_sig_public_key()
+        // .as_ref()
+        // .map_or(false, |pk| pk.bytes() == announcement_link.base().bytes()),
+        // "bad announcement address");
     }
 
     println!("sign packet");
@@ -165,22 +163,20 @@ where
         subscriberB.unwrap_keyload(preparsed)?;
     }
 
-    /*
-    println!("unsubscribe");
-    let unsubscribe_link = {
-        let msg = subscriberB.unsubscribe(&subscribeB_link)?;
-        println!("  {}", msg);
-        transport.send_message(&msg)?;
-        msg.link
-    };
-
-    {
-        let msg = transport.recv_message(&unsubscribe_link)?;
-        let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::unsubscribe::TYPE));
-        author.unwrap_unsubscribe(preparsed)?;
-    }
-     */
+    // println!("unsubscribe");
+    // let unsubscribe_link = {
+    // let msg = subscriberB.unsubscribe(&subscribeB_link)?;
+    // println!("  {}", msg);
+    // transport.send_message(&msg)?;
+    // msg.link
+    // };
+    //
+    // {
+    // let msg = transport.recv_message(&unsubscribe_link)?;
+    // let preparsed = msg.parse_header()?;
+    // ensure!(preparsed.check_content_type(message::unsubscribe::TYPE));
+    // author.unwrap_unsubscribe(preparsed)?;
+    // }
 
     Ok(())
 }

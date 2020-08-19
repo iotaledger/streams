@@ -12,7 +12,7 @@ description = "A rust implementation of the IOTA Streams"
 
 [dependencies]
 iota-streams-core = { version = "0.2.0", path = "../../iota-streams-core" }
-iota-streams-core-edsig = { version = "^0.1.0", path = "../../iota-streams-core-edsig" }
+iota-streams-core-edsig = { version = "0.2.0", path = "../../iota-streams-core-edsig" }
 iota-streams-protobuf3 = { version = "0.2.0", path = "../../iota-streams-protobuf3" }
 iota-streams-app = { version = "0.2.0", path = "../../iota-streams-app" }
 iota-streams-app-channels = { version = "0.2.0", path = "../../iota-streams-app-channels"}

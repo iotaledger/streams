@@ -25,13 +25,9 @@ use iota_streams_app::message::{
     HasLink,
 };
 
-use anyhow::{
-    Result,
-};
+use anyhow::Result;
 
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_protobuf3::{
     command::*,
@@ -43,9 +39,9 @@ use iota_streams_protobuf3::{
 pub const TYPE: &str = "STREAMS9CHANNEL9SEQ";
 
 pub struct ContentWrap<'a, Link>
-    where
-        Link: HasLink,
-        <Link as HasLink>::Rel: 'a,
+where
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a,
 {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) pubkey: &'a x25519::PublicKey,
@@ -54,11 +50,11 @@ pub struct ContentWrap<'a, Link>
 }
 
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link>
-    where
-        F: PRP,
-        Link: HasLink,
-        <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-        Store: LinkStore<F, <Link as HasLink>::Rel>,
+where
+    F: PRP,
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -92,9 +88,9 @@ pub struct ContentUnwrap<Link: HasLink> {
 }
 
 impl<Link> Default for ContentUnwrap<Link>
-    where
-        Link: HasLink,
-        <Link as HasLink>::Rel: Eq + Default,
+where
+    Link: HasLink,
+    <Link as HasLink>::Rel: Eq + Default,
 {
     fn default() -> Self {
         Self {
@@ -107,11 +103,11 @@ impl<Link> Default for ContentUnwrap<Link>
 }
 
 impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<Link>
-    where
-        F: PRP,
-        Link: HasLink,
-        Store: LinkStore<F, <Link as HasLink>::Rel>,
-        <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
+where
+    F: PRP,
+    Link: HasLink,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
     fn unwrap<'c, IS: io::IStream>(
         &mut self,

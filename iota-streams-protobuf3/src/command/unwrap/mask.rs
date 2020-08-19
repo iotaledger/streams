@@ -131,7 +131,7 @@ where
         let mut bytes = [0_u8; 32];
         unwrap_mask_bytes(self.as_mut(), &mut bytes)?;
         *pk = x25519::PublicKey::from(bytes);
-        //TODO: validate public key
+        // TODO: validate public key
         Ok(self)
     }
 }

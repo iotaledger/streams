@@ -1,7 +1,7 @@
-/// Reexport sponge `Mode`.
-//pub use crate::sponge::spongos::Mode;
-use core::convert::From;
 use crate::prelude::Vec;
+/// Reexport sponge `Mode`.
+// pub use crate::sponge::spongos::Mode;
+use core::convert::From;
 
 /// Pseudo-random permutation.
 ///

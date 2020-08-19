@@ -8,7 +8,10 @@ use iota_streams_app::{
         TangleAddress,
     },
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    prelude::Vec,
+    sponge::prp::PRP,
+};
 
 pub trait ChannelLinkGenerator<Link>
 where

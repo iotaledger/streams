@@ -1,10 +1,12 @@
 //! Spongos-based pseudo-random number generator.
 
-use crate::sponge::{
-    prp::PRP,
-    spongos::Spongos,
+use crate::{
+    prelude::Vec,
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
 };
-use crate::prelude::Vec;
 
 /// Spongos-based pseudo-random number generator.
 #[derive(Clone)]
@@ -61,10 +63,10 @@ impl<G: PRP> Prng<G> {
         }
     }
 
-    //TODO: prng randomness hierarchy via nonce: domain (mss, ntru, session key, etc.), secret, counter
+    // TODO: prng randomness hierarchy via nonce: domain (mss, ntru, session key, etc.), secret, counter
     fn gen_with_spongos<'a>(&self, s: &mut Spongos<G>, nonces: &[&'a [u8]], rnds: &mut [&'a mut [u8]]) {
-        //TODO: `dst` Tryte?
-        //TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
+        // TODO: `dst` Tryte?
+        // TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
         s.absorb(&self.secret_key[..]);
         for nonce in nonces {
             s.absorb(*nonce);
@@ -77,9 +79,9 @@ impl<G: PRP> Prng<G> {
 
     /// Generate randomness with a unique nonce for the current PRNG instance.
     pub fn gen(&self, nonce: &[u8], rnd: &mut [u8]) {
-        //TODO: `dst` byte?
-        //TODO: Implement Sponge?
-        //TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
+        // TODO: `dst` byte?
+        // TODO: Implement Sponge?
+        // TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
         let mut s = Spongos::<G>::init();
         self.gen_with_spongos(&mut s, &[nonce], &mut [rnd]);
     }
@@ -114,7 +116,7 @@ impl<G> Rng<G> {
         Self { prng, nonce }
     }
     fn inc(&mut self) {
-        //TODO: inc nonce
+        // TODO: inc nonce
     }
 }
 
@@ -123,14 +125,14 @@ impl<G: PRP> rand::RngCore for Rng<G> {
         let mut v = [0_u8; 4];
         self.prng.gen(&self.nonce[..], &mut v);
         self.inc();
-        //TODO: use transmute
+        // TODO: use transmute
         0 | ((v[3] as u32) << 24) | ((v[2] as u32) << 16) | ((v[1] as u32) << 8) | ((v[0] as u32) << 0)
     }
     fn next_u64(&mut self) -> u64 {
         let mut v = [0_u8; 8];
         self.prng.gen(&self.nonce[..], &mut v);
         self.inc();
-        //TODO: use transmute
+        // TODO: use transmute
         0 | ((v[7] as u64) << 56)
             | ((v[6] as u64) << 48)
             | ((v[5] as u64) << 40)

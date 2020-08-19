@@ -1,4 +1,7 @@
-use anyhow::{bail, Result};
+use anyhow::{
+    bail,
+    Result,
+};
 
 use super::Context;
 use crate::{
@@ -31,8 +34,8 @@ where
             Ok(signature) => {
                 self.stream
                     .try_advance(ed25519::SIGNATURE_LENGTH)?
-                .copy_from_slice(&signature.to_bytes());
-            },
+                    .copy_from_slice(&signature.to_bytes());
+            }
             Err(err) => bail!("Failed to sign_prehashed: {}", err),
         };
         Ok(self)

@@ -53,7 +53,10 @@ use anyhow::{
     Result,
 };
 
-use iota_streams_core::{prelude::Vec, sponge::prp::PRP};
+use iota_streams_core::{
+    prelude::Vec,
+    sponge::prp::PRP,
+};
 use iota_streams_protobuf3 as protobuf3;
 use protobuf3::{
     command::*,
@@ -84,8 +87,7 @@ where
     }
 }
 
-impl<Link> Header<Link>
-{
+impl<Link> Header<Link> {
     pub fn new_with_type(link: Link, multi_branching: u8, content_type: &str) -> Self {
         Self {
             version: STREAMS_1_VER,
@@ -126,8 +128,7 @@ where
         ctx.absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&NBytes(vec![self.multi_branching]))?
-            .absorb(&self.content_type)?
-        ;
+            .absorb(&self.content_type)?;
         Ok(ctx)
     }
 }

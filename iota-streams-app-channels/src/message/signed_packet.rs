@@ -68,7 +68,7 @@ where
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .ed25519(self.sig_kp, HashSig)?;
-        //TODO: Is both public and masked payloads are ok? Leave public only or masked only?
+        // TODO: Is both public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
 
@@ -77,8 +77,7 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx
-            .join(store, self.link)?
+        ctx.join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .ed25519(self.sig_kp, HashSig)?;
@@ -122,12 +121,10 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx
-            .join(store, &mut self.link)?
+        ctx.join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
-            .ed25519(&self.sig_pk, HashSig)?
-        ;
+            .ed25519(&self.sig_pk, HashSig)?;
         Ok(ctx)
     }
 }

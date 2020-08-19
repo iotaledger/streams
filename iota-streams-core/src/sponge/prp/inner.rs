@@ -1,7 +1,9 @@
 use core::hash;
 
-use crate::sponge::prp::PRP;
-use crate::prelude::Vec;
+use crate::{
+    prelude::Vec,
+    sponge::prp::PRP,
+};
 
 /// Convenience wrapper for storing Spongos inner state.
 #[derive(Clone)]
@@ -56,34 +58,32 @@ impl<F> From<Vec<u8>> for Inner<F> {
     }
 }
 
-/*
-impl<F> From<&Inner<F>> for Spongos<F> {
-    fn from(inner: &Inner<F>) -> Self {
-        Self::from_inner_tbits(inner.as_ref())
-    }
-}
-
-impl<F> From<Inner<F>> for Spongos<F> {
-    fn from(inner: Inner<F>) -> Self {
-        Self::from_inner_tbits(inner.as_ref())
-    }
-}
-
-impl<F> TryFrom<&Spongos<F>> for Inner<F> {
-    type Error = ();
-    fn try_from(spongos: &Spongos<F>) -> Result<Self, ()> {
-        if spongos.is_committed() {
-            Ok(spongos.to_inner_tbits().into())
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<F> TryFrom<Spongos<F>> for Inner<F> {
-    type Error = ();
-    fn try_from(spongos: Spongos<F>) -> Result<Self, ()> {
-        TryFrom::<&Spongos<F>>::try_from(&spongos)
-    }
-}
- */
+// impl<F> From<&Inner<F>> for Spongos<F> {
+// fn from(inner: &Inner<F>) -> Self {
+// Self::from_inner_tbits(inner.as_ref())
+// }
+// }
+//
+// impl<F> From<Inner<F>> for Spongos<F> {
+// fn from(inner: Inner<F>) -> Self {
+// Self::from_inner_tbits(inner.as_ref())
+// }
+// }
+//
+// impl<F> TryFrom<&Spongos<F>> for Inner<F> {
+// type Error = ();
+// fn try_from(spongos: &Spongos<F>) -> Result<Self, ()> {
+// if spongos.is_committed() {
+// Ok(spongos.to_inner_tbits().into())
+// } else {
+// Err(())
+// }
+// }
+// }
+//
+// impl<F> TryFrom<Spongos<F>> for Inner<F> {
+// type Error = ();
+// fn try_from(spongos: Spongos<F>) -> Result<Self, ()> {
+// TryFrom::<&Spongos<F>>::try_from(&spongos)
+// }
+// }
