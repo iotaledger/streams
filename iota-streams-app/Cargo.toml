@@ -9,10 +9,13 @@ keywords = ["iota", "streams", "app"]
 description = "A rust implementation of the IOTA Streams applications"
 
 [features]
-default = ["std", "async"]
+default = ["std", "async", "tangle"]
 # enable std
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-protobuf3/std", "anyhow/std"]
-async = ["core"]
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-protobuf3/std", "anyhow/std", "hex/std", "chrono/std"]
+async = ["iota-core", "iota-constants", "chrono", "smol", "num_cpus"]
+#TODO: move to a separate crate
+# iota-core currently provides async only API
+tangle = ["hex"]
 
 [lib]
 name = "iota_streams_app"
@@ -23,17 +26,18 @@ iota-streams-core = { version = "0.2.0", path = "../iota-streams-core", default-
 iota-streams-core-edsig = { version = "0.2.0", path = "../iota-streams-core-edsig", default-features = false }
 iota-streams-protobuf3 = { version = "0.2.0", path = "../iota-streams-protobuf3", default-features = false }
 # `iota-core` crate is WIP with unstable API atm of writing.
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
-
-iota-constants = { version = "0.2.1" }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531", optional = true }
+iota-constants = { version = "0.2.1", optional = true }
 #iota-conversion = { version = "0.5.0" }
 
 # anyhow and chrono are kept in sync with versions used in iota-core
 anyhow = { version = "1.0.26", default-features = false }
-chrono = "0.4.11"
+
+chrono = { version = "0.4.11", default-features = false, optional = true }
 
 # feature tokio02 explicitly required for block_on calls
-smol = {version = "0.1.18", features = ["tokio02"]}
-core = { package = "core-futures-tls", version = "0.1.1", path = "../../core-futures-tls", optional = true }
-num_cpus = "1.10"
-hex = "0.4.2"
+smol = { version = "0.1.18", features = ["tokio02"], optional = true }
+# core-futures-tls-0.1.1 is buggy and relies on unstable generators feature
+#core = { package = "core-futures-tls", version = "0.1.1", path = "../../core-futures-tls", optional = true }
+num_cpus = { version = "1.10", optional = true }
+hex = { version = "0.4.2", default-features = false, optional = true }

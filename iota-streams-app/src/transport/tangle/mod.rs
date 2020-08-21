@@ -1,7 +1,6 @@
 //! Tangle-specific transport definitions.
 
 use anyhow::Result;
-use chrono::Utc;
 use core::{
     convert::AsRef,
     fmt,
@@ -32,14 +31,18 @@ pub struct TangleMessage<F> {
     pub timestamp: i64,
 }
 
+#[cfg(feature = "std")]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from TbinaryMessage and add the current timestamp.
     pub fn new(msg: TbinaryMessage<F, TangleAddress>) -> Self {
         Self {
             tbinary_message: msg,
-            timestamp: Utc::now().timestamp_millis(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
         }
     }
+}
+
+impl<F> TangleMessage<F> {
     /// Create TangleMessage from TbinaryMessage and an explicit timestamp.
     pub fn with_timestamp(msg: TbinaryMessage<F, TangleAddress>, timestamp: i64) -> Self {
         Self {
@@ -409,5 +412,5 @@ impl<F> SkipFallback<F> for MsgId {
     }
 }
 
-//#[cfg(feature = "tangle")]
+#[cfg(all(feature = "tangle", feature = "async"))]
 pub mod client;

@@ -15,7 +15,7 @@ use anyhow::{
 };
 use iota_streams_app::message::HasLink;
 use iota_streams_protobuf3::types::*;
-use std::str::FromStr;
+use iota_streams_core::prelude::str::FromStr;
 
 fn example<T: Transport>(transport: &mut T) -> Result<()>
 where

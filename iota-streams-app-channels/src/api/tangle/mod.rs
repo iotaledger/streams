@@ -69,5 +69,4 @@ pub use author::Author;
 /// Tangle-specific Channel Subscriber type.
 pub use subscriber::Subscriber;
 
-#[cfg(test)]
 mod test;

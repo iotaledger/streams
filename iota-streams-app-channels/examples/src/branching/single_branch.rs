@@ -20,8 +20,7 @@ use heapless::{
     Vec,
 };
 
-#[path = "utils.rs"]
-mod utils;
+use utils;
 
 pub fn example<T: Transport>(
     transport: &mut T,
