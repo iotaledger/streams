@@ -6,6 +6,7 @@ use iota_streams_protobuf3::{
         unwrap,
         wrap,
     },
+    types::Uint8,
     io,
 };
 
@@ -35,7 +36,7 @@ pub trait LinkGenerator<Link, From> {
     fn link_from(&mut self, arg: &From, pk: x25519::PublicKey, multi_branching: u8, seq: usize) -> Link;
 
     /// Derive a new link and construct a header with given content type.
-    fn header_from(&mut self, arg: &From, pk: x25519::PublicKey, multi_branching: u8, seq: usize, content_type: &str) -> header::Header<Link>;
+    fn header_from(&mut self, arg: &From, pk: x25519::PublicKey, seq: usize, content_type: Uint8, encoding: &Vec<u8>, payload_length: usize, frame_count: usize, multi_branching: u8) -> hdf::HDF<Link>;
     /*
     {
         header::Header::new_with_type(self.link_from(arg), content_type)
@@ -60,8 +61,11 @@ pub trait ContentUnwrap<F, Store> {
     ) -> Result<&'c mut unwrap::Context<F, IS>>;
 }
 
-pub mod header;
-use header::Header;
+pub mod hdf;
+pub use hdf::HDF;
+pub mod pcf;
+pub use pcf::PCF;
+
 mod version;
 pub use version::*;
 

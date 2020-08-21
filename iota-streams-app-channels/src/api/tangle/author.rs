@@ -20,7 +20,7 @@ pub struct Author {
 
 impl Author {
     /// Create a new Author instance, generate new MSS keypair and optionally NTRU keypair.
-    pub fn new(seed: &str, multi_branching: bool) -> Self {
+    pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool) -> Self {
         let nonce = "TANGLEAUTHORNONCE".as_bytes().to_vec();
         Self {
             imp: AuthorT::gen(
@@ -28,7 +28,9 @@ impl Author {
                 LinkGen::default(),
                 prng::dbg_init_str(seed),
                 nonce,
-                multi_branching
+                multi_branching,
+                encoding.as_bytes().to_vec(),
+                payload_length
             ),
         }
     }

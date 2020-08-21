@@ -8,7 +8,10 @@ use iota_streams_app_channels::{
     message,
 };
 use iota_streams_protobuf3::types::*;
-use iota_streams_app::message::HasLink;
+use iota_streams_app::{
+    message::HasLink,
+    transport::tangle::PAYLOAD_BYTES,
+};
 
 use anyhow::{
     ensure,
@@ -27,12 +30,13 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
         T::RecvOptions: Copy,
 {
     let multi_branching_flag = &1_u8;
-    let mut author = Author::new(seed, multi_branching_flag == &1_u8);
+    let encoding = "utf-8";
+    let mut author = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching_flag == &1_u8);
     println!("Author multi branching?: {:?}", author.get_branching_flag() == &1_u8);
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED");
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES);
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES);
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", encoding, PAYLOAD_BYTES);
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -53,7 +57,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     let announcement_link = Address::from_str(&hex::encode(announcement_address), &hex::encode(announcement_tag)).unwrap();
     println!("Announcement link at: {}", &announcement_link);
     {
-        let msg = transport.recv_message_with_options(&announcement_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&announcement_link, recv_opt).unwrap();
         let preparsed = msg.parse_header().unwrap();
         ensure!(preparsed.check_content_type(&message::announce::TYPE), "Message is not an announcement");
 
@@ -84,7 +88,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&subscribeA_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&subscribeA_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::subscribe::TYPE), "Wrong message type: {}", preparsed.header.content_type);
         author.unwrap_subscribe(preparsed)?;
@@ -101,13 +105,13 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&keyload_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&keyload_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::sequence::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
         let msg_tag = author.unwrap_sequence(preparsed.clone())?;
 
-        let msg = transport.recv_message_with_options(&msg_tag, multi_branching_flag.clone(), recv_opt)?;
+        let msg = transport.recv_message_with_options(&msg_tag, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::keyload::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
@@ -134,13 +138,13 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&tagged_packet_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&tagged_packet_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::sequence::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
         let msg_tag = subscriberA.unwrap_sequence(preparsed.clone())?;
 
-        let msg = transport.recv_message_with_options(&msg_tag, multi_branching_flag.clone(), recv_opt)?;
+        let msg = transport.recv_message_with_options(&msg_tag, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::tagged_packet::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
@@ -170,13 +174,13 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&signed_packet_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&signed_packet_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::sequence::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
         let msg_tag = author.unwrap_sequence(preparsed.clone())?;
 
-        let msg = transport.recv_message_with_options(&msg_tag, multi_branching_flag.clone(), recv_opt)?;
+        let msg = transport.recv_message_with_options(&msg_tag, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::signed_packet::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
@@ -194,7 +198,7 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&subscribeB_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&subscribeB_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::subscribe::TYPE), "Wrong message type: {}", preparsed.header.content_type);
         author.unwrap_subscribe(preparsed)?;
@@ -211,13 +215,13 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&keyload_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&keyload_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::sequence::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
         let msg_tag = author.unwrap_sequence(preparsed.clone())?;
 
-        let msg = transport.recv_message_with_options(&msg_tag, multi_branching_flag.clone(), recv_opt)?;
+        let msg = transport.recv_message_with_options(&msg_tag, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::keyload::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
@@ -241,13 +245,13 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&tagged_packet_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&tagged_packet_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::sequence::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
         let msg_tag = subscriberA.unwrap_sequence(preparsed.clone())?;
 
-        let msg = transport.recv_message_with_options(&msg_tag, multi_branching_flag.clone(), recv_opt)?;
+        let msg = transport.recv_message_with_options(&msg_tag, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::tagged_packet::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
@@ -273,13 +277,13 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&tagged_packet_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&tagged_packet_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::sequence::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
         let msg_tag = subscriberB.unwrap_sequence(preparsed.clone())?;
 
-        let msg = transport.recv_message_with_options(&msg_tag, multi_branching_flag.clone(), recv_opt)?;
+        let msg = transport.recv_message_with_options(&msg_tag, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::tagged_packet::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
@@ -305,13 +309,13 @@ pub fn example<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_o
     };
 
     {
-        let msg = transport.recv_message_with_options(&signed_packet_link, multi_branching_flag.clone(), recv_opt).unwrap();
+        let msg = transport.recv_message_with_options(&signed_packet_link, recv_opt).unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::sequence::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 
         let msg_tag = author.unwrap_sequence(preparsed.clone())?;
 
-        let msg = transport.recv_message_with_options(&msg_tag, multi_branching_flag.clone(), recv_opt)?;
+        let msg = transport.recv_message_with_options(&msg_tag, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(preparsed.check_content_type(&message::signed_packet::TYPE), "Wrong message type: {}", preparsed.header.content_type);
 

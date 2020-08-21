@@ -37,7 +37,7 @@ use iota_streams_protobuf3::{
 };
 
 /// Type of `Unsubscribe` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9UNSUBSCRIBE";
+pub const TYPE: Uint8 = Uint8(6);
 
 pub struct ContentWrap<'a, TW, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,

@@ -18,8 +18,6 @@ pub struct TbinaryMessage<F, AbsLink> {
     /// Message body -- header + content.
     pub body: Vec<u8>,
 
-    pub multi_branching: u8,
-
     pub(crate) _phantom: std::marker::PhantomData<F>,
 }
 
@@ -58,18 +56,16 @@ where
         Self {
             link: self.link.clone(),
             body: self.body.clone(),
-            multi_branching: self.multi_branching.clone(),
             _phantom: std::marker::PhantomData,
         }
     }
 }
 
 impl<F, AbsLink> TbinaryMessage<F, AbsLink> {
-    pub fn new(link: AbsLink, body: Vec<u8>, multi_branching: u8) -> Self {
+    pub fn new(link: AbsLink, body: Vec<u8>) -> Self {
         Self {
             link,
             body,
-            multi_branching,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -85,7 +81,7 @@ where
 {
     pub fn parse_header<'a>(&'a self) -> Result<PreparsedMessage<'a, F, Link>> {
         let mut ctx = unwrap::Context::new(&self.body[..]);
-        let mut header = Header::<Link>::new(self.link().clone(), self.multi_branching);
+        let mut header = HDF::<Link>::new(self.link().clone());
         let store = EmptyLinkStore::<F, Link, ()>::default();
         header.unwrap(&store, &mut ctx)?;
 

@@ -13,13 +13,18 @@ use iota_streams_protobuf3::types::*;
 /// Message context prepared for wrapping.
 pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {
     store: Ref<'a, Store>,
-    pub header: Header<Link>,
-    pub content: Content,
+    pub header: HDF<Link>,
+    pub content: PCF<Content>,
     _phantom: std::marker::PhantomData<F>,
 }
 
-impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {
-    pub fn new(store: Ref<'a, Store>, header: Header<Link>, content: Content) -> Self {
+impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content>
+where
+    Content: ContentWrap<F, Store>,
+{
+    pub fn new(store: Ref<'a, Store>, header: HDF<Link>, content: Content) -> Self {
+        let content = pcf::PCF::new(FINAL_PCF_ID, 1, content);
+
         Self {
             store,
             header,
@@ -38,7 +43,7 @@ where
         Link: HasLink + AbsorbExternalFallback<F> + Clone,
         <Link as HasLink>::Rel: Eq + SkipFallback<F>,
         Store: 'a + LinkStore<F, <Link as HasLink>::Rel>,
-        Header<Link>: ContentWrap<F, Store>,
+        HDF<Link>: ContentWrap<F, Store>,
         Content: ContentWrap<F, Store>,
     {
         let buf_size = {
@@ -64,7 +69,6 @@ where
             message: TbinaryMessage {
                 link: self.header.link.clone(),
                 body: buf,
-                multi_branching: self.header.multi_branching.clone(),
                 _phantom: std::marker::PhantomData,
             },
         })

@@ -13,7 +13,7 @@ use iota_streams_protobuf3::types::*;
 /// Result of wrapping the message.
 pub struct UnwrappedMessage<F, Link, Content> {
     pub link: Link,
-    pub content: Content,
+    pub pcf: PCF<Content>,
     pub(crate) spongos: Spongos<F>,
 }
 
@@ -33,6 +33,6 @@ where
     {
         self.spongos.commit();
         store.update(self.link.rel(), self.spongos, info)?;
-        Ok(self.content)
+        Ok(self.pcf.content)
     }
 }

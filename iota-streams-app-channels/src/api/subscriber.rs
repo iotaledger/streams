@@ -17,7 +17,7 @@ use iota_streams_core::{
 use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
 use iota_streams_app::message::{
-    header::Header,
+    hdf::HDF,
     *,
 };
 use iota_streams_protobuf3::types::*;
@@ -84,6 +84,10 @@ pub struct SubscriberT<F, Link, Store, LinkGen>
     /// Mapping of publisher id to sequence state
     pub(crate) seq_states: HashMap<Vec<u8> , (Link, usize)>,
 
+    pub message_encoding: Vec<u8>,
+
+    pub uniform_payload_length: usize,
+
 }
 
 impl<F, Link, Store, LinkGen> SubscriberT<F, Link, Store, LinkGen>
@@ -101,6 +105,8 @@ where
         link_gen: LinkGen,
         prng: prng::Prng<F>,
         nonce: Vec<u8>,
+        message_encoding: Vec<u8>,
+        uniform_payload_length: usize,
     ) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
@@ -120,6 +126,8 @@ where
             link_gen: link_gen,
             multi_branching: 0,
             seq_states: HashMap::new(),
+            message_encoding: message_encoding,
+            uniform_payload_length: uniform_payload_length,
         }
     }
 
@@ -134,7 +142,7 @@ where
 
     fn do_prepare_keyload<'a, Psks, KePks>(
         &'a self,
-        header: Header<Link>,
+        header: HDF<Link>,
         link_to: &'a <Link as HasLink>::Rel,
         psks: Psks,
         ke_pks: KePks,
@@ -177,9 +185,13 @@ where
     > {
         let header = self.link_gen.header_from(link_to,
                                                self.ke_kp.1,
-                                               self.multi_branching,
                                                self.get_seq_num(),
-                                               keyload::TYPE);
+                                               keyload::TYPE,
+                                               &self.message_encoding,
+                                               self.uniform_payload_length,
+                                               1,
+                                               self.multi_branching.clone()
+        );
         self.do_prepare_keyload(
             header,
             link_to,
@@ -209,9 +221,12 @@ where
         let header = self.link_gen.header_from(
             link_to,
             self.ke_kp.1,
-            self.multi_branching,
             SEQ_MESSAGE_NUM,
-            sequence::TYPE
+            sequence::TYPE,
+            &self.message_encoding,
+            self.uniform_payload_length,
+            1,
+            self.multi_branching.clone()
         );
 
         let content = sequence::ContentWrap {
@@ -248,9 +263,13 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(link_to,
                                                self.ke_kp.1,
-                                               self.multi_branching,
                                                self.get_seq_num(),
-                                               tagged_packet::TYPE);
+                                               tagged_packet::TYPE,
+                                               &self.message_encoding,
+                                               self.uniform_payload_length,
+                                               1,
+                                               self.multi_branching.clone()
+        );
         let content = tagged_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -283,9 +302,13 @@ where
         if let Some(author_ke_pk) = &self.author_ke_pk {
             let header = self.link_gen.header_from(link_to,
                                                    self.ke_kp.1,
-                                                   self.multi_branching,
                                                    SUB_MESSAGE_NUM,
-                                                   subscribe::TYPE);
+                                                   subscribe::TYPE,
+                                                   &self.message_encoding,
+                                                   self.uniform_payload_length,
+                                                   1,
+                                                   self.multi_branching.clone()
+            );
             //let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
             let content = subscribe::ContentWrap {

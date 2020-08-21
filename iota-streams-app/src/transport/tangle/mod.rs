@@ -21,6 +21,9 @@ use iota_streams_protobuf3::{
 
 use crate::message::*;
 
+/// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
+pub const PAYLOAD_BYTES: usize = 1100;
+
 pub struct TangleMessage<F> {
     /// Encapsulated tbinary encoded message.
     pub tbinary_message: TbinaryMessage<F, TangleAddress>,
@@ -156,6 +159,7 @@ where
 {
     fn try_gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> Result<MsgId> {
         let mut new = MsgId::default();
+        //println!("Making new id with: {:?}, {:?}, {:?}", msgid.id.to_string(), multi_branch, seq);
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
             .absorb(External(&pk))?
@@ -187,12 +191,20 @@ where
         &mut self,
         arg: &Vec<u8>,
         pk: x25519::PublicKey,
-        multi_branching: u8,
         seq: usize,
-        content_type: &str,
-    ) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(self.link_from(arg, pk, multi_branching, seq), multi_branching, content_type)
-    }
+        content_type: Uint8,
+        encoding: &Vec<u8>,
+        payload_length: usize,
+        frame_count: usize,
+        multi_branching: u8,
+    ) -> hdf::HDF<TangleAddress> {
+        hdf::HDF::new_with_fields(encoding,
+                                  content_type,
+                                  payload_length,
+                                  frame_count,
+                                  self.link_from(arg, pk, multi_branching, seq),
+                                  seq
+        )}
 }
 
 impl<F> LinkGenerator<TangleAddress, MsgId> for DefaultTangleLinkGenerator<F>
@@ -205,9 +217,22 @@ where
             msgid: self.gen_msgid(msgid, pk, multi_branch, seq),
         }
     }
-    fn header_from(&mut self, arg: &MsgId, pk: x25519::PublicKey, multi_branching: u8, seq: usize, content_type: &str) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(self.link_from(arg, pk, multi_branching, seq), multi_branching, content_type)
-    }
+    fn header_from(&mut self, arg: &MsgId,
+                   pk: x25519::PublicKey,
+                   seq: usize,
+                   content_type: Uint8,
+                   encoding: &Vec<u8>,
+                   payload_length: usize,
+                   frame_count: usize,
+                   multi_branching: u8,
+    ) -> hdf::HDF<TangleAddress> {
+        hdf::HDF::new_with_fields(encoding,
+                                  content_type,
+                                  payload_length,
+                                  frame_count,
+                                  self.link_from(arg, pk, multi_branching, seq),
+                                  seq
+        )}
 }
 
 // ed25519 public key size in bytes

@@ -20,7 +20,7 @@ use iota_streams_core::{
 use iota_streams_core_edsig::{signature::ed25519, key_exchange::x25519};
 
 use iota_streams_app::message::{
-    header::Header,
+    hdf::HDF,
     *,
 };
 use iota_streams_protobuf3::types::*;
@@ -81,6 +81,12 @@ pub struct AuthorT<F, Link, Store, LinkGen>
 
     /// Mapping of publisher id to sequence state
     pub(crate) seq_states: HashMap<Vec<u8> , (Link, usize)>,
+
+    pub message_encoding: Vec<u8>,
+
+    pub uniform_payload_length: usize,
+
+
 }
 
 impl<F, Link, Store, LinkGen> AuthorT<F, Link, Store, LinkGen>
@@ -99,6 +105,8 @@ where
         prng: prng::Prng<F>,
         nonce: Vec<u8>,
         multi_branching: bool,
+        message_encoding: Vec<u8>,
+        uniform_payload_length: usize,
     ) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
@@ -132,7 +140,9 @@ where
             appinst: appinst,
             channel_addr: appinst_input,
             multi_branching: multi_branching_flag,
-            seq_states: seq_map
+            seq_states: seq_map,
+            message_encoding: message_encoding,
+            uniform_payload_length: uniform_payload_length,
         }
     }
 
@@ -140,13 +150,17 @@ where
     pub fn prepare_announcement<'a>(
         &'a mut self,
     ) -> Result<PreparedMessage<'a, F, Link, Store, announce::ContentWrap<F>>> {
-        // Create Header for the first message in the channel.
+        // Create HDF for the first message in the channel.
         let header =
             self.link_gen.header_from(&self.channel_addr,
                                       self.ke_kp.1,
-                                      self.multi_branching,
                                       ANN_MESSAGE_NUM,
-                                      announce::TYPE);
+                                      announce::TYPE,
+                                      &self.message_encoding,
+                                      self.uniform_payload_length,
+                                      1,
+                                      self.multi_branching.clone()
+            );
         let content = announce::ContentWrap {
             sig_kp: &self.sig_kp,
             multi_branching: self.multi_branching.clone(),
@@ -167,7 +181,7 @@ where
 
     fn do_prepare_keyload<'a, Psks, KePks>(
         &'a self,
-        header: Header<Link>,
+        header: HDF<Link>,
         link_to: &'a <Link as HasLink>::Rel,
         psks: Psks,
         ke_pks: KePks,
@@ -210,10 +224,14 @@ where
         >,
     > {
         let header = self.link_gen.header_from(link_to,
-                                               self.ke_kp.1,
-                                               self.multi_branching,
-                                               self.get_seq_num(),
-                                               keyload::TYPE);
+                                  self.ke_kp.1,
+                                  self.get_seq_num(),
+                                  keyload::TYPE,
+                                  &self.message_encoding,
+                                  self.uniform_payload_length,
+                                  1,
+                                  self.multi_branching.clone()
+        );
         let psks = psk::filter_psks(&self.psks, psk_ids);
         let ke_pks = x25519::filter_ke_pks(&self.ke_pks, ke_pks);
         self.do_prepare_keyload(header, link_to, psks.into_iter(), ke_pks.into_iter())
@@ -239,8 +257,12 @@ where
     > {
         let header = self.link_gen.header_from(link_to,
                                                self.ke_kp.1,
-                                               self.multi_branching,
-                                               self.get_seq_num(), keyload::TYPE);
+                                               self.get_seq_num(),
+                                               keyload::TYPE,
+                                               &self.message_encoding,
+                                               self.uniform_payload_length,
+                                               1,
+                                               self.multi_branching.clone());
         let ipsks = self.psks.iter();
         let ike_pks = self.ke_pks.iter();
         self.do_prepare_keyload(header, link_to, ipsks, ike_pks)
@@ -279,9 +301,12 @@ where
         let header = self.link_gen.header_from(
             link_to,
             self.ke_kp.1,
-            self.multi_branching,
             SEQ_MESSAGE_NUM,
-            sequence::TYPE
+            sequence::TYPE,
+            &self.message_encoding,
+            self.uniform_payload_length,
+            1,
+            self.multi_branching.clone()
         );
 
         let content = sequence::ContentWrap {
@@ -318,9 +343,13 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, signed_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(link_to,
                                                self.ke_kp.1,
-                                               self.multi_branching,
                                                self.get_seq_num(),
-                                               signed_packet::TYPE);
+                                               signed_packet::TYPE,
+                                               &self.message_encoding,
+                                               self.uniform_payload_length,
+                                               1,
+                                               self.multi_branching.clone()
+        );
         let content = signed_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -354,9 +383,13 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(link_to,
                                                self.ke_kp.1,
-                                               self.multi_branching,
                                                self.get_seq_num(),
-                                               tagged_packet::TYPE);
+                                               tagged_packet::TYPE,
+                                               &self.message_encoding,
+                                               self.uniform_payload_length,
+                                               1,
+                                               self.multi_branching.clone()
+        );
         let content = tagged_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -543,12 +576,12 @@ where
         let preparsed = msg.parse_header()?;
         self.ensure_appinst(&preparsed)?;
 
-        if preparsed.check_content_type(tagged_packet::TYPE) {
+        if preparsed.check_content_type(&tagged_packet::TYPE) {
             self.handle_tagged_packet(preparsed, info)?;
             Ok(())
-        } else if preparsed.check_content_type(announce::TYPE) {
+        } else if preparsed.check_content_type(&announce::TYPE) {
             bail!("Can't handle announce message.")
-        } else if preparsed.check_content_type(signed_packet::TYPE) {
+        } else if preparsed.check_content_type(&signed_packet::TYPE) {
             bail!("Can't handle signed_packet message.")
         } else {
             bail!("Unsupported content type: '{}'.", preparsed.content_type())

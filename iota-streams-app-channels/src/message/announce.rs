@@ -44,7 +44,7 @@ use iota_streams_protobuf3::{
 };
 
 /// Type of `Announce` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9ANNOUNCE";
+pub const TYPE: Uint8 = Uint8(0);
 
 pub struct ContentWrap<'a, F> {
     pub(crate) sig_kp: &'a ed25519::Keypair,

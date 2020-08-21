@@ -40,7 +40,7 @@ use iota_streams_protobuf3::{
 };
 
 /// Type of `Sequence` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9SEQ";
+pub const TYPE: Uint8 = Uint8(2);
 
 pub struct ContentWrap<'a, Link>
     where

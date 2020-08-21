@@ -71,7 +71,7 @@ use iota_streams_protobuf3::{
 };
 
 /// Type of `Keyload` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9KEYLOAD";
+pub const TYPE: Uint8 = Uint8(1);
 
 pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,

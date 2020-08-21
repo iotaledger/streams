@@ -41,7 +41,7 @@ use iota_streams_protobuf3::{
 };
 
 /// Type of `TaggedPacket` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9TAGGEDPACKET";
+pub const TYPE: Uint8 = Uint8(4);
 
 pub struct ContentWrap<'a, F, Link>
 where
