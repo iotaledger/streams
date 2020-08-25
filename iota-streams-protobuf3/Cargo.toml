@@ -17,7 +17,7 @@ iota-streams-core = { version = "0.2.0", path = "../iota-streams-core" }
 iota-streams-core-edsig = { version = "0.1.0", path = "../iota-streams-core-edsig" }
 anyhow = "1.0.26"
 # digest version should correspond to curve25519-dalek's version
-digest = { version = "0.8", default-features = false }
+digest = { version = "0.9.0", default-features = false }
 rand = "0.7"
 
 [dev-dependencies]
