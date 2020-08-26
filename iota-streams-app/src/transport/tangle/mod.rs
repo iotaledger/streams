@@ -23,8 +23,8 @@ use iota_streams_ddml::{
 use crate::message::*;
 
 pub struct TangleMessage<F> {
-    /// Encapsulated tbinary encoded message.
-    pub tbinary_message: TbinaryMessage<F, TangleAddress>,
+    /// Encapsulated binary encoded message.
+    pub binary_message: BinaryMessage<F, TangleAddress>,
 
     /// Timestamp is not an intrinsic part of Streams message; it's a part of the bundle.
     /// Timestamp is checked with Kerl as part of bundle essense trits.
@@ -33,20 +33,20 @@ pub struct TangleMessage<F> {
 
 #[cfg(feature = "std")]
 impl<F> TangleMessage<F> {
-    /// Create TangleMessage from TbinaryMessage and add the current timestamp.
-    pub fn new(msg: TbinaryMessage<F, TangleAddress>) -> Self {
+    /// Create TangleMessage from BinaryMessage and add the current timestamp.
+    pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
         Self {
-            tbinary_message: msg,
+            binary_message: msg,
             timestamp: chrono::Utc::now().timestamp_millis(),
         }
     }
 }
 
 impl<F> TangleMessage<F> {
-    /// Create TangleMessage from TbinaryMessage and an explicit timestamp.
-    pub fn with_timestamp(msg: TbinaryMessage<F, TangleAddress>, timestamp: i64) -> Self {
+    /// Create TangleMessage from BinaryMessage and an explicit timestamp.
+    pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: i64) -> Self {
         Self {
-            tbinary_message: msg,
+            binary_message: msg,
             timestamp,
         }
     }
@@ -395,7 +395,7 @@ impl hash::Hash for MsgId {
     }
 }
 
-/// Msgid is used for joinable links which in the tbinary stream are simply
+/// Msgid is used for joinable links which in the binary stream are simply
 /// encoded (`skip`ped).
 impl<F> SkipFallback<F> for MsgId {
     fn sizeof_skip(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {

@@ -193,7 +193,7 @@ where
         &mut self,
         link_to: &<Link as HasLink>::Rel,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_keyload(link_to)?.wrap()?;
         wrapped.commit(self.store.borrow_mut(), info)
     }
@@ -229,7 +229,7 @@ where
         seq_link: <Link as HasLink>::Rel,
         seq_num: usize,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_sequence(&seq_link, seq_num, NBytes(ref_link))?.wrap()?;
 
         wrapped.commit(self.store.borrow_mut(), info)
@@ -266,7 +266,7 @@ where
         public_payload: &Bytes,
         masked_payload: &Bytes,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self
             .prepare_tagged_packet(link_to, public_payload, masked_payload)?
             .wrap()?;
@@ -306,7 +306,7 @@ where
         &mut self,
         link_to: &<Link as HasLink>::Rel,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_subscribe(link_to)?.wrap()?;
         wrapped.commit(self.store.borrow_mut(), info)
     }
@@ -329,7 +329,7 @@ where
     // &mut self,
     // link_to: &<Link as HasLink>::Rel,
     // info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    // ) -> Result<TbinaryMessage<F, Link>> {
+    // ) -> Result<BinaryMessage<F, Link>> {
     // let wrapped = self.prepare_unsubscribe(link_to)?.wrap()?;
     // wrapped.commit(self.store.borrow_mut(), info)
     // }
@@ -543,7 +543,7 @@ where
     // Unwrap message.
     // pub fn handle_msg(
     // &mut self,
-    // msg: &TbinaryMessage<F, Link>,
+    // msg: &BinaryMessage<F, Link>,
     // info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     // ) -> Result<()> {
     // if self.appinst.is_some() {

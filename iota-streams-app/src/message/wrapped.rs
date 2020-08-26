@@ -10,7 +10,7 @@ use iota_streams_ddml::types::*;
 
 /// Result of wrapping the message.
 pub struct WrappedMessage<F, Link> {
-    pub message: TbinaryMessage<F, Link>,
+    pub message: BinaryMessage<F, Link>,
     pub(crate) spongos: Spongos<F>,
 }
 
@@ -24,7 +24,7 @@ where
         mut self,
         mut store: RefMut<Store>,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>>
+    ) -> Result<BinaryMessage<F, Link>>
     where
         Store: LinkStore<F, <Link as HasLink>::Rel>,
     {

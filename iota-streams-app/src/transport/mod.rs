@@ -10,7 +10,7 @@ use iota_streams_core::prelude::{
     Vec,
 };
 
-use crate::message::TbinaryMessage;
+use crate::message::BinaryMessage;
 
 /// Network transport abstraction.
 /// Parametrized by the type of message links.
@@ -20,10 +20,10 @@ pub trait Transport<F, Link> // where Link: HasLink
     type SendOptions;
 
     /// Send a message with explicit options.
-    fn send_message_with_options(&mut self, msg: &TbinaryMessage<F, Link>, opt: Self::SendOptions) -> Result<()>;
+    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, opt: Self::SendOptions) -> Result<()>;
 
     /// Send a message with default options.
-    fn send_message(&mut self, msg: &TbinaryMessage<F, Link>) -> Result<()>
+    fn send_message(&mut self, msg: &BinaryMessage<F, Link>) -> Result<()>
     where
         Self::SendOptions: Default,
     {
@@ -37,14 +37,14 @@ pub trait Transport<F, Link> // where Link: HasLink
         &mut self,
         link: &Link,
         opt: Self::RecvOptions,
-    ) -> Result<Vec<TbinaryMessage<F, Link>>>;
+    ) -> Result<Vec<BinaryMessage<F, Link>>>;
 
     /// Receive messages with explicit options.
     fn recv_message_with_options(
         &mut self,
         link: &Link,
         opt: Self::RecvOptions,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let mut msgs = self.recv_messages_with_options(link, opt)?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
@@ -55,7 +55,7 @@ pub trait Transport<F, Link> // where Link: HasLink
     }
 
     /// Receive messages with default options.
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<TbinaryMessage<F, Link>>>
+    fn recv_messages(&mut self, link: &Link) -> Result<Vec<BinaryMessage<F, Link>>>
     where
         Self::RecvOptions: Default,
     {
@@ -63,7 +63,7 @@ pub trait Transport<F, Link> // where Link: HasLink
     }
 
     /// Receive a message with default options.
-    fn recv_message(&mut self, link: &Link) -> Result<TbinaryMessage<F, Link>>
+    fn recv_message(&mut self, link: &Link) -> Result<BinaryMessage<F, Link>>
     where
         Self::RecvOptions: Default,
     {
@@ -72,7 +72,7 @@ pub trait Transport<F, Link> // where Link: HasLink
 }
 
 pub struct BucketTransport<F, Link> {
-    bucket: HashMap<Link, Vec<TbinaryMessage<F, Link>>>,
+    bucket: HashMap<Link, Vec<BinaryMessage<F, Link>>>,
 }
 
 impl<F, Link> BucketTransport<F, Link>
@@ -90,7 +90,7 @@ where
 {
     type SendOptions = ();
 
-    fn send_message_with_options(&mut self, msg: &TbinaryMessage<F, Link>, _opt: ()) -> Result<()> {
+    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: ()) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
             Ok(())
@@ -106,7 +106,7 @@ where
         &mut self,
         link: &Link,
         _opt: (),
-    ) -> Result<Vec<TbinaryMessage<F, Link>>> {
+    ) -> Result<Vec<BinaryMessage<F, Link>>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {

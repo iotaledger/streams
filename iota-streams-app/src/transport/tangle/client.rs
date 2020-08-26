@@ -270,7 +270,7 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-pub fn msg_from_bundle<F>(bundle: &Bundle, multi_branching: u8) -> TbinaryMessage<F, TangleAddress> {
+pub fn msg_from_bundle<F>(bundle: &Bundle, multi_branching: u8) -> BinaryMessage<F, TangleAddress> {
     let tx = bundle.head();
     let appinst = AppInst {
         id: NBytes(tbits_from_tritbuf(tx.address().to_inner())),
@@ -283,7 +283,7 @@ pub fn msg_from_bundle<F>(bundle: &Bundle, multi_branching: u8) -> TbinaryMessag
     for tx in bundle.into_iter() {
         body.extend_from_slice(&tbits_from_tritbuf(tx.payload().to_inner()));
     }
-    TbinaryMessage::new(TangleAddress { appinst, msgid }, body, multi_branching)
+    BinaryMessage::new(TangleAddress { appinst, msgid }, body, multi_branching)
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -294,7 +294,7 @@ pub fn msg_from_bundle<F>(bundle: &Bundle, multi_branching: u8) -> TbinaryMessag
 /// As STREAMS Messages can have the same message id (ie. `tag`) it is advised that STREAMS Message
 /// bundles have distinct nonces and/or timestamps.
 pub fn msg_to_bundle<F>(
-    msg: &TbinaryMessage<F, TangleAddress>,
+    msg: &BinaryMessage<F, TangleAddress>,
     timestamp: u64,
     trunk: Hash,
     branch: Hash,
@@ -350,7 +350,7 @@ mod tests {
                 id: NTrytes(Tbits::<TW>::cycle_str(MSGID_SIZE, "M")),
             };
             let body = &Tbits::<TW>::cycle_str(6561, "D") + &Tbits::<TW>::cycle_str(6561, "E");
-            TbinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body, 0)
+            BinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body, 0)
         };
         // A,N,[F,G]
         let m2 = {
@@ -358,7 +358,7 @@ mod tests {
                 id: NTrytes(Tbits::<TW>::cycle_str(MSGID_SIZE, "N")),
             };
             let body = &Tbits::<TW>::cycle_str(6561, "F") + &Tbits::<TW>::cycle_str(6561, "G");
-            TbinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body, 0)
+            BinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body, 0)
         };
 
         let bundle1 = msg_to_bundle(&m1, 0, trunk.clone(), branch.clone()).unwrap();
@@ -489,7 +489,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
     fn send_message_with_options(
         &mut self,
-        msg: &TbinaryMessage<F, TangleAddress>,
+        msg: &BinaryMessage<F, TangleAddress>,
         opt: Self::SendOptions,
     ) -> Result<()> {
         let timestamp = Utc::now().timestamp() as u64;
@@ -511,7 +511,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         &mut self,
         link: &TangleAddress,
         opt: Self::RecvOptions,
-    ) -> Result<Vec<TbinaryMessage<F, TangleAddress>>> {
+    ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
         let tx_address =
             Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.tbits())))
                 .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;

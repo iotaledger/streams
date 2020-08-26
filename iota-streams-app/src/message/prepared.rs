@@ -59,7 +59,7 @@ where
 
         Ok(WrappedMessage {
             spongos: spongos,
-            message: TbinaryMessage {
+            message: BinaryMessage {
                 link: self.header.link.clone(),
                 body: buf,
                 multi_branching: self.header.multi_branching.clone(),

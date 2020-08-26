@@ -11,8 +11,8 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Trinary network Message representation.
-pub struct TbinaryMessage<F, AbsLink> {
+/// Binary network Message representation.
+pub struct BinaryMessage<F, AbsLink> {
     /// Link -- message address.
     pub link: AbsLink,
 
@@ -24,7 +24,7 @@ pub struct TbinaryMessage<F, AbsLink> {
     pub(crate) _phantom: core::marker::PhantomData<F>,
 }
 
-impl<F, AbsLink> PartialEq for TbinaryMessage<F, AbsLink>
+impl<F, AbsLink> PartialEq for BinaryMessage<F, AbsLink>
 where
     AbsLink: PartialEq,
 {
@@ -33,7 +33,7 @@ where
     }
 }
 
-impl<F, AbsLink> fmt::Debug for TbinaryMessage<F, AbsLink>
+impl<F, AbsLink> fmt::Debug for BinaryMessage<F, AbsLink>
 where
     AbsLink: fmt::Debug,
 {
@@ -42,7 +42,7 @@ where
     }
 }
 
-impl<F, AbsLink> fmt::Display for TbinaryMessage<F, AbsLink>
+impl<F, AbsLink> fmt::Display for BinaryMessage<F, AbsLink>
 where
     AbsLink: fmt::Display,
 {
@@ -51,7 +51,7 @@ where
     }
 }
 
-impl<F, AbsLink> Clone for TbinaryMessage<F, AbsLink>
+impl<F, AbsLink> Clone for BinaryMessage<F, AbsLink>
 where
     AbsLink: Clone,
 {
@@ -65,7 +65,7 @@ where
     }
 }
 
-impl<F, AbsLink> TbinaryMessage<F, AbsLink> {
+impl<F, AbsLink> BinaryMessage<F, AbsLink> {
     pub fn new(link: AbsLink, body: Vec<u8>, multi_branching: u8) -> Self {
         Self {
             link,
@@ -79,7 +79,7 @@ impl<F, AbsLink> TbinaryMessage<F, AbsLink> {
     }
 }
 
-impl<F, Link> TbinaryMessage<F, Link>
+impl<F, Link> BinaryMessage<F, Link>
 where
     F: PRP,
     Link: Clone + AbsorbExternalFallback<F>,

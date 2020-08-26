@@ -30,8 +30,8 @@ pub type Address = TangleAddress;
 /// Channel address.
 pub type ChannelAddress = AppInst;
 
-/// Tbinary encoded message type.
-pub type Message = message::TbinaryMessage<DefaultF, Address>;
+/// Binary encoded message type.
+pub type Message = message::BinaryMessage<DefaultF, Address>;
 /// Message type with parsed header.
 pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 

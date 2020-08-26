@@ -168,7 +168,7 @@ where
     pub fn announce<'a>(
         &'a mut self,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_announcement()?.wrap()?;
         let r = wrapped.commit(self.store.borrow_mut(), info);
         r
@@ -262,7 +262,7 @@ where
         psk_ids: &psk::PskIds,
         ke_pks: &Vec<x25519::PublicKeyWrap>,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_keyload(link_to, psk_ids, ke_pks)?.wrap()?;
         wrapped.commit(self.store.borrow_mut(), info)
     }
@@ -273,7 +273,7 @@ where
         &mut self,
         link_to: &<Link as HasLink>::Rel,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_keyload_for_everyone(link_to)?.wrap()?;
         wrapped.commit(self.store.borrow_mut(), info)
     }
@@ -309,7 +309,7 @@ where
         seq_link: <Link as HasLink>::Rel,
         seq_num: usize,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_sequence(&seq_link, seq_num, NBytes(ref_link))?.wrap()?;
 
         wrapped.commit(self.store.borrow_mut(), info)
@@ -346,7 +346,7 @@ where
         public_payload: &Bytes,
         masked_payload: &Bytes,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self
             .prepare_signed_packet(link_to, public_payload, masked_payload)?
             .wrap()?;
@@ -384,7 +384,7 @@ where
         public_payload: &Bytes,
         masked_payload: &Bytes,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<TbinaryMessage<F, Link>> {
+    ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self
             .prepare_tagged_packet(link_to, public_payload, masked_payload)?
             .wrap()?;
@@ -543,7 +543,7 @@ where
     /// Unwrap message with default logic.
     pub fn handle_msg(
         &mut self,
-        msg: &TbinaryMessage<F, Link>,
+        msg: &BinaryMessage<F, Link>,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
         let preparsed = msg.parse_header()?;
