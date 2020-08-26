@@ -6,7 +6,7 @@ use core::cell::Ref;
 
 use super::*;
 use iota_streams_core::sponge::prp::PRP;
-use iota_streams_protobuf3::types::*;
+use iota_streams_ddml::types::*;
 
 /// Message context prepared for wrapping.
 pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {

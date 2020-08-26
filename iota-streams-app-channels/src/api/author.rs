@@ -30,7 +30,7 @@ use iota_streams_app::message::{
     header::Header,
     *,
 };
-use iota_streams_protobuf3::types::*;
+use iota_streams_ddml::types::*;
 
 use super::*;
 use crate::message::*;
@@ -561,8 +561,8 @@ where
         }
     }
 
-    pub fn get_branching_flag<'a>(&self) -> &u8 {
-        &self.multi_branching
+    pub fn get_branching_flag(&self) -> u8 {
+        self.multi_branching
     }
 
     pub fn gen_msg_id(&mut self, link: &<Link as HasLink>::Rel, pk: x25519::PublicKey, seq: usize) -> Link {
@@ -579,11 +579,9 @@ where
         self.seq_states.insert(pubkey.as_bytes().to_vec(), (msg_link, seq_num));
     }
 
-    /// Retrieve the sequence state fo a given publisher
-    pub fn get_seq_state(&self, pubkey: x25519::PublicKey) -> Result<(Link, usize)> {
-        let seq_link = self.seq_states.get(&pubkey.as_bytes().to_vec()).unwrap().0.clone();
-        let seq_num = self.seq_states.get(&pubkey.as_bytes().to_vec()).unwrap().1;
-        Ok((seq_link, seq_num))
+    /// Retrieve the sequence state for a given publisher
+    pub fn get_seq_state(&self, pubkey: x25519::PublicKey) -> Option<(Link, usize)> {
+        self.seq_states.get(&pubkey.as_bytes().to_vec()).cloned()
     }
 
     pub fn get_seq_num(&self) -> usize {

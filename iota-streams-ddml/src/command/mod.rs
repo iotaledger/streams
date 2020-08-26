@@ -1,4 +1,4 @@
-//! Protobuf3 commands are declared as traits, a new command/trait can be added without breaking old types.
+//! DDML commands are declared as traits, a new command/trait can be added without breaking old types.
 //!
 //! Commands usually take arguments, different commands process arguments of different types.
 //! Argument types are arguments to traits corresponding to commands.

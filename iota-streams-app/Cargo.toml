@@ -11,7 +11,7 @@ description = "A rust implementation of the IOTA Streams applications"
 [features]
 default = ["std", "async", "tangle"]
 # enable std
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-protobuf3/std", "anyhow/std", "hex/std", "chrono/std"]
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "anyhow/std", "hex/std", "chrono/std"]
 async = ["iota-core", "iota-constants", "chrono", "smol", "num_cpus"]
 #TODO: move to a separate crate
 # iota-core currently provides async only API
@@ -24,7 +24,7 @@ path = "src/lib.rs"
 [dependencies]
 iota-streams-core = { version = "0.2.0", path = "../iota-streams-core", default-features = false }
 iota-streams-core-edsig = { version = "0.2.0", path = "../iota-streams-core-edsig", default-features = false }
-iota-streams-protobuf3 = { version = "0.2.0", path = "../iota-streams-protobuf3", default-features = false }
+iota-streams-ddml = { version = "0.2.0", path = "../iota-streams-ddml", default-features = false }
 # `iota-core` crate is WIP with unstable API atm of writing.
 iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531", optional = true }
 iota-constants = { version = "0.2.1", optional = true }

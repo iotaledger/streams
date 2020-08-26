@@ -6,7 +6,7 @@ use iota_streams_core::sponge::{
     prp::PRP,
     spongos::Spongos,
 };
-use iota_streams_protobuf3::types::*;
+use iota_streams_ddml::types::*;
 
 /// Result of wrapping the message.
 pub struct UnwrappedMessage<F, Link, Content> {

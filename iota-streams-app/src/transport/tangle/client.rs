@@ -471,6 +471,18 @@ async fn send_trytes(opt: SendTrytesOptions, txs: Vec<Transaction>) -> Result<Ve
     Ok(attached_txs)
 }
 
+pub struct RecvOptions {
+    multi_branching: u8,
+}
+
+impl Default for RecvOptions {
+    fn default() -> Self {
+        Self {
+            multi_branching: 0,
+        }
+    }
+}
+
 impl<F> Transport<F, TangleAddress> for &iota_client::Client {
     type SendOptions = SendTrytesOptions;
 
@@ -492,14 +504,13 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         Ok(())
     }
 
-    type RecvOptions = ();
+    type RecvOptions = RecvOptions;
 
     /// Receive a message.
     fn recv_messages_with_options(
         &mut self,
         link: &TangleAddress,
-        multi_branching: u8,
-        _opt: Self::RecvOptions,
+        opt: Self::RecvOptions,
     ) -> Result<Vec<TbinaryMessage<F, TangleAddress>>> {
         let tx_address =
             Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.tbits())))
@@ -511,7 +522,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         if !txs.is_err() {
             Ok(bundles_from_trytes(txs.unwrap())
                 .into_iter()
-                .map(|b| msg_from_bundle(&b, multi_branching))
+                .map(|b| msg_from_bundle(&b, opt.multi_branching))
                 .collect())
         } else {
             Ok(Vec::new())

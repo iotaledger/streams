@@ -11,7 +11,7 @@ description = "A rust implementation of the IOTA Streams Channels Application"
 [features]
 default = ["std", "async", "tangle"]
 # enable std
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-protobuf3/std", "iota-streams-app/std", "anyhow/std"]
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "anyhow/std"]
 async = ["iota-streams-app/async"]
 tangle = ["iota-streams-app/tangle"]
 
@@ -23,6 +23,6 @@ path = "src/lib.rs"
 iota-streams-core = { version = "0.2.0", path = "../iota-streams-core", default-features = false }
 iota-streams-core-edsig = { version = "0.2.0", path = "../iota-streams-core-edsig", default-features = false }
 iota-streams-core-keccak = { version = "0.2.0", path = "../iota-streams-core-keccak", default-features = false }
-iota-streams-protobuf3 = { version = "0.2.0", path = "../iota-streams-protobuf3", default-features = false }
+iota-streams-ddml = { version = "0.2.0", path = "../iota-streams-ddml", default-features = false }
 iota-streams-app = { version = "0.2.0", path = "../iota-streams-app", default-features = false }
 anyhow = { version = "1.0.26", default-features = false }

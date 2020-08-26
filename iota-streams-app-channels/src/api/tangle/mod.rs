@@ -13,7 +13,7 @@ use iota_streams_core_edsig::{
     signature::ed25519,
 };
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
-use iota_streams_protobuf3::{
+use iota_streams_ddml::{
     types as pb3_types,
     types::DefaultLinkStore,
 };
@@ -69,4 +69,4 @@ pub use author::Author;
 /// Tangle-specific Channel Subscriber type.
 pub use subscriber::Subscriber;
 
-mod test;
+pub mod test;

@@ -78,7 +78,7 @@ impl Author {
         let sequenced: Option<Message>;
         let (seq_link, seq_num) = self.imp.get_seq_state(self.imp.ke_kp.1).unwrap();
 
-        if self.imp.get_branching_flag() == &1_u8 {
+        if self.imp.get_branching_flag() == 1_u8 {
             let msg = self
                 .imp
                 .sequence(
@@ -115,7 +115,7 @@ impl Author {
         self.imp.store_state(pk, link, seq_num);
     }
 
-    pub fn get_seq_state(&mut self, pk: x25519::PublicKey) -> Result<(Address, usize)> {
+    pub fn get_seq_state(&mut self, pk: x25519::PublicKey) -> Option<(Address, usize)> {
         self.imp.get_seq_state(pk)
     }
 
@@ -174,7 +174,7 @@ impl Author {
         Ok(msg_id)
     }
 
-    pub fn get_branching_flag<'a>(&self) -> &u8 {
+    pub fn get_branching_flag(&self) -> u8 {
         self.imp.get_branching_flag()
     }
 

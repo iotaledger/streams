@@ -8,7 +8,7 @@ use iota_streams_app_channels::{
     },
     message,
 };
-use iota_streams_protobuf3::types::*;
+use iota_streams_ddml::types::*;
 
 use anyhow::{
     ensure,

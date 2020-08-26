@@ -3,7 +3,7 @@ use anyhow::Result;
 
 use super::*;
 use iota_streams_core::prelude::String;
-use iota_streams_protobuf3::command::unwrap;
+use iota_streams_ddml::command::unwrap;
 
 /// Message context preparsed for unwrapping.
 pub struct PreparsedMessage<'a, F, Link> {

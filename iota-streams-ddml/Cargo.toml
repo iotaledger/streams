@@ -1,12 +1,12 @@
 [package]
-name = "iota-streams-protobuf3"
+name = "iota-streams-ddml"
 version = "0.2.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
-keywords = ["iota", "streams", "protobuf3"]
-description = "A rust implementation of the IOTA Streams Protobuf3"
+keywords = ["iota", "streams", "ddml"]
+description = "A rust implementation of the IOTA Streams DDML"
 
 [features]
 default = ["std"]
@@ -14,7 +14,7 @@ default = ["std"]
 std = ["rand/std", "iota-streams-core/std", "iota-streams-core-edsig/std", "digest/std", "anyhow/std"]
 
 [lib]
-name = "iota_streams_protobuf3"
+name = "iota_streams_ddml"
 path = "src/lib.rs"
 
 [dependencies]

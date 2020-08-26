@@ -30,7 +30,7 @@ use iota_streams_core::{
         word::SpongosTbitWord,
     },
 };
-use iota_streams_protobuf3::{
+use iota_streams_ddml::{
     command::*,
     io,
     types::*,

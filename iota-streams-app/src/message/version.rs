@@ -1,5 +1,5 @@
-//! Streams message syntax version distinguished between incompatible changes in Protobuf3
-//! syntax and/or rules of processing Protobuf3 messages. It usually means that a new
+//! Streams message syntax version distinguished between incompatible changes in DDML
+//! syntax and/or rules of processing DDML messages. It usually means that a new
 //! command or type is added, or command proceeds in a different manner than before.
 //! It can also signify changes in the `Header` message.
 //!
@@ -11,7 +11,7 @@
 //!
 //! Backwards compatibility of the Streams implementations is welcome and not mandatory.
 
-use iota_streams_protobuf3::types::Uint8;
+use iota_streams_ddml::types::Uint8;
 
 /// Streams version number.
 pub const STREAMS_1_VER: Uint8 = Uint8(0);

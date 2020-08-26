@@ -57,8 +57,8 @@ use iota_streams_core::{
     prelude::Vec,
     sponge::prp::PRP,
 };
-use iota_streams_protobuf3 as protobuf3;
-use protobuf3::{
+use iota_streams_ddml as ddml;
+use ddml::{
     command::*,
     io,
     types::*,

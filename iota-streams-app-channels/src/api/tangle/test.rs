@@ -14,15 +14,16 @@ use anyhow::{
     Result,
 };
 use iota_streams_app::message::HasLink;
-use iota_streams_protobuf3::types::*;
-use iota_streams_core::prelude::str::FromStr;
+use iota_streams_ddml::types::*;
+use core::str::FromStr;
+use iota_streams_core::prelude::string::ToString;
 
-fn example<T: Transport>(transport: &mut T) -> Result<()>
+pub fn example<T: Transport>(transport: &mut T) -> Result<()>
 where
     T::SendOptions: Default,
     T::RecvOptions: Default,
 {
-    let mut author = Author::new("AUTHOR9SEED");
+    let mut author = Author::new("AUTHOR9SEED", false);
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
     let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
@@ -77,7 +78,7 @@ where
 
     println!("sign packet");
     let signed_packet_link = {
-        let msg = author.sign_packet(&announcement_link, &public_payload, &masked_payload)?;
+        let (msg, _) = author.sign_packet(&announcement_link, &public_payload, &masked_payload)?;
         println!("  {}", msg);
         transport.send_message(&msg)?;
         msg.link.clone()
@@ -116,7 +117,7 @@ where
 
     println!("share keyload for everyone");
     let keyload_link = {
-        let msg = author.share_keyload_for_everyone(&announcement_link)?;
+        let (msg, _) = author.share_keyload_for_everyone(&announcement_link)?;
         println!("  {}", msg);
         transport.send_message(&msg)?;
         msg.link
@@ -136,7 +137,7 @@ where
 
     println!("tag packet");
     let tagged_packet_link = {
-        let msg = author.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
+        let (msg, _) = author.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
         println!("  {}", msg);
         transport.send_message(&msg)?;
         msg.link.clone()
@@ -165,14 +166,14 @@ where
 
     // println!("unsubscribe");
     // let unsubscribe_link = {
-    // let msg = subscriberB.unsubscribe(&subscribeB_link)?;
+    // let (msg, _) = subscriberB.unsubscribe(&subscribeB_link)?;
     // println!("  {}", msg);
     // transport.send_message(&msg)?;
     // msg.link
     // };
     //
     // {
-    // let msg = transport.recv_message(&unsubscribe_link)?;
+    // let (msg, _) = transport.recv_message(&unsubscribe_link)?;
     // let preparsed = msg.parse_header()?;
     // ensure!(preparsed.check_content_type(message::unsubscribe::TYPE));
     // author.unwrap_unsubscribe(preparsed)?;

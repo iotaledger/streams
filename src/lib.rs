@@ -8,5 +8,5 @@ pub use iota_streams_core as core;
 pub use iota_streams_core_edsig as core_edsig;
 /// Keccak-f\[1600\]-based sponge transform.
 pub use iota_streams_core_keccak as core_keccak;
-/// Protobuf3 EDSL for Streams Messages.
-pub use iota_streams_protobuf3 as protobuf3;
+/// DDML EDSL for Streams Messages.
+pub use iota_streams_ddml as ddml;

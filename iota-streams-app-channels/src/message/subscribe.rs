@@ -52,7 +52,7 @@ use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,
 };
-use iota_streams_protobuf3::{
+use iota_streams_ddml::{
     command::*,
     io,
     types::*,

@@ -399,16 +399,16 @@ impl<T> AsMut<T> for Fallback<T> {
     }
 }
 
-/// Trait allows for custom (non-standard Protobuf3) types to be Absorb.
+/// Trait allows for custom (non-standard DDML) types to be Absorb.
 pub trait AbsorbFallback<F> {
     fn sizeof_absorb(&self, ctx: &mut sizeof::Context<F>) -> Result<()>;
     fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()>;
     fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()>;
 }
 
-/// Trait allows for custom (non-standard Protobuf3) types to be AbsorbExternal.
+/// Trait allows for custom (non-standard DDML) types to be AbsorbExternal.
 /// It is usually implemented for "absolute" link types that are not specified
-/// in Protobuf3 and domain specific.
+/// in DDML and domain specific.
 ///
 /// Note, that "absolute" links are absorbed in the message header.
 pub trait AbsorbExternalFallback<F> {
@@ -417,9 +417,9 @@ pub trait AbsorbExternalFallback<F> {
     fn unwrap_absorb_external<IS: io::IStream>(&self, ctx: &mut unwrap::Context<F, IS>) -> Result<()>;
 }
 
-/// Trait allows for custom (non-standard Protobuf3) types to be Absorb.
+/// Trait allows for custom (non-standard DDML) types to be Absorb.
 /// It is usually implemented for "relative" link types that are not specified
-/// in Protobuf3 and domain specific.
+/// in DDML and domain specific.
 ///
 /// Note, that "relative" links are usually skipped and joined in the message content.
 pub trait SkipFallback<F> {

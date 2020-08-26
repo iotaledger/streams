@@ -14,7 +14,7 @@ use iota_streams_core::{
 };
 // TODO: should ed25519 or x25519 public key used for link generation?
 use iota_streams_core_edsig::key_exchange::x25519;
-use iota_streams_protobuf3::{
+use iota_streams_ddml::{
     command::*,
     io,
     types::*,

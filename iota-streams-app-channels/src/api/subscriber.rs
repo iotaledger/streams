@@ -26,7 +26,7 @@ use iota_streams_app::message::{
     header::Header,
     *,
 };
-use iota_streams_protobuf3::types::*;
+use iota_streams_ddml::types::*;
 
 use super::*;
 use crate::message::*;

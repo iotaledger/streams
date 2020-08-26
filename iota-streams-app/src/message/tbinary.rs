@@ -6,7 +6,7 @@ use iota_streams_core::{
     prelude::Vec,
     sponge::prp::PRP,
 };
-use iota_streams_protobuf3::{
+use iota_streams_ddml::{
     command::unwrap,
     types::*,
 };

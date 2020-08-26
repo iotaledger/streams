@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use iota_streams_protobuf3::{
+use iota_streams_ddml::{
     command::{
         sizeof,
         unwrap,
