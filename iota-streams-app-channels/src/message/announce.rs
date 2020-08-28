@@ -1,31 +1,24 @@
 //! `Announce` message content. This is the initial message of the Channel application instance.
-//! It announces channel owner's public keys: MSS and possibly NTRU, and is similar to
+//! It announces channel owner's public keys: Ed25519 signature key and corresponding X25519 key
+//! exchange key (derived from Ed25519 public key). The `Announce` message is similar to
 //! self-signed certificate in a conventional PKI.
 //!
-//! ```pb3
+//! ```ddml
 //! message Announce {
-//!     absorb tryte msspk[81];
-//!     absorb oneof {
-//!         null empty = 0;
-//!         tryte ntrupk[3072] = 1;
-//!     }
+//!     absorb u8 ed25519pk[32];
 //!     commit;
-//!     squeeze external tryte tag[78];
-//!     mssig(tag) sig;
+//!     squeeze external u8 tag[32];
+//!     ed25519(tag) sig;
 //! }
 //! ```
 //!
 //! # Fields
 //!
-//! * `msspk` -- channel owner's MSS public key.
-//!
-//! * `empty` -- signifies absence of owner's NTRU public key.
-//!
-//! * `ntrupk` -- channel owner's NTRU public key.
+//! * `ed25519pk` -- channel owner's Ed25519 public key.
 //!
 //! * `tag` -- hash-value to be signed.
 //!
-//! * `sig` -- signature of `tag` field produced with the MSS private key corresponding to `msspk`.
+//! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
 //!
 
 use anyhow::Result;
@@ -43,12 +36,21 @@ use iota_streams_ddml::{
 };
 
 /// Type of `Announce` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9ANNOUNCE";
+pub const TYPE: &str = "STREAMS9CHANNELS9ANNOUNCE";
 
 pub struct ContentWrap<'a, F> {
-    pub(crate) sig_kp: &'a ed25519::Keypair,
-    pub multi_branching: u8,
-    pub(crate) _phantom: core::marker::PhantomData<F>,
+    sig_kp: &'a ed25519::Keypair,
+    _phantom: core::marker::PhantomData<F>,
+}
+
+impl<'a, F> ContentWrap<'a, F>
+{
+    pub fn new(sig_kp: &'a ed25519::Keypair) -> Self {
+        Self {
+            sig_kp,
+            _phantom: core::marker::PhantomData,
+        }
+    }
 }
 
 impl<'a, F, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F>
@@ -57,7 +59,6 @@ where
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.sig_kp.public)?;
-        ctx.absorb(NBytes::zero(1))?;
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
@@ -68,7 +69,6 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.absorb(&self.sig_kp.public)?;
-        ctx.absorb(&NBytes(vec![self.multi_branching]))?;
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
@@ -77,7 +77,6 @@ where
 pub struct ContentUnwrap<F> {
     pub(crate) sig_pk: ed25519::PublicKey,
     pub(crate) ke_pk: x25519::PublicKey,
-    pub multi_branching: u8,
     _phantom: core::marker::PhantomData<F>,
 }
 
@@ -88,7 +87,6 @@ impl<F> Default for ContentUnwrap<F> {
         Self {
             sig_pk,
             ke_pk,
-            multi_branching: 0,
             _phantom: core::marker::PhantomData,
         }
     }
@@ -103,13 +101,8 @@ where
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mut input_byte = NBytes::zero(1);
         ctx.absorb(&mut self.sig_pk)?;
         self.ke_pk = x25519::public_from_ed25519(&self.sig_pk);
-        ctx.absorb(&mut input_byte)?;
-        if input_byte.0[0] == 1_u8 {
-            self.multi_branching = 1;
-        }
         ctx.ed25519(&self.sig_pk, HashSig)?;
         Ok(ctx)
     }

@@ -1,12 +1,12 @@
 //! `Sequence` message content. These messages act as a referencing lookup point for messages in a
 //! multi-branch tree.
 //!
-//! ```pb3
+//! ```ddml
 //! message Sequence {
-//!     join   link  msgid (sequencing);
-//!     absorb tryte ntrupkid[81];
-//!     absorb size  seqNum;
-//!     absorb link  reflink (connected message);
+//!     join link msgid (sequencing);
+//!     absorb u8 pk[32];
+//!     absorb uint seq_num;
+//!     absorb link reflink (connected message);
 //!     commit;
 //! }
 //! ```

@@ -1,3 +1,7 @@
+use anyhow::{
+    Result,
+};
+
 use iota_streams_app_channels::{
     api::tangle::{
         Address,
@@ -8,16 +12,14 @@ use iota_streams_app_channels::{
     message,
 };
 
+use iota_streams_core::prelude::String;
 use iota_streams_app::message::HasLink;
 
-use std::string::String as stdString;
-
-#[allow(dead_code)]
 pub fn s_fetch_next_messages<T: Transport>(
     subscriber: &mut Subscriber,
     transport: &mut T,
     recv_opt: T::RecvOptions,
-    multi_branching_flag: u8,
+    multi_branching: bool,
 ) where
     T::RecvOptions: Copy,
 {
@@ -26,7 +28,7 @@ pub fn s_fetch_next_messages<T: Transport>(
     let mut exists = true;
 
     while exists {
-        let ids = subscriber.gen_next_msg_ids(multi_branching_flag == 1_u8);
+        let ids = subscriber.gen_next_msg_ids(multi_branching);
         exists = false;
 
         for id in ids.iter() {
@@ -34,7 +36,7 @@ pub fn s_fetch_next_messages<T: Transport>(
             seq_num = id.2.clone();
 
             let msg = transport
-                .recv_message_with_options(&next_id, multi_branching_flag.clone(), recv_opt)
+                .recv_message_with_options(&next_id, recv_opt)
                 .ok();
             if msg.is_none() {
                 continue;
@@ -44,7 +46,7 @@ pub fn s_fetch_next_messages<T: Transport>(
 
             loop {
                 let preparsed = unwrapped.parse_header().unwrap();
-                let content_type = stdString::from_utf8(preparsed.header.content_type.0[..].to_vec()).unwrap();
+                let content_type = String::from_utf8(preparsed.header.content_type.0[..].to_vec()).unwrap();
                 print!("Message exists at {}... ", &preparsed.header.link.rel());
                 match content_type.as_str() {
                     message::signed_packet::TYPE => {
@@ -66,7 +68,7 @@ pub fn s_fetch_next_messages<T: Transport>(
                         print!("Found sequenced message.\tFetching sequenced message... ");
                         let msgid = subscriber.unwrap_sequence(preparsed.clone()).unwrap();
                         let msg = transport
-                            .recv_message_with_options(&msgid, multi_branching_flag.clone(), recv_opt)
+                            .recv_message_with_options(&msgid, recv_opt)
                             .ok();
                         subscriber.store_state(id.0.clone(), preparsed.header.link.clone());
                         unwrapped = msg.unwrap();
@@ -78,7 +80,7 @@ pub fn s_fetch_next_messages<T: Transport>(
                 }
             }
 
-            if !(multi_branching_flag == 1_u8) {
+            if !(multi_branching) {
                 subscriber.store_state_for_all(next_id.clone(), seq_num);
             }
             exists = true;
@@ -90,12 +92,11 @@ pub fn s_fetch_next_messages<T: Transport>(
     }
 }
 
-#[allow(dead_code)]
 pub fn a_fetch_next_messages<T: Transport>(
     author: &mut Author,
     transport: &mut T,
     recv_opt: T::RecvOptions,
-    multi_branching_flag: u8,
+    multi_branching: bool,
 ) where
     T::RecvOptions: Copy,
 {
@@ -104,14 +105,14 @@ pub fn a_fetch_next_messages<T: Transport>(
     let mut exists = true;
 
     while exists {
-        let ids = author.gen_next_msg_ids(multi_branching_flag == 1_u8);
+        let ids = author.gen_next_msg_ids(multi_branching);
         exists = false;
         for id in ids.iter() {
             next_id = id.1.clone();
             seq_num = id.2.clone();
 
             let msg = transport
-                .recv_message_with_options(&next_id, multi_branching_flag.clone(), recv_opt)
+                .recv_message_with_options(&next_id, recv_opt)
                 .ok();
             if msg.is_none() {
                 continue;
@@ -121,7 +122,7 @@ pub fn a_fetch_next_messages<T: Transport>(
                 let preparsed = unwrapped.parse_header().unwrap();
                 print!("Message exists at {}... ", &preparsed.header.link.rel());
 
-                match stdString::from_utf8(preparsed.header.content_type.0[..].to_vec())
+                match String::from_utf8(preparsed.header.content_type.0[..].to_vec())
                     .unwrap()
                     .as_str()
                 {
@@ -134,7 +135,7 @@ pub fn a_fetch_next_messages<T: Transport>(
                         let msgid = author.unwrap_sequence(preparsed.clone()).unwrap();
                         print!("Found sequenced message.\tFetching sequenced message... ");
                         let msg = transport
-                            .recv_message_with_options(&msgid, multi_branching_flag, recv_opt)
+                            .recv_message_with_options(&msgid, recv_opt)
                             .ok();
                         author.store_state(id.0.clone(), preparsed.header.link.clone());
                         unwrapped = msg.unwrap();
@@ -151,7 +152,7 @@ pub fn a_fetch_next_messages<T: Transport>(
                 }
             }
 
-            if !(multi_branching_flag == 1_u8) {
+            if !(multi_branching) {
                 author.store_state_for_all(next_id.clone(), seq_num);
             }
             exists = true;

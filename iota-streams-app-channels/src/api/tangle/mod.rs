@@ -14,7 +14,7 @@ use iota_streams_core_edsig::{
 };
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::{
-    types as pb3_types,
+    types as ddml_types,
     types::DefaultLinkStore,
 };
 
@@ -22,7 +22,7 @@ use iota_streams_ddml::{
 pub type DefaultF = KeccakF1600;
 
 /// Default Tbit & PSK & MSS & NTRU types.
-pub type Bytes = pb3_types::Bytes;
+pub type Bytes = ddml_types::Bytes;
 pub type PskIds = psk::PskIds;
 
 /// Link type.

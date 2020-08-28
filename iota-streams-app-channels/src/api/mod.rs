@@ -8,6 +8,7 @@ use iota_streams_core::{
     prelude::Vec,
     sponge::prp::PRP,
 };
+use iota_streams_core_edsig::key_exchange::x25519;
 
 #[cfg(all(feature = "tangle"))]
 use iota_streams_app::{
@@ -20,7 +21,7 @@ use iota_streams_app::{
 pub trait ChannelLinkGenerator<Link>
 where
     Link: HasLink,
-    Self: LinkGenerator<Link, Vec<u8>> + LinkGenerator<Link, <Link as HasLink>::Rel>,
+    Self: LinkGenerator<Link, (Vec<u8>, x25519::PublicKey, usize)> + LinkGenerator<Link, (<Link as HasLink>::Rel, x25519::PublicKey, usize)>,
 {
 }
 

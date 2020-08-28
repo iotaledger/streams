@@ -98,6 +98,15 @@ where
     }
 }
 
+impl<F, OS: io::OStream> Absorb<External<Uint8>> for Context<F, OS>
+where
+    F: PRP,
+{
+    fn absorb(&mut self, u: External<Uint8>) -> Result<&mut Self> {
+        self.absorb(&u)
+    }
+}
+
 impl<'a, F, OS: io::OStream> Absorb<External<&'a Size>> for Context<F, OS>
 where
     F: PRP,

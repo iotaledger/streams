@@ -1,30 +1,27 @@
 //! `Keyload` message content. This message contains key information for the set of recipients.
-//! Recipients are identified either by pre-shared keys or by NTRU public key identifiers.
+//! Recipients are identified either by pre-shared keys or by Ed/X25519 public key identifiers.
 //!
-//! ```pb3
+//! ```ddml
 //! message Keyload {
 //!     join link msgid;
-//!     absorb byte nonce[27];
+//!     absorb u8 nonce[16];
 //!     skip repeated {
 //!         fork;
-//!         mask byte id[27];
-//!         absorb external byte psk[81];
+//!         mask u8 id[16];
+//!         absorb external u8 psk[32];
 //!         commit;
-//!         mask(key) byte ekey[81];
+//!         mask u8 key[32];
 //!     }
 //!     skip repeated {
 //!         fork;
-//!         mask byte id[27];
-//!         ntrukem(key) byte ekey[3072];
+//!         mask u8 xpk[32];
+//!         absorb u8 eph_key[32];
+//!         x25519(eph_key) u8 xkey[32];
+//!         commit;
+//!         mask u8 key[32];
 //!     }
-//!     absorb external byte key[81];
+//!     absorb external u8 key[32];
 //!     commit;
-//! }
-//! fork {
-//!     skip oneof {
-//!         null unsigned = 0;
-//!         MSSig sig = 1;
-//!     }
 //! }
 //! ```
 //!
@@ -33,21 +30,22 @@
 //! * `nonce` -- A nonce to be used with the key encapsulated in the keyload.
 //! A unique nonce allows for session keys to be reused.
 //!
-//! * `id` -- Key (PSK or NTRU public key) identifier.
+//! * `id` -- Key (PSK or X25519 public key) identifier.
 //!
 //! * `psk` -- Pre-shared key known to the author and to a legit recipient.
 //!
-//! * `ekey` -- Masked session key; session key is either encrypted with spongos or with NTRU.
+//! * `xpk` -- Recipient's X25519 public key.
 //!
-//! * `key` -- Session key; a legit recipient gets it from `ekey`.
+//! * `eph_key` -- X25519 random ephemeral key.
+//!
+//! * `xkey` -- X25519 common key.
+//!
+//! * `key` -- Session key; a legit recipient gets it from corresponding fork.
 //!
 //! * `sig` -- Optional signature; allows to authenticate keyload.
 //!
 //! Notes:
 //! 1) Keys identities are not encrypted and may be linked to recipients identities.
-//!     One possible solution is to use ephemeral NTRU keys and `mask` keys `id`s
-//!     instead of `absorb`ing them. Then two keyload messages can be published consequently
-//!     and identities of the latter keyload will be protected with the key from the former.
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
 
@@ -71,7 +69,7 @@ use iota_streams_ddml::{
 };
 
 /// Type of `Keyload` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9KEYLOAD";
+pub const TYPE: &str = "STREAMS9CHANNELS9KEYLOAD";
 
 pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
@@ -108,7 +106,10 @@ where
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone(), |ctx, ke_pk| {
-                ctx.fork(|ctx| ctx.absorb(&ke_pk.0)?.x25519(&ke_pk.0, &self.key))
+                ctx.fork(|ctx| {
+                    ctx.absorb(&ke_pk.0)?
+                        .x25519(&ke_pk.0, &self.key)
+                })
             })?
             .absorb(External(&self.key))?
             .commit()?;

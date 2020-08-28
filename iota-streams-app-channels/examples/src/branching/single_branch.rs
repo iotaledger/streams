@@ -20,21 +20,21 @@ use heapless::{
     Vec,
 };
 
-use utils;
+use super::utils;
 
 pub fn example<T: Transport>(
     transport: &mut T,
     send_opt: T::SendOptions,
     recv_opt: T::RecvOptions,
+    multi_branching: bool,
     seed: &str,
 ) -> Result<()>
 where
     T::SendOptions: Copy,
     T::RecvOptions: Copy,
 {
-    let multi_branching_flag = &0_u8;
-    let mut author = Author::new(seed, multi_branching_flag == &1_u8);
-    println!("Author multi branching?: {:?}", author.get_branching_flag() == &1_u8);
+    let mut author = Author::new(seed, multi_branching);
+    println!("Author multi branching?: {:?}", author.get_branching_flag() == 1_u8);
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
     let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
@@ -61,7 +61,7 @@ where
     println!("Announcement link at: {}", &announcement_link);
     {
         let msg = transport
-            .recv_message_with_options(&announcement_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&announcement_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header().unwrap();
         ensure!(
@@ -107,7 +107,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&subscribeA_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&subscribeA_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
@@ -128,7 +128,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&subscribeB_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&subscribeB_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
@@ -149,7 +149,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&previous_msg_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&previous_msg_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
@@ -177,7 +177,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&previous_msg_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&previous_msg_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
@@ -192,7 +192,7 @@ where
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA, transport, recv_opt, multi_branching_flag.clone());
+    utils::s_fetch_next_messages(&mut subscriberA, transport, recv_opt, multi_branching);
 
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
@@ -206,7 +206,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&previous_msg_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&previous_msg_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
@@ -238,7 +238,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&previous_msg_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&previous_msg_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
@@ -260,7 +260,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&previous_msg_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&previous_msg_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
@@ -271,7 +271,7 @@ where
     }
 
     println!("\nSubscriber B fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberB, transport, recv_opt, multi_branching_flag.clone());
+    utils::s_fetch_next_messages(&mut subscriberB, transport, recv_opt, multi_branching);
 
     println!("\nTagged packet 4 - SubscriberB");
     let previous_msg_link = {
@@ -285,7 +285,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&previous_msg_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&previous_msg_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
@@ -306,7 +306,7 @@ where
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author, transport, recv_opt, multi_branching_flag.clone());
+    utils::a_fetch_next_messages(&mut author, transport, recv_opt, multi_branching);
 
     println!("\nSigned packet");
     let previous_msg_link = {
@@ -320,7 +320,7 @@ where
 
     {
         let msg = transport
-            .recv_message_with_options(&previous_msg_link, multi_branching_flag.clone(), recv_opt)
+            .recv_message_with_options(&previous_msg_link, recv_opt)
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(

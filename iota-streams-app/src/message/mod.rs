@@ -12,7 +12,7 @@ use iota_streams_ddml::{
 use iota_streams_core_edsig::key_exchange::x25519;
 
 /// Type of "absolute" links. For http it's the absolute URL.
-pub trait HasLink: Sized {
+pub trait HasLink: Sized + Default + Clone + Eq {
     /// Type of "base" links. For http it's domain name.
     type Base;
 
@@ -20,7 +20,7 @@ pub trait HasLink: Sized {
     fn base(&self) -> &Self::Base;
 
     /// Type of "relative" links. For http it's URL path.
-    type Rel;
+    type Rel: Default + Clone;
 
     /// Get relative part of the link.
     fn rel(&self) -> &Self::Rel;
@@ -32,15 +32,13 @@ pub trait HasLink: Sized {
 /// Abstraction-helper to generate message links.
 pub trait LinkGenerator<Link, From> {
     /// Derive a new link using an arg.
-    fn link_from(&mut self, arg: &From, pk: x25519::PublicKey, multi_branching: u8, seq: usize) -> Link;
+    fn link_from(&mut self, arg: &From) -> Link;
 
     /// Derive a new link and construct a header with given content type.
     fn header_from(
         &mut self,
         arg: &From,
-        pk: x25519::PublicKey,
-        multi_branching: u8,
-        seq: usize,
+        flags: u8,
         content_type: &str,
     ) -> header::Header<Link>;
     // {

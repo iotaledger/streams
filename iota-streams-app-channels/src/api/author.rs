@@ -27,7 +27,7 @@ use iota_streams_core_edsig::{
 };
 
 use iota_streams_app::message::{
-    header::Header,
+    header::{Header, FLAG_BRANCHING_MASK},
     *,
 };
 use iota_streams_ddml::types::*;
@@ -82,8 +82,8 @@ pub struct AuthorT<F, Link, Store, LinkGen> {
     /// Link to the announce message, ie. application instance.
     pub(crate) appinst: Link,
 
-    /// u8 indicating if multi_branching is used (0 = false, 1 = true)
-    pub multi_branching: u8,
+    /// u8 indicating if flags is used (0 = false, 1 = true)
+    pub flags: u8,
 
     /// Mapping of publisher id to sequence state
     pub(crate) seq_states: HashMap<Vec<u8>, (Link, usize)>,
@@ -91,10 +91,10 @@ pub struct AuthorT<F, Link, Store, LinkGen> {
 
 impl<F, Link, Store, LinkGen> AuthorT<F, Link, Store, LinkGen>
 where
-    F: PRP + Clone + Default,
-    Link: HasLink + AbsorbExternalFallback<F> + Default + Clone + Eq,
+    F: PRP,
+    Link: HasLink + AbsorbExternalFallback<F>,
     <Link as HasLink>::Base: Eq + Debug,
-    <Link as HasLink>::Rel: Eq + Debug + Default + SkipFallback<F>,
+    <Link as HasLink>::Rel: Eq + Debug + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     LinkGen: ChannelLinkGenerator<Link>,
 {
@@ -104,22 +104,17 @@ where
         mut link_gen: LinkGen,
         prng: prng::Prng<F>,
         nonce: Vec<u8>,
-        multi_branching: bool,
+        flags: u8,
     ) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
-
-        let mut multi_branching_flag = 0;
-        if multi_branching {
-            multi_branching_flag = 1
-        }
 
         // App instance link is generated using the 32 byte PubKey and the first 8 bytes of the nonce
         let mut appinst_input = Vec::new();
         appinst_input.extend_from_slice(&sig_kp.public.to_bytes()[..]);
         appinst_input.extend_from_slice(&nonce[0..8]);
 
-        let appinst = link_gen.link_from(&appinst_input, ke_kp.1, multi_branching_flag, ANN_MESSAGE_NUM);
+        let appinst = link_gen.link_from(&(appinst_input.clone(), ke_kp.1, ANN_MESSAGE_NUM));
 
         // Start sequence state of new publishers to 2
         // 0 is used for Announce/Subscribe/Unsubscribe
@@ -139,7 +134,7 @@ where
             link_gen: link_gen,
             appinst: appinst,
             channel_addr: appinst_input,
-            multi_branching: multi_branching_flag,
+            flags: flags,
             seq_states: seq_map,
         }
     }
@@ -150,17 +145,10 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, announce::ContentWrap<F>>> {
         // Create Header for the first message in the channel.
         let header = self.link_gen.header_from(
-            &self.channel_addr,
-            self.ke_kp.1,
-            self.multi_branching,
-            ANN_MESSAGE_NUM,
-            announce::TYPE,
-        );
-        let content = announce::ContentWrap {
-            sig_kp: &self.sig_kp,
-            multi_branching: self.multi_branching.clone(),
-            _phantom: core::marker::PhantomData,
-        };
+            &(self.channel_addr.clone(), (self.ke_kp.1).clone(), ANN_MESSAGE_NUM),
+            self.flags,
+            announce::TYPE);
+        let content = announce::ContentWrap::new(&self.sig_kp);
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
 
@@ -213,10 +201,8 @@ where
         >,
     > {
         let header = self.link_gen.header_from(
-            link_to,
-            self.ke_kp.1,
-            self.multi_branching,
-            self.get_seq_num(),
+            &(link_to.clone(), (self.ke_kp.1).clone(), self.get_seq_num()),
+            self.flags,
             keyload::TYPE,
         );
         let psks = psk::filter_psks(&self.psks, psk_ids);
@@ -243,12 +229,9 @@ where
         >,
     > {
         let header = self.link_gen.header_from(
-            link_to,
-            self.ke_kp.1,
-            self.multi_branching,
-            self.get_seq_num(),
-            keyload::TYPE,
-        );
+            &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
+            self.flags,
+            keyload::TYPE);
         let ipsks = self.psks.iter();
         let ike_pks = self.ke_pks.iter();
         self.do_prepare_keyload(header, link_to, ipsks, ike_pks)
@@ -285,12 +268,9 @@ where
         ref_link: NBytes,
     ) -> Result<PreparedMessage<'a, F, Link, Store, sequence::ContentWrap<'a, Link>>> {
         let header = self.link_gen.header_from(
-            link_to,
-            self.ke_kp.1,
-            self.multi_branching,
-            SEQ_MESSAGE_NUM,
-            sequence::TYPE,
-        );
+            &(link_to.clone(), self.ke_kp.1.clone(), SEQ_MESSAGE_NUM),
+            self.flags,
+            sequence::TYPE);
 
         let content = sequence::ContentWrap {
             link: link_to,
@@ -323,12 +303,9 @@ where
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, Store, signed_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
-            link_to,
-            self.ke_kp.1,
-            self.multi_branching,
-            self.get_seq_num(),
-            signed_packet::TYPE,
-        );
+            &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
+            self.flags,
+            signed_packet::TYPE);
         let content = signed_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -361,12 +338,9 @@ where
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
-            link_to,
-            self.ke_kp.1,
-            self.multi_branching,
-            self.get_seq_num(),
-            tagged_packet::TYPE,
-        );
+            &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
+            self.flags,
+            tagged_packet::TYPE);
         let content = tagged_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -562,12 +536,11 @@ where
     }
 
     pub fn get_branching_flag(&self) -> u8 {
-        self.multi_branching
+        self.flags & FLAG_BRANCHING_MASK
     }
 
     pub fn gen_msg_id(&mut self, link: &<Link as HasLink>::Rel, pk: x25519::PublicKey, seq: usize) -> Link {
-        let multi_branch = self.multi_branching.clone();
-        self.link_gen.link_from(link, pk, multi_branch, seq)
+        self.link_gen.link_from(&(link.clone(), pk, seq))
     }
 
     pub fn get_pks(&self) -> x25519::Pks {

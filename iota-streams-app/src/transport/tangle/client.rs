@@ -270,7 +270,7 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-pub fn msg_from_bundle<F>(bundle: &Bundle, multi_branching: u8) -> BinaryMessage<F, TangleAddress> {
+pub fn msg_from_bundle<F>(bundle: &Bundle, flags: u8) -> BinaryMessage<F, TangleAddress> {
     let tx = bundle.head();
     let appinst = AppInst {
         id: NBytes(tbits_from_tritbuf(tx.address().to_inner())),
@@ -283,7 +283,7 @@ pub fn msg_from_bundle<F>(bundle: &Bundle, multi_branching: u8) -> BinaryMessage
     for tx in bundle.into_iter() {
         body.extend_from_slice(&tbits_from_tritbuf(tx.payload().to_inner()));
     }
-    BinaryMessage::new(TangleAddress { appinst, msgid }, body, multi_branching)
+    BinaryMessage::new(TangleAddress { appinst, msgid }, body, flags)
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -471,14 +471,15 @@ async fn send_trytes(opt: SendTrytesOptions, txs: Vec<Transaction>) -> Result<Ve
     Ok(attached_txs)
 }
 
+#[derive(Copy, Clone)]
 pub struct RecvOptions {
-    multi_branching: u8,
+    pub flags: u8,
 }
 
 impl Default for RecvOptions {
     fn default() -> Self {
         Self {
-            multi_branching: 0,
+            flags: 0,
         }
     }
 }
@@ -522,7 +523,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         if !txs.is_err() {
             Ok(bundles_from_trytes(txs.unwrap())
                 .into_iter()
-                .map(|b| msg_from_bundle(&b, opt.multi_branching))
+                .map(|b| msg_from_bundle(&b, opt.flags))
                 .collect())
         } else {
             Ok(Vec::new())

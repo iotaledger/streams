@@ -29,7 +29,7 @@ impl Author {
                 LinkGen::default(),
                 prng::dbg_init_str(seed),
                 nonce,
-                multi_branching,
+                if multi_branching { 1 } else { 0 },
             ),
         }
     }

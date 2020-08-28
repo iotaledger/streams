@@ -1,16 +1,18 @@
 //! `Header` prepended to each Streams message published in the Tangle.
 //!
-//! ```pb3
+//! ```ddml
 //! message Message {
 //!     Header header;
 //!     Content content;
 //!     commit;
 //! }
 //! message Header {
-//!     absorb byte version;
-//!     absorb external byte appinst[81];
-//!     absorb external byte msgid[27];
-//!     absorb bytes type;
+//!     absorb u8 version;
+//!     absorb external u8 appinst[32];
+//!     absorb external u8 msgid[16];
+//!     absorb u8 flags;
+//!     absorb uint len;
+//!     absorb u8 type[len];
 //! }
 //! ```
 //!
@@ -18,6 +20,8 @@
 //!
 //! * `version` -- the Streams version; it describes the set of commands,
 //! behaviour of commands, format of the `Header` message.
+//!
+//! * `flags` -- a byte desribing app-specific flags.
 //!
 //! * `type` -- a string desribing the type of the content following
 //! this `Header` message.
@@ -30,17 +34,18 @@
 //!
 //! # Alternative design
 //!
-//! ```pb3
+//! ```ddml
 //! message Message {
 //!     Header header;
 //!     Content content;
-//!     squeeze external byte msgid[27];
+//!     squeeze external u8 msgid[16];
 //!     commit;
 //! }
 //! message Header {
 //!     absorb byte version;
-//!     absorb external byte appinst[81];
-//!     absorb bytes type;
+//!     absorb external u8 appinst[32];
+//!     absorb uint len;
+//!     absorb u8 type[len];
 //! }
 //! ```
 //!
@@ -49,6 +54,7 @@
 //! check. To be discussed.
 
 use anyhow::{
+    bail,
     ensure,
     Result,
 };
@@ -66,10 +72,12 @@ use ddml::{
 
 use super::*;
 
+pub const FLAG_BRANCHING_MASK: u8 = 1;
+
 pub struct Header<Link> {
     pub version: Uint8,
     pub link: Link,
-    pub multi_branching: u8,
+    pub flags: Uint8,
     pub content_type: Bytes,
 }
 
@@ -81,28 +89,35 @@ where
         Self {
             version: self.version,
             link: self.link.clone(),
-            multi_branching: self.multi_branching.clone(),
+            flags: self.flags,
             content_type: self.content_type.clone(),
         }
     }
 }
 
 impl<Link> Header<Link> {
-    pub fn new_with_type(link: Link, multi_branching: u8, content_type: &str) -> Self {
+    pub fn new_with_type(link: Link, flags: u8, content_type: &str) -> Self {
         Self {
             version: STREAMS_1_VER,
             link: link,
-            multi_branching: multi_branching,
+            flags: Uint8(flags),
             content_type: Bytes(content_type.as_bytes().to_vec()),
         }
     }
 
-    pub fn new(link: Link, multi_branching: u8) -> Self {
+    pub fn new(link: Link, flags: u8) -> Self {
         Self {
             version: STREAMS_1_VER,
-            link: link,
-            multi_branching: multi_branching,
+            link,
+            flags: Uint8(flags),
             content_type: Bytes(Vec::new()),
+        }
+    }
+
+    pub fn content_type_str(&self) -> Result<&str> {
+        match core::str::from_utf8(&self.content_type.0[..]) {
+            Ok(s) => Ok(s),
+            Err(err) => bail!("Bad content type str: {}", err),
         }
     }
 }
@@ -115,7 +130,7 @@ where
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
-            .absorb(NBytes(vec![self.multi_branching]))?
+            .absorb(self.flags)?
             .absorb(&self.content_type)?;
         Ok(ctx)
     }
@@ -127,7 +142,7 @@ where
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.absorb(&self.version)?
             .absorb(External(Fallback(&self.link)))?
-            .absorb(&NBytes(vec![self.multi_branching]))?
+            .absorb(self.flags)?
             .absorb(&self.content_type)?;
         Ok(ctx)
     }
@@ -145,7 +160,7 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.version)?
             .absorb(External(Fallback(&self.link)))?
-            .absorb(&mut NBytes(vec![self.multi_branching]))?
+            .absorb(&mut self.flags)?
             .absorb(&mut self.content_type)?;
         ensure!(
             self.version == STREAMS_1_VER,

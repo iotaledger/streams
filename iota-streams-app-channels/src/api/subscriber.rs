@@ -23,7 +23,7 @@ use iota_streams_core_edsig::{
 };
 
 use iota_streams_app::message::{
-    header::Header,
+    header::{Header, FLAG_BRANCHING_MASK},
     *,
 };
 use iota_streams_ddml::types::*;
@@ -82,8 +82,8 @@ pub struct SubscriberT<F, Link, Store, LinkGen> {
     /// Link generator.
     pub(crate) link_gen: LinkGen,
 
-    /// u8 indicating if multi_branching is used (0 = false, 1 = true)
-    pub multi_branching: u8,
+    /// u8 indicating if flags is used (0 = false, 1 = true)
+    pub flags: u8,
 
     /// Mapping of publisher id to sequence state
     pub(crate) seq_states: HashMap<Vec<u8>, (Link, usize)>,
@@ -92,7 +92,7 @@ pub struct SubscriberT<F, Link, Store, LinkGen> {
 impl<F, Link, Store, LinkGen> SubscriberT<F, Link, Store, LinkGen>
 where
     F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + Default + Clone + Eq,
+    Link: HasLink + AbsorbExternalFallback<F>,
     <Link as HasLink>::Base: Eq + Debug,
     <Link as HasLink>::Rel: Eq + Debug + Default + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
@@ -116,7 +116,7 @@ where
 
             store: RefCell::new(store),
             link_gen: link_gen,
-            multi_branching: 0,
+            flags: 0,
             seq_states: HashMap::new(),
         }
     }
@@ -173,12 +173,9 @@ where
         >,
     > {
         let header = self.link_gen.header_from(
-            link_to,
-            self.ke_kp.1,
-            self.multi_branching,
-            self.get_seq_num(),
-            keyload::TYPE,
-        );
+            &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
+            self.flags,
+            keyload::TYPE);
         self.do_prepare_keyload(
             header,
             link_to,
@@ -205,12 +202,9 @@ where
         ref_link: NBytes,
     ) -> Result<PreparedMessage<'a, F, Link, Store, sequence::ContentWrap<'a, Link>>> {
         let header = self.link_gen.header_from(
-            link_to,
-            self.ke_kp.1,
-            self.multi_branching,
-            SEQ_MESSAGE_NUM,
-            sequence::TYPE,
-        );
+            &(link_to.clone(), self.ke_kp.1.clone(), SEQ_MESSAGE_NUM),
+            self.flags,
+            sequence::TYPE);
 
         let content = sequence::ContentWrap {
             link: link_to,
@@ -243,12 +237,9 @@ where
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
-            link_to,
-            self.ke_kp.1,
-            self.multi_branching,
-            self.get_seq_num(),
-            tagged_packet::TYPE,
-        );
+            &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
+            self.flags,
+            tagged_packet::TYPE);
         let content = tagged_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -280,12 +271,9 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, subscribe::ContentWrap<'a, F, Link>>> {
         if let Some(author_ke_pk) = &self.author_ke_pk {
             let header = self.link_gen.header_from(
-                link_to,
-                self.ke_kp.1,
-                self.multi_branching,
-                SUB_MESSAGE_NUM,
-                subscribe::TYPE,
-            );
+                &(link_to.clone(), self.ke_kp.1.clone(), SUB_MESSAGE_NUM),
+                self.flags,
+                subscribe::TYPE);
             // let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
             let content = subscribe::ContentWrap {
@@ -374,7 +362,8 @@ where
         self.author_sig_pk = Some(content.sig_pk);
         self.author_ke_pk = Some(x25519::PublicKeyWrap(content.ke_pk));
         self.ke_pks.insert(x25519::PublicKeyWrap(content.ke_pk));
-        self.multi_branching = content.multi_branching;
+        //TODO: set self.flags from header
+        //self.flags = content.flags;
         Ok(())
     }
 
@@ -511,13 +500,12 @@ where
         Ok(content)
     }
 
-    pub fn get_branching_flag<'a>(&self) -> &u8 {
-        &self.multi_branching
+    pub fn get_branching_flag(&self) -> u8 {
+        self.flags & FLAG_BRANCHING_MASK
     }
 
     pub fn gen_msg_id(&mut self, link: &<Link as HasLink>::Rel, pk: x25519::PublicKey, seq: usize) -> Link {
-        let multi_branch = self.multi_branching.clone();
-        self.link_gen.link_from(link, pk, multi_branch, seq)
+        self.link_gen.link_from(&(link.clone(), pk, seq))
     }
 
     pub fn get_pks(&self) -> x25519::Pks {

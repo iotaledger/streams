@@ -151,80 +151,80 @@ impl<F> DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn try_gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> Result<MsgId> {
+    fn try_gen_msgid(&self, msgid: &MsgId, pk: &x25519::PublicKey, seq: usize) -> Result<MsgId> {
         let mut new = MsgId::default();
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
-            .absorb(External(&pk))?
+            .absorb(External(pk))?
             .absorb(External(&msgid.id))?
             .absorb(External(Size(seq)))?
-            .absorb(External(&NBytes(vec![multi_branch])))?
+            //TODO: do we need `flags` here
+            //.absorb(External(Uint8(flags)))?
             .commit()?
             .squeeze(External(&mut new.id))?;
         Ok(new)
     }
-    fn gen_msgid(&self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> MsgId {
-        self.try_gen_msgid(msgid, pk, multi_branch, seq)
+    fn gen_msgid(&self, msgid: &MsgId, pk: &x25519::PublicKey, seq: usize) -> MsgId {
+        self.try_gen_msgid(msgid, pk, seq)
             .map_or(MsgId::default(), |x| x)
     }
 }
 
-impl<F> LinkGenerator<TangleAddress, Vec<u8>> for DefaultTangleLinkGenerator<F>
+impl<F> LinkGenerator<TangleAddress, (Vec<u8>, x25519::PublicKey, usize)> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, appinst: &Vec<u8>, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> TangleAddress {
+    //TODO: turn into a tuple of refs instead of ref to a tuple to avoid arg copying
+    fn link_from(&mut self, arg: &(Vec<u8>, x25519::PublicKey, usize)) -> TangleAddress {
+        let (appinst, pk, seq) = arg;
         self.appinst.id.0 = appinst.to_vec();
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(&MsgId::default(), pk, multi_branch, seq),
+            msgid: self.gen_msgid(&MsgId::default(), pk, *seq),
         }
     }
 
     fn header_from(
         &mut self,
-        arg: &Vec<u8>,
-        pk: x25519::PublicKey,
-        multi_branching: u8,
-        seq: usize,
+        arg: &(Vec<u8>, x25519::PublicKey, usize),
+        flags: u8,
         content_type: &str,
     ) -> header::Header<TangleAddress> {
         header::Header::new_with_type(
-            self.link_from(arg, pk, multi_branching, seq),
-            multi_branching,
+            self.link_from(arg),
+            flags,
             content_type,
         )
     }
 }
 
-impl<F> LinkGenerator<TangleAddress, MsgId> for DefaultTangleLinkGenerator<F>
+impl<F> LinkGenerator<TangleAddress, (MsgId, x25519::PublicKey, usize)> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, msgid: &MsgId, pk: x25519::PublicKey, multi_branch: u8, seq: usize) -> TangleAddress {
+    fn link_from(&mut self, arg: &(MsgId, x25519::PublicKey, usize)) -> TangleAddress {
+        let (msgid, pk, seq) = arg;
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(msgid, pk, multi_branch, seq),
+            msgid: self.gen_msgid(msgid, pk, *seq),
         }
     }
     fn header_from(
         &mut self,
-        arg: &MsgId,
-        pk: x25519::PublicKey,
-        multi_branching: u8,
-        seq: usize,
+        arg: &(MsgId, x25519::PublicKey, usize),
+        flags: u8,
         content_type: &str,
     ) -> header::Header<TangleAddress> {
         header::Header::new_with_type(
-            self.link_from(arg, pk, multi_branching, seq),
-            multi_branching,
+            self.link_from(arg),
+            flags,
             content_type,
         )
     }
 }
 
 // ed25519 public key size in bytes
-pub const APPINST_SIZE: usize = 40;
+pub const APPINST_SIZE: usize = 32;
 
 /// Application instance identifier.
 /// Currently, 81-byte string stored in `address` transaction field.

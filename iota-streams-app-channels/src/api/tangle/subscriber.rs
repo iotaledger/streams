@@ -91,7 +91,7 @@ impl Subscriber {
         let sequenced: Option<Message>;
         let (seq_link, seq_num) = self.imp.get_seq_state(self.imp.ke_kp.1).unwrap();
 
-        if self.imp.get_branching_flag() == &1_u8 {
+        if self.imp.get_branching_flag() == 1_u8 {
             let msg = self
                 .imp
                 .sequence(
@@ -174,7 +174,7 @@ impl Subscriber {
         Ok(msg_id)
     }
 
-    pub fn get_branching_flag<'a>(&self) -> &u8 {
+    pub fn get_branching_flag(&self) -> u8 {
         self.imp.get_branching_flag()
     }
 
