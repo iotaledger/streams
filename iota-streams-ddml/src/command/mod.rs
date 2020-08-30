@@ -23,6 +23,8 @@
 
 use anyhow::Result;
 
+use iota_streams_core::println;
+
 /// Absorb command. Trinary representation of the field is absorbed into Spongos state.
 /// External fields are not encoded in the trinary stream. Non-trinary field is
 /// an input argument in Wrap command and an output argument in Unwrap command.
@@ -98,9 +100,9 @@ pub trait Guard {
 /// Dump context info into stdout.
 /// Use it like this: `ctx.dump(format_args!("checkpoint"))`
 pub trait Dump {
+    #[allow(unused_variables)]
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {
         // std::io::_print(args);
-        #[cfg(feature = "std")]
         println!("{}", args);
         Ok(self)
     }

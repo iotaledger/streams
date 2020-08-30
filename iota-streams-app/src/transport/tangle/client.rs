@@ -25,9 +25,12 @@ use iota_streams_core::prelude::{
     Vec,
 };
 
-use crate::transport::{
-    tangle::*,
-    *,
+use crate::{
+    message::BinaryMessage,
+    transport::{
+        tangle::*,
+        *,
+    },
 };
 
 const TRYTE_CHARS: &str = "9ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -272,13 +275,8 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
 pub fn msg_from_bundle<F>(bundle: &Bundle, flags: u8) -> BinaryMessage<F, TangleAddress> {
     let tx = bundle.head();
-    let appinst = AppInst {
-        id: NBytes(tbits_from_tritbuf(tx.address().to_inner())),
-    };
-
-    let mut tbits = tbits_from_tritbuf(tx.tag().to_inner());
-    tbits.truncate(MSGID_SIZE);
-    let msgid = MsgId { id: NBytes(tbits) };
+    let appinst = AppInst::try_from(tbits_from_tritbuf(tx.address().to_inner())).unwrap();
+    let msgid = MsgId::try_from(tbits_from_tritbuf(tx.tag().to_inner())).unwrap();
     let mut body = Vec::new();
     for tx in bundle.into_iter() {
         body.extend_from_slice(&tbits_from_tritbuf(tx.payload().to_inner()));
@@ -300,8 +298,8 @@ pub fn msg_to_bundle<F>(
     branch: Hash,
 ) -> Result<Bundle> {
     make_bundle(
-        msg.link.appinst.tbits(),
-        msg.link.msgid.tbits(),
+        msg.link.appinst.as_ref(),
+        msg.link.msgid.as_ref(),
         &msg.body,
         timestamp,
         trunk,
@@ -425,10 +423,7 @@ impl Default for SendTrytesOptions {
 }
 
 fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
-    match result {
-        Ok(r) => Ok(r),
-        Err(err) => bail!("Failed iota_client: {}", err),
-    }
+    result.map_err(|err| anyhow!("Failed iota_client: {}", err))
 }
 
 async fn get_bundles(tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>> {
@@ -514,9 +509,9 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         opt: Self::RecvOptions,
     ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
         let tx_address =
-            Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.tbits())))
+            Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.as_ref())))
                 .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
-        let tx_tag = Tag::try_from_inner(pad_trit_buf(TAG_TRIT_LEN, tbits_to_tritbuf(link.msgid.tbits())))
+        let tx_tag = Tag::try_from_inner(pad_trit_buf(TAG_TRIT_LEN, tbits_to_tritbuf(link.msgid.as_ref())))
             .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
 
         let txs = block_on(get_bundles(tx_address, tx_tag));

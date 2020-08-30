@@ -9,8 +9,6 @@ use iota_streams_ddml::{
     io,
 };
 
-use iota_streams_core_edsig::key_exchange::x25519;
-
 /// Type of "absolute" links. For http it's the absolute URL.
 pub trait HasLink: Sized + Default + Clone + Eq {
     /// Type of "base" links. For http it's domain name.

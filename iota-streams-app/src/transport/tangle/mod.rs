@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use core::{
-    convert::AsRef,
+    convert::{AsRef, TryFrom},
     fmt,
     hash,
     str::FromStr,
@@ -233,6 +233,17 @@ pub struct AppInst {
     pub(crate) id: NBytes,
 }
 
+impl TryFrom<Vec<u8>> for AppInst {
+    type Error = ();
+    fn try_from(v: Vec<u8>) -> Result<Self, ()> {
+        if v.len() == APPINST_SIZE {
+            Ok(Self{ id: NBytes(v) })
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl FromStr for AppInst {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
@@ -260,12 +271,6 @@ impl PartialEq for AppInst {
     }
 }
 impl Eq for AppInst {}
-
-impl AppInst {
-    pub fn tbits(&self) -> &Vec<u8> {
-        &self.id.0
-    }
-}
 
 impl AsRef<Vec<u8>> for AppInst {
     fn as_ref(&self) -> &Vec<u8> {
@@ -328,6 +333,17 @@ pub struct MsgId {
     pub(crate) id: NBytes,
 }
 
+impl TryFrom<Vec<u8>> for MsgId {
+    type Error = ();
+    fn try_from(v: Vec<u8>) -> Result<Self, ()> {
+        if v.len() == MSGID_SIZE {
+            Ok(Self{ id: NBytes(v) })
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl FromStr for MsgId {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
@@ -361,12 +377,6 @@ impl PartialEq for MsgId {
     }
 }
 impl Eq for MsgId {}
-
-impl MsgId {
-    pub fn tbits(&self) -> &Vec<u8> {
-        &self.id.0
-    }
-}
 
 impl AsRef<Vec<u8>> for MsgId {
     fn as_ref(&self) -> &Vec<u8> {
@@ -412,5 +422,5 @@ impl<F> SkipFallback<F> for MsgId {
     }
 }
 
-#[cfg(all(feature = "tangle", feature = "async"))]
+#[cfg(feature = "client")]
 pub mod client;

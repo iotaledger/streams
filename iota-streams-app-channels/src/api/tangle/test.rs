@@ -3,7 +3,6 @@ use crate::{
     api::tangle::{
         Address,
         Author,
-        BucketTransport,
         Subscriber,
         Transport,
     },
@@ -15,8 +14,7 @@ use anyhow::{
 };
 use iota_streams_app::message::HasLink;
 use iota_streams_ddml::types::*;
-use core::str::FromStr;
-use iota_streams_core::prelude::string::ToString;
+use iota_streams_core::{println, prelude::string::ToString};
 
 pub fn example<T: Transport>(transport: &mut T) -> Result<()>
 where
@@ -184,6 +182,6 @@ where
 
 #[test]
 fn run_basic_scenario() {
-    let mut transport = BucketTransport::new();
+    let mut transport = crate::api::tangle::BucketTransport::new();
     assert!(dbg!(example(&mut transport)).is_ok());
 }

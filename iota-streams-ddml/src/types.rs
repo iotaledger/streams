@@ -73,6 +73,15 @@ impl NBytes {
     }
 }
 
+/*
+impl TryFrom<Vec<u8>> for NBytes {
+    type Error = ();
+    fn try_from(v: Vec<u8>) -> Result<Self, ()> {
+        Self(v)
+    }
+}
+ */
+
 // impl ToString for NBytes
 // {
 // fn to_string(&self) -> String {

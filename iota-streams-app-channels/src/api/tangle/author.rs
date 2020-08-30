@@ -82,7 +82,7 @@ impl Author {
             let msg = self
                 .imp
                 .sequence(
-                    msg_link.rel().tbits().clone(),
+                    msg_link.rel().as_ref().clone(),
                     seq_link.rel().clone(),
                     seq_num,
                     MsgInfo::Sequence,

@@ -9,13 +9,15 @@ keywords = ["iota", "streams", "app"]
 description = "A rust implementation of the IOTA Streams applications"
 
 [features]
-default = ["std", "async", "tangle"]
-# enable std
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "anyhow/std", "hex/std", "chrono/std"]
-async = ["iota-core", "iota-constants", "chrono", "smol", "num_cpus"]
-#TODO: move to a separate crate
-# iota-core currently provides async only API
-tangle = ["hex"]
+default = ["std", "async", "tangle", "client"]
+# Enable `std` feature in dependencies
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "anyhow/std", "chrono/std", "hex/std"]
+# rust doesn't support async traits, `async-trait` crate emulates `async` keyword
+async = ["async-trait"]
+tangle = ["hex", "chrono"]
+# `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
+# implement Transport for iota_client::Client.
+client = ["num_cpus", "smol", "iota-core", "iota-constants"]
 
 [lib]
 name = "iota_streams_app"
@@ -25,19 +27,19 @@ path = "src/lib.rs"
 iota-streams-core = { version = "0.2.0", path = "../iota-streams-core", default-features = false }
 iota-streams-core-edsig = { version = "0.2.0", path = "../iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.2.0", path = "../iota-streams-ddml", default-features = false }
-# `iota-core` crate is WIP with unstable API atm of writing.
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531", optional = true }
-iota-constants = { version = "0.2.1", optional = true }
-#iota-conversion = { version = "0.5.0" }
 
 # anyhow and chrono are kept in sync with versions used in iota-core
 anyhow = { version = "1.0.26", default-features = false }
-
 chrono = { version = "0.4.11", default-features = false, optional = true }
+hex = { version = "0.4.2", default-features = false, optional = true }
+async-trait = { version = "0.1", optional = true }
 
+# Dependencies for "client" feature
+# `iota-core` crate is WIP with unstable API atm of writing.
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531", optional = true }
+iota-constants = { version = "0.2.1", optional = true }
 # feature tokio02 explicitly required for block_on calls
 smol = { version = "0.1.18", features = ["tokio02"], optional = true }
 # core-futures-tls-0.1.1 is buggy and relies on unstable generators feature
 #core = { package = "core-futures-tls", version = "0.1.1", path = "../../core-futures-tls", optional = true }
 num_cpus = { version = "1.10", optional = true }
-hex = { version = "0.4.2", default-features = false, optional = true }

@@ -84,6 +84,43 @@ where
     }
 }
 
+#[cfg(feature = "async")]
+use async_trait::async_trait;
+
+#[cfg(feature = "async")]
+#[async_trait]
+impl<F, Link> Transport<F, Link> for BucketTransport<F, Link>
+where
+    Link: Eq + hash::Hash + Clone,
+{
+    type SendOptions = ();
+
+    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: ()) -> Result<()> {
+        if let Some(msgs) = self.bucket.get_mut(msg.link()) {
+            msgs.push(msg.clone());
+            Ok(())
+        } else {
+            self.bucket.insert(msg.link().clone(), vec![msg.clone()]);
+            Ok(())
+        }
+    }
+
+    type RecvOptions = ();
+
+    fn recv_messages_with_options(
+        &mut self,
+        link: &Link,
+        _opt: (),
+    ) -> Result<Vec<BinaryMessage<F, Link>>> {
+        if let Some(msgs) = self.bucket.get(link) {
+            Ok(msgs.clone())
+        } else {
+            bail!("Link not found in the bucket.")
+        }
+    }
+}
+
+#[cfg(not(feature = "async"))]
 impl<F, Link> Transport<F, Link> for BucketTransport<F, Link>
 where
     Link: Eq + hash::Hash + Clone,
