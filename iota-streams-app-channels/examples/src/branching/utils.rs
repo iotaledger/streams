@@ -46,9 +46,8 @@ pub fn s_fetch_next_messages<T: Transport>(
 
             loop {
                 let preparsed = unwrapped.parse_header().unwrap();
-                let content_type = String::from_utf8(preparsed.header.content_type.0[..].to_vec()).unwrap();
                 print!("Message exists at {}... ", &preparsed.header.link.rel());
-                match content_type.as_str() {
+                match preparsed.header.content_type {
                     message::signed_packet::TYPE => {
                         let _unwrapped = subscriber.unwrap_signed_packet(preparsed.clone());
                         println!("Found a signed packet");
@@ -122,10 +121,7 @@ pub fn a_fetch_next_messages<T: Transport>(
                 let preparsed = unwrapped.parse_header().unwrap();
                 print!("Message exists at {}... ", &preparsed.header.link.rel());
 
-                match String::from_utf8(preparsed.header.content_type.0[..].to_vec())
-                    .unwrap()
-                    .as_str()
-                {
+                match preparsed.header.content_type {
                     message::tagged_packet::TYPE => {
                         let _unwrapped = author.unwrap_tagged_packet(preparsed.clone());
                         println!("Found a tagged packet");

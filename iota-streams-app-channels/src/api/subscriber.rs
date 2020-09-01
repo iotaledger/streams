@@ -23,7 +23,7 @@ use iota_streams_core_edsig::{
 };
 
 use iota_streams_app::message::{
-    header::{Header, FLAG_BRANCHING_MASK},
+    hdf::{Header, FLAG_BRANCHING_MASK},
     *,
 };
 use iota_streams_ddml::types::*;
@@ -87,6 +87,10 @@ pub struct SubscriberT<F, Link, Store, LinkGen> {
 
     /// Mapping of publisher id to sequence state
     pub(crate) seq_states: HashMap<Vec<u8>, (Link, usize)>,
+
+    pub message_encoding: Vec<u8>,
+
+    pub uniform_payload_length: usize,
 }
 
 impl<F, Link, Store, LinkGen> SubscriberT<F, Link, Store, LinkGen>
@@ -99,7 +103,14 @@ where
     LinkGen: ChannelLinkGenerator<Link>,
 {
     /// Create a new Subscriber.
-    pub fn gen(store: Store, link_gen: LinkGen, prng: prng::Prng<F>, nonce: Vec<u8>) -> Self {
+    pub fn gen(
+        store: Store,
+        link_gen: LinkGen,
+        prng: prng::Prng<F>,
+        nonce: Vec<u8>,
+        message_encoding: Vec<u8>,
+        uniform_payload_length: usize,
+    ) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
@@ -118,6 +129,8 @@ where
             link_gen: link_gen,
             flags: 0,
             seq_states: HashMap::new(),
+            message_encoding: message_encoding,
+            uniform_payload_length: uniform_payload_length,
         }
     }
 
@@ -132,7 +145,7 @@ where
 
     fn do_prepare_keyload<'a, Psks, KePks>(
         &'a self,
-        header: Header<Link>,
+        header: HDF<Link>,
         link_to: &'a <Link as HasLink>::Rel,
         psks: Psks,
         ke_pks: KePks,
@@ -175,7 +188,8 @@ where
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
             self.flags,
-            keyload::TYPE);
+            keyload::TYPE,
+            1);
         self.do_prepare_keyload(
             header,
             link_to,
@@ -204,7 +218,8 @@ where
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), SEQ_MESSAGE_NUM),
             self.flags,
-            sequence::TYPE);
+            sequence::TYPE,
+            1);
 
         let content = sequence::ContentWrap {
             link: link_to,
@@ -239,7 +254,8 @@ where
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
             self.flags,
-            tagged_packet::TYPE);
+            tagged_packet::TYPE,
+            1);
         let content = tagged_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -273,8 +289,9 @@ where
             let header = self.link_gen.header_from(
                 &(link_to.clone(), self.ke_kp.1.clone(), SUB_MESSAGE_NUM),
                 self.flags,
-                subscribe::TYPE);
-            // let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
+                subscribe::TYPE,
+                1);
+
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
             let content = subscribe::ContentWrap {
                 link: link_to,

@@ -41,7 +41,7 @@ use iota_streams_ddml::{
 };
 
 /// Type of `SignedPacket` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9SIGNEDPACKET";
+pub const TYPE: Uint8 = Uint8(3);
 
 pub struct ContentWrap<'a, F, Link>
 where

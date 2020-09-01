@@ -36,7 +36,7 @@ use iota_streams_ddml::{
 };
 
 /// Type of `Announce` message content.
-pub const TYPE: &str = "STREAMS9CHANNELS9ANNOUNCE";
+pub const TYPE: Uint8 = Uint8(0);
 
 pub struct ContentWrap<'a, F> {
     sig_kp: &'a ed25519::Keypair,

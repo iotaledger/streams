@@ -20,10 +20,17 @@ pub struct Subscriber {
 
 impl Subscriber {
     /// Create a new Subscriber instance, optionally generate NTRU keypair.
-    pub fn new(seed: &str) -> Self {
+    pub fn new(seed: &str, encoding: &str, payload_length: usize) -> Self {
         let nonce = "TANGLESUBSCRIBERNONCE".as_bytes().to_vec();
         Self {
-            imp: SubscriberT::gen(Store::default(), LinkGen::default(), prng::dbg_init_str(seed), nonce),
+            imp: SubscriberT::gen(
+                Store::default(),
+                LinkGen::default(),
+                prng::dbg_init_str(seed),
+                nonce,
+                encoding.as_bytes().to_vec(),
+                payload_length
+            ),
         }
     }
 

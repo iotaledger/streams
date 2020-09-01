@@ -22,6 +22,9 @@ use iota_streams_ddml::{
 
 use crate::message::*;
 
+/// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
+pub const PAYLOAD_BYTES: usize = 1090;
+
 pub struct TangleMessage<F> {
     /// Encapsulated binary encoded message.
     pub binary_message: BinaryMessage<F, TangleAddress>,
@@ -153,6 +156,7 @@ where
 {
     fn try_gen_msgid(&self, msgid: &MsgId, pk: &x25519::PublicKey, seq: usize) -> Result<MsgId> {
         let mut new = MsgId::default();
+        //println!("Making new id with: {:?}, {:?}, {:?}", msgid.id.to_string(), multi_branch, seq);
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id))?
             .absorb(External(pk))?
@@ -188,14 +192,13 @@ where
         &mut self,
         arg: &(Vec<u8>, x25519::PublicKey, usize),
         flags: u8,
-        content_type: &str,
-    ) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(
-            self.link_from(arg),
-            flags,
-            content_type,
-        )
-    }
+        content_type: Uint8,
+    ) -> hdf::HDF<TangleAddress> {
+        hdf::HDF::new_with_fields(self.link_from(arg),
+                                  content_type,
+                                  payload_length,
+                                  seq
+        )}
 }
 
 impl<F> LinkGenerator<TangleAddress, (MsgId, x25519::PublicKey, usize)> for DefaultTangleLinkGenerator<F>
@@ -213,14 +216,13 @@ where
         &mut self,
         arg: &(MsgId, x25519::PublicKey, usize),
         flags: u8,
-        content_type: &str,
-    ) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(
-            self.link_from(arg),
-            flags,
-            content_type,
-        )
-    }
+        content_type: Uint8,
+    ) -> hdf::HDF<TangleAddress> {
+        hdf::HDF::new_with_fields(self.link_from(arg),
+                                  content_type,
+                                  payload_length,
+                                  seq
+        )}
 }
 
 // ed25519 public key size in bytes

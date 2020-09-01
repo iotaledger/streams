@@ -191,17 +191,17 @@ impl Digest for Prehashed {
         Self::default()
     }
 
-    fn input<B: AsRef<[u8]>>(&mut self, _data: B) {}
+    fn update(&mut self, _data: impl AsRef<[u8]>) {}
 
-    fn chain<B: AsRef<[u8]>>(self, _data: B) -> Self {
+    fn chain(self, _data: impl AsRef<[u8]>) -> Self {
         self
     }
 
-    fn result(self) -> GenericArray<u8, Self::OutputSize> {
+    fn finalize(self) -> GenericArray<u8, Self::OutputSize> {
         self.0
     }
 
-    fn result_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
+    fn finalize_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
         self.0.clone()
     }
 
