@@ -22,6 +22,7 @@ members = [
     "iota-streams-app",
     "iota-streams-app-channels",
     "iota-streams-app-channels-example",
+    "c"
     #"iota-streams-app-channels-js",
 ]
 
