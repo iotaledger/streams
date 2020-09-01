@@ -1,4 +1,3 @@
-use iota_streams_app::message::HasLink;
 use iota_streams_app_channels::{
     api::tangle::{
         Address,
@@ -40,7 +39,7 @@ where
     let multi_branching_flag = 1_u8;
     let encoding = "utf-8";
     let mut author = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching_flag == 1_u8);
-    println!("Author multi branching?: {:?}", author.get_branching_flag() == &1_u8);
+    println!("Author multi branching?: {:?}", author.get_branching_flag() == 1_u8);
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES);
     let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES);

@@ -23,7 +23,7 @@ use iota_streams_core_edsig::{
 };
 
 use iota_streams_app::message::{
-    hdf::{Header, FLAG_BRANCHING_MASK},
+    hdf::{HDF, FLAG_BRANCHING_MASK},
     *,
 };
 use iota_streams_ddml::types::*;
@@ -187,7 +187,6 @@ where
     > {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            self.flags,
             keyload::TYPE,
             1);
         self.do_prepare_keyload(
@@ -217,7 +216,6 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, sequence::ContentWrap<'a, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), SEQ_MESSAGE_NUM),
-            self.flags,
             sequence::TYPE,
             1);
 
@@ -253,7 +251,6 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            self.flags,
             tagged_packet::TYPE,
             1);
         let content = tagged_packet::ContentWrap {
@@ -288,7 +285,6 @@ where
         if let Some(author_ke_pk) = &self.author_ke_pk {
             let header = self.link_gen.header_from(
                 &(link_to.clone(), self.ke_kp.1.clone(), SUB_MESSAGE_NUM),
-                self.flags,
                 subscribe::TYPE,
                 1);
 
@@ -379,6 +375,7 @@ where
         self.author_sig_pk = Some(content.sig_pk);
         self.author_ke_pk = Some(x25519::PublicKeyWrap(content.ke_pk));
         self.ke_pks.insert(x25519::PublicKeyWrap(content.ke_pk));
+        self.flags = content.flags.0;
         //TODO: set self.flags from header
         //self.flags = content.flags;
         Ok(())

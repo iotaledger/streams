@@ -270,11 +270,7 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-<<<<<<< HEAD
-pub fn msg_from_bundle<F>(bundle: &Bundle, flags: u8) -> BinaryMessage<F, TangleAddress> {
-=======
-pub fn msg_from_bundle<F>(bundle: &Bundle) -> TbinaryMessage<F, TangleAddress>{
->>>>>>> HDF-PCF-addition
+pub fn msg_from_bundle<F>(bundle: &Bundle) -> BinaryMessage<F, TangleAddress> {
     let tx = bundle.head();
     let appinst = AppInst {
         id: NBytes(tbits_from_tritbuf(tx.address().to_inner())),
@@ -289,11 +285,7 @@ pub fn msg_from_bundle<F>(bundle: &Bundle) -> TbinaryMessage<F, TangleAddress>{
         payload.resize(PAYLOAD_BYTES, 0);
         body.extend_from_slice(&payload);
     }
-<<<<<<< HEAD
-    BinaryMessage::new(TangleAddress { appinst, msgid }, body, flags)
-=======
-    TbinaryMessage::new(TangleAddress { appinst, msgid }, body)
->>>>>>> HDF-PCF-addition
+    BinaryMessage::new(TangleAddress { appinst, msgid }, body)
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -521,48 +513,18 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
     fn recv_messages_with_options(
         &mut self,
         link: &TangleAddress,
-<<<<<<< HEAD
-        opt: Self::RecvOptions,
-    ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
-        let tx_address =
-            Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.tbits())))
-                .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
-=======
         _opt: Self::RecvOptions,
-    ) -> Result<Vec<TbinaryMessage<F, TangleAddress>>> {
+    ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
         let tx_address = Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.tbits())))
-            .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
->>>>>>> HDF-PCF-addition
+                .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
         let tx_tag = Tag::try_from_inner(pad_trit_buf(TAG_TRIT_LEN, tbits_to_tritbuf(link.msgid.tbits())))
             .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
 
         let txs = block_on(get_bundles(tx_address, tx_tag));
         if !txs.is_err() {
-            let mut trytes = iota_ternary::TryteBuf::with_capacity(link.msgid.tbits().len() * 2);
-            for byte in link.msgid.tbits() {
-                let first: i8 = match (byte % 27) as i8 {
-                    b @ 0..=13 => b,
-                    b @ 14..=26 => b - 27,
-                    _ => unreachable!(),
-                };
-                let second = match (byte / 27) as i8 {
-                    b @ 0..=13 => b,
-                    b @ 14..=26 => b - 27,
-                    _ => unreachable!(),
-                };
-                trytes.push(first.try_into().unwrap());
-                trytes.push(second.try_into().unwrap());
-            }
-
-            println!("Trytes: {:?}", trytes.to_string());
-
             Ok(bundles_from_trytes(txs.unwrap())
                 .into_iter()
-<<<<<<< HEAD
-                .map(|b| msg_from_bundle(&b, opt.flags))
-=======
                 .map(|b| msg_from_bundle(&b))
->>>>>>> HDF-PCF-addition
                 .collect())
         } else {
             Ok(Vec::new())

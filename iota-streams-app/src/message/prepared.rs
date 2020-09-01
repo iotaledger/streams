@@ -67,7 +67,6 @@ where
             message: BinaryMessage {
                 link: self.header.link.clone(),
                 body: buf,
-                flags: self.header.flags.0,
                 _phantom: core::marker::PhantomData,
             },
         })

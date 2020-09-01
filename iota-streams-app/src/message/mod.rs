@@ -10,8 +10,6 @@ use iota_streams_ddml::{
     io,
 };
 
-use iota_streams_core_edsig::key_exchange::x25519;
-
 /// Type of "absolute" links. For http it's the absolute URL.
 pub trait HasLink: Sized + Default + Clone + Eq {
     /// Type of "base" links. For http it's domain name.
@@ -36,12 +34,7 @@ pub trait LinkGenerator<Link, From> {
     fn link_from(&mut self, arg: &From) -> Link;
 
     /// Derive a new link and construct a header with given content type.
-    fn header_from(
-        &mut self,
-        arg: &From,
-        flags: u8,
-        content_type: &str,
-    ) -> hdf::Header<Link>;
+    fn header_from(&mut self, arg: &From, content_type: Uint8, payload_length: usize) -> hdf::HDF<Link>;
 }
 
 pub trait ContentWrap<F, Store> {

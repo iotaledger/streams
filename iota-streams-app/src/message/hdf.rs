@@ -7,14 +7,15 @@ use anyhow::{
 use iota_streams_core::{
     sponge::prp::PRP,
 };
-use iota_streams_protobuf3 as protobuf3;
-use protobuf3::{
+use iota_streams_ddml::{
     command::*,
     io,
     types::*,
 };
 
 use super::*;
+
+pub const FLAG_BRANCHING_MASK: u8 = 1;
 
 pub struct HDF<Link> {
     pub encoding: Uint8,

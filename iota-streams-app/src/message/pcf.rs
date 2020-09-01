@@ -4,8 +4,7 @@ use anyhow::Result;
 use iota_streams_core::{
     sponge::prp::PRP,
 };
-use iota_streams_protobuf3 as protobuf3;
-use protobuf3::{
+use iota_streams_ddml::{
     command::*,
     io,
     types::*,

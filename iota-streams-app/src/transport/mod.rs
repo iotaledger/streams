@@ -44,11 +44,7 @@ pub trait Transport<F, Link> // where Link: HasLink
         &mut self,
         link: &Link,
         opt: Self::RecvOptions,
-<<<<<<< HEAD
     ) -> Result<BinaryMessage<F, Link>> {
-=======
-    ) -> Result<TbinaryMessage<F, Link>> {
->>>>>>> HDF-PCF-addition
         let mut msgs = self.recv_messages_with_options(link, opt)?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
@@ -59,11 +55,7 @@ pub trait Transport<F, Link> // where Link: HasLink
     }
 
     /// Receive messages with default options.
-<<<<<<< HEAD
     fn recv_messages(&mut self, link: &Link) -> Result<Vec<BinaryMessage<F, Link>>>
-=======
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<TbinaryMessage<F, Link>>>
->>>>>>> HDF-PCF-addition
     where
         Self::RecvOptions: Default,
     {
@@ -71,11 +63,7 @@ pub trait Transport<F, Link> // where Link: HasLink
     }
 
     /// Receive a message with default options.
-<<<<<<< HEAD
     fn recv_message(&mut self, link: &Link) -> Result<BinaryMessage<F, Link>>
-=======
-    fn recv_message(&mut self, link: &Link) -> Result<TbinaryMessage<F, Link>>
->>>>>>> HDF-PCF-addition
     where
         Self::RecvOptions: Default,
     {
@@ -114,15 +102,11 @@ where
 
     type RecvOptions = ();
 
-<<<<<<< HEAD
     fn recv_messages_with_options(
         &mut self,
         link: &Link,
         _opt: (),
     ) -> Result<Vec<BinaryMessage<F, Link>>> {
-=======
-    fn recv_messages_with_options(&mut self, link: &Link, _opt: ()) -> Result<Vec<TbinaryMessage<F, Link>>> {
->>>>>>> HDF-PCF-addition
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {

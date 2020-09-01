@@ -1,7 +1,3 @@
-use anyhow::{
-    Result,
-};
-
 use iota_streams_app_channels::{
     api::tangle::{
         Address,
@@ -12,7 +8,6 @@ use iota_streams_app_channels::{
     message,
 };
 
-use iota_streams_core::prelude::String;
 use iota_streams_app::message::HasLink;
 
 pub fn s_fetch_next_messages<T: Transport>(

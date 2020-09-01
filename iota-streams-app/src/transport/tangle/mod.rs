@@ -191,13 +191,13 @@ where
     fn header_from(
         &mut self,
         arg: &(Vec<u8>, x25519::PublicKey, usize),
-        flags: u8,
         content_type: Uint8,
+        payload_length: usize,
     ) -> hdf::HDF<TangleAddress> {
         hdf::HDF::new_with_fields(self.link_from(arg),
                                   content_type,
                                   payload_length,
-                                  seq
+                                  arg.2
         )}
 }
 
@@ -215,13 +215,13 @@ where
     fn header_from(
         &mut self,
         arg: &(MsgId, x25519::PublicKey, usize),
-        flags: u8,
         content_type: Uint8,
+        payload_length: usize,
     ) -> hdf::HDF<TangleAddress> {
         hdf::HDF::new_with_fields(self.link_from(arg),
                                   content_type,
                                   payload_length,
-                                  seq
+                                  arg.2
         )}
 }
 

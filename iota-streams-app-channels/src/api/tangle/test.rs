@@ -3,7 +3,6 @@ use crate::{
     api::tangle::{
         Address,
         Author,
-        BucketTransport,
         Subscriber,
         Transport,
     },
@@ -13,9 +12,11 @@ use anyhow::{
     ensure,
     Result,
 };
-use iota_streams_app::message::HasLink;
+use iota_streams_app::{
+    transport::tangle::PAYLOAD_BYTES,
+    message::HasLink
+};
 use iota_streams_ddml::types::*;
-use core::str::FromStr;
 use iota_streams_core::prelude::string::ToString;
 
 pub fn example<T: Transport>(transport: &mut T) -> Result<()>
@@ -23,10 +24,12 @@ where
     T::SendOptions: Default,
     T::RecvOptions: Default,
 {
-    let mut author = Author::new("AUTHOR9SEED", false);
+    let encoding = "utf-8";
+    let multi_branching = false;
+    let mut author = Author::new("AUTHOR9SEED", encoding, PAYLOAD_BYTES, multi_branching);
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES);
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES);
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -48,7 +51,7 @@ where
         let preparsed = msg.parse_header()?;
         println!("  header parsed");
         ensure!(
-            preparsed.check_content_type(message::announce::TYPE),
+            preparsed.check_content_type(&message::announce::TYPE),
             "bad message type: {}",
             preparsed.header.content_type
         );
@@ -89,7 +92,7 @@ where
         let msg = transport.recv_message(&signed_packet_link)?;
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(message::signed_packet::TYPE),
+            preparsed.check_content_type(&message::signed_packet::TYPE),
             "bad message type"
         );
         let (unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
@@ -109,7 +112,7 @@ where
         let msg = transport.recv_message(&subscribeB_link)?;
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(message::subscribe::TYPE),
+            preparsed.check_content_type(&message::subscribe::TYPE),
             "bad message type"
         );
         author.unwrap_subscribe(preparsed)?;
@@ -127,7 +130,7 @@ where
         let msg = transport.recv_message(&keyload_link)?;
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(message::keyload::TYPE),
+            preparsed.check_content_type(&message::keyload::TYPE),
             "invalid message type"
         );
         let resultA = subscriberA.unwrap_keyload(preparsed.clone());
@@ -147,7 +150,7 @@ where
         let msg = transport.recv_message(&tagged_packet_link)?;
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(message::tagged_packet::TYPE),
+            preparsed.check_content_type(&message::tagged_packet::TYPE),
             "bad message type"
         );
         let resultA = subscriberA.unwrap_tagged_packet(preparsed.clone());
@@ -160,7 +163,7 @@ where
     {
         let keyload = transport.recv_message(&keyload_link)?;
         let preparsed = keyload.parse_header()?;
-        ensure!(preparsed.check_content_type(message::keyload::TYPE), "bad message type");
+        ensure!(preparsed.check_content_type(&message::keyload::TYPE), "bad message type");
         subscriberB.unwrap_keyload(preparsed)?;
     }
 

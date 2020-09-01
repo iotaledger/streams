@@ -19,7 +19,7 @@ path = "src/lib.rs"
 
 [dependencies]
 # digest version should correspond to curve25519-dalek's version
-digest = { version = "0.8", default-features = false }
+digest = { version = "0.9", default-features = false }
 #rand_core = { version = "0.5", default-features = false }
 rand = { version = "0.7", default-features = false }
 hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }

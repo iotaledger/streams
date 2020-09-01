@@ -27,7 +27,7 @@ use iota_streams_core_edsig::{
 };
 
 use iota_streams_app::message::{
-    hdf::{Header, FLAG_BRANCHING_MASK},
+    hdf::{HDF, FLAG_BRANCHING_MASK},
     *,
 };
 use iota_streams_ddml::types::*;
@@ -155,12 +155,11 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, announce::ContentWrap<F>>> {
         // Create HDF for the first message in the channel.
         let header =
-            self.link_gen.header_from(&(self.channel_addr, self.ke_kp.1, ANN_MESSAGE_NUM),
-                                        flags,
-                                      announce::TYPE,
+            self.link_gen.header_from(&(self.channel_addr.clone(), (self.ke_kp.1).clone(), ANN_MESSAGE_NUM),
+                                        announce::TYPE,
                                       1,
             );
-        let content = announce::ContentWrap::new(sig_kp);
+        let content = announce::ContentWrap::new(&self.sig_kp, self.flags);
         Ok(PreparedMessage::new(self.store.borrow(), header, content))
     }
 
@@ -214,7 +213,6 @@ where
     > {
         let header = self.link_gen.header_from(
             &(link_to.clone(), (self.ke_kp.1).clone(), self.get_seq_num()),
-            self.flags,
             keyload::TYPE,
             1
         );
@@ -243,7 +241,6 @@ where
     > {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            self.flags,
             keyload::TYPE,
         1
         );
@@ -284,7 +281,6 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, sequence::ContentWrap<'a, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), SEQ_MESSAGE_NUM),
-            self.flags,
             sequence::TYPE,
             1);
 
@@ -320,7 +316,6 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, signed_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            self.flags,
             signed_packet::TYPE,
             1);
         let content = signed_packet::ContentWrap {
@@ -356,7 +351,6 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            self.flags,
             tagged_packet::TYPE,
             1);
         let content = tagged_packet::ContentWrap {
