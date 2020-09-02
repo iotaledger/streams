@@ -8,6 +8,8 @@ use iota_streams::app::transport::{
         MsgId as MessageIdentifier,
     }
 };
+
+use std::mem;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_ulonglong};
 use iota::client::Client;
@@ -62,7 +64,10 @@ pub extern "C" fn auth_channel_address(author: *mut Author) -> *mut AppInst {
     unsafe {
         let auth = Box::from_raw(author);
         let appinst = AppInst(auth.auth.channel_address().clone());
+
+        mem::forget(auth);
         println!("\nApplication Instance: {}", appinst.0);
+
         Box::into_raw(Box::new(appinst))
     }
 }
@@ -77,17 +82,22 @@ pub extern "C" fn auth_announce(author: *mut Author) -> *mut Address {
     };
 
     let msg = auth.auth.announce().unwrap();
+    mem::forget(auth);
+
     let mut client = Client::get();
 
     println!("Sending Announcement...\n");
     send_message(&mut client, &Message(msg.clone()));
+    
     println!("Announcement sent... Boxing Address...\n");
-    Box::into_raw(Box::new(Address(msg.link)))
+    let addr: *mut Address = Box::into_raw(Box::new(Address(msg.link)));
+
+    addr
 }
 
 /// Create a new keyload for a list of subscribers.
 #[no_mangle]
-pub extern "C" fn auth_share_keyload(author: *mut Author,  link_to: *mut Address, psk_ids: *mut PskIds, ke_pks: *mut KePks) -> Vec<*mut Address> {
+pub extern "C" fn auth_share_keyload(author: *mut Author,  link_to: *mut Address, psk_ids: *mut PskIds, ke_pks: *mut KePks) -> std::boxed::Box<[*mut Address]> {
     unsafe {
         let mut auth = Box::from_raw(author);
         let unboxed_link = Box::from_raw(link_to);
@@ -109,17 +119,19 @@ pub extern "C" fn auth_share_keyload(author: *mut Author,  link_to: *mut Address
             println!("Link for message: {:?}", msg_link.0.msgid);
             msg_links.push(Box::into_raw(Box::new(msg_link)));
         }
-        msg_links
+        msg_links.into_boxed_slice()
     }
 }
 
 /// Create keyload for all subscribed subscribers.
 #[no_mangle]
-pub extern "C" fn auth_share_keyload_for_everyone(author: *mut Author, link_to: *mut Address) -> Vec<*mut Address> {
+pub extern "C" fn auth_share_keyload_for_everyone(author: *mut Author, link_to: *mut Address) -> std::boxed::Box<[*mut Address]> {
     unsafe {
         let mut auth = Box::from_raw(author);
         let unboxed_link = Box::from_raw(link_to);
-        let tangle_address = TangleAddress::new(ApplicationInstance::from(unboxed_link.0.appinst), MessageIdentifier::from(unboxed_link.0.msgid));
+        let tangle_address = TangleAddress::new(ApplicationInstance::from(unboxed_link.0.appinst.clone()), MessageIdentifier::from(unboxed_link.0.msgid.clone()));
+        mem::forget(unboxed_link);
+
         println!("Tangle address: {}\n", tangle_address);
         let response = auth.auth.share_keyload_for_everyone(&tangle_address);
         let response2 = auth.auth.share_keyload_for_everyone(&tangle_address);
@@ -143,7 +155,7 @@ pub extern "C" fn auth_share_keyload_for_everyone(author: *mut Author, link_to: 
             println!("Link for message: {}", msg_link.0.msgid);
             msg_links.push(Box::into_raw(Box::new(msg_link)));
         }
-        msg_links
+        msg_links.into_boxed_slice()
     }
 }
 /*
