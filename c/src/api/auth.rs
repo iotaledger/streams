@@ -30,7 +30,7 @@ pub extern "C" fn auth_new(seed: *const c_char , encoding: *const c_char, payloa
     };
 
     Client::get();
-    println!("Added node: {}", Client::add_node(URL).unwrap());
+    Client::add_node(URL).unwrap();
     let auth = Auth::new(c_seed.to_str().unwrap(), c_encoding.to_str().unwrap(), payload_length as usize, multi_branching);
 
     Box::into_raw(Box::new(Author{ auth }))
@@ -43,10 +43,7 @@ pub extern "C" fn auth_channel_address(author: *mut Author) -> *mut AppInst {
     unsafe {
         let auth = Box::from_raw(author);
         let appinst = AppInst(auth.auth.channel_address().clone());
-
         mem::forget(auth);
-        println!("\nApplication Instance: {}", appinst.0);
-
         Box::into_raw(Box::new(appinst))
     }
 }
@@ -158,12 +155,12 @@ fn send_and_retrieve_links(response: (TangleMessage, Option<TangleMessage>)) -> 
 
     for msg in &msgs {
         let msg_link = Address(msg.0.clone().link);
+        print!("Sending Message... ");
         send_message(&mut Client::get(), &msg);
         println!("Link for message: {}", msg_link.0.msgid);
     }
 
     let msg_links = if msgs.len() < 2 {
-        println!("This is how it should be...");
         MessageLinks {
             msg_link: Address(msgs.get(0).unwrap().0.link.clone()),
             seq_link: None
