@@ -134,10 +134,14 @@ pub struct MessageLinks{
 
 #[no_mangle]
 pub extern "C" fn get_msg_link(msg_links: *mut MessageLinks) -> *mut Address {
-    Box::into_raw(Box::new(msg_links.msg_link.clone()))
+    unsafe {
+        Box::into_raw(Box::new(Box::from_raw(msg_links).msg_link))
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn get_seq_link(msg_links: *mut MessageLinks) -> *mut Address {
-    Box::into_raw(Box::new(msg_links.seq_link.unwrap()))
+    unsafe {
+        Box::into_raw(Box::new(Box::from_raw(msg_links).seq_link.unwrap()))
+    }
 }

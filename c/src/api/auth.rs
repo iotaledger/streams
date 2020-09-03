@@ -1,5 +1,5 @@
 //use crate::{AppInst, MsgId, Address, Author, Message, PskIds, PubKey, PubKeyWrap, SeqState, NextMsgId, Transport, Preparsed, KePks, MWM, send_message, MessageLinks};
-use crate::{AppInst, Address, Author, Message, PskIds,  Transport, KePks, send_message, MessageLinks};
+use crate::{AppInst, Address, Author, Message, PskIds, KePks, send_message, MessageLinks};
 
 use iota_streams::app_channels::api::tangle::{Author as Auth, Message as TangleMessage};
 use iota_streams::app::transport::{
