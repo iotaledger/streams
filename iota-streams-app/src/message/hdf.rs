@@ -17,6 +17,7 @@ use super::*;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
+#[derive(Clone)]
 pub struct HDF<Link> {
     pub encoding: Uint8,
     pub version: Uint8,
@@ -27,24 +28,6 @@ pub struct HDF<Link> {
     pub link: Link,
     pub seq_num: Size,
 
-}
-
-impl<Link> Clone for HDF<Link>
-    where
-        Link: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            encoding: self.encoding.clone(),
-            version: self.version,
-            content_type: self.content_type.clone(),
-            payload_length: self.payload_length,
-            frame_type: self.frame_type.clone(),
-            payload_frame_count: self.payload_frame_count,
-            link: self.link.clone(),
-            seq_num: self.seq_num.clone(),
-        }
-    }
 }
 
 impl<Link> HDF<Link>
