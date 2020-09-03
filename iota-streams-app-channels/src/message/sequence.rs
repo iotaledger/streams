@@ -35,9 +35,6 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Type of `Sequence` message content.
-pub const TYPE: Uint8 = Uint8(2);
-
 pub struct ContentWrap<'a, Link>
 where
     Link: HasLink,

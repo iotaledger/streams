@@ -187,7 +187,7 @@ where
     > {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            keyload::TYPE,
+            KEYLOAD,
             1);
         self.do_prepare_keyload(
             header,
@@ -216,7 +216,7 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, sequence::ContentWrap<'a, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), SEQ_MESSAGE_NUM),
-            sequence::TYPE,
+            SEQUENCE,
             1);
 
         let content = sequence::ContentWrap {
@@ -251,7 +251,7 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            tagged_packet::TYPE,
+            TAGGED_PACKET,
             1);
         let content = tagged_packet::ContentWrap {
             link: link_to,
@@ -285,7 +285,7 @@ where
         if let Some(author_ke_pk) = &self.author_ke_pk {
             let header = self.link_gen.header_from(
                 &(link_to.clone(), self.ke_kp.1.clone(), SUB_MESSAGE_NUM),
-                subscribe::TYPE,
+                SUBSCRIBE,
                 1);
 
             let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
@@ -317,7 +317,7 @@ where
     // &'a mut self,
     // link_to: &'a <Link as HasLink>::Rel,
     // ) -> Result<PreparedMessage<'a, F, Link, Store, unsubscribe::ContentWrap<'a, F, Link>>> {
-    // let header = self.link_gen.header_from(link_to, unsubscribe::TYPE);
+    // let header = self.link_gen.header_from(link_to, unSUBSCRIBE);
     // let content = unsubscribe::ContentWrap {
     // link: link_to,
     // _phantom: core::marker::PhantomData,
@@ -557,21 +557,21 @@ where
     //
     // let preparsed = msg.parse_header()?;
     //
-    // if preparsed.check_content_type(announce::TYPE) {
+    // if preparsed.check_content_type(ANNOUNCE) {
     // self.handle_announcement(preparsed, info)?;
     // Ok(())
     // } else if preparsed.check_content_type(change_key::TYPE) {
     // self.handle_change_key(preparsed, info)?;
     // Ok(())
-    // } else if preparsed.check_content_type(signed_packet::TYPE) {
+    // } else if preparsed.check_content_type(SIGNED_PACKET) {
     // self.handle_signed_packet(preparsed, info)?;
     // Ok(())
-    // } else if preparsed.check_content_type(tagged_packet::TYPE) {
+    // } else if preparsed.check_content_type(TAGGED_PACKET) {
     // self.handle_tagged_packet(preparsed, info)?;
     // Ok(())
     // } else
     //
-    // if preparsed.check_content_type(keyload::TYPE) {
+    // if preparsed.check_content_type(KEYLOAD) {
     // self.handle_keyload(preparsed, info)?;
     // Ok(())
     // } else

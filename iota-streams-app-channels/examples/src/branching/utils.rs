@@ -43,22 +43,22 @@ pub fn s_fetch_next_messages<T: Transport>(
                 let preparsed = unwrapped.parse_header().unwrap();
                 print!("Message exists at {}... ", &preparsed.header.link.rel());
                 match preparsed.header.content_type {
-                    message::signed_packet::TYPE => {
+                    message::SIGNED_PACKET => {
                         let _unwrapped = subscriber.unwrap_signed_packet(preparsed.clone());
                         println!("Found a signed packet");
                         break;
                     }
-                    message::tagged_packet::TYPE => {
+                    message::TAGGED_PACKET => {
                         let _unwrapped = subscriber.unwrap_tagged_packet(preparsed.clone());
                         println!("Found a tagged packet");
                         break;
                     }
-                    message::keyload::TYPE => {
+                    message::KEYLOAD => {
                         let _unwrapped = subscriber.unwrap_keyload(preparsed.clone());
                         println!("Found a keyload packet");
                         break;
                     }
-                    message::sequence::TYPE => {
+                    message::SEQUENCE => {
                         print!("Found sequenced message.\tFetching sequenced message... ");
                         let msgid = subscriber.unwrap_sequence(preparsed.clone()).unwrap();
                         let msg = transport
@@ -117,12 +117,12 @@ pub fn a_fetch_next_messages<T: Transport>(
                 print!("Message exists at {}... ", &preparsed.header.link.rel());
 
                 match preparsed.header.content_type {
-                    message::tagged_packet::TYPE => {
+                    message::TAGGED_PACKET => {
                         let _unwrapped = author.unwrap_tagged_packet(preparsed.clone());
                         println!("Found a tagged packet");
                         break;
                     }
-                    message::sequence::TYPE => {
+                    message::SEQUENCE => {
                         let msgid = author.unwrap_sequence(preparsed.clone()).unwrap();
                         print!("Found sequenced message.\tFetching sequenced message... ");
                         let msg = transport

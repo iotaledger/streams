@@ -36,9 +36,6 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Type of `Unsubscribe` message content.
-pub const TYPE: Uint8 = Uint8(6);
-
 pub struct ContentWrap<'a, TW, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) _phantom: std::marker::PhantomData<(TW, F, Link)>,

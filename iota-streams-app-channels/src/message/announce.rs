@@ -35,9 +35,6 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Type of `Announce` message content.
-pub const TYPE: Uint8 = Uint8(0);
-
 pub struct ContentWrap<'a, F> {
     sig_kp: &'a ed25519::Keypair,
     flags: Uint8,

@@ -156,7 +156,7 @@ where
         // Create HDF for the first message in the channel.
         let header =
             self.link_gen.header_from(&(self.channel_addr.clone(), (self.ke_kp.1).clone(), ANN_MESSAGE_NUM),
-                                        announce::TYPE,
+                                        ANNOUNCE,
                                       1,
             );
         let content = announce::ContentWrap::new(&self.sig_kp, self.flags);
@@ -213,7 +213,7 @@ where
     > {
         let header = self.link_gen.header_from(
             &(link_to.clone(), (self.ke_kp.1).clone(), self.get_seq_num()),
-            keyload::TYPE,
+            KEYLOAD,
             1
         );
         let psks = psk::filter_psks(&self.psks, psk_ids);
@@ -241,7 +241,7 @@ where
     > {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            keyload::TYPE,
+            KEYLOAD,
         1
         );
         let ipsks = self.psks.iter();
@@ -281,7 +281,7 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, sequence::ContentWrap<'a, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), SEQ_MESSAGE_NUM),
-            sequence::TYPE,
+            SEQUENCE,
             1);
 
         let content = sequence::ContentWrap {
@@ -316,7 +316,7 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, signed_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            signed_packet::TYPE,
+            SIGNED_PACKET,
             1);
         let content = signed_packet::ContentWrap {
             link: link_to,
@@ -351,7 +351,7 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
             &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
-            tagged_packet::TYPE,
+            TAGGED_PACKET,
             1);
         let content = tagged_packet::ContentWrap {
             link: link_to,
@@ -535,12 +535,12 @@ where
         let preparsed = msg.parse_header()?;
         self.ensure_appinst(&preparsed)?;
 
-        if preparsed.check_content_type(&tagged_packet::TYPE) {
+        if preparsed.check_content_type(&TAGGED_PACKET) {
             self.handle_tagged_packet(preparsed, info)?;
             Ok(())
-        } else if preparsed.check_content_type(&announce::TYPE) {
+        } else if preparsed.check_content_type(&ANNOUNCE) {
             bail!("Can't handle announce message.")
-        } else if preparsed.check_content_type(&signed_packet::TYPE) {
+        } else if preparsed.check_content_type(&SIGNED_PACKET) {
             bail!("Can't handle signed_packet message.")
         } else {
             bail!("Unsupported content type: '{}'.", preparsed.content_type())

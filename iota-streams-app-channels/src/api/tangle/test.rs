@@ -51,7 +51,7 @@ where
         let preparsed = msg.parse_header()?;
         println!("  header parsed");
         ensure!(
-            preparsed.check_content_type(&message::announce::TYPE),
+            preparsed.check_content_type(&message::ANNOUNCE),
             "bad message type: {}",
             preparsed.header.content_type
         );
@@ -92,7 +92,7 @@ where
         let msg = transport.recv_message(&signed_packet_link)?;
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::signed_packet::TYPE),
+            preparsed.check_content_type(&message::SIGNED_PACKET),
             "bad message type"
         );
         let (unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
@@ -112,7 +112,7 @@ where
         let msg = transport.recv_message(&subscribeB_link)?;
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::subscribe::TYPE),
+            preparsed.check_content_type(&message::SUBSCRIBE),
             "bad message type"
         );
         author.unwrap_subscribe(preparsed)?;
@@ -130,7 +130,7 @@ where
         let msg = transport.recv_message(&keyload_link)?;
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::keyload::TYPE),
+            preparsed.check_content_type(&message::KEYLOAD),
             "invalid message type"
         );
         let resultA = subscriberA.unwrap_keyload(preparsed.clone());
@@ -150,7 +150,7 @@ where
         let msg = transport.recv_message(&tagged_packet_link)?;
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::tagged_packet::TYPE),
+            preparsed.check_content_type(&message::TAGGED_PACKET),
             "bad message type"
         );
         let resultA = subscriberA.unwrap_tagged_packet(preparsed.clone());
@@ -163,7 +163,7 @@ where
     {
         let keyload = transport.recv_message(&keyload_link)?;
         let preparsed = keyload.parse_header()?;
-        ensure!(preparsed.check_content_type(&message::keyload::TYPE), "bad message type");
+        ensure!(preparsed.check_content_type(&message::KEYLOAD), "bad message type");
         subscriberB.unwrap_keyload(preparsed)?;
     }
 
@@ -178,7 +178,7 @@ where
     // {
     // let (msg, _) = transport.recv_message(&unsubscribe_link)?;
     // let preparsed = msg.parse_header()?;
-    // ensure!(preparsed.check_content_type(message::unsubscribe::TYPE));
+    // ensure!(preparsed.check_content_type(message::unSUBSCRIBE));
     // author.unwrap_unsubscribe(preparsed)?;
     // }
 
