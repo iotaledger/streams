@@ -13,6 +13,8 @@ struct Author;
 
 struct Message;
 
+struct MessageLinks;
+
 struct PskIds;
 
 struct PubKey;
@@ -47,10 +49,21 @@ char[] get_address_id_str(Address *address);
 Address auth_announce(Author *author);
 
 /// Create a new keyload for a list of subscribers.
-Address[2] auth_share_keyload(Author *author , Address *link_to, PskIds *psk_ids , PubKeyWrap[] ke_pks);
+MessageLinks auth_share_keyload(Author *author , Address *link_to, PskIds *psk_ids , PubKeyWrap[] ke_pks);
 
 /// Create keyload for all subscribed subscribers.
-Address[2] auth_share_keyload_for_everyone(Author * author , Address *link_to);
+MessageLinks auth_share_keyload_for_everyone(Author * author , Address *link_to);
+
+/// Create a tagged packet.
+MessageLinks auth_tag_packet(Author * author , MessageLinks *link_to, char * public_payload , char *masked_payload );
+
+/// Create a tagged packet.
+MessageLinks auth_sign_packet(Author * author , MessageLinks *link_to, char * public_payload , char *masked_payload );
+
+Address get_msg_link(MessageLinks *message_links);
+
+Address get_seq_link(MessageLinks *message_links);
+
 /*
 void auth_store_state(Author * author, PubKey * pk, Address * link);
 
@@ -62,8 +75,6 @@ SeqState auth_get_seq_state(Author * author, PubKey * pk);
 /// Create a signed packet.
 Message [ 2 ] auth_sign_packet(Author * author , Address *link_to, Bytes * public_payload , Bytes *masked_payload ) ;
 
-/// Create a tagged packet.
-Message [ 2 ] auth_tag_packet(Author * author , Address *link_to, Bytes * public_payload , Bytes *masked_payload ) ;
 
 /// Unwrap tagged packet.
 Bytes [ 2 ] auth_unwrap_tagged_packet(Author * author , Preparsed *preparsed ) ;

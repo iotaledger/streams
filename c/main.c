@@ -18,14 +18,28 @@ int main() {
     // Fetch Application instance
     appinst_t *appinst = auth_channel_address(auth);
     char *appinst_str = get_appinst_str(appinst);
-    printf("With AppInst: %s\n", appinst_str);
+    printf("With AppInst: %s\n\n", appinst_str);
 
     // sending announcement
+    printf("Sending announcement\n");
     address_t *ann_link = auth_announce(auth);
-    printf("Made an announcement\n");
+    printf("Made an announcement\n\n");
 
-    address_t *keyload_links = auth_share_keyload_for_everyone(auth, ann_link);
-    printf("Made a keyload\n");
+    printf("Sending keyload\n");
+    message_links_t *keyload_links = auth_share_keyload_for_everyone(auth, ann_link);
+    printf("Made a keyload\n\n");
+
+    char public_payload[] = "A public payload woopeee";
+    char private_payload[] = "A private payload uhu";
+
+    printf("Sending tagged packet\n");
+    message_links_t *tagged_packet_links = auth_tag_packet(auth, keyload_links, public_payload, private_payload);
+    printf("Made a tagged packet\n\n");
+
+    printf("Sending signed packet\n");
+    message_links_t *signed_packet_links = auth_sign_packet(auth, tagged_packet_links, public_payload, private_payload);
+    printf("Made a signed packet\n\n");
+
 
     return 0;
 }

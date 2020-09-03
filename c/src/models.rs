@@ -16,7 +16,6 @@ use iota_streams::app_channels::api::tangle::{
     Author as Auth,
     Subscriber as Sub,
     Preparsed as PreparsedMessage,
-    Transport as Trans,
 };
 
 use iota::{
@@ -97,17 +96,13 @@ fn bits_to_trytes(input: Vec<u8>) -> Vec<u8> {
     trytes
 }
 
-pub struct Transport<'a>(pub(crate) &'a iota::Client);
 
-//pub struct Author<'a, T: Trans>{
 pub struct Author {
     pub(crate) auth: Auth,
-    //pub(crate) transport: Transport<'a>,
 }
 
 pub struct Subscriber{
     pub(crate) sub: Sub,
-    //pub(crate) transport: Transport,
 }
 
 pub struct Message(pub(crate) message::BinaryMessage<KeccakF1600, TangleAddress>);
@@ -131,3 +126,18 @@ pub struct NextMsgId{
 } // vec(Pubkey, (address, usize))
 
 pub struct Preparsed<'a>(pub(crate) PreparsedMessage<'a>);
+
+pub struct MessageLinks{
+    pub(crate) msg_link: Address,
+    pub(crate) seq_link: Option<Address>,
+}
+
+#[no_mangle]
+pub extern "C" fn get_msg_link(msg_links: *mut MessageLinks) -> *mut Address {
+    Box::into_raw(Box::new(msg_links.msg_link.clone()))
+}
+
+#[no_mangle]
+pub extern "C" fn get_seq_link(msg_links: *mut MessageLinks) -> *mut Address {
+    Box::into_raw(Box::new(msg_links.seq_link.unwrap()))
+}
