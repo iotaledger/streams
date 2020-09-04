@@ -1,5 +1,5 @@
 //use crate::{AppInst, MsgId, Address, Author, Message, PskIds, PubKey, PubKeyWrap, SeqState, NextMsgId, Transport, Preparsed, KePks, MWM, send_message, MessageLinks};
-use crate::{AppInst, Address, Author, Message, PskIds, KePks, send_message, MessageLinks};
+use crate::{AppInst, Address, Author, Message, PskIds, KePks, MessageLinks, SeqState, Preparsed, utils, client};
 
 use iota_streams::app_channels::api::tangle::{Author as Auth, Message as TangleMessage};
 use iota_streams::app::transport::{
@@ -57,7 +57,7 @@ pub extern "C" fn auth_announce(author: *mut Author) -> *mut Address {
     mem::forget(auth);
 
     let mut client = Client::get();
-    send_message(&mut client, &Message(msg.clone()));
+    client::send_message(&mut client, &Message(msg.clone()));
     Box::into_raw(Box::new(Address(msg.link)))
 }
 
@@ -74,7 +74,7 @@ pub extern "C" fn auth_share_keyload(author: *mut Author,  link_to: *mut Address
         println!("Tangle address: {}\n", tangle_address);
         let response = auth.auth.share_keyload(tangle_address, &unboxed_psk_ids.0, &unboxed_ke_pks.0).unwrap();
         mem::forget(auth);
-        send_and_retrieve_links(response)
+        utils::send_and_retrieve_links(response)
     }
 }
 
@@ -82,15 +82,18 @@ pub extern "C" fn auth_share_keyload(author: *mut Author,  link_to: *mut Address
 #[no_mangle]
 pub extern "C" fn auth_share_keyload_for_everyone(author: *mut Author, link_to: *mut Address) -> *mut MessageLinks {
     unsafe {
+        println!("Getting author");
         let mut auth = Box::from_raw(author);
+        println!("Got Author");
         let unboxed_link = Box::from_raw(link_to);
+        println!("Unboxed the link");
         let tangle_address = TangleAddress::new(ApplicationInstance::from(unboxed_link.0.appinst.clone()), MessageIdentifier::from(unboxed_link.0.msgid.clone()));
 
         println!("Tangle address: {}\n", tangle_address);
         let response = auth.auth.share_keyload_for_everyone(&tangle_address).unwrap();
         mem::forget(auth);
 
-        send_and_retrieve_links(response)
+        utils::send_and_retrieve_links(response)
     }
 }
 
@@ -101,7 +104,7 @@ pub extern "C" fn auth_tag_packet(author: *mut Author, link_to: *mut MessageLink
         let mut auth = Box::from_raw(author);
         let unboxed_link = Box::from_raw(link_to);
 
-        let tangle_address = get_seq_link(unboxed_link, auth.auth.get_branching_flag() == 1);
+        let tangle_address = utils::get_seq_link(unboxed_link, auth.auth.get_branching_flag() == 1);
         let public_payload = CStr::from_ptr(public_payload_ptr);
         let private_payload = CStr::from_ptr(private_payload_ptr);
 
@@ -109,7 +112,7 @@ pub extern "C" fn auth_tag_packet(author: *mut Author, link_to: *mut MessageLink
         let response = auth.auth.tag_packet(&tangle_address, &Bytes(public_payload.to_bytes().to_vec()), &Bytes(private_payload.to_bytes().to_vec())).unwrap();
         mem::forget(auth);
 
-        send_and_retrieve_links(response)
+        utils::send_and_retrieve_links(response)
     }
 }
 
@@ -119,61 +122,54 @@ pub extern "C" fn auth_sign_packet(author: *mut Author, link_to: *mut MessageLin
         let mut auth = Box::from_raw(author);
         let unboxed_link = Box::from_raw(link_to);
 
-        let tangle_address = get_seq_link(unboxed_link, auth.auth.get_branching_flag() == 1);
+        let tangle_address = utils::get_seq_link(unboxed_link, auth.auth.get_branching_flag() == 1);
         let public_payload = CStr::from_ptr(public_payload_ptr);
         let private_payload = CStr::from_ptr(private_payload_ptr);
 
         let response = auth.auth.sign_packet(&tangle_address, &Bytes(public_payload.to_bytes().to_vec()), &Bytes(private_payload.to_bytes().to_vec())).unwrap();
         mem::forget(auth);
 
-        send_and_retrieve_links(response)
+        utils::send_and_retrieve_links(response)
     }
 }
 
 
 
-fn get_seq_link(unboxed_link: Box<MessageLinks>, branching: bool) -> TangleAddress {
-    let link = if !branching {
-        unboxed_link.msg_link.0
-    } else {
-        unboxed_link.seq_link.unwrap().0
-    };
 
-    TangleAddress::new(
-        ApplicationInstance::from(link.appinst.clone()),
-        MessageIdentifier::from(link.msgid.clone())
-    )
-}
+#[no_mangle]
+pub extern "C" fn auth_fetch_next_transaction(author: *mut Author) -> *mut Message {
+    unsafe {
+        let mut auth = Box::from_raw(author);
 
+        let branching = auth.auth.get_branching_flag() == 1_u8;
+        let response = auth.auth.gen_next_msg_ids(branching.clone());
 
-fn send_and_retrieve_links(response: (TangleMessage, Option<TangleMessage>)) -> *mut MessageLinks {
-    let mut msgs = Vec::with_capacity(2);
-    msgs.push(Message(response.0));
-    if response.1.is_some() {
-        msgs.push(Message(response.1.unwrap()))
-    }
-
-    for msg in &msgs {
-        let msg_link = Address(msg.0.clone().link);
-        print!("Sending Message... ");
-        send_message(&mut Client::get(), &msg);
-        println!("Link for message: {}", msg_link.0.msgid);
-    }
-
-    let msg_links = if msgs.len() < 2 {
-        MessageLinks {
-            msg_link: Address(msgs.get(0).unwrap().0.link.clone()),
-            seq_link: None
+        for link in response {
+            let msg = client::recv_message(&mut Client::get(), &Address(link.1.clone()));
+            if msg.is_some() {
+                let response = msg.unwrap();
+                println!("Found message: {:?}", &response.0.link);
+                if branching {
+                    auth.auth.store_state(link.0, link.1);
+                } else {
+                    auth.auth.store_state_for_all(link.1, link.2);
+                }
+                mem::forget(auth);
+                return Box::into_raw(Box::new(response))
+            }
         }
-    } else {
-        MessageLinks {
-            msg_link: Address(msgs.get(0).unwrap().0.link.clone()),
-            seq_link: Some(Address(msgs.get(1).unwrap().0.link.clone()))
-        }
-    };
-    Box::into_raw(Box::new(msg_links))
 
+        println!("No new messages found...");
+        mem::forget(auth);
+        std::ptr::null_mut()
+    }
 }
+
+
+
+
+
+
 
 
 /*
@@ -183,16 +179,6 @@ pub extern "C" fn void auth_store_state(Author *author, PubKey *pk, Address *lin
 #[no_mangle]
 pub extern "C" fn void auth_store_state_for_all(Author *author, Address *link, size_t seq_num);
 
-#[no_mangle]
-pub extern "C" fn SeqState auth_get_seq_state(Author *author, PubKey *pk);
-
-/// Create a signed packet.
-#[no_mangle]
-pub extern "C" fn Message[2] auth_sign_packet(Author *author, Address *link_to, Bytes *public_payload, Bytes *masked_payload);
-
-/// Create a tagged packet.
-#[no_mangle]
-pub extern "C" fn Message[2] auth_tag_packet(Author *author, Address *link_to, Bytes *public_payload, Bytes *masked_payload);
 
 /// Unwrap tagged packet.
 #[no_mangle]

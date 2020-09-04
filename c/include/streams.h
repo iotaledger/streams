@@ -18,8 +18,6 @@ typedef struct PubKey pubkey_t;
 
 typedef struct PubKeyWrap pubkeywrap_t;
 
-typedef struct Message message_t;
-
 typedef struct SeqState seqstate_t;
 
 typedef struct NextMsgId nextmsgid_t;
@@ -31,6 +29,11 @@ extern char *get_address_inst_str(address_t *address);
 extern char *get_address_id_str(address_t *address);
 extern address_t *auth_announce(author_t *author);
 
+typedef struct Message message_t;
+extern message_t *get_transaction(address_t *link_to);
+extern message_t *auth_fetch_next_transaction(author_t *author);
+
+
 typedef struct MessageLinks message_links_t;
 extern message_links_t *auth_share_keyload(author_t *author, address_t *link_to, pskids_t *psk_ids, pubkeywrap_t ke_pks);
 extern message_links_t *auth_share_keyload_for_everyone(author_t *author, address_t *link_to);
@@ -39,3 +42,4 @@ extern message_links_t *auth_sign_packet(author_t *author, message_links_t *link
 
 extern address_t *get_msg_link(message_links_t *message_links);
 extern address_t *get_seq_link(message_links_t *message_links);
+

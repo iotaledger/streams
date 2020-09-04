@@ -52,6 +52,7 @@ pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *mut c_char{
         CString::from_vec_unchecked(bits_to_trytes(unboxed.tbits().clone())).into_raw()    }
 }
 
+#[derive(Clone)]
 pub struct Address(pub(crate) TangleAddress);
 
 #[no_mangle]
@@ -107,6 +108,12 @@ pub struct Subscriber{
 
 pub struct Message(pub(crate) message::BinaryMessage<KeccakF1600, TangleAddress>);
 
+impl Default for Message {
+    fn default() -> Message {
+        Message(message::BinaryMessage::new(TangleAddress::default(), vec![]))
+    }
+}
+
 pub struct PskIds(pub(crate) psk::PskIds);
 
 pub struct PubKey(pub(crate) x25519::PublicKey);
@@ -135,13 +142,19 @@ pub struct MessageLinks{
 #[no_mangle]
 pub extern "C" fn get_msg_link(msg_links: *mut MessageLinks) -> *mut Address {
     unsafe {
-        Box::into_raw(Box::new(Box::from_raw(msg_links).msg_link))
+        let unboxed = Box::from_raw(msg_links);
+        let ptr = Box::into_raw(Box::new(Address(unboxed.msg_link.0.clone())));
+        std::mem::forget(unboxed);
+        ptr
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_seq_link(msg_links: *mut MessageLinks) -> *mut Address {
     unsafe {
-        Box::into_raw(Box::new(Box::from_raw(msg_links).seq_link.unwrap()))
+        let unboxed = Box::from_raw(msg_links);
+        let ptr = Box::into_raw(Box::new(unboxed.seq_link.clone().unwrap()));
+        std::mem::forget(unboxed);
+        ptr
     }
 }

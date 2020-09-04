@@ -64,6 +64,10 @@ Address get_msg_link(MessageLinks *message_links);
 
 Address get_seq_link(MessageLinks *message_links);
 
+Message get_transaction(Address *link_to);
+
+Message auth_fetch_next_transaction(Author *author);
+
 /*
 void auth_store_state(Author * author, PubKey * pk, Address * link);
 
