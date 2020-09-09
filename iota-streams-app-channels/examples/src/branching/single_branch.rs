@@ -1,4 +1,3 @@
-use iota_streams_app::message::HasLink;
 use iota_streams_app_channels::{
     api::tangle::{
         Address,
@@ -9,6 +8,10 @@ use iota_streams_app_channels::{
     message,
 };
 use iota_streams_ddml::types::*;
+use iota_streams_app::{
+    message::HasLink,
+    transport::tangle::PAYLOAD_BYTES,
+};
 
 use anyhow::{
     ensure,
@@ -33,12 +36,14 @@ where
     T::SendOptions: Copy,
     T::RecvOptions: Copy,
 {
-    let mut author = Author::new(seed, multi_branching);
+    let multi_branching_flag = 0_u8;
+    let encoding = "utf-8";
+    let mut author = Author::new(seed, encoding, PAYLOAD_BYTES,  multi_branching_flag == 1_u8);
     println!("Author multi branching?: {:?}", author.get_branching_flag() == 1_u8);
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED");
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES);
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES);
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", encoding, PAYLOAD_BYTES);
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -65,7 +70,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header().unwrap();
         ensure!(
-            preparsed.check_content_type(&message::announce::TYPE),
+            preparsed.check_content_type(&message::ANNOUNCE),
             "Message is not an announcement"
         );
 
@@ -111,7 +116,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::subscribe::TYPE),
+            preparsed.check_content_type(&message::SUBSCRIBE),
             "Wrong message type: {}",
             preparsed.header.content_type
         );
@@ -132,7 +137,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::subscribe::TYPE),
+            preparsed.check_content_type(&message::SUBSCRIBE),
             "Wrong message type: {}",
             preparsed.header.content_type
         );
@@ -153,7 +158,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::keyload::TYPE),
+            preparsed.check_content_type(&message::KEYLOAD),
             "Wrong message type: {}",
             preparsed.header.content_type
         );
@@ -181,7 +186,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::signed_packet::TYPE),
+            preparsed.check_content_type(&message::SIGNED_PACKET),
             "Wrong message type: {}",
             preparsed.header.content_type
         );
@@ -210,7 +215,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::tagged_packet::TYPE),
+            preparsed.check_content_type(&message::TAGGED_PACKET),
             "Wrong message type: {}",
             preparsed.header.content_type
         );
@@ -242,7 +247,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::tagged_packet::TYPE),
+            preparsed.check_content_type(&message::TAGGED_PACKET),
             "Wrong message type: {}",
             preparsed.header.content_type
         );
@@ -264,7 +269,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::tagged_packet::TYPE),
+            preparsed.check_content_type(&message::TAGGED_PACKET),
             "Wrong message type: {}",
             preparsed.header.content_type
         );
@@ -289,7 +294,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::tagged_packet::TYPE),
+            preparsed.check_content_type(&message::TAGGED_PACKET),
             "Wrong message type: {}",
             preparsed.header.content_type
         );
@@ -324,7 +329,7 @@ where
             .unwrap();
         let preparsed = msg.parse_header()?;
         ensure!(
-            preparsed.check_content_type(&message::signed_packet::TYPE),
+            preparsed.check_content_type(&message::SIGNED_PACKET),
             "Wrong message type: {}",
             preparsed.header.content_type
         );

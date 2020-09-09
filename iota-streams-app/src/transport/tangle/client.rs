@@ -150,9 +150,9 @@ fn make_bundle(
 
     let mut bundle_builder = OutgoingBundleBuilder::new();
     let mut body_slice = body.clone();
-    while body_slice.len() >= PAYLOAD_TRIT_LEN {
-        let (payload_chunk, new_body_slice) = body_slice.split_at_mut(PAYLOAD_TRIT_LEN);
-        let tx_payload = Payload::try_from_inner(tbitslice_to_tritbuf(payload_chunk.to_vec()))
+    while body_slice.len() >= PAYLOAD_BYTES {
+        let (payload_chunk, new_body_slice) = body_slice.split_at_mut(PAYLOAD_BYTES);
+        let tx_payload = Payload::try_from_inner(pad_trit_buf(PAYLOAD_TRIT_LEN, tbitslice_to_tritbuf(payload_chunk.to_vec())))
             .map_err(|e| anyhow!("Failed to create payload chunk: {:?}.", e))?;
         bundle_builder.push(make_tx(
             tx_address.clone(),
@@ -270,7 +270,7 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-pub fn msg_from_bundle<F>(bundle: &Bundle, flags: u8) -> BinaryMessage<F, TangleAddress> {
+pub fn msg_from_bundle<F>(bundle: &Bundle) -> BinaryMessage<F, TangleAddress> {
     let tx = bundle.head();
     let appinst = AppInst {
         id: NBytes(tbits_from_tritbuf(tx.address().to_inner())),
@@ -281,9 +281,11 @@ pub fn msg_from_bundle<F>(bundle: &Bundle, flags: u8) -> BinaryMessage<F, Tangle
     let msgid = MsgId { id: NBytes(tbits) };
     let mut body = Vec::new();
     for tx in bundle.into_iter() {
-        body.extend_from_slice(&tbits_from_tritbuf(tx.payload().to_inner()));
+        let mut payload = tbitslice_from_tritbuf(tx.payload().to_inner());
+        payload.resize(PAYLOAD_BYTES, 0);
+        body.extend_from_slice(&payload);
     }
-    BinaryMessage::new(TangleAddress { appinst, msgid }, body, flags)
+    BinaryMessage::new(TangleAddress { appinst, msgid }, body)
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -511,10 +513,9 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
     fn recv_messages_with_options(
         &mut self,
         link: &TangleAddress,
-        opt: Self::RecvOptions,
+        _opt: Self::RecvOptions,
     ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
-        let tx_address =
-            Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.tbits())))
+        let tx_address = Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.tbits())))
                 .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
         let tx_tag = Tag::try_from_inner(pad_trit_buf(TAG_TRIT_LEN, tbits_to_tritbuf(link.msgid.tbits())))
             .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
@@ -523,7 +524,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         if !txs.is_err() {
             Ok(bundles_from_trytes(txs.unwrap())
                 .into_iter()
-                .map(|b| msg_from_bundle(&b, opt.flags))
+                .map(|b| msg_from_bundle(&b))
                 .collect())
         } else {
             Ok(Vec::new())

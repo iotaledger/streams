@@ -1,7 +1,4 @@
-use anyhow::{
-    bail,
-    Result,
-};
+use anyhow::Result;
 
 use super::Context;
 use crate::{

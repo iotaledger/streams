@@ -2,7 +2,7 @@
 //#![no_std]
 
 use iota::client as iota_client;
-use iota_streams_app::transport::{Transport, tangle::{TangleAddress, client::RecvOptions}};
+use iota_streams_app::transport::tangle::client::RecvOptions;
 use rand::Rng;
 
 use iota_streams_app::transport::tangle::client::SendTrytesOptions;
@@ -36,7 +36,7 @@ fn main() {
     }
 
     println!("Running Multi Branch Test, seed: {}", seed2);
-    let result = branching::multi_branch::example(&mut client, send_opt, recv_opt, true, &seed1);
+    let result = branching::multi_branch::example(&mut client, send_opt, recv_opt, true, &seed2);
     if result.is_err() {
         println!("Error in Multi Branch test: {:?}", result.err());
         println!("#######################################\n");

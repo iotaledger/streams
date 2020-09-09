@@ -51,7 +51,7 @@ where
         let msg = transport.recv_message_with_options(&announcement_link, recv_opt)?;
         println!("done");
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::announce::TYPE));
+        ensure!(preparsed.check_content_type(message::ANNOUNCE));
 
         subscriberA.unwrap_announcement(preparsed.clone())?;
         ensure!(author.channel_address() == subscriberA.channel_address().unwrap());
@@ -82,7 +82,7 @@ where
         let msg = transport.recv_message_with_options(&signed_packet_link, recv_opt)?;
         println!("done");
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::signed_packet::TYPE));
+        ensure!(preparsed.check_content_type(message::SIGNED_PACKET));
         let (unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
         ensure!(public_payload == unwrapped_public);
         ensure!(masked_payload == unwrapped_masked);
@@ -103,7 +103,7 @@ where
         let msg = transport.recv_message_with_options(&subscribeB_link, recv_opt)?;
         println!("done");
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::subscribe::TYPE));
+        ensure!(preparsed.check_content_type(message::SUBSCRIBE));
         author.unwrap_subscribe(preparsed)?;
     }
 
@@ -122,7 +122,7 @@ where
         let msg = transport.recv_message_with_options(&keyload_link, recv_opt)?;
         println!("done");
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::keyload::TYPE));
+        ensure!(preparsed.check_content_type(message::KEYLOAD));
         let resultA = subscriberA.unwrap_keyload(preparsed.clone());
         ensure!(resultA.is_err());
         subscriberB.unwrap_keyload(preparsed)?;
@@ -143,7 +143,7 @@ where
         let msg = transport.recv_message_with_options(&tagged_packet_link, recv_opt)?;
         println!("done");
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::tagged_packet::TYPE));
+        ensure!(preparsed.check_content_type(message::TAGGED_PACKET));
         let resultA = subscriberA.unwrap_tagged_packet(preparsed.clone());
         ensure!(resultA.is_err());
         let (unwrapped_public, unwrapped_masked) = subscriberB.unwrap_tagged_packet(preparsed)?;
@@ -156,7 +156,7 @@ where
         let keyload = transport.recv_message_with_options(&keyload_link, recv_opt)?;
         println!("done");
         let preparsed = keyload.parse_header()?;
-        ensure!(preparsed.check_content_type(message::keyload::TYPE));
+        ensure!(preparsed.check_content_type(message::KEYLOAD));
         subscriberB.unwrap_keyload(preparsed)?;
     }
 
@@ -194,7 +194,7 @@ where
         let msg = transport.recv_message_with_options(&unsubscribe_link, recv_opt)?;
         println!("done");
         let preparsed = msg.parse_header()?;
-        ensure!(preparsed.check_content_type(message::unsubscribe::TYPE));
+        ensure!(preparsed.check_content_type(message::unSUBSCRIBE));
         author.unwrap_unsubscribe(preparsed)?;
     }
 

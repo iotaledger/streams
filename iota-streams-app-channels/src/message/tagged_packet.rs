@@ -38,9 +38,6 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Type of `TaggedPacket` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9TAGGEDPACKET";
-
 pub struct ContentWrap<'a, F, Link>
 where
     Link: HasLink,

@@ -1,7 +1,3 @@
-use anyhow::{
-    Result,
-};
-
 use iota_streams_app_channels::{
     api::tangle::{
         Address,
@@ -12,7 +8,6 @@ use iota_streams_app_channels::{
     message,
 };
 
-use iota_streams_core::prelude::String;
 use iota_streams_app::message::HasLink;
 
 pub fn s_fetch_next_messages<T: Transport>(
@@ -46,25 +41,24 @@ pub fn s_fetch_next_messages<T: Transport>(
 
             loop {
                 let preparsed = unwrapped.parse_header().unwrap();
-                let content_type = String::from_utf8(preparsed.header.content_type.0[..].to_vec()).unwrap();
                 print!("Message exists at {}... ", &preparsed.header.link.rel());
-                match content_type.as_str() {
-                    message::signed_packet::TYPE => {
+                match preparsed.header.content_type {
+                    message::SIGNED_PACKET => {
                         let _unwrapped = subscriber.unwrap_signed_packet(preparsed.clone());
                         println!("Found a signed packet");
                         break;
                     }
-                    message::tagged_packet::TYPE => {
+                    message::TAGGED_PACKET => {
                         let _unwrapped = subscriber.unwrap_tagged_packet(preparsed.clone());
                         println!("Found a tagged packet");
                         break;
                     }
-                    message::keyload::TYPE => {
+                    message::KEYLOAD => {
                         let _unwrapped = subscriber.unwrap_keyload(preparsed.clone());
                         println!("Found a keyload packet");
                         break;
                     }
-                    message::sequence::TYPE => {
+                    message::SEQUENCE => {
                         print!("Found sequenced message.\tFetching sequenced message... ");
                         let msgid = subscriber.unwrap_sequence(preparsed.clone()).unwrap();
                         let msg = transport
@@ -122,16 +116,13 @@ pub fn a_fetch_next_messages<T: Transport>(
                 let preparsed = unwrapped.parse_header().unwrap();
                 print!("Message exists at {}... ", &preparsed.header.link.rel());
 
-                match String::from_utf8(preparsed.header.content_type.0[..].to_vec())
-                    .unwrap()
-                    .as_str()
-                {
-                    message::tagged_packet::TYPE => {
+                match preparsed.header.content_type {
+                    message::TAGGED_PACKET => {
                         let _unwrapped = author.unwrap_tagged_packet(preparsed.clone());
                         println!("Found a tagged packet");
                         break;
                     }
-                    message::sequence::TYPE => {
+                    message::SEQUENCE => {
                         let msgid = author.unwrap_sequence(preparsed.clone()).unwrap();
                         print!("Found sequenced message.\tFetching sequenced message... ");
                         let msg = transport

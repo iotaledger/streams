@@ -68,9 +68,6 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Type of `Keyload` message content.
-pub const TYPE: &str = "STREAMS9CHANNELS9KEYLOAD";
-
 pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub nonce: NBytes,
