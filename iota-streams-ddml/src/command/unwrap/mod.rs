@@ -2,6 +2,8 @@
 
 use anyhow::Result;
 
+use core::fmt;
+
 use crate::{
     io,
     types::Size,
@@ -31,6 +33,13 @@ impl<F, IS: io::IStream> Context<F, IS> {
         self.stream.try_advance(n.0)?;
         Ok(self)
         //<IS as io::IStream<TW>>::try_advance(&mut self.stream, n)
+    }
+}
+
+impl<F, IS> fmt::Debug for Context<F, IS>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{header: {:?}, ctx: {:?}}}", "self.header", "self.ctx")
     }
 }
 

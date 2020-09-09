@@ -13,6 +13,7 @@ use iota_streams_ddml::{
 };
 
 use super::*;
+use core::fmt;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
@@ -93,6 +94,16 @@ impl<Link: Default> Default for HDF<Link> {
             link: Link::default(),
             seq_num: Size(0),
         }
+    }
+}
+
+impl<Link> fmt::Debug for HDF<Link>
+where
+    Link: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{encoding: {:?}, version: {:?}, content_type: {:?}, payload_length: {:?}}}", 
+            self.encoding, self.version, self.content_type, self.payload_length)
     }
 }
 

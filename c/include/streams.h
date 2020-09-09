@@ -25,11 +25,14 @@ typedef struct NextMsgId nextmsgid_t;
 typedef struct Preparsed preparsed_t;
 
 typedef struct Address address_t;
+
+typedef struct Message message_t;
+
 extern char *get_address_inst_str(address_t *address);
 extern char *get_address_id_str(address_t *address);
 extern address_t *auth_announce(author_t *author);
+extern void auth_unwrap_subscribe(author_t * author, message_t *message);
 
-typedef struct Message message_t;
 extern message_t *get_transaction(address_t *link_to);
 extern message_t *auth_fetch_next_transaction(author_t *author);
 
@@ -43,3 +46,7 @@ extern message_links_t *auth_sign_packet(author_t *author, message_links_t *link
 extern address_t *get_msg_link(message_links_t *message_links);
 extern address_t *get_seq_link(message_links_t *message_links);
 
+typedef struct Subscriber subscriber_t;
+extern subscriber_t *sub_new(char seed[], char encoding[], size_t payload_length);
+extern void *sub_unwrap_announce(subscriber_t *subscriber, message_t *message);
+address_t *sub_subscribe(subscriber_t *subscriber, address_t *announcement_link);

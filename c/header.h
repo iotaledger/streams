@@ -48,6 +48,9 @@ char[] get_address_id_str(Address *address);
 /// Announce creation of a new Channel.
 Address auth_announce(Author *author);
 
+/// Subscribe a new subscriber.
+void auth_unwrap_subscribe(Author * author, Message * preparsed);
+
 /// Create a new keyload for a list of subscribers.
 MessageLinks auth_share_keyload(Author *author , Address *link_to, PskIds *psk_ids , PubKeyWrap[] ke_pks);
 
@@ -68,6 +71,10 @@ Message get_transaction(Address *link_to);
 
 Message auth_fetch_next_transaction(Author *author);
 
+Subscriber sub_new(char seed[], char encoding[], size_t payload_length);
+void sub_unwrap_announce(Subscriber *subscriber, Message *message);
+Address sub_subscribe(Subscriber *subscriber, Address *announcement_link);
+
 /*
 void auth_store_state(Author * author, PubKey * pk, Address * link);
 
@@ -83,8 +90,6 @@ Message [ 2 ] auth_sign_packet(Author * author , Address *link_to, Bytes * publi
 /// Unwrap tagged packet.
 Bytes [ 2 ] auth_unwrap_tagged_packet(Author * author , Preparsed *preparsed ) ;
 
-/// Subscribe a new subscriber.
-void auth_unwrap_subscribe(Author * author, Preparsed * preparsed);
 
 Address auth_unwrap_sequence(Author * author, Preparsed * preparsed);
 

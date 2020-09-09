@@ -6,7 +6,7 @@
 #include "include/streams.h"
 
 int main() {
-    bool multi_branching = false;
+    bool multi_branching = true;
     char seed[10] = "";
 
     const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
@@ -39,7 +39,25 @@ int main() {
     message_t *ann_packet = get_transaction(ann_link);
     printf("Got the transaction\n\n");
 
+    char sub_seed_a[] = "SUBSCRIBERA9SEED";
+    printf("Making Sub A with %s\n", sub_seed_a);
+    subscriber_t *subA = sub_new("sub_seed_a", encoding, size);
+    printf("Made an sub A... \n");
 
+    printf("Unwrapping announcement packet... \n");
+    sub_unwrap_announce(subA, ann_packet);
+    printf("Announcement unwrapped, generating subscription message...\n");
+    address_t *sub_link = sub_subscribe(subA, ann_link);
+    
+    printf("Subscription packet created, Fetching Transaction\n");
+    message_t *sub_packet = get_transaction(sub_link);
+
+    printf("Accepting Sub A to author subscription list\n");
+    auth_unwrap_subscribe(auth, sub_packet);
+
+    
+    printf("Sub A subscribed!\n");
+/*
     printf("Sending keyload\n");
     message_links_t *keyload_links = auth_share_keyload_for_everyone(auth, ann_link);
     printf("Made a keyload\n\n");
@@ -67,6 +85,7 @@ int main() {
     printf("Got the link to fetch\n");
     message_t *signed_packet = get_transaction(signed_packet_link);
     printf("Got the transaction\n\n");
+*/
 
     return 0;
 }

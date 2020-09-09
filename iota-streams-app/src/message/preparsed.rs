@@ -1,5 +1,7 @@
 use anyhow::Result;
 
+use core::fmt;
+
 use super::*;
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::command::unwrap;
@@ -49,5 +51,14 @@ where
             header: self.header.clone(),
             ctx: self.ctx.clone(),
         }
+    }
+}
+
+impl<'a, F, Link> fmt::Debug for PreparsedMessage<'a, F, Link>
+where
+    Link: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{header: {:?}, ctx: {:?}}}", self.header, "self.ctx")
     }
 }

@@ -61,6 +61,21 @@ pub extern "C" fn auth_announce(author: *mut Author) -> *mut Address {
     Box::into_raw(Box::new(Address(msg.link)))
 }
 
+/// unwrap and add a subscriber to the list of subscribers
+#[no_mangle]
+pub extern "C" fn auth_unwrap_subscribe(author: *mut Author, message: *mut TangleMessage){
+    unsafe {
+        let mut auth = Box::from_raw(author);
+        let msg = Box::from_raw(message);
+
+        let parsed = msg.parse_header();
+        auth.auth.unwrap_subscribe(parsed.unwrap()).unwrap();
+        
+        mem::forget(auth);
+        mem::forget(msg);
+    }
+}
+
 /// Create a new keyload for a list of subscribers.
 #[no_mangle]
 pub extern "C" fn auth_share_keyload(author: *mut Author,  link_to: *mut Address, psk_ids: *mut PskIds, ke_pks: *mut KePks) -> *mut MessageLinks {
