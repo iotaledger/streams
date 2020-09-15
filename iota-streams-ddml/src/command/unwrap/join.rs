@@ -4,16 +4,12 @@ use super::Context;
 use crate::{
     command::Join,
     io,
-    types::{
-        LinkStore,
-        SkipFallback,
-    },
+    link_store::LinkStore,
+    types::SkipFallback,
 };
 use iota_streams_core::sponge::prp::PRP;
 
-impl<'a, F, L: SkipFallback<F>, S: LinkStore<F, L>, IS: io::IStream> Join<&'a mut L, &S> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, L: SkipFallback<F>, S: LinkStore<F, L>, IS: io::IStream> Join<&'a mut L, &S> for Context<F, IS>
 {
     fn join(&mut self, store: &S, link: &'a mut L) -> Result<&mut Self> {
         // TODO: Move `skip` out of `join` and `skip` links explicitly.

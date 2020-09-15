@@ -5,9 +5,7 @@ use crate::command::Commit;
 use iota_streams_core::sponge::prp::PRP;
 
 /// Commit Spongos.
-impl<F, OS> Commit for Context<F, OS>
-where
-    F: PRP,
+impl<F: PRP, OS> Commit for Context<F, OS>
 {
     fn commit(&mut self) -> Result<&mut Self> {
         self.spongos.commit();

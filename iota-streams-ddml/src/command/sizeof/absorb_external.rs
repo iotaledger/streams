@@ -8,6 +8,7 @@ use crate::{
         External,
         Fallback,
         NBytes,
+        ArrayLength,
     },
 };
 
@@ -32,11 +33,11 @@ use crate::{
 // }
 
 /// External values are not encoded in the trinary stream.
-impl<'a, F> Absorb<External<&'a NBytes>> for Context<F>
+impl<'a, F, N: ArrayLength<u8>> Absorb<External<&'a NBytes<N>>> for Context<F>
 // where
 // Self: Absorb<&'a T>,
 {
-    fn absorb(&mut self, _external: External<&'a NBytes>) -> Result<&mut Self> {
+    fn absorb(&mut self, _external: External<&'a NBytes<N>>) -> Result<&mut Self> {
         Ok(self)
     }
 }

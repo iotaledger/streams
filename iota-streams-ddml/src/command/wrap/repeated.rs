@@ -8,9 +8,8 @@ use crate::{
 };
 use iota_streams_core::sponge::prp::PRP;
 
-impl<I, C, F, OS: io::OStream> Repeated<I, C> for Context<F, OS>
+impl<I, C, F: PRP, OS: io::OStream> Repeated<I, C> for Context<F, OS>
 where
-    F: PRP,
     I: iter::Iterator,
     C: for<'a> FnMut(&'a mut Self, <I as iter::Iterator>::Item) -> Result<&'a mut Self>,
 {

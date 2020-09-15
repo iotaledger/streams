@@ -12,6 +12,7 @@ use crate::{
         Bytes,
         Fallback,
         NBytes,
+        ArrayLength,
         Size,
         SkipFallback,
         Uint8,
@@ -87,9 +88,9 @@ impl<F, OS: io::OStream> Skip<Size> for Context<F, OS> {
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<&'a NBytes> for Context<F, OS> {
-    fn skip(&mut self, nbytes: &'a NBytes) -> Result<&mut Self> {
-        Ok(wrap_skip_trits(self.as_mut(), &(nbytes.0)[..])?.as_mut())
+impl<'a, F, N: ArrayLength<u8>, OS: io::OStream> Skip<&'a NBytes<N>> for Context<F, OS> {
+    fn skip(&mut self, nbytes: &'a NBytes<N>) -> Result<&mut Self> {
+        Ok(wrap_skip_trits(self.as_mut(), nbytes.as_slice())?.as_mut())
     }
 }
 

@@ -1,5 +1,4 @@
 use anyhow::Result;
-// use std::string::ToString;
 
 use super::*;
 use iota_streams_core::prelude::String;

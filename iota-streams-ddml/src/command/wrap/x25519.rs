@@ -6,7 +6,7 @@ use super::Context;
 use crate::{
     command::X25519,
     io,
-    types::NBytes,
+    types::{NBytes, ArrayLength},
 };
 #[cfg(feature = "std")]
 use crate::{
@@ -37,8 +37,8 @@ impl<'a, F: PRP, OS: io::OStream> X25519<x25519::EphemeralSecret, &'a x25519::Pu
 }
 
 #[cfg(feature = "std")]
-impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes> for Context<F, OS> {
-    fn x25519(&mut self, pk: &x25519::PublicKey, key: &NBytes) -> Result<&mut Self> {
+impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F, OS> {
+    fn x25519(&mut self, pk: &x25519::PublicKey, key: &NBytes<N>) -> Result<&mut Self> {
         let ephemeral_ke_sk = x25519::EphemeralSecret::new(&mut rand::thread_rng());
         let ephemeral_ke_pk = x25519::PublicKey::from(&ephemeral_ke_sk);
         self.absorb(&ephemeral_ke_pk)?
@@ -49,8 +49,8 @@ impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes> for 
 }
 
 #[cfg(not(feature = "std"))]
-impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes> for Context<F, OS> {
-    fn x25519(&mut self, _pk: &x25519::PublicKey, _key: &NBytes) -> Result<&mut Self> {
+impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F, OS> {
+    fn x25519(&mut self, _pk: &x25519::PublicKey, _key: &NBytes<N>) -> Result<&mut Self> {
         // TODO: no_std make default rng
         bail!("no_std default RNG not implemented")
     }

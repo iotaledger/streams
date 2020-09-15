@@ -9,6 +9,7 @@ use crate::{
         Bytes,
         Fallback,
         NBytes,
+        ArrayLength,
         Size,
         Uint8,
     },
@@ -65,16 +66,16 @@ impl<F> Absorb<Bytes> for Context<F> {
 }
 
 /// `byte [n]` is fixed-size and is encoded with `n` bytes.
-impl<'a, F> Absorb<&'a NBytes> for Context<F> {
-    fn absorb(&mut self, nbytes: &'a NBytes) -> Result<&mut Self> {
-        self.size += (nbytes.0).len();
+impl<'a, F, N: ArrayLength<u8>> Absorb<&'a NBytes<N>> for Context<F> {
+    fn absorb(&mut self, _nbytes: &'a NBytes<N>) -> Result<&mut Self> {
+        self.size += N::USIZE;
         Ok(self)
     }
 }
 
 /// `byte [n]` is fixed-size and is encoded with `n` bytes.
-impl<F> Absorb<NBytes> for Context<F> {
-    fn absorb(&mut self, nbytes: NBytes) -> Result<&mut Self> {
+impl<F, N: ArrayLength<u8>> Absorb<NBytes<N>> for Context<F> {
+    fn absorb(&mut self, nbytes: NBytes<N>) -> Result<&mut Self> {
         self.absorb(&nbytes)
     }
 }

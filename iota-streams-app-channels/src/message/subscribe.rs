@@ -44,9 +44,10 @@ use iota_streams_app::message::{
     self,
     HasLink,
 };
-use iota_streams_core::sponge::{
-    prp::PRP,
-    spongos,
+use iota_streams_core::{
+    sponge::{
+        prp::PRP,
+    },
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -55,6 +56,7 @@ use iota_streams_core_edsig::{
 use iota_streams_ddml::{
     command::*,
     io,
+    link_store::{EmptyLinkStore, LinkStore, },
     types::*,
 };
 
@@ -63,7 +65,7 @@ pub const TYPE: &str = "STREAMS9CHANNEL9SUBSCRIBE";
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub unsubscribe_key: NBytes,
+    pub unsubscribe_key: NBytes<U32>,
     pub(crate) subscriber_sig_kp: &'a ed25519::Keypair,
     pub(crate) author_ke_pk: &'a x25519::PublicKey,
     pub(crate) _phantom: core::marker::PhantomData<(Link, F)>,
@@ -100,7 +102,7 @@ where
 
 pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
-    pub unsubscribe_key: NBytes,
+    pub unsubscribe_key: NBytes<U32>,
     pub subscriber_sig_pk: ed25519::PublicKey,
     author_ke_sk: &'a x25519::StaticSecret,
     _phantom: core::marker::PhantomData<(F, Link)>,
@@ -115,7 +117,7 @@ where
     pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            unsubscribe_key: NBytes::zero(spongos::Spongos::<F>::KEY_SIZE),
+            unsubscribe_key: NBytes::<U32>::default(),
             subscriber_sig_pk: ed25519::PublicKey::from_bytes(&[0_u8; ed25519::PUBLIC_KEY_LENGTH]).unwrap(),
             author_ke_sk,
             _phantom: core::marker::PhantomData,

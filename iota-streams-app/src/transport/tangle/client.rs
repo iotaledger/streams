@@ -35,7 +35,7 @@ use crate::{
 
 const TRYTE_CHARS: &str = "9ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-fn pad_trit_buf(
+fn pad_tritbuf(
     n: usize,
     mut s: iota_ternary::TritBuf<iota_ternary::T1B1Buf>,
 ) -> iota_ternary::TritBuf<iota_ternary::T1B1Buf> {
@@ -49,13 +49,7 @@ fn pad_trit_buf(
     }
 }
 
-fn tbitslice_to_tritbuf(mut slice: Vec<u8>) -> iota_ternary::TritBuf<iota_ternary::T1B1Buf> {
-    let tbits = slice.as_mut_slice();
-    let temp = bytes_to_trits(tbits);
-    temp
-}
-
-fn bytes_to_trits(input: &[u8]) -> iota_ternary::TritBuf<iota_ternary::T1B1Buf> {
+fn bytes_to_tritbuf(input: &[u8]) -> iota_ternary::TritBuf<iota_ternary::T1B1Buf> {
     let mut trytes = iota_ternary::TryteBuf::with_capacity(input.len() * 2);
     for byte in input {
         let first: i8 = match (byte % 27) as i8 {
@@ -74,7 +68,7 @@ fn bytes_to_trits(input: &[u8]) -> iota_ternary::TritBuf<iota_ternary::T1B1Buf> 
     trytes.as_trits().encode::<iota_ternary::T1B1Buf>()
 }
 
-fn trits_to_bytes(input: &iota_ternary::TritBuf<iota_ternary::T1B1Buf>) -> Vec<u8> {
+fn bytes_from_tritbuf(input: &iota_ternary::TritBuf<iota_ternary::T1B1Buf>) -> Vec<u8> {
     let trytes = input
         .chunks(3)
         .map(|trits| {
@@ -100,16 +94,8 @@ fn trits_to_bytes(input: &iota_ternary::TritBuf<iota_ternary::T1B1Buf>) -> Vec<u
     bytes.to_vec()
 }
 
-fn tbits_to_tritbuf(tbits: &Vec<u8>) -> iota_ternary::TritBuf<iota_ternary::T1B1Buf> {
-    tbitslice_to_tritbuf(tbits.to_vec())
-}
-
-fn tbitslice_from_tritbuf(buf: &iota_ternary::Trits<iota_ternary::T1B1>) -> Vec<u8> {
-    trits_to_bytes(&buf.encode())
-}
-
-fn tbits_from_tritbuf(buf: &iota_ternary::Trits<iota_ternary::T1B1>) -> Vec<u8> {
-    tbitslice_from_tritbuf(buf)
+fn bytes_from_trits(buf: &iota_ternary::Trits<iota_ternary::T1B1>) -> Vec<u8> {
+    bytes_from_tritbuf(&buf.encode())
 }
 
 fn cmp_trits(a: &iota_ternary::Trits<iota_ternary::T1B1>, b: &iota_ternary::Trits<iota_ternary::T1B1>) -> Ordering {
@@ -138,24 +124,27 @@ fn make_tx(tx_address: Address, tx_tag: Tag, tx_timestamp: Timestamp, tx_payload
 }
 
 fn make_bundle(
-    address: &Vec<u8>,
-    tag: &Vec<u8>,
-    body: &Vec<u8>,
+    address: &[u8],
+    tag: &[u8],
+    mut body: &[u8],
     timestamp: u64,
     trunk: Hash,
     branch: Hash,
 ) -> Result<Bundle> {
-    let tx_address = Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(address)))
+    let tx_address = Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(address)))
         .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
-    let tx_tag = Tag::try_from_inner(pad_trit_buf(TAG_TRIT_LEN, tbits_to_tritbuf(tag)))
+    let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(tag)))
         .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
     let tx_timestamp = Timestamp::try_from_inner(timestamp).map_err(|e| anyhow!("Bad tx timestamp: {:?}.", e))?;
 
     let mut bundle_builder = OutgoingBundleBuilder::new();
-    let mut body_slice = body.clone();
-    while body_slice.len() >= PAYLOAD_TRIT_LEN {
-        let (payload_chunk, new_body_slice) = body_slice.split_at_mut(PAYLOAD_TRIT_LEN);
-        let tx_payload = Payload::try_from_inner(tbitslice_to_tritbuf(payload_chunk.to_vec()))
+    while !body.is_empty() {
+        let (payload_chunk, rest_of_body) = body.split_at(PAYLOAD_TRIT_LEN);
+        let mut payload_tritbuf = bytes_to_tritbuf(payload_chunk);
+        if payload_chunk.len() < PAYLOAD_TRIT_LEN {
+            payload_tritbuf = pad_tritbuf(PAYLOAD_TRIT_LEN, payload_tritbuf);
+        }
+        let tx_payload = Payload::try_from_inner(payload_tritbuf)
             .map_err(|e| anyhow!("Failed to create payload chunk: {:?}.", e))?;
         bundle_builder.push(make_tx(
             tx_address.clone(),
@@ -163,18 +152,7 @@ fn make_bundle(
             tx_timestamp.clone(),
             tx_payload,
         ));
-        body_slice = new_body_slice.to_vec();
-    }
-    if !body_slice.is_empty() {
-        let temp = pad_trit_buf(PAYLOAD_TRIT_LEN, tbits_to_tritbuf(&body_slice));
-        let tx_payload =
-            Payload::try_from_inner(temp.clone()).map_err(|e| anyhow!("Failed to create payload chunk: {:?}.", e))?;
-        bundle_builder.push(make_tx(
-            tx_address.clone(),
-            tx_tag.clone(),
-            tx_timestamp.clone(),
-            tx_payload,
-        ));
+        body = rest_of_body;
     }
 
     bundle_builder
@@ -275,11 +253,11 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
 pub fn msg_from_bundle<F>(bundle: &Bundle, flags: u8) -> BinaryMessage<F, TangleAddress> {
     let tx = bundle.head();
-    let appinst = AppInst::try_from(tbits_from_tritbuf(tx.address().to_inner())).unwrap();
-    let msgid = MsgId::try_from(tbits_from_tritbuf(tx.tag().to_inner())).unwrap();
+    let appinst = AppInst::from(bytes_from_trits(tx.address().to_inner()).as_ref());
+    let msgid = MsgId::from(bytes_from_trits(tx.tag().to_inner()).as_ref());
     let mut body = Vec::new();
     for tx in bundle.into_iter() {
-        body.extend_from_slice(&tbits_from_tritbuf(tx.payload().to_inner()));
+        body.extend_from_slice(&bytes_from_trits(tx.payload().to_inner()));
     }
     BinaryMessage::new(TangleAddress { appinst, msgid }, body, flags)
 }
@@ -314,8 +292,8 @@ mod tests {
     #[test]
     fn cvt() {
         let tbits = Tbits::<Trit>::from_str("DEADBEEF").unwrap();
-        let buf = tbits_to_tritbuf(&tbits);
-        let tbits2 = tbits_from_tritbuf(&buf);
+        let buf = bytes_to_tritbuf(&tbits);
+        let tbits2 = bytes_from_trits(&buf);
         assert_eq!(tbits, tbits2);
     }
 
@@ -509,9 +487,9 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         opt: Self::RecvOptions,
     ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
         let tx_address =
-            Address::try_from_inner(pad_trit_buf(ADDRESS_TRIT_LEN, tbits_to_tritbuf(link.appinst.as_ref())))
+            Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
                 .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
-        let tx_tag = Tag::try_from_inner(pad_trit_buf(TAG_TRIT_LEN, tbits_to_tritbuf(link.msgid.as_ref())))
+        let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
             .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
 
         let txs = block_on(get_bundles(tx_address, tx_tag));

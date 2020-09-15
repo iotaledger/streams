@@ -12,9 +12,7 @@ use crate::{
 use iota_streams_core::sponge::prp::PRP;
 
 /// External values are not encoded. Squeeze and compare tag trits.
-impl<'a, F, IS: io::IStream> Squeeze<&'a Mac> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Squeeze<&'a Mac> for Context<F, IS>
 {
     fn squeeze(&mut self, val: &'a Mac) -> Result<&mut Self> {
         ensure!(

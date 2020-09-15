@@ -1,16 +1,16 @@
 use core::fmt;
-use digest::{
-    generic_array::{
-        typenum::U64,
-        GenericArray,
-    },
-    Digest,
-};
 
 use super::prp::PRP;
 use crate::{
     hash::Hash,
-    prelude::Vec,
+    prelude::{
+        Vec,
+        digest::Digest,
+        generic_array::{
+            typenum::U64,
+            GenericArray,
+        },
+    },
 };
 
 /// Implemented as a separate from `Spongos` struct in order to deal with life-times.
@@ -431,23 +431,23 @@ impl<F: PRP> Digest for Spongos<F> {
         Spongos::init()
     }
 
-    fn input<B: AsRef<[u8]>>(&mut self, data: B) {
+    fn update(&mut self, data: impl AsRef<[u8]>) {
         self.absorb(data.as_ref());
     }
 
-    fn chain<B: AsRef<[u8]>>(mut self, data: B) -> Self {
+    fn chain(mut self, data: impl AsRef<[u8]>) -> Self {
         self.absorb(data.as_ref());
         self
     }
 
-    fn result(mut self) -> GenericArray<u8, Self::OutputSize> {
+    fn finalize(mut self) -> GenericArray<u8, Self::OutputSize> {
         self.commit();
         let mut data = GenericArray::default();
         self.squeeze(data.as_mut_slice());
         data
     }
 
-    fn result_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
+    fn finalize_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
         self.commit();
         let mut data = GenericArray::default();
         self.squeeze(data.as_mut_slice());

@@ -19,3 +19,6 @@ pub mod io;
 
 /// DDML specific types.
 pub mod types;
+
+/// LinkStore trait and impls.
+pub mod link_store;

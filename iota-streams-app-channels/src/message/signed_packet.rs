@@ -37,6 +37,7 @@ use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
+    link_store::{EmptyLinkStore, LinkStore, },
     types::*,
 };
 
@@ -65,6 +66,7 @@ where
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
+            .absorb(&self.sig_kp.public)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .ed25519(self.sig_kp, HashSig)?;
@@ -78,6 +80,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
+            .absorb(&self.sig_kp.public)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .ed25519(self.sig_kp, HashSig)?;
@@ -93,17 +96,17 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-impl<F, Link> ContentUnwrap<F, Link>
+impl<F, Link> Default for ContentUnwrap<F, Link>
 where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn with_sig(sig_pk: ed25519::PublicKey) -> Self {
+    fn default() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             public_payload: Bytes::default(),
             masked_payload: Bytes::default(),
-            sig_pk,
+            sig_pk: ed25519::PublicKey::default(),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -122,6 +125,7 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
+            .absorb(&mut self.sig_pk)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
             .ed25519(&self.sig_pk, HashSig)?;

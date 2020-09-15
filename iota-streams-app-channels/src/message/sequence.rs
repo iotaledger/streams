@@ -28,10 +28,11 @@ use iota_streams_app::message::{
 use anyhow::Result;
 
 use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core_edsig::key_exchange::x25519;
+use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
+    link_store::{EmptyLinkStore, LinkStore, },
     types::*,
 };
 
@@ -44,16 +45,16 @@ where
     <Link as HasLink>::Rel: 'a,
 {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) pubkey: &'a x25519::PublicKey,
+    pub(crate) pubkey: &'a ed25519::PublicKey,
     pub seq_num: usize,
-    pub(crate) ref_link: NBytes,
+    pub(crate) ref_link: &'a <Link as HasLink>::Rel,
 }
 
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link>
 where
     F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
@@ -61,7 +62,7 @@ where
         ctx.join(&store, self.link)?
             .absorb(self.pubkey)?
             .skip(Size(self.seq_num))?
-            .absorb(&self.ref_link)?
+            .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
     }
@@ -74,7 +75,7 @@ where
         ctx.join(store, self.link)?
             .absorb(self.pubkey)?
             .skip(Size(self.seq_num))?
-            .absorb(&self.ref_link)?
+            .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
     }
@@ -82,9 +83,9 @@ where
 
 pub struct ContentUnwrap<Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) pubkey: x25519::PublicKey,
+    pub(crate) pubkey: ed25519::PublicKey,
     pub(crate) seq_num: Size,
-    pub(crate) ref_link: NBytes,
+    pub(crate) ref_link: <Link as HasLink>::Rel,
 }
 
 impl<Link> Default for ContentUnwrap<Link>
@@ -95,9 +96,9 @@ where
     fn default() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            pubkey: x25519::PublicKey::from([0_u8; 32]),
+            pubkey: ed25519::PublicKey::default(),
             seq_num: Size(0),
-            ref_link: NBytes::zero(12),
+            ref_link: <<Link as HasLink>::Rel as Default>::default(),
         }
     }
 }
@@ -107,7 +108,7 @@ where
     F: PRP,
     Link: HasLink,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F> + AbsorbFallback<F>,
 {
     fn unwrap<'c, IS: io::IStream>(
         &mut self,
@@ -117,7 +118,7 @@ where
         ctx.join(store, &mut self.link)?
             .absorb(&mut self.pubkey)?
             .skip(&mut self.seq_num)?
-            .absorb(&mut self.ref_link)?
+            .absorb(<&mut Fallback::<<Link as HasLink>::Rel>>::from(&mut self.ref_link))?
             .commit()?;
         Ok(ctx)
     }

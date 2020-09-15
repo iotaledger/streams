@@ -7,6 +7,7 @@ use crate::{
         sizeof_sizet,
         Bytes,
         NBytes,
+        ArrayLength,
         Size,
         Uint8,
     },
@@ -47,9 +48,9 @@ impl<F> Mask<Size> for Context<F> {
 }
 
 /// Mask `n` bytes.
-impl<F> Mask<&NBytes> for Context<F> {
-    fn mask(&mut self, val: &NBytes) -> Result<&mut Self> {
-        self.size += (val.0).len();
+impl<F, N: ArrayLength<u8>> Mask<&NBytes<N>> for Context<F> {
+    fn mask(&mut self, _val: &NBytes<N>) -> Result<&mut Self> {
+        self.size += N::USIZE;
         Ok(self)
     }
 }

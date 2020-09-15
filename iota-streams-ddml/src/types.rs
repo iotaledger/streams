@@ -1,7 +1,4 @@
-use anyhow::{
-    bail,
-    Result,
-};
+use anyhow::Result;
 use core::{
     convert::{
         AsMut,
@@ -10,23 +7,18 @@ use core::{
     fmt,
     hash,
 };
-use digest::{
-    generic_array::{
-        typenum::U64,
-        GenericArray,
-    },
-    Digest,
-};
 
 use iota_streams_core::{
     prelude::{
-        HashMap,
         Vec,
+        digest::Digest,
     },
-    sponge::{
-        prp::PRP,
-        spongos::Spongos,
-    },
+};
+
+// Reexport some often used types
+pub use iota_streams_core::prelude::{
+    generic_array::{GenericArray, ArrayLength,},
+    typenum::{U16, U32, U64, marker_traits::Unsigned},
 };
 
 use crate::io;
@@ -44,10 +36,72 @@ impl fmt::Display for Uint8 {
 pub struct Uint16(pub u16);
 
 /// Fixed-size array of bytes, the size is known at compile time and is not encoded in trinary representation.
-// TODO: PartialEq, Eq, Debug
-#[derive(Clone)]
-pub struct NBytes(pub Vec<u8>);
+#[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
+pub struct NBytes<N: ArrayLength<u8>>(GenericArray<u8, N>);
 
+impl<N> Copy for NBytes<N> where
+    N: ArrayLength<u8>,
+    N::ArrayType: Copy
+{}
+
+impl<N: ArrayLength<u8>> NBytes<N> {
+    pub fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        self.0.as_mut_slice()
+    }
+}
+
+impl<N: ArrayLength<u8>> AsRef<[u8]> for NBytes<N> {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl<N: ArrayLength<u8>> AsMut<[u8]> for NBytes<N> {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+
+impl<N: ArrayLength<u8>> From<GenericArray<u8, N>> for NBytes<N> {
+    fn from(ga: GenericArray<u8, N>) -> Self {
+        NBytes(ga)
+    }
+}
+
+impl<'a, N: ArrayLength<u8>> From<&'a GenericArray<u8, N>> for &'a NBytes<N> {
+    fn from(ga: &GenericArray<u8, N>) -> Self {
+        unsafe { &*(ga.as_ptr() as *const NBytes<N>) }
+    }
+}
+
+impl<'a, N: ArrayLength<u8>> From<&'a mut GenericArray<u8, N>> for &'a mut NBytes<N> {
+    fn from(ga: &mut GenericArray<u8, N>) -> Self {
+        unsafe { &mut *(ga.as_mut_ptr() as *mut NBytes<N>) }
+    }
+}
+
+impl<N: ArrayLength<u8>> Into<GenericArray<u8, N>> for NBytes<N> {
+    fn into(self) -> GenericArray<u8, N> {
+        self.0
+    }
+}
+
+impl<'a, N: ArrayLength<u8>> From<&'a [u8]> for &'a NBytes<N> {
+    fn from(slice: &[u8]) -> &NBytes<N> {
+        unsafe { &*(slice.as_ptr() as *const NBytes<N>) }
+    }
+}
+
+impl<'a, N: ArrayLength<u8>> From<&'a mut [u8]> for &'a mut NBytes<N> {
+    fn from(slice: &mut [u8]) -> &mut NBytes<N> {
+        unsafe { &mut *(slice.as_mut_ptr() as *mut NBytes<N>) }
+    }
+}
+
+/*
 impl fmt::Debug for NBytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
@@ -72,6 +126,7 @@ impl NBytes {
         Self(vec![0; n])
     }
 }
+ */
 
 /*
 impl TryFrom<Vec<u8>> for NBytes {
@@ -89,46 +144,20 @@ impl TryFrom<Vec<u8>> for NBytes {
 // }
 // }
 
+/*
 impl hash::Hash for NBytes {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.0).hash(state);
     }
 }
+ */
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
-// TODO: PartialEq, Eq, Clone, Debug
-#[derive(Clone)]
+#[derive(PartialEq, Eq, Clone, Debug, Default)]
 pub struct Bytes(pub Vec<u8>);
-
-impl Default for Bytes {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
-impl PartialEq for Bytes {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-impl Eq for Bytes {}
-
-// impl ToString for Bytes
-// {
-// fn to_string(&self) -> String {
-// (self.0).to_string()
-// }
-// }
-
-impl fmt::Debug for Bytes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
 
 impl fmt::Display for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO:
         write!(f, "{:?}", self.0)
     }
 }
@@ -200,17 +229,17 @@ impl Digest for Prehashed {
         Self::default()
     }
 
-    fn input<B: AsRef<[u8]>>(&mut self, _data: B) {}
+    fn update(&mut self, _data: impl AsRef<[u8]>) {}
 
-    fn chain<B: AsRef<[u8]>>(self, _data: B) -> Self {
+    fn chain(self, _data: impl AsRef<[u8]>) -> Self {
         self
     }
 
-    fn result(self) -> GenericArray<u8, Self::OutputSize> {
+    fn finalize(self) -> GenericArray<u8, Self::OutputSize> {
         self.0
     }
 
-    fn result_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
+    fn finalize_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
         self.0.clone()
     }
 
@@ -224,143 +253,6 @@ impl Digest for Prehashed {
 
     fn digest(_data: &[u8]) -> GenericArray<u8, Self::OutputSize> {
         GenericArray::default()
-    }
-}
-
-/// The `link` type is generic and transport-specific. Links can be address+tag pair
-/// when messages are published in the Tangle. Or links can be a URL when HTTP is used.
-/// Or links can be a message sequence number in a stream/socket.
-pub trait LinkStore<F, Link> {
-    /// Additional data associated with the current message link/spongos state.
-    /// This type is implementation specific, meaning different configurations
-    /// of a Streams Application can use different Info types.
-    type Info;
-
-    /// Lookup link in the store and return spongos state and associated info.
-    fn lookup(&self, _link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        bail!("Link not found.");
-    }
-
-    /// Put link into the store together with spongos state and associated info.
-    ///
-    /// Implementations should handle the case where link is already in the store,
-    /// but spongos state is different. Such situation can indicate an attack,
-    /// integrity violation (how exactly?), or internal error.
-    ///
-    /// Overwriting the spongos state means "forgetting the old and accepting the new".
-    ///
-    /// Not updating the spongos state means immutability -- "the first one makes the history".
-    fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()>;
-
-    /// Remove link and associated info from the store.
-    fn erase(&mut self, _link: &Link) {}
-}
-
-/// Empty "dummy" link store that stores no links.
-#[derive(Copy, Clone, Debug)]
-pub struct EmptyLinkStore<F, Link, Info>(core::marker::PhantomData<(F, Link, Info)>);
-
-impl<F, Link, Info> Default for EmptyLinkStore<F, Link, Info> {
-    fn default() -> Self {
-        Self(core::marker::PhantomData)
-    }
-}
-
-impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
-    type Info = Info;
-    fn update(&mut self, _link: &Link, _spongos: Spongos<F>, _info: Self::Info) -> Result<()> {
-        Ok(())
-    }
-}
-
-/// Link store that contains a single link.
-/// This link store can be used in Streams Applications supporting a list-like "thread"
-/// of messages without access to the history as the link to the last message is stored.
-#[derive(Clone, Debug, Default)]
-pub struct SingleLinkStore<F, Link, Info> {
-    /// The link to the last message in the thread.
-    link: Link,
-
-    /// Inner spongos state is stored to save up space.
-    spongos: Vec<u8>,
-
-    /// Associated info.
-    info: Info,
-
-    _phantom: core::marker::PhantomData<F>,
-}
-
-impl<F, Link, Info> LinkStore<F, Link> for SingleLinkStore<F, Link, Info>
-where
-    F: PRP + Clone,
-    Link: Clone + Eq,
-    Info: Clone,
-{
-    type Info = Info;
-    fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        if self.link == *link {
-            Ok((Spongos::<F>::from_inner(self.spongos.clone()), self.info.clone()))
-        } else {
-            bail!("Link not found.");
-        }
-    }
-    fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
-        let inner = spongos.to_inner();
-        self.link = link.clone();
-        self.spongos = inner;
-        self.info = info;
-        Ok(())
-    }
-    fn erase(&mut self, _link: &Link) {
-        // Can't really erase link.
-    }
-}
-
-pub struct DefaultLinkStore<F, Link, Info> {
-    map: HashMap<Link, (Vec<u8>, Info)>,
-    _phantom: core::marker::PhantomData<F>,
-}
-
-impl<F, Link, Info> Default for DefaultLinkStore<F, Link, Info>
-where
-    F: PRP,
-    Link: Eq + hash::Hash,
-{
-    fn default() -> Self {
-        Self {
-            map: HashMap::new(),
-            _phantom: core::marker::PhantomData,
-        }
-    }
-}
-
-impl<F, Link, Info> LinkStore<F, Link> for DefaultLinkStore<F, Link, Info>
-where
-    F: PRP + Clone,
-    Link: Eq + hash::Hash + Clone,
-    Info: Clone,
-{
-    type Info = Info;
-
-    /// Add info for the link.
-    fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
-        if let Some((inner, info)) = self.map.get(link).cloned() {
-            Ok((Spongos::from_inner(inner), info))
-        } else {
-            bail!("Link not found")
-        }
-    }
-
-    /// Try to retrieve info for the link.
-    fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Info) -> Result<()> {
-        let inner = spongos.to_inner();
-        self.map.insert(link.clone(), (inner, info));
-        Ok(())
-    }
-
-    /// Remove info for the link.
-    fn erase(&mut self, link: &Link) {
-        self.map.remove(link);
     }
 }
 
@@ -390,11 +282,7 @@ impl<'a, T> From<&'a mut T> for &'a mut Fallback<T> {
     }
 }
 
-// impl<T> Into<T> for Fallback<T> {
-// fn into(t: Self) -> T {
-// t.0
-// }
-// }
+// Can't impl Into<T> for Fallback<T> due to conflict with core::convert::Into impl for T
 
 impl<T> AsRef<T> for Fallback<T> {
     fn as_ref(&self) -> &T {

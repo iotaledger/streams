@@ -23,8 +23,8 @@ where
 {
     let mut author = Author::new("AUTHOR9SEED", false);
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED");
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED");
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", false);
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", false);
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -53,7 +53,7 @@ where
 
         subscriberA.unwrap_announcement(preparsed.clone())?;
         ensure!(
-            author.channel_address() == subscriberA.channel_address().unwrap(),
+            author.channel_address() == subscriberA.channel_address(),
             "bad channel address"
         );
         subscriberB.unwrap_announcement(preparsed)?;
@@ -90,7 +90,7 @@ where
             preparsed.check_content_type(message::signed_packet::TYPE),
             "bad message type"
         );
-        let (unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
+        let (pk, unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
         ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
         ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
     }

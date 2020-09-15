@@ -16,6 +16,7 @@ use crate::{
         Bytes,
         Fallback,
         NBytes,
+        ArrayLength,
         Size,
         Uint8,
     },
@@ -40,9 +41,7 @@ impl<F, IS> AsMut<Context<F, IS>> for AbsorbContext<F, IS> {
     }
 }
 
-impl<F, IS: io::IStream> Unwrap for AbsorbContext<F, IS>
-where
-    F: PRP,
+impl<F: PRP, IS: io::IStream> Unwrap for AbsorbContext<F, IS>
 {
     fn unwrap_u8(&mut self, u: &mut u8) -> Result<&mut Self> {
         let slice = self.ctx.stream.try_advance(1)?;
@@ -58,64 +57,50 @@ where
     }
 }
 
-fn unwrap_absorb_u8<'a, F, IS: io::IStream>(
+fn unwrap_absorb_u8<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut AbsorbContext<F, IS>,
     u: &mut Uint8,
 ) -> Result<&'a mut AbsorbContext<F, IS>>
-where
-    F: PRP,
 {
     ctx.unwrap_u8(&mut u.0)
 }
-fn unwrap_absorb_size<'a, F, IS: io::IStream>(
+fn unwrap_absorb_size<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut AbsorbContext<F, IS>,
     size: &mut Size,
 ) -> Result<&'a mut AbsorbContext<F, IS>>
-where
-    F: PRP,
 {
     unwrap_size(ctx, size)
 }
-fn unwrap_absorb_bytes<'a, F, IS: io::IStream>(
+fn unwrap_absorb_bytes<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut AbsorbContext<F, IS>,
     bytes: &mut [u8],
 ) -> Result<&'a mut AbsorbContext<F, IS>>
-where
-    F: PRP,
 {
     ctx.unwrapn(bytes)
 }
 
-impl<F, IS: io::IStream> Absorb<&mut Uint8> for Context<F, IS>
-where
-    F: PRP,
+impl<F: PRP, IS: io::IStream> Absorb<&mut Uint8> for Context<F, IS>
 {
     fn absorb(&mut self, u: &mut Uint8) -> Result<&mut Self> {
         Ok(unwrap_absorb_u8(self.as_mut(), u)?.as_mut())
     }
 }
 
-impl<F, IS: io::IStream> Absorb<&mut Size> for Context<F, IS>
-where
-    F: PRP,
+impl<F: PRP, IS: io::IStream> Absorb<&mut Size> for Context<F, IS>
 {
     fn absorb(&mut self, size: &mut Size) -> Result<&mut Self> {
         Ok(unwrap_absorb_size(self.as_mut(), size)?.as_mut())
     }
 }
 
-impl<'a, F, IS: io::IStream> Absorb<&'a mut NBytes> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, N: ArrayLength<u8>, IS: io::IStream> Absorb<&'a mut NBytes<N>> for Context<F, IS>
 {
-    fn absorb(&mut self, nbytes: &'a mut NBytes) -> Result<&mut Self> {
-        Ok(unwrap_absorb_bytes(self.as_mut(), &mut (nbytes.0)[..])?.as_mut())
+    fn absorb(&mut self, nbytes: &'a mut NBytes<N>) -> Result<&mut Self> {
+        Ok(unwrap_absorb_bytes(self.as_mut(), nbytes.as_mut_slice())?.as_mut())
     }
 }
 
-impl<'a, F, IS: io::IStream> Absorb<&'a mut Bytes> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut Bytes> for Context<F, IS>
 {
     fn absorb(&mut self, bytes: &'a mut Bytes) -> Result<&mut Self> {
         let mut size = Size(0);
@@ -125,9 +110,7 @@ where
     }
 }
 
-impl<'a, F, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context<F, IS>
 {
     fn absorb(&mut self, pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
         let mut pk_bytes = [0_u8; 32];
@@ -140,9 +123,7 @@ where
     }
 }
 
-impl<'a, F, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<F, IS>
 {
     fn absorb(&mut self, pk: &'a mut x25519::PublicKey) -> Result<&mut Self> {
         let mut pk_bytes = [0_u8; 32];

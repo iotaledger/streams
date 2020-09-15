@@ -1,7 +1,7 @@
 //! Spongos-based pseudo-random number generator.
 
 use crate::{
-    prelude::Vec,
+    prelude::{Vec, generic_array::{GenericArray, ArrayLength, typenum::{U16, U32}}},
     sponge::{
         prp::PRP,
         spongos::Spongos,
@@ -19,35 +19,43 @@ pub struct Prng<G> {
 
 /// Generate cryptographically secure bytes.
 /// Suitable for generating session and ephemeral keys.
-pub fn random_bytes<R>(n: usize, rng: &mut R) -> Vec<u8>
+pub fn random_bytes<R, N: ArrayLength<u8>>(rng: &mut R) -> GenericArray<u8, N>
 where
     R: rand::RngCore + rand::CryptoRng,
 {
-    let mut rnd = vec![0; n];
+    let mut rnd = GenericArray::default();
     rng.fill_bytes(rnd.as_mut_slice());
     rnd
 }
 
+pub type Nonce = GenericArray<u8, U16>;
+
 /// Generate a random nonce.
 #[cfg(feature = "std")]
-pub fn random_nonce(n: usize) -> Vec<u8> {
-    random_bytes::<rand::rngs::ThreadRng>(n, &mut rand::thread_rng())
+pub fn random_nonce() -> Nonce {
+    random_bytes::<rand::rngs::ThreadRng, U16>(&mut rand::thread_rng())
 }
 
 #[cfg(not(feature = "std"))]
-pub fn random_nonce(n: usize) -> Vec<u8> {
-    vec![0_u8; n]
+pub fn random_nonce() -> Nonce {
+    // TODO: Set default global RNG for `no_std` environment.
+    // Use Rng and init with entropy.
+    panic!("No default global RNG present.");
 }
+
+pub type Key = GenericArray<u8, U32>;
 
 /// Generate a random key.
 #[cfg(feature = "std")]
-pub fn random_key(n: usize) -> Vec<u8> {
-    random_bytes::<rand::rngs::ThreadRng>(n, &mut rand::thread_rng())
+pub fn random_key() -> Key {
+    random_bytes::<rand::rngs::ThreadRng, U32>(&mut rand::thread_rng())
 }
 
 #[cfg(not(feature = "std"))]
-pub fn random_key(n: usize) -> Vec<u8> {
-    vec![0_u8; n]
+pub fn random_key() -> Key {
+    // TODO: Set default global RNG for `no_std` environment.
+    // Use Rng and init with entropy.
+    panic!("No default global RNG present.");
 }
 
 impl<G: PRP> Prng<G> {
@@ -63,10 +71,10 @@ impl<G: PRP> Prng<G> {
         }
     }
 
-    // TODO: prng randomness hierarchy via nonce: domain (mss, ntru, session key, etc.), secret, counter
+    // TODO: PRNG randomness hierarchy via nonce: domain (seed, ed/x25519, session key, etc.), secret, counter.
     fn gen_with_spongos<'a>(&self, s: &mut Spongos<G>, nonces: &[&'a [u8]], rnds: &mut [&'a mut [u8]]) {
-        // TODO: `dst` Tryte?
-        // TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
+        // TODO: `dst` byte?
+        // TODO: Reimplement PRNG with DDML?
         s.absorb(&self.secret_key[..]);
         for nonce in nonces {
             s.absorb(*nonce);
@@ -79,9 +87,6 @@ impl<G: PRP> Prng<G> {
 
     /// Generate randomness with a unique nonce for the current PRNG instance.
     pub fn gen(&self, nonce: &[u8], rnd: &mut [u8]) {
-        // TODO: `dst` byte?
-        // TODO: Implement Sponge?
-        // TODO: Reimplement PRNG with Spongos and PB3? Add domain separation string + dst tryte.
         let mut s = Spongos::<G>::init();
         self.gen_with_spongos(&mut s, &[nonce], &mut [rnd]);
     }
@@ -116,7 +121,13 @@ impl<G> Rng<G> {
         Self { prng, nonce }
     }
     fn inc(&mut self) {
-        // TODO: inc nonce
+        for i in self.nonce.iter_mut() {
+            *i = *i + 1;
+            if *i != 0 {
+                return;
+            }
+        }
+        self.nonce.push(0);
     }
 }
 

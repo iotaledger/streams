@@ -6,7 +6,7 @@ use crate::{
     types::Mac,
 };
 
-/// Mac is just like NTrytes.
+/// Mac is just like NBytes.
 impl<F> Squeeze<&Mac> for Context<F> {
     fn squeeze(&mut self, mac: &Mac) -> Result<&mut Self> {
         self.size += mac.0;
@@ -14,7 +14,7 @@ impl<F> Squeeze<&Mac> for Context<F> {
     }
 }
 
-/// Mac is just like NTrytes.
+/// Mac is just like NBytes.
 impl<F> Squeeze<Mac> for Context<F> {
     fn squeeze(&mut self, val: Mac) -> Result<&mut Self> {
         self.squeeze(&val)

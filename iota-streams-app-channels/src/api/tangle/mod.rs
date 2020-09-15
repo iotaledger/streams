@@ -15,8 +15,9 @@ use iota_streams_core_edsig::{
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::{
     types as ddml_types,
-    types::DefaultLinkStore,
+    link_store::DefaultLinkStore,
 };
+use super::{PublicKeyMap, PresharedKeyMap};
 
 /// Default spongos PRP.
 pub type DefaultF = KeccakF1600;
@@ -35,21 +36,17 @@ pub type Message = message::BinaryMessage<DefaultF, Address>;
 /// Message type with parsed header.
 pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
+pub type SeqState = (TangleAddress, usize);
+pub type PkStore = PublicKeyMap<SeqState>;
+pub type PskStore = PresharedKeyMap;
+
 /// Link Generator specifies algorithm for generating new message addressed.
 pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
-
-/// Test Transport.
-pub type BucketTransport = transport::BucketTransport<DefaultF, Address>;
-
-pub trait Transport: transport::Transport<DefaultF, Address> {}
-
-impl<T> Transport for T where T: transport::Transport<DefaultF, Address> {}
 
 /// Message associated info, just message type indicator.
 #[derive(Copy, Clone)]
 pub enum MsgInfo {
     Announce,
-    ChangeKey,
     Keyload,
     SignedPacket,
     TaggedPacket,
@@ -59,13 +56,20 @@ pub enum MsgInfo {
 }
 
 /// Link Store.
-pub type Store = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;
+pub type LinkStore = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;
+
+/// Test Transport.
+pub type BucketTransport = transport::BucketTransport<DefaultF, Address>;
+
+pub trait Transport: transport::Transport<DefaultF, Address> {}
+
+impl<T> Transport for T where T: transport::Transport<DefaultF, Address> {}
 
 mod author;
-mod subscriber;
-
 /// Tangle-specific Channel Author type.
 pub use author::Author;
+
+mod subscriber;
 /// Tangle-specific Channel Subscriber type.
 pub use subscriber::Subscriber;
 

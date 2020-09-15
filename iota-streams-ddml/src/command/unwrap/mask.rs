@@ -14,6 +14,7 @@ use crate::{
     types::{
         Bytes,
         NBytes,
+        ArrayLength,
         Size,
         Uint8,
     },
@@ -38,9 +39,7 @@ impl<F, IS> AsMut<Context<F, IS>> for MaskContext<F, IS> {
     }
 }
 
-impl<F, IS: io::IStream> Unwrap for MaskContext<F, IS>
-where
-    F: PRP,
+impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<F, IS>
 {
     fn unwrap_u8(&mut self, u: &mut u8) -> Result<&mut Self> {
         let y = self.ctx.stream.try_advance(1)?;
@@ -56,64 +55,50 @@ where
     }
 }
 
-fn unwrap_mask_u8<'a, F, IS: io::IStream>(
+fn unwrap_mask_u8<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut MaskContext<F, IS>,
     u: &mut Uint8,
 ) -> Result<&'a mut MaskContext<F, IS>>
-where
-    F: PRP,
 {
     ctx.unwrap_u8(&mut u.0)
 }
-fn unwrap_mask_size<'a, F, IS: io::IStream>(
+fn unwrap_mask_size<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut MaskContext<F, IS>,
     size: &mut Size,
 ) -> Result<&'a mut MaskContext<F, IS>>
-where
-    F: PRP,
 {
     unwrap_size(ctx, size)
 }
-fn unwrap_mask_bytes<'a, F, IS: io::IStream>(
+fn unwrap_mask_bytes<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut MaskContext<F, IS>,
     bytes: &mut [u8],
 ) -> Result<&'a mut MaskContext<F, IS>>
-where
-    F: PRP,
 {
     ctx.unwrapn(bytes)
 }
 
-impl<'a, F, IS: io::IStream> Mask<&'a mut Uint8> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint8> for Context<F, IS>
 {
     fn mask(&mut self, u: &'a mut Uint8) -> Result<&mut Self> {
         Ok(unwrap_mask_u8(self.as_mut(), u)?.as_mut())
     }
 }
 
-impl<'a, F, IS: io::IStream> Mask<&'a mut Size> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Size> for Context<F, IS>
 {
     fn mask(&mut self, size: &'a mut Size) -> Result<&mut Self> {
         Ok(unwrap_mask_size(self.as_mut(), size)?.as_mut())
     }
 }
 
-impl<'a, F, IS: io::IStream> Mask<&'a mut NBytes> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, N: ArrayLength<u8>, IS: io::IStream> Mask<&'a mut NBytes<N>> for Context<F, IS>
 {
-    fn mask(&mut self, nbytes: &'a mut NBytes) -> Result<&mut Self> {
-        Ok(unwrap_mask_bytes(self.as_mut(), &mut (nbytes.0)[..])?.as_mut())
+    fn mask(&mut self, nbytes: &'a mut NBytes<N>) -> Result<&mut Self> {
+        Ok(unwrap_mask_bytes(self.as_mut(), nbytes.as_mut_slice())?.as_mut())
     }
 }
 
-impl<'a, F, IS: io::IStream> Mask<&'a mut Bytes> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes> for Context<F, IS>
 {
     fn mask(&mut self, bytes: &'a mut Bytes) -> Result<&mut Self> {
         let mut size = Size(0);
@@ -123,22 +108,17 @@ where
     }
 }
 
-impl<'a, F, IS: io::IStream> Mask<&'a mut x25519::PublicKey> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut x25519::PublicKey> for Context<F, IS>
 {
     fn mask(&mut self, pk: &'a mut x25519::PublicKey) -> Result<&mut Self> {
         let mut bytes = [0_u8; 32];
         unwrap_mask_bytes(self.as_mut(), &mut bytes)?;
         *pk = x25519::PublicKey::from(bytes);
-        // TODO: validate public key
         Ok(self)
     }
 }
 
-impl<'a, F, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F, IS>
 {
     fn mask(&mut self, pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
         let mut bytes = [0_u8; 32];

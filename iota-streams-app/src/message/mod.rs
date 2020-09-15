@@ -30,18 +30,17 @@ pub trait HasLink: Sized + Default + Clone + Eq {
 /// Abstraction-helper to generate message links.
 pub trait LinkGenerator<Link, From> {
     /// Derive a new link using an arg.
-    fn link_from(&mut self, arg: &From) -> Link;
+    fn link_from(&mut self, arg: From) -> Link;
 
     /// Derive a new link and construct a header with given content type.
     fn header_from(
         &mut self,
-        arg: &From,
+        arg: From,
         flags: u8,
         content_type: &str,
-    ) -> header::Header<Link>;
-    // {
-    // header::Header::new_with_type(self.link_from(arg), content_type)
-    // }
+    ) -> header::Header<Link> {
+        header::Header::new_with_type(self.link_from(arg), flags, content_type)
+    }
 }
 
 pub trait ContentWrap<F, Store> {

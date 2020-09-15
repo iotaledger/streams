@@ -61,10 +61,14 @@ use iota_streams_core::{
         spongos,
     },
 };
-use iota_streams_core_edsig::key_exchange::x25519;
+use iota_streams_core_edsig::{
+    signature::ed25519,
+    key_exchange::x25519,
+};
 use iota_streams_ddml::{
     command::*,
     io,
+    link_store::{EmptyLinkStore, LinkStore, },
     types::*,
 };
 
@@ -73,8 +77,8 @@ pub const TYPE: &str = "STREAMS9CHANNELS9KEYLOAD";
 
 pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub nonce: NBytes,
-    pub key: NBytes,
+    pub nonce: NBytes<U16>,
+    pub key: NBytes<U32>,
     pub(crate) psks: Psks,
     pub(crate) ke_pks: KePks,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
@@ -87,7 +91,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
-    KePks: Clone + ExactSizeIterator<Item = x25519::IPk<'a>>,
+    KePks: Clone + ExactSizeIterator<Item = (ed25519::IPk<'a>, x25519::IPk<'a>)>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -98,17 +102,17 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NBytes(pskid.clone()))?
-                        .absorb(External(&NBytes(psk.clone())))?
+                    ctx.mask(<&NBytes::<psk::PskIdSize>>::from(pskid))?
+                        .absorb(External(<&NBytes::<psk::PskSize>>::from(psk)))?
                         .commit()?
                         .mask(&self.key)
                 })
             })?
             .skip(repeated_ke_pks)?
-            .repeated(self.ke_pks.clone(), |ctx, ke_pk| {
+            .repeated(self.ke_pks.clone(), |ctx, (sig_pk, ke_pk)| {
                 ctx.fork(|ctx| {
-                    ctx.absorb(&ke_pk.0)?
-                        .x25519(&ke_pk.0, &self.key)
+                    ctx.absorb(sig_pk)?
+                        .x25519(ke_pk, &self.key)
                 })
             })?
             .absorb(External(&self.key))?
@@ -128,15 +132,18 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx.mask(&NBytes(pskid.clone()))?
-                        .absorb(External(&NBytes(psk.clone())))?
+                    ctx.mask(<&NBytes::<psk::PskIdSize>>::from(pskid))?
+                        .absorb(External(<&NBytes::<psk::PskSize>>::from(psk)))?
                         .commit()?
                         .mask(&self.key)
                 })
             })?
             .skip(repeated_ke_pks)?
-            .repeated(self.ke_pks.clone().into_iter(), |ctx, ke_pk| {
-                ctx.fork(|ctx| ctx.absorb(&ke_pk.0)?.x25519(&ke_pk.0, &self.key))
+            .repeated(self.ke_pks.clone().into_iter(), |ctx, (sig_pk, ke_pk)| {
+                ctx.fork(|ctx| {
+                    ctx.absorb(sig_pk)?
+                        .x25519(ke_pk, &self.key)
+                })
             })?
             .absorb(External(&self.key))?
             .commit()?;
@@ -148,13 +155,13 @@ where
 // and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
 pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupKeSk> {
     pub link: <Link as HasLink>::Rel,
-    pub nonce: NBytes,
+    pub nonce: NBytes<U16>, //TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
     pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
-    pub(crate) ke_pk: x25519::PublicKey,
+    pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
-    pub(crate) ke_pks: x25519::Pks,
-    pub key: NBytes,
+    //pub(crate) ke_pks: x25519::Pks,
+    pub key: NBytes<U32>, //TODO: unify with spongos::Spongos::<F>::KEY_SIZE
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -165,18 +172,18 @@ where
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
     LookupArg: 'a,
     LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
-    LookupKeSk: for<'b> Fn(&'b LookupArg, &x25519::PublicKey) -> Option<&'b x25519::StaticSecret>,
+    LookupKeSk: for<'b> Fn(&'b LookupArg, &ed25519::PublicKey) -> Option<&'b x25519::StaticSecret>,
 {
     pub fn new(lookup_arg: &'a LookupArg, lookup_psk: LookupPsk, lookup_ke_sk: LookupKeSk) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            nonce: NBytes::zero(spongos::Spongos::<F>::NONCE_SIZE),
+            nonce: NBytes::default(),
             lookup_arg,
             lookup_psk,
-            ke_pk: x25519::PublicKey::from([0_u8; 32]),
+            ke_pk: ed25519::PublicKey::default(),
             lookup_ke_sk,
-            key: NBytes::zero(spongos::Spongos::<F>::KEY_SIZE),
-            ke_pks: x25519::Pks::new(),
+            key: NBytes::default(),
+            //ke_pks: x25519::Pks::new(),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -191,7 +198,7 @@ where
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     LookupArg: 'a,
     LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
-    LookupKeSk: for<'b> Fn(&'b LookupArg, &x25519::PublicKey) -> Option<&'b x25519::StaticSecret>,
+    LookupKeSk: for<'b> Fn(&'b LookupArg, &ed25519::PublicKey) -> Option<&'b x25519::StaticSecret>,
 {
     fn unwrap<'c, IS: io::IStream>(
         &mut self,
@@ -200,7 +207,7 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut repeated_psks = Size(0);
         let mut repeated_ke_pks = Size(0);
-        let mut pskid = NBytes::zero(psk::PSKID_SIZE);
+        let mut pskid = psk::PskId::default();
         let mut key_found = false;
 
         ctx.join(store, &mut self.link)?
@@ -209,9 +216,9 @@ where
             .repeated(repeated_psks, |ctx| {
                 if !key_found {
                     ctx.fork(|ctx| {
-                        ctx.mask(&mut pskid)?;
-                        if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid.0) {
-                            ctx.absorb(External(&NBytes(psk.clone())))? // TODO: Get rid off clone()
+                        ctx.mask(<&mut NBytes::<psk::PskIdSize>>::from(&mut pskid))?;
+                        if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid) {
+                            ctx.absorb(External(<&NBytes::<psk::PskSize>>::from(psk)))?
                                 .commit()?
                                 .mask(&mut self.key)?;
                             key_found = true;
@@ -232,7 +239,7 @@ where
             .repeated(repeated_ke_pks, |ctx| {
                 ctx.fork(|ctx| {
                     ctx.absorb(&mut self.ke_pk)?;
-                    self.ke_pks.insert(x25519::PublicKeyWrap(self.ke_pk));
+                    //self.ke_pks.insert(x25519::PublicKeyWrap(self.ke_pk));
                     if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &self.ke_pk) {
                         ctx.x25519(ke_sk, &mut self.key)?;
                         key_found = true;

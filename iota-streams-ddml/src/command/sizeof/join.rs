@@ -3,10 +3,8 @@ use anyhow::Result;
 use super::Context;
 use crate::{
     command::Join,
-    types::{
-        LinkStore,
-        SkipFallback,
-    },
+    link_store::LinkStore,
+    types::SkipFallback,
 };
 
 // It's the size of the link.

@@ -94,7 +94,7 @@ where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F>,
     <Link as HasLink>::Base: Eq + Debug,
-    <Link as HasLink>::Rel: Eq + Debug + Default + SkipFallback<F>,
+    <Link as HasLink>::Rel: Eq + Debug + Default + SkipFallback<F> + AbsorbFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     LinkGen: ChannelLinkGenerator<Link>,
 {
@@ -141,8 +141,8 @@ where
         Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
         KePks: Clone + ExactSizeIterator<Item = x25519::IPk<'a>>,
     {
-        let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
-        let key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
+        let nonce = NBytes::from(prng::random_nonce());
+        let key = NBytes::from(prng::random_key());
         let content = keyload::ContentWrap {
             link: link_to,
             nonce: nonce,
@@ -173,7 +173,7 @@ where
         >,
     > {
         let header = self.link_gen.header_from(
-            &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
+            (link_to, &self.ke_kp.1, self.get_seq_num()),
             self.flags,
             keyload::TYPE);
         self.do_prepare_keyload(
@@ -199,10 +199,10 @@ where
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
         seq_num: usize,
-        ref_link: NBytes,
+        ref_link: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<'a, F, Link, Store, sequence::ContentWrap<'a, Link>>> {
         let header = self.link_gen.header_from(
-            &(link_to.clone(), self.ke_kp.1.clone(), SEQ_MESSAGE_NUM),
+            (link_to, &self.ke_kp.1, SEQ_MESSAGE_NUM),
             self.flags,
             sequence::TYPE);
 
@@ -218,13 +218,13 @@ where
 
     /// Send sequence message to show referenced message
     pub fn sequence<'a>(
-        &mut self,
-        ref_link: Vec<u8>,
-        seq_link: <Link as HasLink>::Rel,
+        &'a mut self,
+        ref_link: &'a <Link as HasLink>::Rel,
+        seq_link: &'a <Link as HasLink>::Rel,
         seq_num: usize,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<BinaryMessage<F, Link>> {
-        let wrapped = self.prepare_sequence(&seq_link, seq_num, NBytes(ref_link))?.wrap()?;
+        let wrapped = self.prepare_sequence(seq_link, seq_num, ref_link)?.wrap()?;
 
         wrapped.commit(self.store.borrow_mut(), info)
     }
@@ -237,7 +237,7 @@ where
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, Store, tagged_packet::ContentWrap<'a, F, Link>>> {
         let header = self.link_gen.header_from(
-            &(link_to.clone(), self.ke_kp.1.clone(), self.get_seq_num()),
+            (link_to, &self.ke_kp.1, self.get_seq_num()),
             self.flags,
             tagged_packet::TYPE);
         let content = tagged_packet::ContentWrap {
@@ -271,11 +271,10 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, Store, subscribe::ContentWrap<'a, F, Link>>> {
         if let Some(author_ke_pk) = &self.author_ke_pk {
             let header = self.link_gen.header_from(
-                &(link_to.clone(), self.ke_kp.1.clone(), SUB_MESSAGE_NUM),
+                (link_to, &self.ke_kp.1, SUB_MESSAGE_NUM),
                 self.flags,
                 subscribe::TYPE);
-            // let nonce = NBytes(prng::random_nonce(spongos::Spongos::<F>::NONCE_SIZE));
-            let unsubscribe_key = NBytes(prng::random_key(spongos::Spongos::<F>::KEY_SIZE));
+            let unsubscribe_key = NBytes::from(prng::random_key());
             let content = subscribe::ContentWrap {
                 link: link_to,
                 unsubscribe_key,
@@ -504,8 +503,8 @@ where
         self.flags & FLAG_BRANCHING_MASK
     }
 
-    pub fn gen_msg_id(&mut self, link: &<Link as HasLink>::Rel, pk: x25519::PublicKey, seq: usize) -> Link {
-        self.link_gen.link_from(&(link.clone(), pk, seq))
+    pub fn gen_msg_id(&mut self, link: &<Link as HasLink>::Rel, pk: &x25519::PublicKey, seq: usize) -> Link {
+        self.link_gen.link_from((link, pk, seq))
     }
 
     pub fn get_pks(&self) -> x25519::Pks {

@@ -35,6 +35,7 @@ use iota_streams_core::sponge::{
 use iota_streams_ddml::{
     command::*,
     io,
+    link_store::{EmptyLinkStore, LinkStore, },
     types::*,
 };
 

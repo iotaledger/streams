@@ -17,9 +17,7 @@ pub struct Context<F, IS> {
     pub stream: IS,
 }
 
-impl<F, IS> Context<F, IS>
-where
-    F: PRP + Default,
+impl<F: PRP, IS> Context<F, IS>
 {
     pub fn new(stream: IS) -> Self {
         Self {

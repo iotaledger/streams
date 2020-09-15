@@ -8,6 +8,7 @@ use iota_streams_core::{
 };
 use iota_streams_ddml::{
     command::unwrap,
+    link_store::EmptyLinkStore,
     types::*,
 };
 

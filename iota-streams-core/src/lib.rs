@@ -1,4 +1,5 @@
 #![no_std]
+//#![feature(generic_associated_types)]
 
 #[cfg(not(feature = "std"))]
 #[macro_use]
@@ -7,6 +8,19 @@ extern crate alloc;
 #[cfg(feature = "std")]
 #[macro_use]
 extern crate std;
+
+// Stub used in tests & examples.
+// Macros are exported at crate root level, that's why it's defined here, not in `prelude` mod.
+#[cfg(not(feature = "std"))]
+#[macro_export]
+macro_rules! println {
+    () => {};
+    ($($arg:tt)*) => {};
+}
+
+// Reexport macro at the same level as `no_std`.
+#[cfg(feature = "std")]
+pub use std::println;
 
 pub mod hash;
 pub mod prelude;

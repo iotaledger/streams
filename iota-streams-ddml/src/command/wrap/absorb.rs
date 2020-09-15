@@ -13,6 +13,7 @@ use crate::{
         Bytes,
         Fallback,
         NBytes,
+        ArrayLength,
         Size,
         Uint8,
     },
@@ -37,9 +38,7 @@ impl<F, OS> AsMut<Context<F, OS>> for AbsorbContext<F, OS> {
     }
 }
 
-impl<F, OS: io::OStream> Wrap for AbsorbContext<F, OS>
-where
-    F: PRP,
+impl<F: PRP, OS: io::OStream> Wrap for AbsorbContext<F, OS>
 {
     fn wrap_u8(&mut self, u: u8) -> Result<&mut Self> {
         let slice = self.ctx.stream.try_advance(1)?;
@@ -54,82 +53,64 @@ where
     }
 }
 
-fn wrap_absorb_u8<'a, F, OS: io::OStream>(
+fn wrap_absorb_u8<'a, F: PRP, OS: io::OStream>(
     ctx: &'a mut AbsorbContext<F, OS>,
     u: Uint8,
 ) -> Result<&'a mut AbsorbContext<F, OS>>
-where
-    F: PRP,
 {
     ctx.wrap_u8(u.0)
 }
-fn wrap_absorb_size<'a, F, OS: io::OStream>(
+fn wrap_absorb_size<'a, F: PRP, OS: io::OStream>(
     ctx: &'a mut AbsorbContext<F, OS>,
     size: Size,
 ) -> Result<&'a mut AbsorbContext<F, OS>>
-where
-    F: PRP,
 {
     wrap_size(ctx, size)
 }
-fn wrap_absorb_bytes<'a, F, OS: io::OStream>(
+fn wrap_absorb_bytes<'a, F: PRP, OS: io::OStream>(
     ctx: &'a mut AbsorbContext<F, OS>,
     bytes: &[u8],
 ) -> Result<&'a mut AbsorbContext<F, OS>>
-where
-    F: PRP,
 {
     ctx.wrapn(bytes)
 }
 
-impl<'a, F, OS: io::OStream> Absorb<&'a Uint8> for Context<F, OS>
-where
-    F: PRP,
+impl<'a, F: PRP, OS: io::OStream> Absorb<&'a Uint8> for Context<F, OS>
 {
     fn absorb(&mut self, u: &'a Uint8) -> Result<&mut Self> {
         Ok(wrap_absorb_u8(self.as_mut(), *u)?.as_mut())
     }
 }
 
-impl<F, OS: io::OStream> Absorb<Uint8> for Context<F, OS>
-where
-    F: PRP,
+impl<F: PRP, OS: io::OStream> Absorb<Uint8> for Context<F, OS>
 {
     fn absorb(&mut self, u: Uint8) -> Result<&mut Self> {
         self.absorb(&u)
     }
 }
 
-impl<'a, F, OS: io::OStream> Absorb<&'a Size> for Context<F, OS>
-where
-    F: PRP,
+impl<'a, F: PRP, OS: io::OStream> Absorb<&'a Size> for Context<F, OS>
 {
     fn absorb(&mut self, size: &'a Size) -> Result<&mut Self> {
         Ok(wrap_absorb_size(self.as_mut(), *size)?.as_mut())
     }
 }
 
-impl<F, OS: io::OStream> Absorb<Size> for Context<F, OS>
-where
-    F: PRP,
+impl<F: PRP, OS: io::OStream> Absorb<Size> for Context<F, OS>
 {
     fn absorb(&mut self, size: Size) -> Result<&mut Self> {
         self.absorb(&size)
     }
 }
 
-impl<'a, F, OS: io::OStream> Absorb<&'a NBytes> for Context<F, OS>
-where
-    F: PRP,
+impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> Absorb<&'a NBytes<N>> for Context<F, OS>
 {
-    fn absorb(&mut self, nbytes: &'a NBytes) -> Result<&mut Self> {
-        Ok(wrap_absorb_bytes(self.as_mut(), &(nbytes.0)[..])?.as_mut())
+    fn absorb(&mut self, nbytes: &'a NBytes<N>) -> Result<&mut Self> {
+        Ok(wrap_absorb_bytes(self.as_mut(), nbytes.as_slice())?.as_mut())
     }
 }
 
-impl<'a, F, OS: io::OStream> Absorb<&'a Bytes> for Context<F, OS>
-where
-    F: PRP,
+impl<'a, F: PRP, OS: io::OStream> Absorb<&'a Bytes> for Context<F, OS>
 {
     fn absorb(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
         self.absorb(Size((bytes.0).len()))?;
@@ -137,18 +118,14 @@ where
     }
 }
 
-impl<'a, F, OS: io::OStream> Absorb<&'a ed25519::PublicKey> for Context<F, OS>
-where
-    F: PRP,
+impl<'a, F: PRP, OS: io::OStream> Absorb<&'a ed25519::PublicKey> for Context<F, OS>
 {
     fn absorb(&mut self, pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
         Ok(wrap_absorb_bytes(self.as_mut(), &pk.to_bytes()[..])?.as_mut())
     }
 }
 
-impl<'a, F, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<F, OS>
-where
-    F: PRP,
+impl<'a, F: PRP, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<F, OS>
 {
     fn absorb(&mut self, pk: &'a x25519::PublicKey) -> Result<&mut Self> {
         Ok(wrap_absorb_bytes(self.as_mut(), &pk.as_bytes()[..])?.as_mut())

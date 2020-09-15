@@ -6,17 +6,16 @@ use crate::{
     types::{
         External,
         NBytes,
+        ArrayLength,
     },
 };
 use iota_streams_core::sponge::prp::PRP;
 
 /// This is just an external tag or hash value to-be-signed.
-impl<'a, F, IS> Squeeze<&'a mut External<NBytes>> for Context<F, IS>
-where
-    F: PRP,
+impl<'a, F: PRP, N: ArrayLength<u8>, IS> Squeeze<&'a mut External<NBytes<N>>> for Context<F, IS>
 {
-    fn squeeze(&mut self, val: &'a mut External<NBytes>) -> Result<&mut Self> {
-        self.spongos.squeeze(&mut ((val.0).0)[..]);
+    fn squeeze(&mut self, val: &'a mut External<NBytes<N>>) -> Result<&mut Self> {
+        self.spongos.squeeze((val.0).as_mut_slice());
         Ok(self)
     }
 }

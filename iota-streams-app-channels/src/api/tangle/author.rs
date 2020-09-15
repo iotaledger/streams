@@ -1,18 +1,18 @@
 //! Customize Author with default implementation for use over the Tangle.
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use super::*;
-use crate::api::author::AuthorT;
-use iota_streams_app::message::HasLink as _;
+use crate::api::user::User;
+use iota_streams_app::message::{HasLink as _, LinkGenerator as _};
 
 use iota_streams_core::{
     prelude::Vec,
     prng,
 };
-use iota_streams_core_edsig::key_exchange::x25519;
+use iota_streams_core_edsig::signature::ed25519;
 
-type AuthorImp = AuthorT<DefaultF, Address, Store, LinkGen>;
+type AuthorImp = User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
 /// Author type.
 pub struct Author {
@@ -24,9 +24,7 @@ impl Author {
     pub fn new(seed: &str, multi_branching: bool) -> Self {
         let nonce = "TANGLEAUTHORNONCE".as_bytes().to_vec();
         Self {
-            imp: AuthorT::gen(
-                Store::default(),
-                LinkGen::default(),
+            imp: AuthorImp::gen(
                 prng::dbg_init_str(seed),
                 nonce,
                 if multi_branching { 1 } else { 0 },
@@ -35,12 +33,12 @@ impl Author {
     }
 
     /// Channel app instance.
-    pub fn channel_address(&self) -> &ChannelAddress {
-        &self.imp.appinst.appinst
+    pub fn channel_address(&self) -> Option<&ChannelAddress> {
+        self.imp.appinst.as_ref().map(|x| &x.appinst)
     }
 
-    pub fn get_pk(&self) -> &x25519::PublicKey {
-        &self.imp.ke_kp.1
+    pub fn get_pk(&self) -> &ed25519::PublicKey {
+        &self.imp.sig_kp.public
     }
 
     /// Announce creation of a new Channel.
@@ -53,14 +51,14 @@ impl Author {
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
-        ke_pks: &Vec<x25519::PublicKeyWrap>,
+        ke_pks: &Vec<ed25519::PublicKey>,
     ) -> Result<(Message, Option<Message>)> {
         let keyload = self
             .imp
             .share_keyload(link_to.rel(), psk_ids, ke_pks, MsgInfo::Keyload)
             .unwrap();
-        let sequenced = self.send_sequence(&link_to);
-        Ok((keyload, sequenced))
+        let seq = self.imp.send_sequence(link_to.rel(), MsgInfo::Sequence)?;
+        Ok((keyload, seq))
     }
 
     /// Create keyload for all subscribed subscribers.
@@ -69,55 +67,32 @@ impl Author {
             .imp
             .share_keyload_for_everyone(link_to.rel(), MsgInfo::Keyload)
             .unwrap();
-        let sequenced = self.send_sequence(&link_to);
-        Ok((keyload, sequenced))
+        let seq = self.imp.send_sequence(link_to.rel(), MsgInfo::Sequence)?;
+        Ok((keyload, seq))
     }
 
+    /*
     /// Sends a sequence message referencing the supplied message if sequencing is enabled.
-    pub fn send_sequence(&mut self, msg_link: &Address) -> Option<Message> {
-        let sequenced: Option<Message>;
-        let (seq_link, seq_num) = self.imp.get_seq_state(self.imp.ke_kp.1).unwrap();
-
-        if self.imp.get_branching_flag() == 1_u8 {
-            let msg = self
-                .imp
-                .sequence(
-                    msg_link.rel().as_ref().clone(),
-                    seq_link.rel().clone(),
-                    seq_num,
-                    MsgInfo::Sequence,
-                )
-                .unwrap();
-            self.store_state(self.imp.ke_kp.1, msg.link.clone());
-            sequenced = Some(msg);
-        } else {
-            self.store_state_for_all(msg_link.clone(), seq_num);
-            sequenced = None;
-        }
-        sequenced
+    pub fn send_sequence(&mut self, msg_link: &Address) -> Result<Option<Message>> {
+        self.imp.send_sequence(msg_link, MsgInfo::Sequence)
     }
 
-    pub fn store_state(&mut self, pubkey: x25519::PublicKey, link: Address) {
-        let seq_num = self.imp.get_seq_state(pubkey).unwrap().1;
-        self.update_state(pubkey, link.clone(), seq_num + 1);
+    pub fn update_state(&mut self, pubkey: x25519::PublicKey, link: Address) {
+        self.imp.update_state(pubkey, link)
     }
 
-    pub fn store_state_for_all(&mut self, link: Address, seq_num: usize) {
-        let pubkey = self.imp.ke_kp.1;
-        let mut pks = self.imp.get_pks();
-        pks.insert(x25519::PublicKeyWrap(pubkey));
-        for pk in pks.iter() {
-            self.update_state(pk.0, link.clone(), seq_num.clone() + 1);
-        }
+    pub fn update_state_for_all(&mut self, link: Address, seq_num: usize) {
+        self.imp.update_state_for_all(link, seq_num)
     }
 
-    pub fn update_state(&mut self, pk: x25519::PublicKey, link: Address, seq_num: usize) {
+    pub fn store_state(&mut self, pk: x25519::PublicKey, link: Address, seq_num: usize) {
         self.imp.store_state(pk, link, seq_num);
     }
 
-    pub fn get_seq_state(&mut self, pk: x25519::PublicKey) -> Option<(Address, usize)> {
+    pub fn get_seq_state(&mut self, pk: &x25519::PublicKey) -> Option<&(Address, usize)> {
         self.imp.get_seq_state(pk)
     }
+     */
 
     /// Create a signed packet.
     pub fn sign_packet(
@@ -130,8 +105,8 @@ impl Author {
             .imp
             .sign_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::SignedPacket)
             .unwrap();
-        let sequenced = self.send_sequence(&link_to);
-        Ok((signed, sequenced))
+        let seq = self.imp.send_sequence(link_to.rel(), MsgInfo::Sequence)?;
+        Ok((signed, seq))
     }
 
     /// Create a tagged packet.
@@ -145,8 +120,8 @@ impl Author {
             .imp
             .tag_packet(link_to.rel(), public_payload, masked_payload, MsgInfo::TaggedPacket)
             .unwrap();
-        let sequenced = self.send_sequence(&link_to);
-        Ok((tagged, sequenced))
+        let seq = self.imp.send_sequence(link_to.rel(), MsgInfo::Sequence)?;
+        Ok((tagged, seq))
     }
 
     /// Unwrap tagged packet.
@@ -165,25 +140,27 @@ impl Author {
     // }
 
     pub fn unwrap_sequence<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<Address> {
-        let seq_msg = self.imp.handle_sequence(preparsed, MsgInfo::Sequence).unwrap();
-        let msg_id = self.gen_msg_id(
-            &Address::new(self.imp.appinst.appinst.clone(), MsgId::from(seq_msg.ref_link)),
-            seq_msg.pubkey,
-            seq_msg.seq_num.0,
-        );
-        Ok(msg_id)
+        if let Some(addr) = &self.imp.appinst {
+            let seq_msg = self.imp.handle_sequence(preparsed, MsgInfo::Sequence)?;
+            let msg_id = self.imp.link_gen.link_from(
+                (&seq_msg.ref_link, &seq_msg.pubkey, seq_msg.seq_num.0));
+            Ok(msg_id)
+        } else {
+            Err(anyhow!("No channel registered"))
+        }
     }
 
-    pub fn get_branching_flag(&self) -> u8 {
-        self.imp.get_branching_flag()
+    /*
+    pub fn is_multi_branching(&self) -> bool {
+        self.imp.is_multi_branching()
     }
 
-    pub fn gen_msg_id(&mut self, link: &Address, pk: x25519::PublicKey, seq: usize) -> Address {
+    pub fn gen_msg_id(&mut self, link: &Address, pk: &x25519::PublicKey, seq: usize) -> Address {
         self.imp.gen_msg_id(link.rel(), pk, seq)
     }
 
     pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(x25519::PublicKey, Address, usize)> {
-        let mut pks = self.imp.get_pks();
+        let pks = self.imp.get_pks();
         let mut ids = Vec::new();
         let self_pk = x25519::PublicKeyWrap(self.imp.ke_kp.1);
 
@@ -192,18 +169,23 @@ impl Author {
         }
 
         for pk in pks.iter() {
-            let (seq_link, seq_num) = self.imp.get_seq_state(pk.0).unwrap();
+            let (seq_link, seq_num) = self.imp.get_seq_state(&pk.0).unwrap();
             if branching {
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, 1), 1));
+                ids.push((pk.0, self.gen_msg_id(&seq_link, &pk.0, 1), 1));
             } else {
                 // In Single Branching instances, while issuing transactions, the sequence state is
                 // set to the next message that will be sent, when fetching transactions sent by
                 // another publisher, it is necessary to check the current sequence state along with
                 // the link rather than the next state. To simplify the search we return both ids
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, seq_num), seq_num));
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, seq_num - 1), seq_num - 1));
+                let seq_num = *seq_num;
+                let seq_num1 = seq_num - 1;
+                let msgid = self.imp.gen_msg_id(seq_link.rel(), &pk.0, seq_num);
+                let msgid1 = self.imp.gen_msg_id(seq_link.rel(), &pk.0, seq_num1);
+                ids.push((pk.0, msgid, seq_num));
+                ids.push((pk.0, msgid1, seq_num1));
             }
         }
         ids
     }
+     */
 }

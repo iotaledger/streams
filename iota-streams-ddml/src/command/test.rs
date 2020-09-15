@@ -22,9 +22,7 @@ use crate::{
     types::*,
 };
 
-fn absorb_mask_u8<F>() -> Result<()>
-where
-    F: PRP,
+fn absorb_mask_u8<F: PRP>() -> Result<()>
 {
     let mut buf = vec![0_u8; 2];
     let mut tag_wrap = External(NBytes(vec![0; 32]));
@@ -70,9 +68,7 @@ fn test_u8() {
     assert!(dbg!(absorb_mask_u8::<KeccakF1600>()).is_ok());
 }
 
-fn absorb_mask_size<F>() -> Result<()>
-where
-    F: PRP,
+fn absorb_mask_size<F: PRP>() -> Result<()>
 {
     let mut tag_wrap = External(NBytes(vec![0_u8; 32]));
     let mut tag_unwrap = External(NBytes(vec![0_u8; 32]));
@@ -120,9 +116,7 @@ fn size() {
     assert!(dbg!(absorb_mask_size::<KeccakF1600>()).is_ok());
 }
 
-fn absorb_mask_squeeze_bytes_mac<F>() -> Result<()>
-where
-    F: PRP,
+fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()>
 {
     const NS: [usize; 10] = [0, 3, 255, 256, 257, 483, 486, 489, 1002, 2001];
 
@@ -228,9 +222,7 @@ fn bytes() {
     assert!(dbg!(absorb_mask_squeeze_bytes_mac::<KeccakF1600>()).is_ok());
 }
 
-fn absorb_ed25519<F>() -> Result<()>
-where
-    F: PRP,
+fn absorb_ed25519<F: PRP>() -> Result<()>
 {
     let secret = ed25519::SecretKey::from_bytes(&[7; ed25519::SECRET_KEY_LENGTH]).unwrap();
     let public = ed25519::PublicKey::from(&secret);
@@ -284,9 +276,7 @@ fn test_ed25519() {
     assert!(dbg!(absorb_ed25519::<KeccakF1600>()).is_ok());
 }
 
-fn x25519_static<F>() -> Result<()>
-where
-    F: PRP,
+fn x25519_static<F: PRP>() -> Result<()>
 {
     let secret_a = x25519::StaticSecret::from([11; 32]);
     let secret_b = x25519::StaticSecret::from([13; 32]);
@@ -331,9 +321,7 @@ where
     Ok(())
 }
 
-fn x25519_ephemeral<F>() -> Result<()>
-where
-    F: PRP,
+fn x25519_ephemeral<F: PRP>() -> Result<()>
 {
     let secret_a = x25519::EphemeralSecret::new(&mut rand::thread_rng());
     let secret_b = x25519::EphemeralSecret::new(&mut rand::thread_rng());
@@ -378,9 +366,7 @@ where
     Ok(())
 }
 
-fn x25519_transport<F>() -> Result<()>
-where
-    F: PRP,
+fn x25519_transport<F: PRP>() -> Result<()>
 {
     let secret_a = x25519::StaticSecret::new(&mut rand::thread_rng());
     let public_a = x25519::PublicKey::from(&secret_a);

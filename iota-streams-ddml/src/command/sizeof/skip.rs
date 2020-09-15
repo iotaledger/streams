@@ -8,6 +8,7 @@ use crate::{
         Bytes,
         Fallback,
         NBytes,
+        ArrayLength,
         Size,
         SkipFallback,
         Uint8,
@@ -61,17 +62,17 @@ impl<F> Skip<Bytes> for Context<F> {
 }
 
 /// `tryte [n]` is encoded with `3 * n` trits.
-impl<'a, F> Skip<&'a NBytes> for Context<F> {
-    fn skip(&mut self, ntrytes: &'a NBytes) -> Result<&mut Self> {
-        self.size += (ntrytes.0).len();
+impl<'a, F, N: ArrayLength<u8>> Skip<&'a NBytes<N>> for Context<F> {
+    fn skip(&mut self, _nbytes: &'a NBytes<N>) -> Result<&mut Self> {
+        self.size += N::USIZE;
         Ok(self)
     }
 }
 
 /// `tryte [n]` is encoded with `3 * n` trits.
-impl<F> Skip<NBytes> for Context<F> {
-    fn skip(&mut self, ntrytes: NBytes) -> Result<&mut Self> {
-        self.skip(&ntrytes)
+impl<F, N: ArrayLength<u8>> Skip<NBytes<N>> for Context<F> {
+    fn skip(&mut self, nbytes: NBytes<N>) -> Result<&mut Self> {
+        self.skip(&nbytes)
     }
 }
 

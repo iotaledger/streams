@@ -11,7 +11,7 @@ description = "A rust implementation of the IOTA Streams DDML"
 [features]
 default = ["std"]
 # enable std
-std = ["rand/std", "iota-streams-core/std", "iota-streams-core-edsig/std", "digest/std", "anyhow/std"]
+std = ["rand/std", "iota-streams-core/std", "iota-streams-core-edsig/std", "anyhow/std"]
 
 [lib]
 name = "iota_streams_ddml"
@@ -22,8 +22,6 @@ iota-streams-core = { version = "0.2.0", path = "../iota-streams-core", default-
 iota-streams-core-edsig = { version = "0.2.0", path = "../iota-streams-core-edsig", default-features = false }
 # anyhow version is kept in sync with iota-core
 anyhow = { version = "1.0.26", default-features = false }
-# digest version should correspond to curve25519-dalek's version
-digest = { version = "0.8", default-features = false }
 rand = { version = "0.7", default-features = false }
 hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }
 

@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use core::{
-    convert::{AsRef, TryFrom},
+    convert::AsRef,
     fmt,
     hash,
     str::FromStr,
@@ -12,8 +12,7 @@ use iota_streams_core::{
     prelude::Vec,
     sponge::prp::PRP,
 };
-// TODO: should ed25519 or x25519 public key used for link generation?
-use iota_streams_core_edsig::key_exchange::x25519;
+use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -147,46 +146,37 @@ impl<F> DefaultTangleLinkGenerator<F> {
     }
 }
 
-impl<F> DefaultTangleLinkGenerator<F>
-where
-    F: PRP,
+impl<F: PRP> DefaultTangleLinkGenerator<F>
 {
-    fn try_gen_msgid(&self, msgid: &MsgId, pk: &x25519::PublicKey, seq: usize) -> Result<MsgId> {
+    fn gen_msgid(&self, msgid: &MsgId, pk: &ed25519::PublicKey, seq: usize) -> MsgId {
         let mut new = MsgId::default();
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
-            .absorb(External(&self.appinst.id))?
-            .absorb(External(pk))?
-            .absorb(External(&msgid.id))?
-            .absorb(External(Size(seq)))?
+            .absorb(External(&self.appinst.id)).unwrap()
+            .absorb(External(pk)).unwrap()
+            .absorb(External(&msgid.id)).unwrap()
+            .absorb(External(Size(seq))).unwrap()
             //TODO: do we need `flags` here
             //.absorb(External(Uint8(flags)))?
-            .commit()?
-            .squeeze(External(&mut new.id))?;
-        Ok(new)
-    }
-    fn gen_msgid(&self, msgid: &MsgId, pk: &x25519::PublicKey, seq: usize) -> MsgId {
-        self.try_gen_msgid(msgid, pk, seq)
-            .map_or(MsgId::default(), |x| x)
+            .commit().unwrap()
+            .squeeze(External(&mut new.id)).unwrap();
+        new
     }
 }
 
-impl<F> LinkGenerator<TangleAddress, (Vec<u8>, x25519::PublicKey, usize)> for DefaultTangleLinkGenerator<F>
+impl<'a, F> LinkGenerator<TangleAddress, ()> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    //TODO: turn into a tuple of refs instead of ref to a tuple to avoid arg copying
-    fn link_from(&mut self, arg: &(Vec<u8>, x25519::PublicKey, usize)) -> TangleAddress {
-        let (appinst, pk, seq) = arg;
-        self.appinst.id.0 = appinst.to_vec();
+    fn link_from(&mut self, _arg: ()) -> TangleAddress {
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(&MsgId::default(), pk, *seq),
+            msgid: MsgId::default(),
         }
     }
 
     fn header_from(
         &mut self,
-        arg: &(Vec<u8>, x25519::PublicKey, usize),
+        arg: (),
         flags: u8,
         content_type: &str,
     ) -> header::Header<TangleAddress> {
@@ -198,20 +188,20 @@ where
     }
 }
 
-impl<F> LinkGenerator<TangleAddress, (MsgId, x25519::PublicKey, usize)> for DefaultTangleLinkGenerator<F>
+impl<'a, F> LinkGenerator<TangleAddress, (&'a MsgId, &'a ed25519::PublicKey, usize)> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, arg: &(MsgId, x25519::PublicKey, usize)) -> TangleAddress {
+    fn link_from(&mut self, arg: (&MsgId, &ed25519::PublicKey, usize)) -> TangleAddress {
         let (msgid, pk, seq) = arg;
         TangleAddress {
             appinst: self.appinst.clone(),
-            msgid: self.gen_msgid(msgid, pk, *seq),
+            msgid: self.gen_msgid(msgid, pk, seq),
         }
     }
     fn header_from(
         &mut self,
-        arg: &(MsgId, x25519::PublicKey, usize),
+        arg: (&MsgId, &ed25519::PublicKey, usize),
         flags: u8,
         content_type: &str,
     ) -> header::Header<TangleAddress> {
@@ -224,32 +214,48 @@ where
 }
 
 // ed25519 public key size in bytes
-pub const APPINST_SIZE: usize = 32;
+pub type AppInstSize = U32;
 
 /// Application instance identifier.
 /// Currently, 81-byte string stored in `address` transaction field.
 #[derive(Clone)]
 pub struct AppInst {
-    pub(crate) id: NBytes,
+    pub(crate) id: NBytes<AppInstSize>,
 }
 
-impl TryFrom<Vec<u8>> for AppInst {
+impl<'a> From<&'a [u8]> for AppInst {
+    fn from(v: &[u8]) -> AppInst {
+        AppInst {
+            //TODO: Implement safer TryFrom or force check for length at call site.
+            id: *<&NBytes::<AppInstSize>>::from(v),
+        }
+    }
+}
+/*
+impl TryFrom<[u8; 32]> for AppInst {
     type Error = ();
-    fn try_from(v: Vec<u8>) -> Result<Self, ()> {
-        if v.len() == APPINST_SIZE {
+    fn try_from(v: [u8; 32]) -> Result<Self, ()> {
+        if v.len() == AppInstSize::to_usize() {
             Ok(Self{ id: NBytes(v) })
         } else {
             Err(())
         }
     }
 }
+ */
 
 impl FromStr for AppInst {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
         // TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
         // currently lowercase hex
-        hex::decode(s).map_or(Err(()), |x| Ok(AppInst { id: NBytes(x) }))
+        hex::decode(s).map_or(Err(()), |x| {
+            if x.len() == AppInstSize::USIZE {
+                Ok(AppInst { id: *<&NBytes::<AppInstSize>>::from(&x[..]) })
+            } else {
+                Err(())
+            }
+        })
     }
 }
 
@@ -261,7 +267,7 @@ impl fmt::Debug for AppInst {
 
 impl fmt::Display for AppInst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(&self.id.0))
+        write!(f, "{}", hex::encode(self.id))
     }
 }
 
@@ -272,16 +278,16 @@ impl PartialEq for AppInst {
 }
 impl Eq for AppInst {}
 
-impl AsRef<Vec<u8>> for AppInst {
-    fn as_ref(&self) -> &Vec<u8> {
-        &self.id.0
+impl AsRef<[u8]> for AppInst {
+    fn as_ref(&self) -> &[u8] {
+        self.id.as_ref()
     }
 }
 
 impl Default for AppInst {
     fn default() -> Self {
         Self {
-            id: NBytes(vec![0; APPINST_SIZE]),
+            id: NBytes::default(),
         }
     }
 }
@@ -323,23 +329,21 @@ where
     }
 }
 
-pub const MSGID_SIZE: usize = 12;
+pub type MsgIdSize = U16;
 
 /// Message identifier unique within application instance.
 /// Currently, 27-byte string stored in `tag` transaction field.
 #[derive(Clone)]
 pub struct MsgId {
     // TODO: change to [u8; MSGID_SIZE],
-    pub(crate) id: NBytes,
+    pub(crate) id: NBytes<MsgIdSize>,
 }
 
-impl TryFrom<Vec<u8>> for MsgId {
-    type Error = ();
-    fn try_from(v: Vec<u8>) -> Result<Self, ()> {
-        if v.len() == MSGID_SIZE {
-            Ok(Self{ id: NBytes(v) })
-        } else {
-            Err(())
+impl<'a> From<&'a [u8]> for MsgId {
+    fn from(v: &[u8]) -> MsgId {
+        MsgId {
+            //TODO: Implement safer TryFrom or force check for length at call site.
+            id: *<&NBytes::<MsgIdSize>>::from(v),
         }
     }
 }
@@ -349,12 +353,18 @@ impl FromStr for MsgId {
     fn from_str(s: &str) -> Result<Self, ()> {
         // TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
         // currently lowercase hex
-        hex::decode(s).map_or(Err(()), |x| Ok(MsgId { id: NBytes(x) }))
+        hex::decode(s).map_or(Err(()), |x| {
+            if x.len() == MsgIdSize::USIZE {
+                Ok(MsgId { id: *<&NBytes::<MsgIdSize>>::from(&x[..]) })
+            } else {
+                Err(())
+            }
+        })
     }
 }
 
-impl From<NBytes> for MsgId {
-    fn from(b: NBytes) -> Self {
+impl From<NBytes<MsgIdSize>> for MsgId {
+    fn from(b: NBytes<MsgIdSize>) -> Self {
         Self { id: b }
     }
 }
@@ -367,7 +377,7 @@ impl fmt::Debug for MsgId {
 
 impl fmt::Display for MsgId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(&self.id.0))
+        write!(f, "{}", hex::encode(self.as_ref()))
     }
 }
 
@@ -378,16 +388,16 @@ impl PartialEq for MsgId {
 }
 impl Eq for MsgId {}
 
-impl AsRef<Vec<u8>> for MsgId {
-    fn as_ref(&self) -> &Vec<u8> {
-        &self.id.0
+impl AsRef<[u8]> for MsgId {
+    fn as_ref(&self) -> &[u8] {
+        self.id.as_ref()
     }
 }
 
 impl Default for MsgId {
     fn default() -> Self {
         Self {
-            id: NBytes(vec![0; MSGID_SIZE]),
+            id: NBytes::default(),
         }
     }
 }
@@ -418,6 +428,21 @@ impl<F> SkipFallback<F> for MsgId {
     }
     fn unwrap_skip<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()> {
         ctx.skip(&mut self.id)?;
+        Ok(())
+    }
+}
+
+impl<F: PRP> AbsorbFallback<F> for MsgId {
+    fn sizeof_absorb(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
+        ctx.absorb(&self.id)?;
+        Ok(())
+    }
+    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()> {
+        ctx.absorb(&self.id)?;
+        Ok(())
+    }
+    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()> {
+        ctx.absorb(&mut self.id)?;
         Ok(())
     }
 }

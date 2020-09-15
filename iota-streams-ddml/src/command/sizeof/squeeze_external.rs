@@ -7,12 +7,13 @@ use crate::{
         External,
         Mac,
         NBytes,
+        ArrayLength,
     },
 };
 
 /// External values are not encoded.
-impl<'a, F> Squeeze<&'a External<NBytes>> for Context<F> {
-    fn squeeze(&mut self, _external_ntrytes: &'a External<NBytes>) -> Result<&mut Self> {
+impl<'a, F, N: ArrayLength<u8>> Squeeze<&'a External<NBytes<N>>> for Context<F> {
+    fn squeeze(&mut self, _external_nbytes: &'a External<NBytes<N>>) -> Result<&mut Self> {
         Ok(self)
     }
 }
