@@ -4,6 +4,7 @@ use anyhow::{
     anyhow,
     Result,
 };
+use core::fmt;
 
 use super::*;
 use crate::api::user::User;
@@ -195,7 +196,7 @@ impl Author {
     // }
     // ids
     // }
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, (Address, usize))> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SeqState)> {
         self.imp.gen_next_msg_ids(branching)
     }
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: Address) {
@@ -203,5 +204,11 @@ impl Author {
     }
     pub fn store_state_for_all(&mut self, link: Address, seq_num: usize) {
         self.imp.store_state_for_all(link, seq_num)
+    }
+}
+
+impl fmt::Display for Author {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<{}>\n{}", hex::encode(self.imp.sig_kp.public.as_bytes()), self.imp.pk_store)
     }
 }

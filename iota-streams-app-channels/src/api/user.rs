@@ -137,6 +137,7 @@ where
             "Can't create channel: a channel already created/registered."
         );
         let appinst = self.link_gen.link_from((&self.sig_kp.public, channel_idx));
+        self.pk_store.insert(self.sig_kp.public.clone(), SequencingState(appinst.clone(), 2_usize));
         self.appinst = Some(appinst);
         Ok(())
     }
@@ -201,7 +202,7 @@ where
         // TODO: Verify appinst (address) == public key.
         // At the moment the Author is free to choose any address, not tied to PK.
 
-        self.pk_store.insert(content.sig_pk.clone(), (link.clone(), 0));
+        self.pk_store.insert(content.sig_pk.clone(), SequencingState(link.clone(), 0));
         // Reset link_gen
         let _appinst = self.link_gen.link_from(link.base().clone());
         self.appinst = Some(link);
@@ -267,12 +268,10 @@ where
         let content = self
             .unwrap_subscribe(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
-        // TODO: trust content.subscriber_ntru_pk and add to the list of subscribers only if trusted.
+        // TODO: trust content.subscriber_sig_pk
         let subscriber_sig_pk = content.subscriber_sig_pk;
-        // let subscriber_ke_pk = x25519::public_from_ed25519(&subscriber_sig_pk);
-        // self.ke_pks.insert(x25519::PublicKeyWrap(subscriber_ke_pk));
         let ref_link = self.appinst.as_ref().unwrap().clone();
-        self.pk_store.insert(subscriber_sig_pk, (ref_link, SEQ_MESSAGE_NUM));
+        self.pk_store.insert(subscriber_sig_pk, SequencingState(ref_link, SEQ_MESSAGE_NUM));
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }
@@ -442,7 +441,7 @@ where
             for ke_pk in content.ke_pks {
                 if self.pk_store.get(&ke_pk).is_none() {
                     // Store at state 2 since 0 and 1 are reserved states
-                    self.pk_store.insert(ke_pk, (appinst.clone(), 2));
+                    self.pk_store.insert(ke_pk, SequencingState(appinst.clone(), 2));
                 }
             }
         }
@@ -608,7 +607,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<Option<BinaryMessage<F, Link>>> {
         match self.pk_store.get_mut(&self.sig_kp.public) {
-            Some((link_to, seq_num)) => {
+            Some(SequencingState(link_to, seq_num)) => {
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
                     let msg_link = self
                         .link_gen
@@ -680,20 +679,25 @@ where
         Ok(())
     }
 
+    fn gen_next_msg_id(ids: &mut Vec<(ed25519::PublicKey, SequencingState<Link>)>, link_gen: &mut LG, pk_info: (&ed25519::PublicKey, &mut SequencingState<Link>), branching: bool) {
+        let (pk, SequencingState(seq_link, seq_num)) = pk_info;
+        if branching {
+            let msg_id = link_gen.link_from((seq_link.rel(), pk, 1_usize));
+            ids.push((pk.clone(), SequencingState(msg_id, 1)));
+        } else {
+            let msg_id = link_gen.link_from((seq_link.rel(), pk, *seq_num));
+            let msg_id1 = link_gen.link_from((seq_link.rel(), pk, *seq_num - 1));
+            ids.push((pk.clone(), SequencingState(msg_id, *seq_num)));
+            ids.push((pk.clone(), SequencingState(msg_id1, *seq_num - 1)));
+        }
+    }
+
     pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Link>)> {
         let mut ids = Vec::new();
 
         // TODO: Do the same for self.sig_kp.public
-        for (pk, (seq_link, seq_num)) in self.pk_store.iter_mut() {
-            if branching {
-                let msg_id = self.link_gen.link_from((seq_link.rel(), pk, 1_usize));
-                ids.push((pk.clone(), (msg_id, 1)));
-            } else {
-                let msg_id = self.link_gen.link_from((seq_link.rel(), pk, *seq_num));
-                let msg_id1 = self.link_gen.link_from((seq_link.rel(), pk, *seq_num - 1));
-                ids.push((pk.clone(), (msg_id, *seq_num)));
-                ids.push((pk.clone(), (msg_id1, *seq_num - 1)));
-            }
+        for pk_info in self.pk_store.iter_mut() {
+            Self::gen_next_msg_id(&mut ids, &mut self.link_gen, pk_info, branching);
             /*
             let (seq_link, seq_num) = self.imp.get_seq_state(pk.0).unwrap();
             if branching {
@@ -714,13 +718,13 @@ where
 
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: Link) {
         let seq_num = self.pk_store.get(&pk).unwrap().1;
-        self.pk_store.insert(pk, (link, seq_num + 1));
+        self.pk_store.insert(pk, SequencingState(link, seq_num + 1));
     }
 
     pub fn store_state_for_all(&mut self, link: Link, seq_num: usize) {
         self.pk_store
-            .insert(self.sig_kp.public.clone(), (link.clone(), seq_num + 1));
-        for (_pk, (l, s)) in self.pk_store.iter_mut() {
+            .insert(self.sig_kp.public.clone(), SequencingState(link.clone(), seq_num + 1));
+        for (_pk, SequencingState(l, s)) in self.pk_store.iter_mut() {
             *l = link.clone();
             *s = seq_num + 1;
         }

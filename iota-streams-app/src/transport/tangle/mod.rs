@@ -26,7 +26,6 @@ use crate::message::{
     BinaryMessage,
     HasLink,
     LinkGenerator,
-    HDF,
 };
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)

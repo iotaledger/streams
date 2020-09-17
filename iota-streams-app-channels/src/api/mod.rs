@@ -1,3 +1,5 @@
+use core::fmt;
+
 use iota_streams_app::message::{
     HasLink,
     LinkGenerator,
@@ -32,7 +34,7 @@ where
 {
 }
 
-pub type SequencingState<Link> = (Link, usize);
+pub struct SequencingState<Link>(pub Link, pub usize);
 
 pub trait PublicKeyStore<Info>: Default {
     fn filter<'a>(&'a self, pks: &'a Vec<ed25519::PublicKey>) -> Vec<(&'a ed25519::PublicKey, &'a x25519::PublicKey)>;
@@ -93,6 +95,15 @@ impl<Info> PublicKeyStore<Info> for PublicKeyMap<Info> {
     }
     fn iter_mut(&mut self) -> Vec<(&ed25519::PublicKey, &mut Info)> {
         self.pks.iter_mut().map(|(k, (_x, i))| (&k.0, i)).collect()
+    }
+}
+
+impl<Info: fmt::Display> fmt::Display for PublicKeyMap<Info> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (k, (_x, i)) in self.pks.iter() {
+            writeln!(f, "    <{}> => {}", hex::encode(k.0.as_bytes()), i)?;
+        }
+        Ok(())
     }
 }
 

@@ -1,8 +1,10 @@
 //! Default parameters for Author and Subscriber types.
 
+use core::fmt;
 use super::{
     PresharedKeyMap,
     PublicKeyMap,
+    SequencingState,
 };
 use iota_streams_app::{
     message,
@@ -35,9 +37,15 @@ pub type Message = message::BinaryMessage<DefaultF, Address>;
 /// Message type with parsed header.
 pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
-pub type SeqState = (TangleAddress, usize);
+pub type SeqState = SequencingState<TangleAddress>;
 pub type PkStore = PublicKeyMap<SeqState>;
 pub type PskStore = PresharedKeyMap;
+
+impl fmt::Display for SeqState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<{},{}>", self.0.msgid, self.1)
+    }
+}
 
 /// Link Generator specifies algorithm for generating new message addressed.
 pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;

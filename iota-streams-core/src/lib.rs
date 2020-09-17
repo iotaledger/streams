@@ -18,9 +18,19 @@ macro_rules! println {
     ($($arg:tt)*) => {};
 }
 
+#[cfg(not(feature = "std"))]
+#[macro_export]
+macro_rules! print {
+    () => {};
+    ($($arg:tt)*) => {};
+}
+
 // Reexport macro at the same level as `no_std`.
 #[cfg(feature = "std")]
 pub use std::println;
+
+#[cfg(feature = "std")]
+pub use std::print;
 
 pub mod hash;
 pub mod prelude;
