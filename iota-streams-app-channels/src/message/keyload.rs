@@ -55,21 +55,24 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
+    prelude::Vec,
     psk,
     sponge::{
         prp::PRP,
         spongos,
     },
-    prelude::Vec,
 };
 use iota_streams_core_edsig::{
-    signature::ed25519,
     key_exchange::x25519,
+    signature::ed25519,
 };
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore, },
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 
@@ -100,18 +103,15 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx.mask(<&NBytes::<psk::PskIdSize>>::from(pskid))?
-                        .absorb(External(<&NBytes::<psk::PskSize>>::from(psk)))?
+                    ctx.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
+                        .absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
                         .commit()?
                         .mask(&self.key)
                 })
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone(), |ctx, (sig_pk, ke_pk)| {
-                ctx.fork(|ctx| {
-                    ctx.absorb(sig_pk)?
-                        .x25519(ke_pk, &self.key)
-                })
+                ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
             })?
             .absorb(External(&self.key))?
             .commit()?;
@@ -130,18 +130,15 @@ where
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
                 ctx.fork(|ctx| {
-                    ctx.mask(<&NBytes::<psk::PskIdSize>>::from(pskid))?
-                        .absorb(External(<&NBytes::<psk::PskSize>>::from(psk)))?
+                    ctx.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
+                        .absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
                         .commit()?
                         .mask(&self.key)
                 })
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone().into_iter(), |ctx, (sig_pk, ke_pk)| {
-                ctx.fork(|ctx| {
-                    ctx.absorb(sig_pk)?
-                        .x25519(ke_pk, &self.key)
-                })
+                ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
             })?
             .absorb(External(&self.key))?
             .commit()?;
@@ -153,13 +150,13 @@ where
 // and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
 pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupKeSk> {
     pub link: <Link as HasLink>::Rel,
-    pub nonce: NBytes<U16>, //TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
+    pub nonce: NBytes<U16>, // TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
     pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
     pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub(crate) ke_pks: Vec<ed25519::PublicKey>,
-    pub key: NBytes<U32>, //TODO: unify with spongos::Spongos::<F>::KEY_SIZE
+    pub key: NBytes<U32>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -214,9 +211,9 @@ where
             .repeated(repeated_psks, |ctx| {
                 if !key_found {
                     ctx.fork(|ctx| {
-                        ctx.mask(<&mut NBytes::<psk::PskIdSize>>::from(&mut pskid))?;
+                        ctx.mask(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
                         if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid) {
-                            ctx.absorb(External(<&NBytes::<psk::PskSize>>::from(psk)))?
+                            ctx.absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
                                 .commit()?
                                 .mask(&mut self.key)?;
                             key_found = true;

@@ -38,21 +38,19 @@ pub extern "C" fn WinMain() -> () {
     minmain()
 }
 
-/*
-//TODO: fix msvc link error: __chkstk, memcpy, memmove, memset, memcmp symbols not resolved
+// TODO: fix msvc link error: __chkstk, memcpy, memmove, memset, memcmp symbols not resolved
 //
-#[link(name = "libcmt", kind = "static")]
-extern "C" {}
-#[link(name = "libucrt", kind = "static")]
-extern "C" {}
-#[link(name = "libcmt", kind = "static")]
-extern {
-    fn memcpy(dest: *mut u8, _src: *const u8, _n: usize) -> *mut u8;
-    fn memmove(dest: *mut u8, _src: *const u8, _n: usize) -> *mut u8;
-    fn memset(mem: *mut u8, _val: i32, _n: usize) -> *mut u8;
-    fn memcmp(_mem1: *const u8, _mem2: *const u8, _n: usize) -> i32;
-}
- */
+// #[link(name = "libcmt", kind = "static")]
+// extern "C" {}
+// #[link(name = "libucrt", kind = "static")]
+// extern "C" {}
+// #[link(name = "libcmt", kind = "static")]
+// extern {
+// fn memcpy(dest: *mut u8, _src: *const u8, _n: usize) -> *mut u8;
+// fn memmove(dest: *mut u8, _src: *const u8, _n: usize) -> *mut u8;
+// fn memset(mem: *mut u8, _val: i32, _n: usize) -> *mut u8;
+// fn memcmp(_mem1: *const u8, _mem2: *const u8, _n: usize) -> i32;
+// }
 
 #[no_mangle]
 pub unsafe extern "C" fn __chkstk() {
@@ -101,9 +99,9 @@ pub unsafe extern "C" fn memcmp(mem1: *const u8, mem2: *const u8, n: usize) -> i
         for i in 0..n {
             use core::cmp::Ordering;
             match (&*mem1.add(i)).cmp(&*mem2.add(i)) {
-                Ordering::Equal => { continue },
-                Ordering::Less => { return -1 },
-                Ordering::Greater => { return 1 },
+                Ordering::Equal => continue,
+                Ordering::Less => return -1,
+                Ordering::Greater => return 1,
             }
         }
     }

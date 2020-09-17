@@ -34,12 +34,7 @@ pub trait LinkGenerator<Link, From> {
 
     /// Derive a new link and construct a header with given content type.
     fn header_from(&mut self, arg: From, content_type: u8, payload_length: usize, seq_num: usize) -> HDF<Link> {
-        HDF::new_with_fields(
-            self.link_from(arg),
-            content_type,
-            payload_length,
-            seq_num,
-        )
+        HDF::new_with_fields(self.link_from(arg), content_type, payload_length, seq_num)
     }
 }
 

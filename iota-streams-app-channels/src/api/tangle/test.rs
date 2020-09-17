@@ -13,11 +13,14 @@ use anyhow::{
     Result,
 };
 use iota_streams_app::{
+    message::HasLink,
     transport::tangle::PAYLOAD_BYTES,
-    message::HasLink
+};
+use iota_streams_core::{
+    prelude::string::ToString,
+    println,
 };
 use iota_streams_ddml::types::*;
-use iota_streams_core::{println, prelude::string::ToString};
 
 pub fn example<T: Transport>(transport: &mut T) -> Result<()>
 where
@@ -91,10 +94,7 @@ where
     {
         let msg = transport.recv_message(&signed_packet_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(
-            preparsed.check_content_type(message::SIGNED_PACKET),
-            "bad message type"
-        );
+        ensure!(preparsed.check_content_type(message::SIGNED_PACKET), "bad message type");
         let (_pk, unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(preparsed)?;
         ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
         ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
@@ -111,10 +111,7 @@ where
     {
         let msg = transport.recv_message(&subscribeB_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(
-            preparsed.check_content_type(message::SUBSCRIBE),
-            "bad message type"
-        );
+        ensure!(preparsed.check_content_type(message::SUBSCRIBE), "bad message type");
         author.unwrap_subscribe(preparsed)?;
     }
 
@@ -129,10 +126,7 @@ where
     {
         let msg = transport.recv_message(&keyload_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(
-            preparsed.check_content_type(message::KEYLOAD),
-            "invalid message type"
-        );
+        ensure!(preparsed.check_content_type(message::KEYLOAD), "invalid message type");
         let resultA = subscriberA.unwrap_keyload(preparsed.clone());
         ensure!(resultA.is_err(), "failed to unwrap keyload");
         subscriberB.unwrap_keyload(preparsed)?;
@@ -149,10 +143,7 @@ where
     {
         let msg = transport.recv_message(&tagged_packet_link)?;
         let preparsed = msg.parse_header()?;
-        ensure!(
-            preparsed.check_content_type(message::TAGGED_PACKET),
-            "bad message type"
-        );
+        ensure!(preparsed.check_content_type(message::TAGGED_PACKET), "bad message type");
         let resultA = subscriberA.unwrap_tagged_packet(preparsed.clone());
         ensure!(resultA.is_err(), "failed to unwrap tagged packet");
         let (unwrapped_public, unwrapped_masked) = subscriberB.unwrap_tagged_packet(preparsed)?;

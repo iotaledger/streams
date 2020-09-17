@@ -9,8 +9,11 @@ use core::{
 };
 
 use iota_streams_core::{
+    prelude::typenum::{
+        U12,
+        U40,
+    },
     sponge::prp::PRP,
-    prelude::typenum::{U40, U12, },
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -19,7 +22,12 @@ use iota_streams_ddml::{
     types::*,
 };
 
-use crate::message::{HasLink, LinkGenerator, HDF, BinaryMessage};
+use crate::message::{
+    BinaryMessage,
+    HasLink,
+    LinkGenerator,
+    HDF,
+};
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
@@ -149,26 +157,30 @@ impl<F> DefaultTangleLinkGenerator<F> {
     }
 }
 
-impl<F: PRP> DefaultTangleLinkGenerator<F>
-{
+impl<F: PRP> DefaultTangleLinkGenerator<F> {
     fn gen_msgid(&self, msgid: &MsgId, pk: &ed25519::PublicKey, seq: usize) -> MsgId {
         let mut new = MsgId::default();
-        //println!("Making new id with: {:?}, {:?}, {:?}", msgid.id.to_string(), multi_branch, seq);
+        // println!("Making new id with: {:?}, {:?}, {:?}", msgid.id.to_string(), multi_branch, seq);
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
-            .absorb(External(&self.appinst.id)).unwrap()
-            .absorb(External(pk)).unwrap()
-            .absorb(External(&msgid.id)).unwrap()
-            .absorb(External(Size(seq))).unwrap()
-            //TODO: do we need `flags` here
+            .absorb(External(&self.appinst.id))
+            .unwrap()
+            .absorb(External(pk))
+            .unwrap()
+            .absorb(External(&msgid.id))
+            .unwrap()
+            .absorb(External(Size(seq)))
+            .unwrap()
+            // TODO: do we need `flags` here
             //.absorb(External(Uint8(flags)))?
-            .commit().unwrap()
-            .squeeze(External(&mut new.id)).unwrap();
+            .commit()
+            .unwrap()
+            .squeeze(External(&mut new.id))
+            .unwrap();
         new
     }
 }
 
-impl<'a, F: PRP> LinkGenerator<TangleAddress, (&'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F>
-{
+impl<'a, F: PRP> LinkGenerator<TangleAddress, (&'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F> {
     fn link_from(&mut self, arg: (&ed25519::PublicKey, u64)) -> TangleAddress {
         let (pk, channel_idx) = arg;
         self.appinst = AppInst::new(pk, channel_idx);
@@ -179,8 +191,7 @@ impl<'a, F: PRP> LinkGenerator<TangleAddress, (&'a ed25519::PublicKey, u64)> for
     }
 }
 
-impl<F: PRP> LinkGenerator<TangleAddress, AppInst> for DefaultTangleLinkGenerator<F>
-{
+impl<F: PRP> LinkGenerator<TangleAddress, AppInst> for DefaultTangleLinkGenerator<F> {
     fn link_from(&mut self, arg: AppInst) -> TangleAddress {
         self.appinst = arg;
         TangleAddress {
@@ -190,8 +201,7 @@ impl<F: PRP> LinkGenerator<TangleAddress, AppInst> for DefaultTangleLinkGenerato
     }
 }
 
-impl<F: PRP> LinkGenerator<TangleAddress, ()> for DefaultTangleLinkGenerator<F>
-{
+impl<F: PRP> LinkGenerator<TangleAddress, ()> for DefaultTangleLinkGenerator<F> {
     fn link_from(&mut self, _arg: ()) -> TangleAddress {
         TangleAddress {
             appinst: self.appinst.clone(),
@@ -238,24 +248,22 @@ impl AppInst {
 impl<'a> From<&'a [u8]> for AppInst {
     fn from(v: &[u8]) -> AppInst {
         AppInst {
-            //TODO: Implement safer TryFrom or force check for length at call site.
-            id: *<&NBytes::<AppInstSize>>::from(v),
+            // TODO: Implement safer TryFrom or force check for length at call site.
+            id: *<&NBytes<AppInstSize>>::from(v),
         }
     }
 }
 
-/*
-impl TryFrom<[u8; 32]> for AppInst {
-    type Error = ();
-    fn try_from(v: [u8; 32]) -> Result<Self, ()> {
-        if v.len() == AppInstSize::to_usize() {
-            Ok(Self{ id: NBytes(v) })
-        } else {
-            Err(())
-        }
-    }
-}
- */
+// impl TryFrom<[u8; 32]> for AppInst {
+// type Error = ();
+// fn try_from(v: [u8; 32]) -> Result<Self, ()> {
+// if v.len() == AppInstSize::to_usize() {
+// Ok(Self{ id: NBytes(v) })
+// } else {
+// Err(())
+// }
+// }
+// }
 
 impl FromStr for AppInst {
     type Err = ();
@@ -264,7 +272,9 @@ impl FromStr for AppInst {
         // currently lowercase hex
         hex::decode(s).map_or(Err(()), |x| {
             if x.len() == AppInstSize::USIZE {
-                Ok(AppInst { id: *<&NBytes::<AppInstSize>>::from(&x[..]) })
+                Ok(AppInst {
+                    id: *<&NBytes<AppInstSize>>::from(&x[..]),
+                })
             } else {
                 Err(())
             }
@@ -299,9 +309,7 @@ impl AsRef<[u8]> for AppInst {
 
 impl Default for AppInst {
     fn default() -> Self {
-        Self {
-            id: NBytes::default(),
-        }
+        Self { id: NBytes::default() }
     }
 }
 
@@ -355,8 +363,8 @@ pub struct MsgId {
 impl<'a> From<&'a [u8]> for MsgId {
     fn from(v: &[u8]) -> MsgId {
         MsgId {
-            //TODO: Implement safer TryFrom or force check for length at call site.
-            id: *<&NBytes::<MsgIdSize>>::from(v),
+            // TODO: Implement safer TryFrom or force check for length at call site.
+            id: *<&NBytes<MsgIdSize>>::from(v),
         }
     }
 }
@@ -368,7 +376,9 @@ impl FromStr for MsgId {
         // currently lowercase hex
         hex::decode(s).map_or(Err(()), |x| {
             if x.len() == MsgIdSize::USIZE {
-                Ok(MsgId { id: *<&NBytes::<MsgIdSize>>::from(&x[..]) })
+                Ok(MsgId {
+                    id: *<&NBytes<MsgIdSize>>::from(&x[..]),
+                })
             } else {
                 Err(())
             }
@@ -409,9 +419,7 @@ impl AsRef<[u8]> for MsgId {
 
 impl Default for MsgId {
     fn default() -> Self {
-        Self {
-            id: NBytes::default(),
-        }
+        Self { id: NBytes::default() }
     }
 }
 

@@ -9,10 +9,10 @@ use crate::{
     command::Skip,
     io,
     types::{
+        ArrayLength,
         Bytes,
         Fallback,
         NBytes,
-        ArrayLength,
         Size,
         SkipFallback,
         Uint8,

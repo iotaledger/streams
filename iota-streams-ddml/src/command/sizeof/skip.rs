@@ -5,10 +5,10 @@ use crate::{
     command::Skip,
     types::{
         sizeof_sizet,
+        ArrayLength,
         Bytes,
         Fallback,
         NBytes,
-        ArrayLength,
         Size,
         SkipFallback,
         Uint8,

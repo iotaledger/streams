@@ -4,12 +4,12 @@ use super::prp::PRP;
 use crate::{
     hash::Hash,
     prelude::{
-        Vec,
         digest::Digest,
         generic_array::{
             typenum::U64,
             GenericArray,
         },
+        Vec,
     },
 };
 

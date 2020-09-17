@@ -2,9 +2,15 @@
 //! (session) key exchange.
 
 use crate::prelude::{
+    generic_array::{
+        typenum::{
+            U16,
+            U32,
+        },
+        GenericArray,
+    },
     HashMap,
     Vec,
-    generic_array::{GenericArray, typenum::{U16, U32}},
 };
 
 /// Size of pre-shared key identifier.

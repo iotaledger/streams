@@ -2,11 +2,9 @@ use anyhow::{
     ensure,
     Result,
 };
-//use std::str::FromStr;
+// use std::str::FromStr;
 
-use iota_streams_core::{
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -29,8 +27,7 @@ pub struct HDF<Link> {
     pub seq_num: Size,
 }
 
-impl<Link> HDF<Link>
-{
+impl<Link> HDF<Link> {
     pub fn new(link: Link) -> Self {
         Self {
             encoding: UTF8,
@@ -40,7 +37,7 @@ impl<Link> HDF<Link>
             frame_type: HDF_ID,
             payload_frame_count: Size(0),
             link: link,
-            seq_num: Size(0)
+            seq_num: Size(0),
         }
     }
 
@@ -83,15 +80,15 @@ impl<Link: Default> Default for HDF<Link> {
             frame_type: HDF_ID,
             payload_frame_count: Size(0),
             link: Link::default(),
-            seq_num: Size(0)
+            seq_num: Size(0),
         }
     }
 }
 
 impl<F, Link, Store> ContentWrap<F, Store> for HDF<Link>
-    where
-        F: PRP,
-        Link: AbsorbExternalFallback<F>,
+where
+    F: PRP,
+    Link: AbsorbExternalFallback<F>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(self.encoding)?
@@ -123,9 +120,9 @@ impl<F, Link, Store> ContentWrap<F, Store> for HDF<Link>
 }
 
 impl<F, Link, Store> ContentUnwrap<F, Store> for HDF<Link>
-    where
-        F: PRP,
-        Link: AbsorbExternalFallback<F>,
+where
+    F: PRP,
+    Link: AbsorbExternalFallback<F>,
 {
     fn unwrap<'c, IS: io::IStream>(
         &mut self,

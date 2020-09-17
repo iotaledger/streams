@@ -22,7 +22,10 @@ use iota_streams_core_edsig::{
 };
 
 use iota_streams_app::message::{
-    hdf::{HDF, FLAG_BRANCHING_MASK},
+    hdf::{
+        FLAG_BRANCHING_MASK,
+        HDF,
+    },
     *,
 };
 use iota_streams_ddml::{
@@ -37,8 +40,7 @@ const ANN_MESSAGE_NUM: usize = 0;
 const SUB_MESSAGE_NUM: usize = 0;
 const SEQ_MESSAGE_NUM: usize = 1;
 
-pub struct User<F, Link, LG, LS, PKS, PSKS>
-{
+pub struct User<F, Link, LG, LS, PKS, PSKS> {
     /// PRNG object used for Ed25519, X25519, Spongos key generation, etc.
     #[allow(dead_code)]
     pub(crate) prng: prng::Prng<F>,
@@ -98,22 +100,18 @@ where
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
-        /*
         // App instance link is generated using the 32 byte PubKey and the first 8 bytes of the nonce
-        let mut appinst_input = Vec::new();
-        appinst_input.extend_from_slice(&sig_kp.public.to_bytes()[..]);
-        appinst_input.extend_from_slice(&nonce[0..8]);
+        // let mut appinst_input = Vec::new();
+        // appinst_input.extend_from_slice(&sig_kp.public.to_bytes()[..]);
+        // appinst_input.extend_from_slice(&nonce[0..8]);
+        //
+        // let appinst = link_gen.link_from((&appinst_input, &ke_kp.1, ANN_MESSAGE_NUM));
 
-        let appinst = link_gen.link_from((&appinst_input, &ke_kp.1, ANN_MESSAGE_NUM));
-         */
-
-        /*
         // Start sequence state of new publishers to 2
         // 0 is used for Announce/Subscribe/Unsubscribe
         // 1 is used for sequence messages
-        let mut seq_map = HashMap::new();
-        seq_map.insert(ke_kp.1.as_bytes().to_vec(), (appinst.clone(), 2 as usize));
-         */
+        // let mut seq_map = HashMap::new();
+        // seq_map.insert(ke_kp.1.as_bytes().to_vec(), (appinst.clone(), 2 as usize));
 
         Self {
             prng,
@@ -132,15 +130,16 @@ where
         }
     }
 
-
     /// Create a new channel (without announcing it). User now becomes Author.
     pub fn create_channel(&mut self, channel_idx: u64) -> Result<()> {
-        ensure!(self.appinst.is_none(), "Can't create channel: a channel already created/registered.");
+        ensure!(
+            self.appinst.is_none(),
+            "Can't create channel: a channel already created/registered."
+        );
         let appinst = self.link_gen.link_from((&self.sig_kp.public, channel_idx));
         self.appinst = Some(appinst);
         Ok(())
     }
-
 
     /// Prepare Announcement message.
     pub fn prepare_announcement<'a>(
@@ -211,7 +210,6 @@ where
         Ok(())
     }
 
-
     /// Prepare Subscribe message.
     pub fn prepare_subscribe<'a>(
         &'a mut self,
@@ -271,14 +269,13 @@ where
             .commit(self.link_store.borrow_mut(), info)?;
         // TODO: trust content.subscriber_ntru_pk and add to the list of subscribers only if trusted.
         let subscriber_sig_pk = content.subscriber_sig_pk;
-        //let subscriber_ke_pk = x25519::public_from_ed25519(&subscriber_sig_pk);
-        //self.ke_pks.insert(x25519::PublicKeyWrap(subscriber_ke_pk));
+        // let subscriber_ke_pk = x25519::public_from_ed25519(&subscriber_sig_pk);
+        // self.ke_pks.insert(x25519::PublicKeyWrap(subscriber_ke_pk));
         let ref_link = self.appinst.as_ref().unwrap().clone();
         self.pk_store.insert(subscriber_sig_pk, (ref_link, SEQ_MESSAGE_NUM));
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }
-
 
     fn do_prepare_keyload<'a, Psks, KePks>(
         &'a self,
@@ -315,9 +312,15 @@ where
             F,
             Link,
             LS,
-            keyload::ContentWrap<'a, F, Link, vec::IntoIter<psk::IPsk<'a>>, vec::IntoIter<(ed25519::IPk<'a>, x25519::IPk<'a>)>>,
+            keyload::ContentWrap<
+                'a,
+                F,
+                Link,
+                vec::IntoIter<psk::IPsk<'a>>,
+                vec::IntoIter<(ed25519::IPk<'a>, x25519::IPk<'a>)>,
+            >,
         >,
-        > {
+    > {
         let seq_num = self.get_seq_num();
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = HDF::new(msg_link)
@@ -348,8 +351,7 @@ where
         >,
     > {
         let seq_num = self.get_seq_num();
-        let msg_link = self.link_gen.link_from(
-            (link_to, &self.sig_kp.public, seq_num));
+        let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = hdf::HDF::new(msg_link)
             .with_content_type(KEYLOAD)
             .with_payload_length(1)
@@ -430,7 +432,9 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
-        let content = self.unwrap_keyload(preparsed)?.commit(self.link_store.borrow_mut(), info)?;
+        let content = self
+            .unwrap_keyload(preparsed)?
+            .commit(self.link_store.borrow_mut(), info)?;
         // Unwrapped nonce and key in content are not used explicitly.
         // The resulting spongos state is joined into a protected message state.
         // Store any unknown publishers
@@ -445,7 +449,6 @@ where
 
         Ok(())
     }
-
 
     /// Prepare SignedPacket message.
     pub fn prepare_signed_packet<'a>(
@@ -505,9 +508,7 @@ where
             .commit(self.link_store.borrow_mut(), info)?;
         Ok((content.sig_pk, content.public_payload, content.masked_payload))
     }
-    /*
-     */
-
+    //
 
     /// Prepare TaggedPacket message.
     pub fn prepare_tagged_packet<'a>(
@@ -567,7 +568,6 @@ where
         Ok((content.public_payload, content.masked_payload))
     }
 
-
     pub fn prepare_sequence<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
@@ -610,7 +610,9 @@ where
         match self.pk_store.get_mut(&self.sig_kp.public) {
             Some((link_to, seq_num)) => {
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
-                    let msg_link = self.link_gen.link_from((link_to.rel(), &self.sig_kp.public, SEQ_MESSAGE_NUM));
+                    let msg_link = self
+                        .link_gen
+                        .link_from((link_to.rel(), &self.sig_kp.public, SEQ_MESSAGE_NUM));
                     let header = HDF::new(msg_link)
                         .with_content_type(KEYLOAD)
                         .with_payload_length(1)
@@ -629,13 +631,13 @@ where
 
                     *link_to = msg.link.clone();
                     *seq_num = *seq_num + 1;
-                    //self.pk_store.insert(update_state(self.ke_kp.1, msg.link.clone());
+                    // self.pk_store.insert(update_state(self.ke_kp.1, msg.link.clone());
                     Ok(Some(msg))
                 } else {
-                    //self.update_state_for_all(link.clone(), seq_num);
+                    // self.update_state_for_all(link.clone(), seq_num);
                     Ok(None)
                 }
-            },
+            }
             None => Ok(None),
         }
     }
@@ -655,10 +657,11 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<sequence::ContentUnwrap<Link>> {
-        let content = self.unwrap_sequence(preparsed)?.commit(self.link_store.borrow_mut(), info)?;
+        let content = self
+            .unwrap_sequence(preparsed)?
+            .commit(self.link_store.borrow_mut(), info)?;
         Ok(content)
     }
-
 
     pub fn is_multi_branching(&self) -> bool {
         (self.flags & FLAG_BRANCHING_MASK) != 0
@@ -715,9 +718,11 @@ where
     }
 
     pub fn store_state_for_all(&mut self, link: Link, seq_num: usize) {
-        self.pk_store.insert(self.sig_kp.public.clone(), (link.clone(), seq_num + 1));
+        self.pk_store
+            .insert(self.sig_kp.public.clone(), (link.clone(), seq_num + 1));
         for (_pk, (l, s)) in self.pk_store.iter_mut() {
             *l = link.clone();
             *s = seq_num + 1;
         }
-    }}
+    }
+}

@@ -8,7 +8,10 @@ pub use ed25519_dalek::{
     SIGNATURE_LENGTH,
 };
 
-use core::hash::{Hash, Hasher};
+use core::hash::{
+    Hash,
+    Hasher,
+};
 
 pub type IPk<'a> = &'a PublicKey;
 
@@ -29,7 +32,7 @@ impl From<PublicKey> for PublicKeyWrap {
 
 impl<'a> From<&'a PublicKey> for &'a PublicKeyWrap {
     fn from(pk: &PublicKey) -> Self {
-        //unsafe { core::mem::transmute(pk) }
+        // unsafe { core::mem::transmute(pk) }
         let ptr: *const PublicKey = pk;
         unsafe { &*(ptr as *const PublicKeyWrap) }
     }
@@ -37,7 +40,7 @@ impl<'a> From<&'a PublicKey> for &'a PublicKeyWrap {
 
 impl<'a> From<&'a mut PublicKey> for &'a mut PublicKeyWrap {
     fn from(pk: &mut PublicKey) -> Self {
-        //unsafe { core::mem::transmute(pk) }
+        // unsafe { core::mem::transmute(pk) }
         let ptr: *mut PublicKey = pk;
         unsafe { &mut *(ptr as *mut PublicKeyWrap) }
     }

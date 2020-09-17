@@ -32,7 +32,10 @@ use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore, },
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 
@@ -59,7 +62,7 @@ where
         ctx.join(&store, self.link)?
             .absorb(self.pk)?
             .skip(Size(self.seq_num))?
-            .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(self.ref_link))?
+            .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
     }
@@ -72,7 +75,7 @@ where
         ctx.join(store, self.link)?
             .absorb(self.pk)?
             .skip(Size(self.seq_num))?
-            .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(self.ref_link))?
+            .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
     }
@@ -115,7 +118,7 @@ where
         ctx.join(store, &mut self.link)?
             .absorb(&mut self.pk)?
             .skip(&mut self.seq_num)?
-            .absorb(<&mut Fallback::<<Link as HasLink>::Rel>>::from(&mut self.ref_link))?
+            .absorb(<&mut Fallback<<Link as HasLink>::Rel>>::from(&mut self.ref_link))?
             .commit()?;
         Ok(ctx)
     }

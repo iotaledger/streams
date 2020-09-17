@@ -9,9 +9,9 @@ use crate::{
     command::Mask,
     io,
     types::{
+        ArrayLength,
         Bytes,
         NBytes,
-        ArrayLength,
         Size,
         Uint8,
     },
@@ -36,8 +36,7 @@ impl<F, OS> AsMut<Context<F, OS>> for MaskContext<F, OS> {
     }
 }
 
-impl<F: PRP, OS: io::OStream> Wrap for MaskContext<F, OS>
-{
+impl<F: PRP, OS: io::OStream> Wrap for MaskContext<F, OS> {
     fn wrap_u8(&mut self, u: u8) -> Result<&mut Self> {
         let slice = self.ctx.stream.try_advance(1)?;
         slice[0] = u;
@@ -51,48 +50,44 @@ impl<F: PRP, OS: io::OStream> Wrap for MaskContext<F, OS>
     }
 }
 
-fn wrap_mask_u8<'a, F: PRP, OS: io::OStream>(ctx: &'a mut MaskContext<F, OS>, u: Uint8) -> Result<&'a mut MaskContext<F, OS>>
-{
+fn wrap_mask_u8<'a, F: PRP, OS: io::OStream>(
+    ctx: &'a mut MaskContext<F, OS>,
+    u: Uint8,
+) -> Result<&'a mut MaskContext<F, OS>> {
     ctx.wrap_u8(u.0)
 }
 fn wrap_mask_size<'a, F: PRP, OS: io::OStream>(
     ctx: &'a mut MaskContext<F, OS>,
     size: Size,
-) -> Result<&'a mut MaskContext<F, OS>>
-{
+) -> Result<&'a mut MaskContext<F, OS>> {
     wrap_size(ctx, size)
 }
 fn wrap_mask_bytes<'a, F: PRP, OS: io::OStream>(
     ctx: &'a mut MaskContext<F, OS>,
     bytes: &[u8],
-) -> Result<&'a mut MaskContext<F, OS>>
-{
+) -> Result<&'a mut MaskContext<F, OS>> {
     ctx.wrapn(bytes)
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<&'a Uint8> for Context<F, OS>
-{
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a Uint8> for Context<F, OS> {
     fn mask(&mut self, u: &'a Uint8) -> Result<&mut Self> {
         Ok(wrap_mask_u8(self.as_mut(), *u)?.as_mut())
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<&'a Size> for Context<F, OS>
-{
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a Size> for Context<F, OS> {
     fn mask(&mut self, size: &'a Size) -> Result<&mut Self> {
         Ok(wrap_mask_size(self.as_mut(), *size)?.as_mut())
     }
 }
 
-impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> Mask<&'a NBytes<N>> for Context<F, OS>
-{
+impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> Mask<&'a NBytes<N>> for Context<F, OS> {
     fn mask(&mut self, nbytes: &'a NBytes<N>) -> Result<&mut Self> {
         Ok(wrap_mask_bytes(self.as_mut(), nbytes.as_slice())?.as_mut())
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<&'a Bytes> for Context<F, OS>
-{
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a Bytes> for Context<F, OS> {
     fn mask(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
         let size = Size((bytes.0).len());
         self.mask(&size)?;
@@ -100,15 +95,13 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a Bytes> for Context<F, OS>
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<F, OS>
-{
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<F, OS> {
     fn mask(&mut self, pk: &'a x25519::PublicKey) -> Result<&mut Self> {
         Ok(wrap_mask_bytes(self.as_mut(), &pk.as_bytes()[..])?.as_mut())
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS>
-{
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS> {
     fn mask(&mut self, pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
         Ok(wrap_mask_bytes(self.as_mut(), &pk.to_bytes()[..])?.as_mut())
     }

@@ -5,9 +5,9 @@ use crate::{
     command::Mask,
     types::{
         sizeof_sizet,
+        ArrayLength,
         Bytes,
         NBytes,
-        ArrayLength,
         Size,
         Uint8,
     },

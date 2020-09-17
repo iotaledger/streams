@@ -3,7 +3,10 @@ use anyhow::Result;
 use super::Context;
 use crate::{
     command::X25519,
-    types::{NBytes, ArrayLength},
+    types::{
+        ArrayLength,
+        NBytes,
+    },
 };
 use iota_streams_core_edsig::key_exchange::x25519;
 

@@ -1,19 +1,20 @@
-use anyhow::Result;
 #[cfg(not(feature = "std"))]
 use anyhow::anyhow;
+use anyhow::Result;
 
 use super::Context;
+#[cfg(feature = "std")]
+use crate::command::{
+    Absorb,
+    Commit,
+    Mask,
+};
 use crate::{
     command::X25519,
     io,
-    types::{NBytes, ArrayLength},
-};
-#[cfg(feature = "std")]
-use crate::{
-    command::{
-        Absorb,
-        Commit,
-        Mask,
+    types::{
+        ArrayLength,
+        NBytes,
     },
 };
 

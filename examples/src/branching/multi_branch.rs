@@ -1,5 +1,8 @@
 use iota_streams::{
-    core::prelude::Vec,
+    app::{
+        message::HasLink,
+        transport::tangle::PAYLOAD_BYTES,
+    },
     app_channels::{
         api::tangle::{
             Address,
@@ -9,11 +12,8 @@ use iota_streams::{
         },
         message,
     },
+    core::prelude::Vec,
     ddml::types::*,
-    app::{
-        message::HasLink,
-        transport::tangle::PAYLOAD_BYTES,
-    },
 };
 
 use anyhow::{
@@ -60,12 +60,11 @@ where
     let mut v2 = Vec::<u8>::new();
     v2.extend_from_slice(&announcement_tag);
 
-    let announcement_link =
-        Address::from_str(&hex::encode(announcement_address), &hex::encode(announcement_tag)).map_err(|_| anyhow!("bad address"))?;
+    let announcement_link = Address::from_str(&hex::encode(announcement_address), &hex::encode(announcement_tag))
+        .map_err(|_| anyhow!("bad address"))?;
     println!("Announcement link at: {}", &announcement_link);
     {
-        let msg = transport
-            .recv_message_with_options(&announcement_link, recv_opt)?;
+        let msg = transport.recv_message_with_options(&announcement_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::ANNOUNCE),
@@ -109,9 +108,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&subscribeA_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&subscribeA_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SUBSCRIBE),
@@ -132,9 +129,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&keyload_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&keyload_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SEQUENCE),
@@ -166,9 +161,7 @@ where
 
     println!("\nTagged packet 1 - SubscriberA");
     let tagged_packet_link = {
-        let msg = subscriberA
-            .tag_packet(&keyload_link, &public_payload, &masked_payload)
-            ?;
+        let msg = subscriberA.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
@@ -177,9 +170,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&tagged_packet_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&tagged_packet_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SEQUENCE),
@@ -219,9 +210,7 @@ where
 
     println!("\nSigned packet");
     let signed_packet_link = {
-        let msg = author
-            .sign_packet(&tagged_packet_link, &public_payload, &masked_payload)
-            ?;
+        let msg = author.sign_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Signed packet at {}", &msg.0.link.msgid);
@@ -230,9 +219,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&signed_packet_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&signed_packet_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SEQUENCE),
@@ -264,9 +251,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&subscribeB_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&subscribeB_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SUBSCRIBE),
@@ -287,9 +272,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&keyload_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&keyload_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SEQUENCE),
@@ -318,9 +301,7 @@ where
 
     println!("\nTagged packet 2 - SubscriberA");
     let tagged_packet_link = {
-        let msg = subscriberA
-            .tag_packet(&keyload_link, &public_payload, &masked_payload)
-            ?;
+        let msg = subscriberA.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
@@ -329,9 +310,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&tagged_packet_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&tagged_packet_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SEQUENCE),
@@ -365,9 +344,7 @@ where
 
     println!("\nTagged packet 3 - SubscriberB");
     let tagged_packet_link = {
-        let msg = subscriberB
-            .tag_packet(&keyload_link, &public_payload, &masked_payload)
-            ?;
+        let msg = subscriberB.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
@@ -376,9 +353,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&tagged_packet_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&tagged_packet_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SEQUENCE),
@@ -412,9 +387,7 @@ where
 
     println!("\nSigned packet");
     let signed_packet_link = {
-        let msg = author
-            .sign_packet(&tagged_packet_link, &public_payload, &masked_payload)
-            ?;
+        let msg = author.sign_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         transport.send_message_with_options(&msg.1.clone().unwrap(), send_opt)?;
         println!("Signed packet at {}", &msg.0.link.msgid);
@@ -423,9 +396,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&signed_packet_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&signed_packet_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SEQUENCE),

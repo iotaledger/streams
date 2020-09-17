@@ -15,16 +15,15 @@ use crate::{
         External,
         HashSig,
         NBytes,
-        U64,
         Prehashed,
+        U64,
     },
 };
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Signature size depends on Merkle tree height.
-impl<F: PRP, OS: io::OStream> Ed25519<&ed25519::Keypair, &External<NBytes<U64>>> for Context<F, OS>
-{
+impl<F: PRP, OS: io::OStream> Ed25519<&ed25519::Keypair, &External<NBytes<U64>>> for Context<F, OS> {
     fn ed25519(&mut self, kp: &ed25519::Keypair, hash: &External<NBytes<U64>>) -> Result<&mut Self> {
         let context = "IOTAStreams".as_bytes();
         let mut prehashed = Prehashed::default();
@@ -41,8 +40,7 @@ impl<F: PRP, OS: io::OStream> Ed25519<&ed25519::Keypair, &External<NBytes<U64>>>
     }
 }
 
-impl<F: PRP, OS: io::OStream> Ed25519<&ed25519::Keypair, HashSig> for Context<F, OS>
-{
+impl<F: PRP, OS: io::OStream> Ed25519<&ed25519::Keypair, HashSig> for Context<F, OS> {
     fn ed25519(&mut self, sk: &ed25519::Keypair, _hash: HashSig) -> Result<&mut Self> {
         // Squeeze external and commit cost nothing in the stream.
         let mut hash = External(NBytes::<U64>::default());

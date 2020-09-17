@@ -14,7 +14,7 @@ pub use x25519_dalek::{
 };
 
 pub const PUBLIC_KEY_LENGTH: usize = 32;
-//pub type PublicKeySize = U32;
+// pub type PublicKeySize = U32;
 
 pub fn keypair_from_ed25519(kp: &ed25519::Keypair) -> (StaticSecret, PublicKey) {
     // PublicKey is derived from `ExpandedSecretKey`
@@ -46,7 +46,7 @@ impl From<PublicKey> for PublicKeyWrap {
 
 impl<'a> From<&'a PublicKey> for &'a PublicKeyWrap {
     fn from(pk: &PublicKey) -> Self {
-        //unsafe { core::mem::transmute(pk) }
+        // unsafe { core::mem::transmute(pk) }
         let ptr: *const PublicKey = pk;
         unsafe { &*(ptr as *const PublicKeyWrap) }
     }
@@ -54,7 +54,7 @@ impl<'a> From<&'a PublicKey> for &'a PublicKeyWrap {
 
 impl<'a> From<&'a mut PublicKey> for &'a mut PublicKeyWrap {
     fn from(pk: &mut PublicKey) -> Self {
-        //unsafe { core::mem::transmute(pk) }
+        // unsafe { core::mem::transmute(pk) }
         let ptr: *mut PublicKey = pk;
         unsafe { &mut *(ptr as *mut PublicKeyWrap) }
     }

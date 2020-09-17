@@ -4,10 +4,10 @@ use super::Context;
 use crate::{
     command::Squeeze,
     types::{
+        ArrayLength,
         External,
         Mac,
         NBytes,
-        ArrayLength,
     },
 };
 

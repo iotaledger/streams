@@ -11,8 +11,7 @@ pub struct Context<F, OS> {
     pub stream: OS,
 }
 
-impl<F: PRP, OS> Context<F, OS>
-{
+impl<F: PRP, OS> Context<F, OS> {
     pub fn new(stream: OS) -> Self {
         Self {
             spongos: Spongos::<F>::init(),

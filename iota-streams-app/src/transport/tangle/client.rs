@@ -453,9 +453,7 @@ pub struct RecvOptions {
 
 impl Default for RecvOptions {
     fn default() -> Self {
-        Self {
-            flags: 0,
-        }
+        Self { flags: 0 }
     }
 }
 
@@ -488,7 +486,8 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         link: &TangleAddress,
         _opt: Self::RecvOptions,
     ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
-        let tx_address = Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
+        let tx_address =
+            Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
                 .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
         let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
             .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;

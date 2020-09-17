@@ -15,16 +15,15 @@ use crate::{
         External,
         HashSig,
         NBytes,
-        U64,
         Prehashed,
+        U64,
     },
 };
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Recover public key.
-impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes<U64>>> for Context<F, IS>
-{
+impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes<U64>>> for Context<F, IS> {
     fn ed25519(&mut self, pk: &'a ed25519::PublicKey, hash: &'a External<NBytes<U64>>) -> Result<&mut Self> {
         let context = "IOTAStreams".as_bytes();
         let mut prehashed = Prehashed::default();
@@ -40,8 +39,7 @@ impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<N
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, HashSig> for Context<F, IS>
-{
+impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, HashSig> for Context<F, IS> {
     fn ed25519(&mut self, pk: &'a ed25519::PublicKey, _hash: HashSig) -> Result<&mut Self> {
         let mut hash = External(NBytes::<U64>::default());
         self.squeeze(&mut hash)?.commit()?.ed25519(pk, &hash)

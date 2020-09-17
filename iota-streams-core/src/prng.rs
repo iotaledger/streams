@@ -1,7 +1,17 @@
 //! Spongos-based pseudo-random number generator.
 
 use crate::{
-    prelude::{Vec, generic_array::{GenericArray, ArrayLength, typenum::{U16, U32}}},
+    prelude::{
+        generic_array::{
+            typenum::{
+                U16,
+                U32,
+            },
+            ArrayLength,
+            GenericArray,
+        },
+        Vec,
+    },
     sponge::{
         prp::PRP,
         spongos::Spongos,

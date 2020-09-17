@@ -1,5 +1,8 @@
 use iota_streams::{
-    core::{println, prelude::Vec, },
+    app::{
+        message::HasLink,
+        transport::tangle::PAYLOAD_BYTES,
+    },
     app_channels::{
         api::tangle::{
             Address,
@@ -9,11 +12,11 @@ use iota_streams::{
         },
         message,
     },
-    ddml::types::*,
-    app::{
-        message::HasLink,
-        transport::tangle::PAYLOAD_BYTES,
+    core::{
+        prelude::Vec,
+        println,
     },
+    ddml::types::*,
 };
 
 use anyhow::{
@@ -37,7 +40,7 @@ where
 {
     let multi_branching_flag = 0_u8;
     let encoding = "utf-8";
-    let mut author = Author::new(seed, encoding, PAYLOAD_BYTES,  multi_branching_flag == 1_u8);
+    let mut author = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching_flag == 1_u8);
     println!("Author multi branching?: {}", author.is_multi_branching());
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES);
@@ -61,13 +64,11 @@ where
     let mut v2 = Vec::<u8>::new();
     v2.extend_from_slice(&announcement_tag);
 
-    let announcement_link =
-        Address::from_str(&hex::encode(announcement_address), &hex::encode(announcement_tag)).map_err(|_| anyhow!("bad address"))?;
+    let announcement_link = Address::from_str(&hex::encode(announcement_address), &hex::encode(announcement_tag))
+        .map_err(|_| anyhow!("bad address"))?;
     println!("    Announcement link at: {}", &announcement_link);
     {
-        let msg = transport
-            .recv_message_with_options(&announcement_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&announcement_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::ANNOUNCE),
@@ -113,9 +114,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&subscribeA_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&subscribeA_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SUBSCRIBE),
@@ -134,9 +133,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&subscribeB_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&subscribeB_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SUBSCRIBE),
@@ -155,9 +152,7 @@ where
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&previous_msg_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&previous_msg_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::KEYLOAD),
@@ -174,18 +169,14 @@ where
 
     println!("\nSigned packet");
     let previous_msg_link = {
-        let msg = author
-            .sign_packet(&previous_msg_link, &public_payload, &masked_payload)
-            ?;
+        let msg = author.sign_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Signed packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&previous_msg_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&previous_msg_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SIGNED_PACKET),
@@ -203,18 +194,14 @@ where
 
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
-        let msg = subscriberA
-            .tag_packet(&previous_msg_link, &public_payload, &masked_payload)
-            ?;
+        let msg = subscriberA.tag_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&previous_msg_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&previous_msg_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::TAGGED_PACKET),
@@ -235,18 +222,14 @@ where
 
     println!("\nTagged packet 2 - SubscriberA");
     let previous_msg_link = {
-        let msg = subscriberA
-            .tag_packet(&previous_msg_link, &public_payload, &masked_payload)
-            ?;
+        let msg = subscriberA.tag_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&previous_msg_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&previous_msg_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::TAGGED_PACKET),
@@ -257,18 +240,14 @@ where
 
     println!("\nTagged packet 3 - SubscriberA");
     let previous_msg_link = {
-        let msg = subscriberA
-            .tag_packet(&previous_msg_link, &public_payload, &masked_payload)
-            ?;
+        let msg = subscriberA.tag_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&previous_msg_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&previous_msg_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::TAGGED_PACKET),
@@ -282,18 +261,14 @@ where
 
     println!("\nTagged packet 4 - SubscriberB");
     let previous_msg_link = {
-        let msg = subscriberB
-            .tag_packet(&previous_msg_link, &public_payload, &masked_payload)
-            ?;
+        let msg = subscriberB.tag_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Tagged packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&previous_msg_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&previous_msg_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::TAGGED_PACKET),
@@ -317,18 +292,14 @@ where
 
     println!("\nSigned packet");
     let previous_msg_link = {
-        let msg = author
-            .sign_packet(&previous_msg_link, &public_payload, &masked_payload)
-            ?;
+        let msg = author.sign_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         transport.send_message_with_options(&msg.0, send_opt)?;
         println!("Signed packet at {}", &msg.0.link.msgid);
         msg.0.link
     };
 
     {
-        let msg = transport
-            .recv_message_with_options(&previous_msg_link, recv_opt)
-            ?;
+        let msg = transport.recv_message_with_options(&previous_msg_link, recv_opt)?;
         let preparsed = msg.parse_header()?;
         ensure!(
             preparsed.check_content_type(message::SIGNED_PACKET),

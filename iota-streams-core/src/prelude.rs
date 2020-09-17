@@ -32,4 +32,10 @@ pub use hashbrown::{
 };
 
 // Reexport digest and generic_array and typenum crates here in order to simplify their import in other dependencies.
-pub use digest::{self, generic_array::{self, typenum}};
+pub use digest::{
+    self,
+    generic_array::{
+        self,
+        typenum,
+    },
+};

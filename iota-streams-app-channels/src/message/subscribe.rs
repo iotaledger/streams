@@ -44,11 +44,7 @@ use iota_streams_app::message::{
     self,
     HasLink,
 };
-use iota_streams_core::{
-    sponge::{
-        prp::PRP,
-    },
-};
+use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,
@@ -56,7 +52,10 @@ use iota_streams_core_edsig::{
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore, },
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 

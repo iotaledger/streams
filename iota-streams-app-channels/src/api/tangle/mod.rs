@@ -1,5 +1,9 @@
 //! Default parameters for Author and Subscriber types.
 
+use super::{
+    PresharedKeyMap,
+    PublicKeyMap,
+};
 use iota_streams_app::{
     message,
     transport::{
@@ -10,10 +14,9 @@ use iota_streams_app::{
 use iota_streams_core::psk;
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::{
-    types as ddml_types,
     link_store::DefaultLinkStore,
+    types as ddml_types,
 };
-use super::{PublicKeyMap, PresharedKeyMap};
 
 /// Default spongos PRP.
 pub type DefaultF = KeccakF1600;

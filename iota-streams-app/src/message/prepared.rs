@@ -19,8 +19,7 @@ pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {
     _phantom: std::marker::PhantomData<F>,
 }
 
-impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content>
-{
+impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {
     pub fn new(store: Ref<'a, Store>, header: HDF<Link>, content: Content) -> Self {
         let content = pcf::PCF::new_final_frame()
             .with_payload_frame_num(1)
@@ -44,8 +43,7 @@ where
     HDF<Link>: ContentWrap<F, Store>,
     Content: ContentWrap<F, Store>,
 {
-    pub fn wrap(&self) -> Result<WrappedMessage<F, Link>>
-    {
+    pub fn wrap(&self) -> Result<WrappedMessage<F, Link>> {
         let buf_size = {
             let mut ctx = sizeof::Context::<F>::new();
             self.header.sizeof(&mut ctx)?;

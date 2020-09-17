@@ -5,10 +5,10 @@ use crate::{
     command::Absorb,
     types::{
         AbsorbExternalFallback,
+        ArrayLength,
         External,
         Fallback,
         NBytes,
-        ArrayLength,
     },
 };
 

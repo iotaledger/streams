@@ -41,8 +41,7 @@ pub struct ContentWrap<'a, F> {
     _phantom: core::marker::PhantomData<F>,
 }
 
-impl<'a, F> ContentWrap<'a, F>
-{
+impl<'a, F> ContentWrap<'a, F> {
     pub fn new(sig_kp: &'a ed25519::Keypair, flags: u8) -> Self {
         Self {
             sig_kp,

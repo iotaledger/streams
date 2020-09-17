@@ -8,17 +8,23 @@ use core::{
     hash,
 };
 
-use iota_streams_core::{
-    prelude::{
-        Vec,
-        digest::Digest,
-    },
+use iota_streams_core::prelude::{
+    digest::Digest,
+    Vec,
 };
 
 // Reexport some often used types
 pub use iota_streams_core::prelude::{
-    generic_array::{GenericArray, ArrayLength,},
-    typenum::{U16, U32, U64, marker_traits::Unsigned},
+    generic_array::{
+        ArrayLength,
+        GenericArray,
+    },
+    typenum::{
+        marker_traits::Unsigned,
+        U16,
+        U32,
+        U64,
+    },
 };
 
 use crate::io;
@@ -39,10 +45,12 @@ pub struct Uint16(pub u16);
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
 pub struct NBytes<N: ArrayLength<u8>>(GenericArray<u8, N>);
 
-impl<N> Copy for NBytes<N> where
+impl<N> Copy for NBytes<N>
+where
     N: ArrayLength<u8>,
-    N::ArrayType: Copy
-{}
+    N::ArrayType: Copy,
+{
+}
 
 impl<N: ArrayLength<u8>> NBytes<N> {
     pub fn as_slice(&self) -> &[u8] {
@@ -101,41 +109,37 @@ impl<'a, N: ArrayLength<u8>> From<&'a mut [u8]> for &'a mut NBytes<N> {
     }
 }
 
-/*
-impl fmt::Debug for NBytes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
+// impl fmt::Debug for NBytes {
+// fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+// write!(f, "{:?}", self.0)
+// }
+// }
+//
+// impl fmt::Display for NBytes {
+// fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+// write!(f, "{:?}", self.0)
+// }
+// }
+//
+// impl PartialEq for NBytes {
+// fn eq(&self, other: &Self) -> bool {
+// self.0 == other.0
+// }
+// }
+// impl Eq for NBytes {}
+//
+// impl NBytes {
+// pub fn zero(n: usize) -> Self {
+// Self(vec![0; n])
+// }
+// }
 
-impl fmt::Display for NBytes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-impl PartialEq for NBytes {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-impl Eq for NBytes {}
-
-impl NBytes {
-    pub fn zero(n: usize) -> Self {
-        Self(vec![0; n])
-    }
-}
- */
-
-/*
-impl TryFrom<Vec<u8>> for NBytes {
-    type Error = ();
-    fn try_from(v: Vec<u8>) -> Result<Self, ()> {
-        Self(v)
-    }
-}
- */
+// impl TryFrom<Vec<u8>> for NBytes {
+// type Error = ();
+// fn try_from(v: Vec<u8>) -> Result<Self, ()> {
+// Self(v)
+// }
+// }
 
 // impl ToString for NBytes
 // {
@@ -144,13 +148,11 @@ impl TryFrom<Vec<u8>> for NBytes {
 // }
 // }
 
-/*
-impl hash::Hash for NBytes {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        (self.0).hash(state);
-    }
-}
- */
+// impl hash::Hash for NBytes {
+// fn hash<H: hash::Hasher>(&self, state: &mut H) {
+// (self.0).hash(state);
+// }
+// }
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
 #[derive(PartialEq, Eq, Clone, Debug, Default)]

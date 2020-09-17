@@ -1,4 +1,5 @@
 use iota_streams::{
+    app::message::HasLink as _,
     app_channels::{
         api::tangle::{
             Author,
@@ -7,7 +8,6 @@ use iota_streams::{
         },
         message,
     },
-    app::message::HasLink as _,
 };
 
 pub fn s_fetch_next_messages<T: Transport>(
@@ -25,10 +25,7 @@ pub fn s_fetch_next_messages<T: Transport>(
         exists = false;
 
         for (pk, (next_id, seq_num)) in ids.iter() {
-
-            let msg = transport
-                .recv_message_with_options(&next_id, recv_opt)
-                .ok();
+            let msg = transport.recv_message_with_options(&next_id, recv_opt).ok();
             if msg.is_none() {
                 continue;
             }
@@ -57,9 +54,7 @@ pub fn s_fetch_next_messages<T: Transport>(
                     message::SEQUENCE => {
                         print!("Found sequenced message.\tFetching sequenced message... ");
                         let msgid = subscriber.unwrap_sequence(preparsed.clone()).unwrap();
-                        let msg = transport
-                            .recv_message_with_options(&msgid, recv_opt)
-                            .ok();
+                        let msg = transport.recv_message_with_options(&msgid, recv_opt).ok();
                         subscriber.store_state(pk.clone(), preparsed.header.link.clone());
                         unwrapped = msg.unwrap();
                     }
@@ -96,10 +91,7 @@ pub fn a_fetch_next_messages<T: Transport>(
         let ids = author.gen_next_msg_ids(multi_branching);
         exists = false;
         for (pk, (next_id, seq_num)) in ids.iter() {
-
-            let msg = transport
-                .recv_message_with_options(&next_id, recv_opt)
-                .ok();
+            let msg = transport.recv_message_with_options(&next_id, recv_opt).ok();
             if msg.is_none() {
                 continue;
             }
@@ -117,9 +109,7 @@ pub fn a_fetch_next_messages<T: Transport>(
                     message::SEQUENCE => {
                         let msgid = author.unwrap_sequence(preparsed.clone()).unwrap();
                         print!("Found sequenced message.\tFetching sequenced message... ");
-                        let msg = transport
-                            .recv_message_with_options(&msgid, recv_opt)
-                            .ok();
+                        let msg = transport.recv_message_with_options(&msgid, recv_opt).ok();
                         author.store_state(pk.clone(), preparsed.header.link.clone());
                         unwrapped = msg.unwrap();
                     }

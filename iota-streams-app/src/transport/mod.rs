@@ -40,11 +40,7 @@ pub trait Transport<F, Link> // where Link: HasLink
     ) -> Result<Vec<BinaryMessage<F, Link>>>;
 
     /// Receive messages with explicit options.
-    fn recv_message_with_options(
-        &mut self,
-        link: &Link,
-        opt: Self::RecvOptions,
-    ) -> Result<BinaryMessage<F, Link>> {
+    fn recv_message_with_options(&mut self, link: &Link, opt: Self::RecvOptions) -> Result<BinaryMessage<F, Link>> {
         let mut msgs = self.recv_messages_with_options(link, opt)?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
@@ -107,11 +103,7 @@ where
 
     type RecvOptions = ();
 
-    fn recv_messages_with_options(
-        &mut self,
-        link: &Link,
-        _opt: (),
-    ) -> Result<Vec<BinaryMessage<F, Link>>> {
+    fn recv_messages_with_options(&mut self, link: &Link, _opt: ()) -> Result<Vec<BinaryMessage<F, Link>>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
@@ -139,11 +131,7 @@ where
 
     type RecvOptions = ();
 
-    fn recv_messages_with_options(
-        &mut self,
-        link: &Link,
-        _opt: (),
-    ) -> Result<Vec<BinaryMessage<F, Link>>> {
+    fn recv_messages_with_options(&mut self, link: &Link, _opt: ()) -> Result<Vec<BinaryMessage<F, Link>>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {

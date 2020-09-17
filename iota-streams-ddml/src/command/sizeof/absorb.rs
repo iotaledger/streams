@@ -6,10 +6,10 @@ use crate::{
     types::{
         sizeof_sizet,
         AbsorbFallback,
+        ArrayLength,
         Bytes,
         Fallback,
         NBytes,
-        ArrayLength,
         Size,
         Uint8,
     },
