@@ -22,7 +22,7 @@ members = [
     "iota-streams-app",
     "iota-streams-app-channels",
     "iota-streams-app-channels-example",
-    "iota-streams-app-channels-js",
+    #"iota-streams-app-channels-js",
 ]
 
 [dependencies]

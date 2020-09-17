@@ -14,13 +14,18 @@ use iota_streams_ddml::{
 /// Message context prepared for wrapping.
 pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {
     store: Ref<'a, Store>,
-    pub header: Header<Link>,
-    pub content: Content,
-    _phantom: core::marker::PhantomData<F>,
+    pub header: HDF<Link>,
+    pub content: PCF<Content>,
+    _phantom: std::marker::PhantomData<F>,
 }
 
-impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {
-    pub fn new(store: Ref<'a, Store>, header: Header<Link>, content: Content) -> Self {
+impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content>
+{
+    pub fn new(store: Ref<'a, Store>, header: HDF<Link>, content: Content) -> Self {
+        let content = pcf::PCF::new_final_frame()
+            .with_payload_frame_num(1)
+            .with_content(content);
+
         Self {
             store,
             header,
@@ -33,14 +38,13 @@ impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Conten
 impl<'a, F, Link, Store, Content> PreparedMessage<'a, F, Link, Store, Content>
 where
     F: PRP,
+    Link: HasLink + AbsorbExternalFallback<F> + Clone,
+    <Link as HasLink>::Rel: Eq + SkipFallback<F>,
+    Store: 'a + LinkStore<F, <Link as HasLink>::Rel>,
+    HDF<Link>: ContentWrap<F, Store>,
+    Content: ContentWrap<F, Store>,
 {
     pub fn wrap(&self) -> Result<WrappedMessage<F, Link>>
-    where
-        Link: HasLink + AbsorbExternalFallback<F> + Clone,
-        <Link as HasLink>::Rel: Eq + SkipFallback<F>,
-        Store: 'a + LinkStore<F, <Link as HasLink>::Rel>,
-        Header<Link>: ContentWrap<F, Store>,
-        Content: ContentWrap<F, Store>,
     {
         let buf_size = {
             let mut ctx = sizeof::Context::<F>::new();
@@ -65,7 +69,6 @@ where
             message: BinaryMessage {
                 link: self.header.link.clone(),
                 body: buf,
-                flags: self.header.flags.0,
                 _phantom: core::marker::PhantomData,
             },
         })

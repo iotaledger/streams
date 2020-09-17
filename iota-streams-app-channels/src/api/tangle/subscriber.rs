@@ -1,14 +1,14 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result};
 
 use super::*;
 use crate::api::user::User;
 use iota_streams_app::message::{HasLink as _, LinkGenerator as _};
 
 use iota_streams_core::{
-    prelude::Vec,
     prng,
+    prelude::Vec,
 };
 use iota_streams_core_edsig::signature::ed25519;
 
@@ -21,13 +21,15 @@ pub struct Subscriber {
 
 impl Subscriber {
     /// Create a new Subscriber instance, optionally generate NTRU keypair.
-    pub fn new(seed: &str, multi_branching: bool) -> Self {
+    pub fn new(seed: &str, encoding: &str, payload_length: usize) -> Self {
         let nonce = "TANGLESUBSCRIBERNONCE".as_bytes().to_vec();
         Self {
             imp: SubscriberImp::gen(
                 prng::dbg_init_str(seed),
                 nonce,
-                if multi_branching { 1 } else { 0 },
+                0,
+                encoding.as_bytes().to_vec(),
+                payload_length
             ),
         }
     }
@@ -46,6 +48,10 @@ impl Subscriber {
     /// Return Channel app instance.
     pub fn channel_address(&self) -> Option<&ChannelAddress> {
         self.imp.appinst.as_ref().map(|tangle_address| &tangle_address.appinst)
+    }
+
+    pub fn is_multi_branching(&self) -> bool {
+        self.imp.is_multi_branching()
     }
 
     /*
@@ -110,7 +116,7 @@ impl Subscriber {
     /// Subscribe to a Channel app instance.
     pub fn subscribe(&mut self, link_to: &Address) -> Result<Message> {
         // TODO: remove link_to
-        let subscribe = self.imp.subscribe(link_to.rel(), MsgInfo::Subscribe).unwrap();
+        let subscribe = self.imp.subscribe(link_to.rel(), MsgInfo::Subscribe)?;
         Ok(subscribe)
     }
 
@@ -144,8 +150,8 @@ impl Subscriber {
 
     pub fn unwrap_sequence<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<Address> {
         let seq_msg = self.imp.handle_sequence(preparsed, MsgInfo::Sequence)?;
-        //TODO: unwrap sequence
-        Err(anyhow!("Not implemented"))
+        let msg_id = self.imp.link_gen.link_from((&seq_msg.ref_link, &seq_msg.pk, seq_msg.seq_num.0));
+        Ok(msg_id)
         /*
         let seq_msg = self.imp.handle_sequence(preparsed, MsgInfo::Sequence)?;
         let msg_id = self.imp.gen_msg_id(link.rel(), pk, seq)
@@ -195,4 +201,13 @@ impl Subscriber {
         ids
     }
      */
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, (Address, usize))> {
+        self.imp.gen_next_msg_ids(branching)
+    }
+    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: Address) {
+        self.imp.store_state(pk, link)
+    }
+    pub fn store_state_for_all(&mut self, link: Address, seq_num: usize) {
+        self.imp.store_state_for_all(link, seq_num)
+    }
 }

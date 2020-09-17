@@ -35,19 +35,18 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Type of `Announce` message content.
-pub const TYPE: &str = "STREAMS9CHANNELS9ANNOUNCE";
-
 pub struct ContentWrap<'a, F> {
     sig_kp: &'a ed25519::Keypair,
+    flags: Uint8,
     _phantom: core::marker::PhantomData<F>,
 }
 
 impl<'a, F> ContentWrap<'a, F>
 {
-    pub fn new(sig_kp: &'a ed25519::Keypair) -> Self {
+    pub fn new(sig_kp: &'a ed25519::Keypair, flags: u8) -> Self {
         Self {
             sig_kp,
+            flags: Uint8(flags),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -59,6 +58,7 @@ where
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.sig_kp.public)?;
+        ctx.absorb(&self.flags)?;
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
@@ -69,6 +69,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.absorb(&self.sig_kp.public)?;
+        ctx.absorb(&self.flags)?;
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
@@ -77,6 +78,7 @@ where
 pub struct ContentUnwrap<F> {
     pub(crate) sig_pk: ed25519::PublicKey,
     pub(crate) ke_pk: x25519::PublicKey,
+    pub(crate) flags: Uint8,
     _phantom: core::marker::PhantomData<F>,
 }
 
@@ -84,9 +86,11 @@ impl<F> Default for ContentUnwrap<F> {
     fn default() -> Self {
         let sig_pk = ed25519::PublicKey::default();
         let ke_pk = x25519::public_from_ed25519(&sig_pk);
+        let flags = Uint8(0);
         Self {
             sig_pk,
             ke_pk,
+            flags,
             _phantom: core::marker::PhantomData,
         }
     }
@@ -103,6 +107,7 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.sig_pk)?;
         self.ke_pk = x25519::public_from_ed25519(&self.sig_pk);
+        ctx.absorb(&mut self.flags)?;
         ctx.ed25519(&self.sig_pk, HashSig)?;
         Ok(ctx)
     }

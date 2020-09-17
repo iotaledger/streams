@@ -5,7 +5,7 @@ use iota_streams_app::{
     },
 };
 use iota_streams_core::{
-    prelude::{hash_map, HashMap, vec, Vec, },
+    prelude::{HashMap, Vec, },
     psk,
     sponge::prp::PRP,
 };
@@ -26,7 +26,15 @@ pub trait ChannelLinkGenerator<Link>
 where
     Self: Default,
     Link: HasLink,
-    for <'a> Self: LinkGenerator<Link, ()> + LinkGenerator<Link, (&'a <Link as HasLink>::Rel, &'a ed25519::PublicKey, usize)>,
+    for <'a> Self:
+        // Generate appinst from author's public key and channel index
+        LinkGenerator<Link, (&'a ed25519::PublicKey, u64)> +
+        // Reset appinst
+        LinkGenerator<Link, <Link as HasLink>::Base> +
+        // Generate announce msgid, no additional info required
+        LinkGenerator<Link, ()> +
+        // Generate message id from linked message id, user's public key and sequence number
+        LinkGenerator<Link, (&'a <Link as HasLink>::Rel, &'a ed25519::PublicKey, usize)>,
 {
 }
 
@@ -40,7 +48,9 @@ pub trait PublicKeyStore<Info>: Default {
     fn get_mut(&mut self, pk: &ed25519::PublicKey) -> Option<&mut Info>;
     fn get_ke_pk(&self, pk: &ed25519::PublicKey) -> Option<&x25519::PublicKey>;
     fn insert(&mut self, pk: ed25519::PublicKey, info: Info);
-    fn iter(&self) -> Vec<(&ed25519::PublicKey, &x25519::PublicKey)>;
+    fn keys(&self) -> Vec<(&ed25519::PublicKey, &x25519::PublicKey)>;
+    fn iter(&self) -> Vec<(&ed25519::PublicKey, &Info)>;
+    fn iter_mut(&mut self) -> Vec<(&ed25519::PublicKey, &mut Info)>;
 }
 
 pub struct PublicKeyMap<Info> {
@@ -76,22 +86,34 @@ impl<Info> PublicKeyStore<Info> for PublicKeyMap<Info> {
     }
 
     fn get(&self, pk: &ed25519::PublicKey) -> Option<&Info> {
-        self.pks.get(pk.into()).map(|(x,i)| i)
+        self.pks.get(pk.into()).map(|(_x,i)| i)
     }
     fn get_mut(&mut self, pk: &ed25519::PublicKey) -> Option<&mut Info> {
-        self.pks.get_mut(pk.into()).map(|(x,i)| i)
+        self.pks.get_mut(pk.into()).map(|(_x,i)| i)
     }
     fn get_ke_pk(&self, pk: &ed25519::PublicKey) -> Option<&x25519::PublicKey> {
-        self.pks.get(pk.into()).map(|(x,i)| x)
+        self.pks.get(pk.into()).map(|(x,_i)| x)
     }
     fn insert(&mut self, pk: ed25519::PublicKey, info: Info) {
         let xpk = x25519::public_from_ed25519(&pk);
         self.pks.insert(pk.into(), (xpk, info));
     }
-    fn iter(&self) -> Vec<(&ed25519::PublicKey, &x25519::PublicKey)> {
+    fn keys(&self) -> Vec<(&ed25519::PublicKey, &x25519::PublicKey)> {
         self.pks
             .iter()
-            .map(|(k, (x,i))| (&k.0, x))
+            .map(|(k, (x,_i))| (&k.0, x))
+            .collect()
+    }
+    fn iter(&self) -> Vec<(&ed25519::PublicKey, &Info)> {
+        self.pks
+            .iter()
+            .map(|(k, (_x,i))| (&k.0, i))
+            .collect()
+    }
+    fn iter_mut(&mut self) -> Vec<(&ed25519::PublicKey, &mut Info)> {
+        self.pks
+            .iter_mut()
+            .map(|(k, (_x,i))| (&k.0, i))
             .collect()
     }
 }

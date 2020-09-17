@@ -21,15 +21,18 @@ pub struct Author {
 
 impl Author {
     /// Create a new Author instance, generate new MSS keypair and optionally NTRU keypair.
-    pub fn new(seed: &str, multi_branching: bool) -> Self {
+    pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool) -> Self {
         let nonce = "TANGLEAUTHORNONCE".as_bytes().to_vec();
-        Self {
-            imp: AuthorImp::gen(
-                prng::dbg_init_str(seed),
-                nonce,
-                if multi_branching { 1 } else { 0 },
-            ),
-        }
+        let mut imp = AuthorImp::gen(
+            prng::dbg_init_str(seed),
+            nonce,
+            if multi_branching { 1 } else { 0 },
+            encoding.as_bytes().to_vec(),
+            payload_length
+        );
+        let channel_idx = 0_u64;
+        let _ = imp.create_channel(channel_idx);
+        Self { imp, }
     }
 
     /// Channel app instance.
@@ -140,21 +143,21 @@ impl Author {
     // }
 
     pub fn unwrap_sequence<'a>(&mut self, preparsed: Preparsed<'a>) -> Result<Address> {
-        if let Some(addr) = &self.imp.appinst {
+        if let Some(_addr) = &self.imp.appinst {
             let seq_msg = self.imp.handle_sequence(preparsed, MsgInfo::Sequence)?;
             let msg_id = self.imp.link_gen.link_from(
-                (&seq_msg.ref_link, &seq_msg.pubkey, seq_msg.seq_num.0));
+                (&seq_msg.ref_link, &seq_msg.pk, seq_msg.seq_num.0));
             Ok(msg_id)
         } else {
             Err(anyhow!("No channel registered"))
         }
     }
 
-    /*
     pub fn is_multi_branching(&self) -> bool {
         self.imp.is_multi_branching()
     }
 
+    /*
     pub fn gen_msg_id(&mut self, link: &Address, pk: &x25519::PublicKey, seq: usize) -> Address {
         self.imp.gen_msg_id(link.rel(), pk, seq)
     }
@@ -188,4 +191,13 @@ impl Author {
         ids
     }
      */
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, (Address, usize))> {
+        self.imp.gen_next_msg_ids(branching)
+    }
+    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: Address) {
+        self.imp.store_state(pk, link)
+    }
+    pub fn store_state_for_all(&mut self, link: Address, seq_num: usize) {
+        self.imp.store_state_for_all(link, seq_num)
+    }
 }

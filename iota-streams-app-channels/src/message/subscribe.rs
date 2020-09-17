@@ -60,9 +60,6 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Type of `Subscribe` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9SUBSCRIBE";
-
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,

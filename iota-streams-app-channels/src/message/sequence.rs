@@ -36,16 +36,13 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Type of `Sequence` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9SEQ";
-
 pub struct ContentWrap<'a, Link>
 where
     Link: HasLink,
     <Link as HasLink>::Rel: 'a,
 {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) pubkey: &'a ed25519::PublicKey,
+    pub(crate) pk: &'a ed25519::PublicKey,
     pub seq_num: usize,
     pub(crate) ref_link: &'a <Link as HasLink>::Rel,
 }
@@ -60,7 +57,7 @@ where
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
-            .absorb(self.pubkey)?
+            .absorb(self.pk)?
             .skip(Size(self.seq_num))?
             .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
@@ -73,7 +70,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
-            .absorb(self.pubkey)?
+            .absorb(self.pk)?
             .skip(Size(self.seq_num))?
             .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
@@ -83,7 +80,7 @@ where
 
 pub struct ContentUnwrap<Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) pubkey: ed25519::PublicKey,
+    pub(crate) pk: ed25519::PublicKey,
     pub(crate) seq_num: Size,
     pub(crate) ref_link: <Link as HasLink>::Rel,
 }
@@ -96,7 +93,7 @@ where
     fn default() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            pubkey: ed25519::PublicKey::default(),
+            pk: ed25519::PublicKey::default(),
             seq_num: Size(0),
             ref_link: <<Link as HasLink>::Rel as Default>::default(),
         }
@@ -116,7 +113,7 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
-            .absorb(&mut self.pubkey)?
+            .absorb(&mut self.pk)?
             .skip(&mut self.seq_num)?
             .absorb(<&mut Fallback::<<Link as HasLink>::Rel>>::from(&mut self.ref_link))?
             .commit()?;

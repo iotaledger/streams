@@ -4,3 +4,6 @@
 *.rs~
 *.toml~
 *.md~
+
+.project
+Cargo.lock

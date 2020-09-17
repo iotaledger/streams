@@ -12,7 +12,7 @@ use iota_streams_ddml::{
 /// Type of "absolute" links. For http it's the absolute URL.
 pub trait HasLink: Sized + Default + Clone + Eq {
     /// Type of "base" links. For http it's domain name.
-    type Base;
+    type Base: Default + Clone;
 
     /// Get base part of the link.
     fn base(&self) -> &Self::Base;
@@ -33,13 +33,13 @@ pub trait LinkGenerator<Link, From> {
     fn link_from(&mut self, arg: From) -> Link;
 
     /// Derive a new link and construct a header with given content type.
-    fn header_from(
-        &mut self,
-        arg: From,
-        flags: u8,
-        content_type: &str,
-    ) -> header::Header<Link> {
-        header::Header::new_with_type(self.link_from(arg), flags, content_type)
+    fn header_from(&mut self, arg: From, content_type: u8, payload_length: usize, seq_num: usize) -> HDF<Link> {
+        HDF::new_with_fields(
+            self.link_from(arg),
+            content_type,
+            payload_length,
+            seq_num,
+        )
     }
 }
 
@@ -60,8 +60,11 @@ pub trait ContentUnwrap<F, Store> {
     ) -> Result<&'c mut unwrap::Context<F, IS>>;
 }
 
-pub mod header;
-use header::Header;
+pub mod hdf;
+pub use hdf::HDF;
+pub mod pcf;
+pub use pcf::PCF;
+
 mod version;
 pub use version::*;
 

@@ -11,16 +11,11 @@ description = "A rust implementation of the IOTA Streams"
 [workspace]
 
 [dependencies]
-iota-streams-core = { version = "0.2.0", path = "../../iota-streams-core" }
-iota-streams-core-edsig = { version = "0.2.0", path = "../../iota-streams-core-edsig" }
-iota-streams-ddml = { version = "0.2.0", path = "../../iota-streams-ddml" }
-iota-streams-app = { version = "0.2.0", path = "../../iota-streams-app" }
-iota-streams-app-channels = { version = "0.2.0", path = "../../iota-streams-app-channels"}
+iota-streams = { version = "0.2.0", path = ".." }
 anyhow = { version = "1.0", default-features = false }
 failure = "0.1"
 iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
 core-error = "0.0.0"
-heapless = "0.4.4"
 hex = "0.4.2"
 smol = {version = "0.1.18", features = ["tokio02"]}
 tokio = ""

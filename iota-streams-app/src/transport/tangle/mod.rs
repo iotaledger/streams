@@ -9,8 +9,8 @@ use core::{
 };
 
 use iota_streams_core::{
-    prelude::Vec,
     sponge::prp::PRP,
+    prelude::typenum::{U40, U12, },
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -19,7 +19,10 @@ use iota_streams_ddml::{
     types::*,
 };
 
-use crate::message::*;
+use crate::message::{HasLink, LinkGenerator, HDF, BinaryMessage};
+
+/// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
+pub const PAYLOAD_BYTES: usize = 1090;
 
 pub struct TangleMessage<F> {
     /// Encapsulated binary encoded message.
@@ -150,6 +153,7 @@ impl<F: PRP> DefaultTangleLinkGenerator<F>
 {
     fn gen_msgid(&self, msgid: &MsgId, pk: &ed25519::PublicKey, seq: usize) -> MsgId {
         let mut new = MsgId::default();
+        //println!("Making new id with: {:?}, {:?}, {:?}", msgid.id.to_string(), multi_branch, seq);
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.appinst.id)).unwrap()
             .absorb(External(pk)).unwrap()
@@ -163,28 +167,36 @@ impl<F: PRP> DefaultTangleLinkGenerator<F>
     }
 }
 
-impl<'a, F> LinkGenerator<TangleAddress, ()> for DefaultTangleLinkGenerator<F>
-where
-    F: PRP,
+impl<'a, F: PRP> LinkGenerator<TangleAddress, (&'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F>
+{
+    fn link_from(&mut self, arg: (&ed25519::PublicKey, u64)) -> TangleAddress {
+        let (pk, channel_idx) = arg;
+        self.appinst = AppInst::new(pk, channel_idx);
+        TangleAddress {
+            appinst: self.appinst.clone(),
+            msgid: MsgId::default(),
+        }
+    }
+}
+
+impl<F: PRP> LinkGenerator<TangleAddress, AppInst> for DefaultTangleLinkGenerator<F>
+{
+    fn link_from(&mut self, arg: AppInst) -> TangleAddress {
+        self.appinst = arg;
+        TangleAddress {
+            appinst: self.appinst.clone(),
+            msgid: MsgId::default(),
+        }
+    }
+}
+
+impl<F: PRP> LinkGenerator<TangleAddress, ()> for DefaultTangleLinkGenerator<F>
 {
     fn link_from(&mut self, _arg: ()) -> TangleAddress {
         TangleAddress {
             appinst: self.appinst.clone(),
             msgid: MsgId::default(),
         }
-    }
-
-    fn header_from(
-        &mut self,
-        arg: (),
-        flags: u8,
-        content_type: &str,
-    ) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(
-            self.link_from(arg),
-            flags,
-            content_type,
-        )
     }
 }
 
@@ -199,28 +211,28 @@ where
             msgid: self.gen_msgid(msgid, pk, seq),
         }
     }
-    fn header_from(
-        &mut self,
-        arg: (&MsgId, &ed25519::PublicKey, usize),
-        flags: u8,
-        content_type: &str,
-    ) -> header::Header<TangleAddress> {
-        header::Header::new_with_type(
-            self.link_from(arg),
-            flags,
-            content_type,
-        )
-    }
 }
 
-// ed25519 public key size in bytes
-pub type AppInstSize = U32;
+// ed25519 public key size in bytes + 64-bit additional index
+pub type AppInstSize = U40;
+pub const APPINST_SIZE: usize = 40;
 
 /// Application instance identifier.
 /// Currently, 81-byte string stored in `address` transaction field.
 #[derive(Clone)]
 pub struct AppInst {
     pub(crate) id: NBytes<AppInstSize>,
+}
+
+impl AppInst {
+    pub fn new(pk: &ed25519::PublicKey, channel_idx: u64) -> Self {
+        let mut id = [0_u8; APPINST_SIZE];
+        id[..32].copy_from_slice(pk.as_bytes());
+        id[32..].copy_from_slice(&channel_idx.to_be_bytes());
+        Self {
+            id: unsafe { core::mem::transmute(id) },
+        }
+    }
 }
 
 impl<'a> From<&'a [u8]> for AppInst {
@@ -231,6 +243,7 @@ impl<'a> From<&'a [u8]> for AppInst {
         }
     }
 }
+
 /*
 impl TryFrom<[u8; 32]> for AppInst {
     type Error = ();
@@ -329,13 +342,13 @@ where
     }
 }
 
-pub type MsgIdSize = U16;
+pub type MsgIdSize = U12;
+pub const MSGID_SIZE: usize = 12;
 
 /// Message identifier unique within application instance.
 /// Currently, 27-byte string stored in `tag` transaction field.
 #[derive(Clone)]
 pub struct MsgId {
-    // TODO: change to [u8; MSGID_SIZE],
     pub(crate) id: NBytes<MsgIdSize>,
 }
 

@@ -139,9 +139,9 @@ fn make_bundle(
 
     let mut bundle_builder = OutgoingBundleBuilder::new();
     while !body.is_empty() {
-        let (payload_chunk, rest_of_body) = body.split_at(PAYLOAD_TRIT_LEN);
+        let (payload_chunk, rest_of_body) = body.split_at(PAYLOAD_BYTES);
         let mut payload_tritbuf = bytes_to_tritbuf(payload_chunk);
-        if payload_chunk.len() < PAYLOAD_TRIT_LEN {
+        if payload_chunk.len() < PAYLOAD_BYTES {
             payload_tritbuf = pad_tritbuf(PAYLOAD_TRIT_LEN, payload_tritbuf);
         }
         let tx_payload = Payload::try_from_inner(payload_tritbuf)
@@ -251,15 +251,17 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-pub fn msg_from_bundle<F>(bundle: &Bundle, flags: u8) -> BinaryMessage<F, TangleAddress> {
+pub fn msg_from_bundle<F>(bundle: &Bundle) -> BinaryMessage<F, TangleAddress> {
     let tx = bundle.head();
     let appinst = AppInst::from(bytes_from_trits(tx.address().to_inner()).as_ref());
     let msgid = MsgId::from(bytes_from_trits(tx.tag().to_inner()).as_ref());
     let mut body = Vec::new();
     for tx in bundle.into_iter() {
-        body.extend_from_slice(&bytes_from_trits(tx.payload().to_inner()));
+        let mut payload = bytes_from_trits(tx.payload().to_inner());
+        payload.resize(PAYLOAD_BYTES, 0);
+        body.extend_from_slice(&payload);
     }
-    BinaryMessage::new(TangleAddress { appinst, msgid }, body, flags)
+    BinaryMessage::new(TangleAddress { appinst, msgid }, body)
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -484,10 +486,9 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
     fn recv_messages_with_options(
         &mut self,
         link: &TangleAddress,
-        opt: Self::RecvOptions,
+        _opt: Self::RecvOptions,
     ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
-        let tx_address =
-            Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
+        let tx_address = Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
                 .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
         let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
             .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
@@ -496,7 +497,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         if !txs.is_err() {
             Ok(bundles_from_trytes(txs.unwrap())
                 .into_iter()
-                .map(|b| msg_from_bundle(&b, opt.flags))
+                .map(|b| msg_from_bundle(&b))
                 .collect())
         } else {
             Ok(Vec::new())

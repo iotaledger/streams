@@ -60,6 +60,7 @@ use iota_streams_core::{
         prp::PRP,
         spongos,
     },
+    prelude::Vec,
 };
 use iota_streams_core_edsig::{
     signature::ed25519,
@@ -71,9 +72,6 @@ use iota_streams_ddml::{
     link_store::{EmptyLinkStore, LinkStore, },
     types::*,
 };
-
-/// Type of `Keyload` message content.
-pub const TYPE: &str = "STREAMS9CHANNELS9KEYLOAD";
 
 pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
@@ -160,7 +158,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub(crate) lookup_psk: LookupPsk,
     pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
-    //pub(crate) ke_pks: x25519::Pks,
+    pub(crate) ke_pks: Vec<ed25519::PublicKey>,
     pub key: NBytes<U32>, //TODO: unify with spongos::Spongos::<F>::KEY_SIZE
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
@@ -182,8 +180,8 @@ where
             lookup_psk,
             ke_pk: ed25519::PublicKey::default(),
             lookup_ke_sk,
+            ke_pks: Vec::new(),
             key: NBytes::default(),
-            //ke_pks: x25519::Pks::new(),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -238,13 +236,17 @@ where
             .skip(&mut repeated_ke_pks)?
             .repeated(repeated_ke_pks, |ctx| {
                 ctx.fork(|ctx| {
-                    ctx.absorb(&mut self.ke_pk)?;
-                    //self.ke_pks.insert(x25519::PublicKeyWrap(self.ke_pk));
-                    if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &self.ke_pk) {
+                    let mut ke_pk = ed25519::PublicKey::default();
+                    ctx.absorb(&mut ke_pk)?;
+                    if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &ke_pk) {
                         ctx.x25519(ke_sk, &mut self.key)?;
                         key_found = true;
+                        // Save the relevant public key
+                        self.ke_pk = ke_pk.clone();
+                        self.ke_pks.push(ke_pk);
                         Ok(ctx)
                     } else {
+                        self.ke_pks.push(ke_pk);
                         // Just drop the rest of the forked message so not to waste Spongos operations
                         // TODO: key length
                         let n = Size(64);
