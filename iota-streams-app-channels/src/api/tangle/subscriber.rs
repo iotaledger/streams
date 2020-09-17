@@ -215,6 +215,11 @@ impl Subscriber {
 
 impl fmt::Display for Subscriber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{}>\n{}", hex::encode(self.imp.sig_kp.public.as_bytes()), self.imp.pk_store)
+        write!(
+            f,
+            "<{}>\n{}",
+            hex::encode(self.imp.sig_kp.public.as_bytes()),
+            self.imp.pk_store
+        )
     }
 }

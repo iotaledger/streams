@@ -139,11 +139,8 @@ fn make_bundle(
 
     let mut bundle_builder = OutgoingBundleBuilder::new();
     while !body.is_empty() {
-        let (payload_chunk, rest_of_body) = body.split_at(PAYLOAD_BYTES);
-        let mut payload_tritbuf = bytes_to_tritbuf(payload_chunk);
-        if payload_chunk.len() < PAYLOAD_BYTES {
-            payload_tritbuf = pad_tritbuf(PAYLOAD_TRIT_LEN, payload_tritbuf);
-        }
+        let (payload_chunk, rest_of_body) = body.split_at(core::cmp::min(PAYLOAD_BYTES, body.len()));
+        let payload_tritbuf = pad_tritbuf(PAYLOAD_TRIT_LEN, bytes_to_tritbuf(payload_chunk));
         let tx_payload = Payload::try_from_inner(payload_tritbuf)
             .map_err(|e| anyhow!("Failed to create payload chunk: {:?}.", e))?;
         bundle_builder.push(make_tx(

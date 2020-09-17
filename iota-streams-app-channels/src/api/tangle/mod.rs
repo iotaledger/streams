@@ -1,11 +1,11 @@
 //! Default parameters for Author and Subscriber types.
 
-use core::fmt;
 use super::{
     PresharedKeyMap,
     PublicKeyMap,
     SequencingState,
 };
+use core::fmt;
 use iota_streams_app::{
     message,
     transport::{

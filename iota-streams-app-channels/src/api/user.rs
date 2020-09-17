@@ -137,7 +137,8 @@ where
             "Can't create channel: a channel already created/registered."
         );
         let appinst = self.link_gen.link_from((&self.sig_kp.public, channel_idx));
-        self.pk_store.insert(self.sig_kp.public.clone(), SequencingState(appinst.clone(), 2_usize));
+        self.pk_store
+            .insert(self.sig_kp.public.clone(), SequencingState(appinst.clone(), 2_usize));
         self.appinst = Some(appinst);
         Ok(())
     }
@@ -202,7 +203,8 @@ where
         // TODO: Verify appinst (address) == public key.
         // At the moment the Author is free to choose any address, not tied to PK.
 
-        self.pk_store.insert(content.sig_pk.clone(), SequencingState(link.clone(), 0));
+        self.pk_store
+            .insert(content.sig_pk.clone(), SequencingState(link.clone(), 0));
         // Reset link_gen
         let _appinst = self.link_gen.link_from(link.base().clone());
         self.appinst = Some(link);
@@ -271,7 +273,8 @@ where
         // TODO: trust content.subscriber_sig_pk
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let ref_link = self.appinst.as_ref().unwrap().clone();
-        self.pk_store.insert(subscriber_sig_pk, SequencingState(ref_link, SEQ_MESSAGE_NUM));
+        self.pk_store
+            .insert(subscriber_sig_pk, SequencingState(ref_link, SEQ_MESSAGE_NUM));
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }
@@ -679,7 +682,12 @@ where
         Ok(())
     }
 
-    fn gen_next_msg_id(ids: &mut Vec<(ed25519::PublicKey, SequencingState<Link>)>, link_gen: &mut LG, pk_info: (&ed25519::PublicKey, &mut SequencingState<Link>), branching: bool) {
+    fn gen_next_msg_id(
+        ids: &mut Vec<(ed25519::PublicKey, SequencingState<Link>)>,
+        link_gen: &mut LG,
+        pk_info: (&ed25519::PublicKey, &mut SequencingState<Link>),
+        branching: bool,
+    ) {
         let (pk, SequencingState(seq_link, seq_num)) = pk_info;
         if branching {
             let msg_id = link_gen.link_from((seq_link.rel(), pk, 1_usize));
