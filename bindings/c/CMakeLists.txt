@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.3.0) 
+project(iota_streams_c)
+add_executable(iota_streams_c main.c)
+add_custom_command(TARGET iota_streams_c PRE_BUILD COMMAND cargo build --target-dir ./target COMMAND cp ./target/debug/iota_streams_c.dll .)
+target_link_libraries(iota_streams_c ./target/debug/iota_streams_c.dll)

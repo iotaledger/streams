@@ -7,7 +7,7 @@
 
 int main() {
     bool multi_branching = true;
-    char seed[10] = "";
+    char seed[11] = "";
 
     const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
     srand( time(NULL) );
