@@ -75,6 +75,16 @@ Subscriber sub_new(char seed[], char encoding[], size_t payload_length);
 void sub_unwrap_announce(Subscriber *subscriber, Message *message);
 Address sub_subscribe(Subscriber *subscriber, Address *announcement_link);
 
+void sub_unwrap_keyload(Subscriber *subscriber, Message *message);
+
+Address sub_unwrap_sequence(Subscriber *subscriber, , Message *message);
+Address sub_get_message_link(Subscriber *subscriber, Address *address);
+PayloadResponse sub_unwrap_signed_packet(Subscriber *subscriber, Message *message);
+PayloadResponse sub_unwrap_tagged_packet(Subscriber *subscriber, Message *message);
+
+u8 auth_get_branching_flag(Author * author);
+u8 sub_get_branching_flag(Subscriber * author);
+
 /*
 void auth_store_state(Author * author, PubKey * pk, Address * link);
 
@@ -83,17 +93,12 @@ eq_num ) ;
 
 SeqState auth_get_seq_state(Author * author, PubKey * pk);
 
-/// Create a signed packet.
-Message [ 2 ] auth_sign_packet(Author * author , Address *link_to, Bytes * public_payload , Bytes *masked_payload ) ;
-
 
 /// Unwrap tagged packet.
 Bytes [ 2 ] auth_unwrap_tagged_packet(Author * author , Preparsed *preparsed ) ;
 
 
 Address auth_unwrap_sequence(Author * author, Preparsed * preparsed);
-
-char auth_get_branching_flag(Author * author);
 
 Address auth_gen_msg_id(Author * author, Address * link, PubKey * pk, size_t seq) ;
 

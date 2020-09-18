@@ -50,3 +50,17 @@ typedef struct Subscriber subscriber_t;
 extern subscriber_t *sub_new(char seed[], char encoding[], size_t payload_length);
 extern void *sub_unwrap_announce(subscriber_t *subscriber, message_t *message);
 address_t *sub_subscribe(subscriber_t *subscriber, address_t *announcement_link);
+address_t *sub_get_message_link(subscriber_t *subscriber, address_t *address);
+extern void sub_unwrap_keyload(subscriber_t *subscriber, message_t *message);
+extern address_t *sub_unwrap_sequence(subscriber_t *subscriber, message_t *message);
+
+typedef struct PayloadRessponse {
+    char* public_payload;
+    char* private_payload;
+} payload_response_t;
+
+extern payload_response_t *sub_unwrap_signed_packet(subscriber_t *subscriber, message_t *message);
+extern payload_response_t *sub_unwrap_tagged_packet(subscriber_t *subscriber, message_t *message);
+
+extern unsigned int auth_get_branching_flag(author_t * author);
+extern unsigned int sub_get_branching_flag(subscriber_t * subscriber);

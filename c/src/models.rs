@@ -139,6 +139,12 @@ pub struct MessageLinks{
     pub(crate) seq_link: Option<Address>,
 }
 
+#[repr(C)]
+pub struct PayloadResponse {
+    pub(crate) public_payload: *const c_char,
+    pub(crate) private_payload: *const c_char,
+}
+
 #[no_mangle]
 pub extern "C" fn get_msg_link(msg_links: *mut MessageLinks) -> *mut Address {
     unsafe {

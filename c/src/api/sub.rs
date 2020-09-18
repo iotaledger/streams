@@ -1,4 +1,4 @@
-use crate::{AppInst, Address, Subscriber, Message, PskIds, KePks, MessageLinks, SeqState, Preparsed, utils, client};
+use crate::{AppInst, Address, Subscriber, Message, PskIds, KePks, MessageLinks, PayloadResponse, SeqState, Preparsed, utils, client};
 
 use iota_streams::app_channels::api::tangle::{
     Subscriber as Sub, 
@@ -16,6 +16,7 @@ use iota_streams::ddml::types::Bytes;
 
 use std::mem;
 use std::ffi::CStr;
+use std::ffi::CString;
 use std::os::raw::{c_char, c_ulonglong};
 use iota::client::Client;
 use crate::constants::*;
@@ -53,6 +54,17 @@ pub extern "C" fn sub_unwrap_announce(subscriber: *mut Subscriber, message: *mut
     }
 }
 
+#[no_mangle]
+pub extern "C" fn sub_get_branching_flag(subscriber: *mut Subscriber) -> u8 {
+    unsafe {
+        let sub = Box::from_raw(subscriber);
+        let branching = sub.sub.get_branching_flag();
+        mem::forget(sub);
+
+        branching
+    }
+}
+
 /// Subscribe to a Channel app instance.
 #[no_mangle]
 pub extern "C" fn sub_subscribe(subscriber: *mut Subscriber, announcement_link: *mut Address) -> *mut Address {
@@ -69,4 +81,75 @@ pub extern "C" fn sub_subscribe(subscriber: *mut Subscriber, announcement_link: 
     let mut client = Client::get();
     client::send_message(&mut client, &Message(msg.clone()));
     Box::into_raw(Box::new(Address(msg.link)))
+}
+
+/// Process a keyload message 
+#[no_mangle]
+pub extern "C" fn sub_unwrap_keyload(subscriber: *mut Subscriber, message: *mut TangleMessage) {
+    unsafe {
+        let mut sub = Box::from_raw(subscriber);
+
+        let msg = Box::from_raw(message);
+        let parsed = msg.parse_header();
+        
+        sub.sub.unwrap_keyload(parsed.unwrap()).unwrap();
+        mem::forget(sub);
+        mem::forget(msg);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn sub_unwrap_sequence(subscriber: *mut Subscriber, message: *mut TangleMessage) -> *mut Address {
+    unsafe {
+        let mut sub = Box::from_raw(subscriber);
+
+        let msg = Box::from_raw(message);
+        let parsed = msg.parse_header();
+        
+        let addr = sub.sub.unwrap_sequence(parsed.unwrap()).unwrap();
+        mem::forget(sub);
+        mem::forget(msg);
+
+        Box::into_raw(Box::new(Address(addr)))
+    }
+}
+
+/// Process a Signed packet message 
+#[no_mangle]
+pub extern "C" fn sub_unwrap_signed_packet(subscriber: *mut Subscriber, message: *mut TangleMessage) -> *mut PayloadResponse {
+    unsafe {
+        let mut sub = Box::from_raw(subscriber);
+
+        let msg = Box::from_raw(message);
+        let parsed = msg.parse_header();
+        
+        let (unwrapped_public, unwrapped_masked) = sub.sub.unwrap_signed_packet(parsed.unwrap()).unwrap();
+        mem::forget(sub);
+        mem::forget(msg);
+        
+        Box::into_raw(Box::new(PayloadResponse {
+            public_payload: CString::from_vec_unchecked(unwrapped_public.0).into_raw(),
+            private_payload: CString::from_vec_unchecked(unwrapped_masked.0).into_raw(),
+        }))
+    }
+}
+
+/// Process a tagged packet message 
+#[no_mangle]
+pub extern "C" fn sub_unwrap_tagged_packet(subscriber: *mut Subscriber, message: *mut TangleMessage) -> *mut PayloadResponse {
+    unsafe {
+        let mut sub = Box::from_raw(subscriber);
+
+        let msg = Box::from_raw(message);
+        let parsed = msg.parse_header();
+        
+        let (unwrapped_public, unwrapped_masked) = sub.sub.unwrap_tagged_packet(parsed.unwrap()).unwrap();
+        mem::forget(sub);
+        mem::forget(msg);
+
+        Box::into_raw(Box::new(PayloadResponse {
+            public_payload: CString::from_vec_unchecked(unwrapped_public.0).into_raw(),
+            private_payload: CString::from_vec_unchecked(unwrapped_masked.0).into_raw(),
+        }))
+    }
 }

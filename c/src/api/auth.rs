@@ -61,6 +61,17 @@ pub extern "C" fn auth_announce(author: *mut Author) -> *mut Address {
     Box::into_raw(Box::new(Address(msg.link)))
 }
 
+#[no_mangle]
+pub extern "C" fn auth_get_branching_flag(author: *mut Author) -> u8 {
+    unsafe {
+        let auth = Box::from_raw(author);
+        let branching = auth.auth.get_branching_flag();
+        mem::forget(auth);
+
+        branching
+    }
+}
+
 /// unwrap and add a subscriber to the list of subscribers
 #[no_mangle]
 pub extern "C" fn auth_unwrap_subscribe(author: *mut Author, message: *mut TangleMessage){
@@ -97,11 +108,8 @@ pub extern "C" fn auth_share_keyload(author: *mut Author,  link_to: *mut Address
 #[no_mangle]
 pub extern "C" fn auth_share_keyload_for_everyone(author: *mut Author, link_to: *mut Address) -> *mut MessageLinks {
     unsafe {
-        println!("Getting author");
         let mut auth = Box::from_raw(author);
-        println!("Got Author");
         let unboxed_link = Box::from_raw(link_to);
-        println!("Unboxed the link");
         let tangle_address = TangleAddress::new(ApplicationInstance::from(unboxed_link.0.appinst.clone()), MessageIdentifier::from(unboxed_link.0.msgid.clone()));
 
         println!("Tangle address: {}\n", tangle_address);
