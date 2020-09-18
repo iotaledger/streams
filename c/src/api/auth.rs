@@ -1,5 +1,5 @@
 //use crate::{AppInst, MsgId, Address, Author, Message, PskIds, PubKey, PubKeyWrap, SeqState, NextMsgId, Transport, Preparsed, KePks, MWM, send_message, MessageLinks};
-use crate::{AppInst, Address, Author, Message, PskIds, KePks, MessageLinks, SeqState, Preparsed, utils, client};
+use crate::{AppInst, Address, Author, Message, PskIds, KePks, MessageLinks, PayloadResponse, SeqState, Preparsed, utils, client};
 
 use iota_streams::app_channels::api::tangle::{Author as Auth, Message as TangleMessage};
 use iota_streams::app::transport::{
@@ -12,6 +12,7 @@ use iota_streams::app::transport::{
 use iota_streams::ddml::types::Bytes;
 
 use std::mem;
+use std::ffi::CString;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_ulonglong};
 use iota::client::Client;
@@ -136,6 +137,39 @@ pub extern "C" fn auth_tag_packet(author: *mut Author, link_to: *mut MessageLink
         mem::forget(auth);
 
         utils::send_and_retrieve_links(response)
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_unwrap_tagged_packet(author: *mut Author, message: *mut TangleMessage) -> *mut PayloadResponse {
+    unsafe {
+        let mut auth = Box::from_raw(author);
+
+        let msg = Box::from_raw(message);
+        let parsed = msg.parse_header();
+        
+        let (unwrapped_public, unwrapped_masked) = auth.auth.unwrap_tagged_packet(parsed.unwrap()).unwrap();
+        mem::forget(auth);
+        mem::forget(msg);
+
+        Box::into_raw(Box::new(PayloadResponse {
+            public_payload: CString::from_vec_unchecked(unwrapped_public.0).into_raw(),
+            private_payload: CString::from_vec_unchecked(unwrapped_masked.0).into_raw(),
+        }))
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_unwrap_sequence(author: *mut Author, message: *mut TangleMessage){
+unsafe {
+        let mut auth = Box::from_raw(author);
+
+        let msg = Box::from_raw(message);
+        let parsed = msg.parse_header();
+        
+        auth.auth.unwrap_sequence(parsed.unwrap()).unwrap();
+        mem::forget(auth);
+        mem::forget(msg);
     }
 }
 

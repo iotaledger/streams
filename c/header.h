@@ -57,11 +57,20 @@ MessageLinks auth_share_keyload(Author *author , Address *link_to, PskIds *psk_i
 /// Create keyload for all subscribed subscribers.
 MessageLinks auth_share_keyload_for_everyone(Author * author , Address *link_to);
 
+// Our branching choice
+u8 auth_get_branching_flag(Author * author);
+
 /// Create a tagged packet.
 MessageLinks auth_tag_packet(Author * author , MessageLinks *link_to, char * public_payload , char *masked_payload );
 
 /// Create a tagged packet.
 MessageLinks auth_sign_packet(Author * author , MessageLinks *link_to, char * public_payload , char *masked_payload );
+
+// Unwrap a tagged packet for an author
+PayloadResponse auth_unwrap_tagged_packet(Author * author , Message *message) ;
+
+// Unwrap a sequence message for an author
+Address auth_unwrap_sequence(Author * author, Message *message);
 
 Address get_msg_link(MessageLinks *message_links);
 
@@ -82,7 +91,6 @@ Address sub_get_message_link(Subscriber *subscriber, Address *address);
 PayloadResponse sub_unwrap_signed_packet(Subscriber *subscriber, Message *message);
 PayloadResponse sub_unwrap_tagged_packet(Subscriber *subscriber, Message *message);
 
-u8 auth_get_branching_flag(Author * author);
 u8 sub_get_branching_flag(Subscriber * author);
 
 /*
@@ -97,8 +105,9 @@ SeqState auth_get_seq_state(Author * author, PubKey * pk);
 /// Unwrap tagged packet.
 Bytes [ 2 ] auth_unwrap_tagged_packet(Author * author , Preparsed *preparsed ) ;
 
-
 Address auth_unwrap_sequence(Author * author, Preparsed * preparsed);
+
+
 
 Address auth_gen_msg_id(Author * author, Address * link, PubKey * pk, size_t seq) ;
 
