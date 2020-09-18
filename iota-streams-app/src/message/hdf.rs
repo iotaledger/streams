@@ -3,7 +3,6 @@ use anyhow::{
     Result,
 };
 use core::fmt;
-// use std::str::FromStr;
 
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::{
@@ -13,7 +12,6 @@ use iota_streams_ddml::{
 };
 
 use super::*;
-use core::fmt;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
@@ -73,12 +71,6 @@ impl<Link> HDF<Link> {
             link: link,
             seq_num: Size(seq_num),
         }
-    }
-}
-
-impl<Link> fmt::Debug for HDF<Link> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.seq_num)
     }
 }
 
