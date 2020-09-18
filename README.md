@@ -52,7 +52,7 @@ and add a dependency in `Cargo.toml` in the following way:
 
 ```
 [dependencies]
-iota-streams = { version = "0.1", path = "../streams" }
+iota-streams = { version = "0.2", path = "../streams" }
 ```
 
 Optionally, you can run tests in the whole `iota-streams` project:
@@ -66,14 +66,19 @@ Now you can use the Streams Channels Application in your code like this:
 
 ```
 use iota_streams::app_channels::api::tangle::{Author, Subscriber};
+use iota_streams::app::transport::tangle::PAYLOAD_BYTES;
 
 fn main() {
-    let author = Author::new("AUTHORSSEED", 3, false);
-    let subscriber = Subscriber::new("SUBSCRIBERSSEED", false);
+    let encoding = "utf-8";
+    let multi_branching_flag = true;
+
+    let mut author = Author::new("AUTHORSSEED", encoding, PAYLOAD_BYTES, multi_branching_flag);
+    
+    let mut subscriber = Subscriber::new("MYSUBSCRIBERSECRETSTRING", encoding, PAYLOAD_BYTES);
 }
 ```
 
-For a more comprehensive example of using the Streams Channels Application can be found [here](iota-streams-app-channels/examples/basic_scenario.rs).
+For a more comprehensive example of using the Streams Channels Application can be found [here](examples/src/main.rs).
 
 ## API reference
 
@@ -84,7 +89,9 @@ cargo doc --open
 
 ## Examples
 
-Examples of using Channels Application can be found [here](iota-streams-app-channels/examples).
+Examples of using Channels Application can be found [here](examples/src/main.rs).
+
+A full tutorial is available on [docs.iota.org](https://docs.iota.org/docs/channels/1.2/tutorials/build-a-messaging-app).
 
 ## License
 
