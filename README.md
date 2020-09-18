@@ -1,12 +1,12 @@
 <h1 align="center">
   <br>
-  <a href="https://docs.iota.org/docs/iota-streams/1.0/overview"><img src="streams.png"></a>
+  <a href="https://docs.iota.org/docs/iota-streams/1.1/overview"><img src="streams.png"></a>
 </h1>
 
 <h2 align="center">A cryptographic framework for building secure messaging protocols</h2>
 
 <p align="center">
-    <a href="https://docs.iota.org/docs/iota-streams/1.0/overview" style="text-decoration:none;">
+    <a href="https://docs.iota.org/docs/iota-streams/1.1/overview" style="text-decoration:none;">
     <img src="https://img.shields.io/badge/Documentation%20portal-blue.svg?style=for-the-badge"
          alt="Developer documentation portal">
       </p>
@@ -74,7 +74,10 @@ Add the following to your `Cargo.toml` file:
 
 ```bash
 [dependencies]
-iota-streams = { git = "https://github.com/iotaledger/streams" }
+anyhow = { version = "1.0", default-features = false }
+iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "binary"}
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+iota-conversion = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
 ```
 
 **Local**
@@ -99,32 +102,29 @@ After you've [installed the library](#installation), you can use it in your own 
 For example, you may want to use the Channels protocol to create a new channel like so:
 
 ```rust
-use iota_streams::app_channels::api::tangle::{Author, Transport};
-use iota_lib_rs::prelude::iota_client;
-use iota_streams::app::transport::tangle::client::SendTrytesOptions;
+#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
+use anyhow::{Result};
+use iota_streams::app_channels::api::tangle::{Author, Transport, Address};
 
-fn main() {
-    let author = Author::new("AUTHORSSEED", 3, false);
+pub fn start_a_new_channel<T: Transport>(author: &mut Author, client: &mut T, send_opt: T::SendOptions) -> Result<Address> {
 
     // Create an `Announce` message to start the channel
     let announcement = author.announce()?;
 
-    // Print the information that needs to be sent to subscribers before they can read the message
-    println!("Message identifier: {}", announcement.link.msgid.to_string());
-
-    // Connect to an IOTA node
-    let mut client = iota_client::Client::new("https://nodes.iota.org:443");
-
-    // Change the default settings to use a lower minimum weight magnitude for the Devnet
-    let mut send_opt = SendTrytesOptions::default();
+    println!("Creating a new channel");
 
     // Convert the message to a bundle and send it to a node
     client.send_message_with_options(&announcement, send_opt)?;
-    println!("Sent Announce message");
+    println!("Channel published");
+
+    let channel_address = author.channel_address().to_string();
+    println!("Channel address: {}", &channel_address);
+
+    Ok(announcement.link)
 }
 ```
 
- For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.0/overview).
+ For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.2/overview).
 
 ## API reference
 
