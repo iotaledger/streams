@@ -58,7 +58,7 @@ pub extern "C" fn sub_unwrap_announce(subscriber: *mut Subscriber, message: *mut
 pub extern "C" fn sub_get_branching_flag(subscriber: *mut Subscriber) -> u8 {
     unsafe {
         let sub = Box::from_raw(subscriber);
-        let branching = sub.sub.get_branching_flag();
+        let branching = if sub.sub.is_multi_branching() { 1 } else { 0 };
         mem::forget(sub);
 
         branching
@@ -123,7 +123,7 @@ pub extern "C" fn sub_unwrap_signed_packet(subscriber: *mut Subscriber, message:
         let msg = Box::from_raw(message);
         let parsed = msg.parse_header();
         
-        let (unwrapped_public, unwrapped_masked) = sub.sub.unwrap_signed_packet(parsed.unwrap()).unwrap();
+        let (_signer_pk, unwrapped_public, unwrapped_masked) = sub.sub.unwrap_signed_packet(parsed.unwrap()).unwrap();
         mem::forget(sub);
         mem::forget(msg);
         

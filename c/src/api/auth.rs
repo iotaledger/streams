@@ -1,13 +1,18 @@
 //use crate::{AppInst, MsgId, Address, Author, Message, PskIds, PubKey, PubKeyWrap, SeqState, NextMsgId, Transport, Preparsed, KePks, MWM, send_message, MessageLinks};
 use crate::{AppInst, Address, Author, Message, PskIds, KePks, MessageLinks, PayloadResponse, SeqState, Preparsed, utils, client};
 
-use iota_streams::app_channels::api::tangle::{Author as Auth, Message as TangleMessage};
-use iota_streams::app::transport::{
-    tangle::{
-        TangleAddress,
-        AppInst as ApplicationInstance,
-        MsgId as MessageIdentifier,
-    }
+use iota_streams::{
+    app_channels::api::{
+        SequencingState,
+        tangle::{Author as Auth, Message as TangleMessage},
+    },
+    app::transport::{
+        tangle::{
+            TangleAddress,
+            AppInst as ApplicationInstance,
+            MsgId as MessageIdentifier,
+        },
+    },
 };
 use iota_streams::ddml::types::Bytes;
 
@@ -43,9 +48,13 @@ pub extern "C" fn auth_new(seed: *const c_char , encoding: *const c_char, payloa
 pub extern "C" fn auth_channel_address(author: *mut Author) -> *mut AppInst {
     unsafe {
         let auth = Box::from_raw(author);
-        let appinst = AppInst(auth.auth.channel_address().clone());
-        mem::forget(auth);
-        Box::into_raw(Box::new(appinst))
+        if let Some(channel_address) = auth.auth.channel_address() {
+            let appinst = AppInst(channel_address.clone());
+            mem::forget(auth);
+            Box::into_raw(Box::new(appinst))
+        } else {
+            std::ptr::null_mut()
+        }
     }
 }
 
@@ -66,7 +75,7 @@ pub extern "C" fn auth_announce(author: *mut Author) -> *mut Address {
 pub extern "C" fn auth_get_branching_flag(author: *mut Author) -> u8 {
     unsafe {
         let auth = Box::from_raw(author);
-        let branching = auth.auth.get_branching_flag();
+        let branching = if auth.auth.is_multi_branching() { 1 } else { 0 };
         mem::forget(auth);
 
         branching
@@ -128,7 +137,7 @@ pub extern "C" fn auth_tag_packet(author: *mut Author, link_to: *mut MessageLink
         let mut auth = Box::from_raw(author);
         let unboxed_link = Box::from_raw(link_to);
 
-        let tangle_address = utils::get_seq_link(unboxed_link, auth.auth.get_branching_flag() == 1);
+        let tangle_address = utils::get_seq_link(unboxed_link, auth.auth.is_multi_branching());
         let public_payload = CStr::from_ptr(public_payload_ptr);
         let private_payload = CStr::from_ptr(private_payload_ptr);
 
@@ -179,7 +188,7 @@ pub extern "C" fn auth_sign_packet(author: *mut Author, link_to: *mut MessageLin
         let mut auth = Box::from_raw(author);
         let unboxed_link = Box::from_raw(link_to);
 
-        let tangle_address = utils::get_seq_link(unboxed_link, auth.auth.get_branching_flag() == 1);
+        let tangle_address = utils::get_seq_link(unboxed_link, auth.auth.is_multi_branching());
         let public_payload = CStr::from_ptr(public_payload_ptr);
         let private_payload = CStr::from_ptr(private_payload_ptr);
 
@@ -198,18 +207,16 @@ pub extern "C" fn auth_fetch_next_transaction(author: *mut Author) -> *mut Messa
     unsafe {
         let mut auth = Box::from_raw(author);
 
-        let branching = auth.auth.get_branching_flag() == 1_u8;
+        let branching = auth.auth.is_multi_branching();
         let response = auth.auth.gen_next_msg_ids(branching.clone());
 
-        for link in response {
-            let msg = client::recv_message(&mut Client::get(), &Address(link.1.clone()));
-            if msg.is_some() {
-                let response = msg.unwrap();
-                println!("Found message: {:?}", &response.0.link);
+        for (pk, SequencingState(link, seq_num)) in response {
+            if let Some(response) = client::recv_message(&mut Client::get(), &Address(link.clone())) {
+                println!("Found message: {}", &response.0.link);
                 if branching {
-                    auth.auth.store_state(link.0, link.1);
+                    auth.auth.store_state(pk, link);
                 } else {
-                    auth.auth.store_state_for_all(link.1, link.2);
+                    auth.auth.store_state_for_all(link, seq_num);
                 }
                 mem::forget(auth);
                 return Box::into_raw(Box::new(response))

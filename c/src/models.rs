@@ -26,7 +26,7 @@ use core::convert::{
 };
 
 use iota_streams::core_keccak::sponge::prp::keccak::KeccakF1600;
-use iota_streams::core_edsig::key_exchange::x25519;
+use iota_streams::core_edsig::signature::ed25519;
 
 use std::os::raw::c_char;
 use std::ffi::CString;
@@ -37,8 +37,7 @@ pub struct AppInst(pub(crate) ApplicationInstance);
 pub extern "C" fn get_appinst_str(appinst: *mut AppInst) -> *mut c_char {
     unsafe {
         let unboxed = Box::from_raw(appinst).0;
-        assert!(!unboxed.tbits().is_empty(), "App instance can't be empty");
-        CString::from_vec_unchecked(bits_to_trytes(unboxed.tbits().clone())).into_raw()
+        CString::from_vec_unchecked(bits_to_trytes(unboxed.as_ref())).into_raw()
     }
 }
 
@@ -48,8 +47,7 @@ pub struct MsgId(pub(crate) MessageId);
 pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *mut c_char{
     unsafe {
         let unboxed = Box::from_raw(msgid).0;
-        assert!(!unboxed.tbits().is_empty(), "Msg Id can't be empty");
-        CString::from_vec_unchecked(bits_to_trytes(unboxed.tbits().clone())).into_raw()    }
+        CString::from_vec_unchecked(bits_to_trytes(unboxed.as_ref())).into_raw()    }
 }
 
 #[derive(Clone)]
@@ -59,10 +57,10 @@ pub struct Address(pub(crate) TangleAddress);
 pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
     unsafe {
         let unboxed = Box::from_raw(address);
-        assert!(!unboxed.0.appinst.tbits().is_empty(), "App instance can't be empty");
+        //TODO: do not discard appinst in returned string
         self::get_appinst_str(Box::into_raw(Box::new(AppInst(unboxed.0.appinst.clone()))));
 
-        CString::from_vec_unchecked(bits_to_trytes(unboxed.0.msgid.tbits().clone())).into_raw()
+        CString::from_vec_unchecked(bits_to_trytes(unboxed.0.msgid.as_ref())).into_raw()
     }
 }
 
@@ -70,14 +68,13 @@ pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
 pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
     unsafe {
         let unboxed = Box::from_raw(address);
-        assert!(!unboxed.0.msgid.tbits().is_empty(), "App instance can't be empty");
         self::get_msgid_str(Box::into_raw(Box::new(MsgId(unboxed.0.msgid.clone()))));
 
-        CString::from_vec_unchecked(bits_to_trytes(unboxed.0.msgid.tbits().clone())).into_raw()
+        CString::from_vec_unchecked(bits_to_trytes(unboxed.0.msgid.as_ref())).into_raw()
     }
 }
 
-fn bits_to_trytes(input: Vec<u8>) -> Vec<u8> {
+fn bits_to_trytes(input: &[u8]) -> Vec<u8> {
     let mut trytes: std::vec::Vec<u8> = Vec::with_capacity(input.len() * 2);
     for byte in input {
         let first: i8 = match (byte % 27) as i8 {
@@ -116,11 +113,9 @@ impl Default for Message {
 
 pub struct PskIds(pub(crate) psk::PskIds);
 
-pub struct PubKey(pub(crate) x25519::PublicKey);
+pub struct PubKey(pub(crate) ed25519::PublicKey);
 
-pub struct PubKeyWrap(pub(crate) x25519::PublicKeyWrap);
-
-pub struct KePks(pub(crate) Vec<x25519::PublicKeyWrap>);
+pub struct KePks(pub(crate) Vec<ed25519::PublicKey>);
 
 pub struct SeqState {
     pub(crate) address: Address,
