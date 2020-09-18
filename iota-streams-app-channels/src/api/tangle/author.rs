@@ -196,14 +196,16 @@ impl Author {
     // }
     // ids
     // }
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SeqState)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Address>)> {
         self.imp.gen_next_msg_ids(branching)
     }
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: Address) {
-        self.imp.store_state(pk, link)
+        // TODO: assert!(link.appinst == self.appinst.unwrap());
+        self.imp.store_state(pk, link.msgid)
     }
     pub fn store_state_for_all(&mut self, link: Address, seq_num: usize) {
-        self.imp.store_state_for_all(link, seq_num)
+        // TODO: assert!(link.appinst == self.appinst.unwrap());
+        self.imp.store_state_for_all(link.msgid, seq_num)
     }
 }
 

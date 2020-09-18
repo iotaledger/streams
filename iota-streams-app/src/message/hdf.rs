@@ -2,6 +2,7 @@ use anyhow::{
     ensure,
     Result,
 };
+use core::fmt;
 // use std::str::FromStr;
 
 use iota_streams_core::sponge::prp::PRP;
@@ -19,11 +20,15 @@ pub const FLAG_BRANCHING_MASK: u8 = 1;
 pub struct HDF<Link> {
     pub encoding: Uint8,
     pub version: Uint8,
+    // TODO: message type is 4 bits
     pub content_type: Uint8,
+    // TODO: payload length is 10 bits, Size type is not suitable for that
     pub payload_length: Size,
     pub frame_type: Uint8,
+    // TODO: frame count is 22 bits
     pub payload_frame_count: Size,
     pub link: Link,
+    // TODO: sequence number is 64 bits
     pub seq_num: Size,
 }
 
@@ -67,6 +72,12 @@ impl<Link> HDF<Link> {
             link: link,
             seq_num: Size(seq_num),
         }
+    }
+}
+
+impl<Link> fmt::Debug for HDF<Link> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.seq_num)
     }
 }
 

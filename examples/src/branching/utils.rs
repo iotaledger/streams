@@ -1,10 +1,13 @@
 use iota_streams::{
     app::message::HasLink as _,
     app_channels::{
-        api::tangle::{
-            Author,
-            Subscriber,
-            Transport,
+        api::{
+            tangle::{
+                Author,
+                Subscriber,
+                Transport,
+            },
+            SequencingState,
         },
         message,
     },
@@ -24,7 +27,7 @@ pub fn s_fetch_next_messages<T: Transport>(
         let ids = subscriber.gen_next_msg_ids(multi_branching);
         exists = false;
 
-        for (pk, (next_id, seq_num)) in ids.iter() {
+        for (pk, SequencingState(next_id, seq_num)) in ids.iter() {
             let msg = transport.recv_message_with_options(&next_id, recv_opt).ok();
             if msg.is_none() {
                 continue;
@@ -90,7 +93,7 @@ pub fn a_fetch_next_messages<T: Transport>(
     while exists {
         let ids = author.gen_next_msg_ids(multi_branching);
         exists = false;
-        for (pk, (next_id, seq_num)) in ids.iter() {
+        for (pk, SequencingState(next_id, seq_num)) in ids.iter() {
             let msg = transport.recv_message_with_options(&next_id, recv_opt).ok();
             if msg.is_none() {
                 continue;

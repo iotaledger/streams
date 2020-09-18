@@ -37,7 +37,9 @@ where
     AbsLink: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{link: {:?}, body: {:?}}}", self.link, self.body)
+        // write!(f, "@{}[{}]", self.link, hex::encode(&self.body[..]))
+        // TODO: first 10 bytes of body is average HDF
+        write!(f, "@{:?}[{}]", self.link, hex::encode(&self.body[..10]))
     }
 }
 
@@ -46,7 +48,8 @@ where
     AbsLink: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{link: {}, body: {:?}}}", self.link, self.body)
+        // write!(f, "@{}[{}]", self.link, hex::encode(&self.body))
+        write!(f, "@{}[{}]", self.link, hex::encode(&self.body[..]))
     }
 }
 

@@ -54,7 +54,7 @@ pub struct User<F, Link, LG, LS, PKS, PSKS> {
     /// User' pre-shared keys.
     pub(crate) psk_store: PSKS,
 
-    /// Users' trusted public keys.
+    /// Users' trusted public keys together with additional sequencing info: (msgid, seq_num).
     pub(crate) pk_store: PKS,
 
     /// Author's Ed25519 public key.
@@ -86,7 +86,7 @@ where
     <Link as HasLink>::Rel: Eq + Debug + SkipFallback<F> + AbsorbFallback<F>,
     LG: ChannelLinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    PKS: PublicKeyStore<SequencingState<Link>>,
+    PKS: PublicKeyStore<SequencingState<<Link as HasLink>::Rel>>,
     PSKS: PresharedKeyStore,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
@@ -137,8 +137,10 @@ where
             "Can't create channel: a channel already created/registered."
         );
         let appinst = self.link_gen.link_from((&self.sig_kp.public, channel_idx));
-        self.pk_store
-            .insert(self.sig_kp.public.clone(), SequencingState(appinst.clone(), 2_usize));
+        self.pk_store.insert(
+            self.sig_kp.public.clone(),
+            SequencingState(appinst.rel().clone(), 2_usize),
+        );
         self.appinst = Some(appinst);
         Ok(())
     }
@@ -204,7 +206,9 @@ where
         // At the moment the Author is free to choose any address, not tied to PK.
 
         self.pk_store
-            .insert(content.sig_pk.clone(), SequencingState(link.clone(), 0));
+            .insert(content.sig_pk.clone(), SequencingState(link.rel().clone(), 2_usize));
+        self.pk_store
+            .insert(self.sig_kp.public.clone(), SequencingState(link.rel().clone(), 2_usize));
         // Reset link_gen
         let _appinst = self.link_gen.link_from(link.base().clone());
         self.appinst = Some(link);
@@ -272,7 +276,7 @@ where
             .commit(self.link_store.borrow_mut(), info)?;
         // TODO: trust content.subscriber_sig_pk
         let subscriber_sig_pk = content.subscriber_sig_pk;
-        let ref_link = self.appinst.as_ref().unwrap().clone();
+        let ref_link = self.appinst.as_ref().unwrap().rel().clone();
         self.pk_store
             .insert(subscriber_sig_pk, SequencingState(ref_link, SEQ_MESSAGE_NUM));
         // Unwrapped unsubscribe_key is not used explicitly.
@@ -323,7 +327,7 @@ where
             >,
         >,
     > {
-        let seq_num = self.get_seq_num();
+        let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = HDF::new(msg_link)
             .with_content_type(KEYLOAD)
@@ -352,7 +356,7 @@ where
             >,
         >,
     > {
-        let seq_num = self.get_seq_num();
+        let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = hdf::HDF::new(msg_link)
             .with_content_type(KEYLOAD)
@@ -444,7 +448,7 @@ where
             for ke_pk in content.ke_pks {
                 if self.pk_store.get(&ke_pk).is_none() {
                     // Store at state 2 since 0 and 1 are reserved states
-                    self.pk_store.insert(ke_pk, SequencingState(appinst.clone(), 2));
+                    self.pk_store.insert(ke_pk, SequencingState(appinst.rel().clone(), 2));
                 }
             }
         }
@@ -459,7 +463,7 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, LS, signed_packet::ContentWrap<'a, F, Link>>> {
-        let seq_num = self.get_seq_num();
+        let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = HDF::new(msg_link)
             .with_content_type(SIGNED_PACKET)
@@ -519,7 +523,7 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, LS, tagged_packet::ContentWrap<'a, F, Link>>> {
-        let seq_num = self.get_seq_num();
+        let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = HDF::new(msg_link)
             .with_content_type(TAGGED_PACKET)
@@ -614,29 +618,31 @@ where
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
                     let msg_link = self
                         .link_gen
-                        .link_from((link_to.rel(), &self.sig_kp.public, SEQ_MESSAGE_NUM));
+                        .link_from((&*link_to, &self.sig_kp.public, SEQ_MESSAGE_NUM));
                     let header = HDF::new(msg_link)
-                        .with_content_type(KEYLOAD)
+                        .with_content_type(SEQUENCE)
                         .with_payload_length(1)
                         .with_seq_num(SEQ_MESSAGE_NUM);
 
                     let content = sequence::ContentWrap::<Link> {
-                        link: link_to.rel(),
+                        link: link_to,
                         pk: &self.sig_kp.public,
                         seq_num: *seq_num,
                         ref_link,
                     };
 
-                    let prepared = PreparedMessage::new(self.link_store.borrow(), header, content);
-                    let wrapped = prepared.wrap()?;
+                    let wrapped = {
+                        let prepared = PreparedMessage::new(self.link_store.borrow(), header, content);
+                        prepared.wrap()?
+                    };
                     let msg = wrapped.commit(self.link_store.borrow_mut(), info)?;
 
-                    *link_to = msg.link.clone();
+                    *link_to = msg.link.rel().clone();
                     *seq_num = *seq_num + 1;
-                    // self.pk_store.insert(update_state(self.ke_kp.1, msg.link.clone());
                     Ok(Some(msg))
                 } else {
-                    // self.update_state_for_all(link.clone(), seq_num);
+                    let seq_num = *seq_num;
+                    self.store_state_for_all(ref_link.clone(), seq_num);
                     Ok(None)
                 }
             }
@@ -669,8 +675,10 @@ where
         (self.flags & FLAG_BRANCHING_MASK) != 0
     }
 
-    pub fn get_seq_num(&self) -> usize {
-        self.pk_store.get(&self.sig_kp.public).unwrap().1
+    pub fn get_seq_num(&self) -> Option<usize> {
+        self.pk_store
+            .get(&self.sig_kp.public)
+            .map(|SequencingState(_link, seq_num)| *seq_num)
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -685,16 +693,16 @@ where
     fn gen_next_msg_id(
         ids: &mut Vec<(ed25519::PublicKey, SequencingState<Link>)>,
         link_gen: &mut LG,
-        pk_info: (&ed25519::PublicKey, &mut SequencingState<Link>),
+        pk_info: (&ed25519::PublicKey, &mut SequencingState<<Link as HasLink>::Rel>),
         branching: bool,
     ) {
         let (pk, SequencingState(seq_link, seq_num)) = pk_info;
         if branching {
-            let msg_id = link_gen.link_from((seq_link.rel(), pk, 1_usize));
+            let msg_id = link_gen.link_from((&*seq_link, pk, 1_usize));
             ids.push((pk.clone(), SequencingState(msg_id, 1)));
         } else {
-            let msg_id = link_gen.link_from((seq_link.rel(), pk, *seq_num));
-            let msg_id1 = link_gen.link_from((seq_link.rel(), pk, *seq_num - 1));
+            let msg_id = link_gen.link_from((&*seq_link, pk, *seq_num));
+            let msg_id1 = link_gen.link_from((&*seq_link, pk, *seq_num - 1));
             ids.push((pk.clone(), SequencingState(msg_id, *seq_num)));
             ids.push((pk.clone(), SequencingState(msg_id1, *seq_num - 1)));
         }
@@ -724,12 +732,12 @@ where
         ids
     }
 
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: Link) {
+    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: <Link as HasLink>::Rel) {
         let seq_num = self.pk_store.get(&pk).unwrap().1;
         self.pk_store.insert(pk, SequencingState(link, seq_num + 1));
     }
 
-    pub fn store_state_for_all(&mut self, link: Link, seq_num: usize) {
+    pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_num: usize) {
         self.pk_store
             .insert(self.sig_kp.public.clone(), SequencingState(link.clone(), seq_num + 1));
         for (_pk, SequencingState(l, s)) in self.pk_store.iter_mut() {

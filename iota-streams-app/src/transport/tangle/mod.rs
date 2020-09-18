@@ -77,13 +77,13 @@ impl TangleAddress {
 
 impl fmt::Debug for TangleAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{appinst: {:?}, msgid:{:?}}}", self.appinst, self.msgid)
+        write!(f, "<{:?}:{:?}>", self.appinst, self.msgid)
     }
 }
 
 impl fmt::Display for TangleAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{appinst: {}, msgid:{}}}", self.appinst, self.msgid)
+        write!(f, "<{}:{}>", self.appinst, self.msgid)
     }
 }
 
@@ -283,7 +283,7 @@ impl FromStr for AppInst {
 
 impl fmt::Debug for AppInst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.id)
+        write!(f, "{}", hex::encode(self.id))
     }
 }
 
@@ -393,13 +393,13 @@ impl From<NBytes<MsgIdSize>> for MsgId {
 
 impl fmt::Debug for MsgId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.id)
+        write!(f, "{}", hex::encode(self.id))
     }
 }
 
 impl fmt::Display for MsgId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(self.as_ref()))
+        write!(f, "{}", hex::encode(self.id))
     }
 }
 
