@@ -2,13 +2,12 @@
 
 This is the **WIP** Rust IOTA Streams library, it consists of the following components:
 * [Channels Application](iota-streams-app-channels/README.md) featuring Channels Application.
-* [Core layers](iota-streams-core/README.md) featuring utils for trinary/binary manipulations, sponge-based authenticated encryption with Troika permutation, pre-shared keys, pseudo-random generator;
+* [Core layers](iota-streams-core/README.md) featuring spongos automaton for sponge-based authenticated encryption, pre-shared keys, pseudo-random generator;
 * [Keccak for core layers](iota-streams-core-keccak/README.md) featuring Keccak-F[1600] as spongos transform;
-* [Traversable Merkle tree](iota-streams-core-merkletree/README.md) featuring traversable Merkle tree;
-* [Merkle signature](iota-streams-core-mss/README.md) featuring Merkle signature scheme over Winternitz one-time signature;
-* [NTRU key encapsulation](iota-streams-core-ntru/README.md) featuring NTRU key encapsulation;
-* [Protobuf3 layer](iota-streams-protobuf3/README.md) (not to be confused with Google's Protocol Buffers, though it was an inspiration for Protobuf3) featuring cryptographic message definition language;
+* [Curve25519 asymmetric crypto](iota-streams-core-edsig/README.md) featuring Ed25519 signature and X25519 key exchange;
+* [DDML](iota-streams-ddml/README.md) featuring data definition and manipulation language for protocol messages;
 * [Application layer](iota-streams-app/README.md) common Application definitions.
+* [Bindings](bindings/c/README.md).
 
 The library is in the alpha stage and the API is likely to change.
 
@@ -31,7 +30,7 @@ As a cryptographic protocol framework, Streams allows developers to build Applic
 
 To use the library, we recommend update your Rust to latest stable version [`rustup update stable`](https://github.com/rust-lang/rustup.rs#keeping-rust-up-to-date). Nightly should be fine too.
 
-`no_std` is not currently supported.
+`no_std` is currently supported. However cargo nightly must be used to build with `no_std` feature.
 
 ## Getting started
 

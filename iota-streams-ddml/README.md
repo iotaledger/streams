@@ -1,2 +1,2 @@
-# IOTA Streams Protobuf3 implementation
+# IOTA Streams DDML implementation
 
