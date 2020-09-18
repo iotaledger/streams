@@ -41,12 +41,10 @@ At the moment, IOTA Streams includes the following crates:
 
 - `iota_streams_app_channels`: An API for using the built-in Channels protocol
 - `iota_streams_app`: The `message` and `transport` modules for creating your own Streams protocols
-- `iota_streams_core`: Modules for the core cryptographic features used by Streams, including ternary to binary conversions
+- `iota_streams_core`: Modules for the core cryptographic features used by Streams
 - `iota_streams_core_keccak`: Modules for using sponge constructions with KeccakF1600B and KeccakF1600T permutations
-- `iota_streams_core_merkletree`: A module for working with traversable Merkle trees
-- `iota_streams_core_mss`: Modules for validating Merkle tree signatures and generating private keys, public keys and signatures with the Winternitz one-time signature scheme
-- `iota_streams_core_ntru`:  A module for working with NTRU key pairs
-- `iota_streams_protobuf3`: Modules for working with the IOTA trinary data description language called Protobuf3, in which all Streams messages are encoded
+- `iota_streams_core_edsig`: A module for working with signature keys
+- `iota_streams_ddml`: Modules for working with the IOTA data description language called DDML, in which all Streams messages are encoded
 
 ## Prerequisites
 
