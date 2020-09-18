@@ -102,12 +102,6 @@ eq_num ) ;
 SeqState auth_get_seq_state(Author * author, PubKey * pk);
 
 
-/// Unwrap tagged packet.
-Bytes [ 2 ] auth_unwrap_tagged_packet(Author * author , Preparsed *preparsed ) ;
-
-Address auth_unwrap_sequence(Author * author, Preparsed * preparsed);
-
-
 
 Address auth_gen_msg_id(Author * author, Address * link, PubKey * pk, size_t seq) ;
 

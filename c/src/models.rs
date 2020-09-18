@@ -24,7 +24,9 @@ use iota::{
 use core::convert::{
     TryInto,
 };
-
+use iota_conversion::trytes_converter::{
+    bytes_to_trytes
+};
 use iota_streams::core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams::core_edsig::signature::ed25519;
 
@@ -37,7 +39,7 @@ pub struct AppInst(pub(crate) ApplicationInstance);
 pub extern "C" fn get_appinst_str(appinst: *mut AppInst) -> *mut c_char {
     unsafe {
         let unboxed = Box::from_raw(appinst).0;
-        CString::from_vec_unchecked(bits_to_trytes(unboxed.as_ref())).into_raw()
+        CString::new(bytes_to_trytes(unboxed.as_ref())).unwrap().into_raw()
     }
 }
 
@@ -47,7 +49,8 @@ pub struct MsgId(pub(crate) MessageId);
 pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *mut c_char{
     unsafe {
         let unboxed = Box::from_raw(msgid).0;
-        CString::from_vec_unchecked(bits_to_trytes(unboxed.as_ref())).into_raw()    }
+        CString::new(bytes_to_trytes(unboxed.as_ref())).unwrap().into_raw()
+    }
 }
 
 #[derive(Clone)]
@@ -60,7 +63,7 @@ pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
         //TODO: do not discard appinst in returned string
         self::get_appinst_str(Box::into_raw(Box::new(AppInst(unboxed.0.appinst.clone()))));
 
-        CString::from_vec_unchecked(bits_to_trytes(unboxed.0.msgid.as_ref())).into_raw()
+        CString::new(bytes_to_trytes(unboxed.0.msgid.as_ref())).unwrap().into_raw()
     }
 }
 
@@ -70,30 +73,9 @@ pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
         let unboxed = Box::from_raw(address);
         self::get_msgid_str(Box::into_raw(Box::new(MsgId(unboxed.0.msgid.clone()))));
 
-        CString::from_vec_unchecked(bits_to_trytes(unboxed.0.msgid.as_ref())).into_raw()
+        CString::new(bytes_to_trytes(unboxed.0.msgid.as_ref())).unwrap().into_raw()
     }
 }
-
-fn bits_to_trytes(input: &[u8]) -> Vec<u8> {
-    let mut trytes: std::vec::Vec<u8> = Vec::with_capacity(input.len() * 2);
-    for byte in input {
-        let first: i8 = match (byte % 27) as i8 {
-            b @ 0..=13 => b,
-            b @ 14..=26 => b - 27,
-            _ => unreachable!(),
-        };
-        let second = match (byte / 27) as i8 {
-            b @ 0..=13 => b,
-            b @ 14..=26 => b - 27,
-            _ => unreachable!(),
-        };
-
-        trytes.push(char::from(TryInto::<iota_ternary::Tryte>::try_into(first).unwrap()) as u8);
-        trytes.push(char::from(TryInto::<iota_ternary::Tryte>::try_into(second).unwrap()) as u8);
-    }
-    trytes
-}
-
 
 pub struct Author {
     pub(crate) auth: Auth,
