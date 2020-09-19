@@ -193,9 +193,6 @@ pub struct HashSig;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]
 pub struct Size(pub usize);
 
-/// Max value of `size_t` type: `(27^13 - 1) / 2`.
-pub const SIZE_MAX: usize = 2_026_277_576_509_488_133;
-
 /// Number of bytes needed to encode a value of `size_t` type.
 pub fn size_bytes(mut n: usize) -> usize {
     let mut d = 0_usize;

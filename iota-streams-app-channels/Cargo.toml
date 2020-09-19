@@ -28,7 +28,7 @@ iota-streams-ddml = { version = "0.2.0", path = "../iota-streams-ddml", default-
 iota-streams-app = { version = "0.2.0", path = "../iota-streams-app", default-features = false }
 anyhow = { version = "1.0.26", default-features = false }
 
-hex = { version = "0.4.2", default-features = false, optional = true }
+hex = { version = "0.4.2", default-features = false, optional = false }
 
 [dev-dependencies]
 iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }

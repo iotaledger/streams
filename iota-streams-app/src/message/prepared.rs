@@ -16,7 +16,7 @@ pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {
     store: Ref<'a, Store>,
     pub header: HDF<Link>,
     pub content: PCF<Content>,
-    _phantom: std::marker::PhantomData<F>,
+    _phantom: core::marker::PhantomData<F>,
 }
 
 impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {

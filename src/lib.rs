@@ -1,3 +1,5 @@
+#![no_std]
+
 /// Streams Application layer definitions.
 pub use iota_streams_app as app;
 /// Streams Channel Application implementation.
