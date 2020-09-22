@@ -3,10 +3,10 @@ name: Format
 on:
   push:
     branches:
-      - master
+      - github-action
   pull_request:
     branches:
-      - master
+      - github-action
       - dev
     paths-ignore:
       - 'docs/**'
