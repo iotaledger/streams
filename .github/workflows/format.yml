@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - github-action
+      - dev
   pull_request:
     branches:
       - github-action
