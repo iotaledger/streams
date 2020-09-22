@@ -210,7 +210,7 @@ where
         self.pk_store
             .insert(self.sig_kp.public.clone(), SequencingState(link.rel().clone(), 2_usize));
         // Reset link_gen
-        let _appinst = self.link_gen.link_from(link.base().clone());
+        let _appinst = self.link_gen.link_from(link.clone());
         self.appinst = Some(link);
         self.author_sig_pk = Some(content.sig_pk);
         self.flags = content.flags.0;

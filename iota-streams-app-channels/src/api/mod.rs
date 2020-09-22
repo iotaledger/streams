@@ -27,8 +27,9 @@ pub trait ChannelLinkGenerator<Link>
 where
     Self: Default,
     Link: HasLink,
+    // TODO: Combine these 4 implementations into one trait instead and call each method a meaningful name: `create_channel_instance`, `get_announce_msgid`, `reset_state`, `link_from`.
     for<'a> Self: LinkGenerator<Link, (&'a ed25519::PublicKey, u64)>
-        + LinkGenerator<Link, <Link as HasLink>::Base>
+        + LinkGenerator<Link, Link>
         + LinkGenerator<Link, ()>
         + LinkGenerator<Link, (&'a <Link as HasLink>::Rel, &'a ed25519::PublicKey, usize)>,
 {
