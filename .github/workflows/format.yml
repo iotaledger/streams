@@ -3,11 +3,11 @@ name: Format
 on:
   push:
     branches:
-      - github-action
+      - github-actions
       - dev
   pull_request:
     branches:
-      - github-action
+      - github-actions
       - dev
     paths-ignore:
       - 'docs/**'

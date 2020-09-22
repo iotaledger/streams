@@ -5,13 +5,13 @@ on:
     - cron: '0 0 * * *'
   push:
     branches:
-      - github-action
+      - github-actions
     paths:
       - "**/Cargo.lock"
       - "**/Cargo.toml"
   pull_request:
     branches:
-      - github-action
+      - github-actions
     paths:
       - "**/Cargo.lock"
       - "**/Cargo.toml"
