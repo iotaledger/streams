@@ -24,7 +24,7 @@ If you have a general or technical question, you can use one of the following re
 <summary>Ways to contribute :mag:</summary>
 <br>
 
-To contribute to Streams, you can:
+To contribute to Streams on GitHub, you can:
 
 - Report a bug
 - Suggest a new feature
@@ -58,6 +58,7 @@ To report a bug, [open a new issue](https://github.com/iotaledger/streams/issues
 **Note:** Minor changes such as fixing a typo can but do not need an open issue.
 
 If you also want to fix the bug, submit a [pull request](#pull-requests) and reference the issue.
+
 </details>
 
 <br>
@@ -77,6 +78,7 @@ This section guides you through suggesting a new feature. Following these guidel
 To suggest a new feature, talk to the IOTA community and IOTA Foundation members in the #streams-discussion channel on [Discord](https://discord.iota.org/).
 
 If the team approves your feature, an issue will be created for it.
+
 </details>
 
 <br>
@@ -110,6 +112,7 @@ If your feature has a public-facing API, please consider the following:
 The Streams documentation is hosted on https://docs.iota.org, which is built from content in the [documentation](https://github.com/iotaledger/documentation) repository.
 
 Please see the [guidelines](https://github.com/iotaledger/documentation/CONTRIBUTING.md) on the documentation repository for information on how to contribute to the documentation.
+
 </details>
 
 <br>
@@ -155,7 +158,7 @@ When creating a pull request (PR), please follow these steps to have your contri
 
 - A PR can be merged only if it references an open issue
 
-    **Note:** Minor changes such as fixing a typo can but do not need an open issue.
+  **Note:** Minor changes such as fixing a typo can but do not need an open issue.
 
 ### Submitting a pull request
 
@@ -171,6 +174,7 @@ The following is a typical workflow for submitting a new pull request:
 If all [status checks](https://help.github.com/articles/about-status-checks/) pass, and the maintainer approves the PR, it will be merged.
 
 **Note:** Reviewers may ask you to complete additional work, tests, or other changes before your pull request can be approved and merged.
+
 </details>
 
 <br>

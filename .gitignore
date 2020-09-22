@@ -1,5 +1,6 @@
 /target
 /debug
+/act
 **/target/
 **/*.rs.bk
 *.rs~

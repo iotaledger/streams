@@ -1,0 +1,44 @@
+name: Clippy
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+      - dev
+    paths-ignore:
+      - 'docs/**'
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          [
+            "iota-streams-core",
+            "iota-streams-core-edsig",
+            "iota-streams-core-keccak",
+            "iota-streams-ddml",
+            "iota-streams-app",
+            "iota-streams-app-channels",
+            "iota-streams-app-channels-example",
+          ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install clippy with Nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: clippy
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --manifest-path=${{ matrix.project }}/Cargo.toml --all-targets --all-features -- -D warnings
+          name: clippy-${{ matrix.project }}
