@@ -25,7 +25,6 @@ jobs:
             "iota-streams-ddml",
             "iota-streams-app",
             "iota-streams-app-channels",
-            "iota-streams-app-channels-example",
           ]
         os: [ubuntu-latest, windows-latest]
 
