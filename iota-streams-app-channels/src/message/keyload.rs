@@ -82,6 +82,7 @@ pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub key: NBytes<U32>,
     pub(crate) psks: Psks,
     pub(crate) ke_pks: KePks,
+    pub(crate) sig_kp: &'a ed25519::Keypair,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -114,6 +115,7 @@ where
                 ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
             })?
             .absorb(External(&self.key))?
+            .ed25519(self.sig_kp, HashSig)?
             .commit()?;
         Ok(ctx)
     }
@@ -141,6 +143,7 @@ where
                 ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
             })?
             .absorb(External(&self.key))?
+            .ed25519(self.sig_kp, HashSig)?
             .commit()?;
         Ok(ctx)
     }
@@ -157,6 +160,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub(crate) ke_pks: Vec<ed25519::PublicKey>,
     pub key: NBytes<U32>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
+    pub(crate) sig_pk: &'a ed25519::PublicKey,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -169,7 +173,7 @@ where
     LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
     LookupKeSk: for<'b> Fn(&'b LookupArg, &ed25519::PublicKey) -> Option<&'b x25519::StaticSecret>,
 {
-    pub fn new(lookup_arg: &'a LookupArg, lookup_psk: LookupPsk, lookup_ke_sk: LookupKeSk) -> Self {
+    pub fn new(lookup_arg: &'a LookupArg, lookup_psk: LookupPsk, lookup_ke_sk: LookupKeSk, sig_pk: &'a ed25519::PublicKey) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NBytes::default(),
@@ -179,6 +183,7 @@ where
             lookup_ke_sk,
             ke_pks: Vec::new(),
             key: NBytes::default(),
+            sig_pk,
             _phantom: core::marker::PhantomData,
         }
     }
@@ -253,6 +258,7 @@ where
             })?
             .guard(key_found, "Key not found")?
             .absorb(External(&self.key))?
+            .ed25519(self.sig_pk, HashSig)?
             .commit()?;
         //
         Ok(ctx)
