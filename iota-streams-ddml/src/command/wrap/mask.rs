@@ -14,6 +14,9 @@ use crate::{
         NBytes,
         Size,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 use iota_streams_core::sponge::prp::PRP;
@@ -56,11 +59,29 @@ fn wrap_mask_u8<'a, F: PRP, OS: io::OStream>(
 ) -> Result<&'a mut MaskContext<F, OS>> {
     ctx.wrap_u8(u.0)
 }
+fn wrap_mask_u16<'a, F: PRP, OS: io::OStream>(
+    ctx: &'a mut MaskContext<F, OS>,
+    u: Uint16,
+) -> Result<&'a mut MaskContext<F, OS>> {
+    ctx.wrap_u16(u.0)
+}
+fn wrap_mask_u32<'a, F: PRP, OS: io::OStream>(
+    ctx: &'a mut MaskContext<F, OS>,
+    u: Uint32,
+) -> Result<&'a mut MaskContext<F, OS>> {
+    ctx.wrap_u32(u.0)
+}
+fn wrap_mask_u64<'a, F: PRP, OS: io::OStream>(
+    ctx: &'a mut MaskContext<F, OS>,
+    u: Uint64,
+) -> Result<&'a mut MaskContext<F, OS>> {
+    ctx.wrap_u64(u.0)
+}
 fn wrap_mask_size<'a, F: PRP, OS: io::OStream>(
     ctx: &'a mut MaskContext<F, OS>,
     size: Size,
 ) -> Result<&'a mut MaskContext<F, OS>> {
-    wrap_size(ctx, size)
+    ctx.wrap_size(size)
 }
 fn wrap_mask_bytes<'a, F: PRP, OS: io::OStream>(
     ctx: &'a mut MaskContext<F, OS>,
@@ -72,6 +93,24 @@ fn wrap_mask_bytes<'a, F: PRP, OS: io::OStream>(
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a Uint8> for Context<F, OS> {
     fn mask(&mut self, u: &'a Uint8) -> Result<&mut Self> {
         Ok(wrap_mask_u8(self.as_mut(), *u)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a Uint16> for Context<F, OS> {
+    fn mask(&mut self, u: &'a Uint16) -> Result<&mut Self> {
+        Ok(wrap_mask_u16(self.as_mut(), *u)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a Uint32> for Context<F, OS> {
+    fn mask(&mut self, u: &'a Uint32) -> Result<&mut Self> {
+        Ok(wrap_mask_u32(self.as_mut(), *u)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a Uint64> for Context<F, OS> {
+    fn mask(&mut self, u: &'a Uint64) -> Result<&mut Self> {
+        Ok(wrap_mask_u64(self.as_mut(), *u)?.as_mut())
     }
 }
 

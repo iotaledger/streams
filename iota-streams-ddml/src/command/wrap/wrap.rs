@@ -8,19 +8,32 @@ use crate::types::{
 /// Helper trait for wrapping (encoding/absorbing) trint3s.
 pub(crate) trait Wrap {
     fn wrap_u8(&mut self, u: u8) -> Result<&mut Self>;
-    fn wrapn(&mut self, trits: &[u8]) -> Result<&mut Self>;
-}
-
-/// Helper function for wrapping (encoding/absorbing) size values.
-pub(crate) fn wrap_size<'a, Ctx: Wrap>(ctx: &'a mut Ctx, size: Size) -> Result<&'a mut Ctx> where
-{
-    let d = size_bytes(size.0);
-    ctx.wrap_u8(d as u8)?;
-    let n = size.0;
-    for s in (0..d).rev() {
-        let r = ((n >> (s << 3)) & 0xff) as u8;
-        ctx.wrap_u8(r)?;
+    fn wrap_u16(&mut self, u: u16) -> Result<&mut Self> {
+        self.wrapn(&u.to_be_bytes())
     }
+    fn wrap_u32(&mut self, u: u32) -> Result<&mut Self> {
+        self.wrapn(&u.to_be_bytes())
+    }
+    fn wrap_u64(&mut self, u: u64) -> Result<&mut Self> {
+        self.wrapn(&u.to_be_bytes())
+    }
+    fn wrap_size(&mut self, size: Size) -> Result<&mut Self> where
+    {
+        let d = size_bytes(size.0);
+        self.wrap_u8(d as u8)?;
+        let n = size.0;
+        for s in (0..d).rev() {
+            let r = ((n >> (s << 3)) & 0xff) as u8;
+            self.wrap_u8(r)?;
+        }
 
-    Ok(ctx)
+        Ok(self)
+    }
+    fn wrapn(&mut self, v: &[u8]) -> Result<&mut Self> {
+        for u in v {
+            self.wrap_u8(*u)?;
+        }
+        Ok(self)
+    }
 }
+

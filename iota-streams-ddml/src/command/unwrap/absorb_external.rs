@@ -4,10 +4,7 @@ use core::mem;
 use super::Context;
 use crate::{
     command::{
-        wrap::{
-            wrap_size,
-            Wrap,
-        },
+        wrap::Wrap,
         Absorb,
     },
     io,
@@ -19,6 +16,9 @@ use crate::{
         NBytes,
         Size,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 use iota_streams_core::sponge::prp::PRP;
@@ -58,11 +58,29 @@ fn wrap_absorb_external_u8<'a, F: PRP, IS: io::IStream>(
 ) -> Result<&'a mut AbsorbExternalContext<F, IS>> {
     ctx.wrap_u8(u.0)
 }
+fn wrap_absorb_external_u16<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut AbsorbExternalContext<F, IS>,
+    u: Uint16,
+) -> Result<&'a mut AbsorbExternalContext<F, IS>> {
+    ctx.wrap_u16(u.0)
+}
+fn wrap_absorb_external_u32<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut AbsorbExternalContext<F, IS>,
+    u: Uint32,
+) -> Result<&'a mut AbsorbExternalContext<F, IS>> {
+    ctx.wrap_u32(u.0)
+}
+fn wrap_absorb_external_u64<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut AbsorbExternalContext<F, IS>,
+    u: Uint64,
+) -> Result<&'a mut AbsorbExternalContext<F, IS>> {
+    ctx.wrap_u64(u.0)
+}
 fn wrap_absorb_external_size<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut AbsorbExternalContext<F, IS>,
     size: Size,
 ) -> Result<&'a mut AbsorbExternalContext<F, IS>> {
-    wrap_size(ctx, size)
+    ctx.wrap_size(size)
 }
 fn wrap_absorb_external_bytes<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut AbsorbExternalContext<F, IS>,
@@ -83,6 +101,48 @@ where
 impl<'a, F: PRP, IS: io::IStream> Absorb<External<&'a Uint8>> for Context<F, IS> {
     fn absorb(&mut self, u: External<&'a Uint8>) -> Result<&mut Self> {
         Ok(wrap_absorb_external_u8(self.as_mut(), *u.0)?.as_mut())
+    }
+}
+
+impl<F: PRP, IS: io::IStream> Absorb<External<Uint8>> for Context<F, IS> {
+    fn absorb(&mut self, u: External<Uint8>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_u8(self.as_mut(), u.0)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Absorb<External<&'a Uint16>> for Context<F, IS> {
+    fn absorb(&mut self, u: External<&'a Uint16>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_u16(self.as_mut(), *u.0)?.as_mut())
+    }
+}
+
+impl<F: PRP, IS: io::IStream> Absorb<External<Uint16>> for Context<F, IS> {
+    fn absorb(&mut self, u: External<Uint16>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_u16(self.as_mut(), u.0)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Absorb<External<&'a Uint32>> for Context<F, IS> {
+    fn absorb(&mut self, u: External<&'a Uint32>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_u32(self.as_mut(), *u.0)?.as_mut())
+    }
+}
+
+impl<F: PRP, IS: io::IStream> Absorb<External<Uint32>> for Context<F, IS> {
+    fn absorb(&mut self, u: External<Uint32>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_u32(self.as_mut(), u.0)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Absorb<External<&'a Uint64>> for Context<F, IS> {
+    fn absorb(&mut self, u: External<&'a Uint64>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_u64(self.as_mut(), *u.0)?.as_mut())
+    }
+}
+
+impl<F: PRP, IS: io::IStream> Absorb<External<Uint64>> for Context<F, IS> {
+    fn absorb(&mut self, u: External<Uint64>) -> Result<&mut Self> {
+        Ok(wrap_absorb_external_u64(self.as_mut(), u.0)?.as_mut())
     }
 }
 

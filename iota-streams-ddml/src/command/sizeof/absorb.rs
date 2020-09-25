@@ -12,6 +12,9 @@ use crate::{
         NBytes,
         Size,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 
@@ -28,18 +31,63 @@ impl<F> Absorb<&Uint8> for Context<F> {
     }
 }
 
+/// All Uint8 values are encoded with 1 byte.
+impl<F> Absorb<Uint8> for Context<F> {
+    fn absorb(&mut self, u: Uint8) -> Result<&mut Self> {
+        self.absorb(&u)
+    }
+}
+
+/// All Uint16 values are encoded with 2 bytes.
+impl<F> Absorb<&Uint16> for Context<F> {
+    fn absorb(&mut self, _u: &Uint16) -> Result<&mut Self> {
+        self.size += 2;
+        Ok(self)
+    }
+}
+
+/// All Uint16 values are encoded with 2 bytes.
+impl<F> Absorb<Uint16> for Context<F> {
+    fn absorb(&mut self, u: Uint16) -> Result<&mut Self> {
+        self.absorb(&u)
+    }
+}
+
+/// All Uint32 values are encoded with 4 bytes.
+impl<F> Absorb<&Uint32> for Context<F> {
+    fn absorb(&mut self, _u: &Uint32) -> Result<&mut Self> {
+        self.size += 4;
+        Ok(self)
+    }
+}
+
+/// All Uint32 values are encoded with 4 bytes.
+impl<F> Absorb<Uint32> for Context<F> {
+    fn absorb(&mut self, u: Uint32) -> Result<&mut Self> {
+        self.absorb(&u)
+    }
+}
+
+/// All Uint64 values are encoded with 8 bytes.
+impl<F> Absorb<&Uint64> for Context<F> {
+    fn absorb(&mut self, _u: &Uint64) -> Result<&mut Self> {
+        self.size += 8;
+        Ok(self)
+    }
+}
+
+/// All Uint64 values are encoded with 8 bytes.
+impl<F> Absorb<Uint64> for Context<F> {
+    fn absorb(&mut self, u: Uint64) -> Result<&mut Self> {
+        self.absorb(&u)
+    }
+}
+
 /// Size has var-size encoding.
 impl<F> Absorb<&Size> for Context<F> {
     fn absorb(&mut self, size: &Size) -> Result<&mut Self> {
         self.size += sizeof_sizet(size.0);
         Ok(self)
-    }
-}
-
-/// All Uint8 values are encoded with 1 byte.
-impl<F> Absorb<Uint8> for Context<F> {
-    fn absorb(&mut self, u: Uint8) -> Result<&mut Self> {
-        self.absorb(&u)
     }
 }
 

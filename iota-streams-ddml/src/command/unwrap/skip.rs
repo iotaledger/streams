@@ -16,6 +16,9 @@ use crate::{
         Size,
         SkipFallback,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 
@@ -52,11 +55,29 @@ fn unwrap_skip_u8<'a, F, IS: io::IStream>(
 ) -> Result<&'a mut SkipContext<F, IS>> {
     ctx.unwrap_u8(&mut u.0)
 }
+fn unwrap_skip_u16<'a, F, IS: io::IStream>(
+    ctx: &'a mut SkipContext<F, IS>,
+    u: &mut Uint16,
+) -> Result<&'a mut SkipContext<F, IS>> {
+    ctx.unwrap_u16(&mut u.0)
+}
+fn unwrap_skip_u32<'a, F, IS: io::IStream>(
+    ctx: &'a mut SkipContext<F, IS>,
+    u: &mut Uint32,
+) -> Result<&'a mut SkipContext<F, IS>> {
+    ctx.unwrap_u32(&mut u.0)
+}
+fn unwrap_skip_u64<'a, F, IS: io::IStream>(
+    ctx: &'a mut SkipContext<F, IS>,
+    u: &mut Uint64,
+) -> Result<&'a mut SkipContext<F, IS>> {
+    ctx.unwrap_u64(&mut u.0)
+}
 fn unwrap_skip_size<'a, F, IS: io::IStream>(
     ctx: &'a mut SkipContext<F, IS>,
     size: &mut Size,
 ) -> Result<&'a mut SkipContext<F, IS>> {
-    unwrap_size(ctx, size)
+    ctx.unwrap_size(size)
 }
 fn unwrap_skip_bytes<'a, F, IS: io::IStream>(
     ctx: &'a mut SkipContext<F, IS>,
@@ -68,6 +89,24 @@ fn unwrap_skip_bytes<'a, F, IS: io::IStream>(
 impl<'a, F, IS: io::IStream> Skip<&'a mut Uint8> for Context<F, IS> {
     fn skip(&mut self, u: &'a mut Uint8) -> Result<&mut Self> {
         Ok(unwrap_skip_u8(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<'a, F, IS: io::IStream> Skip<&'a mut Uint16> for Context<F, IS> {
+    fn skip(&mut self, u: &'a mut Uint16) -> Result<&mut Self> {
+        Ok(unwrap_skip_u16(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<'a, F, IS: io::IStream> Skip<&'a mut Uint32> for Context<F, IS> {
+    fn skip(&mut self, u: &'a mut Uint32) -> Result<&mut Self> {
+        Ok(unwrap_skip_u32(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<'a, F, IS: io::IStream> Skip<&'a mut Uint64> for Context<F, IS> {
+    fn skip(&mut self, u: &'a mut Uint64) -> Result<&mut Self> {
+        Ok(unwrap_skip_u64(self.as_mut(), u)?.as_mut())
     }
 }
 

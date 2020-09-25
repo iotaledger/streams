@@ -1,5 +1,5 @@
 use anyhow::{
-    bail,
+    anyhow,
     Result,
 };
 use core::mem;
@@ -19,6 +19,9 @@ use crate::{
         NBytes,
         Size,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 use iota_streams_core::sponge::prp::PRP;
@@ -62,11 +65,29 @@ fn unwrap_absorb_u8<'a, F: PRP, IS: io::IStream>(
 ) -> Result<&'a mut AbsorbContext<F, IS>> {
     ctx.unwrap_u8(&mut u.0)
 }
+fn unwrap_absorb_u16<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut AbsorbContext<F, IS>,
+    u: &mut Uint16,
+) -> Result<&'a mut AbsorbContext<F, IS>> {
+    ctx.unwrap_u16(&mut u.0)
+}
+fn unwrap_absorb_u32<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut AbsorbContext<F, IS>,
+    u: &mut Uint32,
+) -> Result<&'a mut AbsorbContext<F, IS>> {
+    ctx.unwrap_u32(&mut u.0)
+}
+fn unwrap_absorb_u64<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut AbsorbContext<F, IS>,
+    u: &mut Uint64,
+) -> Result<&'a mut AbsorbContext<F, IS>> {
+    ctx.unwrap_u64(&mut u.0)
+}
 fn unwrap_absorb_size<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut AbsorbContext<F, IS>,
     size: &mut Size,
 ) -> Result<&'a mut AbsorbContext<F, IS>> {
-    unwrap_size(ctx, size)
+    ctx.unwrap_size(size)
 }
 fn unwrap_absorb_bytes<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut AbsorbContext<F, IS>,
@@ -78,6 +99,24 @@ fn unwrap_absorb_bytes<'a, F: PRP, IS: io::IStream>(
 impl<F: PRP, IS: io::IStream> Absorb<&mut Uint8> for Context<F, IS> {
     fn absorb(&mut self, u: &mut Uint8) -> Result<&mut Self> {
         Ok(unwrap_absorb_u8(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<F: PRP, IS: io::IStream> Absorb<&mut Uint16> for Context<F, IS> {
+    fn absorb(&mut self, u: &mut Uint16) -> Result<&mut Self> {
+        Ok(unwrap_absorb_u16(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<F: PRP, IS: io::IStream> Absorb<&mut Uint32> for Context<F, IS> {
+    fn absorb(&mut self, u: &mut Uint32) -> Result<&mut Self> {
+        Ok(unwrap_absorb_u32(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<F: PRP, IS: io::IStream> Absorb<&mut Uint64> for Context<F, IS> {
+    fn absorb(&mut self, u: &mut Uint64) -> Result<&mut Self> {
+        Ok(unwrap_absorb_u64(self.as_mut(), u)?.as_mut())
     }
 }
 
@@ -107,10 +146,12 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context
         let mut pk_bytes = [0_u8; 32];
         unwrap_absorb_bytes(self.as_mut(), &mut pk_bytes)?;
         match ed25519::PublicKey::from_bytes(&pk_bytes) {
-            Ok(apk) => *pk = apk,
-            Err(err) => bail!("Bad ed25519 public key: {}", err),
+            Ok(apk) => {
+                *pk = apk;
+                Ok(self)
+            },
+            Err(err) => Err(anyhow!("Bad ed25519 public key: {}", err)),
         }
-        Ok(self)
     }
 }
 
