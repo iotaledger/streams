@@ -36,9 +36,9 @@ use iota_streams_ddml::{
 use super::*;
 use crate::message::*;
 
-const ANN_MESSAGE_NUM: usize = 0;
-const SUB_MESSAGE_NUM: usize = 0;
-const SEQ_MESSAGE_NUM: usize = 1;
+const ANN_MESSAGE_NUM: u64 = 0;
+const SUB_MESSAGE_NUM: u64 = 0;
+const SEQ_MESSAGE_NUM: u64 = 1;
 
 pub struct User<F, Link, LG, LS, PKS, PSKS> {
     /// PRNG object used for Ed25519, X25519, Spongos key generation, etc.
@@ -139,7 +139,7 @@ where
         let appinst = self.link_gen.link_from((&self.sig_kp.public, channel_idx));
         self.pk_store.insert(
             self.sig_kp.public.clone(),
-            SequencingState(appinst.rel().clone(), 2_usize),
+            SequencingState(appinst.rel().clone(), 2_u64),
         );
         self.appinst = Some(appinst);
         Ok(())
@@ -152,8 +152,8 @@ where
         // Create HDF for the first message in the channel.
         let msg_link = self.link_gen.link_from(());
         let header = HDF::new(msg_link)
-            .with_content_type(ANNOUNCE)
-            .with_payload_length(1)
+            .with_content_type(ANNOUNCE)?
+            .with_payload_length(1)?
             .with_seq_num(ANN_MESSAGE_NUM);
         let content = announce::ContentWrap::new(&self.sig_kp, self.flags);
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -206,9 +206,9 @@ where
         // At the moment the Author is free to choose any address, not tied to PK.
 
         self.pk_store
-            .insert(content.sig_pk.clone(), SequencingState(link.rel().clone(), 2_usize));
+            .insert(content.sig_pk.clone(), SequencingState(link.rel().clone(), 2_u64));
         self.pk_store
-            .insert(self.sig_kp.public.clone(), SequencingState(link.rel().clone(), 2_usize));
+            .insert(self.sig_kp.public.clone(), SequencingState(link.rel().clone(), 2_u64));
         // Reset link_gen
         let _appinst = self.link_gen.link_from(link.clone());
         self.appinst = Some(link);
@@ -226,8 +226,8 @@ where
             if let Some(author_ke_pk) = self.pk_store.get_ke_pk(author_sig_pk) {
                 let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, SUB_MESSAGE_NUM));
                 let header = HDF::new(msg_link)
-                    .with_content_type(SUBSCRIBE)
-                    .with_payload_length(1)
+                    .with_content_type(SUBSCRIBE)?
+                    .with_payload_length(1)?
                     .with_seq_num(SUB_MESSAGE_NUM);
                 let unsubscribe_key = NBytes::from(prng::random_key());
                 let content = subscribe::ContentWrap {
@@ -331,8 +331,8 @@ where
         let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = HDF::new(msg_link)
-            .with_content_type(KEYLOAD)
-            .with_payload_length(1)
+            .with_content_type(KEYLOAD)?
+            .with_payload_length(1)?
             .with_seq_num(seq_num);
         let psks = self.psk_store.filter(psk_ids);
         let ke_pks = self.pk_store.filter(pks);
@@ -360,8 +360,8 @@ where
         let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = hdf::HDF::new(msg_link)
-            .with_content_type(KEYLOAD)
-            .with_payload_length(1)
+            .with_content_type(KEYLOAD)?
+            .with_payload_length(1)?
             .with_seq_num(seq_num);
         let ipsks = self.psk_store.iter();
         let ike_pks = self.pk_store.keys();
@@ -471,8 +471,8 @@ where
         let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = HDF::new(msg_link)
-            .with_content_type(SIGNED_PACKET)
-            .with_payload_length(1)
+            .with_content_type(SIGNED_PACKET)?
+            .with_payload_length(1)?
             .with_seq_num(seq_num);
         let content = signed_packet::ContentWrap {
             link: link_to,
@@ -531,8 +531,8 @@ where
         let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
         let header = HDF::new(msg_link)
-            .with_content_type(TAGGED_PACKET)
-            .with_payload_length(1)
+            .with_content_type(TAGGED_PACKET)?
+            .with_payload_length(1)?
             .with_seq_num(seq_num);
         let content = tagged_packet::ContentWrap {
             link: link_to,
@@ -582,13 +582,13 @@ where
     pub fn prepare_sequence<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
-        seq_num: usize,
+        seq_num: u64,
         ref_link: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<'a, F, Link, LS, sequence::ContentWrap<'a, Link>>> {
         let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, SEQ_MESSAGE_NUM));
         let header = HDF::new(msg_link)
-            .with_content_type(SEQUENCE)
-            .with_payload_length(1)
+            .with_content_type(SEQUENCE)?
+            .with_payload_length(1)?
             .with_seq_num(SEQ_MESSAGE_NUM);
 
         let content = sequence::ContentWrap {
@@ -605,7 +605,7 @@ where
     pub fn sequence<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
-        seq_num: usize,
+        seq_num: u64,
         ref_link: &'a <Link as HasLink>::Rel,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<BinaryMessage<F, Link>> {
@@ -625,8 +625,8 @@ where
                         .link_gen
                         .link_from((&*link_to, &self.sig_kp.public, SEQ_MESSAGE_NUM));
                     let header = HDF::new(msg_link)
-                        .with_content_type(SEQUENCE)
-                        .with_payload_length(1)
+                        .with_content_type(SEQUENCE)?
+                        .with_payload_length(1)?
                         .with_seq_num(SEQ_MESSAGE_NUM);
 
                     let content = sequence::ContentWrap::<Link> {
@@ -680,7 +680,8 @@ where
         (self.flags & FLAG_BRANCHING_MASK) != 0
     }
 
-    pub fn get_seq_num(&self) -> Option<usize> {
+    // TODO: own seq_num should be stored outside of pk_store to avoid lookup and Option
+    pub fn get_seq_num(&self) -> Option<u64> {
         self.pk_store
             .get(&self.sig_kp.public)
             .map(|SequencingState(_link, seq_num)| *seq_num)
@@ -703,7 +704,7 @@ where
     ) {
         let (pk, SequencingState(seq_link, seq_num)) = pk_info;
         if branching {
-            let msg_id = link_gen.link_from((&*seq_link, pk, 1_usize));
+            let msg_id = link_gen.link_from((&*seq_link, pk, 1_u64));
             ids.push((pk.clone(), SequencingState(msg_id, 1)));
         } else {
             let msg_id = link_gen.link_from((&*seq_link, pk, *seq_num));
@@ -742,7 +743,7 @@ where
         self.pk_store.insert(pk, SequencingState(link, seq_num + 1));
     }
 
-    pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_num: usize) {
+    pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_num: u64) {
         self.pk_store
             .insert(self.sig_kp.public.clone(), SequencingState(link.clone(), seq_num + 1));
         for (_pk, SequencingState(l, s)) in self.pk_store.iter_mut() {

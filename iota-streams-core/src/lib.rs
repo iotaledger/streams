@@ -32,6 +32,12 @@ pub use std::println;
 #[cfg(feature = "std")]
 pub use std::print;
 
+#[cfg(not(feature = "std"))]
+pub use alloc::format;
+
+#[cfg(feature = "std")]
+pub use std::format;
+
 pub mod hash;
 pub mod prelude;
 pub mod prng;

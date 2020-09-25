@@ -46,7 +46,7 @@ where
 {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) pk: &'a ed25519::PublicKey,
-    pub seq_num: usize,
+    pub seq_num: u64,
     pub(crate) ref_link: &'a <Link as HasLink>::Rel,
 }
 
@@ -61,7 +61,7 @@ where
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
             .absorb(self.pk)?
-            .skip(Size(self.seq_num))?
+            .skip(Uint64(self.seq_num))?
             .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
@@ -74,7 +74,7 @@ where
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
             .absorb(self.pk)?
-            .skip(Size(self.seq_num))?
+            .skip(Uint64(self.seq_num))?
             .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
@@ -84,7 +84,7 @@ where
 pub struct ContentUnwrap<Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) pk: ed25519::PublicKey,
-    pub(crate) seq_num: Size,
+    pub(crate) seq_num: Uint64,
     pub(crate) ref_link: <Link as HasLink>::Rel,
 }
 
@@ -97,7 +97,7 @@ where
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             pk: ed25519::PublicKey::default(),
-            seq_num: Size(0),
+            seq_num: Uint64(0),
             ref_link: <<Link as HasLink>::Rel as Default>::default(),
         }
     }

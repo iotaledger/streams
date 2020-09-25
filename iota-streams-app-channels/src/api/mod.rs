@@ -31,11 +31,11 @@ where
     for<'a> Self: LinkGenerator<Link, (&'a ed25519::PublicKey, u64)>
         + LinkGenerator<Link, Link>
         + LinkGenerator<Link, ()>
-        + LinkGenerator<Link, (&'a <Link as HasLink>::Rel, &'a ed25519::PublicKey, usize)>,
+        + LinkGenerator<Link, (&'a <Link as HasLink>::Rel, &'a ed25519::PublicKey, u64)>,
 {
 }
 
-pub struct SequencingState<Link>(pub Link, pub usize);
+pub struct SequencingState<Link>(pub Link, pub u64);
 
 pub trait PublicKeyStore<Info>: Default {
     fn filter<'a>(&'a self, pks: &'a Vec<ed25519::PublicKey>) -> Vec<(&'a ed25519::PublicKey, &'a x25519::PublicKey)>;

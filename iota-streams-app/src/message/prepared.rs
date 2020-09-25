@@ -22,7 +22,7 @@ pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {
 impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {
     pub fn new(store: Ref<'a, Store>, header: HDF<Link>, content: Content) -> Self {
         let content = pcf::PCF::new_final_frame()
-            .with_payload_frame_num(1)
+            .with_payload_frame_num(1).unwrap()
             .with_content(content);
 
         Self {

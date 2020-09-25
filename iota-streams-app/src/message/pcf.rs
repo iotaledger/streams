@@ -1,18 +1,18 @@
-use anyhow::Result;
-// use std::str::FromStr;
+use anyhow::{ensure, Result, };
 
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::{
     command::*,
     io,
-    types::*,
+    types::{*, GenericArray, typenum::U3, },
 };
 
 use super::*;
 
 pub struct PCF<Content> {
     pub frame_type: Uint8,
-    pub payload_frame_num: Size,
+    // 22-bit field
+    pub payload_frame_num: NBytes<U3>,
     pub content: Content,
 }
 
@@ -20,7 +20,7 @@ impl PCF<()> {
     pub fn new_init_frame() -> Self {
         Self {
             frame_type: INIT_PCF_ID,
-            payload_frame_num: Size(0),
+            payload_frame_num: NBytes::default(),
             content: (),
         }
     }
@@ -28,7 +28,7 @@ impl PCF<()> {
     pub fn new_inter_frame() -> Self {
         Self {
             frame_type: INTER_PCF_ID,
-            payload_frame_num: Size(0),
+            payload_frame_num: NBytes::default(),
             content: (),
         }
     }
@@ -36,7 +36,7 @@ impl PCF<()> {
     pub fn new_final_frame() -> Self {
         Self {
             frame_type: FINAL_PCF_ID,
-            payload_frame_num: Size(0),
+            payload_frame_num: NBytes::default(),
             content: (),
         }
     }
@@ -50,22 +50,54 @@ impl PCF<()> {
     }
 }
 
+fn payload_frame_num_from(n: usize) -> Result<NBytes<U3>> {
+    ensure!(n < 0x400000, "Payload frame num out of range: {}", n);
+    let v = n.to_be_bytes();
+    let g = <GenericArray::<u8, U3>>::from_slice(&v[5..]);
+    Ok(NBytes::from(*g))
+}
+
+fn payload_frame_num_to(v: &NBytes<U3>) -> usize {
+    let mut u = [0_u8; 8];
+    u[5..].copy_from_slice(v.as_ref());
+    usize::from_be_bytes(u)
+}
+
+fn payload_frame_num_check(v: &NBytes<U3>) -> Result<()> {
+    ensure!(v.as_ref()[0] < 0x40, "Payload frame num out of range");
+    Ok(())
+}
+
 impl<Content> PCF<Content> {
-    pub fn new(frame_type: Uint8, payload_frame_num: usize, content: Content) -> Self {
-        Self {
-            frame_type: frame_type,
-            payload_frame_num: Size(payload_frame_num),
-            content: content,
-        }
+    pub fn new(frame_type: Uint8, payload_frame_num: usize, content: Content) -> Result<Self> {
+        payload_frame_num_from(payload_frame_num).map(|payload_frame_num| {
+            Self {
+                frame_type,
+                payload_frame_num,
+                content,
+            }
+        })
     }
 
-    pub fn with_payload_frame_num(mut self, payload_frame_num: usize) -> Self {
-        self.payload_frame_num = Size(payload_frame_num);
-        self
+    pub fn with_payload_frame_num(mut self, payload_frame_num: usize) -> Result<Self> {
+        payload_frame_num_from(payload_frame_num).map(|payload_frame_num| {
+            self.payload_frame_num = payload_frame_num;
+            self
+        })
     }
 
     pub fn default_with_content(content: Content) -> Self {
-        Self::new(FINAL_PCF_ID, 1, content)
+        let v = [0, 0, 1_u8];
+        let payload_frame_num = NBytes::from(GenericArray::from(v));
+        Self {
+            frame_type: FINAL_PCF_ID,
+            payload_frame_num,
+            content,
+        }
+    }
+
+    pub fn get_payload_frame_num(&self) -> usize {
+        payload_frame_num_to(&self.payload_frame_num)
     }
 }
 
@@ -75,7 +107,8 @@ where
     Content: ContentWrap<F, Store>,
 {
     fn sizeof<'c>(&self, mut ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.absorb(&self.frame_type)?.skip(self.payload_frame_num)?;
+        ctx.absorb(&self.frame_type)?
+            .skip(&self.payload_frame_num)?;
         self.content.sizeof(&mut ctx)?;
         Ok(ctx)
     }
@@ -85,7 +118,8 @@ where
         store: &Store,
         mut ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.absorb(&self.frame_type)?.skip(self.payload_frame_num)?;
+        ctx.absorb(&self.frame_type)?
+            .skip(&self.payload_frame_num)?;
         self.content.wrap(store, &mut ctx)?;
         Ok(ctx)
     }
@@ -101,7 +135,9 @@ where
         store: &Store,
         mut ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.absorb(&mut self.frame_type)?.skip(&mut self.payload_frame_num)?;
+        ctx.absorb(&mut self.frame_type)?
+            .skip(&mut self.payload_frame_num)?;
+        payload_frame_num_check(&self.payload_frame_num)?;
         self.content.unwrap(&store, &mut ctx)?;
         Ok(ctx)
     }

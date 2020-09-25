@@ -157,9 +157,8 @@ impl<F> DefaultTangleLinkGenerator<F> {
 }
 
 impl<F: PRP> DefaultTangleLinkGenerator<F> {
-    fn gen_msgid(&self, msgid: &MsgId, pk: &ed25519::PublicKey, seq: usize) -> MsgId {
+    fn gen_msgid(&self, msgid: &MsgId, pk: &ed25519::PublicKey, seq: u64) -> MsgId {
         let mut new = MsgId::default();
-        // println!("Making new id with: {:?}, {:?}, {:?}", msgid.id.to_string(), multi_branch, seq);
         wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
             .absorb(External(&self.addr.appinst.id))
             .unwrap()
@@ -167,7 +166,7 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
             .unwrap()
             .absorb(External(&msgid.id))
             .unwrap()
-            .absorb(External(Size(seq)))
+            .absorb(External(Uint64(seq)))
             .unwrap()
             // TODO: do we need `flags` here
             //.absorb(External(Uint8(flags)))?
@@ -205,11 +204,11 @@ impl<F: PRP> LinkGenerator<TangleAddress, ()> for DefaultTangleLinkGenerator<F> 
 }
 
 // Used by users to pseudo-randomly generate a new message link from additional arguments
-impl<'a, F> LinkGenerator<TangleAddress, (&'a MsgId, &'a ed25519::PublicKey, usize)> for DefaultTangleLinkGenerator<F>
+impl<'a, F> LinkGenerator<TangleAddress, (&'a MsgId, &'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F>
 where
     F: PRP,
 {
-    fn link_from(&mut self, arg: (&MsgId, &ed25519::PublicKey, usize)) -> TangleAddress {
+    fn link_from(&mut self, arg: (&MsgId, &ed25519::PublicKey, u64)) -> TangleAddress {
         let (msgid, pk, seq) = arg;
         TangleAddress {
             appinst: self.addr.appinst.clone(),
