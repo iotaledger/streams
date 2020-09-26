@@ -167,7 +167,7 @@ impl<T: Transport<DefaultF, Address>> Subscriber<T> {
 
                 loop {
                     let preparsed = msg.parse_header()?;
-                    match preparsed.header.content_type.0 {
+                    match preparsed.header.content_type {
                         message::SIGNED_PACKET => {
                             let content = self.unwrap_signed_packet(next_link.clone());
                             exists = true;

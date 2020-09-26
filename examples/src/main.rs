@@ -91,7 +91,7 @@ fn main_client() {
     iota_client::Client::add_node(node).unwrap();
 
     let mut send_opt = SendTrytesOptions::default();
-    send_opt.min_weight_magnitude = 5;
+    send_opt.min_weight_magnitude = 14;
     let recv_opt = RecvOptions { flags: 0 };
 
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
