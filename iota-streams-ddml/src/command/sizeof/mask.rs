@@ -10,6 +10,9 @@ use crate::{
         NBytes,
         Size,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 use iota_streams_core_edsig::{
@@ -28,6 +31,51 @@ impl<F> Mask<&Uint8> for Context<F> {
 /// Mask Uint8.
 impl<F> Mask<Uint8> for Context<F> {
     fn mask(&mut self, val: Uint8) -> Result<&mut Self> {
+        self.mask(&val)
+    }
+}
+
+/// Mask Uint16.
+impl<F> Mask<&Uint16> for Context<F> {
+    fn mask(&mut self, _val: &Uint16) -> Result<&mut Self> {
+        self.size += 2;
+        Ok(self)
+    }
+}
+
+/// Mask Uint16.
+impl<F> Mask<Uint16> for Context<F> {
+    fn mask(&mut self, val: Uint16) -> Result<&mut Self> {
+        self.mask(&val)
+    }
+}
+
+/// Mask Uint32.
+impl<F> Mask<&Uint32> for Context<F> {
+    fn mask(&mut self, _val: &Uint32) -> Result<&mut Self> {
+        self.size += 4;
+        Ok(self)
+    }
+}
+
+/// Mask Uint32.
+impl<F> Mask<Uint32> for Context<F> {
+    fn mask(&mut self, val: Uint32) -> Result<&mut Self> {
+        self.mask(&val)
+    }
+}
+
+/// Mask Uint64.
+impl<F> Mask<&Uint64> for Context<F> {
+    fn mask(&mut self, _val: &Uint64) -> Result<&mut Self> {
+        self.size += 8;
+        Ok(self)
+    }
+}
+
+/// Mask Uint64.
+impl<F> Mask<Uint64> for Context<F> {
+    fn mask(&mut self, val: Uint64) -> Result<&mut Self> {
         self.mask(&val)
     }
 }

@@ -9,33 +9,41 @@ use crate::{
         External,
         Fallback,
         NBytes,
+        Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 
-// External values are not encoded in the trinary stream.
-// impl<'a, F, T: 'a> Absorb<&'a External<T>> for Context<F>
-// where
-// Self: Absorb<T>,
-// {
-// fn absorb(&mut self, _external: &'a External<T>) -> Result<&mut Self> {
-// Ok(self)
-// }
-// }
-//
-// External values are not encoded in the trinary stream.
-// impl<'a, F, T: 'a> Absorb<External<&'a T>> for Context<F>
-// where
-// Self: Absorb<&'a T>,
-// {
-// fn absorb(&mut self, _external: External<&'a T>) -> Result<&mut Self> {
-// Ok(self)
-// }
-// }
+// External values are not encoded in the stream.
+impl<F> Absorb<External<Uint8>> for Context<F>
+{
+    fn absorb(&mut self, _external: External<Uint8>) -> Result<&mut Self> {
+        Ok(self)
+    }
+}
+impl<F> Absorb<External<Uint16>> for Context<F>
+{
+    fn absorb(&mut self, _external: External<Uint16>) -> Result<&mut Self> {
+        Ok(self)
+    }
+}
+impl<F> Absorb<External<Uint32>> for Context<F>
+{
+    fn absorb(&mut self, _external: External<Uint32>) -> Result<&mut Self> {
+        Ok(self)
+    }
+}
+impl<F> Absorb<External<Uint64>> for Context<F>
+{
+    fn absorb(&mut self, _external: External<Uint64>) -> Result<&mut Self> {
+        Ok(self)
+    }
+}
 
 /// External values are not encoded in the trinary stream.
 impl<'a, F, N: ArrayLength<u8>> Absorb<External<&'a NBytes<N>>> for Context<F>
-// where
-// Self: Absorb<&'a T>,
 {
     fn absorb(&mut self, _external: External<&'a NBytes<N>>) -> Result<&mut Self> {
         Ok(self)

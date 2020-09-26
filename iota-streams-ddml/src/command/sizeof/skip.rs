@@ -12,6 +12,9 @@ use crate::{
         Size,
         SkipFallback,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 
@@ -19,7 +22,7 @@ use crate::{
 /// All Uint8 values are encoded with 3 trits.
 impl<F> Skip<&Uint8> for Context<F> {
     fn skip(&mut self, _u: &Uint8) -> Result<&mut Self> {
-        self.size += 3;
+        self.size += 1;
         Ok(self)
     }
 }
@@ -27,6 +30,54 @@ impl<F> Skip<&Uint8> for Context<F> {
 /// All Uint8 values are encoded with 3 trits.
 impl<F> Skip<Uint8> for Context<F> {
     fn skip(&mut self, u: Uint8) -> Result<&mut Self> {
+        self.skip(&u)
+    }
+}
+
+/// Skipped values are just encoded.
+/// All Uint16 values are encoded with 3 trits.
+impl<F> Skip<&Uint16> for Context<F> {
+    fn skip(&mut self, _u: &Uint16) -> Result<&mut Self> {
+        self.size += 2;
+        Ok(self)
+    }
+}
+
+/// All Uint16 values are encoded with 3 trits.
+impl<F> Skip<Uint16> for Context<F> {
+    fn skip(&mut self, u: Uint16) -> Result<&mut Self> {
+        self.skip(&u)
+    }
+}
+
+/// Skipped values are just encoded.
+/// All Uint32 values are encoded with 3 trits.
+impl<F> Skip<&Uint32> for Context<F> {
+    fn skip(&mut self, _u: &Uint32) -> Result<&mut Self> {
+        self.size += 4;
+        Ok(self)
+    }
+}
+
+/// All Uint32 values are encoded with 3 trits.
+impl<F> Skip<Uint32> for Context<F> {
+    fn skip(&mut self, u: Uint32) -> Result<&mut Self> {
+        self.skip(&u)
+    }
+}
+
+/// Skipped values are just encoded.
+/// All Uint64 values are encoded with 3 trits.
+impl<F> Skip<&Uint64> for Context<F> {
+    fn skip(&mut self, _u: &Uint64) -> Result<&mut Self> {
+        self.size += 8;
+        Ok(self)
+    }
+}
+
+/// All Uint64 values are encoded with 3 trits.
+impl<F> Skip<Uint64> for Context<F> {
+    fn skip(&mut self, u: Uint64) -> Result<&mut Self> {
         self.skip(&u)
     }
 }

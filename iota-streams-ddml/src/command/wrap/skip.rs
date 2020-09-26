@@ -16,6 +16,9 @@ use crate::{
         Size,
         SkipFallback,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 
@@ -51,11 +54,29 @@ fn wrap_skip_u8<'a, F, OS: io::OStream>(
 ) -> Result<&'a mut SkipContext<F, OS>> {
     ctx.wrap_u8(u.0)
 }
+fn wrap_skip_u16<'a, F, OS: io::OStream>(
+    ctx: &'a mut SkipContext<F, OS>,
+    u: Uint16,
+) -> Result<&'a mut SkipContext<F, OS>> {
+    ctx.wrap_u16(u.0)
+}
+fn wrap_skip_u32<'a, F, OS: io::OStream>(
+    ctx: &'a mut SkipContext<F, OS>,
+    u: Uint32,
+) -> Result<&'a mut SkipContext<F, OS>> {
+    ctx.wrap_u32(u.0)
+}
+fn wrap_skip_u64<'a, F, OS: io::OStream>(
+    ctx: &'a mut SkipContext<F, OS>,
+    u: Uint64,
+) -> Result<&'a mut SkipContext<F, OS>> {
+    ctx.wrap_u64(u.0)
+}
 fn wrap_skip_size<'a, F, OS: io::OStream>(
     ctx: &'a mut SkipContext<F, OS>,
     size: Size,
 ) -> Result<&'a mut SkipContext<F, OS>> {
-    wrap_size(ctx, size)
+    ctx.wrap_size(size)
 }
 fn wrap_skip_trits<'a, F, OS: io::OStream>(
     ctx: &'a mut SkipContext<F, OS>,
@@ -72,6 +93,42 @@ impl<'a, F, OS: io::OStream> Skip<&'a Uint8> for Context<F, OS> {
 
 impl<F, OS: io::OStream> Skip<Uint8> for Context<F, OS> {
     fn skip(&mut self, val: Uint8) -> Result<&mut Self> {
+        self.skip(&val)
+    }
+}
+
+impl<'a, F, OS: io::OStream> Skip<&'a Uint16> for Context<F, OS> {
+    fn skip(&mut self, u: &'a Uint16) -> Result<&mut Self> {
+        Ok(wrap_skip_u16(self.as_mut(), *u)?.as_mut())
+    }
+}
+
+impl<F, OS: io::OStream> Skip<Uint16> for Context<F, OS> {
+    fn skip(&mut self, val: Uint16) -> Result<&mut Self> {
+        self.skip(&val)
+    }
+}
+
+impl<'a, F, OS: io::OStream> Skip<&'a Uint32> for Context<F, OS> {
+    fn skip(&mut self, u: &'a Uint32) -> Result<&mut Self> {
+        Ok(wrap_skip_u32(self.as_mut(), *u)?.as_mut())
+    }
+}
+
+impl<F, OS: io::OStream> Skip<Uint32> for Context<F, OS> {
+    fn skip(&mut self, val: Uint32) -> Result<&mut Self> {
+        self.skip(&val)
+    }
+}
+
+impl<'a, F, OS: io::OStream> Skip<&'a Uint64> for Context<F, OS> {
+    fn skip(&mut self, u: &'a Uint64) -> Result<&mut Self> {
+        Ok(wrap_skip_u64(self.as_mut(), *u)?.as_mut())
+    }
+}
+
+impl<F, OS: io::OStream> Skip<Uint64> for Context<F, OS> {
+    fn skip(&mut self, val: Uint64) -> Result<&mut Self> {
         self.skip(&val)
     }
 }

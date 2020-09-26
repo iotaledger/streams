@@ -17,6 +17,9 @@ use crate::{
         NBytes,
         Size,
         Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
     },
 };
 use iota_streams_core::sponge::prp::PRP;
@@ -60,11 +63,29 @@ fn unwrap_mask_u8<'a, F: PRP, IS: io::IStream>(
 ) -> Result<&'a mut MaskContext<F, IS>> {
     ctx.unwrap_u8(&mut u.0)
 }
+fn unwrap_mask_u16<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut MaskContext<F, IS>,
+    u: &mut Uint16,
+) -> Result<&'a mut MaskContext<F, IS>> {
+    ctx.unwrap_u16(&mut u.0)
+}
+fn unwrap_mask_u32<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut MaskContext<F, IS>,
+    u: &mut Uint32,
+) -> Result<&'a mut MaskContext<F, IS>> {
+    ctx.unwrap_u32(&mut u.0)
+}
+fn unwrap_mask_u64<'a, F: PRP, IS: io::IStream>(
+    ctx: &'a mut MaskContext<F, IS>,
+    u: &mut Uint64,
+) -> Result<&'a mut MaskContext<F, IS>> {
+    ctx.unwrap_u64(&mut u.0)
+}
 fn unwrap_mask_size<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut MaskContext<F, IS>,
     size: &mut Size,
 ) -> Result<&'a mut MaskContext<F, IS>> {
-    unwrap_size(ctx, size)
+    ctx.unwrap_size(size)
 }
 fn unwrap_mask_bytes<'a, F: PRP, IS: io::IStream>(
     ctx: &'a mut MaskContext<F, IS>,
@@ -76,6 +97,24 @@ fn unwrap_mask_bytes<'a, F: PRP, IS: io::IStream>(
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint8> for Context<F, IS> {
     fn mask(&mut self, u: &'a mut Uint8) -> Result<&mut Self> {
         Ok(unwrap_mask_u8(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint16> for Context<F, IS> {
+    fn mask(&mut self, u: &'a mut Uint16) -> Result<&mut Self> {
+        Ok(unwrap_mask_u16(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint32> for Context<F, IS> {
+    fn mask(&mut self, u: &'a mut Uint32) -> Result<&mut Self> {
+        Ok(unwrap_mask_u32(self.as_mut(), u)?.as_mut())
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint64> for Context<F, IS> {
+    fn mask(&mut self, u: &'a mut Uint64) -> Result<&mut Self> {
+        Ok(unwrap_mask_u64(self.as_mut(), u)?.as_mut())
     }
 }
 

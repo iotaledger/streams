@@ -223,7 +223,7 @@ impl<T: Transport<DefaultF, Address>> Author<T> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         self.imp.store_state(pk, link.msgid)
     }
-    pub fn store_state_for_all(&mut self, link: Address, seq_num: usize) {
+    pub fn store_state_for_all(&mut self, link: Address, seq_num: u64) {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         self.imp.store_state_for_all(link.msgid, seq_num)
     }
