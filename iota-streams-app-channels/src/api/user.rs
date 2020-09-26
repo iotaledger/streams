@@ -12,6 +12,7 @@ use iota_streams_core::{
     prelude::{
         vec,
         Vec,
+        Rc,
     },
     prng,
     psk,
@@ -21,12 +22,15 @@ use iota_streams_core_edsig::{
     signature::ed25519,
 };
 
-use iota_streams_app::message::{
-    hdf::{
-        FLAG_BRANCHING_MASK,
-        HDF,
+use iota_streams_app::{
+    message::{
+        hdf::{
+            FLAG_BRANCHING_MASK,
+            HDF,
+        },
+        *,
     },
-    *,
+    transport,
 };
 use iota_streams_ddml::{
     link_store::LinkStore,
@@ -35,12 +39,17 @@ use iota_streams_ddml::{
 
 use super::*;
 use crate::message::*;
+use crate::api::Transport;
 
 const ANN_MESSAGE_NUM: usize = 0;
 const SUB_MESSAGE_NUM: usize = 0;
 const SEQ_MESSAGE_NUM: usize = 1;
 
-pub struct User<F, Link, LG, LS, PKS, PSKS> {
+pub struct User<F, Link, LG, LS, PKS, PSKS, T: Transport<F, Link>>
+where
+    F: PRP,
+    Link: HasLink,
+{
     /// PRNG object used for Ed25519, X25519, Spongos key generation, etc.
     #[allow(dead_code)]
     pub(crate) prng: prng::Prng<F>,
@@ -76,9 +85,15 @@ pub struct User<F, Link, LG, LS, PKS, PSKS> {
     pub message_encoding: Vec<u8>,
 
     pub uniform_payload_length: usize,
+
+    pub(crate) transport: Rc<RefCell<T>>,
+
+    pub(crate) recv_opt: <T as transport::Transport<F, Link>>::RecvOptions,
+
+    pub(crate) send_opt: <T as transport::Transport<F, Link>>::SendOptions,
 }
 
-impl<F, Link, LG, LS, PKS, PSKS> User<F, Link, LG, LS, PKS, PSKS>
+impl<F, Link, LG, LS, PKS, PSKS, T> User<F, Link, LG, LS, PKS, PSKS, T>
 where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F>,
@@ -88,6 +103,7 @@ where
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
     PKS: PublicKeyStore<SequencingState<<Link as HasLink>::Rel>>,
     PSKS: PresharedKeyStore,
+    T: Transport<F, Link>,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
     pub fn gen(
@@ -96,6 +112,9 @@ where
         flags: u8,
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
+        transport: Rc<RefCell<T>>,
+        recv_opt: <T as transport::Transport<F, Link>>::RecvOptions,
+        send_opt: <T as transport::Transport<F, Link>>::SendOptions,
     ) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
@@ -127,6 +146,9 @@ where
             flags,
             message_encoding,
             uniform_payload_length,
+            transport,
+            recv_opt,
+            send_opt
         }
     }
 
@@ -165,6 +187,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_announcement()?.wrap()?;
+        (&*self.transport).borrow_mut().send_message_with_options(&wrapped.message, &self.send_opt)?;
         let r = wrapped.commit(self.link_store.borrow_mut(), info);
         r
     }
@@ -191,9 +214,12 @@ where
     /// in the message.
     pub fn handle_announcement<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        link: Link,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
+        let msg = (&*self.transport).borrow_mut().recv_message_with_options(&link, &self.recv_opt)?;
+        let preparsed = msg.parse_header()?;
+
         let unwrapped = self.unwrap_announcement(preparsed)?;
         let link = unwrapped.link.clone();
         let content = unwrapped.commit(self.link_store.borrow_mut(), info)?;
@@ -253,6 +279,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_subscribe(link_to)?.wrap()?;
+        (&*self.transport).borrow_mut().send_message_with_options(&wrapped.message, &self.send_opt)?;
         wrapped.commit(self.link_store.borrow_mut(), info)
     }
 
@@ -268,9 +295,12 @@ where
     /// Get public payload, decrypt masked payload and verify MAC.
     pub fn handle_subscribe<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        link: Link,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
+        let msg = (&*self.transport).borrow_mut().recv_message_with_options(&link, &self.recv_opt)?;
+        let preparsed = msg.parse_header()?;
+
         let content = self
             .unwrap_subscribe(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
@@ -377,6 +407,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_keyload(link_to, psk_ids, ke_pks)?.wrap()?;
+        (&*self.transport).borrow_mut().send_message_with_options(&wrapped.message, &self.send_opt)?;
         wrapped.commit(self.link_store.borrow_mut(), info)
     }
 
@@ -388,6 +419,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_keyload_for_everyone(link_to)?.wrap()?;
+        (&*self.transport).borrow_mut().send_message_with_options(&wrapped.message, &self.send_opt)?;
         wrapped.commit(self.link_store.borrow_mut(), info)
     }
 
@@ -435,9 +467,12 @@ where
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or NTRU private key (if any).
     pub fn handle_keyload<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        link: Link,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
+        let msg = (&*self.transport).borrow_mut().recv_message_with_options(&link, &self.recv_opt)?;
+        let preparsed = msg.parse_header()?;
+
         let content = self
             .unwrap_keyload(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
@@ -490,6 +525,7 @@ where
         let wrapped = self
             .prepare_signed_packet(link_to, public_payload, masked_payload)?
             .wrap()?;
+        (&*self.transport).borrow_mut().send_message_with_options(&wrapped.message, &self.send_opt)?;
         wrapped.commit(self.link_store.borrow_mut(), info)
     }
 
@@ -505,10 +541,13 @@ where
     /// Verify new Author's MSS public key and update Author's MSS public key.
     pub fn handle_signed_packet<'a>(
         &'a mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        link: Link,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
         // TODO: pass author_pk to unwrap
+        let msg = (&*self.transport).borrow_mut().recv_message_with_options(&link, &self.recv_opt)?;
+        let preparsed = msg.parse_header()?;
+
         let content = self
             .unwrap_signed_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
@@ -550,6 +589,7 @@ where
         let wrapped = self
             .prepare_tagged_packet(link_to, public_payload, masked_payload)?
             .wrap()?;
+        (&*self.transport).borrow_mut().send_message_with_options(&wrapped.message, &self.send_opt)?;
         wrapped.commit(self.link_store.borrow_mut(), info)
     }
 
@@ -565,9 +605,12 @@ where
     /// Get public payload, decrypt masked payload and verify MAC.
     pub fn handle_tagged_packet<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        link: Link,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<(Bytes, Bytes)> {
+        let msg = (&*self.transport).borrow_mut().recv_message_with_options(&link, &self.recv_opt)?;
+        let preparsed = msg.parse_header()?;
+
         let content = self
             .unwrap_tagged_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
@@ -605,6 +648,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<BinaryMessage<F, Link>> {
         let wrapped = self.prepare_sequence(link_to, seq_num, ref_link)?.wrap()?;
+        (&*self.transport).borrow_mut().send_message_with_options(&wrapped.message, &self.send_opt)?;
         wrapped.commit(self.link_store.borrow_mut(), info)
     }
 
@@ -635,6 +679,7 @@ where
                         let prepared = PreparedMessage::new(self.link_store.borrow(), header, content);
                         prepared.wrap()?
                     };
+                    (&*self.transport).borrow_mut().send_message_with_options(&wrapped.message, &self.send_opt)?;
                     let msg = wrapped.commit(self.link_store.borrow_mut(), info)?;
 
                     *link_to = msg.link.rel().clone();
@@ -662,9 +707,11 @@ where
     // Fetch unwrapped sequence message to fetch referenced message
     pub fn handle_sequence<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        link: Link,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<sequence::ContentUnwrap<Link>> {
+        let msg = (&*self.transport).borrow_mut().recv_message_with_options(&link, &self.recv_opt)?;
+        let preparsed = msg.parse_header()?;
         let content = self
             .unwrap_sequence(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
@@ -714,20 +761,6 @@ where
         // TODO: Do the same for self.sig_kp.public
         for pk_info in self.pk_store.iter_mut() {
             Self::gen_next_msg_id(&mut ids, &mut self.link_gen, pk_info, branching);
-            /*
-            let (seq_link, seq_num) = self.imp.get_seq_state(pk.0).unwrap();
-            if branching {
-                let seq_num = 1;
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, 1), 1));
-            } else {
-                // In Single Branching instances, while issuing transactions, the sequence state is
-                // set to the next message that will be sent, when fetching transactions sent by
-                // another publisher, it is necessary to check the current sequence state along with
-                // the link rather than the next state. To simplify the search we return both ids
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, seq_num), seq_num));
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, seq_num - 1), seq_num - 1));
-            }
-             */
         }
         ids
     }

@@ -4,6 +4,7 @@ use super::{
     PresharedKeyMap,
     PublicKeyMap,
     SequencingState,
+    MsgInfo,
 };
 use core::fmt;
 use iota_streams_app::{
@@ -49,18 +50,6 @@ impl fmt::Display for SeqState {
 
 /// Link Generator specifies algorithm for generating new message addressed.
 pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
-
-/// Message associated info, just message type indicator.
-#[derive(Copy, Clone)]
-pub enum MsgInfo {
-    Announce,
-    Keyload,
-    SignedPacket,
-    TaggedPacket,
-    Subscribe,
-    Unsubscribe,
-    Sequence,
-}
 
 /// Link Store.
 pub type LinkStore = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;

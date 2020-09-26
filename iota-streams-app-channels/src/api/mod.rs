@@ -1,8 +1,11 @@
 use core::fmt;
 
-use iota_streams_app::message::{
-    HasLink,
-    LinkGenerator,
+use iota_streams_app::{
+    message::{
+        HasLink,
+        LinkGenerator,
+    },
+    transport,
 };
 use iota_streams_core::{
     prelude::{
@@ -22,6 +25,7 @@ use iota_streams_app::transport::tangle::{
     DefaultTangleLinkGenerator,
     TangleAddress,
 };
+use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 
 pub trait ChannelLinkGenerator<Link>
 where
@@ -144,6 +148,34 @@ pub mod user;
 
 #[cfg(all(feature = "tangle"))]
 impl<F> ChannelLinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> where F: PRP {}
+
+/// Message associated info, just message type indicator.
+#[derive(Copy, Clone)]
+pub enum MsgInfo {
+    Announce,
+    Keyload,
+    SignedPacket,
+    TaggedPacket,
+    Subscribe,
+    Unsubscribe,
+    Sequence,
+}
+
+pub type DefaultF = KeccakF1600;
+pub trait Transport<F, Link>: transport::Transport<F, Link>
+where
+    F: PRP,
+    Link: HasLink,
+{}
+
+
+#[cfg(all(feature = "tangle"))]
+impl<F, T, Link> Transport<F, Link> for T
+where
+    F: PRP,
+    Link: HasLink,
+    T: transport::Transport<F, Link>,
+{}
 
 /// Tangle-specific Channel API.
 #[cfg(all(feature = "tangle"))]

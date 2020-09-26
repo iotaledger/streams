@@ -448,7 +448,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
     fn send_message_with_options(
         &mut self,
         msg: &BinaryMessage<F, TangleAddress>,
-        opt: Self::SendOptions,
+        opt: &Self::SendOptions,
     ) -> Result<()> {
         let timestamp = Utc::now().timestamp() as u64;
         // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
@@ -458,7 +458,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         // TODO: Get transactions from bundle without copying.
         let txs = bundle.into_iter().collect::<Vec<Transaction>>();
         // Ignore attached transactions.
-        block_on(send_trytes(opt, txs))?;
+        block_on(send_trytes(opt.clone(), txs))?;
         Ok(())
     }
 
@@ -468,7 +468,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
     fn recv_messages_with_options(
         &mut self,
         link: &TangleAddress,
-        _opt: Self::RecvOptions,
+        _opt: &Self::RecvOptions,
     ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
         let tx_address =
             Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))

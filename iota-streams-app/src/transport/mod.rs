@@ -20,14 +20,14 @@ pub trait Transport<F, Link> // where Link: HasLink
     type SendOptions;
 
     /// Send a message with explicit options.
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, opt: Self::SendOptions) -> Result<()>;
+    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, opt: &Self::SendOptions) -> Result<()>;
 
     /// Send a message with default options.
     fn send_message(&mut self, msg: &BinaryMessage<F, Link>) -> Result<()>
     where
         Self::SendOptions: Default,
     {
-        self.send_message_with_options(msg, Self::SendOptions::default())
+        self.send_message_with_options(msg, &Self::SendOptions::default())
     }
 
     type RecvOptions;
@@ -36,11 +36,11 @@ pub trait Transport<F, Link> // where Link: HasLink
     fn recv_messages_with_options(
         &mut self,
         link: &Link,
-        opt: Self::RecvOptions,
+        opt: &Self::RecvOptions,
     ) -> Result<Vec<BinaryMessage<F, Link>>>;
 
     /// Receive messages with explicit options.
-    fn recv_message_with_options(&mut self, link: &Link, opt: Self::RecvOptions) -> Result<BinaryMessage<F, Link>> {
+    fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<BinaryMessage<F, Link>> {
         let mut msgs = self.recv_messages_with_options(link, opt)?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
@@ -55,7 +55,7 @@ pub trait Transport<F, Link> // where Link: HasLink
     where
         Self::RecvOptions: Default,
     {
-        self.recv_messages_with_options(link, Self::RecvOptions::default())
+        self.recv_messages_with_options(link, &Self::RecvOptions::default())
     }
 
     /// Receive a message with default options.
@@ -63,10 +63,11 @@ pub trait Transport<F, Link> // where Link: HasLink
     where
         Self::RecvOptions: Default,
     {
-        self.recv_message_with_options(link, Self::RecvOptions::default())
+        self.recv_message_with_options(link, &Self::RecvOptions::default())
     }
 }
 
+#[derive(Clone)]
 pub struct BucketTransport<F, Link> {
     bucket: HashMap<Link, Vec<BinaryMessage<F, Link>>>,
 }
@@ -91,7 +92,7 @@ where
 {
     type SendOptions = ();
 
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: ()) -> Result<()> {
+    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: &()) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
             Ok(())
@@ -103,7 +104,7 @@ where
 
     type RecvOptions = ();
 
-    fn recv_messages_with_options(&mut self, link: &Link, _opt: ()) -> Result<Vec<BinaryMessage<F, Link>>> {
+    fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<BinaryMessage<F, Link>>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
@@ -119,7 +120,7 @@ where
 {
     type SendOptions = ();
 
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: ()) -> Result<()> {
+    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: &()) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
             Ok(())
@@ -131,7 +132,7 @@ where
 
     type RecvOptions = ();
 
-    fn recv_messages_with_options(&mut self, link: &Link, _opt: ()) -> Result<Vec<BinaryMessage<F, Link>>> {
+    fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<BinaryMessage<F, Link>>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
