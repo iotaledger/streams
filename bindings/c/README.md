@@ -4,7 +4,7 @@
 
 Change `src/constants.rs` to your preferred node and settings. (default to localhost)
 
-Edit your author and subscriber seeds in `make.c`
+Edit your author and subscriber seeds in `main.c`
 
 run `./make` in this folder
 
