@@ -159,7 +159,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub(crate) ke_pks: Vec<ed25519::PublicKey>,
-    pub key: NBytes<U32>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
+    pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
     pub(crate) sig_pk: &'a ed25519::PublicKey,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
@@ -182,7 +182,7 @@ where
             ke_pk: ed25519::PublicKey::default(),
             lookup_ke_sk,
             ke_pks: Vec::new(),
-            key: NBytes::default(),
+            key: None,
             sig_pk,
             _phantom: core::marker::PhantomData,
         }
@@ -208,20 +208,20 @@ where
         let mut repeated_psks = Size(0);
         let mut repeated_ke_pks = Size(0);
         let mut pskid = psk::PskId::default();
-        let mut key_found = false;
 
         ctx.join(store, &mut self.link)?
             .absorb(&mut self.nonce)?
             .skip(&mut repeated_psks)?
             .repeated(repeated_psks, |ctx| {
-                if !key_found {
+                if self.key.is_none() {
                     ctx.fork(|ctx| {
                         ctx.mask(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
                         if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid) {
+                            let mut key = NBytes::<U32>::default();
                             ctx.absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
                                 .commit()?
-                                .mask(&mut self.key)?;
-                            key_found = true;
+                                .mask(&mut key)?;
+                            self.key = Some(key);
                             Ok(ctx)
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
@@ -241,8 +241,9 @@ where
                     let mut ke_pk = ed25519::PublicKey::default();
                     ctx.absorb(&mut ke_pk)?;
                     if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &ke_pk) {
-                        ctx.x25519(ke_sk, &mut self.key)?;
-                        key_found = true;
+                        let mut key = NBytes::<U32>::default();
+                        ctx.x25519(ke_sk, &mut key)?;
+                        self.key = Some(key);
                         // Save the relevant public key
                         self.ke_pk = ke_pk.clone();
                         self.ke_pks.push(ke_pk);
@@ -256,10 +257,14 @@ where
                     }
                 })
             })?
-            .guard(key_found, "Key not found")?
-            .absorb(External(&self.key))?
-            .ed25519(self.sig_pk, HashSig)?
-            .commit()?;
+            //.guard(self.key.is_some(), "Key not found")?
+        ;
+        if let Some(ref key) = self.key {
+            ctx
+                .absorb(External(key))?
+                .ed25519(self.sig_pk, HashSig)?
+                .commit()?;
+        }
         //
         Ok(ctx)
     }
