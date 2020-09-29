@@ -173,7 +173,7 @@ impl UserImp for Author {
         }
     }
 
-    fn unwrap_keyload(&mut self, _msg: Message) -> Result<()> {
+    fn unwrap_keyload(&mut self, _msg: Message) -> Result<bool> {
         bail!("Author cannot unwrap keyload message");
     }
 

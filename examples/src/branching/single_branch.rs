@@ -138,9 +138,9 @@ where
 
     println!("\nHandle Keyload");
     {
-        let resultC = subscriberC.receive_keyload(&previous_msg_link);
+        let resultC = subscriberC.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC.user);
-        ensure!(resultC.is_err(), "SubscriberC should not be able to unwrap the keyload");
+        ensure!(resultC == false, "SubscriberC should not be able to unwrap the keyload");
 
         subscriberA.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA.user);

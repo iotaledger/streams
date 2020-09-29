@@ -32,7 +32,7 @@ pub trait UserImp {
     fn tag_packet(&mut self, link_to: &Address, public_payload: &Bytes, masked_payload: &Bytes) -> Result<(WrappedMessage, Option<WrappedMessage>)>;
     fn unwrap_tagged_packet<'a>(&mut self, msg: Message) -> Result<(Bytes, Bytes)>;
     fn unwrap_signed_packet<'a>(&mut self, msg: Message) -> Result<(ed25519::PublicKey, Bytes, Bytes)>;
-    fn unwrap_keyload<'a>(&mut self, msg: Message) -> Result<()>;
+    fn unwrap_keyload<'a>(&mut self, msg: Message) -> Result<bool>;
 }
 
 pub trait AuthUser: UserImp {
@@ -279,7 +279,7 @@ where
         self.user.unwrap_announcement(msg)
     }
 
-    pub fn receive_keyload(&mut self, link: &Address) -> Result<()> {
+    pub fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         ensure!(self.user_type == UserType::Subscriber, "Only Subscribers can receive a Keyload");
         let msg = (&*self.transport).borrow_mut().recv_message(link)?;
         self.user.unwrap_keyload(msg)

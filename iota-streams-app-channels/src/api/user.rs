@@ -453,25 +453,30 @@ where
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         let preparsed = msg.parse_header()?;
 
         let content = self
             .unwrap_keyload(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
-        // Unwrapped nonce and key in content are not used explicitly.
-        // The resulting spongos state is joined into a protected message state.
-        // Store any unknown publishers
-        if let Some(appinst) = &self.appinst {
-            for ke_pk in content.ke_pks {
-                if self.pk_store.get(&ke_pk).is_none() {
-                    // Store at state 2 since 0 and 1 are reserved states
-                    self.pk_store.insert(ke_pk, SequencingState(appinst.rel().clone(), 2));
+
+        if content.key.is_some() {
+
+            // Unwrapped nonce and key in content are not used explicitly.
+            // The resulting spongos state is joined into a protected message state.
+            // Store any unknown publishers
+            if let Some(appinst) = &self.appinst {
+                for ke_pk in content.ke_pks {
+                    if self.pk_store.get(&ke_pk).is_none() {
+                        // Store at state 2 since 0 and 1 are reserved states
+                        self.pk_store.insert(ke_pk, SequencingState(appinst.rel().clone(), 2));
+                    }
                 }
             }
+            Ok(true)
+        } else {
+            Ok(false)
         }
-
-        Ok(())
     }
 
     /// Prepare SignedPacket message.

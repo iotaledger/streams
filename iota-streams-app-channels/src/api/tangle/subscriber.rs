@@ -136,9 +136,8 @@ impl UserImp for Subscriber {
 
 
     /// Handle keyload.
-    fn unwrap_keyload<'a>(&mut self, msg: Message) -> Result<()> {
-        self.imp.handle_keyload(msg, MsgInfo::Keyload)?;
-        Ok(())
+    fn unwrap_keyload<'a>(&mut self, msg: Message) -> Result<bool> {
+        self.imp.handle_keyload(msg, MsgInfo::Keyload)
     }
 
     /// Unwrap and verify signed packet.

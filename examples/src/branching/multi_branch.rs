@@ -128,13 +128,13 @@ where
         let msg_tag = subscriberA.receive_sequence(&keyload_link)?;
         print!("  Author     : {}", author.user);
 
-        let resultB = subscriberB.receive_keyload(&msg_tag);
+        let resultB = subscriberB.receive_keyload(&msg_tag)?;
         print!("  SubscriberB: {}", subscriberB.user);
-        ensure!(resultB.is_err(), "SubscriberB should not be able to unwrap the keyload");
+        ensure!(resultB == false, "SubscriberB should not be able to unwrap the keyload");
 
-        let resultC = subscriberC.receive_keyload(&msg_tag);
+        let resultC = subscriberC.receive_keyload(&msg_tag)?;
         print!("  SubscriberC: {}", subscriberC.user);
-        ensure!(resultC.is_err(), "SubscriberC should not be able to unwrap the keyload");
+        ensure!(resultC == false, "SubscriberC should not be able to unwrap the keyload");
 
         println!("Subscriber a unwrapping");
         subscriberA.receive_keyload(&msg_tag)?;
@@ -232,9 +232,9 @@ where
         let msg_tag = subscriberA.receive_sequence(&keyload_link)?;
         print!("  Author     : {}", author.user);
 
-        let resultC = subscriberC.receive_keyload(&msg_tag);
+        let resultC = subscriberC.receive_keyload(&msg_tag)?;
         print!("  SubscriberC: {}", subscriberC.user);
-        ensure!(resultC.is_err(), "SubscriberC should not be able to unwrap the keyload");
+        ensure!(resultC == false, "SubscriberC should not be able to unwrap the keyload");
         subscriberA.receive_keyload(&msg_tag)?;
         print!("  SubscriberA: {}", subscriberA.user);
         subscriberB.receive_keyload(&msg_tag)?;
