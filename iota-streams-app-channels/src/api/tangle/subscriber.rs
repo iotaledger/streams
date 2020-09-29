@@ -14,6 +14,7 @@ use crate::{
             User,
             user::UserInstance,
             MsgInfo,
+            MessageReturn,
         },
     },
 };
@@ -149,8 +150,12 @@ where
         self.user.store_state_for_all(link, seq_num)
     }
 
-    pub fn fetch_next_msgs(&mut self) -> Vec<(Option<ed25519::PublicKey>, Address, Bytes, Bytes)> {
+    pub fn fetch_next_msgs(&mut self) -> Vec<MessageReturn> {
         self.user.fetch_next_msgs()
+    }
+
+    pub fn receive_msg(&mut self, msg: Message, pk: Option<ed25519::PublicKey>) -> Result<MessageReturn> {
+        self.user.handle_message(msg, pk)
     }
 
 }

@@ -94,6 +94,25 @@ pub enum MsgInfo {
     Sequence,
 }
 
+
+pub struct MessageReturn {
+    pub pk: Option<PublicKey>,
+    pub link: Address,
+    pub public_payload: Bytes,
+    pub masked_payload: Bytes,
+}
+
+impl MessageReturn {
+    fn new(pk: Option<PublicKey>, link: Address, public_payload: Bytes, masked_payload: Bytes) -> Self {
+        Self {
+            pk,
+            link,
+            public_payload,
+            masked_payload
+        }
+    }
+}
+
 mod subscriber;
 /// Tangle-specific Channel Subscriber type.
 pub use subscriber::Subscriber;

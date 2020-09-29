@@ -18,6 +18,7 @@ use crate::{
             ddml_types::Bytes,
             DefaultF,
             MsgInfo,
+            MessageReturn,
         },
     },
     message,
@@ -131,7 +132,7 @@ where
         self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)
     }
 
-    pub fn handle_message(&mut self, found_msg: Message, pk: Option<PublicKey>) -> Result<(Option<PublicKey>, Address, Bytes, Bytes)> {
+    pub fn handle_message(&mut self, found_msg: Message, pk: Option<PublicKey>) -> Result<MessageReturn> {
         let mut msg = found_msg;
         let base_link = msg.link.clone();
         let mut next_link = base_link.clone();
@@ -146,18 +147,18 @@ where
             match preparsed.header.content_type {
                 message::SIGNED_PACKET => {
                     let content = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
-                    return Ok((Some(content.0), next_link.clone(), content.1, content.2))
+                    return Ok(MessageReturn::new(Some(content.0), next_link.clone(), content.1, content.2))
                 }
                 message::TAGGED_PACKET => {
-                    let content = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket);
-                    return Ok((pk, next_link.clone(), content.0, content.1))
+                    let content = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)?;
+                    return Ok(MessageReturn::new(pk, next_link.clone(), content.0, content.1))
                 }
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of
                     // the keyload itself. This is to prevent sequencing failures
                     let _content = self.user.handle_keyload(msg, MsgInfo::Keyload)?;
-                    return Ok((pk, next_link.clone(), Bytes(Vec::new()), Bytes(Vec::new())))
+                    return Ok(MessageReturn::new(pk, next_link.clone(), Bytes(Vec::new()), Bytes(Vec::new())))
                 }
                 message::SEQUENCE => {
                     let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
@@ -175,7 +176,7 @@ where
         Err(anyhow!("No message found"))
     }
 
-    pub fn fetch_next_msgs(&mut self) -> Vec<(Option<PublicKey>, Address, Bytes, Bytes)> {
+    pub fn fetch_next_msgs(&mut self) -> Vec<MessageReturn> {
         let ids = self.user.gen_next_msg_ids(self.user.is_multi_branching());
         let mut msgs = Vec::new();
 

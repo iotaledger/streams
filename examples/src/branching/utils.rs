@@ -22,8 +22,8 @@ where
         let msgs = subscriber.fetch_next_msgs();
         exists = false;
 
-        for (_pk, link, _public_payload, _private_payload) in msgs {
-            println!("Message exists at {}... ", &link.rel());
+        for msg in msgs {
+            println!("Message exists at {}... ", &msg.link.rel());
             exists = true;
         }
 
@@ -44,8 +44,8 @@ where
         let msgs = author.fetch_next_msgs();
         exists = false;
 
-        for (_pk, link, _public_payload, _private_payload) in msgs {
-            println!("Message exists at {}... ", &link.rel());
+        for msg in msgs {
+            println!("Message exists at {}... ", &msg.link.rel());
             exists = true;
         }
 
