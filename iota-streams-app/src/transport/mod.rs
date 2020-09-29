@@ -67,7 +67,6 @@ pub trait Transport<F, Link> // where Link: HasLink
     }
 }
 
-#[derive(Clone)]
 pub struct BucketTransport<F, Link> {
     bucket: HashMap<Link, Vec<BinaryMessage<F, Link>>>,
 }

@@ -4,7 +4,6 @@ use super::{
     PresharedKeyMap,
     PublicKeyMap,
     SequencingState,
-    MsgInfo,
 };
 use core::fmt;
 use iota_streams_app::{
@@ -81,6 +80,18 @@ pub use user::User;
 pub enum UserType {
     Author,
     Subscriber
+}
+
+/// Message associated info, just message type indicator.
+#[derive(Copy, Clone)]
+pub enum MsgInfo {
+    Announce,
+    Keyload,
+    SignedPacket,
+    TaggedPacket,
+    Subscribe,
+    Unsubscribe,
+    Sequence,
 }
 
 mod subscriber;

@@ -12,8 +12,12 @@ use core::cell::RefCell;
 
 use crate::{
     api::{
-        Transport,
-        tangle::ddml_types::Bytes,
+        transport::Transport,
+        tangle::{
+            ddml_types::Bytes,
+            DefaultF,
+            MsgInfo,
+        },
     },
     message,
 };

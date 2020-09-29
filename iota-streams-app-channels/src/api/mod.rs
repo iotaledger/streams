@@ -25,7 +25,6 @@ use iota_streams_app::transport::tangle::{
     DefaultTangleLinkGenerator,
     TangleAddress,
 };
-use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 
 pub trait ChannelLinkGenerator<Link>
 where
@@ -140,42 +139,8 @@ impl PresharedKeyStore for PresharedKeyMap {
 
 pub mod user;
 
-// Generic Channel Author API.
-// pub mod author;
-//
-// Generic Channel Subscriber API.
-// pub mod subscriber;
-
 #[cfg(all(feature = "tangle"))]
 impl<F> ChannelLinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> where F: PRP {}
-
-/// Message associated info, just message type indicator.
-#[derive(Copy, Clone)]
-pub enum MsgInfo {
-    Announce,
-    Keyload,
-    SignedPacket,
-    TaggedPacket,
-    Subscribe,
-    Unsubscribe,
-    Sequence,
-}
-
-pub type DefaultF = KeccakF1600;
-pub trait Transport<F, Link>: transport::Transport<F, Link>
-where
-    F: PRP,
-    Link: HasLink,
-{}
-
-
-#[cfg(all(feature = "tangle"))]
-impl<F, T, Link> Transport<F, Link> for T
-where
-    F: PRP,
-    Link: HasLink,
-    T: transport::Transport<F, Link>,
-{}
 
 /// Tangle-specific Channel API.
 #[cfg(all(feature = "tangle"))]

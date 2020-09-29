@@ -9,8 +9,10 @@ use super::*;
 use crate::{
     api::{
         user::User,
-        tangle::user::SubUser,
-        MsgInfo,
+        tangle::{
+            user::SubUser,
+            MsgInfo,
+        },
     },
 };
 use iota_streams_app::message::{
