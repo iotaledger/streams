@@ -131,12 +131,10 @@ where
         self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)
     }
 
-    pub fn handle_message(&mut self, found_msg: Message, pk: Option<PublicKey>) -> Option<(Option<PublicKey>, Address, Bytes, Bytes)> {
+    pub fn handle_message(&mut self, found_msg: Message, pk: Option<PublicKey>) -> Result<(Option<PublicKey>, Address, Bytes, Bytes)> {
         let mut msg = found_msg;
         let base_link = msg.link.clone();
-
         let mut next_link = base_link.clone();
-        let mut unwrapped_content: Option<(Option<PublicKey>, Address, Bytes, Bytes)> = None;
 
         loop {
             let preparsed = msg.parse_header();
@@ -147,57 +145,34 @@ where
             let preparsed = preparsed.unwrap();
             match preparsed.header.content_type {
                 message::SIGNED_PACKET => {
-                    println!("Signed");
-                    let content = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket);
-                    if content.is_ok() {
-                        let content = content.unwrap();
-                        unwrapped_content = Some((Some(content.0), next_link.clone(), content.1, content.2));
-                    }
-                    break;
+                    let content = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
+                    return Ok((Some(content.0), next_link.clone(), content.1, content.2))
                 }
                 message::TAGGED_PACKET => {
                     let content = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket);
-                    if content.is_ok() {
-                        let content = content.unwrap();
-                        unwrapped_content = Some((pk, next_link.clone(), content.0, content.1));
-                    }
-                    break;
+                    return Ok((pk, next_link.clone(), content.0, content.1))
                 }
                 message::KEYLOAD => {
-                    let _unwrapped = self.user.handle_keyload(msg, MsgInfo::Keyload);
-                    unwrapped_content = Some((pk, next_link.clone(), Bytes(Vec::new()), Bytes(Vec::new())));
-                    break;
+                    // So long as the unwrap has not failed, we will return a blank object to
+                    // inform the user that a message was present, even if the use wasn't part of
+                    // the keyload itself. This is to prevent sequencing failures
+                    let _content = self.user.handle_keyload(msg, MsgInfo::Keyload)?;
+                    return Ok((pk, next_link.clone(), Bytes(Vec::new()), Bytes(Vec::new())))
                 }
                 message::SEQUENCE => {
-                    let msg_link = self.user.handle_sequence(msg, MsgInfo::Sequence);
-                    match msg_link.is_ok() {
-                        true => {
-                            let unwrapped = msg_link.unwrap();
-                            let msg_link = self
-                                .user
-                                .link_gen
-                                .link_from((&unwrapped.ref_link, &unwrapped.pk, unwrapped.seq_num.0));
-
-                            let next_msg = (&*self.transport).borrow_mut().recv_message(&msg_link);
-                            match next_msg.is_ok() {
-                                true => {
-                                    msg = next_msg.unwrap();
-                                    self.user.store_state(pk.unwrap().clone(), next_link.msgid);
-                                    next_link = msg_link;
-                                }
-                                false => { break; }
-                            }
-                        }
-                        false => { break; }
-                    }
+                    let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
+                    let msg_link = self.user.link_gen.link_from((&unwrapped.ref_link, &unwrapped.pk, unwrapped.seq_num.0));
+                    msg = (&*self.transport).borrow_mut().recv_message(&msg_link)?;
+                    self.user.store_state(pk.unwrap().clone(), next_link.msgid);
+                    next_link = msg_link;
                 }
                 _ => {
-                    break;
+                    return Err(anyhow!("Not a recognised message type..."))
                 }
             };
         };
 
-        unwrapped_content
+        Err(anyhow!("No message found"))
     }
 
     pub fn fetch_next_msgs(&mut self) -> Vec<(Option<PublicKey>, Address, Bytes, Bytes)> {
@@ -209,12 +184,12 @@ where
 
             if msg.is_ok() {
                 let msg = self.handle_message(msg.unwrap(), Some(pk));
-                if msg.is_some() {
+                if let Ok(msg) = msg {
                     if !self.user.is_multi_branching() {
                         self.user.store_state_for_all(link.msgid, seq);
                     }
 
-                    msgs.push(msg.unwrap());
+                    msgs.push(msg);
                 }
             }
         }
