@@ -1,52 +1,52 @@
 //! Customize Author with default implementation for use over the Tangle.
 
 use anyhow::{
-    anyhow,
     Result,
-    bail,
 };
 use core::{
     fmt,
+    cell::RefCell,
 };
 
 use super::*;
 use crate::{
     api::{
-        user::User,
         tangle::{
-            user::{AuthUser, UserImp},
+            User,
+            user::{
+                UserInstance,
+            },
             MsgInfo,
         },
     },
 };
-use iota_streams_app::message::{
-    HasLink as _,
-    LinkGenerator as _,
-};
 
 use iota_streams_core::{
-    prelude::Vec,
+    prelude::{Vec, Rc},
     prng,
 };
 use iota_streams_core_edsig::signature::ed25519;
 
-type AuthorImp = User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
-
 /// Author type.
-pub struct Author {
-    imp: AuthorImp,
+pub struct Author<T: Transport> {
+    user: User<T>,
 }
 
-impl Author {
+impl<T: Transport> Author<T>
+where
+    T::RecvOptions: Copy + Default,
+    T::SendOptions: Copy + Default,
+{
     /// Create a new Author instance, generate new MSS keypair and optionally NTRU keypair.
     pub fn new(
         seed: &str,
         encoding: &str,
         payload_length: usize,
         multi_branching: bool,
+        transport: Rc<RefCell<T>>,
     ) -> Self {
         let nonce = "TANGLEAUTHORNONCE".as_bytes().to_vec();
-        let mut imp = AuthorImp::gen(
+        let mut user = UserInstance::gen(
             prng::dbg_init_str(seed),
             nonce,
             if multi_branching { 1 } else { 0 },
@@ -54,157 +54,114 @@ impl Author {
             payload_length,
         );
         let channel_idx = 0_u64;
-        let _ = imp.create_channel(channel_idx);
-        Self { imp }
+        let _ = user.create_channel(channel_idx);
+        Self { user: User { user, transport } }
     }
-}
 
-impl AuthUser for Author {
     /// Announce creation of a new Channel.
-    fn announce(&mut self) -> Result<WrappedMessage> {
-        self.imp.announce()
+    pub fn send_announce(&mut self) -> Result<Address> {
+        self.user.send_announce()
     }
     /// Create a new keyload for a list of subscribers.
-    fn share_keyload(
+    pub fn send_keyload(
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
         ke_pks: &Vec<ed25519::PublicKey>,
-    ) -> Result<(WrappedMessage, Option<WrappedMessage>)> {
-        let keyload = self
-            .imp
-            .share_keyload(link_to.rel(), psk_ids, ke_pks)
-            .unwrap();
-        let seq = self.imp.send_sequence(link_to.rel())?;
-        Ok((keyload, seq))
+    ) -> Result<(Address, Option<Address>)> {
+        self.user.send_keyload(link_to, psk_ids, ke_pks)
     }
 
     /// Create keyload for all subscribed subscribers.
-    fn share_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(WrappedMessage, Option<WrappedMessage>)> {
-        let keyload = self
-            .imp
-            .share_keyload_for_everyone(link_to.rel())
-            .unwrap();
-        let seq = self.imp.send_sequence(link_to.rel())?;
-        Ok((keyload, seq))
+    pub fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
+        self.user.send_keyload_for_everyone(link_to)
     }
 
     /// Subscribe a new subscriber.
-     fn unwrap_subscribe<'a>(&mut self, msg: Message) -> Result<()> {
-        self.imp.handle_subscribe(msg, MsgInfo::Subscribe)
+     pub fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
+        self.user.receive_subscribe(link)
     }
 
     // Unsubscribe a subscriber
-    // pub fn unwrap_unsubscribe<'a>(&mut self, link: Address) -> Result<()> {
-    // self.imp.handle_unsubscribe(link, MsgInfo::Unsubscribe)
+    // pub pub fn receive_unsubscribe(&mut self, link: Address) -> Result<()> {
+    // self.user.handle_unsubscribe(link, MsgInfo::Unsubscribe)
     // }
-}
 
-impl UserImp for Author {
     /// Channel app instance.
-    fn channel_address(&self) -> Option<&ChannelAddress> {
-        self.imp.appinst.as_ref().map(|x| &x.appinst)
+    pub fn channel_address(&self) -> Option<&ChannelAddress> {
+        self.user.channel_address()
     }
 
-    fn get_pk(&self) -> &ed25519::PublicKey {
-        &self.imp.sig_kp.public
+    pub fn get_pk(&self) -> &ed25519::PublicKey {
+        self.user.get_pk()
     }
 
-    fn commit_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<()> {
-        self.imp.commit_message(msg, info)
+    pub fn commit_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<Address> {
+        self.user.commit_message(msg, info)
     }
 
     /// Create a signed packet.
-    fn sign_packet(
+    pub fn send_signed_packet(
         &mut self,
         link_to: &Address,
         public_payload: &Bytes,
         masked_payload: &Bytes,
-    ) -> Result<(WrappedMessage, Option<WrappedMessage>)> {
-        let signed = self
-            .imp
-            .sign_packet(link_to.rel(), public_payload, masked_payload)
-            .unwrap();
-        let seq = self.imp.send_sequence(link_to.rel())?;
-        Ok((signed, seq))
+    ) -> Result<(Address, Option<Address>)> {
+        self.user.send_signed_packet(link_to, public_payload, masked_payload)
     }
 
     /// Create a tagged packet.
-    fn tag_packet(
+    pub fn send_tagged_packet(
         &mut self,
         link_to: &Address,
         public_payload: &Bytes,
         masked_payload: &Bytes,
-    ) -> Result<(WrappedMessage, Option<WrappedMessage>)> {
-        let tagged = self
-            .imp
-            .tag_packet(link_to.rel(), public_payload, masked_payload)
-            .unwrap();
-        let seq = self.imp.send_sequence(link_to.rel())?;
-        Ok((tagged, seq))
+    ) -> Result<(Address, Option<Address>)> {
+        self.user.send_tagged_packet(link_to, public_payload, masked_payload)
     }
 
     /// Unwrap tagged packet.
-    fn unwrap_tagged_packet<'a>(&mut self, msg: Message) -> Result<(Bytes, Bytes)> {
-        self.imp.handle_tagged_packet(msg, MsgInfo::TaggedPacket)
+    pub fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
+        self.user.receive_tagged_packet(link)
     }
 
     /// Unwrap and verify signed packet.
-    fn unwrap_signed_packet<'a>(&mut self, msg: Message) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
-        self.imp.handle_signed_packet(msg, MsgInfo::SignedPacket)
+    pub fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
+        self.user.receive_signed_packet(link)
     }
 
-    fn unwrap_sequence<'a>(&mut self, msg: Message) -> Result<Address> {
-        if let Some(_addr) = &self.imp.appinst {
-            let seq_link = msg.link.clone();
-            let seq_msg = self.imp.handle_sequence(msg, MsgInfo::Sequence)?;
-            let msg_id = self
-                .imp
-                .link_gen
-                .link_from((&seq_msg.ref_link, &seq_msg.pk, seq_msg.seq_num.0));
-
-            if self.is_multi_branching() {
-                self.store_state(seq_msg.pk, seq_link)
-            } else {
-                self.store_state_for_all(seq_link, seq_msg.seq_num.0)
-            }
-
-            Ok(msg_id)
-        } else {
-            Err(anyhow!("No channel registered"))
-        }
+    pub fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
+        self.user.receive_sequence(link)
     }
 
-    fn unwrap_keyload(&mut self, _msg: Message) -> Result<bool> {
-        bail!("Author cannot unwrap keyload message");
+    pub fn is_multi_branching(&self) -> bool {
+        self.user.is_multi_branching()
     }
 
-    fn is_multi_branching(&self) -> bool {
-        self.imp.is_multi_branching()
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Address>)> {
+        self.user.gen_next_msg_ids(branching)
     }
 
-    fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Address>)> {
-        self.imp.gen_next_msg_ids(branching)
+    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) {
+        self.user.store_state(pk, link)
     }
 
-    fn store_state(&mut self, pk: ed25519::PublicKey, link: Address) {
-        // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.imp.store_state(pk, link.msgid)
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u64) {
+        self.user.store_state_for_all(link, seq_num)
     }
 
-    fn store_state_for_all(&mut self, link: Address, seq_num: u64) {
-        // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.imp.store_state_for_all(link.msgid, seq_num)
+    pub fn fetch_next_msgs(&mut self) -> Vec<(Option<ed25519::PublicKey>, Address, Bytes, Bytes)> {
+        self.user.fetch_next_msgs()
     }
 }
 
-impl fmt::Display for Author {
+impl<T: Transport> fmt::Display for Author<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.imp.sig_kp.public.as_bytes()),
-            self.imp.pk_store
+            hex::encode(self.user.user.sig_kp.public.as_bytes()),
+            self.user.user.pk_store
         )
     }
 }

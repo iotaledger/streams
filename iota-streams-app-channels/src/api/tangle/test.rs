@@ -2,9 +2,7 @@
 use crate::{
     api::{
         tangle::{
-            self,
             Address,
-            User,
             Author,
             Subscriber,
             DefaultF,
@@ -33,7 +31,7 @@ use iota_streams_core::{
 use std::cell::RefCell;
 use iota_streams_ddml::types::*;
 
-pub fn example<T: Transport<DefaultF, Address>>(transport: T, recv_opt: T::RecvOptions, send_opt: T::SendOptions) -> Result<()>
+pub fn example<T: Transport<DefaultF, Address>>(transport: T, _recv_opt: T::RecvOptions, _send_opt: T::SendOptions) -> Result<()>
 where
     T::SendOptions: Default + Copy,
     T::RecvOptions: Default + Copy,
@@ -42,29 +40,11 @@ where
     let multi_branching = false;
     let transport = Rc::new(RefCell:: new(transport));
 
-    let mut author = User {
-        user: Author::new("AUTHOR9SEED", encoding, PAYLOAD_BYTES, multi_branching),
-        transport: transport.clone(),
-        _recv_opt: recv_opt,
-        _send_opt: send_opt,
-        user_type: tangle::UserType::Author
-    };
+    let mut author = Author::new("AUTHOR9SEED", encoding, PAYLOAD_BYTES, multi_branching, transport.clone());
 
-    let mut subscriberA = User {
-        user: Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES),
-        transport: transport.clone(),
-        _recv_opt: recv_opt,
-        _send_opt: send_opt,
-        user_type: tangle::UserType::Subscriber
-    };
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone());
 
-    let mut subscriberB = User {
-        user: Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES),
-        transport: transport.clone(),
-        _recv_opt: recv_opt,
-        _send_opt: send_opt,
-        user_type: tangle::UserType::Subscriber,
-    };
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES, transport.clone());
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());

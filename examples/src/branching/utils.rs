@@ -3,15 +3,15 @@ use iota_streams::{
     app_channels::{
         api::{
             tangle::{
-                User,
-                user::UserImp,
                 Transport,
+                Author,
+                Subscriber
             },
         },
     },
 };
 
-pub fn s_fetch_next_messages<T: Transport, U: UserImp>(subscriber: &mut User<T, U>)
+pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
 where
     T::RecvOptions: Copy + Default,
     T::SendOptions: Copy + Default,
@@ -33,7 +33,7 @@ where
     }
 }
 
-pub fn a_fetch_next_messages<T: Transport, U: UserImp>(author: &mut User<T, U>)
+pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>)
 where
     T::RecvOptions: Copy + Default,
     T::SendOptions: Copy + Default,

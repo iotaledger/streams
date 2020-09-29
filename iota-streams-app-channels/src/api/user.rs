@@ -176,9 +176,10 @@ where
         &'a mut self,
         msg: WrappedMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<()>{
+    ) -> Result<Link>{
+        let link = msg.message.link.clone();
         msg.commit(self.link_store.borrow_mut(), info)?;
-        Ok(())
+        Ok(link)
     }
 
     pub fn unwrap_announcement<'a>(

@@ -3,193 +3,165 @@
 use anyhow::Result;
 use core::{
     fmt,
+    cell::RefCell,
 };
 
 use super::*;
 use crate::{
     api::{
-        user::User,
+        //user::User,
         tangle::{
-            user::SubUser,
+            User,
+            user::UserInstance,
             MsgInfo,
         },
     },
 };
-use iota_streams_app::message::{
-    HasLink as _,
-    LinkGenerator as _,
-};
 
 use iota_streams_core::{
-    prelude::Vec,
+    prelude::{Vec, Rc},
     prng,
 };
 use iota_streams_core_edsig::signature::ed25519;
-use crate::api::tangle::user::UserImp;
-
-type SubscriberImp = User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
 /// Subscriber type.
-pub struct Subscriber {
-    imp: SubscriberImp,
+pub struct Subscriber<T: Transport> {
+    user: User<T>,
 }
 
-impl Subscriber {
+impl<T: Transport> Subscriber<T>
+where
+    T::RecvOptions: Copy + Default,
+    T::SendOptions: Copy + Default,
+{
     /// Create a new Subscriber instance, optionally generate NTRU keypair.
     pub fn new(
         seed: &str,
         encoding: &str,
         payload_length: usize,
+        transport: Rc<RefCell<T>>
     ) -> Self {
         let nonce = "TANGLESUBSCRIBERNONCE".as_bytes().to_vec();
-        let imp = SubscriberImp::gen(
+        let user = UserInstance::gen(
             prng::dbg_init_str(seed),
             nonce,
             0,
             encoding.as_bytes().to_vec(),
             payload_length,
         );
-        Self {
-            imp,
-        }
+        Self { user: User { user: user, transport} }
     }
-}
 
-impl SubUser for Subscriber {
     /// Ie. has Announce message been handled?
-    fn is_registered(&self) -> bool {
-        self.imp.appinst.is_some()
+    pub fn is_registered(&self) -> bool {
+        self.user.is_registered()
     }
 
     /// Just clear inner state except for own keys and link store.
-    fn unregister(&mut self) {
-        self.imp.appinst = None;
-        self.imp.author_sig_pk = None;
+    pub fn unregister(&mut self) {
+        self.user.unregister()
     }
 
     /// Subscribe to a Channel app instance.
-    fn subscribe(&mut self, link_to: &Address) -> Result<WrappedMessage> {
-        // TODO: remove link_to
-        let subscribe = self.imp.subscribe(link_to.rel())?;
-        Ok(subscribe)
+    pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
+        self.user.send_subscribe(link_to)
     }
 
     /// Handle Channel app instance announcement.
-    fn unwrap_announcement<'a>(&mut self, msg: Message) -> Result<()> {
-        self.imp.handle_announcement(msg, MsgInfo::Announce)?;
-        Ok(())
+    pub fn receive_announcement(&mut self, link: &Address) -> Result<()> {
+        self.user.receive_announcement(link)
     }
 
-}
-
-impl UserImp for Subscriber {
-    fn get_pk(&self) -> &ed25519::PublicKey {
-        &self.imp.sig_kp.public
+    pub fn get_pk(&self) -> &ed25519::PublicKey {
+        self.user.get_pk()
     }
 
     /// Return Channel app instance.
-    fn channel_address(&self) -> Option<&ChannelAddress> {
-        self.imp.appinst.as_ref().map(|tangle_address| &tangle_address.appinst)
+    pub fn channel_address(&self) -> Option<&ChannelAddress> {
+        self.user.channel_address()
     }
 
-    fn is_multi_branching(&self) -> bool {
-        self.imp.is_multi_branching()
+    pub fn is_multi_branching(&self) -> bool {
+        self.user.is_multi_branching()
     }
 
-    fn commit_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<()> {
-        self.imp.commit_message(msg, info)
+    pub fn commit_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<Address> {
+        self.user.commit_message(msg, info)
     }
 
     /// Create tagged packet.
-    fn tag_packet(
+    pub fn send_tagged_packet(
         &mut self,
         link_to: &Address,
         public_payload: &Bytes,
         masked_payload: &Bytes,
-    ) -> Result<(WrappedMessage, Option<WrappedMessage>)> {
-        let tagged = self
-            .imp
-            .tag_packet(link_to.rel(), public_payload, masked_payload)
-            .unwrap();
-        let seq = self.imp.send_sequence(link_to.rel())?;
-        Ok((tagged, seq))
+    ) -> Result<(Address, Option<Address>)> {
+        self.user.send_tagged_packet(link_to, public_payload, masked_payload)
     }
 
     /// Create signed packet.
-    fn sign_packet(
+    pub fn send_signed_packet(
         &mut self,
         link_to: &Address,
         public_payload: &Bytes,
         masked_payload: &Bytes,
-    ) -> Result<(WrappedMessage, Option<WrappedMessage>)> {
-        let signed = self
-            .imp
-            .sign_packet(link_to.rel(), public_payload, masked_payload)
-            .unwrap();
-        let seq = self.imp.send_sequence(link_to.rel())?;
-        Ok((signed, seq))
+    ) -> Result<(Address, Option<Address>)> {
+        self.user.send_signed_packet(link_to, public_payload, masked_payload)
     }
 
     // Unsubscribe from the Channel app instance.
-    // pub fn unsubscribe(&mut self, link_to: &Address) -> Result<Message> {
+    // pub pub fn unsubscribe(&mut self, link_to: &Address) -> Result<Message> {
     // TODO: lookup link_to Subscribe message.
-    // self.imp.unsubscribe(link_to.rel(), MsgInfo::Unsubscribe)
+    // self.user.unsubscribe(link_to.rel(), MsgInfo::Unsubscribe)
     // }
 
 
     /// Handle keyload.
-    fn unwrap_keyload<'a>(&mut self, msg: Message) -> Result<bool> {
-        self.imp.handle_keyload(msg, MsgInfo::Keyload)
+    pub fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
+        self.user.receive_keyload(link)
     }
 
     /// Unwrap and verify signed packet.
-    fn unwrap_signed_packet<'a>(&mut self, msg: Message) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
-        self.imp.handle_signed_packet(msg, MsgInfo::SignedPacket)
+    pub fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
+        self.user.receive_signed_packet(link)
+
     }
 
     /// Unwrap and verify tagged packet.
-    fn unwrap_tagged_packet<'a>(&mut self, msg: Message) -> Result<(Bytes, Bytes)> {
-        self.imp.handle_tagged_packet(msg, MsgInfo::TaggedPacket)
+    pub fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
+        self.user.receive_tagged_packet(link)
+
     }
 
-    fn unwrap_sequence<'a>(&mut self, msg: Message) -> Result<Address> {
-        let seq_link = msg.link.clone();
-        let seq_msg = self.imp.handle_sequence(msg, MsgInfo::Sequence)?;
-        let msg_id = self
-            .imp
-            .link_gen
-            .link_from((&seq_msg.ref_link, &seq_msg.pk, seq_msg.seq_num.0));
-
-        if self.is_multi_branching() {
-            self.store_state(seq_msg.pk, seq_link)
-        } else {
-            self.store_state_for_all(seq_link, seq_msg.seq_num.0)
-        }
-
-        Ok(msg_id)
+    pub fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
+        self.user.receive_sequence(link)
     }
 
-    fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Address>)> {
-        self.imp.gen_next_msg_ids(branching)
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Address>)> {
+        self.user.gen_next_msg_ids(branching)
     }
-    fn store_state(&mut self, pk: ed25519::PublicKey, link: Address) {
+    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.imp.store_state(pk, link.msgid)
+        self.user.store_state(pk, link)
     }
-    fn store_state_for_all(&mut self, link: Address, seq_num: u64) {
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u64) {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.imp.store_state_for_all(link.msgid, seq_num)
+        self.user.store_state_for_all(link, seq_num)
+    }
+
+    pub fn fetch_next_msgs(&mut self) -> Vec<(Option<ed25519::PublicKey>, Address, Bytes, Bytes)> {
+        self.user.fetch_next_msgs()
     }
 
 }
 
-impl fmt::Display for Subscriber {
+impl<T: Transport> fmt::Display for Subscriber<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.imp.sig_kp.public.as_bytes()),
-            self.imp.pk_store
+            hex::encode(self.user.user.sig_kp.public.as_bytes()),
+            self.user.user.pk_store
         )
     }
 }
