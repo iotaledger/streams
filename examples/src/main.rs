@@ -25,8 +25,8 @@ fn run_single_branch_test<T: Transport>(
     recv_opt: T::RecvOptions,
     seed: &str,
 ) where
-    T::SendOptions: Copy,
-    T::RecvOptions: Copy,
+    T::SendOptions: Copy + Default,
+    T::RecvOptions: Copy + Default,
 {
     println!("\tRunning Single Branch Test, seed: {}", seed);
     match branching::single_branch::example(transport, send_opt, recv_opt, false, seed) {
@@ -42,8 +42,8 @@ fn run_multi_branch_test<T: Transport>(
     recv_opt: T::RecvOptions,
     seed: &str,
 ) where
-    T::SendOptions: Copy,
-    T::RecvOptions: Copy,
+    T::SendOptions: Copy + Default,
+    T::RecvOptions: Copy + Default,
 {
     println!("\tRunning Multi Branch Test, seed: {}", seed);
     match branching::multi_branch::example(transport, send_opt, recv_opt, true, seed) {
@@ -55,8 +55,8 @@ fn run_multi_branch_test<T: Transport>(
 
 fn run_main<T: Transport>(transport: T, send_opt: T::SendOptions, recv_opt: T::RecvOptions) -> Result<()>
 where
-    T::SendOptions: Copy,
-    T::RecvOptions: Copy,
+    T::SendOptions: Copy + Default,
+    T::RecvOptions: Copy + Default,
 {
     let seed1: &str = "SEEDSINGLE";
     let seed2: &str = "SEEDMULTI9";
@@ -115,6 +115,6 @@ fn main_client() {
 }
 
 fn main() {
-    //main_pure();
-    main_client();
+    main_pure();
+    //main_client();
 }

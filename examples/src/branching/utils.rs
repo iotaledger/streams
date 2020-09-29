@@ -3,22 +3,23 @@ use iota_streams::{
     app_channels::{
         api::{
             tangle::{
-                Author,
-                Subscriber,
+                User,
+                user::UserImp,
                 Transport,
             },
         },
     },
 };
 
-pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
+pub fn s_fetch_next_messages<T: Transport, U: UserImp>(subscriber: &mut User<T, U>)
 where
-    T::RecvOptions: Copy,
+    T::RecvOptions: Copy + Default,
+    T::SendOptions: Copy + Default,
 {
     let mut exists = true;
 
     while exists {
-        let msgs = subscriber.fetch_next_msgs().unwrap();
+        let msgs = subscriber.fetch_next_msgs();
         exists = false;
 
         for (_pk, link, _public_payload, _private_payload) in msgs {
@@ -32,14 +33,15 @@ where
     }
 }
 
-pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>)
+pub fn a_fetch_next_messages<T: Transport, U: UserImp>(author: &mut User<T, U>)
 where
-    T::RecvOptions: Copy,
+    T::RecvOptions: Copy + Default,
+    T::SendOptions: Copy + Default,
 {
     let mut exists = true;
 
     while exists {
-        let msgs = author.fetch_next_msgs().unwrap();
+        let msgs = author.fetch_next_msgs();
         exists = false;
 
         for (_pk, link, _public_payload, _private_payload) in msgs {

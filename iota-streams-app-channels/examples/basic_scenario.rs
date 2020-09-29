@@ -1,5 +1,11 @@
 use iota::client as iota_client;
-use iota_streams_app_channels::api::tangle::test::example;
+use iota_streams_app_channels::api::tangle::{
+    test::example,
+    user::{
+        UserImp, AuthUser, SubUser,
+    },
+    Transport,
+};
 use iota_streams_app::transport::tangle::client::{SendTrytesOptions, RecvOptions};
 
 fn main() {
@@ -11,3 +17,4 @@ fn main() {
     let transport = iota_client::Client::get();
     assert!(dbg!(example(transport, RecvOptions{flags: 0}, send_opt)).is_ok());
 }
+

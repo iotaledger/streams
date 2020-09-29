@@ -8,6 +8,9 @@ use iota_streams::{
             Author,
             Subscriber,
             Transport,
+            User,
+            user::UserImp,
+            UserType
         },
     },
     core::{
@@ -35,44 +38,50 @@ pub fn example<T: Transport>(
     seed: &str,
 ) -> Result<()>
 where
-    T::SendOptions: Copy,
-    T::RecvOptions: Copy,
+    T::SendOptions: Copy + Default,
+    T::RecvOptions: Copy + Default,
 {
     let encoding = "utf-8";
-    let mut author = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching, transport.clone(), recv_opt, send_opt);
-    println!("Author multi branching?: {}", author.is_multi_branching());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone(), recv_opt, send_opt);
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES, transport.clone(), recv_opt, send_opt);
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", encoding, PAYLOAD_BYTES, transport.clone(), recv_opt, send_opt);
+    let author_imp = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching);
+    println!("Author multi branching?: {}", author_imp.is_multi_branching());
+
+    let subA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES);
+    let subB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES);
+    let subC = Subscriber::new("SUBSCRIBERC9SEED", encoding, PAYLOAD_BYTES);
+
+    let mut author = User { user: author_imp, transport: transport.clone(), _recv_opt: recv_opt, _send_opt: send_opt, user_type: UserType::Author };
+    let mut subscriberA = User { user: subA, transport: transport.clone(), _recv_opt: recv_opt, _send_opt: send_opt, user_type: UserType::Subscriber };
+    let mut subscriberB = User { user: subB, transport: transport.clone(), _recv_opt: recv_opt, _send_opt: send_opt, user_type: UserType::Subscriber };
+    let mut subscriberC = User { user: subC, transport: transport.clone(), _recv_opt: recv_opt, _send_opt: send_opt, user_type: UserType::Subscriber };
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
 
     println!("\nAnnounce Channel");
     let announcement_link = {
-        let msg = author.announce()?;
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        print!("  Author     : {}", author);
-        msg.link
+        let msg = author.send_announce()?;
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        print!("  Author     : {}", author.user);
+        msg
     };
 
     println!("\nHandle Announce Channel");
     {
-        subscriberA.unwrap_announcement(announcement_link.clone())?;
-        print!("  SubscriberA: {}", subscriberA);
+        subscriberA.receive_announcement(&announcement_link)?;
+        print!("  SubscriberA: {}", subscriberA.user);
         ensure!(
             (author.channel_address() == subscriberA.channel_address()),
             "SubscriberA channel address does not match Author channel address"
         );
-        subscriberB.unwrap_announcement(announcement_link.clone())?;
-        print!("  SubscriberB: {}", subscriberB);
+        subscriberB.receive_announcement(&announcement_link)?;
+        print!("  SubscriberB: {}", subscriberB.user);
         ensure!(
             subscriberA.channel_address() == subscriberB.channel_address(),
             "SubscriberB channel address does not match Author channel address"
         );
-        subscriberC.unwrap_announcement(announcement_link.clone())?;
-        print!("  SubscriberC: {}", subscriberC);
+        subscriberC.receive_announcement(&announcement_link)?;
+        print!("  SubscriberC: {}", subscriberC.user);
         ensure!(
             subscriberA.channel_address() == subscriberC.channel_address(),
             "SubscriberC channel address does not match Author channel address"
@@ -92,44 +101,44 @@ where
 
     println!("\nSubscribe A");
     let subscribeA_link = {
-        let msg = subscriberA.subscribe(&announcement_link)?;
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        print!("  SubscriberA: {}", subscriberA);
-        msg.link
+        let msg = subscriberA.send_subscribe(&announcement_link)?;
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        print!("  SubscriberA: {}", subscriberA.user);
+        msg
     };
 
     println!("\nHandle Subscribe A");
     {
-        author.unwrap_subscribe(subscribeA_link.clone())?;
-        print!("  Author     : {}", author);
+        author.receive_subscribe(&subscribeA_link)?;
+        print!("  Author     : {}", author.user);
     }
 
     println!("\nShare keyload for everyone [SubscriberA]");
     let keyload_link = {
-        let (msg, seq) = author.share_keyload_for_everyone(&announcement_link)?;
+        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.link.msgid, seq);
-        print!("  Author     : {}", author);
-        seq.link
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        print!("  Author     : {}", author.user);
+        seq
     };
 
     println!("\nHandle Share keyload for everyone [SubscriberA]: {}", &keyload_link);
     {
-        let msg_tag = author.unwrap_sequence(keyload_link.clone())?;
-        print!("  Author     : {}", author);
+        let msg_tag = subscriberA.receive_sequence(&keyload_link)?;
+        print!("  Author     : {}", author.user);
 
-        let resultB = subscriberB.unwrap_keyload(msg_tag.clone());
-        print!("  SubscriberB: {}", subscriberB);
+        let resultB = subscriberB.receive_keyload(&msg_tag);
+        print!("  SubscriberB: {}", subscriberB.user);
         ensure!(resultB.is_err(), "SubscriberB should not be able to unwrap the keyload");
 
-        let resultC = subscriberC.unwrap_keyload(msg_tag.clone());
-        print!("  SubscriberC: {}", subscriberC);
+        let resultC = subscriberC.receive_keyload(&msg_tag);
+        print!("  SubscriberC: {}", subscriberC.user);
         ensure!(resultC.is_err(), "SubscriberC should not be able to unwrap the keyload");
 
         println!("Subscriber a unwrapping");
-        subscriberA.unwrap_keyload(msg_tag.clone())?;
-        print!("  SubscriberA: {}", subscriberA);
+        subscriberA.receive_keyload(&msg_tag)?;
+        print!("  SubscriberA: {}", subscriberA.user);
     }
 
     println!("\nSubscriber A fetching transactions...");
@@ -137,33 +146,33 @@ where
 
     println!("\nTagged packet 1 - SubscriberA");
     let tagged_packet_link = {
-        let (msg, seq) = subscriberA.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = subscriberA.send_tagged_packet(&keyload_link, &public_payload, &masked_payload)?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.link.msgid, seq);
-        print!("  SubscriberA: {}", subscriberA);
-        seq.link
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        print!("  SubscriberA: {}", subscriberA.user);
+        seq
     };
 
     println!("\nHandle Tagged packet 1 - SubscriberA");
     {
-        let msg_tag = subscriberA.unwrap_sequence(tagged_packet_link.clone())?;
-        print!("  SubscriberA: {}", subscriberA);
+        let msg_tag = subscriberA.receive_sequence(&tagged_packet_link)?;
+        print!("  SubscriberA: {}", subscriberA.user);
 
-        let (unwrapped_public, unwrapped_masked) = author.unwrap_tagged_packet(msg_tag.clone())?;
-        print!("  Author     : {}", author);
+        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
+        print!("  Author     : {}", author.user);
         ensure!(public_payload == unwrapped_public, "Public payloads do not match");
         ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
 
-        let resultB = subscriberB.unwrap_tagged_packet(msg_tag.clone());
-        print!("  SubscriberB: {}", subscriberB);
+        let resultB = subscriberB.receive_tagged_packet(&msg_tag);
+        print!("  SubscriberB: {}", subscriberB.user);
         ensure!(
             resultB.is_err(),
             "Subscriber B should not be able to access this message"
         );
 
-        let resultC = subscriberC.unwrap_tagged_packet(msg_tag);
-        print!("  SubscriberC: {}", subscriberC);
+        let resultC = subscriberC.receive_tagged_packet(&msg_tag);
+        print!("  SubscriberC: {}", subscriberC.user);
         ensure!(
             resultC.is_err(),
             "Subscriber C should not be able to access this message"
@@ -175,61 +184,61 @@ where
 
     println!("\nSigned packet");
     let signed_packet_link = {
-        let (msg, seq) = author.sign_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = author.send_signed_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.link.msgid, seq);
-        print!("  Author     : {}", author);
-        seq.link
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        print!("  Author     : {}", author.user);
+        seq
     };
 
     println!("\nHandle Signed packet");
     {
-        let msg_tag = author.unwrap_sequence(signed_packet_link.clone())?;
-        print!("  Author     : {}", author);
+        let msg_tag = subscriberA.receive_sequence(&signed_packet_link)?;
+        print!("  Author     : {}", author.user);
 
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(msg_tag)?;
-        print!("  SubscriberA: {}", subscriberA);
+        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
+        print!("  SubscriberA: {}", subscriberA.user);
         ensure!(public_payload == unwrapped_public, "Public payloads do not match");
         ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
     }
 
     println!("\nSubscribe B");
     let subscribeB_link = {
-        let msg = subscriberB.subscribe(&announcement_link)?;
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        print!("  SubscriberB: {}", subscriberB);
-        msg.link
+        let msg = subscriberB.send_subscribe(&announcement_link)?;
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        print!("  SubscriberB: {}", subscriberB.user);
+        msg
     };
 
     println!("\nHandle Subscribe B");
     {
-        author.unwrap_subscribe(subscribeB_link)?;
-        print!("  Author     : {}", author);
+        author.receive_subscribe(&subscribeB_link)?;
+        print!("  Author     : {}", author.user);
     }
 
     println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
     let keyload_link = {
-        let (msg, seq) = author.share_keyload_for_everyone(&announcement_link)?;
+        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.link.msgid, seq);
-        print!("  Author     : {}", author);
-        seq.link
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        print!("  Author     : {}", author.user);
+        seq
     };
 
     println!("\nHandle Share keyload for everyone [SubscriberA, SubscriberB]");
     {
-        let msg_tag = author.unwrap_sequence(keyload_link.clone())?;
-        print!("  Author     : {}", author);
+        let msg_tag = subscriberA.receive_sequence(&keyload_link)?;
+        print!("  Author     : {}", author.user);
 
-        let resultC = subscriberC.unwrap_keyload(msg_tag.clone());
-        print!("  SubscriberC: {}", subscriberC);
+        let resultC = subscriberC.receive_keyload(&msg_tag);
+        print!("  SubscriberC: {}", subscriberC.user);
         ensure!(resultC.is_err(), "SubscriberC should not be able to unwrap the keyload");
-        subscriberA.unwrap_keyload(msg_tag.clone())?;
-        print!("  SubscriberA: {}", subscriberA);
-        subscriberB.unwrap_keyload(msg_tag)?;
-        print!("  SubscriberB: {}", subscriberB);
+        subscriberA.receive_keyload(&msg_tag)?;
+        print!("  SubscriberA: {}", subscriberA.user);
+        subscriberB.receive_keyload(&msg_tag)?;
+        print!("  SubscriberB: {}", subscriberB.user);
     }
 
     println!("\nSubscriber A fetching transactions...");
@@ -237,26 +246,26 @@ where
 
     println!("\nTagged packet 2 - SubscriberA");
     let tagged_packet_link = {
-        let (msg, seq) = subscriberA.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = subscriberA.send_tagged_packet(&keyload_link, &public_payload, &masked_payload)?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.link.msgid, seq);
-        print!("  SubscriberA: {}", subscriberA);
-        seq.link
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        print!("  SubscriberA: {}", subscriberA.user);
+        seq
     };
 
     println!("\nHandle Tagged packet 2 - SubscriberA");
     {
-        let msg_tag = subscriberA.unwrap_sequence(tagged_packet_link.clone())?;
-        print!("  SubscriberA: {}", subscriberA);
+        let msg_tag = subscriberA.receive_sequence(&tagged_packet_link)?;
+        print!("  SubscriberA: {}", subscriberA.user);
 
-        let (unwrapped_public, unwrapped_masked) = author.unwrap_tagged_packet(msg_tag.clone())?;
-        print!("  Author     : {}", author);
+        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
+        print!("  Author     : {}", author.user);
         ensure!(public_payload == unwrapped_public, "Public payloads do not match");
         ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
 
-        let resultC = subscriberC.unwrap_tagged_packet(msg_tag);
-        print!("  SubscriberC: {}", subscriberC);
+        let resultC = subscriberC.receive_tagged_packet(&msg_tag);
+        print!("  SubscriberC: {}", subscriberC.user);
         ensure!(
             resultC.is_err(),
             "Subscriber C should not be able to access this message"
@@ -268,26 +277,26 @@ where
 
     println!("\nTagged packet 3 - SubscriberB");
     let tagged_packet_link = {
-        let (msg, seq) = subscriberB.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = subscriberB.send_tagged_packet(&keyload_link, &public_payload, &masked_payload)?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.link.msgid, seq);
-        print!("  SubscriberB: {}", subscriberB);
-        seq.link
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        print!("  SubscriberB: {}", subscriberB.user);
+        seq
     };
 
     println!("\nHandle Tagged packet 3 - SubscriberB");
     {
-        let msg_tag = subscriberA.unwrap_sequence(tagged_packet_link.clone())?;
-        print!("  SubscriberA: {}", subscriberA);
+        let msg_tag = subscriberA.receive_sequence(&tagged_packet_link)?;
+        print!("  SubscriberA: {}", subscriberA.user);
 
-        let (unwrapped_public, unwrapped_masked) = author.unwrap_tagged_packet(msg_tag.clone())?;
-        print!("  Author     : {}", author);
+        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
+        print!("  Author     : {}", author.user);
         ensure!(public_payload == unwrapped_public, "Public payloads do not match");
         ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
 
-        let resultC = subscriberC.unwrap_tagged_packet(msg_tag);
-        print!("  SubscriberC: {}", subscriberC);
+        let resultC = subscriberC.receive_tagged_packet(&msg_tag);
+        print!("  SubscriberC: {}", subscriberC.user);
         ensure!(
             resultC.is_err(),
             "Subscriber C should not be able to access this message"
@@ -299,31 +308,31 @@ where
 
     println!("\nSigned packet");
     let signed_packet_link = {
-        let (msg, seq) = author.sign_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = author.send_signed_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.link.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.link.msgid, seq);
-        print!("  Author     : {}", author);
-        seq.link
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        print!("  Author     : {}", author.user);
+        seq
     };
 
     println!("\nHandle Signed packet");
     {
-        let msg_tag = author.unwrap_sequence(signed_packet_link.clone())?;
-        print!("  Author     : {}", author);
+        let msg_tag = subscriberA.receive_sequence(&signed_packet_link)?;
+        print!("  Author     : {}", author.user);
 
         println!("\nSubscriber A fetching transactions...");
         utils::s_fetch_next_messages(&mut subscriberA);
         println!("\nSubscriber B fetching transactions...");
         utils::s_fetch_next_messages(&mut subscriberB);
 
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(msg_tag.clone())?;
-        print!("  SubscriberA: {}", subscriberA);
+        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
+        print!("  SubscriberA: {}", subscriberA.user);
         ensure!(public_payload == unwrapped_public, "Public payloads do not match");
         ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
 
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.unwrap_signed_packet(msg_tag)?;
-        print!("  SubscriberB: {}", subscriberB);
+        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&msg_tag)?;
+        print!("  SubscriberB: {}", subscriberB.user);
         ensure!(public_payload == unwrapped_public, "Public payloads do not match");
         ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
     }

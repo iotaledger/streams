@@ -2,7 +2,9 @@
 use crate::{
     api::{
         tangle::{
+            self,
             Address,
+            User,
             Author,
             Subscriber,
             DefaultF,
@@ -39,29 +41,49 @@ where
     let encoding = "utf-8";
     let multi_branching = false;
     let transport = Rc::new(RefCell:: new(transport));
-    let mut author = Author::new("AUTHOR9SEED", encoding, PAYLOAD_BYTES, multi_branching, transport.clone(), recv_opt, send_opt);
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone(), recv_opt, send_opt);
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES, transport.clone(), recv_opt, send_opt);
+    let mut author = User {
+        user: Author::new("AUTHOR9SEED", encoding, PAYLOAD_BYTES, multi_branching),
+        transport: transport.clone(),
+        _recv_opt: recv_opt,
+        _send_opt: send_opt,
+        user_type: tangle::UserType::Author
+    };
+
+    let mut subscriberA = User {
+        user: Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES),
+        transport: transport.clone(),
+        _recv_opt: recv_opt,
+        _send_opt: send_opt,
+        user_type: tangle::UserType::Subscriber
+    };
+
+    let mut subscriberB = User {
+        user: Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES),
+        transport: transport.clone(),
+        _recv_opt: recv_opt,
+        _send_opt: send_opt,
+        user_type: tangle::UserType::Subscriber,
+    };
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
 
     println!("announce");
     let (announcement_address, announcement_tag) = {
-        let msg = &author.announce()?;
+        let msg = &author.send_announce()?;
         println!("  {}", msg);
-        (msg.link.appinst.to_string(), msg.link.msgid.to_string())
+        (msg.appinst.to_string(), msg.msgid.to_string())
     };
     let announcement_link = Address::from_str(&announcement_address, &announcement_tag).unwrap();
 
     {
-        subscriberA.unwrap_announcement(announcement_link.clone())?;
+        subscriberA.receive_announcement(&announcement_link)?;
         ensure!(
             author.channel_address() == subscriberA.channel_address(),
             "bad channel address"
         );
-        subscriberB.unwrap_announcement(announcement_link.clone())?;
+        subscriberB.receive_announcement(&announcement_link)?;
         ensure!(
             subscriberA.channel_address() == subscriberB.channel_address(),
             "bad channel address"
@@ -76,60 +98,59 @@ where
 
     println!("\nsign packet");
     let signed_packet_link = {
-        let (msg, _) = author.sign_packet(&announcement_link, &public_payload, &masked_payload)?;
+        let (msg, _) = author.send_signed_packet(&announcement_link, &public_payload, &masked_payload)?;
         println!("  {}", msg);
-        msg.link.clone()
+        msg
     };
     println!("  at {}", signed_packet_link.rel());
 
     {
-        let (_pk, unwrapped_public, unwrapped_masked) = subscriberA.unwrap_signed_packet(signed_packet_link)?;
+        let (_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&signed_packet_link)?;
         ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
         ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
     }
 
     println!("\nsubscribe");
     let subscribeB_link = {
-        let msg = subscriberB.subscribe(&announcement_link)?;
+        let msg = subscriberB.send_subscribe(&announcement_link)?;
         println!("  {}", msg);
-        //transport.send_message(&msg)?;
-        msg.link.clone()
+        msg
     };
 
     {
-        author.unwrap_subscribe(subscribeB_link)?;
+        author.receive_subscribe(&subscribeB_link)?;
     }
 
     println!("\nshare keyload for everyone");
     let keyload_link = {
-        let (msg, _) = author.share_keyload_for_everyone(&announcement_link)?;
+        let (msg, _) = author.send_keyload_for_everyone(&announcement_link)?;
         println!("  {}", msg);
-        msg.link
+        msg
     };
 
     {
-        let resultA = subscriberA.unwrap_keyload(keyload_link.clone());
+        let resultA = subscriberA.receive_keyload(&keyload_link);
         ensure!(resultA.is_err(), "failed to unwrap keyload");
-        subscriberB.unwrap_keyload(keyload_link.clone())?;
+        subscriberB.receive_keyload(&keyload_link)?;
     }
 
     println!("\ntag packet");
     let tagged_packet_link = {
-        let (msg, _) = author.tag_packet(&keyload_link, &public_payload, &masked_payload)?;
+        let (msg, _) = author.send_tagged_packet(&keyload_link, &public_payload, &masked_payload)?;
         println!("  {}", msg);
-        msg.link.clone()
+        msg
     };
 
     {
-        let resultA = subscriberA.unwrap_tagged_packet(tagged_packet_link.clone());
+        let resultA = subscriberA.receive_tagged_packet(&tagged_packet_link);
         ensure!(resultA.is_err(), "failed to unwrap tagged packet");
-        let (unwrapped_public, unwrapped_masked) = subscriberB.unwrap_tagged_packet(tagged_packet_link)?;
+        let (unwrapped_public, unwrapped_masked) = subscriberB.receive_tagged_packet(&tagged_packet_link)?;
         ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
         ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
     }
 
     {
-        subscriberB.unwrap_keyload(keyload_link.clone())?;
+        subscriberB.receive_keyload(&keyload_link)?;
     }
 
     Ok(())
