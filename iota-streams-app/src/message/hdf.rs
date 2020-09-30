@@ -74,8 +74,8 @@ impl<Link> HDF<Link> {
         self.payload_frame_count
     }
 
-    pub fn with_seq_num(mut self, seq_num: u64) -> Self {
-        self.seq_num = Uint64(seq_num);
+    pub fn with_seq_num(mut self, seq_num: u32) -> Self {
+        self.seq_num = Uint64(seq_num as u64);
         self
     }
 

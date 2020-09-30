@@ -7,6 +7,10 @@ use core::cell::Ref;
 use super::*;
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::{
+    command::{
+        sizeof,
+        wrap,
+    },
     link_store::LinkStore,
     types::*,
 };

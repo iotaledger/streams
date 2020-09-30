@@ -1,13 +1,14 @@
 //! Default parameters for Author and Subscriber types.
 
 use super::{
-    PresharedKeyMap,
-    PublicKeyMap,
-    SequencingState,
+    psk_store::PresharedKeyMap,
+    pk_store::PublicKeyMap,
 };
-use core::fmt;
 use iota_streams_app::{
-    message,
+    message::{
+        self,
+        Cursor,
+    },
     transport::{
         self,
         tangle::*,
@@ -45,15 +46,9 @@ pub type PublicKey = ed25519::PublicKey;
 /// Message type with parsed header.
 pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
-pub type SeqState = SequencingState<MsgId>;
+pub type SeqState = Cursor<MsgId>;
 pub type PkStore = PublicKeyMap<SeqState>;
 pub type PskStore = PresharedKeyMap;
-
-impl fmt::Display for SeqState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{},{}>", self.0, self.1)
-    }
-}
 
 /// Link Generator specifies algorithm for generating new message addressed.
 pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;

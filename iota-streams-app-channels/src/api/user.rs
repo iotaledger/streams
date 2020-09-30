@@ -15,6 +15,7 @@ use iota_streams_core::{
     },
     prng,
     psk,
+    sponge::prp::PRP,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -35,12 +36,17 @@ use iota_streams_ddml::{
     types::*,
 };
 
-use super::*;
-use crate::message::*;
+use crate::{
+    message::*,
+    api::{
+        pk_store::*,
+        psk_store::*,
+    },
+};
 
-const ANN_MESSAGE_NUM: u64 = 0;
-const SUB_MESSAGE_NUM: u64 = 0;
-const SEQ_MESSAGE_NUM: u64 = 1;
+const ANN_MESSAGE_NUM: u32 = 0;
+const SUB_MESSAGE_NUM: u32 = 0;
+const SEQ_MESSAGE_NUM: u32 = 1;
 
 pub struct User<F, Link, LG, LS, PKS, PSKS>
 where
@@ -60,7 +66,7 @@ where
     /// User' pre-shared keys.
     pub(crate) psk_store: PSKS,
 
-    /// Users' trusted public keys together with additional sequencing info: (msgid, seq_num).
+    /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     pub(crate) pk_store: PKS,
 
     /// Author's Ed25519 public key.
@@ -90,9 +96,9 @@ where
     Link: HasLink + AbsorbExternalFallback<F>,
     <Link as HasLink>::Base: Eq + Debug,
     <Link as HasLink>::Rel: Eq + Debug + SkipFallback<F> + AbsorbFallback<F>,
-    LG: ChannelLinkGenerator<Link>,
+    LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    PKS: PublicKeyStore<SequencingState<<Link as HasLink>::Rel>>,
+    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
     PSKS: PresharedKeyStore,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
@@ -142,10 +148,11 @@ where
             self.appinst.is_none(),
             "Can't create channel: a channel already created/registered."
         );
-        let appinst = self.link_gen.link_from((&self.sig_kp.public, channel_idx));
+        self.link_gen.gen(&self.sig_kp.public, channel_idx);
+        let appinst = self.link_gen.get();
         self.pk_store.insert(
             self.sig_kp.public.clone(),
-            SequencingState(appinst.rel().clone(), 2_u64),
+            Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
         );
         self.appinst = Some(appinst);
         Ok(())
@@ -156,7 +163,7 @@ where
         &'a mut self,
     ) -> Result<PreparedMessage<'a, F, Link, LS, announce::ContentWrap<F>>> {
         // Create HDF for the first message in the channel.
-        let msg_link = self.link_gen.link_from(());
+        let msg_link = self.link_gen.get();
         let header = HDF::new(msg_link)
             .with_content_type(ANNOUNCE)?
             .with_payload_length(1)?
@@ -221,12 +228,11 @@ where
         // TODO: Verify appinst (address) == public key.
         // At the moment the Author is free to choose any address, not tied to PK.
 
-        self.pk_store
-            .insert(content.sig_pk.clone(), SequencingState(link.rel().clone(), 2_u64));
-        self.pk_store
-            .insert(self.sig_kp.public.clone(), SequencingState(link.rel().clone(), 2_u64));
+        let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
+        self.pk_store.insert(content.sig_pk.clone(), cursor.clone());
+        self.pk_store.insert(self.sig_kp.public.clone(), cursor);
         // Reset link_gen
-        let _appinst = self.link_gen.link_from(link.clone());
+        self.link_gen.reset(link.clone());
         self.appinst = Some(link);
         self.author_sig_pk = Some(content.sig_pk);
         self.flags = content.flags.0;
@@ -240,7 +246,7 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, LS, subscribe::ContentWrap<'a, F, Link>>> {
         if let Some(author_sig_pk) = &self.author_sig_pk {
             if let Some(author_ke_pk) = self.pk_store.get_ke_pk(author_sig_pk) {
-                let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, SUB_MESSAGE_NUM));
+                let msg_link = self.link_gen.link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, SUB_MESSAGE_NUM));
                 let header = HDF::new(msg_link)
                     .with_content_type(SUBSCRIBE)?
                     .with_payload_length(1)?
@@ -294,7 +300,7 @@ where
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let ref_link = self.appinst.as_ref().unwrap().rel().clone();
         self.pk_store
-            .insert(subscriber_sig_pk, SequencingState(ref_link, SEQ_MESSAGE_NUM));
+            .insert(subscriber_sig_pk, Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM));
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }
@@ -344,12 +350,12 @@ where
             >,
         >,
     > {
-        let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
-        let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
+        let seq_no = self.get_seq_no().ok_or(anyhow!("Internal error: bad seq num"))?;
+        let msg_link = self.link_gen.link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, seq_no));
         let header = HDF::new(msg_link)
             .with_content_type(KEYLOAD)?
             .with_payload_length(1)?
-            .with_seq_num(seq_num);
+            .with_seq_num(seq_no);
         let psks = self.psk_store.filter(psk_ids);
         let ke_pks = self.pk_store.filter(pks);
         self.do_prepare_keyload(header, link_to, psks.into_iter(), ke_pks.into_iter())
@@ -373,12 +379,12 @@ where
             >,
         >,
     > {
-        let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
-        let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
+        let seq_no = self.get_seq_no().ok_or(anyhow!("Internal error: bad seq num"))?;
+        let msg_link = self.link_gen.link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, seq_no));
         let header = hdf::HDF::new(msg_link)
             .with_content_type(KEYLOAD)?
             .with_payload_length(1)?
-            .with_seq_num(seq_num);
+            .with_seq_num(seq_no);
         let ipsks = self.psk_store.iter();
         let ike_pks = self.pk_store.keys();
         self.do_prepare_keyload(header, link_to, ipsks.into_iter(), ike_pks.into_iter())
@@ -470,7 +476,7 @@ where
                 for ke_pk in content.ke_pks {
                     if self.pk_store.get(&ke_pk).is_none() {
                         // Store at state 2 since 0 and 1 are reserved states
-                        self.pk_store.insert(ke_pk, SequencingState(appinst.rel().clone(), 2));
+                        self.pk_store.insert(ke_pk, Cursor::new_at(appinst.rel().clone(), 0, 2));
                     }
                 }
             }
@@ -487,12 +493,12 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, LS, signed_packet::ContentWrap<'a, F, Link>>> {
-        let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
-        let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
+        let seq_no = self.get_seq_no().ok_or(anyhow!("Internal error: bad seq num"))?;
+        let msg_link = self.link_gen.link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, seq_no));
         let header = HDF::new(msg_link)
             .with_content_type(SIGNED_PACKET)?
             .with_payload_length(1)?
-            .with_seq_num(seq_num);
+            .with_seq_num(seq_no);
         let content = signed_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -544,12 +550,12 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, LS, tagged_packet::ContentWrap<'a, F, Link>>> {
-        let seq_num = self.get_seq_num().ok_or(anyhow!("Internal error: bad seq num"))?;
-        let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, seq_num));
+        let seq_no = self.get_seq_no().ok_or(anyhow!("Internal error: bad seq num"))?;
+        let msg_link = self.link_gen.link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, seq_no));
         let header = HDF::new(msg_link)
             .with_content_type(TAGGED_PACKET)?
             .with_payload_length(1)?
-            .with_seq_num(seq_num);
+            .with_seq_num(seq_no);
         let content = tagged_packet::ContentWrap {
             link: link_to,
             public_payload: public_payload,
@@ -596,10 +602,10 @@ where
     pub fn prepare_sequence<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
-        seq_num: u64,
+        seq_no: u64,
         ref_link: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<'a, F, Link, LS, sequence::ContentWrap<'a, Link>>> {
-        let msg_link = self.link_gen.link_from((link_to, &self.sig_kp.public, SEQ_MESSAGE_NUM));
+        let msg_link = self.link_gen.link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, SEQ_MESSAGE_NUM));
         let header = HDF::new(msg_link)
             .with_content_type(SEQUENCE)?
             .with_payload_length(1)?
@@ -608,43 +614,32 @@ where
         let content = sequence::ContentWrap {
             link: link_to,
             pk: &self.sig_kp.public,
-            seq_num,
+            seq_num: seq_no,
             ref_link,
         };
 
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
     }
 
-    /*/// Send sequence message to show referenced message
-    pub fn sequence<'a>(
-        &'a mut self,
-        link_to: &'a <Link as HasLink>::Rel,
-        seq_num: u64,
-        ref_link: &'a <Link as HasLink>::Rel,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<WrappedMessage<F, Link>> {
-        self.prepare_sequence(link_to, seq_num, ref_link)?.wrap()
-    }*/
-
     pub fn send_sequence(
         &mut self,
         ref_link: &<Link as HasLink>::Rel,
     ) -> Result<Option<WrappedMessage<F, Link>>> {
         match self.pk_store.get_mut(&self.sig_kp.public) {
-            Some(SequencingState(link_to, seq_num)) => {
+            Some(cursor) => { // Cursor{ link, branch_no, seq_no, }
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
                     let msg_link = self
                         .link_gen
-                        .link_from((&*link_to, &self.sig_kp.public, SEQ_MESSAGE_NUM));
+                        .link_from(&self.sig_kp.public, Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
                     let header = HDF::new(msg_link)
                         .with_content_type(SEQUENCE)?
                         .with_payload_length(1)?
                         .with_seq_num(SEQ_MESSAGE_NUM);
 
                     let content = sequence::ContentWrap::<Link> {
-                        link: link_to,
+                        link: &cursor.link,
                         pk: &self.sig_kp.public,
-                        seq_num: *seq_num,
+                        seq_num: cursor.get_seq_num(),
                         ref_link,
                     };
 
@@ -653,12 +648,12 @@ where
                         prepared.wrap()?
                     };
 
-                    *link_to = wrapped.message.link.rel().clone();
-                    *seq_num = *seq_num + 1;
+                    cursor.link = wrapped.message.link.rel().clone();
+                    cursor.next_seq();
                     Ok(Some(wrapped))
                 } else {
-                    let seq_num = *seq_num;
-                    self.store_state_for_all(ref_link.clone(), seq_num);
+                    let seq_no = cursor.seq_no;
+                    self.store_state_for_all(ref_link.clone(), seq_no);
                     Ok(None)
                 }
             }
@@ -692,11 +687,11 @@ where
         (self.flags & FLAG_BRANCHING_MASK) != 0
     }
 
-    // TODO: own seq_num should be stored outside of pk_store to avoid lookup and Option
-    pub fn get_seq_num(&self) -> Option<u64> {
+    // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
+    pub fn get_seq_no(&self) -> Option<u32> {
         self.pk_store
             .get(&self.sig_kp.public)
-            .map(|SequencingState(_link, seq_num)| *seq_num)
+            .map(|cursor| cursor.seq_no)
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -709,24 +704,24 @@ where
     }
 
     fn gen_next_msg_id(
-        ids: &mut Vec<(ed25519::PublicKey, SequencingState<Link>)>,
+        ids: &mut Vec<(ed25519::PublicKey, Cursor<Link>)>,
         link_gen: &mut LG,
-        pk_info: (&ed25519::PublicKey, &mut SequencingState<<Link as HasLink>::Rel>),
+        pk_info: (&ed25519::PublicKey, &mut Cursor<<Link as HasLink>::Rel>),
         branching: bool,
     ) {
-        let (pk, SequencingState(seq_link, seq_num)) = pk_info;
+        let (pk, Cursor{ link: seq_link, branch_no: _, seq_no, }) = pk_info;
         if branching {
-            let msg_id = link_gen.link_from((&*seq_link, pk, 1_u64));
-            ids.push((pk.clone(), SequencingState(msg_id, 1)));
+            let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, 1));
+            ids.push((pk.clone(), Cursor::new_at(msg_id, 0, 1)));
         } else {
-            let msg_id = link_gen.link_from((&*seq_link, pk, *seq_num));
-            let msg_id1 = link_gen.link_from((&*seq_link, pk, *seq_num - 1));
-            ids.push((pk.clone(), SequencingState(msg_id, *seq_num)));
-            ids.push((pk.clone(), SequencingState(msg_id1, *seq_num - 1)));
+            let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no));
+            let msg_id1 = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no - 1));
+            ids.push((pk.clone(), Cursor::new_at(msg_id, 0, *seq_no)));
+            ids.push((pk.clone(), Cursor::new_at(msg_id1, 0, *seq_no - 1)));
         }
     }
 
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Link>)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Link>)> {
         let mut ids = Vec::new();
 
         // TODO: Do the same for self.sig_kp.public
@@ -737,16 +732,18 @@ where
     }
 
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: <Link as HasLink>::Rel) {
-        let seq_num = self.pk_store.get(&pk).unwrap().1;
-        self.pk_store.insert(pk, SequencingState(link, seq_num + 1));
+        let mut cursor = self.pk_store.get(&pk).unwrap().clone();
+        cursor.link = link;
+        cursor.next_seq();
+        self.pk_store.insert(pk, cursor);
     }
 
-    pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_num: u64) {
+    pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) {
         self.pk_store
-            .insert(self.sig_kp.public.clone(), SequencingState(link.clone(), seq_num + 1));
-        for (_pk, SequencingState(l, s)) in self.pk_store.iter_mut() {
-            *l = link.clone();
-            *s = seq_num + 1;
+            .insert(self.sig_kp.public.clone(), Cursor::new_at(link.clone(), 0, seq_no + 1));
+        for (_pk, cursor) in self.pk_store.iter_mut() {
+            cursor.link = link.clone();
+            cursor.seq_no = seq_no + 1;
         }
     }
 }

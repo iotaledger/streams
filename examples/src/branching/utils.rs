@@ -1,5 +1,8 @@
 use iota_streams::{
-    app::message::HasLink as _,
+    app::message::{
+        Cursor,
+        HasLink as _,
+    },
     app_channels::{
         api::{
             tangle::{

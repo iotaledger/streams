@@ -2,7 +2,10 @@
 
 use anyhow::Result;
 use core::{
-    convert::AsRef,
+    convert::{
+        AsRef,
+        AsMut,
+    },
     fmt,
     hash,
     str::FromStr,
@@ -13,7 +16,10 @@ use iota_streams_core::{
         U12,
         U40,
     },
-    sponge::prp::PRP,
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -26,6 +32,7 @@ use crate::message::{
     BinaryMessage,
     HasLink,
     LinkGenerator,
+    Cursor,
 };
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
@@ -157,27 +164,66 @@ impl<F> DefaultTangleLinkGenerator<F> {
 }
 
 impl<F: PRP> DefaultTangleLinkGenerator<F> {
-    fn gen_msgid(&self, msgid: &MsgId, pk: &ed25519::PublicKey, seq: u64) -> MsgId {
+    fn gen_uniform_msgid(&self, cursor: Cursor<&MsgId>) -> MsgId {
+        let mut s = Spongos::<F>::init();
+        s.absorb(self.addr.appinst.id.as_ref());
+        s.absorb(cursor.link.id.as_ref());
+        s.absorb(&cursor.branch_no.to_be_bytes());
+        s.absorb(&cursor.seq_no.to_be_bytes());
+        s.commit();
         let mut new = MsgId::default();
-        wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
-            .absorb(External(&self.addr.appinst.id))
-            .unwrap()
-            .absorb(External(pk))
-            .unwrap()
-            .absorb(External(&msgid.id))
-            .unwrap()
-            .absorb(External(Uint64(seq)))
-            .unwrap()
-            // TODO: do we need `flags` here
-            //.absorb(External(Uint8(flags)))?
-            .commit()
-            .unwrap()
-            .squeeze(External(&mut new.id))
-            .unwrap();
+        s.squeeze(new.id.as_mut());
+        new
+    }
+    fn gen_msgid(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> MsgId {
+        let mut s = Spongos::<F>::init();
+        s.absorb(self.addr.appinst.id.as_ref());
+        s.absorb(pk.as_ref());
+        s.absorb(cursor.link.id.as_ref());
+        s.absorb(&cursor.branch_no.to_be_bytes());
+        s.absorb(&cursor.seq_no.to_be_bytes());
+        s.commit();
+        let mut new = MsgId::default();
+        s.squeeze(new.id.as_mut());
         new
     }
 }
 
+impl <F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
+    /// Used by Author to generate a new application instance: channels address and announcement message identifier
+    fn gen(&mut self, pk: &ed25519::PublicKey, channel_idx: u64) {
+        self.addr.appinst = AppInst::new(pk, channel_idx);
+        self.addr.msgid = self.gen_msgid(pk, Cursor::default().as_ref());
+    }
+
+    /// Used by Author to get announcement message id, it's just stored internally by link generator
+    fn get(&self) -> TangleAddress {
+        self.addr.clone()
+    }
+
+    /// Used by Subscriber to initialize link generator with the same state as Author
+    fn reset(&mut self, announcement_link: TangleAddress) {
+        self.addr = announcement_link;
+    }
+
+    /// Used by users to pseudo-randomly generate a new uniform message link from a cursor
+    fn uniform_link_from(&self, cursor: Cursor<&MsgId>) -> TangleAddress {
+        TangleAddress {
+            appinst: self.addr.appinst.clone(),
+            msgid: self.gen_uniform_msgid(cursor),
+        }
+    }
+
+    /// Used by users to pseudo-randomly generate a new message link from a cursor
+    fn link_from(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> TangleAddress {
+        TangleAddress {
+            appinst: self.addr.appinst.clone(),
+            msgid: self.gen_msgid(pk, cursor),
+        }
+    }
+}
+
+/*
 // Used by Author to generate a new application instance: channels address and announcement message identifier
 impl<'a, F: PRP> LinkGenerator<TangleAddress, (&'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F> {
     fn link_from(&mut self, arg: (&ed25519::PublicKey, u64)) -> TangleAddress {
@@ -216,6 +262,7 @@ where
         }
     }
 }
+ */
 
 // ed25519 public key size in bytes + 64-bit additional index
 pub type AppInstSize = U40;
