@@ -3,38 +3,69 @@ use anyhow::{
     Result,
 };
 
-use iota_streams_core::prelude::Vec;
+use iota_streams_core::{
+    prelude::Vec,
+    prng,
+};
+use iota_streams_app::{
+    message::LinkGenerator,
+};
 
+use super::{
+    DefaultF,
+    Address,
+    LinkGen,
+    LinkStore,
+    PkStore,
+    PskStore,
+    Transport,
+    MsgInfo,
+    ChannelAddress,
+    PublicKey,
+    Message,
+    WrappedMessage,
+    Bytes,
+    Cursor,
+    MessageReturn,
+    PskIds,
+};
 use crate::{
-    api::{
-        user::User as UserImp,
-        transport::Transport,
-        tangle::{
-            ddml_types::Bytes,
-            DefaultF,
-            MsgInfo,
-            MessageReturn,
-        },
-    },
+    api,
     message,
 };
 
-use iota_streams_app::message::LinkGenerator;
-use super::*;
+type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
-pub type UserInstance = UserImp<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
-
-pub struct User<Trans: Transport<DefaultF, Address>> {
-    pub user: UserInstance,
+pub struct User<Trans> {
+    pub user: UserImp,
     pub transport: Trans,
 }
 
+#[cfg(not(feature = "async"))]
 impl<Trans> User<Trans>
 where
-    Trans: Transport<DefaultF, Address>,
+    Trans: Transport,
     Trans::RecvOptions: Default,
     Trans::SendOptions: Default,
 {
+    pub fn new(
+        seed: &str,
+        encoding: &str,
+        payload_length: usize,
+        multi_branching: bool,
+        transport: Trans,
+    ) -> Self {
+        let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
+        let user = UserImp::gen(
+            prng::dbg_init_str(seed),
+            nonce,
+            if multi_branching { 1 } else { 0 },
+            encoding.as_bytes().to_vec(),
+            payload_length,
+        );
+        Self { user, transport, }
+    }
+
     pub fn channel_address(&self) -> Option<&ChannelAddress> {
         self.user.appinst.as_ref().map(|x| &x.appinst)
     }
@@ -56,14 +87,14 @@ where
         self.user.store_state(pk, link.msgid.clone())
     }
 
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u64) {
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         self.user.store_state_for_all(link.msgid.clone(), seq_num)
     }
 
     pub fn send_signed_packet(&mut self, link_to: &Address, public_payload: &Bytes, masked_payload: &Bytes) -> Result<(Address, Option<Address>)>{
         let msg = self.user.sign_packet(&link_to.msgid, public_payload, masked_payload)?;
-        transport.send_message(&msg.message)?;
+        self.transport.send_message(&msg.message)?;
         let msg_link = msg.message.link.clone();
         self.user.commit_message(msg, MsgInfo::SignedPacket)?;
 
@@ -75,30 +106,30 @@ where
         let msg = self.user.send_sequence(&ref_link.msgid)?;
         if msg.is_some() {
             let msg = msg.unwrap();
-            transport.send_message(&msg.message)?;
+            self.transport.send_message(&msg.message)?;
             return Ok(Some(self.user.commit_message(msg, MsgInfo::Sequence)?))
         }
         Ok(None)
     }
 
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(PublicKey, SequencingState<Address>)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(PublicKey, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
     }
 
     pub fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
-        let msg = transport.recv_message(link)?;
+        let msg = self.transport.recv_message(link)?;
         if let Some(_addr) = &self.user.appinst {
             let seq_link = msg.link.clone();
             let seq_msg = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
             let msg_id = self
                 .user
                 .link_gen
-                .link_from((&seq_msg.ref_link, &seq_msg.pk, seq_msg.seq_num.0));
+                .link_from(&seq_msg.pk, Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32));
 
             if self.is_multi_branching() {
                 self.store_state(seq_msg.pk, &seq_link)
             } else {
-                self.store_state_for_all(&seq_link, seq_msg.seq_num.0)
+                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)
             }
 
             Ok(msg_id)
@@ -108,13 +139,13 @@ where
     }
 
     pub fn receive_signed_packet(&mut self, link: &Address) -> Result<(PublicKey, Bytes, Bytes)> {
-        let msg = transport.recv_message(link)?;
+        let msg = self.transport.recv_message(link)?;
         self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)
     }
 
     pub fn send_tagged_packet(&mut self, link_to: &Address, public_payload: &Bytes, masked_payload: &Bytes) -> Result<(Address, Option<Address>)>{
         let msg = self.user.tag_packet(&link_to.msgid, public_payload, masked_payload)?;
-        transport.send_message(&msg.message)?;
+        self.transport.send_message(&msg.message)?;
         let msg_link = msg.message.link.clone();
         self.user.commit_message(msg, MsgInfo::TaggedPacket)?;
 
@@ -123,7 +154,7 @@ where
     }
 
     pub fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
-        let msg = transport.recv_message(link)?;
+        let msg = self.transport.recv_message(link)?;
         self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)
     }
 
@@ -162,8 +193,8 @@ where
                 }
                 message::SEQUENCE => {
                     let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
-                    let msg_link = self.user.link_gen.link_from((&unwrapped.ref_link, &unwrapped.pk, unwrapped.seq_num.0));
-                    msg = transport.recv_message(&msg_link)?;
+                    let msg_link = self.user.link_gen.link_from(&unwrapped.pk, Cursor::new_at(&unwrapped.ref_link, 0, unwrapped.seq_num.0 as u32));
+                    msg = self.transport.recv_message(&msg_link)?;
                     self.user.store_state(pk.unwrap().clone(), next_link.msgid);
                     next_link = msg_link;
                 }
@@ -180,14 +211,14 @@ where
         let ids = self.user.gen_next_msg_ids(self.user.is_multi_branching());
         let mut msgs = Vec::new();
 
-        for (pk, SequencingState(link, seq)) in ids {
-            let msg = transport.recv_message(&link);
+        for (pk, Cursor{ link, branch_no: _, seq_no, }) in ids {
+            let msg = self.transport.recv_message(&link);
 
             if msg.is_ok() {
                 let msg = self.handle_message(msg.unwrap(), Some(pk));
                 if let Ok(msg) = msg {
                     if !self.user.is_multi_branching() {
-                        self.user.store_state_for_all(link.msgid, seq);
+                        self.user.store_state_for_all(link.msgid, seq_no);
                     }
 
                     msgs.push(msg);
@@ -208,7 +239,7 @@ where
 {*/
     pub fn send_announce(&mut self) -> Result<Address> {
         let msg = self.user.announce()?;
-        transport.send_message(&msg.message)?;
+        self.transport.send_message(&msg.message)?;
 
         let msg_link = msg.message.link.clone();
         self.user.commit_message(msg, MsgInfo::Announce)?;
@@ -217,7 +248,7 @@ where
 
     pub fn send_keyload(&mut self, link_to: &Address, psk_ids: &PskIds, ke_pks: &Vec<PublicKey>) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload(&link_to.msgid, psk_ids, ke_pks)?;
-        transport.send_message(&msg.message)?;
+        self.transport.send_message(&msg.message)?;
         let msg_link = msg.message.link.clone();
         self.user.commit_message(msg, MsgInfo::Keyload)?;
 
@@ -227,7 +258,7 @@ where
 
     pub fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload_for_everyone(&link_to.msgid)?;
-        transport.send_message(&msg.message)?;
+        self.transport.send_message(&msg.message)?;
         let msg_link = msg.message.link.clone();
         self.user.commit_message(msg, MsgInfo::Keyload)?;
 
@@ -236,7 +267,7 @@ where
     }
 
     pub fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
-        let msg = transport.recv_message(link)?;
+        let msg = self.transport.recv_message(link)?;
         self.user.handle_subscribe(msg, MsgInfo::Subscribe)
     }
 /*}
@@ -258,18 +289,18 @@ where
     }
 
     pub fn receive_announcement(&mut self, link: &Address) -> Result<()> {
-        let msg = transport.recv_message(link)?;
+        let msg = self.transport.recv_message(link)?;
         self.user.handle_announcement(msg, MsgInfo::Announce)
     }
 
     pub fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
-        let msg = transport.recv_message(link)?;
+        let msg = self.transport.recv_message(link)?;
         self.user.handle_keyload(msg, MsgInfo::Keyload)
     }
 
     pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address>{
         let msg = self.user.subscribe(&link_to.msgid)?;
-        transport.send_message(&msg.message)?;
+        self.transport.send_message(&msg.message)?;
         let msg_link = msg.message.link.clone();
         self.user.commit_message(msg, MsgInfo::Subscribe)?;
 

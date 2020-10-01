@@ -7,12 +7,9 @@ use iota::client as iota_client;
 use rand::Rng;
 
 use iota_streams::{
-    app::transport::tangle::client::{
-        RecvOptions,
-        SendTrytesOptions,
-    },
+    app::transport::tangle::client::SendTrytesOptions,
     app_channels::api::tangle::Transport,
-    core::prelude::{String, Rc},
+    core::prelude::{ String, Rc, },
 };
 
 use core::cell::RefCell;
@@ -92,7 +89,7 @@ fn main_client() {
 
     let mut send_opt = SendTrytesOptions::default();
     send_opt.min_weight_magnitude = 14;
-    let recv_opt = RecvOptions { flags: 0 };
+    let recv_opt = ();
 
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
     let seed1: &str = &(0..10)

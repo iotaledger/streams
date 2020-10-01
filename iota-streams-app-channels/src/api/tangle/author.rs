@@ -3,40 +3,31 @@
 use anyhow::{
     Result,
 };
-use core::{
-    fmt,
-    cell::RefCell,
-};
+use core::fmt;
 
 use super::*;
 use crate::{
     api::{
         tangle::{
             User,
-            user::{
-                UserInstance,
-            },
             MsgInfo,
             MessageReturn,
         },
     },
 };
 
-use iota_streams_core::{
-    prelude::{Vec, Rc},
-    prng,
-};
+use iota_streams_core::prelude::Vec;
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Author type.
-pub struct Author<T: Transport> {
-    user: User<T>,
+pub struct Author<Trans> {
+    user: User<Trans>,
 }
 
-impl<T: Transport> Author<T>
-where
-    T::RecvOptions: Copy + Default,
-    T::SendOptions: Copy + Default,
+impl<Trans> Author<Trans> where
+    Trans: Transport,
+    Trans::RecvOptions: Copy + Default,
+    Trans::SendOptions: Copy + Default,
 {
     /// Create a new Author instance, generate new MSS keypair and optionally NTRU keypair.
     pub fn new(
@@ -44,19 +35,12 @@ where
         encoding: &str,
         payload_length: usize,
         multi_branching: bool,
-        transport: Rc<RefCell<T>>,
+        transport: Trans,
     ) -> Self {
-        let nonce = "TANGLEAUTHORNONCE".as_bytes().to_vec();
-        let mut user = UserInstance::gen(
-            prng::dbg_init_str(seed),
-            nonce,
-            if multi_branching { 1 } else { 0 },
-            encoding.as_bytes().to_vec(),
-            payload_length,
-        );
+        let mut user = User::new(seed, encoding, payload_length, multi_branching, transport);
         let channel_idx = 0_u64;
-        let _ = user.create_channel(channel_idx);
-        Self { user: User { user, transport } }
+        let _ = user.user.create_channel(channel_idx);
+        Self { user }
     }
 
     /// Announce creation of a new Channel.
@@ -139,7 +123,7 @@ where
         self.user.is_multi_branching()
     }
 
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Address>)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
     }
 
@@ -147,7 +131,7 @@ where
         self.user.store_state(pk, link)
     }
 
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u64) {
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
         self.user.store_state_for_all(link, seq_num)
     }
 
@@ -161,7 +145,7 @@ where
 
 }
 
-impl<T: Transport> fmt::Display for Author<T> {
+impl<Trans> fmt::Display for Author<Trans> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

@@ -11,14 +11,9 @@ description = "A rust implementation of the IOTA Streams"
 [workspace]
 
 [dependencies]
-iota-streams = { version = "0.2.0", path = ".." }
+iota-streams = { version = "0.3.0", path = ".." }
 anyhow = { version = "1.0", default-features = false }
-failure = "0.1"
 iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
-core-error = "0.0.0"
-hex = "0.4.2"
-smol = {version = "0.1.18", features = ["tokio02"]}
-tokio = ""
 rand = "0.7.3"
 
 [profile.release]

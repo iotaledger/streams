@@ -295,17 +295,6 @@ impl<'a> From<&'a [u8]> for AppInst {
     }
 }
 
-// impl TryFrom<[u8; 32]> for AppInst {
-// type Error = ();
-// fn try_from(v: [u8; 32]) -> Result<Self, ()> {
-// if v.len() == AppInstSize::to_usize() {
-// Ok(Self{ id: NBytes(v) })
-// } else {
-// Err(())
-// }
-// }
-// }
-
 impl FromStr for AppInst {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
@@ -353,13 +342,6 @@ impl Default for AppInst {
         Self { id: NBytes::default() }
     }
 }
-
-// impl ToString for AppInst
-// {
-// fn to_string(&self) -> String {
-// self.id.to_string()
-// }
-// }
 
 impl hash::Hash for AppInst {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -464,13 +446,6 @@ impl Default for MsgId {
     }
 }
 
-// impl ToString for MsgId
-// {
-// fn to_string(&self) -> String {
-// self.id.to_string()
-// }
-// }
-
 impl hash::Hash for MsgId {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
@@ -509,5 +484,5 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
     }
 }
 
-#[cfg(feature = "client")]
+#[cfg(any(feature = "sync-client", feature = "async-client"))]
 pub mod client;

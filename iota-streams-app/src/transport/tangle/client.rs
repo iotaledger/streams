@@ -11,6 +11,7 @@ use core::{
         TryInto,
     },
 };
+#[cfg(not(feature = "async"))]
 use smol::block_on;
 
 use iota::{
@@ -322,7 +323,7 @@ async fn get_bundles(tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction
     Ok(get_resp.trytes)
 }
 
-async fn send_trytes(opt: SendTrytesOptions, txs: Vec<Transaction>) -> Result<Vec<Transaction>> {
+async fn send_trytes(opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<Vec<Transaction>> {
     let attached_txs = handle_client_result(
         iota_client::Client::send_trytes()
             .min_weight_magnitude(opt.min_weight_magnitude)
@@ -334,17 +335,7 @@ async fn send_trytes(opt: SendTrytesOptions, txs: Vec<Transaction>) -> Result<Ve
     Ok(attached_txs)
 }
 
-#[derive(Copy, Clone)]
-pub struct RecvOptions {
-    pub flags: u8,
-}
-
-impl Default for RecvOptions {
-    fn default() -> Self {
-        Self { flags: 0 }
-    }
-}
-
+#[cfg(not(feature = "async"))]
 impl<F> Transport<F, TangleAddress> for &iota_client::Client {
     type SendOptions = SendTrytesOptions;
 
@@ -362,11 +353,11 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         // TODO: Get transactions from bundle without copying.
         let txs = bundle.into_iter().collect::<Vec<Transaction>>();
         // Ignore attached transactions.
-        block_on(send_trytes(opt.clone(), txs))?;
+        block_on(send_trytes(opt, txs))?;
         Ok(())
     }
 
-    type RecvOptions = RecvOptions;
+    type RecvOptions = ();
 
     /// Receive a message.
     fn recv_messages_with_options(
@@ -380,14 +371,63 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
             .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
 
-        let txs = block_on(get_bundles(tx_address, tx_tag));
-        if !txs.is_err() {
-            Ok(bundles_from_trytes(txs.unwrap())
-                .into_iter()
-                .map(|b| msg_from_bundle(&b))
-                .collect())
-        } else {
-            Ok(Vec::new())
+        match block_on(get_bundles(tx_address, tx_tag)) {
+            Ok(txs) =>
+                Ok(bundles_from_trytes(txs)
+                   .into_iter()
+                   .map(|b| msg_from_bundle(&b))
+                   .collect()),
+            Err(_) => Ok(Vec::new()), // Just ignore the error?
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[async_trait]
+impl<F> Transport<F, TangleAddress> for &iota_client::Client where
+    F: 'static + core::marker::Send + core::marker::Sync,
+{
+    type SendOptions = SendTrytesOptions;
+
+    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    async fn send_message_with_options(
+        &mut self,
+        msg: &BinaryMessage<F, TangleAddress>,
+        opt: &Self::SendOptions,
+    ) -> Result<()> {
+        let timestamp = Utc::now().timestamp() as u64;
+        // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
+        let trunk = Hash::zeros();
+        let branch = Hash::zeros();
+        let bundle = msg_to_bundle(msg, timestamp, trunk, branch)?;
+        // TODO: Get transactions from bundle without copying.
+        let txs = bundle.into_iter().collect::<Vec<Transaction>>();
+        // Ignore attached transactions.
+        send_trytes(opt, txs).await?;
+        Ok(())
+    }
+
+    type RecvOptions = ();
+
+    /// Receive a message.
+    async fn recv_messages_with_options(
+        &mut self,
+        link: &TangleAddress,
+        _opt: &Self::RecvOptions,
+    ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
+        let tx_address =
+            Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
+                .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
+        let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
+            .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
+
+        match get_bundles(tx_address, tx_tag).await {
+            Ok(txs) =>
+                Ok(bundles_from_trytes(txs)
+                   .into_iter()
+                   .map(|b| msg_from_bundle(&b))
+                   .collect()),
+            Err(_) => Ok(Vec::new()), // Just ignore the error?
         }
     }
 }

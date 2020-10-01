@@ -1,10 +1,7 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 
 use anyhow::Result;
-use core::{
-    fmt,
-    cell::RefCell,
-};
+use core::fmt;
 
 use super::*;
 use crate::{
@@ -12,45 +9,33 @@ use crate::{
         //user::User,
         tangle::{
             User,
-            user::UserInstance,
             MsgInfo,
             MessageReturn,
         },
     },
 };
 
-use iota_streams_core::{
-    prelude::{Vec, Rc},
-    prng,
-};
+use iota_streams_core::prelude::Vec;
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Subscriber type.
-pub struct Subscriber<T: Transport> {
+pub struct Subscriber<T> {
     user: User<T>,
 }
 
-impl<T: Transport> Subscriber<T>
-where
-    T::RecvOptions: Copy + Default,
-    T::SendOptions: Copy + Default,
+impl<Trans: Transport> Subscriber<Trans> where
+    Trans::RecvOptions: Copy + Default,
+    Trans::SendOptions: Copy + Default,
 {
     /// Create a new Subscriber instance, optionally generate NTRU keypair.
     pub fn new(
         seed: &str,
         encoding: &str,
         payload_length: usize,
-        transport: Rc<RefCell<T>>
+        transport: Trans,
     ) -> Self {
-        let nonce = "TANGLESUBSCRIBERNONCE".as_bytes().to_vec();
-        let user = UserInstance::gen(
-            prng::dbg_init_str(seed),
-            nonce,
-            0,
-            encoding.as_bytes().to_vec(),
-            payload_length,
-        );
-        Self { user: User { user: user, transport} }
+        let user = User::new(seed, encoding, payload_length, false, transport);
+        Self { user }
     }
 
     /// Ie. has Announce message been handled?
@@ -138,14 +123,14 @@ where
         self.user.receive_sequence(link)
     }
 
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, SequencingState<Address>)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
     }
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         self.user.store_state(pk, link)
     }
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u64) {
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         self.user.store_state_for_all(link, seq_num)
     }

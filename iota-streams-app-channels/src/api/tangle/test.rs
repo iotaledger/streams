@@ -5,11 +5,8 @@ use crate::{
             Address,
             Author,
             Subscriber,
-            DefaultF,
         },
-        transport::Transport,
     },
-   // message,
 };
 use anyhow::{
     ensure,
@@ -27,18 +24,18 @@ use iota_streams_core::{
     println,
 };
 
-//TODO: Make core
-use std::cell::RefCell;
-use iota_streams_ddml::types::*;
+use core::cell::RefCell;
 
-pub fn example<T: Transport<DefaultF, Address>>(transport: T, _recv_opt: T::RecvOptions, _send_opt: T::SendOptions) -> Result<()>
+use super::*;
+
+pub fn example<T: Transport>(transport: T, _recv_opt: T::RecvOptions, _send_opt: T::SendOptions) -> Result<()>
 where
     T::SendOptions: Default + Copy,
     T::RecvOptions: Default + Copy,
 {
     let encoding = "utf-8";
     let multi_branching = false;
-    let transport = Rc::new(RefCell:: new(transport));
+    let transport = Rc::new(RefCell::new(transport));
 
     let mut author = Author::new("AUTHOR9SEED", encoding, PAYLOAD_BYTES, multi_branching, transport.clone());
 

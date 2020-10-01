@@ -5,29 +5,35 @@ use super::{
     pk_store::PublicKeyMap,
 };
 use iota_streams_app::{
-    message::{
-        self,
-        Cursor,
-    },
+    message,
     transport::{
         self,
-        tangle::*,
+        tangle::{
+            AppInst,
+            MsgId,
+            TangleAddress,
+            DefaultTangleLinkGenerator,
+        },
     },
 };
+
+pub use message::Cursor;
+// Bring trait methods into scope publicly.
+pub use transport::Transport as _;
+pub use message::LinkGenerator as _;
+
 use iota_streams_core::psk;
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::{
     link_store::DefaultLinkStore,
-    types as ddml_types,
 };
+pub use iota_streams_ddml::types::Bytes;
 
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Default spongos PRP.
 pub type DefaultF = KeccakF1600;
 
-/// Default Tbit & PSK & MSS & NTRU types.
-pub type Bytes = ddml_types::Bytes;
 pub type PskIds = psk::PskIds;
 
 /// Link type.
@@ -59,23 +65,9 @@ pub type LinkStore = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;
 /// Test Transport.
 pub type BucketTransport = transport::BucketTransport<DefaultF, Address>;
 
+// TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
 pub trait Transport: transport::Transport<DefaultF, Address> {}
-
 impl<T> Transport for T where T: transport::Transport<DefaultF, Address> {}
-
-mod author;
-/// Tangle-specific Channel Author type.
-pub use author::Author;
-
-pub mod user;
-/// User object storing the Auth/Sub implementation as well as the transport instance
-pub use user::User;
-
-#[derive(PartialEq)]
-pub enum UserType {
-    Author,
-    Subscriber
-}
 
 /// Message associated info, just message type indicator.
 #[derive(Copy, Clone)]
@@ -88,7 +80,6 @@ pub enum MsgInfo {
     Unsubscribe,
     Sequence,
 }
-
 
 pub struct MessageReturn {
     pub pk: Option<PublicKey>,
@@ -107,6 +98,14 @@ impl MessageReturn {
         }
     }
 }
+
+mod user;
+/// User object storing the Auth/Sub implementation as well as the transport instance
+pub use user::User;
+
+mod author;
+/// Tangle-specific Channel Author type.
+pub use author::Author;
 
 mod subscriber;
 /// Tangle-specific Channel Subscriber type.

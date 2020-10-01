@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-app"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -9,15 +9,17 @@ keywords = ["iota", "streams", "app"]
 description = "A rust implementation of the IOTA Streams applications"
 
 [features]
-default = ["std", "async", "tangle", "client"]
+default = ["std", "tangle", "sync-client"]
 # Enable `std` feature in dependencies
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "anyhow/std", "chrono/std", "hex/std"]
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "anyhow/std", "chrono/std", "chrono/clock", "hex/std"]
 # rust doesn't support async traits, `async-trait` crate emulates `async` keyword
-async = ["async-trait"]
+# `async` implies `std` for now
+async = ["async-trait", "std"]
 tangle = ["chrono"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-client = ["num_cpus", "smol", "iota-core", "iota-constants"]
+sync-client = ["num_cpus", "smol", "iota-core", "iota-constants", "tangle", "std"]
+async-client = ["num_cpus", "iota-core", "iota-constants", "tangle", "std", "async"]
 
 [lib]
 name = "iota_streams_app"
