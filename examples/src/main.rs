@@ -12,74 +12,81 @@ use iota_streams::{
         SendTrytesOptions,
     },
     app_channels::api::tangle::Transport,
-    core::prelude::String,
+    core::prelude::{String, Rc},
 };
+
+use core::cell::RefCell;
 
 mod branching;
 
 fn run_single_branch_test<T: Transport>(
-    transport: &mut T,
+    transport: Rc<RefCell<T>>,
     send_opt: T::SendOptions,
     recv_opt: T::RecvOptions,
     seed: &str,
 ) where
-    T::SendOptions: Copy,
-    T::RecvOptions: Copy,
+    T::SendOptions: Copy + Default,
+    T::RecvOptions: Copy + Default,
 {
-    println!("Running Single Branch Test, seed: {}", seed);
+    println!("\tRunning Single Branch Test, seed: {}", seed);
     match branching::single_branch::example(transport, send_opt, recv_opt, false, seed) {
         Err(err) => println!("Error in Single Branch test: {:?}", err),
-        Ok(_) => println!("Single Branch Test completed!!"),
+        Ok(_) => println!("\tSingle Branch Test completed!!"),
     }
-    println!("#######################################\n");
+    println!("#######################################");
 }
 
 fn run_multi_branch_test<T: Transport>(
-    transport: &mut T,
+    transport: Rc<RefCell<T>>,
     send_opt: T::SendOptions,
     recv_opt: T::RecvOptions,
     seed: &str,
 ) where
-    T::SendOptions: Copy,
-    T::RecvOptions: Copy,
+    T::SendOptions: Copy + Default,
+    T::RecvOptions: Copy + Default,
 {
-    println!("Running Multi Branch Test, seed: {}", seed);
+    println!("\tRunning Multi Branch Test, seed: {}", seed);
     match branching::multi_branch::example(transport, send_opt, recv_opt, true, seed) {
         Err(err) => println!("Error in Multi Branch test: {:?}", err),
-        Ok(_) => println!("Multi Branch Test completed!!"),
+        Ok(_) => println!("\tMulti Branch Test completed!!"),
     }
-    println!("#######################################\n");
+    println!("#######################################");
 }
 
-fn run_main<T: Transport>(transport: &mut T, send_opt: T::SendOptions, recv_opt: T::RecvOptions) -> Result<()>
+fn run_main<T: Transport>(transport: T, send_opt: T::SendOptions, recv_opt: T::RecvOptions) -> Result<()>
 where
-    T::SendOptions: Copy,
-    T::RecvOptions: Copy,
+    T::SendOptions: Copy + Default,
+    T::RecvOptions: Copy + Default,
 {
     let seed1: &str = "SEEDSINGLE";
     let seed2: &str = "SEEDMULTI9";
 
-    run_single_branch_test(transport, send_opt, recv_opt, seed1);
-    run_multi_branch_test(transport, send_opt, recv_opt, seed2);
+    let transport = Rc::new(RefCell::new(transport));
+    run_single_branch_test(transport.clone(), send_opt, recv_opt, seed1);
+    run_multi_branch_test(transport.clone(), send_opt, recv_opt, seed2);
 
     Ok(())
 }
 
 #[allow(dead_code)]
 fn main_pure() {
-    let mut transport = iota_streams::app_channels::api::tangle::BucketTransport::new();
+    let transport = iota_streams::app_channels::api::tangle::BucketTransport::new();
 
     println!("#######################################");
     println!("Running pure tests without accessing Tangle");
     println!("#######################################");
     println!("\n");
-    run_single_branch_test(&mut transport, (), (), "PURESEEDA");
-    run_multi_branch_test(&mut transport, (), (), "PURESEEDB");
+
+    let transport = Rc::new(RefCell::new(transport));
+    run_single_branch_test(transport.clone(), (), (), "PURESEEDA");
+    run_multi_branch_test(transport.clone(), (), (), "PURESEEDB");
+    println!("Done running pure tests without accessing Tangle");
+    println!("#######################################");
 }
 
 #[allow(dead_code)]
 fn main_client() {
-    let mut client = iota_client::Client::get();
+    let client = iota_client::Client::get();
     let node = "http://localhost:14265"; //"https://nodes.devnet.iota.org:443";
     iota_client::Client::add_node(node).unwrap();
 
@@ -99,11 +106,15 @@ fn main_client() {
     println!("Running tests accessing Tangle via node {}", node);
     println!("#######################################");
     println!("\n");
-    run_single_branch_test(&mut client, send_opt, recv_opt, seed1);
-    run_multi_branch_test(&mut client, send_opt, recv_opt, seed2);
+
+    let transport = Rc::new(RefCell::new(client));
+    run_single_branch_test( transport.clone(), send_opt, recv_opt, seed1);
+    run_multi_branch_test( transport.clone(), send_opt, recv_opt, seed2);
+    println!("Done running tests accessing Tangle via node {}", node);
+    println!("#######################################");
 }
 
 fn main() {
     main_pure();
-    // main_client();
+    //main_client();
 }

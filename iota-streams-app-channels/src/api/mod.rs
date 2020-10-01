@@ -1,8 +1,11 @@
 use core::fmt;
 
-use iota_streams_app::message::{
-    HasLink,
-    LinkGenerator,
+use iota_streams_app::{
+    message::{
+        HasLink,
+        LinkGenerator,
+    },
+    transport,
 };
 use iota_streams_core::{
     prelude::{
@@ -135,12 +138,6 @@ impl PresharedKeyStore for PresharedKeyMap {
 }
 
 pub mod user;
-
-// Generic Channel Author API.
-// pub mod author;
-//
-// Generic Channel Subscriber API.
-// pub mod subscriber;
 
 #[cfg(all(feature = "tangle"))]
 impl<F> ChannelLinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> where F: PRP {}

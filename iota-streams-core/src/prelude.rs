@@ -9,6 +9,10 @@ pub use alloc::{
         self,
         Vec,
     },
+    rc::{
+        self,
+        Rc,
+    }
 };
 
 #[cfg(feature = "std")]
@@ -22,6 +26,10 @@ pub use std::{
         self,
         Vec,
     },
+    rc::{
+        self,
+        Rc,
+    }
 };
 
 pub use hashbrown::{

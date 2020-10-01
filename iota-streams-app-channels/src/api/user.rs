@@ -21,12 +21,14 @@ use iota_streams_core_edsig::{
     signature::ed25519,
 };
 
-use iota_streams_app::message::{
-    hdf::{
-        FLAG_BRANCHING_MASK,
-        HDF,
+use iota_streams_app::{
+    message::{
+        hdf::{
+            FLAG_BRANCHING_MASK,
+            HDF,
+        },
+        *,
     },
-    *,
 };
 use iota_streams_ddml::{
     link_store::LinkStore,
@@ -40,7 +42,11 @@ const ANN_MESSAGE_NUM: u64 = 0;
 const SUB_MESSAGE_NUM: u64 = 0;
 const SEQ_MESSAGE_NUM: u64 = 1;
 
-pub struct User<F, Link, LG, LS, PKS, PSKS> {
+pub struct User<F, Link, LG, LS, PKS, PSKS>
+where
+    F: PRP,
+    Link: HasLink,
+{
     /// PRNG object used for Ed25519, X25519, Spongos key generation, etc.
     #[allow(dead_code)]
     pub(crate) prng: prng::Prng<F>,
@@ -162,11 +168,18 @@ where
     /// Create Announce message.
     pub fn announce<'a>(
         &'a mut self,
+    ) -> Result<WrappedMessage<F, Link>> {
+        self.prepare_announcement()?.wrap()
+    }
+
+    pub fn commit_message<'a>(
+        &'a mut self,
+        msg: WrappedMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<BinaryMessage<F, Link>> {
-        let wrapped = self.prepare_announcement()?.wrap()?;
-        let r = wrapped.commit(self.link_store.borrow_mut(), info);
-        r
+    ) -> Result<Link>{
+        let link = msg.message.link.clone();
+        msg.commit(self.link_store.borrow_mut(), info)?;
+        Ok(link)
     }
 
     pub fn unwrap_announcement<'a>(
@@ -191,9 +204,12 @@ where
     /// in the message.
     pub fn handle_announcement<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
+        let preparsed = msg.parse_header()?;
+        ensure!(preparsed.content_type() == ANNOUNCE, "Message is not an announcement");
+
         let unwrapped = self.unwrap_announcement(preparsed)?;
         let link = unwrapped.link.clone();
         let content = unwrapped.commit(self.link_store.borrow_mut(), info)?;
@@ -250,10 +266,8 @@ where
     pub fn subscribe(
         &mut self,
         link_to: &<Link as HasLink>::Rel,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<BinaryMessage<F, Link>> {
-        let wrapped = self.prepare_subscribe(link_to)?.wrap()?;
-        wrapped.commit(self.link_store.borrow_mut(), info)
+    ) -> Result<WrappedMessage<F, Link>> {
+        self.prepare_subscribe(link_to)?.wrap()
     }
 
     pub fn unwrap_subscribe<'a>(
@@ -268,9 +282,11 @@ where
     /// Get public payload, decrypt masked payload and verify MAC.
     pub fn handle_subscribe<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
+        let preparsed = msg.parse_header()?;
+
         let content = self
             .unwrap_subscribe(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
@@ -375,10 +391,8 @@ where
         link_to: &<Link as HasLink>::Rel,
         psk_ids: &psk::PskIds,
         ke_pks: &Vec<ed25519::PublicKey>,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<BinaryMessage<F, Link>> {
-        let wrapped = self.prepare_keyload(link_to, psk_ids, ke_pks)?.wrap()?;
-        wrapped.commit(self.link_store.borrow_mut(), info)
+    ) -> Result<WrappedMessage<F, Link>> {
+        self.prepare_keyload(link_to, psk_ids, ke_pks)?.wrap()
     }
 
     /// Create keyload message with a new session key shared with all Subscribers
@@ -386,10 +400,8 @@ where
     pub fn share_keyload_for_everyone(
         &mut self,
         link_to: &<Link as HasLink>::Rel,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<BinaryMessage<F, Link>> {
-        let wrapped = self.prepare_keyload_for_everyone(link_to)?.wrap()?;
-        wrapped.commit(self.link_store.borrow_mut(), info)
+    ) -> Result<WrappedMessage<F, Link>> {
+        self.prepare_keyload_for_everyone(link_to)?.wrap()
     }
 
     fn lookup_psk<'b>(&'b self, pskid: &psk::PskId) -> Option<&'b psk::Psk> {
@@ -440,25 +452,32 @@ where
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or NTRU private key (if any).
     pub fn handle_keyload<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<()> {
+    ) -> Result<bool> {
+        let preparsed = msg.parse_header()?;
+
         let content = self
             .unwrap_keyload(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
-        // Unwrapped nonce and key in content are not used explicitly.
-        // The resulting spongos state is joined into a protected message state.
-        // Store any unknown publishers
-        if let Some(appinst) = &self.appinst {
-            for ke_pk in content.ke_pks {
-                if self.pk_store.get(&ke_pk).is_none() {
-                    // Store at state 2 since 0 and 1 are reserved states
-                    self.pk_store.insert(ke_pk, SequencingState(appinst.rel().clone(), 2));
+
+        if content.key.is_some() {
+
+            // Unwrapped nonce and key in content are not used explicitly.
+            // The resulting spongos state is joined into a protected message state.
+            // Store any unknown publishers
+            if let Some(appinst) = &self.appinst {
+                for ke_pk in content.ke_pks {
+                    if self.pk_store.get(&ke_pk).is_none() {
+                        // Store at state 2 since 0 and 1 are reserved states
+                        self.pk_store.insert(ke_pk, SequencingState(appinst.rel().clone(), 2));
+                    }
                 }
             }
+            Ok(true)
+        } else {
+            Ok(false)
         }
-
-        Ok(())
     }
 
     /// Prepare SignedPacket message.
@@ -490,12 +509,8 @@ where
         link_to: &<Link as HasLink>::Rel,
         public_payload: &Bytes,
         masked_payload: &Bytes,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<BinaryMessage<F, Link>> {
-        let wrapped = self
-            .prepare_signed_packet(link_to, public_payload, masked_payload)?
-            .wrap()?;
-        wrapped.commit(self.link_store.borrow_mut(), info)
+    ) -> Result<WrappedMessage<F, Link>> {
+        self.prepare_signed_packet(link_to, public_payload, masked_payload)?.wrap()
     }
 
     pub fn unwrap_signed_packet<'a>(
@@ -510,16 +525,17 @@ where
     /// Verify new Author's MSS public key and update Author's MSS public key.
     pub fn handle_signed_packet<'a>(
         &'a mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
         // TODO: pass author_pk to unwrap
+        let preparsed = msg.parse_header()?;
+
         let content = self
             .unwrap_signed_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
         Ok((content.sig_pk, content.public_payload, content.masked_payload))
     }
-    //
 
     /// Prepare TaggedPacket message.
     pub fn prepare_tagged_packet<'a>(
@@ -550,12 +566,8 @@ where
         link_to: &<Link as HasLink>::Rel,
         public_payload: &Bytes,
         masked_payload: &Bytes,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<BinaryMessage<F, Link>> {
-        let wrapped = self
-            .prepare_tagged_packet(link_to, public_payload, masked_payload)?
-            .wrap()?;
-        wrapped.commit(self.link_store.borrow_mut(), info)
+    ) -> Result<WrappedMessage<F, Link>> {
+        self.prepare_tagged_packet(link_to, public_payload, masked_payload)?.wrap()
     }
 
     pub fn unwrap_tagged_packet<'a>(
@@ -570,9 +582,11 @@ where
     /// Get public payload, decrypt masked payload and verify MAC.
     pub fn handle_tagged_packet<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<(Bytes, Bytes)> {
+        let preparsed = msg.parse_header()?;
+
         let content = self
             .unwrap_tagged_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
@@ -601,23 +615,21 @@ where
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
     }
 
-    /// Send sequence message to show referenced message
+    /*/// Send sequence message to show referenced message
     pub fn sequence<'a>(
         &'a mut self,
         link_to: &'a <Link as HasLink>::Rel,
         seq_num: u64,
         ref_link: &'a <Link as HasLink>::Rel,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<BinaryMessage<F, Link>> {
-        let wrapped = self.prepare_sequence(link_to, seq_num, ref_link)?.wrap()?;
-        wrapped.commit(self.link_store.borrow_mut(), info)
-    }
+    ) -> Result<WrappedMessage<F, Link>> {
+        self.prepare_sequence(link_to, seq_num, ref_link)?.wrap()
+    }*/
 
     pub fn send_sequence(
         &mut self,
         ref_link: &<Link as HasLink>::Rel,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<Option<BinaryMessage<F, Link>>> {
+    ) -> Result<Option<WrappedMessage<F, Link>>> {
         match self.pk_store.get_mut(&self.sig_kp.public) {
             Some(SequencingState(link_to, seq_num)) => {
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
@@ -640,11 +652,10 @@ where
                         let prepared = PreparedMessage::new(self.link_store.borrow(), header, content);
                         prepared.wrap()?
                     };
-                    let msg = wrapped.commit(self.link_store.borrow_mut(), info)?;
 
-                    *link_to = msg.link.rel().clone();
+                    *link_to = wrapped.message.link.rel().clone();
                     *seq_num = *seq_num + 1;
-                    Ok(Some(msg))
+                    Ok(Some(wrapped))
                 } else {
                     let seq_num = *seq_num;
                     self.store_state_for_all(ref_link.clone(), seq_num);
@@ -667,9 +678,10 @@ where
     // Fetch unwrapped sequence message to fetch referenced message
     pub fn handle_sequence<'a>(
         &mut self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<sequence::ContentUnwrap<Link>> {
+        let preparsed = msg.parse_header()?;
         let content = self
             .unwrap_sequence(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
@@ -720,20 +732,6 @@ where
         // TODO: Do the same for self.sig_kp.public
         for pk_info in self.pk_store.iter_mut() {
             Self::gen_next_msg_id(&mut ids, &mut self.link_gen, pk_info, branching);
-            /*
-            let (seq_link, seq_num) = self.imp.get_seq_state(pk.0).unwrap();
-            if branching {
-                let seq_num = 1;
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, 1), 1));
-            } else {
-                // In Single Branching instances, while issuing transactions, the sequence state is
-                // set to the next message that will be sent, when fetching transactions sent by
-                // another publisher, it is necessary to check the current sequence state along with
-                // the link rather than the next state. To simplify the search we return both ids
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, seq_num), seq_num));
-                ids.push((pk.0, self.gen_msg_id(&seq_link, pk.0, seq_num - 1), seq_num - 1));
-            }
-             */
         }
         ids
     }
