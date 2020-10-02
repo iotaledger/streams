@@ -1,6 +1,43 @@
-# IOTA Streams
+<h1 align="center">
+  <br>
+  <a href="https://docs.iota.org/docs/iota-streams/1.1/overview"><img src="streams.png"></a>
+</h1>
 
-This is the **WIP** Rust IOTA Streams library, it consists of the following components:
+<h2 align="center">A cryptographic framework for building secure messaging protocols</h2>
+
+<p align="center">
+    <a href="https://docs.iota.org/docs/iota-streams/1.1/overview" style="text-decoration:none;">
+    <img src="https://img.shields.io/badge/Documentation%20portal-blue.svg?style=for-the-badge"
+         alt="Developer documentation portal">
+      </p>
+<p align="center">
+	<a href="https://discord.iota.org/" style="text-decoration:none;"><img src="https://img.shields.io/badge/Discord-9cf.svg?logo=discord" alt="Discord"></a>
+    <a href="https://iota.stackexchange.com/" style="text-decoration:none;"><img src="https://img.shields.io/badge/StackExchange-9cf.svg?logo=stackexchange" alt="StackExchange"></a>
+    <a href="https://raw.githubusercontent.com/iotaledger/streams/master/LICENSE" style="text-decoration:none;"><img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="Apache 2.0 license"></a>
+</p>
+      
+<p align="center">
+  <a href="#about">About</a> ◈
+  <a href="#prerequisites">Prerequisites</a> ◈
+  <a href="#installation">Installation</a> ◈
+  <a href="#getting-started">Getting started</a> ◈
+  <a href="#api-reference">API reference</a> ◈
+  <a href="#examples">Examples</a> ◈
+  <a href="#supporting-the-project">Supporting the project</a> ◈
+  <a href="#joining-the-discussion">Joining the discussion</a> 
+</p>
+
+---
+
+## About
+
+IOTA Streams is a **work-in-progress** framework for building cryptographic messaging protocols. Streams ships with a built-in protocol called Channels for sending authenticated messages between two or more parties on the Tangle.
+
+As a framework, Streams allows developers to build protocols for their specific needs.
+
+This process will be documented as the development progresses. However, since this crate is in an alpha stage of development it is still likely to change.
+
+At the moment, IOTA Streams includes the following crates:
 * [Channels Application](iota-streams-app-channels/README.md) featuring Channels Application.
 * [Core layers](iota-streams-core/README.md) featuring spongos automaton for sponge-based authenticated encryption, pre-shared keys, pseudo-random generator;
 * [Keccak for core layers](iota-streams-core-keccak/README.md) featuring Keccak-F[1600] as spongos transform;
@@ -9,59 +46,58 @@ This is the **WIP** Rust IOTA Streams library, it consists of the following comp
 * [Application layer](iota-streams-app/README.md) common Application definitions.
 * [Bindings](bindings/c/README.md).
 
-The library is in the alpha stage and the API is likely to change.
-
-|Table of contents|
-|:----|
-| [Streams](#overview)|
-| [Prerequisites](#prerequisites)|
-| [Getting started](#getting-started)|
-| [API reference](#api-reference)|
-| [Examples](#examples)|
-| [License](#license)|
-
-## Streams
-
-IOTA Streams is a framework for cryptographic protocols called Applications. Streams ships with an existing application, called Channels. The Channels application builds on and extends functionality known from Masked Authenticated Messaging v0 and v1.0. 
-
-As a cryptographic protocol framework, Streams allows developers to build Applications for their specific needs. This process will be documented in how-tos that will be published as the development progresses.
-
 ## Prerequisites
+To use IOTA Streams, you need the following:
+- [Rust](https://www.rust-lang.org/tools/install)
+- (Optional) An IDE that supports Rust autocompletion. We recommend [Visual Studio Code](https://code.visualstudio.com/Download) with the [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) extension
 
-To use the library, we recommend update your Rust to latest stable version [`rustup update stable`](https://github.com/rust-lang/rustup.rs#keeping-rust-up-to-date). Nightly should be fine too.
+We also recommend updating Rust to the [latest stable version](https://github.com/rust-lang/rustup.rs#keeping-rust-up-to-date):
+
+```bash
+rustup update stable
+```
+
+
+## Installation
+
+To use the library in your crate you need to add it as a dependancy in the `Cargo.toml` file.
+
+Because the library is not on [crates.io](https://crates.io/), you need to use the Git repository either remotely or locally.
 
 `no_std` is currently supported. However cargo nightly must be used to build with `no_std` feature.
 
 ## Getting started
+**Remote**
+Add the following to your `Cargo.toml` file:
 
-To use the library in your crate you need to add it as a dependancy in `Cargo.toml`, as it's not on [crates.io](https://crates.io/) it must be added from git repository:
-
-```
+```bash
 [dependencies]
-iota-streams = { git = "https://github.com/iotaledger/streams" }
+anyhow = { version = "1.0", default-features = false }
+iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "binary"}
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+iota-conversion = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
 ```
 
-Or you can clone the repository locally:
+**Local**
 
-```
-git clone https://github.com/iotaledger/streams
-```
+1. Clone this repository
 
-and add a dependency in `Cargo.toml` in the following way:
+    ```bash
+    git clone https://github.com/iotaledger/streams
+    ```
 
-```
-[dependencies]
-iota-streams = { version = "0.2", path = "../streams" }
-```
+2. Add the following to your `Cargo.toml` file:
 
-Optionally, you can run tests in the whole `iota-streams` project:
+    ```bash
+    [dependencies]
+    iota-streams = { version = "0.1", path = "../streams" }
+    ```
 
-```
-cd streams/
-cargo test --all
-```
+## Getting started
 
-Now you can use the Streams Channels Application in your code like this:
+After you've [installed the library](#installation), you can use it in your own Cargo project.
+
+For example, you may want to use the Channels protocol to create a new author and subscriber like so:
 
 ```
 use iota_streams::app_channels::api::tangle::{Author, Subscriber};
@@ -77,21 +113,38 @@ fn main() {
 }
 ```
 
-For a more comprehensive example of using the Streams Channels Application can be found [here](examples/src/main.rs).
+ For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.2/overview).
 
 ## API reference
 
-API reference can be generated with the following command:
-```
+To generate the API reference and display it in a web browser, do the following:
+
+```bash
 cargo doc --open
 ```
 
 ## Examples
 
-Examples of using Channels Application can be found [here](examples/src/main.rs).
+We have an example in the [`examples` directory](examples/src/main.rs). that you can use as a reference when developing your own protocols with IOTA Streams.
 
-A full tutorial is available on [docs.iota.org](https://docs.iota.org/docs/channels/1.2/tutorials/build-a-messaging-app).
+A `no_std` version can be found in [`iota-streams-app-channels-example` directory](iota-streams-app-channels-example/src/main.rs)
 
-## License
+## Supporting the project
 
-The project is licensed under Apache 2.0/MIT license.
+Please see our [contribution guidelines](CONTRIBUTING.md) for all the ways in which you can contribute.
+
+### Running tests
+
+We use code comments to write tests. You can run all tests by doing the following from the `streams` directory:
+
+```
+cargo test --all
+```
+
+### Updating documentation
+
+If you want to improve the code comments, please do so according to the guidelines in [RFC 1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text).
+
+## Joining the discussion
+
+If you want to get involved in discussions about this technology, or you're looking for support, go to the #streams-discussion channel on [Discord](https://discord.iota.org/).
