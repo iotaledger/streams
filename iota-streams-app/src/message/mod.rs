@@ -1,6 +1,6 @@
-use failure::Fallible;
+use anyhow::Result;
 
-use iota_streams_protobuf3::{
+use iota_streams_ddml::{
     command::{
         sizeof,
         unwrap,
@@ -10,15 +10,15 @@ use iota_streams_protobuf3::{
 };
 
 /// Type of "absolute" links. For http it's the absolute URL.
-pub trait HasLink: Sized {
+pub trait HasLink: Sized + Default + Clone + Eq {
     /// Type of "base" links. For http it's domain name.
-    type Base;
+    type Base: Default + Clone;
 
     /// Get base part of the link.
     fn base(&self) -> &Self::Base;
 
     /// Type of "relative" links. For http it's URL path.
-    type Rel;
+    type Rel: Default + Clone;
 
     /// Get relative part of the link.
     fn rel(&self) -> &Self::Rel;
@@ -28,38 +28,39 @@ pub trait HasLink: Sized {
 }
 
 /// Abstraction-helper to generate message links.
-pub trait LinkGenerator<TW, Link, From> {
+pub trait LinkGenerator<Link, From> {
     /// Derive a new link using an arg.
-    fn link_from(&mut self, arg: &From) -> Link;
+    fn link_from(&mut self, arg: From) -> Link;
 
     /// Derive a new link and construct a header with given content type.
-    fn header_from(&mut self, arg: &From, content_type: &str) -> header::Header<TW, Link>;
-    /*
-    {
-        header::Header::new_with_type(self.link_from(arg), content_type)
+    fn header_from(&mut self, arg: From, content_type: u8, payload_length: usize, seq_num: u64) -> HDF<Link> {
+        //TODO: get rid of unwrap(), return Result<HDF<Link>>
+        HDF::new_with_fields(self.link_from(arg), content_type, payload_length, seq_num).unwrap()
     }
-     */
 }
 
-pub trait ContentWrap<TW, F, Store> {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>>;
-    fn wrap<'c, OS: io::OStream<TW>>(
+pub trait ContentWrap<F, Store> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>>;
+    fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
-        ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<&'c mut wrap::Context<TW, F, OS>>;
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>>;
 }
 
-pub trait ContentUnwrap<TW, F, Store> {
-    fn unwrap<'c, IS: io::IStream<TW>>(
+pub trait ContentUnwrap<F, Store> {
+    fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
-        ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<&'c mut unwrap::Context<TW, F, IS>>;
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>>;
 }
 
-pub mod header;
-use header::Header;
+pub mod hdf;
+pub use hdf::HDF;
+pub mod pcf;
+pub use pcf::PCF;
+
 mod version;
 pub use version::*;
 
@@ -67,8 +68,8 @@ mod prepared;
 pub use prepared::*;
 mod wrapped;
 pub use wrapped::*;
-mod tbinary;
-pub use tbinary::*;
+mod binary;
+pub use binary::*;
 mod preparsed;
 pub use preparsed::*;
 mod unwrapped;

@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-core"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -8,26 +8,21 @@ readme = "README.md"
 keywords = ["iota", "streams", "core"]
 description = "A rust implementation of the IOTA Streams core utils"
 
+[features]
+default = ["std"]
+# enable std
+std = ["rand/std", "digest/std"]
+
 [lib]
 name = "iota_streams_core"
 path = "src/lib.rs"
 
 [dependencies]
-rand = "0.7"
+# digest version should correspond to curve25519-dalek's version
+digest = { version = "0.9", default-features = false }
+#rand_core = { version = "0.5", default-features = false }
+rand = { version = "0.7", default-features = false }
+hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }
 
 [dev-dependencies]
 criterion = "0.3"
-
-[features]
-
-# Enable traversal Merkle tree implementation for MSS private key.
-# By default a complete Merkle tree implementation is used.
-mss_merkle_tree_traversal = []
-
-[[bench]]
-name = "troika"
-harness = false
-
-[[bench]]
-name = "ftroika"
-harness = false

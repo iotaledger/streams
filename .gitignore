@@ -1,7 +1,9 @@
 /target
-*/target
+**/target/
 **/*.rs.bk
 *.rs~
 *.toml~
 *.md~
+
+.project
 Cargo.lock

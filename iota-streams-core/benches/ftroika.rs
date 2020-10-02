@@ -9,14 +9,12 @@ fn basic_ftroika() {
     let mut input = [0u8; 8019];
     let mut output = [0u8; 243];
 
-    /*
-    let mut rng = thread_rng();
-    for trit in input.iter_mut() {
-        *trit = rng.gen_range(0, 3);
-    }
-    */
+    // let mut rng = thread_rng();
+    // for trit in input.iter_mut() {
+    // trit = rng.gen_range(0, 3);
+    // }
 
-    //ftroika.permutation();
+    // ftroika.permutation();
     ftroika.absorb(&input);
     ftroika.finalize();
     ftroika.squeeze(&mut output);

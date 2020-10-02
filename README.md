@@ -38,16 +38,15 @@ As a framework, Streams allows developers to build protocols for their specific 
 This process will be documented as the development progresses. However, since this crate is in an alpha stage of development it is still likely to change.
 
 At the moment, IOTA Streams includes the following crates:
-
-- `iota_streams_app_channels`: An API for using the built-in Channels protocol
-- `iota_streams_app`: The `message` and `transport` modules for creating your own Streams protocols
-- `iota_streams_core`: Modules for the core cryptographic features used by Streams
-- `iota_streams_core_keccak`: Modules for using sponge constructions with KeccakF1600B and KeccakF1600T permutations
-- `iota_streams_core_edsig`: A module for working with signature keys
-- `iota_streams_ddml`: Modules for working with the IOTA data description language called DDML, in which all Streams messages are encoded
+* [Channels Application](iota-streams-app-channels/README.md) featuring Channels Application.
+* [Core layers](iota-streams-core/README.md) featuring spongos automaton for sponge-based authenticated encryption, pre-shared keys, pseudo-random generator;
+* [Keccak for core layers](iota-streams-core-keccak/README.md) featuring Keccak-F[1600] as spongos transform;
+* [Curve25519 asymmetric crypto](iota-streams-core-edsig/README.md) featuring Ed25519 signature and X25519 key exchange;
+* [DDML](iota-streams-ddml/README.md) featuring data definition and manipulation language for protocol messages;
+* [Application layer](iota-streams-app/README.md) common Application definitions.
+* [Bindings](bindings/c/README.md).
 
 ## Prerequisites
-
 To use IOTA Streams, you need the following:
 - [Rust](https://www.rust-lang.org/tools/install)
 - (Optional) An IDE that supports Rust autocompletion. We recommend [Visual Studio Code](https://code.visualstudio.com/Download) with the [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) extension
@@ -58,7 +57,6 @@ We also recommend updating Rust to the [latest stable version](https://github.co
 rustup update stable
 ```
 
-The `no_std` attribute is not currently supported.
 
 ## Installation
 
@@ -66,8 +64,10 @@ To use the library in your crate you need to add it as a dependancy in the `Carg
 
 Because the library is not on [crates.io](https://crates.io/), you need to use the Git repository either remotely or locally.
 
-**Remote**
+`no_std` is currently supported. However cargo nightly must be used to build with `no_std` feature.
 
+## Getting started
+**Remote**
 Add the following to your `Cargo.toml` file:
 
 ```bash
@@ -97,28 +97,19 @@ iota-conversion = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf53
 
 After you've [installed the library](#installation), you can use it in your own Cargo project.
 
-For example, you may want to use the Channels protocol to create a new channel like so:
+For example, you may want to use the Channels protocol to create a new author and subscriber like so:
 
-```rust
-#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
-use anyhow::{Result};
-use iota_streams::app_channels::api::tangle::{Author, Transport, Address};
+```
+use iota_streams::app_channels::api::tangle::{Author, Subscriber};
+use iota_streams::app::transport::tangle::PAYLOAD_BYTES;
 
-pub fn start_a_new_channel<T: Transport>(author: &mut Author, client: &mut T, send_opt: T::SendOptions) -> Result<Address> {
+fn main() {
+    let encoding = "utf-8";
+    let multi_branching_flag = true;
 
-    // Create an `Announce` message to start the channel
-    let announcement = author.announce()?;
-
-    println!("Creating a new channel");
-
-    // Convert the message to a bundle and send it to a node
-    client.send_message_with_options(&announcement, send_opt)?;
-    println!("Channel published");
-
-    let channel_address = author.channel_address().to_string();
-    println!("Channel address: {}", &channel_address);
-
-    Ok(announcement.link)
+    let mut author = Author::new("AUTHORSSEED", encoding, PAYLOAD_BYTES, multi_branching_flag);
+    
+    let mut subscriber = Subscriber::new("MYSUBSCRIBERSECRETSTRING", encoding, PAYLOAD_BYTES);
 }
 ```
 
@@ -134,7 +125,9 @@ cargo doc --open
 
 ## Examples
 
-We have an example in the [`examples` directory](iota-streams-app-channels/examples) that you can use as a reference when developing your own protocols with IOTA Streams.
+We have an example in the [`examples` directory](examples/src/main.rs). that you can use as a reference when developing your own protocols with IOTA Streams.
+
+A `no_std` version can be found in [`iota-streams-app-channels-example` directory](iota-streams-app-channels-example/src/main.rs)
 
 ## Supporting the project
 

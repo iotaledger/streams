@@ -3,8 +3,8 @@
 //! # Streams Application
 //! Streams Application is a message-oriented cryptographic protocol. Application
 //! defines protocol parties, their roles, syntax and semantic of protocol messages.
-//! Messages are declared in Protobuf3 syntax and are processed according to
-//! Protobuf3 rules. Streams Message consists of Header and Application-specific Content.
+//! Messages are declared in DDML syntax and are processed according to
+//! DDML rules. Streams Message consists of Header and Application-specific Content.
 //!
 //! # Channel Application
 //! Channel Application has evolved from previous versions of Streams. There are two
@@ -18,9 +18,19 @@
 //! There are a few known issues that araise in practice. Streams v1.1 makes an attempt
 //! at tackling them by tweaking run-time and compile-time parameters. If Channel
 //! Application is not suitable for your needs you can implement your own Application,
-//! and Protobuf3 implementation as a EDSL allows you to easily wrap and unwrap
-//! messages of your Application. And when Protobuf3 is not powerful enough,
+//! and DDML implementation as a EDSL allows you to easily wrap and unwrap
+//! messages of your Application. And when DDML is not powerful enough,
 //! it can be extended with custom commands.
+
+#![no_std]
+
+#[cfg(not(feature = "std"))]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
 
 /// Streams Message definitions and utils for wrapping/unwrapping.
 pub mod message;
@@ -28,8 +38,6 @@ pub mod message;
 /// Transport-related abstractions.
 pub mod transport;
 
-/*
-pub trait TrustProvider<PublicKey> {
-    fn check_trusted(pk: &PublicKey) -> Fallible<()>;
-}
- */
+// pub trait TrustProvider<PublicKey> {
+// fn check_trusted(pk: &PublicKey) -> Result<()>;
+// }

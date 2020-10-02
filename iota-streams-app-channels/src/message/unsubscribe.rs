@@ -15,7 +15,7 @@
 //!
 //! * `mac` -- authentication tag proving knowledge of the `unsubscribe_key` from the `Subscribe` message.
 
-use failure::Fallible;
+use anyhow::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
@@ -30,14 +30,11 @@ use iota_streams_core::{
         word::SpongosTbitWord,
     },
 };
-use iota_streams_protobuf3::{
+use iota_streams_ddml::{
     command::*,
     io,
     types::*,
 };
-
-/// Type of `Unsubscribe` message content.
-pub const TYPE: &str = "STREAMS9CHANNEL9UNSUBSCRIBE";
 
 pub struct ContentWrap<'a, TW, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
@@ -52,7 +49,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
     Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Fallible<&'c mut sizeof::Context<TW, F>> {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Result<&'c mut sizeof::Context<TW, F>> {
         let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(&store, self.link)?.commit()?.squeeze(&mac)?;
@@ -63,7 +60,7 @@ where
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Fallible<&'c mut wrap::Context<TW, F, OS>> {
+    ) -> Result<&'c mut wrap::Context<TW, F, OS>> {
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(store, self.link)?.commit()?.squeeze(&mac)?;
         Ok(ctx)
@@ -100,7 +97,7 @@ where
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Fallible<&'c mut unwrap::Context<TW, F, IS>> {
+    ) -> Result<&'c mut unwrap::Context<TW, F, IS>> {
         let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
         ctx.join(store, &mut self.link)?.commit()?.squeeze(&mac)?;
         Ok(ctx)

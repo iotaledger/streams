@@ -1,52 +1,48 @@
-use failure::Fallible;
-use std::string::ToString;
+use anyhow::Result;
+
+use core::fmt;
 
 use super::*;
-use iota_streams_core::tbits::{
-    word::StringTbitWord,
-    TbitSlice,
-};
-use iota_streams_protobuf3::command::unwrap;
+use iota_streams_core::sponge::prp::PRP;
+use iota_streams_ddml::command::unwrap;
 
 /// Message context preparsed for unwrapping.
-pub struct PreparsedMessage<'a, TW, F, Link> {
-    pub header: Header<TW, Link>,
-    pub(crate) ctx: unwrap::Context<TW, F, TbitSlice<'a, TW>>,
+pub struct PreparsedMessage<'a, F, Link> {
+    pub header: HDF<Link>,
+    pub(crate) ctx: unwrap::Context<F, &'a [u8]>,
 }
 
-impl<'a, TW, F, Link> PreparsedMessage<'a, TW, F, Link>
-where
-    TW: StringTbitWord,
-{
-    pub fn check_content_type(&self, content_type: &str) -> bool {
-        (self.header.content_type.0).eq_str(content_type)
+impl<'a, F, Link> PreparsedMessage<'a, F, Link> {
+    pub fn check_content_type(&self, content_type: u8) -> bool {
+        self.content_type() == content_type
     }
 
-    pub fn content_type(&self) -> String {
-        (self.header.content_type.0).to_string()
+    pub fn content_type(&self) -> u8 {
+        self.header.get_content_type()
     }
 
     pub fn unwrap<Store, Content>(
         mut self,
         store: &Store,
-        mut content: Content,
-    ) -> Fallible<UnwrappedMessage<TW, F, Link, Content>>
+        content: Content,
+    ) -> Result<UnwrappedMessage<F, Link, Content>>
     where
-        Content: ContentUnwrap<TW, F, Store>,
+        Content: ContentUnwrap<F, Store>,
+        F: PRP,
     {
-        content.unwrap(&store, &mut self.ctx)?;
+        let mut pcf = pcf::PCF::default_with_content(content);
+        pcf.unwrap(&store, &mut self.ctx)?;
         // Discard what's left of `self.ctx.stream`
         Ok(UnwrappedMessage {
             link: self.header.link,
-            content: content,
+            pcf: pcf,
             spongos: self.ctx.spongos,
         })
     }
 }
 
-impl<'a, TW, F, Link> Clone for PreparsedMessage<'a, TW, F, Link>
+impl<'a, F, Link> Clone for PreparsedMessage<'a, F, Link>
 where
-    TW: Clone,
     F: Clone,
     Link: Clone,
 {
@@ -55,5 +51,14 @@ where
             header: self.header.clone(),
             ctx: self.ctx.clone(),
         }
+    }
+}
+
+impl<'a, F, Link> fmt::Debug for PreparsedMessage<'a, F, Link>
+where
+    Link: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{header: {:?}, ctx: {:?}}}", self.header, "self.ctx")
     }
 }

@@ -1,104 +1,142 @@
-//use std::convert::{AsMut, AsRef, From, TryFrom};
-use std::fmt;
-//use std::hash;
+use core::fmt;
 
 use super::prp::PRP;
 use crate::{
     hash::Hash,
-    tbits::{
-        word::{
-            BasicTbitWord,
-            SpongosTbitWord,
+    prelude::{
+        digest::Digest,
+        generic_array::{
+            typenum::U64,
+            GenericArray,
         },
-        TbitSlice,
-        TbitSliceMut,
-        Tbits,
+        Vec,
     },
 };
 
 /// Implemented as a separate from `Spongos` struct in order to deal with life-times.
-pub struct Outer<TW> {
-    /// Current position in the outer state.
+pub struct Outer {
+    /// Current position (offset in bytes) within the outer state.
     pos: usize,
+
     /// Outer state is stored externally due to Troika implementation.
     /// It is injected into Troika state before transform and extracted after.
-    tbits: Tbits<TW>,
+    buf: Vec<u8>,
 }
 
-impl<TW> Clone for Outer<TW>
-where
-    TW: Clone,
-{
+impl Clone for Outer {
     fn clone(&self) -> Self {
         Self {
             pos: self.pos,
-            tbits: self.tbits.clone(),
+            buf: self.buf.clone(),
         }
     }
 }
 
-impl<TW> Outer<TW>
-where
-    TW: BasicTbitWord,
-{
+impl Outer {
     /// Create a new outer state with a given rate (size).
     pub fn new(rate: usize) -> Self {
         Self {
             pos: 0,
-            tbits: Tbits::zero(rate),
+            buf: vec![0; rate],
         }
     }
 
     /// `outer_mut` must not be assigned to a variable.
     /// It must be used via `self.outer.slice_mut()` as `self.outer.pos` may change
     /// and it must be kept in sync with `outer_mut` object.
-    pub fn slice_mut(&mut self) -> TbitSliceMut<TW> {
-        //debug_assert!(self.trits.size() >= RATE);
-        //debug_assert!(self.pos <= RATE);
-        self.tbits.slice_mut().drop(self.pos)
+    pub fn slice_mut(&mut self) -> &mut [u8] {
+        &mut self.buf[self.pos..]
     }
 
-    pub fn slice_min_mut(&mut self, n: usize) -> TbitSliceMut<TW> {
-        self.slice_mut().take_min(n)
+    pub fn slice_min_mut(&mut self, n: usize) -> &mut [u8] {
+        let m = core::cmp::min(self.pos + n, self.buf.len());
+        &mut self.buf[self.pos..m]
+    }
+
+    pub fn commit(&mut self) -> &mut [u8] {
+        for o in &mut self.buf[self.pos..] {
+            *o = 0
+        }
+        self.pos = 0;
+        &mut self.buf[..]
     }
 
     /// Rate (total size) of the outer state.
     pub fn rate(&self) -> usize {
-        self.tbits.size()
+        self.buf.len()
     }
 
     /// Available size of the outer tbits.
-    pub fn size(&self) -> usize {
-        self.tbits.size() - self.pos
+    pub fn avail(&self) -> usize {
+        self.buf.len() - self.pos
     }
 }
 
-impl<TW> fmt::Debug for Outer<TW>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: fmt::Display,
-{
+impl fmt::Debug for Outer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:[{:?}]", self.pos, self.tbits)
+        write!(f, "{}:[{:?}]", self.pos, self.buf)
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum Mode {
-    OVERWRITE,
-    XOR,
+fn xor(s: &mut [u8], x: &[u8]) {
+    for (si, xi) in s.iter_mut().zip(x.iter()) {
+        *si ^= *xi;
+    }
 }
 
-pub struct Spongos<TW, F> {
-    /// Spongos transform.
+fn encrypt_xor(s: &mut [u8], x: &[u8], y: &mut [u8]) {
+    for (si, (xi, yi)) in s.iter_mut().zip(x.iter().zip(y.iter_mut())) {
+        *yi = *si ^ *xi;
+        *si = *yi;
+    }
+}
+
+fn decrypt_xor(s: &mut [u8], y: &[u8], x: &mut [u8]) {
+    for (si, (yi, xi)) in s.iter_mut().zip(y.iter().zip(x.iter_mut())) {
+        *xi = *si ^ *yi;
+        *si = *yi;
+    }
+}
+
+fn encrypt_xor_mut(s: &mut [u8], x: &mut [u8]) {
+    for (si, xi) in s.iter_mut().zip(x.iter_mut()) {
+        *xi ^= *si;
+        *si = *xi;
+    }
+}
+
+fn decrypt_xor_mut(s: &mut [u8], y: &mut [u8]) {
+    for (si, yi) in s.iter_mut().zip(y.iter_mut()) {
+        let t = *yi;
+        *yi ^= *si;
+        *si = t;
+    }
+}
+
+fn copy(s: &[u8], y: &mut [u8]) {
+    for (si, yi) in s.iter().zip(y.iter_mut()) {
+        *yi = *si;
+    }
+}
+
+fn equals(s: &[u8], x: &[u8]) -> bool {
+    let mut eq = true;
+    for (si, xi) in s.iter().zip(x.iter()) {
+        eq = (*si == *xi) && eq;
+    }
+    eq
+}
+
+pub struct Spongos<F> {
+    /// Spongos transform together with its internal state.
     s: F,
+
     /// Outer state.
-    outer: Outer<TW>,
+    outer: Outer,
 }
 
-impl<TW, F> Clone for Spongos<TW, F>
+impl<F> Clone for Spongos<F>
 where
-    TW: Clone,
     F: Clone,
 {
     fn clone(&self) -> Self {
@@ -109,49 +147,27 @@ where
     }
 }
 
-impl<TW, F> Spongos<TW, F>
+impl<F> Spongos<F>
 where
-    F: PRP<TW>,
+    F: PRP,
 {
-    /// Sponge fixed key size.
-    pub const KEY_SIZE: usize = F::CAPACITY;
+    /// Sponge fixed key size in buf.
+    pub const KEY_SIZE: usize = F::CAPACITY_BITS / 8;
 
-    /// Sponge fixed nonce size.
+    /// Sponge fixed nonce size in buf.
     pub const NONCE_SIZE: usize = Self::KEY_SIZE;
 
-    /// Sponge fixed hash size.
-    pub const HASH_SIZE: usize = F::CAPACITY;
+    /// Sponge fixed hash size in buf.
+    pub const HASH_SIZE: usize = F::CAPACITY_BITS / 8;
 
-    /// Sponge fixed MAC size.
-    pub const MAC_SIZE: usize = F::CAPACITY;
-}
+    /// Sponge fixed MAC size in buf.
+    pub const MAC_SIZE: usize = F::CAPACITY_BITS / 8;
 
-impl<TW, F> Spongos<TW, F>
-where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
-{
     /// Create a Spongos object, initialize state with zero trits.
     pub fn init() -> Self {
         Self::init_with_state(F::default())
     }
-}
 
-impl<TW, F> Default for Spongos<TW, F>
-where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
-{
-    fn default() -> Self {
-        Self::init()
-    }
-}
-
-impl<TW, F> Spongos<TW, F>
-where
-    TW: SpongosTbitWord,
-    F: PRP<TW>,
-{
     /// Create a Spongos object with an explicit state.
     pub fn init_with_state(s: F) -> Self {
         Self {
@@ -160,7 +176,7 @@ where
         }
     }
 
-    pub fn from_inner(inner: F::Inner) -> Self {
+    pub fn from_inner(inner: Vec<u8>) -> Self {
         Self::init_with_state(inner.into())
     }
 
@@ -173,212 +189,142 @@ where
         }
     }
 
-    /*
-    fn loop_steps<I>(&mut self, mut size: usize, step: I)
-        where I: for<'a> FnMut(TbitSliceMut<'a, TW>)
-    {
-        while size > 0 {
-            let n = {
-                let s = self.outer.slice_min_mut(size);
-                step(s);
-                s.size()
-            };
-            self.update(n);
-            size -= n;
-        }
-    }
-     */
-
-    /// Absorb a trit slice into Spongos object.
-    pub fn absorb<'a>(&'a mut self, mut x: TbitSlice<'a, TW>) {
+    /// Absorb a slice into Spongos object.
+    pub fn absorb(&mut self, mut x: &[u8]) {
         while !x.is_empty() {
-            let mut s = self.outer.slice_min_mut(x.size());
-            let n = s.size();
-            let x_head = x.advance(n);
-            if F::MODE == Mode::OVERWRITE {
-                s.absorb_overwrite(x_head);
-            } else {
-                s.absorb_xor(x_head);
-            }
+            let s = self.outer.slice_min_mut(x.len());
+            let n = s.len();
+            xor(s, &x[..n]);
+            x = &x[n..];
             self.update(n);
         }
     }
 
-    /// Absorb Tbits.
-    pub fn absorb_tbits(&mut self, x: &Tbits<TW>) {
-        self.absorb(x.slice())
+    /// Absorb buf.
+    pub fn absorb_buf(&mut self, x: &Vec<u8>) {
+        self.absorb(&x[..])
+    }
+
+    pub fn absorb_ref<X: AsRef<[u8]>>(&mut self, x: X) {
+        self.absorb(x.as_ref())
     }
 
     /// Squeeze a trit slice from Spongos object.
-    pub fn squeeze(&mut self, y: &mut TbitSliceMut<TW>) {
+    pub fn squeeze(&mut self, mut y: &mut [u8]) {
         while !y.is_empty() {
-            let mut s = self.outer.slice_min_mut(y.size());
-            let n = s.size();
-            let mut head = y.advance(n);
-            if F::MODE == Mode::OVERWRITE {
-                s.squeeze_overwrite(&mut head);
-            } else {
-                s.squeeze_xor(&mut head);
-            }
+            let s = self.outer.slice_min_mut(y.len());
+            let n = s.len();
+            copy(s, &mut y[..n]);
+            y = &mut y[n..];
             self.update(n);
         }
     }
-    /// Squeeze consuming slice `y`.
-    pub fn squeeze2(&mut self, mut y: TbitSliceMut<TW>) {
-        self.squeeze(&mut y);
-    }
 
     /// Squeeze a trit slice from Spongos object and compare.
-    pub fn squeeze_eq(&mut self, mut y: TbitSlice<TW>) -> bool {
+    pub fn squeeze_eq(&mut self, mut y: &[u8]) -> bool {
         let mut eq = true;
         while !y.is_empty() {
-            let mut s = self.outer.slice_min_mut(y.size());
-            let n = s.size();
-            let head = y.advance(n);
-            let eqn = if F::MODE == Mode::OVERWRITE {
-                s.squeeze_eq_overwrite(head)
-            } else {
-                s.squeeze_eq_xor(head)
-            };
-            eq = eqn && eq;
+            let s = self.outer.slice_min_mut(y.len());
+            let n = s.len();
+            eq = equals(s, &y[..n]) && eq;
+            y = &y[n..];
             self.update(n);
         }
         eq
     }
 
-    /// Squeeze Tbits.
-    pub fn squeeze_tbits(&mut self, n: usize) -> Tbits<TW> {
-        let mut y = Tbits::zero(n);
-        self.squeeze(&mut y.slice_mut());
+    /// Squeeze buf.
+    pub fn squeeze_buf(&mut self, n: usize) -> Vec<u8> {
+        let mut y = vec![0; n];
+        self.squeeze(&mut y[..]);
         y
     }
 
-    /// Squeeze Tbits and compare.
-    pub fn squeeze_eq_tbits(&mut self, y: &Tbits<TW>) -> bool {
-        self.squeeze_eq(y.slice())
+    /// Squeeze buf and compare.
+    pub fn squeeze_eq_buf(&mut self, y: &Vec<u8>) -> bool {
+        self.squeeze_eq(&y[..])
     }
 
     /// Encrypt a trit slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub fn encrypt(&mut self, mut x: TbitSlice<TW>, y: &mut TbitSliceMut<TW>) {
-        unsafe {
-            debug_assert!(!x.is_overlapping(&y.as_const()));
-        }
-        assert_eq!(x.size(), y.size());
+    pub fn encrypt(&mut self, mut x: &[u8], mut y: &mut [u8]) {
+        assert_eq!(x.len(), y.len());
         while !x.is_empty() {
-            let mut s = self.outer.slice_min_mut(x.size());
-            let n = s.size();
-            let x_head = x.advance(n);
-            let mut y_head = y.advance(n);
-            if F::MODE == Mode::OVERWRITE {
-                s.encrypt_overwrite(x_head, &mut y_head);
-            } else {
-                s.encrypt_xor(x_head, &mut y_head);
-            }
+            let s = self.outer.slice_min_mut(x.len());
+            let n = s.len();
+            encrypt_xor(s, &x[..n], &mut y[..n]);
+            x = &x[n..];
+            y = &mut y[n..];
             self.update(n);
         }
-    }
-    /// Encrypt consuming slice `y`.
-    pub fn encrypt2(&mut self, x: TbitSlice<TW>, mut y: TbitSliceMut<TW>) {
-        self.encrypt(x, &mut y);
     }
 
     /// Encrypt in-place a trit slice with Spongos object.
-    pub fn encrypt_mut(&mut self, xy: &mut TbitSliceMut<TW>) {
+    pub fn encrypt_mut(&mut self, mut xy: &mut [u8]) {
         while !xy.is_empty() {
-            let mut s = self.outer.slice_min_mut(xy.size());
-            let n = s.size();
-            let mut xy_head = xy.advance(n);
-            if F::MODE == Mode::OVERWRITE {
-                s.encrypt_overwrite_mut(&mut xy_head);
-            } else {
-                s.encrypt_xor_mut(&mut xy_head);
-            }
+            let s = self.outer.slice_min_mut(xy.len());
+            let n = s.len();
+            encrypt_xor_mut(s, &mut xy[..n]);
+            xy = &mut xy[n..];
             self.update(n);
         }
     }
-    /// Encrypt consuming slice `xy`.
-    pub fn encrypt2_mut(&mut self, mut xy: TbitSliceMut<TW>) {
-        self.encrypt_mut(&mut xy);
-    }
 
-    /// Encrypt Tbits.
-    pub fn encrypt_tbits(&mut self, x: &Tbits<TW>) -> Tbits<TW> {
-        let mut y = Tbits::zero(x.size());
-        self.encrypt(x.slice(), &mut y.slice_mut());
+    /// Encrypt buf.
+    pub fn encrypt_buf(&mut self, x: &Vec<u8>) -> Vec<u8> {
+        let mut y = vec![0; x.len()];
+        self.encrypt(&x[..], &mut y[..]);
         y
     }
 
-    /// Encrypt Tbits in-place.
-    pub fn encrypt_mut_tbits(&mut self, t: &mut Tbits<TW>) {
-        let mut xy = t.slice_mut();
-        self.encrypt_mut(&mut xy);
+    /// Encrypt buf in-place.
+    pub fn encrypt_buf_mut(&mut self, xy: &mut Vec<u8>) {
+        self.encrypt_mut(&mut xy[..]);
     }
 
-    /// Decrypt a tbit slice with Spongos object.
+    /// Decrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub fn decrypt(&mut self, mut y: TbitSlice<TW>, x: &mut TbitSliceMut<TW>) {
-        unsafe {
-            debug_assert!(!y.is_overlapping(&x.as_const()));
-        }
-        assert_eq!(x.size(), y.size());
+    pub fn decrypt(&mut self, mut y: &[u8], mut x: &mut [u8]) {
+        assert_eq!(x.len(), y.len());
         while !x.is_empty() {
-            let mut s = self.outer.slice_min_mut(y.size());
-            let n = s.size();
-            let y_head = y.advance(n);
-            let mut x_head = x.advance(n);
-            if F::MODE == Mode::OVERWRITE {
-                s.decrypt_overwrite(y_head, &mut x_head);
-            } else {
-                s.decrypt_xor(y_head, &mut x_head);
-            }
+            let s = self.outer.slice_min_mut(y.len());
+            let n = s.len();
+            decrypt_xor(s, &y[..n], &mut x[..n]);
+            y = &y[n..];
+            x = &mut x[n..];
             self.update(n);
         }
     }
-    /// Decrypt consuming slice `x`.
-    pub fn decrypt2(&mut self, y: TbitSlice<TW>, mut x: TbitSliceMut<TW>) {
-        self.decrypt(y, &mut x);
-    }
 
-    /// Decrypt in-place a trit slice with Spongos object.
-    pub fn decrypt_mut(&mut self, xy: &mut TbitSliceMut<TW>) {
+    /// Decrypt in-place a byte slice with Spongos object.
+    pub fn decrypt_mut(&mut self, mut xy: &mut [u8]) {
         while !xy.is_empty() {
-            let mut s = self.outer.slice_min_mut(xy.size());
-            let n = s.size();
-            let mut xy_head = xy.advance(n);
-            if F::MODE == Mode::OVERWRITE {
-                s.decrypt_overwrite_mut(&mut xy_head);
-            } else {
-                s.decrypt_xor_mut(&mut xy_head);
-            }
+            let s = self.outer.slice_min_mut(xy.len());
+            let n = s.len();
+            decrypt_xor_mut(s, &mut xy[..n]);
+            xy = &mut xy[n..];
             self.update(n);
         }
     }
-    /// Decrypt consuming slice `xy`.
-    pub fn decrypt2_mut(&mut self, mut xy: TbitSliceMut<TW>) {
-        self.decrypt_mut(&mut xy);
+
+    /// Decrypt buf.
+    pub fn decrypt_buf(&mut self, y: &Vec<u8>) -> Vec<u8> {
+        let mut x = vec![0; y.len()];
+        self.decrypt(&y[..], &mut x[..]);
+        x
     }
 
-    /// Decrypt Tbits.
-    pub fn decrypt_tbits(&mut self, x: &Tbits<TW>) -> Tbits<TW> {
-        let mut y = Tbits::zero(x.size());
-        self.decrypt(x.slice(), &mut y.slice_mut());
-        y
-    }
-
-    /// Decrypt Tbits in-place.
-    pub fn decrypt_mut_tbits(&mut self, t: &mut Tbits<TW>) {
-        let mut xy = t.slice_mut();
-        self.decrypt_mut(&mut xy);
+    /// Decrypt buf in-place.
+    pub fn decrypt_buf_mut(&mut self, xy: &mut Vec<u8>) {
+        self.decrypt_mut(&mut xy[..]);
     }
 
     /// Force transform even if for incomplete (but non-empty!) outer state.
     /// Commit with empty outer state has no effect.
     pub fn commit(&mut self) {
         if self.outer.pos != 0 {
-            let mut o = self.outer.slice_mut();
-            self.s.transform(&mut o);
-            self.outer.pos = 0;
+            let o = self.outer.commit();
+            self.s.transform(o);
         }
     }
 
@@ -390,17 +336,11 @@ where
     /// Join two Spongos objects.
     /// Joiner -- self -- object absorbs data squeezed from joinee.
     pub fn join(&mut self, joinee: &mut Self) {
-        let mut x = Tbits::zero(F::CAPACITY);
-        joinee.squeeze(&mut x.slice_mut());
-        self.absorb(x.slice());
+        let mut x = vec![0; F::CAPACITY_BITS / 8];
+        joinee.squeeze(&mut x[..]);
+        self.absorb(&x[..]);
     }
-}
 
-impl<TW, F> Spongos<TW, F>
-where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Clone,
-{
     /// Fork Spongos object into another.
     /// Essentially this just creates a clone of self.
     pub fn fork_at(&self, fork: &mut Self) {
@@ -415,106 +355,116 @@ where
 
     /// Only `inner` part of the state may be serialized.
     /// State should be committed.
-    pub fn to_inner(&self) -> F::Inner {
+    pub fn to_inner(&self) -> Vec<u8> {
         assert!(self.is_committed());
-        self.s.clone().into()
+        let r = self.s.clone().into();
+        r
     }
 }
 
-impl<TW, F> fmt::Debug for Spongos<TW, F>
+impl<F> Default for Spongos<F>
 where
-    TW: BasicTbitWord,
-    TW::Tbit: fmt::Display,
+    F: PRP,
 {
+    fn default() -> Self {
+        Self::init()
+    }
+}
+
+impl<F> fmt::Debug for Spongos<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.outer)
     }
 }
 
 /// Shortcut for `Spongos::init`.
-pub fn init<TW, F>() -> Spongos<TW, F>
+pub fn init<F>() -> Spongos<F>
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
+    F: PRP,
 {
     Spongos::init()
 }
 
-/*
-/// Size of inner state.
-pub const INNER_SIZE: usize = CAPACITY;
- */
-
 /// Hash (one piece of) data with Spongos.
-pub fn hash_data<TW, F>(x: TbitSlice<TW>, mut y: TbitSliceMut<TW>)
+pub fn hash_data<F>(x: &[u8], y: &mut [u8])
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Default,
+    F: PRP,
 {
-    let mut s = Spongos::<TW, F>::init();
+    let mut s = Spongos::<F>::init();
     s.absorb(x);
     s.commit();
-    s.squeeze(&mut y);
+    s.squeeze(y);
 }
 
-/*
-/// Hash a concatenation of pieces of data with Spongos.
-pub fn hash_datas(xs: &[TritSlice], y: TritSliceMut) {
-    let mut s = Spongos::init();
-    for x in xs {
-        s.absorb(*x);
-    }
-    s.commit();
-    s.squeeze(&mut y);
-}
- */
-
-impl<TW, F> Hash<TW> for Spongos<TW, F>
+impl<F> Hash for Spongos<F>
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Clone + Default,
+    F: PRP,
 {
-    /// Hash value size in tbits.
-    const HASH_SIZE: usize = F::CAPACITY;
+    /// Hash value size in buf.
+    const HASH_SIZE: usize = F::CAPACITY_BITS / 8;
 
     fn init() -> Self {
-        init::<TW, F>()
+        init::<F>()
     }
-    fn update(&mut self, data: TbitSlice<TW>) {
+
+    fn update(&mut self, data: &[u8]) {
         self.absorb(data);
     }
-    fn done(&mut self, hash_value: &mut TbitSliceMut<TW>) {
+
+    fn done(&mut self, hash_value: &mut [u8]) {
         self.commit();
         self.squeeze(hash_value);
     }
+}
 
-    /// Hash data.
-    fn hash(data: TbitSlice<TW>, hash_value: &mut TbitSliceMut<TW>) {
-        let mut s = Spongos::<TW, F>::init();
-        s.absorb(data);
-        s.commit();
-        s.squeeze(hash_value);
+pub fn rehash<F: PRP>(h: &mut [u8]) {
+    let mut s = Spongos::<F>::init();
+    s.absorb(h);
+    s.commit();
+    s.squeeze(h);
+}
+
+impl<F: PRP> Digest for Spongos<F> {
+    type OutputSize = U64;
+
+    fn new() -> Self {
+        Spongos::init()
     }
-}
 
-pub fn hash_tbits<TW, F>(data: &Tbits<TW>) -> Tbits<TW>
-where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Clone + Default,
-{
-    let mut s = Spongos::<TW, F>::init();
-    s.absorb(data.slice());
-    s.commit();
-    s.squeeze_tbits(Spongos::<TW, F>::HASH_SIZE)
-}
+    fn update(&mut self, data: impl AsRef<[u8]>) {
+        self.absorb(data.as_ref());
+    }
 
-pub fn rehash_tbits<TW, F>(h: &mut Tbits<TW>)
-where
-    TW: SpongosTbitWord,
-    F: PRP<TW> + Clone + Default,
-{
-    let mut s = Spongos::<TW, F>::init();
-    s.absorb(h.slice());
-    s.commit();
-    s.squeeze(&mut h.slice_mut());
+    fn chain(mut self, data: impl AsRef<[u8]>) -> Self {
+        self.absorb(data.as_ref());
+        self
+    }
+
+    fn finalize(mut self) -> GenericArray<u8, Self::OutputSize> {
+        self.commit();
+        let mut data = GenericArray::default();
+        self.squeeze(data.as_mut_slice());
+        data
+    }
+
+    fn finalize_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
+        self.commit();
+        let mut data = GenericArray::default();
+        self.squeeze(data.as_mut_slice());
+        data
+    }
+
+    fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    fn output_size() -> usize {
+        64
+    }
+
+    fn digest(data: &[u8]) -> GenericArray<u8, Self::OutputSize> {
+        let mut result = GenericArray::default();
+        hash_data::<F>(data, result.as_mut_slice());
+        result
+    }
 }

@@ -1,0 +1,17 @@
+[package]
+name = "streams-c-binding"
+version = "0.1.0"
+authors = ["DyrellC <dyrell.chapman@iota.org>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "iota_streams_c"
+crate-type = ["cdylib"]
+
+[dependencies]
+libc = "0.2.2"
+iota-streams = { version = "0.2.0", path = "../.." }
+hex = "0.4.2"
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+iota-conversion = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }

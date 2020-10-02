@@ -1,102 +1,89 @@
-use std::hash;
+use core::hash;
 
 use crate::{
+    prelude::Vec,
     sponge::prp::PRP,
-    tbits::{
-        word::BasicTbitWord,
-        Tbits,
-    },
 };
 
 /// Convenience wrapper for storing Spongos inner state.
 #[derive(Clone)]
-pub struct Inner<TW, F> {
-    pub inner: Tbits<TW>,
-    pub _phantom: std::marker::PhantomData<F>,
+pub struct Inner<F> {
+    pub inner: Vec<u8>,
+    pub _phantom: core::marker::PhantomData<F>,
 }
 
-impl<TW, F> PartialEq for Inner<TW, F>
-where
-    TW: BasicTbitWord,
-{
+impl<F> PartialEq for Inner<F> {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
     }
 }
-impl<TW, F> Eq for Inner<TW, F> where TW: BasicTbitWord {}
+impl<F> Eq for Inner<F> {}
 
-impl<TW, F> Default for Inner<TW, F>
+impl<F> Default for Inner<F>
 where
-    TW: BasicTbitWord,
-    F: PRP<TW>,
+    F: PRP,
 {
     fn default() -> Self {
         Self {
-            inner: Tbits::<TW>::zero(F::CAPACITY),
-            _phantom: std::marker::PhantomData,
+            inner: Vec::with_capacity(F::CAPACITY_BITS / 8),
+            _phantom: core::marker::PhantomData,
         }
     }
 }
 
-impl<TW, F> hash::Hash for Inner<TW, F>
-where
-    TW: BasicTbitWord,
-    TW::Tbit: hash::Hash,
-{
+impl<F> hash::Hash for Inner<F> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.inner).hash(state);
     }
 }
 
-impl<TW, F> AsRef<Tbits<TW>> for Inner<TW, F> {
-    fn as_ref(&self) -> &Tbits<TW> {
+impl<F> AsRef<Vec<u8>> for Inner<F> {
+    fn as_ref(&self) -> &Vec<u8> {
         &self.inner
     }
 }
 
-impl<TW, F> AsMut<Tbits<TW>> for Inner<TW, F> {
-    fn as_mut(&mut self) -> &mut Tbits<TW> {
+impl<F> AsMut<Vec<u8>> for Inner<F> {
+    fn as_mut(&mut self) -> &mut Vec<u8> {
         &mut self.inner
     }
 }
 
-impl<TW, F> From<Tbits<TW>> for Inner<TW, F> {
-    fn from(tbits: Tbits<TW>) -> Self {
+impl<F> From<Vec<u8>> for Inner<F> {
+    fn from(bytes: Vec<u8>) -> Self {
         Self {
-            inner: tbits,
-            _phantom: std::marker::PhantomData,
+            inner: bytes,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
 
-/*
-impl<TW, F> From<&Inner<TW, F>> for Spongos<TW, F> {
-    fn from(inner: &Inner<TW, F>) -> Self {
-        Self::from_inner_tbits(inner.as_ref())
-    }
-}
-
-impl<TW, F> From<Inner<TW, F>> for Spongos<TW, F> {
-    fn from(inner: Inner<TW, F>) -> Self {
-        Self::from_inner_tbits(inner.as_ref())
-    }
-}
-
-impl<TW, F> TryFrom<&Spongos<TW, F>> for Inner<TW, F> {
-    type Error = ();
-    fn try_from(spongos: &Spongos<TW, F>) -> Result<Self, ()> {
-        if spongos.is_committed() {
-            Ok(spongos.to_inner_tbits().into())
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<TW, F> TryFrom<Spongos<TW, F>> for Inner<TW, F> {
-    type Error = ();
-    fn try_from(spongos: Spongos<TW, F>) -> Result<Self, ()> {
-        TryFrom::<&Spongos<TW, F>>::try_from(&spongos)
-    }
-}
- */
+// impl<F> From<&Inner<F>> for Spongos<F> {
+// fn from(inner: &Inner<F>) -> Self {
+// Self::from_inner_tbits(inner.as_ref())
+// }
+// }
+//
+// impl<F> From<Inner<F>> for Spongos<F> {
+// fn from(inner: Inner<F>) -> Self {
+// Self::from_inner_tbits(inner.as_ref())
+// }
+// }
+//
+// impl<F> TryFrom<&Spongos<F>> for Inner<F> {
+// type Error = ();
+// fn try_from(spongos: &Spongos<F>) -> Result<Self, ()> {
+// if spongos.is_committed() {
+// Ok(spongos.to_inner_tbits().into())
+// } else {
+// Err(())
+// }
+// }
+// }
+//
+// impl<F> TryFrom<Spongos<F>> for Inner<F> {
+// type Error = ();
+// fn try_from(spongos: Spongos<F>) -> Result<Self, ()> {
+// TryFrom::<&Spongos<F>>::try_from(&spongos)
+// }
+// }

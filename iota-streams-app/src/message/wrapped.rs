@@ -1,36 +1,32 @@
-use failure::Fallible;
-use std::cell::RefMut;
+use anyhow::Result;
+use core::cell::RefMut;
 
 use super::*;
-use iota_streams_core::{
-    sponge::{
-        prp::PRP,
-        spongos::Spongos,
-    },
-    tbits::word::SpongosTbitWord,
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos::Spongos,
 };
-use iota_streams_protobuf3::types::*;
+use iota_streams_ddml::link_store::LinkStore;
 
 /// Result of wrapping the message.
-pub struct WrappedMessage<TW, F, Link> {
-    pub message: TbinaryMessage<TW, F, Link>,
-    pub(crate) spongos: Spongos<TW, F>,
+pub struct WrappedMessage<F, Link> {
+    pub message: BinaryMessage<F, Link>,
+    pub(crate) spongos: Spongos<F>,
 }
 
-impl<TW, F, Link> WrappedMessage<TW, F, Link>
+impl<F, Link> WrappedMessage<F, Link>
 where
-    TW: SpongosTbitWord,
-    F: PRP<TW>,
+    F: PRP,
     Link: HasLink,
 {
     /// Save link for the current wrapped message and accociated info into the store.
     pub fn commit<Store>(
         mut self,
         mut store: RefMut<Store>,
-        info: <Store as LinkStore<TW, F, <Link as HasLink>::Rel>>::Info,
-    ) -> Fallible<TbinaryMessage<TW, F, Link>>
+        info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+    ) -> Result<BinaryMessage<F, Link>>
     where
-        Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
+        Store: LinkStore<F, <Link as HasLink>::Rel>,
     {
         self.spongos.commit();
         store.update(self.message.link.rel(), self.spongos, info)?;
