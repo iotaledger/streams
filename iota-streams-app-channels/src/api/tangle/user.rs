@@ -132,6 +132,11 @@ where
         self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)
     }
 
+    pub fn receive_message(&mut self, link: &Address, pk: Option<PublicKey>) -> Result<MessageReturn> {
+        let msg = (&*self.transport).borrow_mut().recv_message(link)?;
+        self.handle_message(msg, pk)
+    }
+
     pub fn handle_message(&mut self, found_msg: Message, pk: Option<PublicKey>) -> Result<MessageReturn> {
         let mut msg = found_msg;
         let base_link = msg.link.clone();

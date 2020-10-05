@@ -1,11 +1,12 @@
-use crate::{Address, Message, MessageLinks, send_message, recv_message};
+use crate::{Address, Message, MessageLinks, recv_message};
 use iota::client::Client;
-use iota_streams::app::transport::tangle::{
+use iota_streams::{
+    app::transport::tangle::{
         TangleAddress,
         AppInst as ApplicationInstance,
         MsgId as MessageIdentifier,
+    },
 };
-use iota_streams::app_channels::api::tangle::Message as TangleMessage;
 
 #[no_mangle]
 pub extern "C" fn get_transaction(link_to: *mut Address) -> *mut Message {
@@ -45,29 +46,16 @@ pub fn get_seq_link(unboxed_link: Box<MessageLinks>, branching: bool) -> TangleA
 }
 
 
-pub fn send_and_retrieve_links(response: (TangleMessage, Option<TangleMessage>)) -> *mut MessageLinks {
-    let mut msgs = Vec::with_capacity(2);
-    msgs.push(Message(response.0));
-    if response.1.is_some() {
-        msgs.push(Message(response.1.unwrap()))
-    }
-
-    for msg in &msgs {
-        let msg_link = Address(msg.0.clone().link);
-        print!("Sending Message... ");
-        send_message(&mut Client::get(), &msg);
-        println!("Link for message: {}", msg_link.0.msgid);
-    }
-
-    let msg_links = if msgs.len() < 2 {
+pub fn retrieve_links(response: (TangleAddress, Option<TangleAddress>)) -> *mut MessageLinks {
+    let msg_links = if response.1.is_none() {
         MessageLinks {
-            msg_link: Address(msgs.get(0).unwrap().0.link.clone()),
+            msg_link: Address(response.0),
             seq_link: None
         }
     } else {
         MessageLinks {
-            msg_link: Address(msgs.get(0).unwrap().0.link.clone()),
-            seq_link: Some(Address(msgs.get(1).unwrap().0.link.clone()))
+            msg_link: Address(response.0),
+            seq_link: Some(Address(response.1.unwrap()))
         }
     };
     Box::into_raw(Box::new(msg_links))

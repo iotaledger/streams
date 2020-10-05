@@ -16,14 +16,10 @@ use iota_streams::app_channels::api::tangle::{
     Author as Auth,
     Subscriber as Sub,
     Preparsed as PreparsedMessage,
+    MessageReturn,
+    Transport,
 };
 
-use iota::{
-    ternary as iota_ternary,
-};
-use core::convert::{
-    TryInto,
-};
 use iota_conversion::trytes_converter::{
     bytes_to_trytes
 };
@@ -77,12 +73,15 @@ pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
     }
 }
 
-pub struct Author {
-    pub(crate) auth: Auth,
+pub struct TangleTransport<T: Transport>(pub(crate) T);
+
+
+pub struct Author<T: Transport> {
+    pub(crate) auth: Auth<T>,
 }
 
-pub struct Subscriber{
-    pub(crate) sub: Sub,
+pub struct Subscriber<T: Transport> {
+    pub(crate) sub: Sub<T>,
 }
 
 pub struct Message(pub(crate) message::BinaryMessage<KeccakF1600, TangleAddress>);
@@ -92,6 +91,10 @@ impl Default for Message {
         Message(message::BinaryMessage::new(TangleAddress::default(), vec![]))
     }
 }
+
+pub struct MsgReturn(pub(crate) MessageReturn);
+
+pub struct MessageReturns(pub(crate) Vec<MessageReturn>);
 
 pub struct PskIds(pub(crate) psk::PskIds);
 
@@ -108,6 +111,10 @@ pub struct NextMsgId{
     pub(crate) pubkey: PubKey,
     pub(crate) seq_state: SeqState,
 } // vec(Pubkey, (address, usize))
+
+pub struct NextMsgIds{
+    pub(crate) ids: Vec<NextMsgId>
+}
 
 pub struct Preparsed<'a>(pub(crate) PreparsedMessage<'a>);
 
