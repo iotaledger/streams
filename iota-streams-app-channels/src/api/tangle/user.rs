@@ -114,8 +114,8 @@ where
         self.user.commit_wrapped(msg.wrapped, info)
     }
 
-    fn send_message_sequenced(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<(Address, Option<Address>)> {
-        let seq = self.user.wrap_sequence(msg.message.link.rel())?;
+    fn send_message_sequenced(&mut self, msg: WrappedMessage, ref_link: &MsgId, info: MsgInfo) -> Result<(Address, Option<Address>)> {
+        let seq = self.user.wrap_sequence(ref_link)?;
         self.transport.send_message(&Message::new(msg.message))?;
         let seq_link = self.send_sequence(seq)?;
         let msg_link = self.user.commit_wrapped(msg.wrapped, info)?;
@@ -154,7 +154,7 @@ where
 
     pub fn send_signed_packet(&mut self, link_to: &Address, public_payload: &Bytes, masked_payload: &Bytes) -> Result<(Address, Option<Address>)>{
         let msg = self.user.sign_packet(&link_to.msgid, public_payload, masked_payload)?;
-        self.send_message_sequenced(msg, MsgInfo::SignedPacket)
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
     }
 
     pub fn receive_signed_packet(&mut self, link: &Address) -> Result<(PublicKey, Bytes, Bytes)> {
@@ -166,7 +166,7 @@ where
 
     pub fn send_tagged_packet(&mut self, link_to: &Address, public_payload: &Bytes, masked_payload: &Bytes) -> Result<(Address, Option<Address>)>{
         let msg = self.user.tag_packet(&link_to.msgid, public_payload, masked_payload)?;
-        self.send_message_sequenced(msg, MsgInfo::TaggedPacket)
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
     }
 
     pub fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
@@ -209,6 +209,7 @@ where
                 Ok(u)
             }
             message::SEQUENCE => {
+                let store_link = msg.link.rel().clone();
                 let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
                 let msg_link = self.user.link_gen.link_from(
                     &unwrapped.body.pk,
@@ -219,7 +220,7 @@ where
                     )
                 );
                 let msg = self.transport.recv_message(&msg_link)?;
-                self.user.store_state(pk.unwrap().clone(), msg.binary.link.rel().clone());
+                self.user.store_state(pk.unwrap().clone(), store_link);
                 self.handle_message(msg, pk)
             }
             unknown_content => {
@@ -257,12 +258,12 @@ where
 
     pub fn send_keyload(&mut self, link_to: &Address, psk_ids: &PskIds, ke_pks: &Vec<PublicKey>) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload(&link_to.msgid, psk_ids, ke_pks)?;
-        self.send_message_sequenced(msg, MsgInfo::Keyload)
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
     pub fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload_for_everyone(&link_to.msgid)?;
-        self.send_message_sequenced(msg, MsgInfo::Keyload)
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
     pub fn receive_subscribe(&mut self, link: &Address) -> Result<()> {

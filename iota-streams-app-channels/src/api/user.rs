@@ -491,8 +491,6 @@ where
                 for<'c> fn(&'c Self, &ed25519::PublicKey) -> Option<&'c x25519::StaticSecret>,
                 >::new(self, Self::lookup_psk, Self::lookup_ke_sk, author_sig_pk);
             let unwrapped = preparsed.unwrap(&*self.link_store.borrow(), content)?;
-            //TODO:
-            ensure!(unwrapped.pcf.content.key.is_some(), "User is not an allowed recipient of the Keyload message, key not found.");
             Ok(unwrapped)
         } else {
             Err(anyhow!("Can't unwrap keyload, no author's public key"))
