@@ -72,7 +72,7 @@ int main() {
     char private_payload[] = "A private payload uhu";
 
     // Signed packet 
-/*
+
     printf("Sending signed packet\n");
     message_links_t *signed_packet_links = auth_send_signed_packet(auth, keyload_links, public_payload, private_payload);
     printf("Made a signed packet\n\n");
@@ -102,7 +102,7 @@ int main() {
     payload_response_t *tagged_packet_response = sub_receive_tagged_packet(subA, tagged_packet_address);
     printf("public: %s \tprivate: %s\n", signed_packet_response->public_payload, signed_packet_response->private_payload);
     printf("Subscriber handled Tagged packet\n");
-*/
+
     // Several messages
 
     printf("Sending 3 tagged packets\n");
@@ -110,7 +110,7 @@ int main() {
     char payload_2[] = "Message 2";
     char payload_3[] = "Message 3";
 
-    message_links_t *tagged_packet_1_links = auth_send_tagged_packet(auth, keyload_links, payload_1, private_payload);
+    message_links_t *tagged_packet_1_links = auth_send_tagged_packet(auth, tagged_packet_links, payload_1, private_payload);
     message_links_t *tagged_packet_2_links = auth_send_tagged_packet(auth, tagged_packet_1_links, payload_2, private_payload);
     message_links_t *tagged_packet_3_links = auth_send_tagged_packet(auth, tagged_packet_2_links, payload_3, private_payload);
     printf("Sent\n");
