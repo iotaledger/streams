@@ -96,7 +96,6 @@ where
         self.user.gen_next_msg_ids(branching)
     }
 
-
     fn send_sequence(&mut self, wrapped: WrappedSequence) -> Result<Option<Address>> {
         if let Some(seq_msg) = wrapped.0 {
             self.transport.send_message(&Message::new(seq_msg))?;

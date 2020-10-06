@@ -343,8 +343,85 @@ async fn send_trytes(opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<V
     Ok(attached_txs)
 }
 
+pub fn sync_send_message_with_options<F>(
+    msg: &TangleMessage<F>,
+    opt: &SendTrytesOptions,
+) -> Result<()> {
+    // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
+    let trunk = Hash::zeros();
+    let branch = Hash::zeros();
+    let bundle = msg_to_bundle(&msg.binary, msg.timestamp, trunk, branch)?;
+    // TODO: Get transactions from bundle without copying.
+    let txs = bundle.into_iter().collect::<Vec<Transaction>>();
+    // Ignore attached transactions.
+    block_on(send_trytes(opt, txs))?;
+    Ok(())
+}
+
+pub fn sync_recv_messages<F>(
+    link: &TangleAddress,
+) -> Result<Vec<TangleMessage<F>>> {
+    let tx_address =
+        Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
+        .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
+    let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
+        .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
+
+    match block_on(get_bundles(tx_address, tx_tag)) {
+        Ok(txs) =>
+            Ok(bundles_from_trytes(txs)
+               .into_iter()
+               .map(|b| msg_from_bundle(&b))
+               .collect()),
+        Err(_) => Ok(Vec::new()), // Just ignore the error?
+    }
+}
+
+pub async fn async_send_message_with_options<F>(
+    msg: &TangleMessage<F>,
+    opt: &SendTrytesOptions,
+) -> Result<()> {
+    // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
+    let trunk = Hash::zeros();
+    let branch = Hash::zeros();
+    let bundle = msg_to_bundle(&msg.binary, msg.timestamp, trunk, branch)?;
+    // TODO: Get transactions from bundle without copying.
+    let txs = bundle.into_iter().collect::<Vec<Transaction>>();
+    // Ignore attached transactions.
+    send_trytes(opt, txs).await?;
+    Ok(())
+}
+
+pub async fn async_recv_messages_with_options<F>(
+    link: &TangleAddress,
+) -> Result<Vec<TangleMessage<F>>> {
+    let tx_address =
+        Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
+        .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
+    let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
+        .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
+
+    match get_bundles(tx_address, tx_tag).await {
+        Ok(txs) =>
+            Ok(bundles_from_trytes(txs)
+               .into_iter()
+               .map(|b| msg_from_bundle(&b))
+               .collect()),
+        Err(_) => Ok(Vec::new()), // Just ignore the error?
+    }
+}
+
+/// Stub type for iota_client::Client.
+pub struct Client;
+
+impl Client {
+    pub fn add_node(url: &str) -> Result<bool> {
+        iota_client::Client::add_node(url).map_err(|e| anyhow!("iota_client error {}:", e))
+    }
+}
+
 #[cfg(not(feature = "async"))]
-impl<F> Transport<TangleAddress, TangleMessage<F>> for &iota_client::Client {
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
     type SendOptions = SendTrytesOptions;
 
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
@@ -353,15 +430,7 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for &iota_client::Client {
         msg: &TangleMessage<F>,
         opt: &Self::SendOptions,
     ) -> Result<()> {
-        // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
-        let trunk = Hash::zeros();
-        let branch = Hash::zeros();
-        let bundle = msg_to_bundle(&msg.binary, msg.timestamp, trunk, branch)?;
-        // TODO: Get transactions from bundle without copying.
-        let txs = bundle.into_iter().collect::<Vec<Transaction>>();
-        // Ignore attached transactions.
-        block_on(send_trytes(opt, txs))?;
-        Ok(())
+        sync_send_message_with_options(msg, opt)
     }
 
     type RecvOptions = ();
@@ -372,26 +441,13 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for &iota_client::Client {
         link: &TangleAddress,
         _opt: &Self::RecvOptions,
     ) -> Result<Vec<TangleMessage<F>>> {
-        let tx_address =
-            Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
-                .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
-        let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
-            .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
-
-        match block_on(get_bundles(tx_address, tx_tag)) {
-            Ok(txs) =>
-                Ok(bundles_from_trytes(txs)
-                   .into_iter()
-                   .map(|b| msg_from_bundle(&b))
-                   .collect()),
-            Err(_) => Ok(Vec::new()), // Just ignore the error?
-        }
+        sync_recv_messages(link)
     }
 }
 
 #[cfg(feature = "async")]
 #[async_trait]
-impl<F> Transport<F, TangleAddress> for &iota_client::Client where
+impl<F> Transport<F, TangleAddress> for Client where
     F: 'static + core::marker::Send + core::marker::Sync,
 {
     type SendOptions = SendTrytesOptions;
@@ -402,15 +458,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client where
         msg: &TangleMessage<F>,
         opt: &Self::SendOptions,
     ) -> Result<()> {
-        // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
-        let trunk = Hash::zeros();
-        let branch = Hash::zeros();
-        let bundle = msg_to_bundle(&msg.binary, msg.timestamp, trunk, branch)?;
-        // TODO: Get transactions from bundle without copying.
-        let txs = bundle.into_iter().collect::<Vec<Transaction>>();
-        // Ignore attached transactions.
-        send_trytes(opt, txs).await?;
-        Ok(())
+        async_send_message_with_options(msg, opt)
     }
 
     type RecvOptions = ();
@@ -421,19 +469,6 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client where
         link: &TangleAddress,
         _opt: &Self::RecvOptions,
     ) -> Result<Vec<TangleMessage<F>>> {
-        let tx_address =
-            Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
-                .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
-        let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
-            .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
-
-        match get_bundles(tx_address, tx_tag).await {
-            Ok(txs) =>
-                Ok(bundles_from_trytes(txs)
-                   .into_iter()
-                   .map(|b| msg_from_bundle(&b))
-                   .collect()),
-            Err(_) => Ok(Vec::new()), // Just ignore the error?
-        }
+        async_recv_messages_with_options(link)
     }
 }

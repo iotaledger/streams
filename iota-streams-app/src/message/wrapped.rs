@@ -1,5 +1,6 @@
 use anyhow::Result;
 use core::cell::RefMut;
+use core::fmt;
 
 use super::*;
 use iota_streams_core::sponge::{
@@ -27,6 +28,14 @@ impl<F: PRP, Link: HasLink> WrapState<F, Link>
         self.spongos.commit();
         store.update(self.link.rel(), self.spongos, info)?;
         Ok(self.link)
+    }
+}
+
+impl<F, Link> fmt::Debug for WrapState<F, Link> where
+    Link: HasLink + fmt::Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "WrapState({:?})[{:?}]", self.link, self.spongos)
     }
 }
 

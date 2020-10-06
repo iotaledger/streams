@@ -5,7 +5,7 @@ use anyhow::{
 };
 use core::{
     cell::RefCell,
-    fmt::Debug,
+    fmt,
 };
 
 use iota_streams_core::{
@@ -65,6 +65,14 @@ impl<F, Link: HasLink> WrapStateSequence<F, Link> {
 
     pub fn set_state(&mut self, state: WrapState<F, Link>) {
         self.1 = Some(state);
+    }
+}
+
+impl<F, Link: HasLink + fmt::Debug> fmt::Debug for WrapStateSequence<F, Link> where
+    <Link as HasLink>::Rel: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({:?},{:?})", self.0, self.1)
     }
 }
 
@@ -137,8 +145,8 @@ impl<F, Link, LG, LS, PKS, PSKS> User<F, Link, LG, LS, PKS, PSKS>
 where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F>,
-    <Link as HasLink>::Base: Eq + Debug,
-    <Link as HasLink>::Rel: Eq + Debug + SkipFallback<F> + AbsorbFallback<F>,
+    <Link as HasLink>::Base: Eq + fmt::Debug,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
     PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,

@@ -88,6 +88,12 @@ impl<Link: fmt::Display> fmt::Display for Cursor<Link> {
     }
 }
 
+impl<Link: fmt::Debug> fmt::Debug for Cursor<Link> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<{:?},{}:{}>", self.link, self.branch_no, self.seq_no)
+    }
+}
+
 
 /// Abstraction-helper to generate message links.
 pub trait LinkGenerator<Link: HasLink>: Default {

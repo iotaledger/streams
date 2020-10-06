@@ -14,6 +14,7 @@ use crate::{
 };
 
 /// Implemented as a separate from `Spongos` struct in order to deal with life-times.
+//TODO: Use GenericArray for outer buffer.
 pub struct Outer {
     /// Current position (offset in bytes) within the outer state.
     pos: usize,
@@ -135,10 +136,7 @@ pub struct Spongos<F> {
     outer: Outer,
 }
 
-impl<F> Clone for Spongos<F>
-where
-    F: Clone,
-{
+impl<F: Clone> Clone for Spongos<F> {
     fn clone(&self) -> Self {
         Self {
             s: self.s.clone(),
@@ -147,10 +145,7 @@ where
     }
 }
 
-impl<F> Spongos<F>
-where
-    F: PRP,
-{
+impl<F: PRP> Spongos<F> {
     /// Sponge fixed key size in buf.
     pub const KEY_SIZE: usize = F::CAPACITY_BITS / 8;
 

@@ -19,7 +19,7 @@ where
 #[cfg(not(feature = "async"))]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
-    Link: Eq + hash::Hash + Clone,
+    Link: Eq + hash::Hash + Clone + core::fmt::Debug,
     Msg: LinkedMessage<Link> + Clone,
 {
     type SendOptions = ();
@@ -40,7 +40,7 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            Err(anyhow!("Link not found in the bucket."))
+            Err(anyhow!("Link not found in the bucket: {:?}.", link))
         }
     }
 }
