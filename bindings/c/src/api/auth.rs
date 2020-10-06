@@ -200,6 +200,29 @@ unsafe {
     }
 }
 
+/// Process a Signed packet message
+#[no_mangle]
+pub extern "C" fn auth_receive_signed_packet<'a>(auth: *mut Author<&'a Client>, link: *mut Address) -> *mut PayloadResponse
+    where
+        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+{
+    unsafe {
+        let mut auth = Box::from_raw(auth);
+
+        let link = Box::from_raw(link);
+
+        let (_signer_pk, unwrapped_public, unwrapped_masked) = auth.auth.receive_signed_packet(&link.0).unwrap();
+        mem::forget(auth);
+        mem::forget(link);
+
+        Box::into_raw(Box::new(PayloadResponse {
+            public_payload: CString::from_vec_unchecked(unwrapped_public.0).into_raw(),
+            private_payload: CString::from_vec_unchecked(unwrapped_masked.0).into_raw(),
+        }))
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn auth_receive_sequence<'a>(author: *mut Author<&'a Client>, link: *mut Address) -> *mut Address
     where
@@ -293,7 +316,12 @@ unsafe {
 
         let returns = auth.auth.fetch_next_msgs();
         mem::forget(auth);
-        Box::into_raw(Box::new(MessageReturns(returns)))
+
+        let mut wrapped_returns = Vec::new();
+        for return_val in returns {
+            wrapped_returns.push(MsgReturn(return_val));
+        }
+        Box::into_raw(Box::new(MessageReturns(wrapped_returns)))
     }
 }
 
@@ -316,37 +344,12 @@ pub extern "C" fn auth_sync_state<'a>(auth: *mut Author<&Client>) -> *mut Messag
         }
 
         mem::forget(auth);
-        Box::into_raw(Box::new(MessageReturns(returns)))
+
+        let mut wrapped_returns = Vec::new();
+        for return_val in returns {
+            wrapped_returns.push(MsgReturn(return_val));
+        }
+        Box::into_raw(Box::new(MessageReturns(wrapped_returns)))
+
     }
 }
-
-
-
-/*
-#[no_mangle]
-pub extern "C" fn void auth_store_state(Author *author<&'a Client>, PubKey *pk, Address *link);
-
-#[no_mangle]
-pub extern "C" fn void auth_store_state_for_all(Author *author<&'a Client>, Address *link, size_t seq_num);
-
-
-/// Unwrap tagged packet.
-#[no_mangle]
-pub extern "C" fn Bytes[2] auth_receive_tagged_packet(Author *author<&'a Client>, Preparsed *preparsed);
-
-/// Subscribe a new subscriber.
-#[no_mangle]
-pub extern "C" fn void auth_receive_subscribe(Author *author<&'a Client>, Preparsed *preparsed);
-
-#[no_mangle]
-pub extern "C" fn Address auth_receive_sequence(Author *author<&'a Client>, Preparsed *preparsed);
-
-#[no_mangle]
-pub extern "C" fn char auth_get_branching_flag(Author *author);
-
-#[no_mangle]
-pub extern "C" fn Address auth_gen_msg_id(Author *author<&'a Client>, Address *link, PubKey *pk, size_t seq);
-
-#[no_mangle]
-pub extern "C" fn NextMsgId[] auth_gen_next_msg_ids(&mut self, branching: bool);
-*/

@@ -294,7 +294,12 @@ pub extern "C" fn sub_fetch_next_msgs<'a>(subscriber: *mut Subscriber<&Client>) 
 
         let returns = sub.sub.fetch_next_msgs();
         mem::forget(sub);
-        Box::into_raw(Box::new(MessageReturns(returns)))
+
+        let mut wrapped_returns = Vec::new();
+        for return_val in returns {
+            wrapped_returns.push(MsgReturn(return_val));
+        }
+        Box::into_raw(Box::new(MessageReturns(wrapped_returns)))
     }
 }
 
@@ -317,7 +322,13 @@ pub extern "C" fn sub_sync_state<'a>(subscriber: *mut Subscriber<&Client>) -> *m
         }
 
         mem::forget(sub);
-        Box::into_raw(Box::new(MessageReturns(returns)))
+
+        let mut wrapped_returns = Vec::new();
+        for return_val in returns {
+            wrapped_returns.push(MsgReturn(return_val));
+        }
+        Box::into_raw(Box::new(MessageReturns(wrapped_returns)))
+
     }
 }
 
