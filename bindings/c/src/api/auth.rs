@@ -3,13 +3,12 @@ use crate::{AppInst, Address, Author, PskIds, KePks, MessageLinks, PayloadRespon
 
 use iota_streams::{
     app_channels::api::{
-        tangle::{Author as Auth, DefaultF, Address as TangleAddress},
+        tangle::{Author as Auth, Address as TangleAddress, Message as TangleMessage},
     },
     app::transport::Transport,
-    core::prelude::{Rc, Vec},
+    core::prelude::Vec,
 };
 use iota_streams::ddml::types::Bytes;
-use core::cell::RefCell;
 
 use std::mem;
 use std::ffi::CString;
@@ -32,8 +31,7 @@ pub extern "C" fn auth_new<'a>(seed: *const c_char , encoding: *const c_char, pa
 
     let client = Client::get();
     Client::add_node(URL).unwrap();
-    let transport = Rc::new(RefCell::new(client));
-    let auth: Auth<&Client> = Auth::new(c_seed.to_str().unwrap(), c_encoding.to_str().unwrap(), payload_length as usize, multi_branching, transport);
+    let auth: Auth<&Client> = Auth::new(c_seed.to_str().unwrap(), c_encoding.to_str().unwrap(), payload_length as usize, multi_branching, client);
 
     Box::into_raw(Box::new(Author{ auth }))
 }
@@ -42,8 +40,8 @@ pub extern "C" fn auth_new<'a>(seed: *const c_char , encoding: *const c_char, pa
 #[no_mangle]
 pub extern "C" fn auth_channel_address<'a>(author: *mut Author<&'a Client>) -> *mut AppInst
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let auth = Box::from_raw(author);
@@ -61,8 +59,8 @@ pub extern "C" fn auth_channel_address<'a>(author: *mut Author<&'a Client>) -> *
 #[no_mangle]
 pub extern "C" fn auth_send_announce<'a>(author: *mut Author<&'a Client>) -> *mut Address
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 let mut auth = unsafe { Box::from_raw(author) };
 
@@ -74,8 +72,8 @@ let mut auth = unsafe { Box::from_raw(author) };
 #[no_mangle]
 pub extern "C" fn auth_get_branching_flag<'a>(author: *mut Author<&'a Client>) -> u8
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let auth = Box::from_raw(author);
@@ -89,8 +87,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_get_pk<'a> (author: *mut Author<&'a Client>) -> *mut PubKey
 where
-    <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-    <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+    <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+    <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let auth = Box::from_raw(author);
@@ -105,8 +103,8 @@ where
 #[no_mangle]
 pub extern "C" fn auth_receive_subscribe<'a>(author: *mut Author<&'a Client>, link: *mut Address)
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut auth = Box::from_raw(author);
@@ -123,8 +121,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_send_keyload<'a>(author: *mut Author<&'a Client>,  link_to: *mut Address, psk_ids: *mut PskIds, ke_pks: *mut KePks) -> *mut MessageLinks
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut auth = Box::from_raw(author);
@@ -143,8 +141,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_send_keyload_for_everyone<'a>(author: *mut Author<&'a Client>, link_to: *mut Address) -> *mut MessageLinks
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut auth = Box::from_raw(author);
@@ -161,8 +159,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_send_tagged_packet<'a>(author: *mut Author<&'a Client>, link_to: *mut MessageLinks, public_payload_ptr: *const c_char, private_payload_ptr: *const c_char) -> *mut MessageLinks
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut auth = Box::from_raw(author);
@@ -182,8 +180,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_receive_tagged_packet<'a>(author: *mut Author<&'a Client>, link: *mut Address) -> *mut PayloadResponse
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut auth = Box::from_raw(author);
@@ -204,8 +202,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_receive_signed_packet<'a>(auth: *mut Author<&'a Client>, link: *mut Address) -> *mut PayloadResponse
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut auth = Box::from_raw(auth);
@@ -226,8 +224,8 @@ pub extern "C" fn auth_receive_signed_packet<'a>(auth: *mut Author<&'a Client>, 
 #[no_mangle]
 pub extern "C" fn auth_receive_sequence<'a>(author: *mut Author<&'a Client>, link: *mut Address) -> *mut Address
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut auth = Box::from_raw(author);
@@ -243,8 +241,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_send_signed_packet<'a>(author: *mut Author<&'a Client>, link_to: *mut MessageLinks, public_payload_ptr: *const c_char, private_payload_ptr: *const c_char) -> *mut MessageLinks
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut auth = Box::from_raw(author);
@@ -263,8 +261,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_gen_next_msg_ids<'a>(author: *mut Author<&Client>) -> *mut NextMsgIds
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut auth = Box::from_raw(author);
@@ -275,8 +273,8 @@ pub extern "C" fn auth_gen_next_msg_ids<'a>(author: *mut Author<&Client>) -> *mu
                 ids.push(NextMsgId {
                     pubkey: PubKey(msg.0),
                     seq_state: SeqState {
-                        address: Address((msg.1).0),
-                        state: (msg.1).1 as usize
+                        address: Address((msg.1).link),
+                        state: (msg.1).seq_no as usize
                     }
                 });
             }
@@ -290,8 +288,8 @@ pub extern "C" fn auth_gen_next_msg_ids<'a>(author: *mut Author<&Client>) -> *mu
 #[no_mangle]
 pub extern "C" fn auth_receive_msg<'a>(author: *mut Author<&Client>, link: *mut Address) -> *mut MsgReturn
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut auth = Box::from_raw(author);
@@ -308,8 +306,8 @@ pub extern "C" fn auth_receive_msg<'a>(author: *mut Author<&Client>, link: *mut 
 #[no_mangle]
 pub extern "C" fn auth_fetch_next_msgs<'a>(author: *mut Author<&Client>) -> *mut MessageReturns
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut auth = Box::from_raw(author);
@@ -328,8 +326,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn auth_sync_state<'a>(auth: *mut Author<&Client>) -> *mut MessageReturns
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut auth = Box::from_raw(auth);

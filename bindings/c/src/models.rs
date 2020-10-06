@@ -16,7 +16,8 @@ use iota_streams::app_channels::api::tangle::{
     Author as Auth,
     Subscriber as Sub,
     Preparsed as PreparsedMessage,
-    MessageReturn,
+    UnwrappedMessage,
+    MessageContent,
     Transport,
 };
 
@@ -26,7 +27,7 @@ use iota_conversion::trytes_converter::{
 use iota_streams::core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams::core_edsig::signature::ed25519;
 
-use std::os::raw::{c_char, c_int};
+use std::os::raw::c_char;
 use std::ffi::CString;
 
 pub struct AppInst(pub(crate) ApplicationInstance);
@@ -88,11 +89,14 @@ pub struct Message(pub(crate) message::BinaryMessage<KeccakF1600, TangleAddress>
 
 impl Default for Message {
     fn default() -> Message {
-        Message(message::BinaryMessage::new(TangleAddress::default(), vec![]))
+        Message(message::BinaryMessage::new(
+            TangleAddress::default(),
+            vec![].into()),
+            )
     }
 }
 
-pub struct MsgReturn(pub(crate) MessageReturn);
+pub struct MsgReturn(pub(crate) UnwrappedMessage);
 
 pub struct MessageReturns(pub(crate) Vec<MsgReturn>);
 
@@ -133,11 +137,8 @@ pub struct PayloadResponse {
 pub extern "C" fn get_payload(msg: *mut MsgReturn) -> *mut PayloadResponse  {
     unsafe {
         let unboxed = Box::from_raw(msg);
-
-        let ptr = Box::into_raw(Box::new(PayloadResponse {
-            public_payload: CString::from_vec_unchecked(unboxed.0.public_payload.0.clone()).into_raw(),
-            private_payload: CString::from_vec_unchecked(unboxed.0.masked_payload.0.clone()).into_raw(),
-        }));
+        let unwrapped = &unboxed.0.body;
+        let ptr = handle_message_contents(unwrapped);
         std::mem::forget(unboxed);
         ptr
     }
@@ -147,12 +148,37 @@ pub extern "C" fn get_payload(msg: *mut MsgReturn) -> *mut PayloadResponse  {
 pub extern "C" fn get_indexed_payload(msgs: *mut MessageReturns, index: u32) -> *mut PayloadResponse  {
     unsafe {
         let unboxed = Box::from_raw(msgs);
-        let payload = &unboxed.0[index as usize].0;
-        let ptr = Box::into_raw(Box::new(PayloadResponse {
-            public_payload: CString::from_vec_unchecked(payload.public_payload.0.clone()).into_raw(),
-            private_payload: CString::from_vec_unchecked(payload.masked_payload.0.clone()).into_raw(),
-        }));
+        let payload = &unboxed.0[index as usize].0.body;
+        let ptr = handle_message_contents(payload);
         std::mem::forget(unboxed);
+        ptr
+    }
+}
+
+
+fn handle_message_contents(contents: &MessageContent) -> *mut PayloadResponse {
+    unsafe {
+        let ptr: *mut PayloadResponse;
+
+        match contents {
+            MessageContent::TaggedPacket { public_payload, masked_payload } => {
+                ptr = Box::into_raw(Box::new(PayloadResponse {
+                    public_payload: CString::from_vec_unchecked(public_payload.0.clone()).into_raw(),
+                    private_payload: CString::from_vec_unchecked(masked_payload.0.clone()).into_raw(),
+                }));
+            },
+
+            MessageContent::SignedPacket { pk: _, public_payload, masked_payload } => {
+                ptr = Box::into_raw(Box::new(PayloadResponse {
+                    public_payload: CString::from_vec_unchecked(public_payload.0.clone()).into_raw(),
+                    private_payload: CString::from_vec_unchecked(masked_payload.0.clone()).into_raw(),
+                }));
+            },
+
+            _ => {
+                ptr = std::ptr::null_mut()
+            }
+        }
         ptr
     }
 }

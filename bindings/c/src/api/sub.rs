@@ -3,14 +3,10 @@ use crate::{Address, Subscriber, PayloadResponse, AppInst, PubKey, NextMsgId, Ne
 use iota_streams::app_channels::api::tangle::{
     Subscriber as Sub,
     Address as TangleAddress,
-    DefaultF,
+    Message as TangleMessage,
 };
-use iota_streams::{
-    app::transport::Transport,
-    core::prelude::Rc,
-};
+use iota_streams::app::transport::Transport;
 
-use core::cell::RefCell;
 use std::mem;
 use std::ffi::CStr;
 use std::ffi::CString;
@@ -22,8 +18,8 @@ use crate::constants::*;
 #[no_mangle]
 pub extern "C" fn sub_new<'a>(seed: *const c_char , encoding: *const c_char, payload_length: *const c_ulonglong) -> *mut Subscriber<&'a Client>
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 let c_seed = unsafe {
         CStr::from_ptr(seed)
@@ -35,9 +31,7 @@ let c_seed = unsafe {
 
     let client = Client::get();
     Client::add_node(URL).unwrap();
-    let transport = Rc::new(RefCell::new(client));
-
-    let sub = Sub::new(c_seed.to_str().unwrap(), c_encoding.to_str().unwrap(), payload_length as usize, transport);
+    let sub = Sub::new(c_seed.to_str().unwrap(), c_encoding.to_str().unwrap(), payload_length as usize, client);
     Box::into_raw(Box::new(Subscriber{ sub }))
 }
 
@@ -45,8 +39,8 @@ let c_seed = unsafe {
 #[no_mangle]
 pub extern "C" fn sub_receive_announce<'a>(subscriber: *mut Subscriber<&'a Client>, link: *mut Address)
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -63,8 +57,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn sub_channel_address<'a>(subscriber: *mut Subscriber<&'a Client>) -> *mut AppInst
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let sub = Box::from_raw(subscriber);
@@ -82,8 +76,8 @@ pub extern "C" fn sub_channel_address<'a>(subscriber: *mut Subscriber<&'a Client
 #[no_mangle]
 pub extern "C" fn sub_get_branching_flag<'a>(subscriber: *mut Subscriber<&'a Client>) -> u8
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let sub = Box::from_raw(subscriber);
@@ -97,8 +91,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn sub_get_pk<'a>(subscriber: *mut Subscriber<&'a Client>) -> *mut PubKey
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let sub = Box::from_raw(subscriber);
@@ -112,8 +106,8 @@ pub extern "C" fn sub_get_pk<'a>(subscriber: *mut Subscriber<&'a Client>) -> *mu
 #[no_mangle]
 pub extern "C" fn sub_is_registered<'a>(subscriber: *mut Subscriber<&'a Client>) -> u8
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let sub = Box::from_raw(subscriber);
@@ -127,8 +121,8 @@ pub extern "C" fn sub_is_registered<'a>(subscriber: *mut Subscriber<&'a Client>)
 #[no_mangle]
 pub extern "C" fn sub_unregister<'a>(subscriber: *mut Subscriber<&'a Client>)
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -143,8 +137,8 @@ pub extern "C" fn sub_unregister<'a>(subscriber: *mut Subscriber<&'a Client>)
 #[no_mangle]
 pub extern "C" fn sub_send_subscribe<'a>(subscriber: *mut Subscriber<&'a Client>, announcement_link: *mut Address) -> *mut Address
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     let mut sub = unsafe { Box::from_raw(subscriber) };
     let tangle_address = unsafe { Box::from_raw(announcement_link) };
@@ -161,8 +155,8 @@ pub extern "C" fn sub_send_subscribe<'a>(subscriber: *mut Subscriber<&'a Client>
 #[no_mangle]
 pub extern "C" fn sub_receive_keyload<'a>(subscriber: *mut Subscriber<&'a Client>, link: *mut Address)
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -177,8 +171,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn sub_receive_sequence<'a>(subscriber: *mut Subscriber<&'a Client>, link: *mut Address) -> *mut Address
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -196,8 +190,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn sub_receive_signed_packet<'a>(subscriber: *mut Subscriber<&'a Client>, link: *mut Address) -> *mut PayloadResponse
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -219,8 +213,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn sub_receive_tagged_packet<'a>(subscriber: *mut Subscriber<&'a Client>, link: *mut Address) -> *mut PayloadResponse
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
 unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -241,8 +235,8 @@ unsafe {
 #[no_mangle]
 pub extern "C" fn sub_gen_next_msg_ids<'a>(subscriber: *mut Subscriber<&Client>) -> *mut NextMsgIds
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -254,8 +248,8 @@ pub extern "C" fn sub_gen_next_msg_ids<'a>(subscriber: *mut Subscriber<&Client>)
                 ids.push(NextMsgId {
                     pubkey: PubKey(msg.0),
                     seq_state: SeqState {
-                        address: Address((msg.1).0),
-                        state: (msg.1).1 as usize
+                        address: Address((msg.1).link),
+                        state: (msg.1).seq_no as usize
                     }
                 });
             }
@@ -269,8 +263,8 @@ pub extern "C" fn sub_gen_next_msg_ids<'a>(subscriber: *mut Subscriber<&Client>)
 #[no_mangle]
 pub extern "C" fn sub_receive_msg<'a>(subscriber: *mut Subscriber<&Client>, link: *mut Address) -> *mut MsgReturn
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -286,8 +280,8 @@ pub extern "C" fn sub_receive_msg<'a>(subscriber: *mut Subscriber<&Client>, link
 #[no_mangle]
 pub extern "C" fn sub_fetch_next_msgs<'a>(subscriber: *mut Subscriber<&Client>) -> *mut MessageReturns
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut sub = Box::from_raw(subscriber);
@@ -306,8 +300,8 @@ pub extern "C" fn sub_fetch_next_msgs<'a>(subscriber: *mut Subscriber<&Client>) 
 #[no_mangle]
 pub extern "C" fn sub_sync_state<'a>(subscriber: *mut Subscriber<&Client>) -> *mut MessageReturns
     where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<TangleAddress, TangleMessage>>::SendOptions: Default + Copy,
 {
     unsafe {
         let mut sub = Box::from_raw(subscriber);
