@@ -54,6 +54,7 @@ extern message_links_t *auth_send_signed_packet(author_t *author, message_links_
 extern payload_response_t *auth_receive_tagged_packet(author_t *author, address_t *address) ;
 extern address_t auth_receive_sequence(author_t *author, address_t *address);
 extern messagereturns_t *auth_fetch_next_msgs(author_t *author);
+extern messagereturns_t *auth_sync_state(author_t *author);
 extern msgreturn_t *auth_receive_msg(author_t *author, address_t *address);
 extern nextmsgid_t *auth_gen_next_msg_ids(author_t *author);
 extern pubkey_t *auth_get_pk(author_t *author);

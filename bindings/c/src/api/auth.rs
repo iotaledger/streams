@@ -297,6 +297,30 @@ unsafe {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn auth_sync_state<'a>(auth: *mut Author<&Client>) -> *mut MessageReturns
+    where
+        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
+        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
+{
+    unsafe {
+        let mut auth = Box::from_raw(auth);
+        let mut returns = Vec::new();
+
+        loop {
+            let messages = auth.auth.fetch_next_msgs();
+            if messages.is_empty() {
+                break;
+            }
+            returns.extend(messages);
+        }
+
+        mem::forget(auth);
+        Box::into_raw(Box::new(MessageReturns(returns)))
+    }
+}
+
+
 
 /*
 #[no_mangle]
