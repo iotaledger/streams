@@ -22,21 +22,19 @@ use iota_streams_core::prelude::Rc;
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::Box;
 
-use crate::message::BinaryMessage;
-
 /// Network transport abstraction.
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[cfg(not(feature = "async"))]
-pub trait Transport<F, Link> // where Link: HasLink
+pub trait Transport<Link, Msg> // where Link: HasLink
 {
     type SendOptions;
 
     /// Send a message with explicit options.
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, opt: &Self::SendOptions) -> Result<()>;
+    fn send_message_with_options(&mut self, msg: &Msg, opt: &Self::SendOptions) -> Result<()>;
 
     /// Send a message with default options.
-    fn send_message(&mut self, msg: &BinaryMessage<F, Link>) -> Result<()>
+    fn send_message(&mut self, msg: &Msg) -> Result<()>
     where
         Self::SendOptions: Default,
     {
@@ -50,10 +48,10 @@ pub trait Transport<F, Link> // where Link: HasLink
         &mut self,
         link: &Link,
         opt: &Self::RecvOptions,
-    ) -> Result<Vec<BinaryMessage<F, Link>>>;
+    ) -> Result<Vec<Msg>>;
 
     /// Receive messages with explicit options.
-    fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<BinaryMessage<F, Link>> {
+    fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<Msg> {
         let mut msgs = self.recv_messages_with_options(link, opt)?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
@@ -64,7 +62,7 @@ pub trait Transport<F, Link> // where Link: HasLink
     }
 
     /// Receive messages with default options.
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<BinaryMessage<F, Link>>>
+    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>
     where
         Self::RecvOptions: Default,
     {
@@ -72,7 +70,7 @@ pub trait Transport<F, Link> // where Link: HasLink
     }
 
     /// Receive a message with default options.
-    fn recv_message(&mut self, link: &Link) -> Result<BinaryMessage<F, Link>>
+    fn recv_message(&mut self, link: &Link) -> Result<Msg>
     where
         Self::RecvOptions: Default,
     {
@@ -82,22 +80,17 @@ pub trait Transport<F, Link> // where Link: HasLink
 
 #[cfg(feature = "async")]
 #[async_trait]
-pub trait Transport<F, Link> where
-    // `F` has `'static` lifetime as a workaround, lifetime should be `'async_trait`
-    // which is introduced by `async_trait` macro and is not available.
-    // `F` obviously doesn't have `'static` lifetime, but none `F` objects are stored
-    // internally as `F` is used as marker type within `BinaryMessage`,
-    // thus the workaround should be safe.
-    F: 'static + Send + Sync,
+pub trait Transport<Link, Msg> where
     Link: Send + Sync,
+    Msg: Send + Sync,
 {
     type SendOptions: Send;
 
     /// Send a message with explicit options.
-    async fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, opt: &Self::SendOptions) -> Result<()>;
+    async fn send_message_with_options(&mut self, msg: &Msg, opt: &Self::SendOptions) -> Result<()>;
 
     /// Send a message with default options.
-    async fn send_message(&mut self, msg: &BinaryMessage<F, Link>) -> Result<()>
+    async fn send_message(&mut self, msg: &Msg) -> Result<()>
     where
         Self::SendOptions: Default + Send + Sync,
     {
@@ -111,10 +104,10 @@ pub trait Transport<F, Link> where
         &mut self,
         link: &Link,
         opt: &Self::RecvOptions,
-    ) -> Result<Vec<BinaryMessage<F, Link>>>;
+    ) -> Result<Vec<Msg>>;
 
     /// Receive messages with explicit options.
-    async fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<BinaryMessage<F, Link>> {
+    async fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<Msg> {
         let mut msgs = self.recv_messages_with_options(link, opt).await?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
@@ -125,7 +118,7 @@ pub trait Transport<F, Link> where
     }
 
     /// Receive messages with default options.
-    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<BinaryMessage<F, Link>>>
+    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>
     where
         Self::RecvOptions: Default + Send,
     {
@@ -133,7 +126,7 @@ pub trait Transport<F, Link> where
     }
 
     /// Receive a message with default options.
-    async fn recv_message(&mut self, link: &Link) -> Result<BinaryMessage<F, Link>>
+    async fn recv_message(&mut self, link: &Link) -> Result<Msg>
     where
         Self::RecvOptions: Default + Send,
     {
@@ -143,10 +136,10 @@ pub trait Transport<F, Link> where
 
 
 #[cfg(not(feature = "async"))]
-impl<F, Link, Tsp: Transport<F, Link>> Transport<F, Link> for Rc<RefCell<Tsp>> {
-    type SendOptions = <Tsp as Transport<F, Link>>::SendOptions;
+impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<Tsp>> {
+    type SendOptions = <Tsp as Transport<Link, Msg>>::SendOptions;
 
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, opt: &Self::SendOptions) -> Result<()> {
+    fn send_message_with_options(&mut self, msg: &Msg, opt: &Self::SendOptions) -> Result<()> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.send_message_with_options(msg, opt),
             Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
@@ -154,7 +147,7 @@ impl<F, Link, Tsp: Transport<F, Link>> Transport<F, Link> for Rc<RefCell<Tsp>> {
     }
 
     /// Send a message with default options.
-    fn send_message(&mut self, msg: &BinaryMessage<F, Link>) -> Result<()>
+    fn send_message(&mut self, msg: &Msg) -> Result<()>
     where
         Self::SendOptions: Default,
     {
@@ -164,14 +157,14 @@ impl<F, Link, Tsp: Transport<F, Link>> Transport<F, Link> for Rc<RefCell<Tsp>> {
         }
     }
 
-    type RecvOptions = <Tsp as Transport<F, Link>>::RecvOptions;
+    type RecvOptions = <Tsp as Transport<Link, Msg>>::RecvOptions;
 
     /// Receive messages with explicit options.
     fn recv_messages_with_options(
         &mut self,
         link: &Link,
         opt: &Self::RecvOptions,
-    ) -> Result<Vec<BinaryMessage<F, Link>>> {
+    ) -> Result<Vec<Msg>> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_messages_with_options(link, opt),
             Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
@@ -179,7 +172,7 @@ impl<F, Link, Tsp: Transport<F, Link>> Transport<F, Link> for Rc<RefCell<Tsp>> {
     }
 
     /// Receive messages with explicit options.
-    fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<BinaryMessage<F, Link>> {
+    fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<Msg> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_message_with_options(link, opt),
             Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
@@ -187,7 +180,7 @@ impl<F, Link, Tsp: Transport<F, Link>> Transport<F, Link> for Rc<RefCell<Tsp>> {
     }
 
     /// Receive messages with default options.
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<BinaryMessage<F, Link>>>
+    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>
     where
         Self::RecvOptions: Default,
     {
@@ -198,7 +191,7 @@ impl<F, Link, Tsp: Transport<F, Link>> Transport<F, Link> for Rc<RefCell<Tsp>> {
     }
 
     /// Receive a message with default options.
-    fn recv_message(&mut self, link: &Link) -> Result<BinaryMessage<F, Link>>
+    fn recv_message(&mut self, link: &Link) -> Result<Msg>
     where
         Self::RecvOptions: Default,
     {

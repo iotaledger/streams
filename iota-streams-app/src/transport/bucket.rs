@@ -1,12 +1,13 @@
 use super::*;
+use crate::message::LinkedMessage;
 
 use iota_streams_core::prelude::HashMap;
 
-pub struct BucketTransport<F, Link> {
-    bucket: HashMap<Link, Vec<BinaryMessage<F, Link>>>,
+pub struct BucketTransport<Link, Msg> {
+    bucket: HashMap<Link, Vec<Msg>>,
 }
 
-impl<F, Link> BucketTransport<F, Link>
+impl<Link, Msg> BucketTransport<Link, Msg>
 where
     Link: Eq + hash::Hash,
 {
@@ -16,13 +17,14 @@ where
 }
 
 #[cfg(not(feature = "async"))]
-impl<F, Link> Transport<F, Link> for BucketTransport<F, Link>
+impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
     Link: Eq + hash::Hash + Clone,
+    Msg: LinkedMessage<Link> + Clone,
 {
     type SendOptions = ();
 
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: &()) -> Result<()> {
+    fn send_message_with_options(&mut self, msg: &Msg, _opt: &()) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
             Ok(())
@@ -34,7 +36,7 @@ where
 
     type RecvOptions = ();
 
-    fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<BinaryMessage<F, Link>>> {
+    fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<Msg>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
@@ -45,13 +47,13 @@ where
 
 #[cfg(feature = "async")]
 #[async_trait]
-impl<F, Link> Transport<F, Link> for BucketTransport<F, Link> where
+impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg> where
     Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,
-    F: 'static + core::marker::Send + core::marker::Sync,
+    Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
 {
     type SendOptions = ();
 
-    async fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: &()) -> Result<()> {
+    async fn send_message_with_options(&mut self, msg: &Msg, _opt: &()) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
             Ok(())
@@ -63,7 +65,7 @@ impl<F, Link> Transport<F, Link> for BucketTransport<F, Link> where
 
     type RecvOptions = ();
 
-    async fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<BinaryMessage<F, Link>>> {
+    async fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<Msg>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {

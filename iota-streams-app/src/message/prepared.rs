@@ -67,11 +67,13 @@ where
         };
 
         Ok(WrappedMessage {
-            spongos: spongos,
+            wrapped: WrapState {
+                link: self.header.link.clone(),
+                spongos: spongos,
+            },
             message: BinaryMessage {
                 link: self.header.link.clone(),
-                body: buf,
-                _phantom: core::marker::PhantomData,
+                body: buf.into(),
             },
         })
     }

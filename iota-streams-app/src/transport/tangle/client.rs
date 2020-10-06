@@ -3,7 +3,6 @@ use anyhow::{
     ensure,
     Result,
 };
-use chrono::Utc;
 use core::{
     cmp::Ordering,
     convert::{
@@ -249,7 +248,8 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-pub fn msg_from_bundle<F>(bundle: &Bundle) -> BinaryMessage<F, TangleAddress> {
+pub fn msg_from_bundle<F>(bundle: &Bundle) -> TangleMessage<F> {
+    //TODO: Check bundle is not empty.
     let tx = bundle.head();
     let appinst = AppInst::from(bytes_from_trits(tx.address().to_inner()).as_ref());
     let msgid = MsgId::from(bytes_from_trits(tx.tag().to_inner()).as_ref());
@@ -259,7 +259,15 @@ pub fn msg_from_bundle<F>(bundle: &Bundle) -> BinaryMessage<F, TangleAddress> {
         payload.resize(PAYLOAD_BYTES, 0);
         body.extend_from_slice(&payload);
     }
-    BinaryMessage::new(TangleAddress { appinst, msgid }, body)
+
+    let binary = BinaryMessage::new(TangleAddress { appinst, msgid }, body.into());
+    //let timestamp: u64 = *(tx.timestamp() as *const iota::bundle::Timestamp) as *const u64;
+    let timestamp: u64 = unsafe { core::mem::transmute(tx.timestamp()) };
+
+    TangleMessage{
+        binary,
+        timestamp,
+    }
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -278,7 +286,7 @@ pub fn msg_to_bundle<F>(
     make_bundle(
         msg.link.appinst.as_ref(),
         msg.link.msgid.as_ref(),
-        &msg.body,
+        &msg.body.bytes,
         timestamp,
         trunk,
         branch,
@@ -336,20 +344,19 @@ async fn send_trytes(opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<V
 }
 
 #[cfg(not(feature = "async"))]
-impl<F> Transport<F, TangleAddress> for &iota_client::Client {
+impl<F> Transport<TangleAddress, TangleMessage<F>> for &iota_client::Client {
     type SendOptions = SendTrytesOptions;
 
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
     fn send_message_with_options(
         &mut self,
-        msg: &BinaryMessage<F, TangleAddress>,
+        msg: &TangleMessage<F>,
         opt: &Self::SendOptions,
     ) -> Result<()> {
-        let timestamp = Utc::now().timestamp() as u64;
         // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
         let trunk = Hash::zeros();
         let branch = Hash::zeros();
-        let bundle = msg_to_bundle(msg, timestamp, trunk, branch)?;
+        let bundle = msg_to_bundle(&msg.binary, msg.timestamp, trunk, branch)?;
         // TODO: Get transactions from bundle without copying.
         let txs = bundle.into_iter().collect::<Vec<Transaction>>();
         // Ignore attached transactions.
@@ -364,7 +371,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client {
         &mut self,
         link: &TangleAddress,
         _opt: &Self::RecvOptions,
-    ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
+    ) -> Result<Vec<TangleMessage<F>>> {
         let tx_address =
             Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
                 .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
@@ -392,14 +399,13 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client where
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
     async fn send_message_with_options(
         &mut self,
-        msg: &BinaryMessage<F, TangleAddress>,
+        msg: &TangleMessage<F>,
         opt: &Self::SendOptions,
     ) -> Result<()> {
-        let timestamp = Utc::now().timestamp() as u64;
         // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
         let trunk = Hash::zeros();
         let branch = Hash::zeros();
-        let bundle = msg_to_bundle(msg, timestamp, trunk, branch)?;
+        let bundle = msg_to_bundle(&msg.binary, msg.timestamp, trunk, branch)?;
         // TODO: Get transactions from bundle without copying.
         let txs = bundle.into_iter().collect::<Vec<Transaction>>();
         // Ignore attached transactions.
@@ -414,7 +420,7 @@ impl<F> Transport<F, TangleAddress> for &iota_client::Client where
         &mut self,
         link: &TangleAddress,
         _opt: &Self::RecvOptions,
-    ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
+    ) -> Result<Vec<TangleMessage<F>>> {
         let tx_address =
             Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
                 .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;

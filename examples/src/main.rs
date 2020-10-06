@@ -105,8 +105,8 @@ fn main_client() {
     println!("\n");
 
     let transport = Rc::new(RefCell::new(client));
-    run_single_branch_test( transport.clone(), send_opt, recv_opt, seed1);
-    run_multi_branch_test( transport.clone(), send_opt, recv_opt, seed2);
+    run_single_branch_test(transport.clone(), send_opt, recv_opt, seed1);
+    run_multi_branch_test(transport.clone(), send_opt, recv_opt, seed2);
     println!("Done running tests accessing Tangle via node {}", node);
     println!("#######################################");
 }

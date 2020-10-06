@@ -1,5 +1,5 @@
 use anyhow::{
-    bail,
+    anyhow,
     Result,
 };
 use core::hash;
@@ -26,7 +26,7 @@ pub trait LinkStore<F, Link> {
 
     /// Lookup link in the store and return spongos state and associated info.
     fn lookup(&self, _link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        bail!("Link not found.");
+        Err(anyhow!("Link not found."))
     }
 
     /// Put link into the store together with spongos state and associated info.
@@ -88,7 +88,7 @@ where
         if self.link == *link {
             Ok((Spongos::<F>::from_inner(self.spongos.clone()), self.info.clone()))
         } else {
-            bail!("Link not found.");
+            Err(anyhow!("Link not found."))
         }
     }
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
@@ -132,7 +132,7 @@ where
         if let Some((inner, info)) = self.map.get(link).cloned() {
             Ok((Spongos::from_inner(inner), info))
         } else {
-            bail!("Link not found")
+            Err(anyhow!("Link not found"))
         }
     }
 

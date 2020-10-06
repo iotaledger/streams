@@ -1,5 +1,7 @@
 mod link;
 pub use link::*;
+mod content;
+pub use content::*;
 
 mod version;
 pub use version::*;
@@ -8,6 +10,8 @@ pub use hdf::HDF;
 pub mod pcf;
 pub use pcf::PCF;
 
+mod generic;
+pub use generic::*;
 mod prepared;
 pub use prepared::*;
 mod wrapped;

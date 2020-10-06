@@ -12,6 +12,7 @@ use iota_streams_app::{
             AppInst,
             MsgId,
             TangleAddress,
+            TangleMessage,
             DefaultTangleLinkGenerator,
         },
     },
@@ -42,10 +43,13 @@ pub type Address = TangleAddress;
 pub type ChannelAddress = AppInst;
 
 /// Binary encoded message type.
-pub type Message = message::BinaryMessage<DefaultF, Address>;
+pub type Message = TangleMessage<DefaultF>;
 
 /// Wrapped Message for sending and commit
 pub type WrappedMessage = message::WrappedMessage<DefaultF, Address>;
+pub type WrapState = message::WrapState<DefaultF, Address>;
+pub type WrappedSequence = super::user::WrappedSequence<DefaultF, Address>;
+pub type WrapStateSequence = super::user::WrapStateSequence<DefaultF, Address>;
 
 pub type PublicKey = ed25519::PublicKey;
 
@@ -63,13 +67,13 @@ pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
 pub type LinkStore = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;
 
 /// Test Transport.
-pub type BucketTransport = transport::BucketTransport<DefaultF, Address>;
+pub type BucketTransport = transport::BucketTransport<Address, Message>;
 
 // TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
-pub trait Transport: transport::Transport<DefaultF, Address> {}
-impl<T> Transport for T where T: transport::Transport<DefaultF, Address> {}
+pub trait Transport: transport::Transport<Address, Message> {}
+impl<T> Transport for T where T: transport::Transport<Address, Message> {}
 
-/// Message associated info, just message type indicator.
+/// Message associated info stored internally in User context, just message type indicator.
 #[derive(Copy, Clone)]
 pub enum MsgInfo {
     Announce,
@@ -81,23 +85,50 @@ pub enum MsgInfo {
     Sequence,
 }
 
-pub struct MessageReturn {
-    pub pk: Option<PublicKey>,
-    pub link: Address,
-    pub public_payload: Bytes,
-    pub masked_payload: Bytes,
+/// Message body returned as part of handle message routine.
+pub enum MessageContent {
+    Announce,
+    Keyload,
+    SignedPacket {
+        pk: PublicKey,
+        public_payload: Bytes,
+        masked_payload: Bytes,
+    },
+    TaggedPacket {
+        public_payload: Bytes,
+        masked_payload: Bytes,
+    },
+    Sequence,
+    Subscribe,
+    Unsubscribe,
 }
 
-impl MessageReturn {
-    fn new(pk: Option<PublicKey>, link: Address, public_payload: Bytes, masked_payload: Bytes) -> Self {
-        Self {
+impl MessageContent {
+    pub fn new_announce() -> Self {
+        Self::Announce
+    }
+
+    pub fn new_keyload() -> Self {
+        Self::Keyload
+    }
+
+    pub fn new_signed_packet(pk: PublicKey, public_payload: Bytes, masked_payload: Bytes) -> Self {
+        Self::SignedPacket {
             pk,
-            link,
+            public_payload,
+            masked_payload
+        }
+    }
+
+    pub fn new_tagged_packet(public_payload: Bytes, masked_payload: Bytes) -> Self {
+        Self::TaggedPacket {
             public_payload,
             masked_payload
         }
     }
 }
+
+pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
 
 mod user;
 /// User object storing the Auth/Sub implementation as well as the transport instance

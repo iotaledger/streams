@@ -9,8 +9,7 @@ use crate::{
         //user::User,
         tangle::{
             User,
-            MsgInfo,
-            MessageReturn,
+            UnwrappedMessage,
         },
     },
 };
@@ -69,10 +68,6 @@ impl<Trans: Transport> Subscriber<Trans> where
 
     pub fn is_multi_branching(&self) -> bool {
         self.user.is_multi_branching()
-    }
-
-    pub fn commit_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<Address> {
-        self.user.commit_message(msg, info)
     }
 
     /// Create tagged packet.
@@ -135,11 +130,11 @@ impl<Trans: Transport> Subscriber<Trans> where
         self.user.store_state_for_all(link, seq_num)
     }
 
-    pub fn fetch_next_msgs(&mut self) -> Vec<MessageReturn> {
+    pub fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
         self.user.fetch_next_msgs()
     }
 
-    pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<MessageReturn> {
+    pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<UnwrappedMessage> {
         self.user.receive_message(link, pk)
     }
 

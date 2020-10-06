@@ -48,14 +48,57 @@ const ANN_MESSAGE_NUM: u32 = 0;
 const SUB_MESSAGE_NUM: u32 = 0;
 const SEQ_MESSAGE_NUM: u32 = 1;
 
+pub struct WrapStateSequence<F, Link: HasLink>(
+    pub(crate) Cursor<<Link as HasLink>::Rel>,
+    pub(crate) Option<WrapState<F, Link>>,
+);
+
+impl<F, Link: HasLink> WrapStateSequence<F, Link> {
+    pub fn new(cursor: Cursor<<Link as HasLink>::Rel>) -> Self {
+        Self(cursor, None)
+    }
+
+    pub fn with_state(mut self, state: WrapState<F, Link>) -> Self {
+        self.1 = Some(state);
+        self
+    }
+
+    pub fn set_state(&mut self, state: WrapState<F, Link>) {
+        self.1 = Some(state);
+    }
+}
+
+pub struct WrappedSequence<F, Link: HasLink>(
+    pub(crate) Option<BinaryMessage<F, Link>>,
+    pub(crate) Option<WrapStateSequence<F, Link>>,
+);
+
+impl<F, Link: HasLink> WrappedSequence<F, Link> {
+    pub fn new() -> Self {
+        Self(None, None)
+    }
+
+    pub fn with_cursor(mut self, cursor: Cursor<<Link as HasLink>::Rel>) -> Self {
+        self.1 = Some(WrapStateSequence::new(cursor));
+        self
+    }
+
+    pub fn with_wrapped(mut self, m: WrappedMessage<F, Link>) -> Self {
+        self.0 = Some(m.message);
+        let wrapped = m.wrapped;
+        self.1.as_mut().map(|w| w.set_state(wrapped));
+        self
+    }
+}
+
 pub struct User<F, Link, LG, LS, PKS, PSKS>
 where
     F: PRP,
     Link: HasLink,
 {
-    /// PRNG object used for Ed25519, X25519, Spongos key generation, etc.
-    #[allow(dead_code)]
-    pub(crate) prng: prng::Prng<F>,
+    // PRNG object used for Ed25519, X25519, Spongos key generation, etc.
+    //pub(crate) prng: prng::Prng<F>,
+    _phantom: core::marker::PhantomData<F>,
 
     /// Own Ed25519 private key.
     pub(crate) sig_kp: ed25519::Keypair,
@@ -126,7 +169,7 @@ where
         // seq_map.insert(ke_kp.1.as_bytes().to_vec(), (appinst.clone(), 2 as usize));
 
         Self {
-            prng,
+            _phantom: core::marker::PhantomData,
             sig_kp,
             ke_kp,
 
@@ -158,9 +201,18 @@ where
         Ok(())
     }
 
+    /// Save spongos and info associated to the message link
+    pub fn commit_wrapped(
+        &mut self,
+        wrapped: WrapState<F, Link>,
+        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+    ) -> Result<Link>{
+        wrapped.commit(self.link_store.borrow_mut(), info)
+    }
+
     /// Prepare Announcement message.
     pub fn prepare_announcement<'a>(
-        &'a mut self,
+        &'a self,
     ) -> Result<PreparedMessage<'a, F, Link, LS, announce::ContentWrap<F>>> {
         // Create HDF for the first message in the channel.
         let msg_link = self.link_gen.get();
@@ -172,21 +224,9 @@ where
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
     }
 
-    /// Create Announce message.
-    pub fn announce<'a>(
-        &'a mut self,
-    ) -> Result<WrappedMessage<F, Link>> {
+    /// Create Announcement message.
+    pub fn announce(&self) -> Result<WrappedMessage<F, Link>> {
         self.prepare_announcement()?.wrap()
-    }
-
-    pub fn commit_message<'a>(
-        &'a mut self,
-        msg: WrappedMessage<F, Link>,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<Link>{
-        let link = msg.message.link.clone();
-        msg.commit(self.link_store.borrow_mut(), info)?;
-        Ok(link)
     }
 
     pub fn unwrap_announcement<'a>(
@@ -292,6 +332,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
         let preparsed = msg.parse_header()?;
+        //TODO: check content type
 
         let content = self
             .unwrap_subscribe(preparsed)?
@@ -463,7 +504,7 @@ where
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<bool> {
+    ) -> Result<GenericMessage<Link, bool>> {
         let preparsed = msg.parse_header()?;
 
         let content = self
@@ -471,7 +512,7 @@ where
             .commit(self.link_store.borrow_mut(), info)?;
 
         if content.key.is_some() {
-
+            // Presence of the key indicates the user is allowed
             // Unwrapped nonce and key in content are not used explicitly.
             // The resulting spongos state is joined into a protected message state.
             // Store any unknown publishers
@@ -483,9 +524,9 @@ where
                     }
                 }
             }
-            Ok(true)
+            Ok(GenericMessage::new(msg.link, true))
         } else {
-            Ok(false)
+            Ok(GenericMessage::new(msg.link, false))
         }
     }
 
@@ -536,14 +577,15 @@ where
         &'a mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
+    ) -> Result<GenericMessage<Link, (ed25519::PublicKey, Bytes, Bytes)>> {
         // TODO: pass author_pk to unwrap
         let preparsed = msg.parse_header()?;
 
         let content = self
             .unwrap_signed_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
-        Ok((content.sig_pk, content.public_payload, content.masked_payload))
+        let body = (content.sig_pk, content.public_payload, content.masked_payload);
+        Ok(GenericMessage::new(msg.link, body))
     }
 
     /// Prepare TaggedPacket message.
@@ -593,13 +635,14 @@ where
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<(Bytes, Bytes)> {
+    ) -> Result<GenericMessage<Link, (Bytes, Bytes)>> {
         let preparsed = msg.parse_header()?;
 
         let content = self
             .unwrap_tagged_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
-        Ok((content.public_payload, content.masked_payload))
+        let body = (content.public_payload, content.masked_payload);
+        Ok(GenericMessage::new(msg.link, body))
     }
 
     pub fn prepare_sequence<'a>(
@@ -624,12 +667,76 @@ where
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
     }
 
+    pub fn wrap_sequence(
+        &self,
+        ref_link: &<Link as HasLink>::Rel,
+    ) -> Result<WrappedSequence<F, Link>> {
+        match self.pk_store.get(&self.sig_kp.public) {
+            Some(cursor) => {
+                let mut cursor = cursor.clone();
+                if (self.flags & FLAG_BRANCHING_MASK) != 0 {
+                    let msg_link = self
+                        .link_gen
+                        .link_from(&self.sig_kp.public, Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
+                    let header = HDF::new(msg_link)
+                        .with_content_type(SEQUENCE)?
+                        .with_payload_length(1)?
+                        .with_seq_num(SEQ_MESSAGE_NUM);
+
+                    let content = sequence::ContentWrap::<Link> {
+                        link: &cursor.link,
+                        pk: &self.sig_kp.public,
+                        seq_num: cursor.get_seq_num(),
+                        ref_link,
+                    };
+
+                    let wrapped = {
+                        let prepared = PreparedMessage::new(self.link_store.borrow(), header, content);
+                        prepared.wrap()?
+                    };
+
+                    Ok(WrappedSequence::new()
+                       .with_cursor(cursor)
+                       .with_wrapped(wrapped))
+                } else {
+                    cursor.link = ref_link.clone();
+                    Ok(WrappedSequence::new()
+                       .with_cursor(cursor))
+                }
+            }
+            None => Ok(WrappedSequence::new()),
+        }
+    }
+
+    pub fn commit_sequence(
+        &mut self,
+        wrapped: WrapStateSequence<F, Link>,
+        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+    ) -> Result<Option<Link>> {
+        let mut cursor = wrapped.0;
+        match wrapped.1 {
+            Some(wrapped) => {
+                let link = wrapped.link.clone();
+                cursor.link = wrapped.link.rel().clone();
+                cursor.next_seq();
+                wrapped.commit(self.link_store.borrow_mut(), info)?;
+                self.pk_store.insert(self.sig_kp.public.clone(), cursor);
+                Ok(Some(link))
+            },
+            None => {
+                self.store_state_for_all(cursor.link, cursor.seq_no);
+                Ok(None)
+            },
+        }
+    }
+
+    /*
     pub fn send_sequence(
         &mut self,
         ref_link: &<Link as HasLink>::Rel,
     ) -> Result<Option<WrappedMessage<F, Link>>> {
         match self.pk_store.get_mut(&self.sig_kp.public) {
-            Some(cursor) => { // Cursor{ link, branch_no, seq_no, }
+            Some(cursor) => {
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
                     let msg_link = self
                         .link_gen
@@ -663,6 +770,7 @@ where
             None => Ok(None),
         }
     }
+     */
 
     pub fn unwrap_sequence<'a>(
         &self,
@@ -678,12 +786,12 @@ where
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<sequence::ContentUnwrap<Link>> {
+    ) -> Result<GenericMessage<Link, sequence::ContentUnwrap<Link>>> {
         let preparsed = msg.parse_header()?;
         let content = self
             .unwrap_sequence(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
-        Ok(content)
+        Ok(GenericMessage::new(msg.link, content))
     }
 
     pub fn is_multi_branching(&self) -> bool {
@@ -708,8 +816,8 @@ where
 
     fn gen_next_msg_id(
         ids: &mut Vec<(ed25519::PublicKey, Cursor<Link>)>,
-        link_gen: &mut LG,
-        pk_info: (&ed25519::PublicKey, &mut Cursor<<Link as HasLink>::Rel>),
+        link_gen: &LG,
+        pk_info: (&ed25519::PublicKey, &Cursor<<Link as HasLink>::Rel>),
         branching: bool,
     ) {
         let (pk, Cursor{ link: seq_link, branch_no: _, seq_no, }) = pk_info;
@@ -724,12 +832,13 @@ where
         }
     }
 
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Link>)> {
+    //TODO: Turn it into iterator.
+    pub fn gen_next_msg_ids(&self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Link>)> {
         let mut ids = Vec::new();
 
         // TODO: Do the same for self.sig_kp.public
-        for pk_info in self.pk_store.iter_mut() {
-            Self::gen_next_msg_id(&mut ids, &mut self.link_gen, pk_info, branching);
+        for pk_info in self.pk_store.iter() {
+            Self::gen_next_msg_id(&mut ids, &self.link_gen, pk_info, branching);
         }
         ids
     }

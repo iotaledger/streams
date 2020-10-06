@@ -30,39 +30,48 @@ use iota_streams_ddml::{
 
 use crate::message::{
     BinaryMessage,
+    Cursor,
     HasLink,
     LinkGenerator,
-    Cursor,
+    LinkedMessage,
 };
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
 
+#[derive(Clone)]
 pub struct TangleMessage<F> {
     /// Encapsulated binary encoded message.
-    pub binary_message: BinaryMessage<F, TangleAddress>,
+    pub binary: BinaryMessage<F, TangleAddress>,
 
     /// Timestamp is not an intrinsic part of Streams message; it's a part of the bundle.
     /// Timestamp is checked with Kerl as part of bundle essense trits.
-    pub timestamp: i64,
+    pub timestamp: u64,
 }
 
+impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
+    fn link(&self) -> &TangleAddress {
+        self.binary.link()
+    }
+}
+
+//TODO: Use better feature to detect `chrono::Utc::new()`.
 #[cfg(feature = "std")]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
     pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
         Self {
-            binary_message: msg,
-            timestamp: chrono::Utc::now().timestamp_millis(),
+            binary: msg,
+            timestamp: chrono::Utc::now().timestamp_millis() as u64,
         }
     }
 }
 
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and an explicit timestamp.
-    pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: i64) -> Self {
+    pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: u64) -> Self {
         Self {
-            binary_message: msg,
+            binary: msg,
             timestamp,
         }
     }
