@@ -154,8 +154,8 @@ where
         self.user.fetch_next_msgs()
     }
 
-    pub fn receive_msg(&mut self, msg: Message, pk: Option<ed25519::PublicKey>) -> Result<MessageReturn> {
-        self.user.handle_message(msg, pk)
+    pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<MessageReturn> {
+        self.user.receive_message(link, pk)
     }
 
 }
