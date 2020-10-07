@@ -31,7 +31,7 @@ else(${STATIC})
     target_link_libraries(${PROJECT_NAME} ../../../target/debug/iota_streams_c.dll)
   elseif (UNIX)
     set(FAKE_TARGET fakeTarget)
-    add_custom_target(fakeTarget cargo build --target-dir target --no-default-features --features "${cargo_features}" COMMAND cp target/debug/libiota_streams_c.so ${CMAKE_CURRENT_SOURCE_DIR})
+    add_custom_target(fakeTarget cargo build --target-dir ../../target --no-default-features --features "${cargo_features}" COMMAND cp ../../target/debug/libiota_streams_c.so ${CMAKE_CURRENT_SOURCE_DIR})
     add_dependencies(${PROJECT_NAME} ${FAKE_TARGET})
 
     target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/libiota_streams_c.so)
