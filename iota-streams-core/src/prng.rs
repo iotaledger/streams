@@ -113,6 +113,16 @@ pub fn init<G: PRP>(secret_key: Vec<u8>) -> Prng<G> {
     Prng::init(secret_key)
 }
 
+pub fn from_seed<G: PRP>(domain: &str, seed: &str) -> Prng<G> {
+    let mut s = Spongos::<G>::init();
+    s.absorb(seed.as_bytes());
+    s.commit();
+    s.absorb(domain.as_bytes());
+    s.commit();
+    let r = Prng::init(s.squeeze_buf(Prng::<G>::KEY_SIZE));
+    r
+}
+
 pub fn dbg_init_str<G: PRP>(secret_key: &str) -> Prng<G> {
     let mut s = Spongos::<G>::init();
     s.absorb(secret_key.as_bytes());

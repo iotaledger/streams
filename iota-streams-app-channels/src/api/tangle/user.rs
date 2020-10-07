@@ -33,7 +33,7 @@ where
     pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool, transport: Trans) -> Self {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
         let user = UserImp::gen(
-            prng::dbg_init_str(seed),
+            prng::from_seed("IOTA Streams Channels app", seed),
             nonce,
             if multi_branching { 1 } else { 0 },
             encoding.as_bytes().to_vec(),
