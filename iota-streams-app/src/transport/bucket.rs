@@ -7,17 +7,17 @@ pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
 }
 
-impl<Link, Msg> Default for BucketTransport<Link, Msg> where
+impl<Link, Msg> Default for BucketTransport<Link, Msg>
+where
     Link: Eq + hash::Hash,
 {
     fn default() -> Self {
-        Self {
-            bucket: HashMap::new(),
-        }
+        Self { bucket: HashMap::new() }
     }
 }
 
-impl<Link, Msg> BucketTransport<Link, Msg> where
+impl<Link, Msg> BucketTransport<Link, Msg>
+where
     Link: Eq + hash::Hash,
 {
     pub fn new() -> Self {
@@ -62,7 +62,8 @@ where
 
 #[cfg(feature = "async")]
 #[async_trait]
-impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg> where
+impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
+where
     Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,
     Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
 {
@@ -84,8 +85,7 @@ impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg> where
         }
     }
 
-    async fn recv_message(&mut self, link: &Link) -> Result<Msg>
-    {
+    async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");

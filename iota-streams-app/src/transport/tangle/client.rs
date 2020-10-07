@@ -249,7 +249,7 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
 pub fn msg_from_bundle<F>(bundle: &Bundle) -> TangleMessage<F> {
-    //TODO: Check bundle is not empty.
+    // TODO: Check bundle is not empty.
     let tx = bundle.head();
     let appinst = AppInst::from(bytes_from_trits(tx.address().to_inner()).as_ref());
     let msgid = MsgId::from(bytes_from_trits(tx.tag().to_inner()).as_ref());
@@ -261,13 +261,10 @@ pub fn msg_from_bundle<F>(bundle: &Bundle) -> TangleMessage<F> {
     }
 
     let binary = BinaryMessage::new(TangleAddress { appinst, msgid }, body.into());
-    //let timestamp: u64 = *(tx.timestamp() as *const iota::bundle::Timestamp) as *const u64;
+    // let timestamp: u64 = *(tx.timestamp() as *const iota::bundle::Timestamp) as *const u64;
     let timestamp: u64 = unsafe { core::mem::transmute(tx.timestamp()) };
 
-    TangleMessage{
-        binary,
-        timestamp,
-    }
+    TangleMessage { binary, timestamp }
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -343,10 +340,7 @@ async fn send_trytes(opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<V
     Ok(attached_txs)
 }
 
-pub async fn async_send_message_with_options<F>(
-    msg: &TangleMessage<F>,
-    opt: &SendTrytesOptions,
-) -> Result<()> {
+pub async fn async_send_message_with_options<F>(msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
     // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
     let trunk = Hash::zeros();
     let branch = Hash::zeros();
@@ -358,37 +352,28 @@ pub async fn async_send_message_with_options<F>(
     Ok(())
 }
 
-pub async fn async_recv_messages<F>(
-    link: &TangleAddress,
-) -> Result<Vec<TangleMessage<F>>> {
-    let tx_address =
-        Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
+pub async fn async_recv_messages<F>(link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+    let tx_address = Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
         .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
     let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
         .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
 
     match get_bundles(tx_address, tx_tag).await {
-        Ok(txs) =>
-            Ok(bundles_from_trytes(txs)
-               .into_iter()
-               .map(|b| msg_from_bundle(&b))
-               .collect()),
+        Ok(txs) => Ok(bundles_from_trytes(txs)
+            .into_iter()
+            .map(|b| msg_from_bundle(&b))
+            .collect()),
         Err(_) => Ok(Vec::new()), // Just ignore the error?
     }
 }
 
 #[cfg(not(feature = "async"))]
-pub fn sync_send_message_with_options<F>(
-    msg: &TangleMessage<F>,
-    opt: &SendTrytesOptions,
-) -> Result<()> {
+pub fn sync_send_message_with_options<F>(msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
     block_on(async_send_message_with_options(msg, opt))
 }
 
 #[cfg(not(feature = "async"))]
-pub fn sync_recv_messages<F>(
-    link: &TangleAddress,
-) -> Result<Vec<TangleMessage<F>>> {
+pub fn sync_recv_messages<F>(link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
     block_on(async_recv_messages(link))
 }
 
@@ -425,45 +410,33 @@ impl TransportOptions for Client {
 #[cfg(not(feature = "async"))]
 impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
-    fn send_message(
-        &mut self,
-        msg: &TangleMessage<F>,
-    ) -> Result<()> {
+    fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
         sync_send_message_with_options(msg, &self.send_opt)
     }
 
     /// Receive a message.
-    fn recv_messages(
-        &mut self,
-        link: &TangleAddress,
-    ) -> Result<Vec<TangleMessage<F>>> {
+    fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
         sync_recv_messages(link)
     }
 }
 
 #[cfg(feature = "async")]
 #[async_trait]
-impl<F> Transport<TangleAddress, TangleMessage<F>> for Client where
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Client
+where
     F: 'static + core::marker::Send + core::marker::Sync,
 {
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
-    async fn send_message(
-        &mut self,
-        msg: &TangleMessage<F>,
-    ) -> Result<()> {
+    async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
         async_send_message_with_options(msg, &self.send_opt).await
     }
 
     /// Receive a message.
-    async fn recv_messages(
-        &mut self,
-        link: &TangleAddress,
-    ) -> Result<Vec<TangleMessage<F>>> {
+    async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
         async_recv_messages(link).await
     }
 
-    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>>
-    {
+    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");

@@ -17,8 +17,7 @@ pub(crate) trait Wrap {
     fn wrap_u64(&mut self, u: u64) -> Result<&mut Self> {
         self.wrapn(&u.to_be_bytes())
     }
-    fn wrap_size(&mut self, size: Size) -> Result<&mut Self> where
-    {
+    fn wrap_size(&mut self, size: Size) -> Result<&mut Self> where {
         let d = size_bytes(size.0);
         self.wrap_u8(d as u8)?;
         let n = size.0;
@@ -36,4 +35,3 @@ pub(crate) trait Wrap {
         Ok(self)
     }
 }
-

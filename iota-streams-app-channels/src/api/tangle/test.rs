@@ -1,12 +1,8 @@
 #![allow(non_snake_case)]
-use crate::{
-    api::{
-        tangle::{
-            Address,
-            Author,
-            Subscriber,
-        },
-    },
+use crate::api::tangle::{
+    Address,
+    Author,
+    Subscriber,
 };
 use anyhow::{
     ensure,
@@ -37,7 +33,13 @@ where
     let multi_branching = false;
     let transport = Rc::new(RefCell::new(transport));
 
-    let mut author = Author::new("AUTHOR9SEED", encoding, PAYLOAD_BYTES, multi_branching, transport.clone());
+    let mut author = Author::new(
+        "AUTHOR9SEED",
+        encoding,
+        PAYLOAD_BYTES,
+        multi_branching,
+        transport.clone(),
+    );
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone());
 

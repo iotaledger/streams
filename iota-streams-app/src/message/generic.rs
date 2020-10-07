@@ -15,10 +15,7 @@ pub struct GenericMessage<AbsLink, Body> {
 
 impl<AbsLink, Body> GenericMessage<AbsLink, Body> {
     pub fn new(link: AbsLink, body: Body) -> Self {
-        Self {
-            link,
-            body,
-        }
+        Self { link, body }
     }
 
     pub fn map<B, F: FnOnce(Body) -> B>(self, f: F) -> GenericMessage<AbsLink, B> {
@@ -30,10 +27,7 @@ impl<AbsLink, Body> GenericMessage<AbsLink, Body> {
 
     pub fn map_err<B, F: FnOnce(Body) -> Result<B>>(self, f: F) -> Result<GenericMessage<AbsLink, B>> {
         let body = f(self.body)?;
-        Ok(GenericMessage {
-            link: self.link,
-            body,
-        })
+        Ok(GenericMessage { link: self.link, body })
     }
 }
 

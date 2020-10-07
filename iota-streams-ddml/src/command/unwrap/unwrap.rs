@@ -23,8 +23,7 @@ pub(crate) trait Unwrap {
         *u = u64::from_be_bytes(v);
         Ok(self)
     }
-    fn unwrap_size(&mut self, size: &mut Size) -> Result<&mut Self> where
-    {
+    fn unwrap_size(&mut self, size: &mut Size) -> Result<&mut Self> where {
         let mut d = 0_u8;
         self.unwrap_u8(&mut d)?;
 

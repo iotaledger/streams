@@ -41,8 +41,7 @@ impl<F> fmt::Display for BinaryBody<F> {
     }
 }
 
-impl<F> Clone for BinaryBody<F>
-{
+impl<F> Clone for BinaryBody<F> {
     fn clone(&self) -> Self {
         Self {
             bytes: self.bytes.clone(),

@@ -16,10 +16,10 @@ use crate::{
         Bytes,
         NBytes,
         Size,
-        Uint8,
         Uint16,
         Uint32,
         Uint64,
+        Uint8,
     },
 };
 use iota_streams_core::sponge::prp::PRP;

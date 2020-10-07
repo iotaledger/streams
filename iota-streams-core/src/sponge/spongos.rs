@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Implemented as a separate from `Spongos` struct in order to deal with life-times.
-//TODO: Use GenericArray for outer buffer.
+// TODO: Use GenericArray for outer buffer.
 pub struct Outer {
     /// Current position (offset in bytes) within the outer state.
     pos: usize,

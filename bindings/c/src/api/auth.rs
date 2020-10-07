@@ -20,7 +20,9 @@ pub extern "C" fn auth_new(
 
 #[no_mangle]
 pub extern "C" fn auth_drop(user: *mut Author) {
-    unsafe { Box::from_raw(user); }
+    unsafe {
+        Box::from_raw(user);
+    }
 }
 
 /// Channel app instance.
@@ -28,9 +30,8 @@ pub extern "C" fn auth_drop(user: *mut Author) {
 pub extern "C" fn auth_channel_address(user: *const Author) -> *const ChannelAddress {
     unsafe {
         user.as_ref().map_or(null(), |user| {
-            user.channel_address().map_or(null(), |channel_address| {
-                channel_address as *const ChannelAddress
-            })
+            user.channel_address()
+                .map_or(null(), |channel_address| channel_address as *const ChannelAddress)
         })
     }
 }
@@ -38,19 +39,14 @@ pub extern "C" fn auth_channel_address(user: *const Author) -> *const ChannelAdd
 #[no_mangle]
 pub extern "C" fn auth_is_multi_branching(user: *const Author) -> uint8_t {
     unsafe {
-        user.as_ref().map_or(0, |user| {
-            if user.is_multi_branching() { 1 } else { 0 }
-        })
+        user.as_ref()
+            .map_or(0, |user| if user.is_multi_branching() { 1 } else { 0 })
     }
 }
 
 #[no_mangle]
 pub extern "C" fn auth_get_public_key(user: *const Author) -> *const PublicKey {
-    unsafe {
-        user.as_ref().map_or(null(), |user| {
-            user.get_pk() as *const PublicKey
-        })
-    }
+    unsafe { user.as_ref().map_or(null(), |user| user.get_pk() as *const PublicKey) }
 }
 
 /// Announce creation of a new Channel.
@@ -69,7 +65,7 @@ pub extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const Address
     unsafe {
         user.as_mut().map_or((), |user| {
             link.as_ref().map_or((), |link| {
-                user.receive_subscribe(link).unwrap(); //TODO: handle Result
+                user.receive_subscribe(link).unwrap(); // TODO: handle Result
             })
         })
     }
@@ -99,10 +95,7 @@ pub extern "C" fn auth_send_keyload(
 
 /// Create keyload for all subscribed subscribers.
 #[no_mangle]
-pub extern "C" fn auth_send_keyload_for_everyone(
-    user: *mut Author,
-    link_to: *const Address,
-) -> MessageLinks {
+pub extern "C" fn auth_send_keyload_for_everyone(user: *mut Author, link_to: *const Address) -> MessageLinks {
     unsafe {
         user.as_mut().map_or(MessageLinks::default(), |user| {
             link_to.as_ref().map_or(MessageLinks::default(), |link_to| {
@@ -124,21 +117,22 @@ pub extern "C" fn auth_send_tagged_packet(
 ) -> MessageLinks {
     unsafe {
         user.as_mut().map_or(MessageLinks::default(), |user| {
-            link_to.into_seq_link(user.is_multi_branching())
+            link_to
+                .into_seq_link(user.is_multi_branching())
                 .map_or(MessageLinks::default(), |link_to| {
                     let public_payload = Bytes(Vec::from_raw_parts(
                         public_payload_ptr as *mut u8,
                         public_payload_size,
-                        public_payload_size));
+                        public_payload_size,
+                    ));
                     let masked_payload = Bytes(Vec::from_raw_parts(
                         masked_payload_ptr as *mut u8,
                         masked_payload_size,
-                        masked_payload_size));
-                    let response = user.send_tagged_packet(
-                        link_to,
-                        &public_payload,
-                        &masked_payload,
-                    ).unwrap();
+                        masked_payload_size,
+                    ));
+                    let response = user
+                        .send_tagged_packet(link_to, &public_payload, &masked_payload)
+                        .unwrap();
                     let _ = core::mem::ManuallyDrop::new(public_payload.0);
                     let _ = core::mem::ManuallyDrop::new(masked_payload.0);
                     response.into()
@@ -152,7 +146,7 @@ pub extern "C" fn auth_receive_tagged_packet(user: *mut Author, link: *const Add
     unsafe {
         user.as_mut().map_or(PacketPayloads::default(), |user| {
             link.as_ref().map_or(PacketPayloads::default(), |link| {
-                let payloads = user.receive_tagged_packet(link).unwrap(); //TODO: handle Result
+                let payloads = user.receive_tagged_packet(link).unwrap(); // TODO: handle Result
                 payloads.into()
             })
         })
@@ -165,7 +159,7 @@ pub extern "C" fn auth_receive_signed_packet(user: *mut Author, link: *const Add
     unsafe {
         user.as_mut().map_or(PacketPayloads::default(), |user| {
             link.as_ref().map_or(PacketPayloads::default(), |link| {
-                let signed_payloads = user.receive_signed_packet(link).unwrap(); //TODO: handle Result
+                let signed_payloads = user.receive_signed_packet(link).unwrap(); // TODO: handle Result
                 signed_payloads.into()
             })
         })
@@ -177,7 +171,7 @@ pub extern "C" fn author_receive_sequence(user: *mut Author, link: *const Addres
     unsafe {
         user.as_mut().map_or(null(), |user| {
             link.as_ref().map_or(null(), |link| {
-                let seq_link = user.receive_sequence(link).unwrap(); //TODO: handle Result
+                let seq_link = user.receive_sequence(link).unwrap(); // TODO: handle Result
                 Box::into_raw(Box::new(seq_link))
             })
         })
@@ -195,21 +189,22 @@ pub extern "C" fn auth_send_signed_packet(
 ) -> MessageLinks {
     unsafe {
         user.as_mut().map_or(MessageLinks::default(), |user| {
-            link_to.into_seq_link(user.is_multi_branching())
+            link_to
+                .into_seq_link(user.is_multi_branching())
                 .map_or(MessageLinks::default(), |link_to| {
                     let public_payload = Bytes(Vec::from_raw_parts(
                         public_payload_ptr as *mut u8,
                         public_payload_size,
-                        public_payload_size));
+                        public_payload_size,
+                    ));
                     let masked_payload = Bytes(Vec::from_raw_parts(
                         masked_payload_ptr as *mut u8,
                         masked_payload_size,
-                        masked_payload_size));
-                    let response = user.send_signed_packet(
-                        link_to,
-                        &public_payload,
-                        &masked_payload,
-                    ).unwrap();
+                        masked_payload_size,
+                    ));
+                    let response = user
+                        .send_signed_packet(link_to, &public_payload, &masked_payload)
+                        .unwrap();
                     let _ = core::mem::ManuallyDrop::new(public_payload.0);
                     let _ = core::mem::ManuallyDrop::new(masked_payload.0);
                     response.into()
@@ -233,7 +228,7 @@ pub extern "C" fn auth_receive_msg(user: *mut Author, link: *const Address) -> *
     unsafe {
         user.as_mut().map_or(null(), |user| {
             link.as_ref().map_or(null(), |link| {
-                let u = user.receive_msg(link, None).unwrap(); //TODO: handle Result
+                let u = user.receive_msg(link, None).unwrap(); // TODO: handle Result
                 Box::into_raw(Box::new(u))
             })
         })

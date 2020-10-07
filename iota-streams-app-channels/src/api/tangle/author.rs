@@ -1,18 +1,12 @@
 //! Customize Author with default implementation for use over the Tangle.
 
-use anyhow::{
-    Result,
-};
+use anyhow::Result;
 use core::fmt;
 
 use super::*;
-use crate::{
-    api::{
-        tangle::{
-            User,
-            UnwrappedMessage,
-        },
-    },
+use crate::api::tangle::{
+    UnwrappedMessage,
+    User,
 };
 
 use iota_streams_core::prelude::Vec;
@@ -23,17 +17,12 @@ pub struct Author<Trans> {
     user: User<Trans>,
 }
 
-impl<Trans> Author<Trans> where
+impl<Trans> Author<Trans>
+where
     Trans: Transport,
 {
     /// Create a new Author instance, generate new MSS keypair and optionally NTRU keypair.
-    pub fn new(
-        seed: &str,
-        encoding: &str,
-        payload_length: usize,
-        multi_branching: bool,
-        transport: Trans,
-    ) -> Self {
+    pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool, transport: Trans) -> Self {
         let mut user = User::new(seed, encoding, payload_length, multi_branching, transport);
         let channel_idx = 0_u64;
         let _ = user.user.create_channel(channel_idx);
@@ -60,7 +49,7 @@ impl<Trans> Author<Trans> where
     }
 
     /// Subscribe a new subscriber.
-     pub fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
+    pub fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
         self.user.receive_subscribe(link)
     }
 
@@ -135,7 +124,6 @@ impl<Trans> Author<Trans> where
     pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<UnwrappedMessage> {
         self.user.receive_message(link, pk)
     }
-
 }
 
 impl<Trans> fmt::Display for Author<Trans> {

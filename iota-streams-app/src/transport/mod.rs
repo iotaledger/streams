@@ -4,9 +4,9 @@ use anyhow::{
     Result,
 };
 
-use core::hash;
 #[cfg(not(feature = "async"))]
 use core::cell::RefCell;
+use core::hash;
 #[cfg(feature = "async")]
 use core::marker::{
     Send,
@@ -16,11 +16,11 @@ use core::marker::{
 #[cfg(feature = "async")]
 use async_trait::async_trait;
 
-use iota_streams_core::prelude::Vec;
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::Box;
 #[cfg(not(feature = "async"))]
 use iota_streams_core::prelude::Rc;
+use iota_streams_core::prelude::Vec;
 
 pub trait TransportOptions {
     type SendOptions;
@@ -30,15 +30,13 @@ pub trait TransportOptions {
     type RecvOptions;
     fn get_recv_options(&self) -> Self::RecvOptions;
     fn set_recv_options(&mut self, opt: Self::RecvOptions);
-
 }
 
 /// Network transport abstraction.
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[cfg(not(feature = "async"))]
-pub trait Transport<Link, Msg>: TransportOptions
-{
+pub trait Transport<Link, Msg>: TransportOptions {
     /// Send a message with default options.
     fn send_message(&mut self, msg: &Msg) -> Result<()>;
 
@@ -46,8 +44,7 @@ pub trait Transport<Link, Msg>: TransportOptions
     fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>;
 
     /// Receive a message with default options.
-    fn recv_message(&mut self, link: &Link) -> Result<Msg>
-    {
+    fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         let mut msgs = self.recv_messages(link)?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
@@ -60,7 +57,8 @@ pub trait Transport<Link, Msg>: TransportOptions
 
 #[cfg(feature = "async")]
 #[async_trait]
-pub trait Transport<Link, Msg>: TransportOptions where
+pub trait Transport<Link, Msg>: TransportOptions
+where
     Link: Send + Sync,
     Msg: Send + Sync,
 {
@@ -72,20 +70,17 @@ pub trait Transport<Link, Msg>: TransportOptions where
 
     /// Receive a message with default options.
     async fn recv_message(&mut self, link: &Link) -> Result<Msg>;
-    /*
     // For some reason compiler requires (Msg: `async_trait) lifetime bound for this default implementation.
-    {
-        let mut msgs = self.recv_messages(link).await?;
-        if let Some(msg) = msgs.pop() {
-            ensure!(msgs.is_empty(), "More than one message found.");
-            Ok(msg)
-        } else {
-            Err(anyhow!("Message not found."))
-        }
-    }
-     */
+    // {
+    // let mut msgs = self.recv_messages(link).await?;
+    // if let Some(msg) = msgs.pop() {
+    // ensure!(msgs.is_empty(), "More than one message found.");
+    // Ok(msg)
+    // } else {
+    // Err(anyhow!("Message not found."))
+    // }
+    // }
 }
-
 
 #[cfg(not(feature = "async"))]
 impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
@@ -104,14 +99,12 @@ impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
     fn set_recv_options(&mut self, opt: Self::RecvOptions) {
         (&*self).borrow_mut().set_recv_options(opt)
     }
-
 }
 
 #[cfg(not(feature = "async"))]
 impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<Tsp>> {
     /// Send a message.
-    fn send_message(&mut self, msg: &Msg) -> Result<()>
-    {
+    fn send_message(&mut self, msg: &Msg) -> Result<()> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.send_message(msg),
             Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
@@ -119,8 +112,7 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
     }
 
     /// Receive messages with default options.
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>
-    {
+    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_messages(link),
             Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
@@ -128,8 +120,7 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
     }
 
     /// Receive a message with default options.
-    fn recv_message(&mut self, link: &Link) -> Result<Msg>
-    {
+    fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_message(link),
             Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),

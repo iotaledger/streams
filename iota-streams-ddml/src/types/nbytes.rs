@@ -1,8 +1,6 @@
-use core::{
-    convert::{
-        AsMut,
-        AsRef,
-    },
+use core::convert::{
+    AsMut,
+    AsRef,
 };
 
 // Reexport some often used types

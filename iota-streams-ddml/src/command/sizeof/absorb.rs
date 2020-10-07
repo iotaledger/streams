@@ -11,10 +11,10 @@ use crate::{
         Fallback,
         NBytes,
         Size,
-        Uint8,
         Uint16,
         Uint32,
         Uint64,
+        Uint8,
     },
 };
 

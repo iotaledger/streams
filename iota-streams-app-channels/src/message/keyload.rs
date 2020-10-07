@@ -173,7 +173,12 @@ where
     LookupPsk: for<'b> Fn(&'b LookupArg, &psk::PskId) -> Option<&'b psk::Psk>,
     LookupKeSk: for<'b> Fn(&'b LookupArg, &ed25519::PublicKey) -> Option<&'b x25519::StaticSecret>,
 {
-    pub fn new(lookup_arg: &'a LookupArg, lookup_psk: LookupPsk, lookup_ke_sk: LookupKeSk, sig_pk: &'a ed25519::PublicKey) -> Self {
+    pub fn new(
+        lookup_arg: &'a LookupArg,
+        lookup_psk: LookupPsk,
+        lookup_ke_sk: LookupKeSk,
+        sig_pk: &'a ed25519::PublicKey,
+    ) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NBytes::default(),
@@ -260,10 +265,7 @@ where
             //.guard(self.key.is_some(), "Key not found")?
         ;
         if let Some(ref key) = self.key {
-            ctx
-                .absorb(External(key))?
-                .ed25519(self.sig_pk, HashSig)?
-                .commit()?;
+            ctx.absorb(External(key))?.ed25519(self.sig_pk, HashSig)?.commit()?;
         }
         //
         Ok(ctx)

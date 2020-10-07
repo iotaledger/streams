@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// Convenience wrapper for storing Spongos inner state.
-//TODO: Use GenericArray for inner buffer.
+// TODO: Use GenericArray for inner buffer.
 #[derive(Clone)]
 pub struct Inner<F> {
     pub inner: Vec<u8>,

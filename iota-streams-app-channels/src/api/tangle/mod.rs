@@ -1,8 +1,8 @@
 //! Default parameters for Author and Subscriber types.
 
 use super::{
-    psk_store::PresharedKeyMap,
     pk_store::PublicKeyMap,
+    psk_store::PresharedKeyMap,
 };
 use iota_streams_app::{
     message,
@@ -10,25 +10,25 @@ use iota_streams_app::{
         self,
         tangle::{
             AppInst,
+            DefaultTangleLinkGenerator,
             MsgId,
             TangleAddress,
             TangleMessage,
-            DefaultTangleLinkGenerator,
         },
     },
 };
 
 pub use message::Cursor;
 // Bring trait methods into scope publicly.
-pub use transport::TransportOptions as _;
-pub use transport::Transport as _;
 pub use message::LinkGenerator as _;
+pub use transport::{
+    Transport as _,
+    TransportOptions as _,
+};
 
 use iota_streams_core::psk;
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
-use iota_streams_ddml::{
-    link_store::DefaultLinkStore,
-};
+use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
 
 use iota_streams_core_edsig::signature::ed25519;
@@ -117,14 +117,14 @@ impl MessageContent {
         Self::SignedPacket {
             pk,
             public_payload,
-            masked_payload
+            masked_payload,
         }
     }
 
     pub fn new_tagged_packet(public_payload: Bytes, masked_payload: Bytes) -> Self {
         Self::TaggedPacket {
             public_payload,
-            masked_payload
+            masked_payload,
         }
     }
 }

@@ -3,12 +3,13 @@ use anyhow::{
     Result,
 };
 
+use iota_streams_app::message::{
+    HasLink as _,
+    LinkGenerator,
+};
 use iota_streams_core::{
     prelude::Vec,
     prng,
-};
-use iota_streams_app::{
-    message::{LinkGenerator, HasLink as _, },
 };
 
 use super::*;
@@ -16,7 +17,6 @@ use crate::{
     api,
     message,
 };
-
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
@@ -30,13 +30,7 @@ impl<Trans> User<Trans>
 where
     Trans: Transport,
 {
-    pub fn new(
-        seed: &str,
-        encoding: &str,
-        payload_length: usize,
-        multi_branching: bool,
-        transport: Trans,
-    ) -> Self {
+    pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool, transport: Trans) -> Self {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
         let user = UserImp::gen(
             prng::dbg_init_str(seed),
@@ -45,7 +39,7 @@ where
             encoding.as_bytes().to_vec(),
             payload_length,
         );
-        Self { user, transport, }
+        Self { user, transport }
     }
 
     pub fn channel_address(&self) -> Option<&ChannelAddress> {
@@ -91,7 +85,12 @@ where
         self.user.commit_wrapped(msg.wrapped, info)
     }
 
-    fn send_message_sequenced(&mut self, msg: WrappedMessage, ref_link: &MsgId, info: MsgInfo) -> Result<(Address, Option<Address>)> {
+    fn send_message_sequenced(
+        &mut self,
+        msg: WrappedMessage,
+        ref_link: &MsgId,
+        info: MsgInfo,
+    ) -> Result<(Address, Option<Address>)> {
         let seq = self.user.wrap_sequence(ref_link)?;
         self.transport.send_message(&Message::new(msg.message))?;
         let seq_link = self.send_sequence(seq)?;
@@ -104,17 +103,10 @@ where
         if let Some(_addr) = &self.user.appinst {
             let seq_link = msg.binary.link.clone();
             let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence)?.body;
-            let msg_id = self
-                .user
-                .link_gen
-                .link_from(
-                    &seq_msg.pk,
-                    Cursor::new_at(
-                        &seq_msg.ref_link,
-                        0,
-                        seq_msg.seq_num.0 as u32,
-                    )
-                );
+            let msg_id = self.user.link_gen.link_from(
+                &seq_msg.pk,
+                Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
+            );
 
             if self.is_multi_branching() {
                 self.store_state(seq_msg.pk, &seq_link)
@@ -128,20 +120,29 @@ where
         }
     }
 
-
-    pub fn send_signed_packet(&mut self, link_to: &Address, public_payload: &Bytes, masked_payload: &Bytes) -> Result<(Address, Option<Address>)>{
+    pub fn send_signed_packet(
+        &mut self,
+        link_to: &Address,
+        public_payload: &Bytes,
+        masked_payload: &Bytes,
+    ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.sign_packet(&link_to.msgid, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
     }
 
     pub fn receive_signed_packet(&mut self, link: &Address) -> Result<(PublicKey, Bytes, Bytes)> {
         let msg = self.transport.recv_message(link)?;
-        //TODO: msg.timestamp is lost
+        // TODO: msg.timestamp is lost
         let m = self.user.handle_signed_packet(msg.binary, MsgInfo::SignedPacket)?;
         Ok(m.body)
     }
 
-    pub fn send_tagged_packet(&mut self, link_to: &Address, public_payload: &Bytes, masked_payload: &Bytes) -> Result<(Address, Option<Address>)>{
+    pub fn send_tagged_packet(
+        &mut self,
+        link_to: &Address,
+        public_payload: &Bytes,
+        masked_payload: &Bytes,
+    ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.tag_packet(&link_to.msgid, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
     }
@@ -159,18 +160,12 @@ where
         match preparsed.header.content_type {
             message::SIGNED_PACKET => {
                 let m = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
-                let u = m.map(
-                    |(pk, public, masked)|
-                    MessageContent::new_signed_packet(pk, public, masked)
-                );
+                let u = m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked));
                 Ok(u)
             }
             message::TAGGED_PACKET => {
                 let m = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)?;
-                let u = m.map(
-                    |(public, masked)|
-                    MessageContent::new_tagged_packet(public, masked)
-                );
+                let u = m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked));
                 Ok(u)
             }
             message::KEYLOAD => {
@@ -179,10 +174,7 @@ where
                 // the keyload itself. This is to prevent sequencing failures
                 let m = self.user.handle_keyload(msg, MsgInfo::Keyload)?;
                 // TODO: Verify content, whether user is allowed or not!
-                let u = m.map(
-                    |_allowed|
-                    MessageContent::new_keyload()
-                );
+                let u = m.map(|_allowed| MessageContent::new_keyload());
                 Ok(u)
             }
             message::SEQUENCE => {
@@ -190,19 +182,13 @@ where
                 let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
                 let msg_link = self.user.link_gen.link_from(
                     &unwrapped.body.pk,
-                    Cursor::new_at(
-                        &unwrapped.body.ref_link,
-                        0,
-                        unwrapped.body.seq_num.0 as u32,
-                    )
+                    Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
                 );
                 let msg = self.transport.recv_message(&msg_link)?;
                 self.user.store_state(pk.unwrap().clone(), store_link);
                 self.handle_message(msg, pk)
             }
-            unknown_content => {
-                Err(anyhow!("Not a recognised message type: {}", unknown_content))
-            }
+            unknown_content => Err(anyhow!("Not a recognised message type: {}", unknown_content)),
         }
     }
 
@@ -210,7 +196,15 @@ where
         let ids = self.user.gen_next_msg_ids(self.user.is_multi_branching());
         let mut msgs = Vec::new();
 
-        for (pk, Cursor{ link, branch_no: _, seq_no, }) in ids {
+        for (
+            pk,
+            Cursor {
+                link,
+                branch_no: _,
+                seq_no,
+            },
+        ) in ids
+        {
             let msg = self.transport.recv_message(&link);
 
             if msg.is_ok() {
@@ -227,13 +221,17 @@ where
         msgs
     }
 
-
     pub fn send_announce(&mut self) -> Result<Address> {
         let msg = self.user.announce()?;
         self.send_message(msg, MsgInfo::Announce)
     }
 
-    pub fn send_keyload(&mut self, link_to: &Address, psk_ids: &PskIds, ke_pks: &Vec<PublicKey>) -> Result<(Address, Option<Address>)> {
+    pub fn send_keyload(
+        &mut self,
+        link_to: &Address,
+        psk_ids: &PskIds,
+        ke_pks: &Vec<PublicKey>,
+    ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload(&link_to.msgid, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
@@ -245,10 +243,9 @@ where
 
     pub fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
         let msg = self.transport.recv_message(link)?;
-        //TODO: Timestamp is lost.
+        // TODO: Timestamp is lost.
         self.user.handle_subscribe(msg.binary, MsgInfo::Subscribe)
     }
-
 
     pub fn is_registered(&self) -> bool {
         self.user.appinst.is_some()
@@ -270,7 +267,7 @@ where
         Ok(m.body)
     }
 
-    pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address>{
+    pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
         let msg = self.user.subscribe(&link_to.msgid)?;
         self.send_message(msg, MsgInfo::Subscribe)
     }

@@ -3,8 +3,8 @@
 use anyhow::Result;
 use core::{
     convert::{
-        AsRef,
         AsMut,
+        AsRef,
     },
     fmt,
     hash,
@@ -55,7 +55,7 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
     }
 }
 
-//TODO: Use better feature to detect `chrono::Utc::new()`.
+// TODO: Use better feature to detect `chrono::Utc::new()`.
 #[cfg(feature = "std")]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
@@ -81,10 +81,7 @@ impl<F> TangleMessage<F> {
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and an explicit timestamp.
     pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: u64) -> Self {
-        Self {
-            binary: msg,
-            timestamp,
-        }
+        Self { binary: msg, timestamp }
     }
 }
 
@@ -209,7 +206,7 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
     }
 }
 
-impl <F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
+impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     /// Used by Author to generate a new application instance: channels address and announcement message identifier
     fn gen(&mut self, pk: &ed25519::PublicKey, channel_idx: u64) {
         self.addr.appinst = AppInst::new(pk, channel_idx);
@@ -242,47 +239,6 @@ impl <F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
         }
     }
 }
-
-/*
-// Used by Author to generate a new application instance: channels address and announcement message identifier
-impl<'a, F: PRP> LinkGenerator<TangleAddress, (&'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F> {
-    fn link_from(&mut self, arg: (&ed25519::PublicKey, u64)) -> TangleAddress {
-        let (pk, channel_idx) = arg;
-        self.addr.appinst = AppInst::new(pk, channel_idx);
-        self.addr.msgid = self.gen_msgid(&self.addr.msgid, pk, 0);
-        self.addr.clone()
-    }
-}
-
-// Used by Subscriber to initialize link generator with the same state as Author
-impl<F: PRP> LinkGenerator<TangleAddress, TangleAddress> for DefaultTangleLinkGenerator<F> {
-    fn link_from(&mut self, arg: TangleAddress) -> TangleAddress {
-        self.addr = arg;
-        self.addr.clone()
-    }
-}
-
-// Used by Author to generate announcement message id, it's just stored internally by link generator
-impl<F: PRP> LinkGenerator<TangleAddress, ()> for DefaultTangleLinkGenerator<F> {
-    fn link_from(&mut self, _arg: ()) -> TangleAddress {
-        self.addr.clone()
-    }
-}
-
-// Used by users to pseudo-randomly generate a new message link from additional arguments
-impl<'a, F> LinkGenerator<TangleAddress, (&'a MsgId, &'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F>
-where
-    F: PRP,
-{
-    fn link_from(&mut self, arg: (&MsgId, &ed25519::PublicKey, u64)) -> TangleAddress {
-        let (msgid, pk, seq) = arg;
-        TangleAddress {
-            appinst: self.addr.appinst.clone(),
-            msgid: self.gen_msgid(msgid, pk, seq),
-        }
-    }
-}
- */
 
 // ed25519 public key size in bytes + 64-bit additional index
 pub type AppInstSize = U40;

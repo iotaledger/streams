@@ -4,14 +4,9 @@ use anyhow::Result;
 use core::fmt;
 
 use super::*;
-use crate::{
-    api::{
-        //user::User,
-        tangle::{
-            User,
-            UnwrappedMessage,
-        },
-    },
+use crate::api::tangle::{
+    UnwrappedMessage,
+    User,
 };
 
 use iota_streams_core::prelude::Vec;
@@ -22,17 +17,13 @@ pub struct Subscriber<T> {
     user: User<T>,
 }
 
-impl<Trans: Transport> Subscriber<Trans> where
+impl<Trans: Transport> Subscriber<Trans>
+where
     Trans::RecvOptions: Copy + Default,
     Trans::SendOptions: Copy + Default,
 {
     /// Create a new Subscriber instance, optionally generate NTRU keypair.
-    pub fn new(
-        seed: &str,
-        encoding: &str,
-        payload_length: usize,
-        transport: Trans,
-    ) -> Self {
+    pub fn new(seed: &str, encoding: &str, payload_length: usize, transport: Trans) -> Self {
         let user = User::new(seed, encoding, payload_length, false, transport);
         Self { user }
     }
@@ -96,7 +87,6 @@ impl<Trans: Transport> Subscriber<Trans> where
     // self.user.unsubscribe(link_to.rel(), MsgInfo::Unsubscribe)
     // }
 
-
     /// Handle keyload.
     pub fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         self.user.receive_keyload(link)
@@ -105,13 +95,11 @@ impl<Trans: Transport> Subscriber<Trans> where
     /// Unwrap and verify signed packet.
     pub fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
         self.user.receive_signed_packet(link)
-
     }
 
     /// Unwrap and verify tagged packet.
     pub fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
         self.user.receive_tagged_packet(link)
-
     }
 
     pub fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
@@ -137,7 +125,6 @@ impl<Trans: Transport> Subscriber<Trans> where
     pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<UnwrappedMessage> {
         self.user.receive_message(link, pk)
     }
-
 }
 
 impl<T: Transport> fmt::Display for Subscriber<T> {

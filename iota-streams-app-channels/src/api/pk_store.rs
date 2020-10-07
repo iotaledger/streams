@@ -1,10 +1,8 @@
 use core::fmt;
 
-use iota_streams_core::{
-    prelude::{
-        HashMap,
-        Vec,
-    },
+use iota_streams_core::prelude::{
+    HashMap,
+    Vec,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,

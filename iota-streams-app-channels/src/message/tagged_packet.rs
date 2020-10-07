@@ -87,7 +87,7 @@ where
     }
 }
 
-//TODO: factor out `public_payload` and `masked_payload` into `pub struct Content`
+// TODO: factor out `public_payload` and `masked_payload` into `pub struct Content`
 pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) public_payload: Bytes,

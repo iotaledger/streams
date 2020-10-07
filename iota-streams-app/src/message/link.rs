@@ -94,7 +94,6 @@ impl<Link: fmt::Debug> fmt::Debug for Cursor<Link> {
     }
 }
 
-
 /// Abstraction-helper to generate message links.
 pub trait LinkGenerator<Link: HasLink>: Default {
     /// Used by Author to generate a new application instance: channels address and announcement message identifier
@@ -113,14 +112,27 @@ pub trait LinkGenerator<Link: HasLink>: Default {
     fn link_from(&self, pk: &ed25519::PublicKey, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
 
     /// Derive a new link and construct a header with given content type.
-    fn uniform_header_from(&self, cursor: Cursor<&<Link as HasLink>::Rel>, content_type: u8, payload_length: usize, seq_num: u64) -> HDF<Link> {
-        //TODO: get rid of unwrap(), return Result<HDF<Link>>
+    fn uniform_header_from(
+        &self,
+        cursor: Cursor<&<Link as HasLink>::Rel>,
+        content_type: u8,
+        payload_length: usize,
+        seq_num: u64,
+    ) -> HDF<Link> {
+        // TODO: get rid of unwrap(), return Result<HDF<Link>>
         HDF::new_with_fields(self.uniform_link_from(cursor), content_type, payload_length, seq_num).unwrap()
     }
 
     /// Derive a new link and construct a header with given content type.
-    fn header_from(&self, pk: &ed25519::PublicKey, cursor: Cursor<&<Link as HasLink>::Rel>, content_type: u8, payload_length: usize, seq_num: u64) -> HDF<Link> {
-        //TODO: get rid of unwrap(), return Result<HDF<Link>>
+    fn header_from(
+        &self,
+        pk: &ed25519::PublicKey,
+        cursor: Cursor<&<Link as HasLink>::Rel>,
+        content_type: u8,
+        payload_length: usize,
+        seq_num: u64,
+    ) -> HDF<Link> {
+        // TODO: get rid of unwrap(), return Result<HDF<Link>>
         HDF::new_with_fields(self.link_from(pk, cursor), content_type, payload_length, seq_num).unwrap()
     }
 }
