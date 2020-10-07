@@ -2,24 +2,29 @@
 #include <stdio.h>
 #include <time.h>
 
+void rand_seed(char *seed, size_t n)
+{
+  static char const alphabet[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+";
+  srand((unsigned int)time(NULL));
+
+  if (seed && n)
+  for(; --n; )
+  {
+    int key = rand() % (sizeof(alphabet) - 1);
+    *seed++ = alphabet[key];
+  }
+  *seed = '\0';
+}
+
 int main()
 {
   transport_t *tsp = tsp_new();
   uint8_t multi_branching = 1;
-  char seed[11] = "testseed00";
-  char const *encoding = "utf-8";
+  char seed[] = "bindings test seed";
+  char const encoding[] = "utf-8";
   const size_t size = 1024;
 
-  /*
-  const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
-  srand(time(NULL));
-  for(size_t n = 0; n < 10; n++)
-  {
-    int key = rand() % (int)(sizeof charset - 1);
-    seed[n] = charset[key];
-  }
-  seed[10] = '\0';
-  */
+  rand_seed(seed, sizeof(seed));
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
   char const *url = "http://localhost:14265";
@@ -31,12 +36,15 @@ int main()
   printf("Made an author... ");
 
   // Fetch Application instance
-  channel_address_t const *appinst = auth_channel_address(auth);
-  char const *appinst_str = get_channel_address_str(appinst);
-  printf("With AppInst: %s\n\n", appinst_str);
-  drop_str(appinst_str);
-  auth_is_multi_branching(auth);
-  auth_get_public_key(auth);
+  {
+    channel_address_t const *appinst = auth_channel_address(auth);
+    // `auth_channel_address` does not allocate, no need to drop `appinst`
+    char const *appinst_str = get_channel_address_str(appinst);
+    printf("With AppInst: %s\n\n", appinst_str);
+    drop_str(appinst_str);
+    auth_is_multi_branching(auth);
+    auth_get_public_key(auth);
+  }
 
   // sending announcement
   printf("Sending announcement\n");
@@ -44,7 +52,7 @@ int main()
   printf("Made an announcement\n\n");
 
   // Subscriber
-  char const *sub_seed_a = "SUBSCRIBERA9SEED";
+  char const sub_seed_a[] = "SUBSCRIBERA9SEED";
   printf("Making Sub A with %s\n", sub_seed_a);
   subscriber_t *subA = sub_new("sub_seed_a", encoding, size, tsp);
   printf("Made an sub A... \n");
@@ -75,8 +83,8 @@ int main()
   sub_receive_keyload(subA, keyload_packet_address);
   printf("Subscriber handled keyload\n\n");
 
-  char public_payload[] = "A public payload woopeee";
-  char masked_payload[] = "A masked payload uhu";
+  char const public_payload[] = "A public payload woopeee";
+  char const masked_payload[] = "A masked payload uhu";
 
   // Signed packet 
   printf("Sending signed packet\n");
@@ -93,7 +101,7 @@ int main()
 
   printf("Subscriber unwrapping Signed packet\n");
   packet_payloads_t signed_packet_response = sub_receive_signed_packet(subA, signed_packet_address);
-  //printf("public: %s \tmasked: %s\n", signed_packet_response.public_payload_ptr, signed_packet_response.masked_payload_ptr);
+  printf("public: '%s' \tmasked: '%s'\n", signed_packet_response.public_payload_ptr, signed_packet_response.masked_payload_ptr);
   printf("Subscriber handled Signed packet\n");
 
   // Tagged packet 
@@ -111,7 +119,7 @@ int main()
   address_t const *tagged_packet_address = sub_receive_sequence(subA, tagged_packet_sequence_link);
   printf("Subscriber unwrapping Tagged packet\n");
   packet_payloads_t tagged_packet_response = sub_receive_tagged_packet(subA, tagged_packet_address);
-  //printf("public: %s \tmasked: %s\n", signed_packet_response.public_payload_ptr, signed_packet_response.masked_payload_ptr);
+  printf("public: '%s' \tmasked: '%s'\n", signed_packet_response.public_payload_ptr, signed_packet_response.masked_payload_ptr);
   printf("Subscriber handled Tagged packet\n");
 
   // Several messages
@@ -133,15 +141,31 @@ int main()
   printf("Sent\n");
 
   printf("Subscriber fetching messages...\n");
-  unwrapped_messages_t *message_returns = sub_sync_state(subA);
+  unwrapped_messages_t const *message_returns = sub_sync_state(subA);
   printf("Found messages\n");
 
   size_t x;
   for(x = 0; x < 3; x++)
   {
     packet_payloads_t response = get_indexed_payload(message_returns, x);
-    //printf("Unpacking message...\npublic: %s \tmasked: %s\n", response->public_payload, response->masked_payload);
+    printf("Unpacking message...\npublic: '%s' \tmasked: '%s'\n", response.public_payload_ptr, response.masked_payload_ptr);
+    //`get_indexed_payload` does not allocate, no need to drop `response`
   }
+
+  drop_address(ann_link);
+  drop_address(sub_link);
+  drop_links(keyload_links);
+  drop_address(keyload_packet_address);
+  drop_links(signed_packet_links);
+  drop_address(signed_packet_address);
+  drop_payloads(signed_packet_response);
+  drop_links(tagged_packet_links);
+  drop_address(tagged_packet_address);
+  drop_payloads(tagged_packet_response);
+  drop_links(tagged_packet_1_links);
+  drop_links(tagged_packet_2_links);
+  drop_links(tagged_packet_3_links);
+  drop_unwrapped_messages(message_returns);
 
   auth_drop(auth);
   sub_drop(subA);

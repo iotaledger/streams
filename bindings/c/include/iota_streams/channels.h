@@ -6,14 +6,22 @@
 #include <stdlib.h>
 
 typedef struct Address address_t;
+extern void drop_address(address_t const *);
+
 typedef struct ChannelAddress channel_address_t;
 typedef struct MsgId msgid_t;
 typedef struct PublicKey public_key_t;
 typedef struct PskIds psk_ids_t;
 typedef struct KePks ke_pks_t;
+
 typedef struct NextMsgIds next_msg_ids_t;
+extern void drop_next_msg_ids(next_msg_ids_t const *);
+
 typedef struct UnwrappedMessage unwrapped_message_t;
+extern void drop_unwrapped_message(unwrapped_message_t const *);
+
 typedef struct UnwrappedMessages unwrapped_messages_t;
+extern void drop_unwrapped_messages(unwrapped_messages_t const *);
 
 typedef struct MessageLinks {
   address_t const *msg_link;
@@ -73,12 +81,12 @@ extern packet_payloads_t auth_receive_tagged_packet(author_t *author, address_t 
 // Sequence Message (for multi branch use)
 extern address_t const *auth_receive_sequence(author_t *author, address_t const *address);
 // MsgId generation
-extern next_msg_ids_t *auth_gen_next_msg_ids(author_t *author);
+extern next_msg_ids_t const *auth_gen_next_msg_ids(author_t *author);
 // Generic Processing
-extern unwrapped_message_t *auth_receive_msg(author_t *author, address_t const *address);
+extern unwrapped_message_t const *auth_receive_msg(author_t *author, address_t const *address);
 // Fetching/Syncing
-extern unwrapped_messages_t *auth_fetch_next_msgs(author_t *author);
-extern unwrapped_messages_t *auth_sync_state(author_t *author);
+extern unwrapped_messages_t const *auth_fetch_next_msgs(author_t *author);
+extern unwrapped_messages_t const *auth_sync_state(author_t *author);
 
 /////////////
 // Subscriber
@@ -110,12 +118,12 @@ extern packet_payloads_t sub_receive_signed_packet(subscriber_t *subscriber, add
 // Sequence Message (for multi branch use)
 extern address_t const *sub_receive_sequence(subscriber_t *subscriber, address_t const *address);
 // MsgId Generation
-extern next_msg_ids_t *sub_gen_next_msg_ids(subscriber_t *subscriber);
+extern next_msg_ids_t const *sub_gen_next_msg_ids(subscriber_t *subscriber);
 // Generic Message Processing
-extern unwrapped_message_t *sub_receive_msg(subscriber_t *subscriber, address_t const *address);
+extern unwrapped_message_t const *sub_receive_msg(subscriber_t *subscriber, address_t const *address);
 // Fetching/Syncing
-extern unwrapped_messages_t *sub_fetch_next_msgs(subscriber_t *subscriber);
-extern unwrapped_messages_t *sub_sync_state(subscriber_t *subscriber);
+extern unwrapped_messages_t const *sub_fetch_next_msgs(subscriber_t *subscriber);
+extern unwrapped_messages_t const *sub_sync_state(subscriber_t *subscriber);
 
 /////////////
 /// Utility

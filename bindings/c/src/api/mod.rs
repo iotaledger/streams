@@ -23,10 +23,32 @@ use cty::{
 
 use iota_conversion::trytes_converter::bytes_to_trytes;
 
+#[no_mangle]
+pub extern "C" fn drop_address(addr: *const Address) {
+    unsafe { Box::from_raw(addr as *mut Address); }
+}
+
+
 pub type PskIds = psk::PskIds;
 pub type KePks = Vec<PublicKey>;
+
 pub type NextMsgIds = Vec<(PublicKey, Cursor<Address>)>;
+
+#[no_mangle]
+pub extern "C" fn drop_next_msg_ids(m: *const NextMsgIds) {
+    unsafe { Box::from_raw(m as *mut NextMsgIds); }
+}
+
+#[no_mangle]
+pub extern "C" fn drop_unwrapped_message(m: *const UnwrappedMessage) {
+    unsafe { Box::from_raw(m as *mut UnwrappedMessage); }
+}
+
 pub type UnwrappedMessages = Vec<UnwrappedMessage>;
+#[no_mangle]
+pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
+    unsafe { Box::from_raw(ms as *mut UnwrappedMessages); }
+}
 
 #[cfg(feature = "sync-client")]
 pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
