@@ -1,6 +1,6 @@
 [package]
 name = "streams-c-binding"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["DyrellC <dyrell.chapman@iota.org>"]
 edition = "2018"
 
@@ -15,7 +15,7 @@ name = "iota_streams_c"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-iota-streams = { version = "0.3.0", path = "../..", default-features = false, features = ["tangle"] }
+iota-streams = { version = "1.0.0", path = "../..", default-features = false, features = ["tangle"] }
 cty = { version = "0.2.1" }
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 

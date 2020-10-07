@@ -18,9 +18,6 @@ pub struct Subscriber<T> {
 }
 
 impl<Trans: Transport> Subscriber<Trans>
-where
-    Trans::RecvOptions: Copy + Default,
-    Trans::SendOptions: Copy + Default,
 {
     /// Create a new Subscriber instance, optionally generate NTRU keypair.
     pub fn new(seed: &str, encoding: &str, payload_length: usize, transport: Trans) -> Self {

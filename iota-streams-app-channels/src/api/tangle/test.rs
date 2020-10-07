@@ -24,10 +24,7 @@ use core::cell::RefCell;
 
 use super::*;
 
-pub fn example<T: Transport>(transport: T, _recv_opt: T::RecvOptions, _send_opt: T::SendOptions) -> Result<()>
-where
-    T::SendOptions: Default + Copy,
-    T::RecvOptions: Default + Copy,
+pub fn example<T: Transport>(transport: T) -> Result<()>
 {
     let encoding = "utf-8";
     let multi_branching = false;
@@ -138,5 +135,5 @@ where
 #[test]
 fn run_basic_scenario() {
     let transport = crate::api::tangle::BucketTransport::new();
-    assert!(dbg!(example(transport, (), ())).is_ok());
+    assert!(dbg!(example(transport)).is_ok());
 }

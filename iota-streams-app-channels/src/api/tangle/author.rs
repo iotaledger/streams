@@ -17,9 +17,7 @@ pub struct Author<Trans> {
     user: User<Trans>,
 }
 
-impl<Trans> Author<Trans>
-where
-    Trans: Transport,
+impl<Trans: Transport> Author<Trans>
 {
     /// Create a new Author instance, generate new MSS keypair and optionally NTRU keypair.
     pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool, transport: Trans) -> Self {

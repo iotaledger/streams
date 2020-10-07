@@ -12,9 +12,6 @@ use iota_streams::{
 };
 
 pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
-where
-    T::RecvOptions: Copy + Default,
-    T::SendOptions: Copy + Default,
 {
     let mut exists = true;
 
@@ -34,9 +31,6 @@ where
 }
 
 pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>)
-where
-    T::RecvOptions: Copy + Default,
-    T::SendOptions: Copy + Default,
 {
     let mut exists = true;
 

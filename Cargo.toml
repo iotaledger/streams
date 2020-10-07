@@ -2,7 +2,7 @@
 
 [package]
 name = "iota-streams"
-version = "0.3.0"
+version = "1.0.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -36,12 +36,12 @@ sync-client = ["iota-streams-app/sync-client", "iota-streams-app-channels/sync-c
 async-client = ["iota-streams-app/async-client", "iota-streams-app-channels/async-client"]
 
 [dependencies]
-iota-streams-core = { version = "0.2.1", path = "iota-streams-core", default-features = false }
+iota-streams-core = { version = "0.2.2", path = "iota-streams-core", default-features = false }
 iota-streams-core-keccak = { version = "0.2.0", path = "iota-streams-core-keccak", default-features = false }
 iota-streams-core-edsig = { version = "0.2.0", path = "iota-streams-core-edsig", default-features = false }
-iota-streams-ddml = { version = "0.2.1", path = "iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "0.3.0", path = "iota-streams-app", default-features = false }
-iota-streams-app-channels = { version = "0.3.0", path = "iota-streams-app-channels", default-features = false }
+iota-streams-ddml = { version = "0.2.2", path = "iota-streams-ddml", default-features = false }
+iota-streams-app = { version = "1.0.0", path = "iota-streams-app", default-features = false }
+iota-streams-app-channels = { version = "1.0.0", path = "iota-streams-app-channels", default-features = false }
 
 #[profile.release-nostd]
 #inherits = "release"
