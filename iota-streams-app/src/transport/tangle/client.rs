@@ -343,40 +343,6 @@ async fn send_trytes(opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<V
     Ok(attached_txs)
 }
 
-pub fn sync_send_message_with_options<F>(
-    msg: &TangleMessage<F>,
-    opt: &SendTrytesOptions,
-) -> Result<()> {
-    // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
-    let trunk = Hash::zeros();
-    let branch = Hash::zeros();
-    let bundle = msg_to_bundle(&msg.binary, msg.timestamp, trunk, branch)?;
-    // TODO: Get transactions from bundle without copying.
-    let txs = bundle.into_iter().collect::<Vec<Transaction>>();
-    // Ignore attached transactions.
-    block_on(send_trytes(opt, txs))?;
-    Ok(())
-}
-
-pub fn sync_recv_messages<F>(
-    link: &TangleAddress,
-) -> Result<Vec<TangleMessage<F>>> {
-    let tx_address =
-        Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
-        .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
-    let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
-        .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
-
-    match block_on(get_bundles(tx_address, tx_tag)) {
-        Ok(txs) =>
-            Ok(bundles_from_trytes(txs)
-               .into_iter()
-               .map(|b| msg_from_bundle(&b))
-               .collect()),
-        Err(_) => Ok(Vec::new()), // Just ignore the error?
-    }
-}
-
 pub async fn async_send_message_with_options<F>(
     msg: &TangleMessage<F>,
     opt: &SendTrytesOptions,
@@ -392,7 +358,7 @@ pub async fn async_send_message_with_options<F>(
     Ok(())
 }
 
-pub async fn async_recv_messages_with_options<F>(
+pub async fn async_recv_messages<F>(
     link: &TangleAddress,
 ) -> Result<Vec<TangleMessage<F>>> {
     let tx_address =
@@ -411,13 +377,30 @@ pub async fn async_recv_messages_with_options<F>(
     }
 }
 
+#[cfg(not(feature = "async"))]
+pub fn sync_send_message_with_options<F>(
+    msg: &TangleMessage<F>,
+    opt: &SendTrytesOptions,
+) -> Result<()> {
+    block_on(async_send_message_with_options(msg, opt))
+}
+
+#[cfg(not(feature = "async"))]
+pub fn sync_recv_messages<F>(
+    link: &TangleAddress,
+) -> Result<Vec<TangleMessage<F>>> {
+    block_on(async_recv_messages(link))
+}
+
 /// Stub type for iota_client::Client.
 #[derive(Copy, Clone, Default)]
-pub struct Client;
+pub struct Client {
+    send_opt: SendTrytesOptions,
+}
 
 impl Client {
     pub fn new() -> Self {
-        Self
+        Self::default()
     }
 
     pub fn add_node(url: &str) -> Result<bool> {
@@ -428,23 +411,29 @@ impl Client {
 #[cfg(not(feature = "async"))]
 impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
     type SendOptions = SendTrytesOptions;
+    fn get_send_options(&self) -> SendTrytesOptions {
+        self.send_opt.clone()
+    }
+    fn set_send_options(&mut self, opt: SendTrytesOptions) {
+        self.send_opt = opt;
+    }
 
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
-    fn send_message_with_options(
+    fn send_message(
         &mut self,
         msg: &TangleMessage<F>,
-        opt: &Self::SendOptions,
     ) -> Result<()> {
-        sync_send_message_with_options(msg, opt)
+        sync_send_message_with_options(msg, &self.send_opt)
     }
 
     type RecvOptions = ();
+    fn get_recv_options(&self) -> () {}
+    fn set_recv_options(&mut self, _opt: ()) {}
 
     /// Receive a message.
-    fn recv_messages_with_options(
+    fn recv_messages(
         &mut self,
         link: &TangleAddress,
-        _opt: &Self::RecvOptions,
     ) -> Result<Vec<TangleMessage<F>>> {
         sync_recv_messages(link)
     }
@@ -452,28 +441,45 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
 
 #[cfg(feature = "async")]
 #[async_trait]
-impl<F> Transport<F, TangleAddress> for Client where
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Client where
     F: 'static + core::marker::Send + core::marker::Sync,
 {
     type SendOptions = SendTrytesOptions;
+    fn get_send_options(&self) -> SendTrytesOptions {
+        self.send_opt.clone()
+    }
+    fn set_send_options(&mut self, opt: SendTrytesOptions) {
+        self.send_opt = opt;
+    }
 
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
-    async fn send_message_with_options(
+    async fn send_message(
         &mut self,
         msg: &TangleMessage<F>,
-        opt: &Self::SendOptions,
     ) -> Result<()> {
-        async_send_message_with_options(msg, opt)
+        async_send_message_with_options(msg, &self.send_opt).await
     }
 
     type RecvOptions = ();
+    fn get_recv_options(&self) -> () {}
+    fn set_recv_options(&mut self, _opt: ()) {}
 
     /// Receive a message.
-    async fn recv_messages_with_options(
+    async fn recv_messages(
         &mut self,
         link: &TangleAddress,
-        _opt: &Self::RecvOptions,
     ) -> Result<Vec<TangleMessage<F>>> {
-        async_recv_messages_with_options(link)
+        async_recv_messages(link).await
+    }
+
+    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>>
+    {
+        let mut msgs = self.recv_messages(link).await?;
+        if let Some(msg) = msgs.pop() {
+            ensure!(msgs.is_empty(), "More than one message found.");
+            Ok(msg)
+        } else {
+            Err(anyhow!("Message not found."))
+        }
     }
 }

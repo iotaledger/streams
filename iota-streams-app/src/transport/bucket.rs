@@ -32,8 +32,10 @@ where
     Msg: LinkedMessage<Link> + Clone,
 {
     type SendOptions = ();
+    fn get_send_options(&self) -> () {}
+    fn set_send_options(&mut self, _opt: ()) {}
 
-    fn send_message_with_options(&mut self, msg: &Msg, _opt: &()) -> Result<()> {
+    fn send_message(&mut self, msg: &Msg) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
             Ok(())
@@ -44,8 +46,10 @@ where
     }
 
     type RecvOptions = ();
+    fn get_recv_options(&self) -> () {}
+    fn set_recv_options(&mut self, _opt: ()) {}
 
-    fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<Msg>> {
+    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
@@ -61,8 +65,10 @@ impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg> where
     Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
 {
     type SendOptions = ();
+    fn get_send_options(&self) -> () {}
+    fn set_send_options(&mut self, _opt: ()) {}
 
-    async fn send_message_with_options(&mut self, msg: &Msg, _opt: &()) -> Result<()> {
+    async fn send_message(&mut self, msg: &Msg) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
             Ok(())
@@ -73,12 +79,25 @@ impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg> where
     }
 
     type RecvOptions = ();
+    fn get_recv_options(&self) -> () {}
+    fn set_recv_options(&mut self, _opt: ()) {}
 
-    async fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<Msg>> {
+    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
             Err(anyhow!("Link not found in the bucket."))
+        }
+    }
+
+    async fn recv_message(&mut self, link: &Link) -> Result<Msg>
+    {
+        let mut msgs = self.recv_messages(link).await?;
+        if let Some(msg) = msgs.pop() {
+            ensure!(msgs.is_empty(), "More than one message found.");
+            Ok(msg)
+        } else {
+            Err(anyhow!("Message not found."))
         }
     }
 }

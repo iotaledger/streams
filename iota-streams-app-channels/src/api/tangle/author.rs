@@ -25,8 +25,6 @@ pub struct Author<Trans> {
 
 impl<Trans> Author<Trans> where
     Trans: Transport,
-    Trans::RecvOptions: Copy + Default,
-    Trans::SendOptions: Copy + Default,
 {
     /// Create a new Author instance, generate new MSS keypair and optionally NTRU keypair.
     pub fn new(

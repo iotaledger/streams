@@ -26,55 +26,32 @@ use iota_streams_core::prelude::Box;
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[cfg(not(feature = "async"))]
-pub trait Transport<Link, Msg> // where Link: HasLink
+pub trait Transport<Link, Msg>
 {
     type SendOptions;
-
-    /// Send a message with explicit options.
-    fn send_message_with_options(&mut self, msg: &Msg, opt: &Self::SendOptions) -> Result<()>;
+    fn get_send_options(&self) -> Self::SendOptions;
+    fn set_send_options(&mut self, opt: Self::SendOptions);
 
     /// Send a message with default options.
-    fn send_message(&mut self, msg: &Msg) -> Result<()>
-    where
-        Self::SendOptions: Default,
-    {
-        self.send_message_with_options(msg, &Self::SendOptions::default())
-    }
+    fn send_message(&mut self, msg: &Msg) -> Result<()>;
 
     type RecvOptions;
+    fn get_recv_options(&self) -> Self::RecvOptions;
+    fn set_recv_options(&mut self, opt: Self::RecvOptions);
 
-    /// Receive messages with explicit options.
-    fn recv_messages_with_options(
-        &mut self,
-        link: &Link,
-        opt: &Self::RecvOptions,
-    ) -> Result<Vec<Msg>>;
+    /// Receive messages with default options.
+    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>;
 
-    /// Receive messages with explicit options.
-    fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<Msg> {
-        let mut msgs = self.recv_messages_with_options(link, opt)?;
+    /// Receive a message with default options.
+    fn recv_message(&mut self, link: &Link) -> Result<Msg>
+    {
+        let mut msgs = self.recv_messages(link)?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
             Ok(msg)
         } else {
             Err(anyhow!("Message not found."))
         }
-    }
-
-    /// Receive messages with default options.
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>
-    where
-        Self::RecvOptions: Default,
-    {
-        self.recv_messages_with_options(link, &Self::RecvOptions::default())
-    }
-
-    /// Receive a message with default options.
-    fn recv_message(&mut self, link: &Link) -> Result<Msg>
-    where
-        Self::RecvOptions: Default,
-    {
-        self.recv_message_with_options(link, &Self::RecvOptions::default())
     }
 }
 
@@ -84,31 +61,26 @@ pub trait Transport<Link, Msg> where
     Link: Send + Sync,
     Msg: Send + Sync,
 {
-    type SendOptions: Send;
-
-    /// Send a message with explicit options.
-    async fn send_message_with_options(&mut self, msg: &Msg, opt: &Self::SendOptions) -> Result<()>;
+    type SendOptions;
+    fn get_send_options(&self) -> Self::SendOptions;
+    fn set_send_options(&mut self, opt: Self::SendOptions);
 
     /// Send a message with default options.
-    async fn send_message(&mut self, msg: &Msg) -> Result<()>
-    where
-        Self::SendOptions: Default + Send + Sync,
+    async fn send_message(&mut self, msg: &Msg) -> Result<()>;
+
+    type RecvOptions;
+    fn get_recv_options(&self) -> Self::RecvOptions;
+    fn set_recv_options(&mut self, opt: Self::RecvOptions);
+
+    /// Receive messages with default options.
+    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>;
+
+    /// Receive a message with default options.
+    async fn recv_message(&mut self, link: &Link) -> Result<Msg>;
+    /*
+    // For some reason compiler requires (Msg: `async_trait) lifetime bound for this default implementation.
     {
-        self.send_message_with_options(msg, &Self::SendOptions::default()).await
-    }
-
-    type RecvOptions: Send + Sync;
-
-    /// Receive messages with explicit options.
-    async fn recv_messages_with_options(
-        &mut self,
-        link: &Link,
-        opt: &Self::RecvOptions,
-    ) -> Result<Vec<Msg>>;
-
-    /// Receive messages with explicit options.
-    async fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<Msg> {
-        let mut msgs = self.recv_messages_with_options(link, opt).await?;
+        let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
             ensure!(msgs.is_empty(), "More than one message found.");
             Ok(msg)
@@ -116,40 +88,22 @@ pub trait Transport<Link, Msg> where
             Err(anyhow!("Message not found."))
         }
     }
-
-    /// Receive messages with default options.
-    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>
-    where
-        Self::RecvOptions: Default + Send,
-    {
-        self.recv_messages_with_options(link, &Self::RecvOptions::default()).await
-    }
-
-    /// Receive a message with default options.
-    async fn recv_message(&mut self, link: &Link) -> Result<Msg>
-    where
-        Self::RecvOptions: Default + Send,
-    {
-        self.recv_message_with_options(link, &Self::RecvOptions::default()).await
-    }
+     */
 }
 
 
 #[cfg(not(feature = "async"))]
 impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<Tsp>> {
     type SendOptions = <Tsp as Transport<Link, Msg>>::SendOptions;
-
-    fn send_message_with_options(&mut self, msg: &Msg, opt: &Self::SendOptions) -> Result<()> {
-        match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => tsp.send_message_with_options(msg, opt),
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
-        }
+    fn get_send_options(&self) -> Self::SendOptions {
+        (&*self).borrow().get_send_options()
+    }
+    fn set_send_options(&mut self, opt: Self::SendOptions) {
+        (&*self).borrow_mut().set_send_options(opt)
     }
 
-    /// Send a message with default options.
+    /// Send a message.
     fn send_message(&mut self, msg: &Msg) -> Result<()>
-    where
-        Self::SendOptions: Default,
     {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.send_message(msg),
@@ -158,31 +112,15 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
     }
 
     type RecvOptions = <Tsp as Transport<Link, Msg>>::RecvOptions;
-
-    /// Receive messages with explicit options.
-    fn recv_messages_with_options(
-        &mut self,
-        link: &Link,
-        opt: &Self::RecvOptions,
-    ) -> Result<Vec<Msg>> {
-        match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => tsp.recv_messages_with_options(link, opt),
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
-        }
+    fn get_recv_options(&self) -> Self::RecvOptions {
+        (&*self).borrow().get_recv_options()
     }
-
-    /// Receive messages with explicit options.
-    fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<Msg> {
-        match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => tsp.recv_message_with_options(link, opt),
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
-        }
+    fn set_recv_options(&mut self, opt: Self::RecvOptions) {
+        (&*self).borrow_mut().set_recv_options(opt)
     }
 
     /// Receive messages with default options.
     fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>
-    where
-        Self::RecvOptions: Default,
     {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_messages(link),
@@ -192,8 +130,6 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
 
     /// Receive a message with default options.
     fn recv_message(&mut self, link: &Link) -> Result<Msg>
-    where
-        Self::RecvOptions: Default,
     {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_message(link),

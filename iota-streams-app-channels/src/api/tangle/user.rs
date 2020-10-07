@@ -12,26 +12,6 @@ use iota_streams_app::{
 };
 
 use super::*;
-/*
-use super::{
-    DefaultF,
-    Address,
-    LinkGen,
-    LinkStore,
-    PkStore,
-    PskStore,
-    Transport,
-    MsgInfo,
-    ChannelAddress,
-    PublicKey,
-    Message,
-    WrappedMessage,
-    Bytes,
-    Cursor,
-    MessageReturn,
-    PskIds,
-};
- */
 use crate::{
     api,
     message,
@@ -49,8 +29,6 @@ pub struct User<Trans> {
 impl<Trans> User<Trans>
 where
     Trans: Transport,
-    Trans::RecvOptions: Default,
-    Trans::SendOptions: Default,
 {
     pub fn new(
         seed: &str,
