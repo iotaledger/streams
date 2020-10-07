@@ -412,9 +412,14 @@ pub async fn async_recv_messages_with_options<F>(
 }
 
 /// Stub type for iota_client::Client.
+#[derive(Copy, Clone, Default)]
 pub struct Client;
 
 impl Client {
+    pub fn new() -> Self {
+        Self
+    }
+
     pub fn add_node(url: &str) -> Result<bool> {
         iota_client::Client::add_node(url).map_err(|e| anyhow!("iota_client error {}:", e))
     }

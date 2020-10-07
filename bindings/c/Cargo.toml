@@ -4,14 +4,21 @@ version = "0.1.0"
 authors = ["DyrellC <dyrell.chapman@iota.org>"]
 edition = "2018"
 
+[features]
+default = ["std", "sync-client"]
+std = ["iota-streams/std"]
+sync-client = ["iota-streams/sync-client", "std"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "iota_streams_c"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-libc = "0.2.2"
-iota-streams = { version = "0.3.0", path = "../.." }
+iota-streams = { version = "0.3.0", path = "../..", default-features = false, features = ["tangle"] }
+cty = { version = "0.2.1" }
+cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
+
 hex = "0.4.2"
 iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
 iota-conversion = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }

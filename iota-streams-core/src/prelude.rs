@@ -21,10 +21,6 @@ pub use alloc::{
         self,
         Vec,
     },
-    rc::{
-        self,
-        Rc,
-    }
 };
 
 #[cfg(feature = "std")]

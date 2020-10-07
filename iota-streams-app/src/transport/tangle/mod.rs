@@ -67,6 +67,17 @@ impl<F> TangleMessage<F> {
     }
 }
 
+#[cfg(not(feature = "std"))]
+impl<F> TangleMessage<F> {
+    /// Create TangleMessage from BinaryMessage and add the current timestamp.
+    pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
+        Self {
+            binary: msg,
+            timestamp: 0_u64,
+        }
+    }
+}
+
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and an explicit timestamp.
     pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: u64) -> Self {

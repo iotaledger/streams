@@ -7,8 +7,17 @@ pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
 }
 
-impl<Link, Msg> BucketTransport<Link, Msg>
-where
+impl<Link, Msg> Default for BucketTransport<Link, Msg> where
+    Link: Eq + hash::Hash,
+{
+    fn default() -> Self {
+        Self {
+            bucket: HashMap::new(),
+        }
+    }
+}
+
+impl<Link, Msg> BucketTransport<Link, Msg> where
     Link: Eq + hash::Hash,
 {
     pub fn new() -> Self {
