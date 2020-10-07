@@ -39,6 +39,10 @@ extern void drop_payloads(packet_payloads_t);
 typedef struct Transport transport_t;
 extern transport_t *tsp_new();
 extern void tsp_drop(transport_t *);
+#ifdef IOTA_STREAMS_CHANNELS_CLIENT
+extern void tsp_client_add_node(char const *url);
+extern void tsp_client_set_mwm(transport_t *tsp, uint8_t mwm);
+#endif
 
 ////////////
 /// Author
@@ -116,9 +120,6 @@ extern unwrapped_messages_t *sub_sync_state(subscriber_t *subscriber);
 /////////////
 /// Utility
 /////////////
-#ifdef IOTA_STREAMS_CHANNELS_CLIENT
-extern void client_add_node(char const *url);
-#endif
 extern void drop_str(char const *str);
 
 extern char const *get_channel_address_str(channel_address_t const *appinst);

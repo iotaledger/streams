@@ -20,6 +20,7 @@ use iota_streams_app::{
 
 pub use message::Cursor;
 // Bring trait methods into scope publicly.
+pub use transport::TransportOptions as _;
 pub use transport::Transport as _;
 pub use message::LinkGenerator as _;
 

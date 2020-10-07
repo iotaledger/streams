@@ -44,6 +44,27 @@ pub extern "C" fn tsp_drop(tsp: *mut TransportWrap) {
     unsafe { Box::from_raw(tsp); }
 }
 
+#[cfg(feature = "sync-client")]
+#[no_mangle]
+pub extern "C" fn tsp_client_add_node(c_url: *const c_char) {
+    use iota_streams::app::transport::tangle::client::Client;
+    let url = unsafe { CStr::from_ptr(c_url).to_str().unwrap() };
+    Client::add_node(url).unwrap(); //TODO: handle Result.
+}
+
+#[cfg(feature = "sync-client")]
+#[no_mangle]
+pub extern "C" fn tsp_client_set_mwm(tsp: *mut TransportWrap, mwm: uint8_t) {
+    unsafe {
+        tsp.as_mut().map_or((), |tsp| {
+            let mut send_opt = (&*tsp).get_send_options();
+            send_opt.min_weight_magnitude = mwm;
+            tsp.set_send_options(send_opt);
+        })
+    }
+}
+
+
 #[repr(C)]
 pub struct MessageLinks {
     pub msg_link: *const Address,
@@ -176,14 +197,6 @@ impl PacketPayloads {
 #[no_mangle]
 pub extern "C" fn drop_payloads(payloads: PacketPayloads) {
     payloads.drop()
-}
-
-#[cfg(feature = "sync-client")]
-#[no_mangle]
-pub extern "C" fn client_add_node(c_url: *const c_char) {
-    use iota_streams::app::transport::tangle::client::Client;
-    let url = unsafe { CStr::from_ptr(c_url).to_str().unwrap() };
-    Client::add_node(url).unwrap(); //TODO: handle Result.
 }
 
 #[no_mangle]

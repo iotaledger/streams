@@ -23,7 +23,8 @@ int main()
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
   char const *url = "http://localhost:14265";
-  client_add_node(url);
+  tsp_client_add_node(url);
+  tsp_client_set_mwm(tsp, 14);
 #endif
   printf("Making author with %s\n", seed);
   author_t *auth = auth_new(seed, encoding, size, multi_branching, tsp);

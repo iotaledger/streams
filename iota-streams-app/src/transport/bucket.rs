@@ -25,16 +25,22 @@ impl<Link, Msg> BucketTransport<Link, Msg> where
     }
 }
 
+impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
+    type SendOptions = ();
+    fn get_send_options(&self) -> () {}
+    fn set_send_options(&mut self, _opt: ()) {}
+
+    type RecvOptions = ();
+    fn get_recv_options(&self) -> () {}
+    fn set_recv_options(&mut self, _opt: ()) {}
+}
+
 #[cfg(not(feature = "async"))]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
     Link: Eq + hash::Hash + Clone + core::fmt::Debug,
     Msg: LinkedMessage<Link> + Clone,
 {
-    type SendOptions = ();
-    fn get_send_options(&self) -> () {}
-    fn set_send_options(&mut self, _opt: ()) {}
-
     fn send_message(&mut self, msg: &Msg) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
@@ -44,10 +50,6 @@ where
             Ok(())
         }
     }
-
-    type RecvOptions = ();
-    fn get_recv_options(&self) -> () {}
-    fn set_recv_options(&mut self, _opt: ()) {}
 
     fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
         if let Some(msgs) = self.bucket.get(link) {
@@ -64,10 +66,6 @@ impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg> where
     Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,
     Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
 {
-    type SendOptions = ();
-    fn get_send_options(&self) -> () {}
-    fn set_send_options(&mut self, _opt: ()) {}
-
     async fn send_message(&mut self, msg: &Msg) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
             msgs.push(msg.clone());
@@ -77,10 +75,6 @@ impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg> where
             Ok(())
         }
     }
-
-    type RecvOptions = ();
-    fn get_recv_options(&self) -> () {}
-    fn set_recv_options(&mut self, _opt: ()) {}
 
     async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
         if let Some(msgs) = self.bucket.get(link) {

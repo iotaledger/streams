@@ -408,8 +408,7 @@ impl Client {
     }
 }
 
-#[cfg(not(feature = "async"))]
-impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
+impl TransportOptions for Client {
     type SendOptions = SendTrytesOptions;
     fn get_send_options(&self) -> SendTrytesOptions {
         self.send_opt.clone()
@@ -418,6 +417,13 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
         self.send_opt = opt;
     }
 
+    type RecvOptions = ();
+    fn get_recv_options(&self) -> () {}
+    fn set_recv_options(&mut self, _opt: ()) {}
+}
+
+#[cfg(not(feature = "async"))]
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
     fn send_message(
         &mut self,
@@ -425,10 +431,6 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
     ) -> Result<()> {
         sync_send_message_with_options(msg, &self.send_opt)
     }
-
-    type RecvOptions = ();
-    fn get_recv_options(&self) -> () {}
-    fn set_recv_options(&mut self, _opt: ()) {}
 
     /// Receive a message.
     fn recv_messages(
@@ -444,14 +446,6 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
 impl<F> Transport<TangleAddress, TangleMessage<F>> for Client where
     F: 'static + core::marker::Send + core::marker::Sync,
 {
-    type SendOptions = SendTrytesOptions;
-    fn get_send_options(&self) -> SendTrytesOptions {
-        self.send_opt.clone()
-    }
-    fn set_send_options(&mut self, opt: SendTrytesOptions) {
-        self.send_opt = opt;
-    }
-
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
     async fn send_message(
         &mut self,
@@ -459,10 +453,6 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Client where
     ) -> Result<()> {
         async_send_message_with_options(msg, &self.send_opt).await
     }
-
-    type RecvOptions = ();
-    fn get_recv_options(&self) -> () {}
-    fn set_recv_options(&mut self, _opt: ()) {}
 
     /// Receive a message.
     async fn recv_messages(
