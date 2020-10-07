@@ -17,16 +17,25 @@ if(${SYNC_CLIENT})
 endif(${SYNC_CLIENT})
 include_directories(include/)
 
-add_executable(iota_streams_c main.c)
+add_executable(${PROJECT_NAME} main.c)
 
 if(${STATIC})
   message("STATIC")
-  add_custom_command(TARGET iota_streams_c PRE_BUILD COMMAND cargo build --target-dir ../../../target --no-default-features --features "${cargo_features}")
-  target_link_libraries(iota_streams_c ../../../target/debug/iota_streams_c)
+  add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD COMMAND cargo build --target-dir ../../../target --no-default-features --features "${cargo_features}")
+  target_link_libraries(${PROJECT_NAME} ../../../target/debug/iota_streams_c)
 
 else(${STATIC})
   message("SHARED")
-  add_custom_command(TARGET iota_streams_c PRE_BUILD COMMAND cargo build --target-dir ../../../target --no-default-features --features "${cargo_features}" COMMAND copy /Y ..\\..\\..\\target\\debug\\iota_streams_c.dll .)
-  target_link_libraries(iota_streams_c ../../../target/debug/iota_streams_c.dll)
+  if (WIN32)
+    add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD COMMAND cargo build --target-dir ../../../target --no-default-features --features "${cargo_features}" COMMAND copy /Y ..\\..\\..\\target\\debug\\iota_streams_c.dll .)
+    target_link_libraries(${PROJECT_NAME} ../../../target/debug/iota_streams_c.dll)
+  elseif (UNIX)
+    set(FAKE_TARGET fakeTarget)
+    add_custom_target(fakeTarget cargo build --target-dir target --no-default-features --features "${cargo_features}" COMMAND cp target/debug/libiota_streams_c.so ${CMAKE_CURRENT_SOURCE_DIR})
+    add_dependencies(${PROJECT_NAME} ${FAKE_TARGET})
+
+    target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/libiota_streams_c.so)
+  endif (WIN32)
+  
 
 endif()
