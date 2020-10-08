@@ -22,6 +22,8 @@ pub trait HasLink: Sized + Default + Clone + Eq {
     fn from_base_rel(base: &Self::Base, rel: &Self::Rel) -> Self;
 }
 
+/// Represents an input state for message identifier generation.
+/// Contains an Address and sequencing states.
 #[derive(Clone, Default)]
 pub struct Cursor<Link> {
     pub link: Link,

@@ -46,6 +46,7 @@ const ANN_MESSAGE_NUM: u32 = 0;
 const SUB_MESSAGE_NUM: u32 = 0;
 const SEQ_MESSAGE_NUM: u32 = 1;
 
+/// Wrapped sequencing information with optional WrapState
 pub struct WrapStateSequence<F, Link: HasLink>(
     pub(crate) Cursor<<Link as HasLink>::Rel>,
     pub(crate) Option<WrapState<F, Link>>,
@@ -75,6 +76,7 @@ where
     }
 }
 
+/// Wrapped object containing an optional message and associated sequence state
 pub struct WrappedSequence<F, Link: HasLink>(
     pub(crate) Option<BinaryMessage<F, Link>>,
     pub(crate) Option<WrapStateSequence<F, Link>>,
