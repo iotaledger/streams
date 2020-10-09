@@ -20,5 +20,6 @@ cty = { version = "0.2.1" }
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 
 hex = "0.4.2"
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "0ad8e7f" }
+
 iota-conversion = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }

@@ -32,4 +32,4 @@ anyhow = { version = "1.0.26", default-features = false }
 hex = { version = "0.4.2", default-features = false, optional = false }
 
 [dev-dependencies]
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "0ad8e7f" }

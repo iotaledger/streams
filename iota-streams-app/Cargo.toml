@@ -38,7 +38,7 @@ async-trait = { version = "0.1", optional = true }
 
 # Dependencies for "client" feature
 # `iota-core` crate is WIP with unstable API atm of writing.
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531", optional = true }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "0ad8e7f", optional = true }
 iota-constants = { version = "0.2.1", optional = true }
 # feature tokio02 explicitly required for block_on calls
 smol = { version = "0.1.18", features = ["tokio02"], optional = true }
