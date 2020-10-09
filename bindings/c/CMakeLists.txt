@@ -1,9 +1,11 @@
-cmake_minimum_required(VERSION 3.3.0)
-project(iota_streams_c)
+include(FetchContent)
+  
+cmake_minimum_required(VERSION 3.15.0)
+project(iota_streams_c LANGUAGES C)
 
 option(NO_STD "Enable no_std build, without iota_client" OFF)
 option(SYNC_CLIENT "Enable sync transport via iota_client" ON)
-option(STATIC "Build shared library" OFF)
+option(STATIC "Build shared library" ON)
 
 set(cargo_features "")
 if(${NO_STD})
@@ -15,17 +17,28 @@ if(${SYNC_CLIENT})
   add_definitions(-DIOTA_STREAMS_CHANNELS_CLIENT)
   set(cargo_features "${cargo_features}sync-client")
 endif(${SYNC_CLIENT})
-include_directories(include/)
 
-add_executable(${PROJECT_NAME} main.c)
+include_directories(include/)
 
 if(${STATIC})
   message("STATIC")
-  add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD COMMAND cargo build --target-dir ../../../target --no-default-features --features "${cargo_features}")
-  target_link_libraries(${PROJECT_NAME} ../../../target/debug/iota_streams_c)
+  FetchContent_Declare(
+    Corrosion
+    GIT_REPOSITORY https://github.com/AndrewGaspar/corrosion.git
+    GIT_TAG origin/master # Optionally specify a version tag or branch here
+  )
+
+  FetchContent_MakeAvailable(Corrosion)
+
+  corrosion_import_crate(MANIFEST_PATH Cargo.toml)
+
+  add_executable(iota_streams_c_static main.c)
+  target_link_libraries(iota_streams_c_static PUBLIC iota_streams_c)
 
 else(${STATIC})
   message("SHARED")
+  add_executable(${PROJECT_NAME} main.c)
+
   if (WIN32)
     add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD COMMAND cargo build --target-dir ../../../target --no-default-features --features "${cargo_features}" COMMAND copy /Y ..\\..\\..\\target\\debug\\iota_streams_c.dll .)
     target_link_libraries(${PROJECT_NAME} ../../../target/debug/iota_streams_c.dll)
@@ -39,3 +52,7 @@ else(${STATIC})
   
 
 endif()
+
+unset(NO_STD CACHE)
+unset(SYNC_CLIENT CACHE)
+unset(STATIC CACHE)

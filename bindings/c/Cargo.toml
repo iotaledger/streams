@@ -12,13 +12,18 @@ sync-client = ["iota-streams/sync-client", "std"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "iota_streams_c"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["staticlib"]
 
 [dependencies]
-iota-streams = { version = "1.0.0", path = "../..", default-features = false, features = ["tangle"] }
+iota-streams = { git = "https://github.com/iotaledger/streams", branch = "cursor", default-features = false, features = ["tangle"]}
 cty = { version = "0.2.1" }
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 
 hex = "0.4.2"
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+# Specify this and it works
+# reqwest = { version = "0.10.6", features = ["json", "rustls-tls", "native-tls-vendored"], default-features = false }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "d402ce6" }
+# Or change to this version which has that added to iota.rs
+# iota-core = { git = "https://github.com/kwek20/iota.rs", rev = "d402c8bd728a5f09c477678377be8acd309b1bd62e46ce6" }
+
 iota-conversion = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
