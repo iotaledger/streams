@@ -21,12 +21,12 @@ members = [
     "iota-streams-core-keccak",
     "iota-streams-ddml",
     "iota-streams-app",
-    "iota-streams-app-channels"
+    "iota-streams-app-channels",
+    "iota-streams-app-channels-example"
     #"iota-streams-app-channels-js",
 ]
 exclude = [
     "bindings/c",
-    "iota-streams-app-channels-example"
 ]
 
 [features]

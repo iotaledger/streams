@@ -13,7 +13,7 @@ description = "A rust implementation of the IOTA Streams"
 [dependencies]
 iota-streams = { version = "1.0.0", path = ".." }
 anyhow = { version = "1.0", default-features = false }
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "0ad8e7f" }
 rand = "0.7.3"
 
 [profile.release]
