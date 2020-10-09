@@ -3,7 +3,6 @@
 //#![no_std]
 
 use anyhow::Result;
-use iota::client as iota_client;
 use rand::Rng;
 
 use iota_streams::{
@@ -74,9 +73,12 @@ fn main_pure() {
 #[allow(dead_code)]
 fn main_client() {
     let node = "http://localhost:14265"; //"https://nodes.devnet.iota.org:443";
-    iota_client::Client::add_node(node).unwrap();
 
-    let mut transport = Rc::new(RefCell::new(Client::default()));
+    // Fails at unwrap when the url isnt working
+    // TODO: Fail gracefully
+    let client = Client::new_with_node(node);
+
+    let mut transport = Rc::new(RefCell::new(client));
     let mut send_opt = SendTrytesOptions::default();
     send_opt.min_weight_magnitude = 14;
     transport.set_send_options(send_opt);
@@ -101,6 +103,6 @@ fn main_client() {
 }
 
 fn main() {
-    main_pure();
-    //main_client();
+    //main_pure();
+    main_client();
 }
