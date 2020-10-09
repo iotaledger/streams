@@ -12,53 +12,67 @@ use crate::api::tangle::{
 use iota_streams_core::prelude::Vec;
 use iota_streams_core_edsig::signature::ed25519;
 
-/// Subscriber type.
+/// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
     user: User<T>,
 }
 
 impl<Trans: Transport> Subscriber<Trans>
 {
-    /// Create a new Subscriber instance, optionally generate NTRU keypair.
+    /// Create a new Subscriber instance, generate new MSS keypair and optionally NTRU keypair.
+    ///
+    /// # Arguments
+    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
+    /// * `encoding` - A string slice representing the encoding type for the message [supported: utf-8]
+    /// * `payload_length` - Maximum size in bytes of payload per message chunk [1-1024],
+    /// * `transport` - Transport object used for sending and receiving
+    ///
     pub fn new(seed: &str, encoding: &str, payload_length: usize, transport: Trans) -> Self {
         let user = User::new(seed, encoding, payload_length, false, transport);
         Self { user }
     }
 
-    /// Ie. has Announce message been handled?
+    /// Returns a boolean representing whether an Announcement message has been processed
     pub fn is_registered(&self) -> bool {
         self.user.is_registered()
     }
 
-    /// Just clear inner state except for own keys and link store.
+    /// Clears inner state except for own keys and link store.
     pub fn unregister(&mut self) {
         self.user.unregister()
     }
 
-    /// Subscribe to a Channel app instance.
-    pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
-        self.user.send_subscribe(link_to)
-    }
-
-    /// Handle Channel app instance announcement.
-    pub fn receive_announcement(&mut self, link: &Address) -> Result<()> {
-        self.user.receive_announcement(link)
-    }
-
+    /// Fetch the user ed25519 public key
     pub fn get_pk(&self) -> &ed25519::PublicKey {
         self.user.get_pk()
     }
 
-    /// Return Channel app instance.
+    /// Fetch the Address (application instance) of the channel.
     pub fn channel_address(&self) -> Option<&ChannelAddress> {
         self.user.channel_address()
     }
 
+    /// Return boolean representing the sequencing nature of the channel
     pub fn is_multi_branching(&self) -> bool {
         self.user.is_multi_branching()
     }
 
-    /// Create tagged packet.
+    /// Create and Send a Subscribe message to a Channel app instance.
+    ///
+    /// # Arguments
+    /// * `link_to` - Address of the Channel Announcement message
+    ///
+    pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
+        self.user.send_subscribe(link_to)
+    }
+
+    /// Create and send a signed packet.
+    ///
+    ///  # Arguments
+    ///  * `link_to` - Address of the message the keyload will be attached to
+    ///  * `public_payload` - Wrapped vector of Bytes to have public access
+    ///  * `masked_payload` - Wrapped vector of Bytes to have masked access
+    ///
     pub fn send_tagged_packet(
         &mut self,
         link_to: &Address,
@@ -68,7 +82,13 @@ impl<Trans: Transport> Subscriber<Trans>
         self.user.send_tagged_packet(link_to, public_payload, masked_payload)
     }
 
-    /// Create signed packet.
+    /// Create and send a tagged packet.
+    ///
+    ///  # Arguments
+    ///  * `link_to` - Address of the message the keyload will be attached to
+    ///  * `public_payload` - Wrapped vector of Bytes to have public access
+    ///  * `masked_payload` - Wrapped vector of Bytes to have masked access
+    ///
     pub fn send_signed_packet(
         &mut self,
         link_to: &Address,
@@ -84,41 +104,97 @@ impl<Trans: Transport> Subscriber<Trans>
     // self.user.unsubscribe(link_to.rel(), MsgInfo::Unsubscribe)
     // }
 
-    /// Handle keyload.
+    /// Receive and Process an announcement message.
+    ///
+    /// # Arguments
+    /// * `link_to` - Address of the Channel Announcement message
+    ///
+    pub fn receive_announcement(&mut self, link: &Address) -> Result<()> {
+        self.user.receive_announcement(link)
+    }
+
+    /// Receive and process a keyload message.
+    ///
+    ///  # Arguments
+    ///  * `link` - Address of the message to be processed
+    ///
     pub fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         self.user.receive_keyload(link)
     }
 
-    /// Unwrap and verify signed packet.
+    /// Receive and process a signed packet message.
+    ///
+    ///  # Arguments
+    ///  * `link` - Address of the message to be processed
+    ///
     pub fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
         self.user.receive_signed_packet(link)
     }
 
-    /// Unwrap and verify tagged packet.
+    /// Receive and process a tagged packet message.
+    ///
+    ///  # Arguments
+    ///  * `link` - Address of the message to be processed
+    ///
     pub fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
         self.user.receive_tagged_packet(link)
     }
 
+    /// Receive and process a sequence message.
+    ///
+    ///  # Arguments
+    ///  * `link` - Address of the message to be processed
+    ///
     pub fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         self.user.receive_sequence(link)
     }
 
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
-        self.user.gen_next_msg_ids(branching)
-    }
+    /// Stores the provided link to the internal sequencing state for the provided participant
+    /// [Used for multi-branching sequence state updates]
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 Public Key of the sender of the message
+    ///   * `link` - Address link to be stored in internal sequence state mapping
+    ///
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         self.user.store_state(pk, link)
     }
+
+    /// Stores the provided link and sequence number to the internal sequencing state for all participants
+    /// [Used for single-branching sequence state updates]
+    ///
+    ///   # Arguments
+    ///   * `link` - Address link to be stored in internal sequence state mapping
+    ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
+    ///
     pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         self.user.store_state_for_all(link, seq_num)
     }
 
+    /// Generate a vector containing the next sequenced message identifier for each publishing
+    /// participant in the channel
+    ///
+    ///   # Arguments
+    ///   * `branching` - Boolean representing the sequencing nature of the channel
+    ///
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
+        self.user.gen_next_msg_ids(branching)
+    }
+
+    /// Retrieves the next message for each user (if present in transport layer) and returns them
     pub fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
         self.user.fetch_next_msgs()
     }
 
+    /// Receive and process a message of unknown type. Message will be handled appropriately and
+    /// the unwrapped contents returned
+    ///
+    ///   # Arguments
+    ///   * `link` - Address of the message to be processed
+    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
+    ///
     pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<UnwrappedMessage> {
         self.user.receive_message(link, pk)
     }

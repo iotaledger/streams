@@ -11,6 +11,7 @@ use iota_streams_core::sponge::{
 };
 use iota_streams_ddml::link_store::LinkStore;
 
+/// Spongos state and representative Link identifier
 pub struct WrapState<F, Link> {
     pub link: Link,
     pub(crate) spongos: Spongos<F>,
