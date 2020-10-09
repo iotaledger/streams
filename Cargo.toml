@@ -12,6 +12,7 @@ description = "A rust implementation of the IOTA Streams"
 
 [lib]
 name = "iota_streams"
+crate-type = ["staticlib"]
 
 [workspace]
 members = [
@@ -20,10 +21,12 @@ members = [
     "iota-streams-core-keccak",
     "iota-streams-ddml",
     "iota-streams-app",
-    "iota-streams-app-channels",
-    "iota-streams-app-channels-example",
-    "bindings/c"
+    "iota-streams-app-channels"
     #"iota-streams-app-channels-js",
+]
+exclude = [
+    "bindings/c",
+    "iota-streams-app-channels-example"
 ]
 
 [features]

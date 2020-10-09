@@ -1,6 +1,9 @@
 .cmake_build
 build.bat
 
+.cargo
+cargo
+cmake
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
@@ -13,5 +16,5 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
-iota_streams_c
+iota_streams_c*
 *.so
