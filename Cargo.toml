@@ -12,7 +12,7 @@ description = "A rust implementation of the IOTA Streams"
 
 [lib]
 name = "iota_streams"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [workspace]
 members = [
