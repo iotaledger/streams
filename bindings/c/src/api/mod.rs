@@ -58,7 +58,7 @@ pub type TransportWrap = Rc<core::cell::RefCell<BucketTransport>>;
 
 #[no_mangle]
 pub extern "C" fn tsp_new() -> *mut TransportWrap {
-    Box::into_raw(Box::new(TransportWrap::default()))
+    Box::into_raw(Box::new(TransportWrap::new()))
 }
 
 #[no_mangle]
@@ -71,7 +71,7 @@ pub extern "C" fn tsp_drop(tsp: *mut TransportWrap) {
 pub extern "C" fn tsp_client_add_node(c_url: *const c_char) {
     use iota_streams::app::transport::tangle::client::Client;
     let url = unsafe { CStr::from_ptr(c_url).to_str().unwrap() };
-    Client::add_node(url).unwrap(); //TODO: handle Result.
+    Client::new_with_node(url);
 }
 
 #[cfg(feature = "sync-client")]

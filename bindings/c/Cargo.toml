@@ -12,10 +12,10 @@ sync-client = ["iota-streams/sync-client", "std"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "iota_streams_c"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
-iota-streams = { git = "https://github.com/iotaledger/streams", branch = "cursor", default-features = false, features = ["tangle"]}
+iota-streams = {path = "../../", default-features = false, features = ["tangle"]}
 cty = { version = "0.2.1" }
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 
