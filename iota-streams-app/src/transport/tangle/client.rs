@@ -393,13 +393,15 @@ pub struct Client {
 }
 
 impl Client {
+    // Creates a new instance which links to a node on localhost:14265
     pub fn new() -> Self {
         Self {
             send_opt: SendTrytesOptions::default(),
-            client: iota_client::ClientBuilder::new().build().unwrap()
+            client: iota_client::ClientBuilder::new().node("http://localhost:14265").unwrap().build().unwrap()
         }
     }
     
+    // Create an instance of Client with a node pointing to the given URL
     pub fn new_with_node(url: &str) -> Self {
         Self {
             send_opt: SendTrytesOptions::default(),
