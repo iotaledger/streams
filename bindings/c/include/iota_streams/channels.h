@@ -48,7 +48,7 @@ typedef struct Transport transport_t;
 extern transport_t *tsp_new();
 extern void tsp_drop(transport_t *);
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
-extern void tsp_client_add_node(char const *url);
+extern void tsp_client_add_node(transport_t *tsp, char const *url);
 extern void tsp_client_set_mwm(transport_t *tsp, uint8_t mwm);
 #endif
 

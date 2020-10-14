@@ -68,10 +68,13 @@ pub extern "C" fn tsp_drop(tsp: *mut TransportWrap) {
 
 #[cfg(feature = "sync-client")]
 #[no_mangle]
-pub extern "C" fn tsp_client_add_node(c_url: *const c_char) {
-    use iota_streams::app::transport::tangle::client::Client;
-    let url = unsafe { CStr::from_ptr(c_url).to_str().unwrap() };
-    Client::new_with_node(url);
+pub extern "C" fn tsp_client_add_node(tsp: *mut TransportWrap, c_url: *const c_char) {
+    unsafe {
+        tsp.as_mut().map_or((), |tsp| {
+            let url =  CStr::from_ptr(c_url).to_str().unwrap();
+            let result = tsp.add_node(url).unwrap();
+        })
+    }
 }
 
 #[cfg(feature = "sync-client")]
