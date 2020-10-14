@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#define IOTA_STREAMS_CHANNELS_CLIENT 1
+
 void rand_seed(char *seed, size_t n)
 {
   static char const alphabet[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+";
@@ -18,7 +20,8 @@ void rand_seed(char *seed, size_t n)
 
 int main()
 {
-  transport_t *tsp = tsp_new();
+  printf("Starting c bindings test\n\n");
+  transport_t *tsp;
   uint8_t multi_branching = 1;
   char seed[] = "bindings test seed";
   char const encoding[] = "utf-8";
@@ -27,10 +30,13 @@ int main()
   rand_seed(seed, sizeof(seed));
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
-  char const *url = "http://localhost:14265";
-  tsp_client_add_node(tsp, url);
+  char url[] = "http://brord01.mainnet.iota.cafe:14265";
+  printf("Loading using node: %s\n\n", url);
+  tsp = tsp_client_new_from_url(url);
   // Make sure this mwm matches the node configuration
   tsp_client_set_mwm(tsp, 14);
+#else
+  tsp = tsp_new();
 #endif
   printf("Making author with %s\n", seed);
   author_t *auth = auth_new(seed, encoding, size, multi_branching, tsp);

@@ -68,12 +68,11 @@ pub extern "C" fn tsp_drop(tsp: *mut TransportWrap) {
 
 #[cfg(feature = "sync-client")]
 #[no_mangle]
-pub extern "C" fn tsp_client_add_node(tsp: *mut TransportWrap, c_url: *const c_char) {
+pub extern "C" fn tsp_client_new_from_url(c_url: *const c_char) -> *mut TransportWrap {
     unsafe {
-        tsp.as_mut().map_or((), |tsp| {
-            let url =  CStr::from_ptr(c_url).to_str().unwrap();
-            let result = tsp.add_node(url).unwrap();
-        })
+        let url =  CStr::from_ptr(c_url).to_str().unwrap();
+
+        Box::into_raw(Box::new(TransportWrap::new_from_url(url)))
     }
 }
 
