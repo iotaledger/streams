@@ -30,7 +30,7 @@ int main()
   rand_seed(seed, sizeof(seed));
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
-  char url[] = "http://brord01.mainnet.iota.cafe:14265";
+  char url[] = "http://localhost:14265";
   printf("Loading using node: %s\n\n", url);
   tsp = tsp_client_new_from_url(url);
   // Make sure this mwm matches the node configuration
