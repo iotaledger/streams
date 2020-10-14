@@ -76,7 +76,7 @@ fn main_client() {
 
     // Fails at unwrap when the url isnt working
     // TODO: Fail gracefully
-    let client = Client::new_with_node(node);
+    let client = Client::new_from_url(node);
 
     let mut transport = Rc::new(RefCell::new(client));
     let mut send_opt = SendTrytesOptions::default();

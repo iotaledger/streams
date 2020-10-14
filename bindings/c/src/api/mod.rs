@@ -58,7 +58,7 @@ pub type TransportWrap = Rc<core::cell::RefCell<BucketTransport>>;
 
 #[no_mangle]
 pub extern "C" fn tsp_new() -> *mut TransportWrap {
-    Box::into_raw(Box::new(TransportWrap::new()))
+    Box::into_raw(Box::new(TransportWrap::default()))
 }
 
 #[no_mangle]
