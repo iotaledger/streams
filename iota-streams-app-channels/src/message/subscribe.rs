@@ -67,12 +67,11 @@ pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) _phantom: core::marker::PhantomData<(Link, F)>,
 }
 
-impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: PRP,
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -82,7 +81,15 @@ where
             .ed25519(self.subscriber_sig_kp, HashSig)?;
         Ok(ctx)
     }
+}
 
+impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+where
+    F: PRP,
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+{
     fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,

@@ -9,6 +9,7 @@ license = "Apache-2.0/MIT"
 readme = "README.md"
 keywords = ["iota", "streams"]
 description = "A rust implementation of the IOTA Streams"
+autoexamples = false
 
 [lib]
 name = "iota_streams"
@@ -22,7 +23,8 @@ members = [
     "iota-streams-ddml",
     "iota-streams-app",
     "iota-streams-app-channels",
-    "iota-streams-app-channels-example"
+    "iota-streams-app-channels-example",
+    "examples",
     #"iota-streams-app-channels-js",
 ]
 exclude = [
@@ -39,7 +41,7 @@ sync-client = ["iota-streams-app/sync-client", "iota-streams-app-channels/sync-c
 async-client = ["iota-streams-app/async-client", "iota-streams-app-channels/async-client"]
 
 [dependencies]
-iota-streams-core = { version = "0.2.2", path = "iota-streams-core", default-features = false }
+iota-streams-core = { version = "0.3.0", path = "iota-streams-core", default-features = false }
 iota-streams-core-keccak = { version = "0.2.0", path = "iota-streams-core-keccak", default-features = false }
 iota-streams-core-edsig = { version = "0.2.0", path = "iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.2.2", path = "iota-streams-ddml", default-features = false }
@@ -59,3 +61,5 @@ iota-streams-app-channels = { version = "1.0.0", path = "iota-streams-app-channe
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+lto = true
+#panic = 'abort'

@@ -1,6 +1,9 @@
-use core::convert::{
-    AsMut,
-    AsRef,
+use core::{
+    convert::{
+        AsMut,
+        AsRef,
+    },
+    fmt,
 };
 
 // Reexport some often used types
@@ -9,6 +12,7 @@ pub use iota_streams_core::prelude::{
         ArrayLength,
         GenericArray,
     },
+    hex,
     typenum::{
         marker_traits::Unsigned,
         U16,
@@ -19,13 +23,19 @@ pub use iota_streams_core::prelude::{
 
 /// Fixed-size array of bytes, the size is known at compile time and is not encoded in trinary representation.
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
-pub struct NBytes<N: ArrayLength<u8>>(GenericArray<u8, N>);
+pub struct NBytes<N: ArrayLength<u8>>(pub GenericArray<u8, N>);
 
 impl<N> Copy for NBytes<N>
 where
     N: ArrayLength<u8>,
     N::ArrayType: Copy,
 {
+}
+
+impl<N: ArrayLength<u8>> fmt::Display for NBytes<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(&self.0))
+    }
 }
 
 impl<N: ArrayLength<u8>> NBytes<N> {

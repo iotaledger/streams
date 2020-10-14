@@ -55,7 +55,10 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
-    prelude::Vec,
+    prelude::{
+        Vec,
+        typenum::Unsigned as _,
+    },
     psk,
     sponge::{
         prp::PRP,
@@ -86,12 +89,11 @@ pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, F, Link, Store, Psks, KePks> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link, Psks, KePks>
+impl<'a, F, Link, Psks, KePks> message::ContentSizeof<F> for ContentWrap<'a, F, Link, Psks, KePks>
 where
     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
     Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
     KePks: Clone + ExactSizeIterator<Item = (ed25519::IPk<'a>, x25519::IPk<'a>)>,
 {
@@ -119,7 +121,17 @@ where
             .commit()?;
         Ok(ctx)
     }
+}
 
+impl<'a, F, Link, Store, Psks, KePks> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link, Psks, KePks>
+where
+    F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
+    KePks: Clone + ExactSizeIterator<Item = (ed25519::IPk<'a>, x25519::IPk<'a>)>,
+{
     fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
@@ -127,7 +139,8 @@ where
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         let repeated_psks = Size(self.psks.len());
         let repeated_ke_pks = Size(self.ke_pks.len());
-        ctx.join(store, self.link)?
+        ctx
+            .join(store, self.link)?
             .absorb(&self.nonce)?
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
@@ -140,7 +153,11 @@ where
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone().into_iter(), |ctx, (sig_pk, ke_pk)| {
-                ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
+                ctx.fork(|ctx|
+                         ctx
+                         .absorb(sig_pk)?
+                         .x25519(ke_pk, &self.key)
+                )
             })?
             .absorb(External(&self.key))?
             .ed25519(self.sig_kp, HashSig)?
@@ -214,7 +231,8 @@ where
         let mut repeated_ke_pks = Size(0);
         let mut pskid = psk::PskId::default();
 
-        ctx.join(store, &mut self.link)?
+        ctx
+            .join(store, &mut self.link)?
             .absorb(&mut self.nonce)?
             .skip(&mut repeated_psks)?
             .repeated(repeated_psks, |ctx| {
@@ -230,13 +248,13 @@ where
                             Ok(ctx)
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
-                            let n = Size(0 + 0 + spongos::Spongos::<F>::KEY_SIZE);
+                            let n = Size(0 + 0 + spongos::KeySize::<F>::USIZE);
                             ctx.drop(n)
                         }
                     })
                 } else {
                     // Drop entire fork.
-                    let n = Size(psk::PSKID_SIZE + 0 + 0 + spongos::Spongos::<F>::KEY_SIZE);
+                    let n = Size(psk::PSKID_SIZE + 0 + 0 + spongos::KeySize::<F>::USIZE);
                     ctx.drop(n)
                 }
             })?
@@ -265,9 +283,12 @@ where
             //.guard(self.key.is_some(), "Key not found")?
         ;
         if let Some(ref key) = self.key {
-            ctx.absorb(External(key))?.ed25519(self.sig_pk, HashSig)?.commit()?;
+            ctx
+                .absorb(External(key))?
+                .ed25519(self.sig_pk, HashSig)?
+                .commit()?
+            ;
         }
-        //
         Ok(ctx)
     }
 }

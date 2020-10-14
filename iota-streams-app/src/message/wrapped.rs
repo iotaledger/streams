@@ -34,7 +34,7 @@ impl<F: PRP, Link: HasLink> WrapState<F, Link> {
     }
 }
 
-impl<F, Link> fmt::Debug for WrapState<F, Link>
+impl<F: PRP, Link> fmt::Debug for WrapState<F, Link>
 where
     Link: HasLink + fmt::Debug,
 {

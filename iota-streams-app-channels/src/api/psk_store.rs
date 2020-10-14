@@ -7,6 +7,7 @@ use iota_streams_core::{
 };
 
 pub trait PresharedKeyStore: Default {
+    fn insert(&mut self, pskid: psk::PskId, psk: psk::Psk);
     fn filter<'a>(&'a self, psk_ids: &'_ psk::PskIds) -> Vec<psk::IPsk<'a>>;
     fn get<'a>(&'a self, pskid: &'_ psk::PskId) -> Option<&'a psk::Psk>;
     fn iter(&self) -> Vec<(&psk::PskId, &psk::Psk)>;
@@ -18,6 +19,9 @@ pub struct PresharedKeyMap {
 }
 
 impl PresharedKeyStore for PresharedKeyMap {
+    fn insert(&mut self, pskid: psk::PskId, psk: psk::Psk) {
+        self.psks.insert(pskid, psk);
+    }
     fn filter<'a>(&'a self, psk_ids: &'_ psk::PskIds) -> Vec<psk::IPsk<'a>> {
         psk_ids
             .iter()

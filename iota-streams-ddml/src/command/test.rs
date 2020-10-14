@@ -5,6 +5,10 @@ use anyhow::{
 use std::str::FromStr;
 
 use iota_streams_core::{
+    prelude::{
+        Vec,
+        typenum::{U32, U64,},
+    },
     prng,
     sponge::{
         prp::PRP,
@@ -24,8 +28,8 @@ use crate::{
 
 fn absorb_mask_u8<F: PRP>() -> Result<()> {
     let mut buf = vec![0_u8; 2];
-    let mut tag_wrap = External(NBytes(vec![0; 32]));
-    let mut tag_unwrap = External(NBytes(vec![0; 32]));
+    let mut tag_wrap = External(NBytes::<U32>::default());
+    let mut tag_unwrap = External(NBytes::<U32>::default());
 
     for t in 0_u8..10_u8 {
         let t = Uint8(t);
@@ -68,8 +72,8 @@ fn test_u8() {
 }
 
 fn absorb_mask_size<F: PRP>() -> Result<()> {
-    let mut tag_wrap = External(NBytes(vec![0_u8; 32]));
-    let mut tag_unwrap = External(NBytes(vec![0_u8; 32]));
+    let mut tag_wrap = External(NBytes::<U32>::default());
+    let mut tag_unwrap = External(NBytes::<U32>::default());
 
     let ns = [0, 1, 13, 14, 25, 26, 27, 39, 40, 81, 9840, 9841, 9842, 19683];
 
@@ -117,24 +121,24 @@ fn size() {
 fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
     const NS: [usize; 10] = [0, 3, 255, 256, 257, 483, 486, 489, 1002, 2001];
 
-    let mut tag_wrap = External(NBytes(vec![0_u8; 32]));
-    let mut tag_unwrap = External(NBytes(vec![0_u8; 32]));
+    let mut tag_wrap = External(NBytes::<U32>::default());
+    let mut tag_unwrap = External(NBytes::<U32>::default());
 
     let prng = prng::dbg_init_str::<F>("TESTPRNGKEY");
     let mut nonce = "TESTPRNGNONCE".as_bytes().to_vec();
 
     for n in NS.iter() {
-        let ta = Bytes(prng.gen_bytes(&nonce, *n));
+        let ta = Bytes(prng.gen_n(&nonce, *n));
         // nonce.slice_mut().inc();
-        let nta = NBytes(prng.gen_bytes(&nonce, *n));
+        let nta = NBytes::<U64>(prng.gen_arr(&nonce));
         // nonce.slice_mut().inc();
-        let enta = NBytes(prng.gen_bytes(&nonce, *n));
+        let enta = NBytes::<U64>(prng.gen_arr(&nonce));
         // nonce.slice_mut().inc();
-        let tm = Bytes(prng.gen_bytes(&nonce, *n));
+        let tm = Bytes(prng.gen_n(&nonce, *n));
         // nonce.slice_mut().inc();
-        let ntm = NBytes(prng.gen_bytes(&nonce, *n));
+        let ntm = NBytes::<U64>(prng.gen_arr(&nonce));
         // nonce.slice_mut().inc();
-        let mut ents = External(NBytes(vec![0; *n]));
+        let mut ents = External(NBytes::<U64>::default());
         // nonce.slice_mut().inc();
         let mac = Mac(*n);
 
@@ -176,10 +180,10 @@ fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
         }
 
         let mut ta2 = Bytes::default();
-        let mut nta2 = NBytes(vec![0_u8; *n]);
+        let mut nta2 = NBytes::<U64>::default();
         let mut tm2 = Bytes::default();
-        let mut ntm2 = NBytes(vec![0_u8; *n]);
-        let mut ents2 = External(NBytes(vec![0_u8; *n]));
+        let mut ntm2 = NBytes::<U64>::default();
+        let mut ents2 = External(NBytes::<U64>::default());
         {
             let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
             ctx.commit()?
@@ -220,14 +224,15 @@ fn bytes() {
 }
 
 fn absorb_ed25519<F: PRP>() -> Result<()> {
+    type N = U64;
     let secret = ed25519::SecretKey::from_bytes(&[7; ed25519::SECRET_KEY_LENGTH]).unwrap();
     let public = ed25519::PublicKey::from(&secret);
     let kp = ed25519::Keypair { secret, public };
 
     let ta = Bytes([3_u8; 17].to_vec());
     let mut uta = Bytes(Vec::new());
-    let mut hash = External(NBytes(vec![0_u8; 64]));
-    let mut uhash = External(NBytes(vec![0_u8; 64]));
+    let mut hash = External(NBytes::<U64>::default());
+    let mut uhash = External(NBytes::<U64>::default());
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
@@ -364,8 +369,8 @@ fn x25519_transport<F: PRP>() -> Result<()> {
     let secret_a = x25519::StaticSecret::new(&mut rand::thread_rng());
     let public_a = x25519::PublicKey::from(&secret_a);
 
-    let key = NBytes(vec![3_u8; 32]);
-    let mut ukey = NBytes(vec![0_u8; 32]);
+    let key = NBytes::<U32>::default();
+    let mut ukey = NBytes::<U32>::default();
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();

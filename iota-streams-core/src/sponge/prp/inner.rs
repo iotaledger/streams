@@ -1,57 +1,80 @@
 use core::hash;
 
 use crate::{
-    prelude::Vec,
+    prelude::generic_array::GenericArray,
     sponge::prp::PRP,
 };
 
 /// Convenience wrapper for storing Spongos inner state.
-// TODO: Use GenericArray for inner buffer.
 #[derive(Clone)]
-pub struct Inner<F> {
-    pub inner: Vec<u8>,
-    pub _phantom: core::marker::PhantomData<F>,
+pub struct Inner<F: PRP> {
+    /// Represents inner state of spongos automaton.
+    inner: GenericArray<u8, F::CapacitySize>,
+    /// Keep info about PRP.
+    _phantom: core::marker::PhantomData<F>,
 }
 
-impl<F> PartialEq for Inner<F> {
+impl<F: PRP> Inner<F> {
+    pub fn arr(&self) -> &GenericArray<u8, F::CapacitySize> {
+        &self.inner
+    }
+
+    pub fn arr_mut(&mut self) -> &mut GenericArray<u8, F::CapacitySize> {
+        &mut self.inner
+    }
+}
+
+impl<F: PRP> PartialEq for Inner<F> {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
     }
 }
-impl<F> Eq for Inner<F> {}
+impl<F: PRP> Eq for Inner<F> {}
 
 impl<F: PRP> Default for Inner<F> {
     fn default() -> Self {
         Self {
-            inner: Vec::with_capacity(F::CAPACITY_BITS / 8),
+            inner: GenericArray::default(),
             _phantom: core::marker::PhantomData,
         }
     }
 }
 
-impl<F> hash::Hash for Inner<F> {
+impl<F: PRP> hash::Hash for Inner<F> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.inner).hash(state);
     }
 }
 
-impl<F> AsRef<Vec<u8>> for Inner<F> {
-    fn as_ref(&self) -> &Vec<u8> {
-        &self.inner
+impl<F: PRP> AsRef<[u8]> for Inner<F> {
+    fn as_ref(&self) -> &[u8] {
+        self.inner.as_ref()
     }
 }
 
-impl<F> AsMut<Vec<u8>> for Inner<F> {
-    fn as_mut(&mut self) -> &mut Vec<u8> {
-        &mut self.inner
+impl<F: PRP> AsMut<[u8]> for Inner<F> {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.inner.as_mut()
     }
 }
 
-impl<F> From<Vec<u8>> for Inner<F> {
-    fn from(bytes: Vec<u8>) -> Self {
+impl<F: PRP> From<GenericArray<u8, F::CapacitySize>> for Inner<F> {
+    fn from(bytes: GenericArray<u8, F::CapacitySize>) -> Self {
         Self {
             inner: bytes,
             _phantom: core::marker::PhantomData,
         }
+    }
+}
+
+impl<F: PRP> From<Inner<F>> for GenericArray<u8, F::CapacitySize> {
+    fn from(inner: Inner<F>) -> Self {
+        inner.inner
+    }
+}
+
+impl<'a, F: PRP> From<&'a Inner<F>> for &'a GenericArray<u8, F::CapacitySize> {
+    fn from(inner: &'a Inner<F>) -> Self {
+        &(*inner).inner
     }
 }

@@ -246,7 +246,7 @@ pub const APPINST_SIZE: usize = 40;
 
 /// Application instance identifier.
 /// Currently, 81-byte string stored in `address` transaction field.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct AppInst {
     pub(crate) id: NBytes<AppInstSize>,
 }
@@ -313,12 +313,6 @@ impl AsRef<[u8]> for AppInst {
     }
 }
 
-impl Default for AppInst {
-    fn default() -> Self {
-        Self { id: NBytes::default() }
-    }
-}
-
 impl hash::Hash for AppInst {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
@@ -328,9 +322,7 @@ impl hash::Hash for AppInst {
 /// (appinst+msgid) is (address+tag) in terms of IOTA transaction which are stored
 /// externally of message body, ie. in transaction header fields.
 /// Thus the trait implemntation absorbs appinst+msgid as `external`.
-impl<F> AbsorbExternalFallback<F> for TangleAddress
-where
-    F: PRP,
+impl<F: PRP> AbsorbExternalFallback<F> for TangleAddress
 {
     fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
         ctx.absorb(External(&self.appinst.id))?
@@ -349,12 +341,31 @@ where
     }
 }
 
+impl<F: PRP> AbsorbFallback<F> for TangleAddress
+{
+    fn sizeof_absorb(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
+        ctx.absorb(&self.appinst.id)?
+            .absorb(&self.msgid.id)?;
+        Ok(())
+    }
+    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()> {
+        ctx.absorb(&self.appinst.id)?
+            .absorb(&self.msgid.id)?;
+        Ok(())
+    }
+    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()> {
+        ctx.absorb(&mut self.appinst.id)?
+            .absorb(&mut self.msgid.id)?;
+        Ok(())
+    }
+}
+
 pub type MsgIdSize = U12;
 pub const MSGID_SIZE: usize = 12;
 
 /// Message identifier unique within application instance.
 /// Currently, 27-byte string stored in `tag` transaction field.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MsgId {
     pub(crate) id: NBytes<MsgIdSize>,
 }
@@ -413,12 +424,6 @@ impl Eq for MsgId {}
 impl AsRef<[u8]> for MsgId {
     fn as_ref(&self) -> &[u8] {
         self.id.as_ref()
-    }
-}
-
-impl Default for MsgId {
-    fn default() -> Self {
-        Self { id: NBytes::default() }
     }
 }
 

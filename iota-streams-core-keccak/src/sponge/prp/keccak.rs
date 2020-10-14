@@ -1,6 +1,12 @@
 use iota_streams_core::{
-    prelude::Vec,
     sponge::prp::PRP,
+    prelude::{
+        generic_array::GenericArray,
+        typenum::{
+            U168,
+            U32,
+        },
+    },
 };
 use keccak;
 
@@ -21,49 +27,31 @@ impl KeccakF1600 {
     }
 }
 
-fn xor(s: &mut [u8], x: &[u8]) {
-    for (si, xi) in s.iter_mut().zip(x.iter()) {
-        *si ^= *xi;
-    }
-}
-
-impl From<Vec<u8>> for KeccakF1600 {
-    fn from(v: Vec<u8>) -> Self {
-        assert_eq!(200, v.len());
-        let mut s = Self::default();
-        unsafe {
-            let t = core::slice::from_raw_parts_mut(s.state.as_mut_ptr() as *mut u8, 200);
-            t.copy_from_slice(&v[..]);
-        }
-        s
-    }
-}
-
-impl Into<Vec<u8>> for KeccakF1600 {
-    fn into(self) -> Vec<u8> {
-        let mut v = vec![0_u8; 200];
-        unsafe {
-            let t = core::slice::from_raw_parts(self.state.as_ptr() as *const u8, 200);
-            v.copy_from_slice(t);
-        }
-        v
-    }
-}
-
 impl PRP for KeccakF1600 {
-    const RATE: usize = (1600 - 256) / 8;
+    type RateSize = U168; // (1600 - 256) / 8
 
-    const CAPACITY_BITS: usize = 256;
+    type CapacitySize = U32; // 256
 
-    fn transform(&mut self, outer: &mut [u8]) {
-        unsafe {
-            let s = core::slice::from_raw_parts_mut(self.state.as_mut_ptr() as *mut u8, Self::RATE);
-            xor(s, &outer[..]);
-        }
-        keccak::f1600(&mut self.state);
-        unsafe {
-            let s = core::slice::from_raw_parts(self.state.as_ptr() as *const u8, Self::RATE);
-            xor(outer, s);
-        }
+    fn transform(&mut self) {
+        self.permutation();
+    }
+
+    fn outer(&self) -> &GenericArray<u8, Self::RateSize> {
+        unsafe { &*(self.state.as_ptr() as *const GenericArray<u8, Self::RateSize>) }
+    }
+
+    fn outer_mut(&mut self) -> &mut GenericArray<u8, Self::RateSize> {
+        unsafe { &mut *(self.state.as_mut_ptr() as *mut GenericArray<u8, Self::RateSize>) }
+    }
+
+    fn inner(&self) -> &GenericArray<u8, Self::CapacitySize> {
+        unsafe { &*(self.state.as_ptr().add(21) as *const GenericArray<u8, Self::CapacitySize>) }
+    }
+
+    fn from_inner(inner: &GenericArray<u8, Self::CapacitySize>) -> Self {
+        let mut state = [0_u64; 25];
+        let i = unsafe { &mut *(state.as_mut_ptr().add(21) as *mut GenericArray<u8, Self::CapacitySize>) };
+        *i = inner.clone();
+        Self { state }
     }
 }

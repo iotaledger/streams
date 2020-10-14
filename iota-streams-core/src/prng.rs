@@ -14,18 +14,12 @@ use crate::{
     },
     sponge::{
         prp::PRP,
-        spongos::Spongos,
+        spongos::{
+            self,
+            Spongos,
+        },
     },
 };
-
-/// Spongos-based pseudo-random number generator.
-#[derive(Clone)]
-pub struct Prng<G> {
-    /// PRNG secret key.
-    secret_key: Vec<u8>,
-
-    _phantom: core::marker::PhantomData<G>,
-}
 
 /// Generate cryptographically secure bytes.
 /// Suitable for generating session and ephemeral keys.
@@ -68,13 +62,22 @@ pub fn random_key() -> Key {
     panic!("No default global RNG present.");
 }
 
-impl<G: PRP> Prng<G> {
-    /// Prng fixed key size.
-    pub const KEY_SIZE: usize = G::CAPACITY_BITS / 8;
+/// Prng fixed key size.
+pub type KeySize<F> = spongos::KeySize<F>;
+pub type KeyType<F> = spongos::KeyType<F>;
 
+/// Spongos-based pseudo-random number generator.
+#[derive(Clone)]
+pub struct Prng<G: PRP> {
+    /// PRNG secret key.
+    secret_key: KeyType<G>,
+
+    _phantom: core::marker::PhantomData<G>,
+}
+
+impl<G: PRP> Prng<G> {
     /// Create PRNG instance and init with a secret key.
-    pub fn init(secret_key: Vec<u8>) -> Self {
-        assert!(secret_key.len() == Self::KEY_SIZE);
+    pub fn init(secret_key: KeyType<G>) -> Self {
         Self {
             secret_key,
             _phantom: core::marker::PhantomData,
@@ -87,29 +90,35 @@ impl<G: PRP> Prng<G> {
         // TODO: Reimplement PRNG with DDML?
         s.absorb(&self.secret_key[..]);
         for nonce in nonces {
-            s.absorb(*nonce);
+            s.absorb(nonce);
         }
         s.commit();
         for rnd in rnds {
-            s.squeeze(*rnd);
+            s.squeeze(rnd);
         }
     }
 
     /// Generate randomness with a unique nonce for the current PRNG instance.
-    pub fn gen(&self, nonce: &[u8], rnd: &mut [u8]) {
+    pub fn gen(&self, nonce: impl AsRef<[u8]>, mut rnd: impl AsMut<[u8]>) {
         let mut s = Spongos::<G>::init();
-        self.gen_with_spongos(&mut s, &[nonce], &mut [rnd]);
+        self.gen_with_spongos(&mut s, &[nonce.as_ref()], &mut [rnd.as_mut()]);
+    }
+
+    pub fn gen_arr<N: ArrayLength<u8>>(&self, nonce: impl AsRef<[u8]>) -> GenericArray<u8, N> {
+        let mut rnd = GenericArray::default();
+        self.gen(nonce, &mut rnd);
+        rnd
     }
 
     /// Generate Tbits.
-    pub fn gen_bytes(&self, nonce: &Vec<u8>, n: usize) -> Vec<u8> {
+    pub fn gen_n(&self, nonce: impl AsRef<[u8]>, n: usize) -> Vec<u8> {
         let mut rnd = vec![0; n];
-        self.gen(&nonce[..], &mut rnd[..]);
+        self.gen(nonce, &mut rnd);
         rnd
     }
 }
 
-pub fn init<G: PRP>(secret_key: Vec<u8>) -> Prng<G> {
+pub fn init<G: PRP>(secret_key: KeyType<G>) -> Prng<G> {
     Prng::init(secret_key)
 }
 
@@ -119,35 +128,36 @@ pub fn from_seed<G: PRP>(domain: &str, seed: &str) -> Prng<G> {
     s.commit();
     s.absorb(domain.as_bytes());
     s.commit();
-    let r = Prng::init(s.squeeze_buf(Prng::<G>::KEY_SIZE));
-    r
+    Prng::init(s.squeeze_arr())
 }
 
 pub fn dbg_init_str<G: PRP>(secret_key: &str) -> Prng<G> {
-    let mut s = Spongos::<G>::init();
-    s.absorb(secret_key.as_bytes());
-    s.commit();
-    let r = Prng::init(s.squeeze_buf(Prng::<G>::KEY_SIZE));
-    r
+    from_seed("IOTA Streams dbg prng init", secret_key)
 }
 
-pub struct Rng<G> {
+/// Rng fixed nonce size.
+pub type NonceSize<F> = spongos::NonceSize<F>;
+//pub type NonceType<F> = spongos::NonceType<F>;
+pub type NonceType = Vec<u8>;
+
+pub struct Rng<G: PRP> {
     prng: Prng<G>,
-    nonce: Vec<u8>,
+    nonce: NonceType,
 }
 
-impl<G> Rng<G> {
-    pub fn new(prng: Prng<G>, nonce: Vec<u8>) -> Self {
+impl<G: PRP> Rng<G> {
+    pub fn new(prng: Prng<G>, nonce: NonceType) -> Self {
         Self { prng, nonce }
     }
-    fn inc(&mut self) {
+    fn inc(&mut self) -> bool {
         for i in self.nonce.iter_mut() {
             *i = *i + 1;
             if *i != 0 {
-                return;
+                return true;
             }
         }
-        self.nonce.push(0);
+        //self.nonce.push(0);
+        false
     }
 }
 
@@ -156,22 +166,13 @@ impl<G: PRP> rand::RngCore for Rng<G> {
         let mut v = [0_u8; 4];
         self.prng.gen(&self.nonce[..], &mut v);
         self.inc();
-        // TODO: use transmute
-        0 | ((v[3] as u32) << 24) | ((v[2] as u32) << 16) | ((v[1] as u32) << 8) | ((v[0] as u32) << 0)
+        u32::from_le_bytes(v)
     }
     fn next_u64(&mut self) -> u64 {
         let mut v = [0_u8; 8];
         self.prng.gen(&self.nonce[..], &mut v);
         self.inc();
-        // TODO: use transmute
-        0 | ((v[7] as u64) << 56)
-            | ((v[6] as u64) << 48)
-            | ((v[5] as u64) << 40)
-            | ((v[4] as u64) << 32)
-            | ((v[3] as u64) << 24)
-            | ((v[2] as u64) << 16)
-            | ((v[1] as u64) << 8)
-            | ((v[0] as u64) << 0)
+        u64::from_le_bytes(v)
     }
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         self.prng.gen(&self.nonce[..], dest);

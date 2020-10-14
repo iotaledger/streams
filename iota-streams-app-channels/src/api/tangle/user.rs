@@ -43,7 +43,7 @@ where
     pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool, transport: Trans) -> Self {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
         let user = UserImp::gen(
-            prng::from_seed("IOTA Streams Channels app", seed),
+            prng::from_seed("IOTA Streams Channels user sig keypair", seed),
             nonce,
             if multi_branching { 1 } else { 0 },
             encoding.as_bytes().to_vec(),
@@ -413,5 +413,12 @@ where
             }
             unknown_content => Err(anyhow!("Not a recognised message type: {}", unknown_content)),
         }
+    }
+
+    pub fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
+        self.user.export(flag, pwd)
+    }
+    pub fn import(bytes: &[u8], flag: u8, pwd: &str, tsp: Trans) -> Result<Self> {
+        UserImp::import(bytes, flag, pwd).map(|u| Self { user: u, transport: tsp, })
     }
 }

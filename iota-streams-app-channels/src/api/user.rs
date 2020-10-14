@@ -12,10 +12,11 @@ use iota_streams_core::{
     prelude::{
         vec,
         Vec,
+        typenum::U32,
     },
     prng,
     psk,
-    sponge::prp::PRP,
+    sponge::prp::{Inner, PRP,},
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -29,8 +30,14 @@ use iota_streams_app::message::{
     },
     *,
 };
+
 use iota_streams_ddml::{
-    link_store::LinkStore,
+    command::*,
+    io,
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 
@@ -67,7 +74,7 @@ impl<F, Link: HasLink> WrapStateSequence<F, Link> {
     }
 }
 
-impl<F, Link: HasLink + fmt::Debug> fmt::Debug for WrapStateSequence<F, Link>
+impl<F: PRP, Link: HasLink + fmt::Debug> fmt::Debug for WrapStateSequence<F, Link>
 where
     <Link as HasLink>::Rel: fmt::Debug,
 {
@@ -140,6 +147,40 @@ where
     pub message_encoding: Vec<u8>,
 
     pub uniform_payload_length: usize,
+}
+
+impl<F, Link, LG, LS, PKS, PSKS> Default for User<F, Link, LG, LS, PKS, PSKS>
+where
+    F: PRP,
+    Link: HasLink,
+    LG: LinkGenerator<Link>,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
+    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PSKS: PresharedKeyStore,
+{
+    fn default() -> Self {
+        let sig_kp = ed25519::Keypair {
+            secret: ed25519::SecretKey::from_bytes(&[0; ed25519::SECRET_KEY_LENGTH]).unwrap(),
+            public: ed25519::PublicKey::default(),
+        };
+        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+
+        Self {
+            _phantom: core::marker::PhantomData,
+            sig_kp,
+            ke_kp,
+
+            psk_store: PSKS::default(),
+            pk_store: PKS::default(),
+            author_sig_pk: None,
+            link_gen: LG::default(),
+            link_store: RefCell::new(LS::default()),
+            appinst: None,
+            flags: 0,
+            message_encoding: Vec::new(),
+            uniform_payload_length: 0,
+        }
+    }
 }
 
 impl<F, Link, LG, LS, PKS, PSKS> User<F, Link, LG, LS, PKS, PSKS>
@@ -512,11 +553,13 @@ where
     ) -> Result<GenericMessage<Link, bool>> {
         let preparsed = msg.parse_header()?;
 
-        let content = self
-            .unwrap_keyload(preparsed)?
-            .commit(self.link_store.borrow_mut(), info)?;
+        let unwrapped = self
+            .unwrap_keyload(preparsed)?;
 
-        if content.key.is_some() {
+        if unwrapped.pcf.content.key.is_some() {
+            // Do not commit if key not found hence spongos state is invalid
+            let content = unwrapped.commit(self.link_store.borrow_mut(), info)?;
+
             // Presence of the key indicates the user is allowed
             // Unwrapped nonce and key in content are not used explicitly.
             // The resulting spongos state is joined into a protected message state.
@@ -867,5 +910,375 @@ where
             cursor.link = link.clone();
             cursor.seq_no = seq_no + 1;
         }
+    }
+}
+
+impl<F, Link, LG, LS, PKS, PSKS> ContentSizeof<F> for User<F, Link, LG, LS, PKS, PSKS>
+where
+    F: PRP,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
+    <Link as HasLink>::Base: Eq + fmt::Debug,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
+    LG: LinkGenerator<Link>,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
+    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PSKS: PresharedKeyStore,
+{
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+        ctx
+            .mask(<&NBytes::<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+            .absorb(Uint8(self.flags))?
+            .absorb(<&Bytes>::from(&self.message_encoding))?
+            .absorb(Uint64(self.uniform_payload_length as u64))?
+        ;
+
+        let oneof_appinst = Uint8(if self.appinst.is_some() { 1 } else { 0 });
+        ctx.absorb(&oneof_appinst)?;
+        if let Some(ref appinst) = self.appinst {
+            ctx.absorb(<&Fallback::<Link>>::from(appinst))?;
+        }
+
+        let oneof_author_sig_pk = Uint8(if self.author_sig_pk.is_some() { 1 } else { 0 });
+        ctx.absorb(&oneof_author_sig_pk)?;
+        if let Some(ref author_sig_pk) = self.author_sig_pk {
+            ctx.absorb(author_sig_pk)?;
+        }
+
+        let link_store = self.link_store.borrow();
+        let links = link_store.iter();
+        let repeated_links = Size(links.len());
+        let psks = self.psk_store.iter();
+        let repeated_psks = Size(psks.len());
+        let pks = self.pk_store.iter();
+        let repeated_pks = Size(pks.len());
+        ctx
+            .absorb(repeated_links)?
+            .repeated(links.into_iter(), |ctx, (link, (s, info))| {
+                ctx
+                    .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(link))?
+                    .mask(<&NBytes::<F::CapacitySize>>::from(s.arr()))?
+                    .absorb(<&Fallback::<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(info))?
+                ;
+                Ok(ctx)
+            })?
+            .absorb(repeated_psks)?
+            .repeated(psks.into_iter(), |ctx, (pskid, psk)| {
+                ctx
+                    .mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
+                    .mask(<&NBytes<psk::PskSize>>::from(psk))?
+                ;
+                Ok(ctx)
+            })?
+            .absorb(repeated_pks)?
+            .repeated(pks.into_iter(), |ctx, (pk, cursor)| {
+                ctx
+                    .absorb(pk)?
+                    .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(&cursor.link))?
+                    .absorb(Uint32(cursor.branch_no))?
+                    .absorb(Uint32(cursor.seq_no))?
+                ;
+                Ok(ctx)
+            })?
+
+            .commit()?
+            .squeeze(Mac(32))?
+            ;
+        Ok(ctx)
+    }
+}
+
+impl<F, Link, Store, LG, LS, PKS, PSKS> ContentWrap<F, Store> for User<F, Link, LG, LS, PKS, PSKS>
+where
+    F: PRP,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
+    <Link as HasLink>::Base: Eq + fmt::Debug,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    LG: LinkGenerator<Link>,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
+    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PSKS: PresharedKeyStore,
+{
+    fn wrap<'c, OS: io::OStream>(
+        &self,
+        _store: &Store,
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
+        ctx
+            .mask(<&NBytes::<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+            .absorb(Uint8(self.flags))?
+            .absorb(<&Bytes>::from(&self.message_encoding))?
+            .absorb(Uint64(self.uniform_payload_length as u64))?
+        ;
+
+        let oneof_appinst = Uint8(if self.appinst.is_some() { 1 } else { 0 });
+        ctx.absorb(&oneof_appinst)?;
+        if let Some(ref appinst) = self.appinst {
+            ctx.absorb(<&Fallback::<Link>>::from(appinst))?;
+        }
+
+        let oneof_author_sig_pk = Uint8(if self.author_sig_pk.is_some() { 1 } else { 0 });
+        ctx.absorb(&oneof_author_sig_pk)?;
+        if let Some(ref author_sig_pk) = self.author_sig_pk {
+            ctx.absorb(author_sig_pk)?;
+        }
+
+        let link_store = self.link_store.borrow();
+        let links = link_store.iter();
+        let repeated_links = Size(links.len());
+        let psks = self.psk_store.iter();
+        let repeated_psks = Size(psks.len());
+        let pks = self.pk_store.iter();
+        let repeated_pks = Size(pks.len());
+        ctx
+            .absorb(repeated_links)?
+            .repeated(links.into_iter(), |ctx, (link, (s, info))| {
+                ctx
+                    .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(link))?
+                    .mask(<&NBytes::<F::CapacitySize>>::from(s.arr()))?
+                    .absorb(<&Fallback::<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(info))?
+                ;
+                Ok(ctx)
+            })?
+            .absorb(repeated_psks)?
+            .repeated(psks.into_iter(), |ctx, (pskid, psk)| {
+                ctx
+                    .mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
+                    .mask(<&NBytes<psk::PskSize>>::from(psk))?
+                ;
+                Ok(ctx)
+            })?
+            .absorb(repeated_pks)?
+            .repeated(pks.into_iter(), |ctx, (pk, cursor)| {
+                ctx
+                    .absorb(pk)?
+                    .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(&cursor.link))?
+                    .absorb(Uint32(cursor.branch_no))?
+                    .absorb(Uint32(cursor.seq_no))?
+                ;
+                Ok(ctx)
+            })?
+
+            .commit()?
+            .squeeze(Mac(32))?
+            ;
+        Ok(ctx)
+    }
+}
+
+impl<F, Link, Store, LG, LS, PKS, PSKS> ContentUnwrap<F, Store> for User<F, Link, LG, LS, PKS, PSKS>
+where
+    F: PRP,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
+    <Link as HasLink>::Base: Eq + fmt::Debug,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    LG: LinkGenerator<Link>,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: Default + AbsorbFallback<F>,
+    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>> + Default,
+    PSKS: PresharedKeyStore + Default,
+{
+    fn unwrap<'c, IS: io::IStream>(
+        &mut self,
+        _store: &Store,
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        let mut sig_sk_bytes = NBytes::<U32>::default();
+        let mut flags = Uint8(0);
+        let mut message_encoding = Bytes::new();
+        let mut uniform_payload_length = Uint64(0);
+        ctx
+            //.absorb(&self.sig_kp.public)
+            .mask(&mut sig_sk_bytes)?
+            .absorb(&mut flags)?
+            .absorb(&mut message_encoding)?
+            .absorb(&mut uniform_payload_length)?
+        ;
+
+        let mut oneof_appinst = Uint8(0);
+        ctx
+            .absorb(&mut oneof_appinst)?
+            .guard(oneof_appinst.0 < 2, "Bad appinst oneof.")?
+        ;
+        let appinst = if oneof_appinst.0 == 1 {
+            let mut appinst = Link::default();
+            ctx.absorb(<&mut Fallback::<Link>>::from(&mut appinst))?;
+            Some(appinst)
+        } else {
+            None
+        };
+
+        let mut oneof_author_sig_pk = Uint8(0);
+        ctx
+            .absorb(&mut oneof_author_sig_pk)?
+            .guard(oneof_author_sig_pk.0 < 2, "Bad author_sig_pk oneof.")?
+        ;
+        let author_sig_pk = if oneof_author_sig_pk.0 == 1 {
+            let mut author_sig_pk = ed25519::PublicKey::default();
+            ctx.absorb(&mut author_sig_pk)?;
+            Some(author_sig_pk)
+        } else {
+            None
+        };
+
+        let mut repeated_links = Size(0);
+        let mut link_store = LS::default();
+        ctx
+            .absorb(&mut repeated_links)?
+            .repeated(repeated_links, |ctx| {
+                let mut link = Fallback(<Link as HasLink>::Rel::default());
+                let mut s = NBytes::<F::CapacitySize>::default();
+                let mut info = Fallback(<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info::default());
+                ctx
+                    .absorb(&mut link)?
+                    .mask(&mut s)?
+                    .absorb(&mut info)?
+                ;
+                let a: GenericArray::<u8, F::CapacitySize> = s.into();
+                link_store.insert(&link.0, Inner::<F>::from(a), info.0)?;
+                Ok(ctx)
+            })?
+        ;
+
+        let mut repeated_psks = Size(0);
+        let mut psk_store = PSKS::default();
+        ctx
+            .absorb(&mut repeated_psks)?
+            .repeated(repeated_psks, |ctx| {
+                let mut pskid = NBytes::<psk::PskIdSize>::default();
+                let mut psk = NBytes::<psk::PskSize>::default();
+                ctx
+                    .mask(&mut pskid)?
+                    .mask(&mut psk)?
+                ;
+                psk_store.insert(pskid.0, psk.0);
+                Ok(ctx)
+            })?
+        ;
+
+        let mut repeated_pks = Size(0);
+        let mut pk_store = PKS::default();
+        ctx
+            .absorb(&mut repeated_pks)?
+            .repeated(repeated_pks, |ctx| {
+                let mut pk = ed25519::PublicKey::default();
+                let mut link = Fallback(<Link as HasLink>::Rel::default());
+                let mut branch_no = Uint32(0);
+                let mut seq_no = Uint32(0);
+                ctx
+                    .absorb(&mut pk)?
+                    .absorb(&mut link)?
+                    .absorb(&mut branch_no)?
+                    .absorb(&mut seq_no)?
+                ;
+                pk_store.insert(pk, Cursor::new_at(link.0, branch_no.0, seq_no.0));
+                Ok(ctx)
+            })?
+            .commit()?
+            .squeeze(Mac(32))?
+        ;
+
+        let sig_sk = ed25519::SecretKey::from_bytes(sig_sk_bytes.as_ref()).unwrap();
+        let sig_pk = ed25519::PublicKey::from(&sig_sk);
+        self.sig_kp = ed25519::Keypair {
+            secret: sig_sk,
+            public: sig_pk,
+        };
+        self.ke_kp = x25519::keypair_from_ed25519(&self.sig_kp);
+        self.link_store = RefCell::new(link_store);
+        self.psk_store = psk_store;
+        self.pk_store = pk_store;
+        self.author_sig_pk = author_sig_pk;
+        if let Some(ref seed) = appinst {
+            self.link_gen.reset(seed.clone());
+        }
+        self.appinst = appinst;
+        self.flags = flags.0;
+        self.message_encoding = message_encoding.0;
+        self.uniform_payload_length = uniform_payload_length.0 as usize;
+        Ok(ctx)
+    }
+}
+
+impl<F, Link, LG, LS, PKS, PSKS> User<F, Link, LG, LS, PKS, PSKS>
+where
+    F: PRP,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
+    <Link as HasLink>::Base: Eq + fmt::Debug,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
+    LG: LinkGenerator<Link>,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
+    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PSKS: PresharedKeyStore,
+{
+    pub fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
+        const VERSION: u8 = 0;
+        let buf_size = {
+            let mut ctx = sizeof::Context::<F>::new();
+            ctx
+                .absorb(Uint8(VERSION))?
+                .absorb(Uint8(flag))?
+            ;
+            self.sizeof(&mut ctx)?;
+            ctx.get_size()
+        };
+
+        let mut buf = vec![0; buf_size];
+
+        {
+            let mut ctx = wrap::Context::new(&mut buf[..]);
+            let prng = prng::from_seed::<F>("IOTA Streams Channels app", pwd);
+            let key = NBytes::<U32>(prng.gen_arr("user export key"));
+            ctx
+                .absorb(Uint8(VERSION))?
+                .absorb(Uint8(flag))?
+                .absorb(External(&key))?
+            ;
+            let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
+            self.wrap(&store, &mut ctx)?;
+            ensure!(ctx.stream.is_empty(), "OStream has not been exhausted.");
+        }
+
+        Ok(buf)
+    }
+}
+
+impl<F, Link, LG, LS, PKS, PSKS> User<F, Link, LG, LS, PKS, PSKS>
+where
+    F: PRP,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
+    <Link as HasLink>::Base: Eq + fmt::Debug,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
+    LG: LinkGenerator<Link>,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: Default + AbsorbFallback<F>,
+    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>> + Default,
+    PSKS: PresharedKeyStore + Default,
+{
+    pub fn import(bytes: &[u8], flag: u8, pwd: &str) -> Result<Self> {
+        const VERSION: u8 = 0;
+
+        let mut ctx = unwrap::Context::new(bytes);
+        let prng = prng::from_seed::<F>("IOTA Streams Channels app", pwd);
+        let key = NBytes::<U32>(prng.gen_arr("user export key"));
+        let mut version = Uint8(0);
+        let mut flag2 = Uint8(0);
+        ctx
+            .absorb(&mut version)?
+            .guard(version.0 == VERSION, "Bad user version")?
+            .absorb(&mut flag2)?
+            .guard(flag2.0 == flag, "Bad user flag")?
+            .absorb(External(&key))?
+        ;
+
+        let mut user = User::default();
+        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
+        user.unwrap(&store, &mut ctx)?;
+        ensure!(ctx.stream.is_empty(), "IStream has not been exhausted.");
+        Ok(user)
     }
 }

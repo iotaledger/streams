@@ -63,3 +63,5 @@ pub use digest::{
         typenum,
     },
 };
+
+pub use hex;

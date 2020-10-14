@@ -9,8 +9,11 @@ use iota_streams_ddml::{
     io,
 };
 
-pub trait ContentWrap<F, Store> {
+pub trait ContentSizeof<F> {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>>;
+}
+
+pub trait ContentWrap<F, Store>: ContentSizeof<F> {
     fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,

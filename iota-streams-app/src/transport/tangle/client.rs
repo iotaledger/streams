@@ -417,7 +417,6 @@ impl Client {
         }
     }
 
-
     pub fn add_node(&mut self, url: &str) -> Result<bool> {
         self.client.add_node(url).map_err(|e| anyhow!("iota_client error {}:", e))
     }

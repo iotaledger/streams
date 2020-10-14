@@ -8,13 +8,8 @@ readme = "README.md"
 keywords = ["iota", "streams"]
 description = "A rust implementation of the IOTA Streams"
 
-[workspace]
-
 [dependencies]
 iota-streams = { path = ".." }
 anyhow = { version = "1.0", default-features = false }
 rand = "0.7.3"
 
-[profile.release]
-lto = true
-panic = 'abort'

@@ -198,6 +198,26 @@ impl<Trans: Transport> Subscriber<Trans>
     pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<UnwrappedMessage> {
         self.user.receive_message(link, pk)
     }
+
+    /// Serialize user state and encrypt it with password.
+    ///
+    ///   # Arguments
+    ///   * `pwd` - Encryption password
+    ///
+    pub fn export(&self, pwd: &str) -> Result<Vec<u8>> {
+        self.user.export(1, pwd)
+    }
+
+    /// Deserialize user state and decrypt it with password.
+    ///
+    ///   # Arguments
+    ///   * `bytes` - Encrypted serialized user state
+    ///   * `pwd` - Encryption password
+    ///   * `tsp` - Transport object
+    ///
+    pub fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
+        User::<Trans>::import(bytes, 1, pwd, tsp).map(|user| Self { user })
+    }
 }
 
 impl<T: Transport> fmt::Display for Subscriber<T> {

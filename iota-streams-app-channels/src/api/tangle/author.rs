@@ -201,6 +201,26 @@ impl<Trans: Transport> Author<Trans>
     // pub pub fn receive_unsubscribe(&mut self, link: Address) -> Result<()> {
     // self.user.handle_unsubscribe(link, MsgInfo::Unsubscribe)
     // }
+
+    /// Serialize user state and encrypt it with password.
+    ///
+    ///   # Arguments
+    ///   * `pwd` - Encryption password
+    ///
+    pub fn export(&self, pwd: &str) -> Result<Vec<u8>> {
+        self.user.export(0, pwd)
+    }
+
+    /// Deserialize user state and decrypt it with password.
+    ///
+    ///   # Arguments
+    ///   * `bytes` - Encrypted serialized user state
+    ///   * `pwd` - Encryption password
+    ///   * `tsp` - Transport object
+    ///
+    pub fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
+        User::<Trans>::import(bytes, 0, pwd, tsp).map(|user| Self { user })
+    }
 }
 
 impl<Trans> fmt::Display for Author<Trans> {

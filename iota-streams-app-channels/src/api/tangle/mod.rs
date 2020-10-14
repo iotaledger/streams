@@ -82,17 +82,8 @@ pub type BucketTransport = transport::BucketTransport<Address, Message>;
 pub trait Transport: transport::Transport<Address, Message> {}
 impl<T> Transport for T where T: transport::Transport<Address, Message> {}
 
-/// Message associated info stored internally in User context, just message type indicator.
-#[derive(Copy, Clone)]
-pub enum MsgInfo {
-    Announce,
-    Keyload,
-    SignedPacket,
-    TaggedPacket,
-    Subscribe,
-    Unsubscribe,
-    Sequence,
-}
+mod msginfo;
+pub use msginfo::MsgInfo;
 
 /// Message body returned as part of handle message routine.
 pub enum MessageContent {

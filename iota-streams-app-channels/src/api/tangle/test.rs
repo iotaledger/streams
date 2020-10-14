@@ -106,8 +106,9 @@ pub fn example<T: Transport>(transport: T) -> Result<()>
 
     {
         let resultA = subscriberA.receive_keyload(&keyload_link);
-        ensure!(resultA.is_err(), "failed to unwrap keyload");
-        subscriberB.receive_keyload(&keyload_link)?;
+        ensure!(resultA.is_ok() && !resultA.unwrap(), "sbuscriberA failed to unwrap keyload");
+        let resultB = subscriberB.receive_keyload(&keyload_link)?;
+        ensure!(resultB, "sbuscriberB failed to unwrap keyload");
     }
 
     println!("\ntag packet");
@@ -119,7 +120,7 @@ pub fn example<T: Transport>(transport: T) -> Result<()>
 
     {
         let resultA = subscriberA.receive_tagged_packet(&tagged_packet_link);
-        ensure!(resultA.is_err(), "failed to unwrap tagged packet");
+        ensure!(resultA.is_err(), "subscriberA failed to unwrap tagged packet");
         let (unwrapped_public, unwrapped_masked) = subscriberB.receive_tagged_packet(&tagged_packet_link)?;
         ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
         ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
@@ -128,6 +129,15 @@ pub fn example<T: Transport>(transport: T) -> Result<()>
     {
         subscriberB.receive_keyload(&keyload_link)?;
     }
+
+    let subAdump = subscriberA.export("pwdSubA").unwrap();
+    let _subscriberA2 = Subscriber::import(subAdump.as_ref(), "pwdSubA", transport.clone()).unwrap();
+
+    let subBdump = subscriberB.export("pwdSubB").unwrap();
+    let _subscriberB2 = Subscriber::import(subBdump.as_ref(), "pwdSubB", transport.clone()).unwrap();
+
+    let authordump = author.export("pwdAuthor").unwrap();
+    let _author2 = Author::import(authordump.as_ref(), "pwdAuthor", transport.clone()).unwrap();
 
     Ok(())
 }

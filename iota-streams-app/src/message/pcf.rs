@@ -106,17 +106,23 @@ impl<Content> PCF<Content> {
     }
 }
 
-impl<F, Content, Store> ContentWrap<F, Store> for PCF<Content>
+impl<F, Content> ContentSizeof<F> for PCF<Content>
 where
     F: PRP,
-    Content: ContentWrap<F, Store>,
+    Content: ContentSizeof<F>,
 {
     fn sizeof<'c>(&self, mut ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.frame_type)?.skip(&self.payload_frame_num)?;
         self.content.sizeof(&mut ctx)?;
         Ok(ctx)
     }
+}
 
+impl<F, Content, Store> ContentWrap<F, Store> for PCF<Content>
+where
+    F: PRP,
+    Content: ContentWrap<F, Store>,
+{
     fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,

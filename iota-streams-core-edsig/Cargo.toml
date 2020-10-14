@@ -17,7 +17,7 @@ name = "iota_streams_core_edsig"
 path = "src/lib.rs"
 
 [dependencies]
-iota-streams-core = { version = "0.2.0", path = "../iota-streams-core", default-features = false }
+iota-streams-core = { version = "0.3.0", path = "../iota-streams-core", default-features = false }
 # TODO: move to recent versions of ed25519-dalek, x25519-dalek and curve25510-dalek
 ed25519-dalek = { version = "1.0.0", default-features = false, features = ["u64_backend", "rand_core", "rand"] }
 x25519-dalek = { version = "1.1.0", default-features = false, features = ["u64_backend"] }

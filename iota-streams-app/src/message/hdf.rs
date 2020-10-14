@@ -151,7 +151,7 @@ where
     }
 }
 
-impl<F, Link, Store> ContentWrap<F, Store> for HDF<Link>
+impl<F, Link> ContentSizeof<F> for HDF<Link>
 where
     F: PRP,
     Link: AbsorbExternalFallback<F>,
@@ -169,7 +169,13 @@ where
             .skip(self.seq_num)?;
         Ok(ctx)
     }
+}
 
+impl<F, Link, Store> ContentWrap<F, Store> for HDF<Link>
+where
+    F: PRP,
+    Link: AbsorbExternalFallback<F>,
+{
     fn wrap<'c, OS: io::OStream>(
         &self,
         _store: &Store,
