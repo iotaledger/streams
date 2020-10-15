@@ -459,12 +459,12 @@ where
 {
     /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
     async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
-        async_send_message_with_options(msg, &self.send_opt).await
+        async_send_message_with_options(&self.client, msg, &self.send_opt).await
     }
 
     /// Receive a message.
     async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
-        async_recv_messages(link).await
+        async_recv_messages(&self.client, link).await
     }
 
     async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {

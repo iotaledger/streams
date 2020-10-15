@@ -26,4 +26,4 @@ rand = { version = "0.7", default-features = false }
 hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }
 
 [dev-dependencies]
-iota-streams-core-keccak = { version = "0.2.0", path = "../iota-streams-core-keccak" }
+iota-streams-core-keccak = { version = "0.3.0", path = "../iota-streams-core-keccak" }
