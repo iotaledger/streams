@@ -57,17 +57,17 @@ impl PCF<()> {
     }
 }
 
-fn payload_frame_num_from(n: usize) -> Result<NBytes<U3>> {
+fn payload_frame_num_from(n: u32) -> Result<NBytes<U3>> {
     ensure!(n < 0x400000, "Payload frame num out of range: {}", n);
     let v = n.to_be_bytes();
-    let g = <GenericArray<u8, U3>>::from_slice(&v[5..]);
+    let g = <GenericArray<u8, U3>>::from_slice(&v[1..]);
     Ok(NBytes::from(*g))
 }
 
-fn payload_frame_num_to(v: &NBytes<U3>) -> usize {
-    let mut u = [0_u8; 8];
-    u[5..].copy_from_slice(v.as_ref());
-    usize::from_be_bytes(u)
+fn payload_frame_num_to(v: &NBytes<U3>) -> u32 {
+    let mut u = [0_u8; 4];
+    u[1..].copy_from_slice(v.as_ref());
+    u32::from_be_bytes(u)
 }
 
 fn payload_frame_num_check(v: &NBytes<U3>) -> Result<()> {
@@ -76,7 +76,7 @@ fn payload_frame_num_check(v: &NBytes<U3>) -> Result<()> {
 }
 
 impl<Content> PCF<Content> {
-    pub fn new(frame_type: Uint8, payload_frame_num: usize, content: Content) -> Result<Self> {
+    pub fn new(frame_type: Uint8, payload_frame_num: u32, content: Content) -> Result<Self> {
         payload_frame_num_from(payload_frame_num).map(|payload_frame_num| Self {
             frame_type,
             payload_frame_num,
@@ -84,7 +84,7 @@ impl<Content> PCF<Content> {
         })
     }
 
-    pub fn with_payload_frame_num(mut self, payload_frame_num: usize) -> Result<Self> {
+    pub fn with_payload_frame_num(mut self, payload_frame_num: u32) -> Result<Self> {
         payload_frame_num_from(payload_frame_num).map(|payload_frame_num| {
             self.payload_frame_num = payload_frame_num;
             self
@@ -101,7 +101,7 @@ impl<Content> PCF<Content> {
         }
     }
 
-    pub fn get_payload_frame_num(&self) -> usize {
+    pub fn get_payload_frame_num(&self) -> u32 {
         payload_frame_num_to(&self.payload_frame_num)
     }
 }

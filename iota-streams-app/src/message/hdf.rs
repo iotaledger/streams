@@ -34,7 +34,7 @@ pub struct HDF<Link> {
     pub payload_length: usize,
     pub frame_type: Uint8,
     // frame count is 22 bits
-    pub payload_frame_count: usize,
+    pub payload_frame_count: u32,
     pub link: Link,
     pub seq_num: Uint64,
 }
@@ -77,7 +77,7 @@ impl<Link> HDF<Link> {
         self.payload_length
     }
 
-    pub fn with_payload_frame_count(mut self, payload_frame_count: usize) -> Result<Self> {
+    pub fn with_payload_frame_count(mut self, payload_frame_count: u32) -> Result<Self> {
         ensure!(
             payload_frame_count < 0x400000,
             "Payload frame count out of range: {}",
@@ -87,7 +87,7 @@ impl<Link> HDF<Link> {
         Ok(self)
     }
 
-    pub fn get_payload_frame_count(&self) -> usize {
+    pub fn get_payload_frame_count(&self) -> u32 {
         self.payload_frame_count
     }
 
@@ -192,9 +192,9 @@ where
             let mut nbytes = NBytes::<U3>::default();
             let v = nbytes.as_mut();
             let x = self.payload_frame_count.to_be_bytes();
-            v[0] = x[5] & 0x3f;
-            v[1] = x[6];
-            v[2] = x[7];
+            v[0] = x[1] & 0x3f;
+            v[1] = x[2];
+            v[2] = x[3];
             nbytes
         };
 
@@ -253,11 +253,11 @@ where
         {
             let v = payload_frame_count.as_ref();
             ensure!(0 == v[0] & 0xc0, "Bad reserved bits");
-            let mut x = [0_u8; 8];
-            x[5] = v[0];
-            x[6] = v[1];
-            x[7] = v[2];
-            self.payload_frame_count = usize::from_be_bytes(x);
+            let mut x = [0_u8; 4];
+            x[1] = v[0];
+            x[2] = v[1];
+            x[3] = v[2];
+            self.payload_frame_count = u32::from_be_bytes(x);
         }
 
         ctx.absorb(External(Fallback(&self.link)))?.skip(&mut self.seq_num)?;
