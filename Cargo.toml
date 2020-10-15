@@ -42,7 +42,7 @@ async-client = ["iota-streams-app/async-client", "iota-streams-app-channels/asyn
 
 [dependencies]
 iota-streams-core = { version = "0.3.0", path = "iota-streams-core", default-features = false }
-iota-streams-core-keccak = { version = "0.2.0", path = "iota-streams-core-keccak", default-features = false }
+iota-streams-core-keccak = { version = "0.3.0", path = "iota-streams-core-keccak", default-features = false }
 iota-streams-core-edsig = { version = "0.2.0", path = "iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.2.2", path = "iota-streams-ddml", default-features = false }
 iota-streams-app = { version = "1.0.0", path = "iota-streams-app", default-features = false }

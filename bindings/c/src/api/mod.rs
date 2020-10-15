@@ -142,54 +142,90 @@ pub extern "C" fn drop_links(links: MessageLinks) {
 }
 
 #[repr(C)]
+pub struct Buffer {
+    ptr: *const uint8_t,
+    size: size_t,
+    cap: size_t,
+}
+
+impl Default for Buffer {
+    fn default() -> Self {
+        Self {
+            ptr: null(),
+            size: 0,
+            cap: 0,
+        }
+    }
+}
+
+impl From<Bytes> for Buffer {
+    fn from(b: Bytes) -> Self {
+        let p = core::mem::ManuallyDrop::new(b.0);
+        Self {
+            ptr: p.as_ptr(),
+            size: p.len(),
+            cap: p.capacity(),
+        }
+    }
+}
+
+impl<'a> From<&'a Bytes> for Buffer {
+    fn from(b: &Bytes) -> Self {
+        let p = &b.0;
+        Self {
+            ptr: p.as_ptr(),
+            size: p.len(),
+            cap: p.capacity(),
+        }
+    }
+}
+
+impl Buffer {
+    pub fn drop(self) {
+        unsafe {
+            Vec::from_raw_parts(
+                self.ptr as *mut u8,
+                self.size,
+                self.cap,
+            );
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn drop_buffer(b: Buffer) {
+    b.drop()
+}
+
+#[repr(C)]
 pub struct PacketPayloads {
-    public_payload_ptr: *const uint8_t,
-    public_payload_size: size_t,
-    public_payload_cap: size_t,
-    masked_payload_ptr: *const uint8_t,
-    masked_payload_size: size_t,
-    masked_payload_cap: size_t,
+    public_payload: Buffer,
+    masked_payload: Buffer,
 }
 
 impl Default for PacketPayloads {
     fn default() -> Self {
         Self {
-            public_payload_ptr: null(),
-            public_payload_size: 0,
-            public_payload_cap: 0,
-            masked_payload_ptr: null(),
-            masked_payload_size: 0,
-            masked_payload_cap: 0,
+            public_payload: Buffer::default(),
+            masked_payload: Buffer::default(),
         }
     }
 }
 
 impl From<(Bytes, Bytes)> for PacketPayloads {
     fn from(payloads: (Bytes, Bytes)) -> Self {
-        let p = core::mem::ManuallyDrop::new(payloads.0.0);
-        let m = core::mem::ManuallyDrop::new(payloads.1.0);
         Self {
-            public_payload_ptr: p.as_ptr(),
-            public_payload_size: p.len(),
-            public_payload_cap: p.capacity(),
-            masked_payload_ptr: m.as_ptr(),
-            masked_payload_size: m.len(),
-            masked_payload_cap: m.capacity(),
+            public_payload: Buffer::from(payloads.0),
+            masked_payload: Buffer::from(payloads.1),
         }
     }
 }
 
 impl<'a> From<(&'a Bytes, &'a Bytes)> for PacketPayloads {
     fn from(payloads: (&Bytes, &Bytes)) -> Self {
-        let p = &payloads.0.0;
-        let m = &payloads.1.0;
         Self {
-            public_payload_ptr: p.as_ptr(),
-            public_payload_size: p.len(),
-            public_payload_cap: p.capacity(),
-            masked_payload_ptr: m.as_ptr(),
-            masked_payload_size: m.len(),
-            masked_payload_cap: m.capacity(),
+            public_payload: Buffer::from(payloads.0),
+            masked_payload: Buffer::from(payloads.1),
         }
     }
 }
@@ -203,18 +239,8 @@ impl From<(PublicKey, Bytes, Bytes)> for PacketPayloads {
 
 impl PacketPayloads {
     pub fn drop(self) {
-        unsafe {
-            Vec::from_raw_parts(
-                self.public_payload_ptr as *mut u8,
-                self.public_payload_size,
-                self.public_payload_cap,
-            );
-            Vec::from_raw_parts(
-                self.masked_payload_ptr as *mut u8,
-                self.masked_payload_size,
-                self.masked_payload_cap,
-            );
-        }
+        self.public_payload.drop();
+        self.masked_payload.drop();
     }
 }
 

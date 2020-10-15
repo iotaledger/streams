@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <time.h>
 
-#define IOTA_STREAMS_CHANNELS_CLIENT 1
-
 void rand_seed(char *seed, size_t n)
 {
   static char const alphabet[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+";
@@ -21,7 +19,7 @@ void rand_seed(char *seed, size_t n)
 int main()
 {
   printf("Starting c bindings test\n\n");
-  transport_t *tsp;
+  transport_t *tsp = NULL;
   uint8_t multi_branching = 1;
   char seed[] = "bindings test seed";
   char const encoding[] = "utf-8";
@@ -108,7 +106,7 @@ int main()
 
   printf("Subscriber unwrapping Signed packet\n");
   packet_payloads_t signed_packet_response = sub_receive_signed_packet(subA, signed_packet_address);
-  printf("public: '%s' \tmasked: '%s'\n", signed_packet_response.public_payload_ptr, signed_packet_response.masked_payload_ptr);
+  printf("public: '%s' \tmasked: '%s'\n", signed_packet_response.public_payload.ptr, signed_packet_response.masked_payload.ptr);
   printf("Subscriber handled Signed packet\n");
 
   // Tagged packet 
@@ -126,7 +124,7 @@ int main()
   address_t const *tagged_packet_address = sub_receive_sequence(subA, tagged_packet_sequence_link);
   printf("Subscriber unwrapping Tagged packet\n");
   packet_payloads_t tagged_packet_response = sub_receive_tagged_packet(subA, tagged_packet_address);
-  printf("public: '%s' \tmasked: '%s'\n", signed_packet_response.public_payload_ptr, signed_packet_response.masked_payload_ptr);
+  printf("public: '%s' \tmasked: '%s'\n", signed_packet_response.public_payload.ptr, signed_packet_response.masked_payload.ptr);
   printf("Subscriber handled Tagged packet\n");
 
   // Several messages
@@ -155,7 +153,7 @@ int main()
   for(x = 0; x < 3; x++)
   {
     packet_payloads_t response = get_indexed_payload(message_returns, x);
-    printf("Unpacking message...\npublic: '%s' \tmasked: '%s'\n", response.public_payload_ptr, response.masked_payload_ptr);
+    printf("Unpacking message...\npublic: '%s' \tmasked: '%s'\n", response.public_payload.ptr, response.masked_payload.ptr);
     //`get_indexed_payload` does not allocate, no need to drop `response`
   }
 

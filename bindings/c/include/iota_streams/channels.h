@@ -30,13 +30,17 @@ typedef struct MessageLinks {
 
 extern void drop_links(message_links_t);
 
+typedef struct Buffer {
+  uint8_t const *ptr;
+  size_t size;
+  size_t cap;
+} buffer_t;
+
+extern void drop_buffer(buffer_t);
+
 typedef struct PacketPayloads {
-  uint8_t const *public_payload_ptr;
-  size_t public_payload_size;
-  size_t public_payload_cap;
-  uint8_t const *masked_payload_ptr;
-  size_t masked_payload_size;
-  size_t masked_payload_cap;
+  buffer_t public_payload;
+  buffer_t masked_payload;
 } packet_payloads_t;
 
 extern void drop_payloads(packet_payloads_t);
