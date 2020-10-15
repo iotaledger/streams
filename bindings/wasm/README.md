@@ -1,5 +1,11 @@
 # IOTA streams WASM
 
+## Setup for development
+```bash
+git clone https://github.com/huhn511/streams
+cd streams/bindings/wasm
+npm install
+```
 
 ## Run development server
 ```bash
