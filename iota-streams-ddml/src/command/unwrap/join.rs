@@ -23,13 +23,3 @@ impl<'a, F: PRP, L: SkipFallback<F>, S: LinkStore<F, L>, IS: io::IStream> Join<&
         Ok(self)
     }
 }
-// impl<'a, L, S: LinkStore<L>, IS: io::IStream> Join<&'a mut L, &S> for Context<F, IS> where
-// Self: Skip<&'a mut L>,
-// {
-// fn join(&mut self, store: &S, link: &'a mut L) -> Result<&mut Self> {
-// self.skip(link)?;
-// let (mut s, i) = store.lookup(link)?;
-// self.spongos.join(&mut s);
-// Ok(self)
-// }
-// }

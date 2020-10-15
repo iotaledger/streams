@@ -1,20 +1,26 @@
 [package]
 name = "iota-streams-app-channels-example"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Vlad Semenov <semenov.vlad.by@gmail.com>"]
 edition = "2018"
 
 [features]
-default = ["std"]
+default = ["tangle"]
 # enable std
-std = ["iota-streams-core/std", "iota-streams-core-keccak/std"] #, "iota-streams-app-channels/std"]
-async = ["iota-streams-app-channels/async"]
-tangle = ["iota-streams-app-channels/tangle"]
+std = ["iota-streams/std"]
+async = ["iota-streams/async"]
+tangle = ["iota-streams/tangle"]
 
 [dependencies]
 wee_alloc = "0.4.5"
-iota-streams-core = { version = "0.2.0", path = "../iota-streams-core", default-features = false }
-iota-streams-core-keccak = { version = "0.2.0", path = "../iota-streams-core-keccak", default-features = false }
-iota-streams-ddml = { version = "0.2.0", path = "../iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "0.2.0", path = "../iota-streams-app", default-features = false }
-iota-streams-app-channels = { version = "0.2.0", path = "../iota-streams-app-channels", default-features = false }
+iota-streams = { version = "1.0.0", path = "..", default-features = false }
+
+[profile.release]
+#inherits = "release"
+opt-level = 's'
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = "abort"

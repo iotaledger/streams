@@ -29,14 +29,9 @@ use super::utils;
 
 pub fn example<T: Transport>(
     transport: Rc<RefCell<T>>,
-    _send_opt: T::SendOptions,
-    _recv_opt: T::RecvOptions,
     multi_branching: bool,
     seed: &str,
 ) -> Result<()>
-where
-    T::SendOptions: Copy + Default,
-    T::RecvOptions: Copy + Default,
 {
     let encoding = "utf-8";
 

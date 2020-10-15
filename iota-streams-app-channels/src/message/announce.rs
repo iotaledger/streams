@@ -51,9 +51,7 @@ impl<'a, F> ContentWrap<'a, F> {
     }
 }
 
-impl<'a, F, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F>
-where
-    F: PRP,
+impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F>
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.sig_kp.public)?;
@@ -61,7 +59,10 @@ where
         ctx.ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
+}
 
+impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F>
+{
     fn wrap<'c, OS: io::OStream>(
         &self,
         _store: &Store,

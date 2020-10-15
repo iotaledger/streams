@@ -1,355 +1,263 @@
-//use crate::{AppInst, MsgId, Address, Author, Message, PskIds, PubKey, PubKeyWrap, SeqState, NextMsgId, Transport, Preparsed, KePks, MWM, send_message, MessageLinks};
-use crate::{AppInst, Address, Author, PskIds, KePks, MessageLinks, PayloadResponse, utils, MessageReturns, retrieve_links, PubKey, NextMsgId, NextMsgIds, SeqState, MsgReturn};
+use super::*;
 
-use iota_streams::{
-    app_channels::api::{
-        tangle::{Author as Auth, DefaultF, Address as TangleAddress},
-    },
-    app::transport::Transport,
-    core::prelude::{Rc, Vec},
-};
-use iota_streams::ddml::types::Bytes;
-use core::cell::RefCell;
-
-use std::mem;
-use std::ffi::CString;
-use std::ffi::CStr;
-use std::os::raw::{c_char, c_ulonglong};
-use iota::client::Client;
-use crate::constants::*;
-
+pub type Author = iota_streams::app_channels::api::tangle::Author<TransportWrap>;
 
 /// Generate a new Author Instance
 #[no_mangle]
-pub extern "C" fn auth_new<'a>(seed: *const c_char , encoding: *const c_char, payload_length: *const c_ulonglong, multi_branching: bool) -> *mut Author<&'a Client> {
-    let c_seed = unsafe {
-        CStr::from_ptr(seed)
-    };
+pub extern "C" fn auth_new(
+    c_seed: *const c_char,
+    c_encoding: *const c_char,
+    payload_length: size_t,
+    multi_branching: uint8_t,
+    transport: *mut TransportWrap,
+) -> *mut Author {
+    let seed = unsafe { CStr::from_ptr(c_seed).to_str().unwrap() };
+    let encoding = unsafe { CStr::from_ptr(c_encoding).to_str().unwrap() };
+    let tsp = unsafe { (*transport).clone() };
+    let user = Author::new(seed, encoding, payload_length, multi_branching != 0, tsp);
+    Box::into_raw(Box::new(user))
+}
 
-    let c_encoding = unsafe {
-        CStr::from_ptr(encoding)
-    };
-
-    let client = Client::get();
-    Client::add_node(URL).unwrap();
-    let transport = Rc::new(RefCell::new(client));
-    let auth: Auth<&Client> = Auth::new(c_seed.to_str().unwrap(), c_encoding.to_str().unwrap(), payload_length as usize, multi_branching, transport);
-
-    Box::into_raw(Box::new(Author{ auth }))
+#[no_mangle]
+pub extern "C" fn auth_drop(user: *mut Author) {
+    unsafe {
+        Box::from_raw(user);
+    }
 }
 
 /// Channel app instance.
 #[no_mangle]
-pub extern "C" fn auth_channel_address<'a>(author: *mut Author<&'a Client>) -> *mut AppInst
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
+pub extern "C" fn auth_channel_address(user: *const Author) -> *const ChannelAddress {
     unsafe {
-        let auth = Box::from_raw(author);
-        if let Some(channel_address) = auth.auth.channel_address() {
-            let appinst = AppInst(channel_address.clone());
-            mem::forget(auth);
-            Box::into_raw(Box::new(appinst))
-        } else {
-            std::ptr::null_mut()
-        }
+        user.as_ref().map_or(null(), |user| {
+            user.channel_address()
+                .map_or(null(), |channel_address| channel_address as *const ChannelAddress)
+        })
     }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_is_multi_branching(user: *const Author) -> uint8_t {
+    unsafe {
+        user.as_ref()
+            .map_or(0, |user| if user.is_multi_branching() { 1 } else { 0 })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_get_public_key(user: *const Author) -> *const PublicKey {
+    unsafe { user.as_ref().map_or(null(), |user| user.get_pk() as *const PublicKey) }
 }
 
 /// Announce creation of a new Channel.
 #[no_mangle]
-pub extern "C" fn auth_send_announce<'a>(author: *mut Author<&'a Client>) -> *mut Address
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-let mut auth = unsafe { Box::from_raw(author) };
-
-    let msg = auth.auth.send_announce().unwrap();
-    mem::forget(auth);
-    Box::into_raw(Box::new(Address(msg)))
-}
-
-#[no_mangle]
-pub extern "C" fn auth_get_branching_flag<'a>(author: *mut Author<&'a Client>) -> u8
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let auth = Box::from_raw(author);
-        let branching = if auth.auth.is_multi_branching() { 1 } else { 0 };
-        mem::forget(auth);
-
-        branching
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn auth_get_pk<'a> (author: *mut Author<&'a Client>) -> *mut PubKey
-where
-    <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-    <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
+pub extern "C" fn auth_send_announce(user: *mut Author) -> *const Address {
     unsafe {
-        let auth = Box::from_raw(author);
-        let pk = auth.auth.get_pk().clone();
-        mem::forget(auth);
-        Box::into_raw(Box::new(PubKey(pk)))
+        user.as_mut().map_or(null(), |user| {
+            user.send_announce().map_or(null(), |a| Box::into_raw(Box::new(a)))
+        })
     }
-
 }
 
 /// unwrap and add a subscriber to the list of subscribers
 #[no_mangle]
-pub extern "C" fn auth_receive_subscribe<'a>(author: *mut Author<&'a Client>, link: *mut Address)
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let mut auth = Box::from_raw(author);
-        let link = Box::from_raw(link);
-
-        auth.auth.receive_subscribe(&link.0).unwrap();
-        
-        mem::forget(auth);
-        mem::forget(link);
+pub extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const Address) {
+    unsafe {
+        user.as_mut().map_or((), |user| {
+            link.as_ref().map_or((), |link| {
+                user.receive_subscribe(link).unwrap(); // TODO: handle Result
+            })
+        })
     }
 }
 
 /// Create a new keyload for a list of subscribers.
 #[no_mangle]
-pub extern "C" fn auth_send_keyload<'a>(author: *mut Author<&'a Client>,  link_to: *mut Address, psk_ids: *mut PskIds, ke_pks: *mut KePks) -> *mut MessageLinks
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let mut auth = Box::from_raw(author);
-        let tangle_address = Box::from_raw(link_to);
-        let unboxed_psk_ids = Box::from_raw(psk_ids);
-        let unboxed_ke_pks  = Box::from_raw(ke_pks);
-
-        println!("Tangle address: {}\n", tangle_address.0);
-        let response = auth.auth.send_keyload(&tangle_address.0, &unboxed_psk_ids.0, &unboxed_ke_pks.0).unwrap();
-        mem::forget(auth);
-        retrieve_links(response)
+pub extern "C" fn auth_send_keyload(
+    user: *mut Author,
+    link_to: *const Address,
+    psk_ids: *const PskIds,
+    ke_pks: *const KePks,
+) -> MessageLinks {
+    unsafe {
+        user.as_mut().map_or(MessageLinks::default(), |user| {
+            link_to.as_ref().map_or(MessageLinks::default(), |link_to| {
+                psk_ids.as_ref().map_or(MessageLinks::default(), |psk_ids| {
+                    ke_pks.as_ref().map_or(MessageLinks::default(), |ke_pks| {
+                        let response = user.send_keyload(link_to, psk_ids, ke_pks).unwrap();
+                        response.into()
+                    })
+                })
+            })
+        })
     }
 }
 
 /// Create keyload for all subscribed subscribers.
 #[no_mangle]
-pub extern "C" fn auth_send_keyload_for_everyone<'a>(author: *mut Author<&'a Client>, link_to: *mut Address) -> *mut MessageLinks
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let mut auth = Box::from_raw(author);
-        let tangle_address = Box::from_raw(link_to);
-
-        println!("Tangle address: {}\n", tangle_address.0);
-        let response = auth.auth.send_keyload_for_everyone(&tangle_address.0).unwrap();
-        mem::forget(auth);
-        retrieve_links(response)
-    }
-}
-
-
-#[no_mangle]
-pub extern "C" fn auth_send_tagged_packet<'a>(author: *mut Author<&'a Client>, link_to: *mut MessageLinks, public_payload_ptr: *const c_char, private_payload_ptr: *const c_char) -> *mut MessageLinks
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let mut auth = Box::from_raw(author);
-        let unboxed_link = Box::from_raw(link_to);
-
-        let tangle_address = utils::get_seq_link(unboxed_link, auth.auth.is_multi_branching());
-        let public_payload = CStr::from_ptr(public_payload_ptr);
-        let private_payload = CStr::from_ptr(private_payload_ptr);
-
-        println!("Tangle address: {}\n", tangle_address);
-        let response = auth.auth.send_tagged_packet(&tangle_address, &Bytes(public_payload.to_bytes().to_vec()), &Bytes(private_payload.to_bytes().to_vec())).unwrap();
-        mem::forget(auth);
-        retrieve_links(response)
+pub extern "C" fn auth_send_keyload_for_everyone(user: *mut Author, link_to: *const Address) -> MessageLinks {
+    unsafe {
+        user.as_mut().map_or(MessageLinks::default(), |user| {
+            link_to.as_ref().map_or(MessageLinks::default(), |link_to| {
+                let response = user.send_keyload_for_everyone(link_to).unwrap();
+                response.into()
+            })
+        })
     }
 }
 
 #[no_mangle]
-pub extern "C" fn auth_receive_tagged_packet<'a>(author: *mut Author<&'a Client>, link: *mut Address) -> *mut PayloadResponse
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let mut auth = Box::from_raw(author);
+pub extern "C" fn auth_send_tagged_packet(
+    user: *mut Author,
+    link_to: MessageLinks,
+    public_payload_ptr: *const uint8_t,
+    public_payload_size: size_t,
+    masked_payload_ptr: *const uint8_t,
+    masked_payload_size: size_t,
+) -> MessageLinks {
+    unsafe {
+        user.as_mut().map_or(MessageLinks::default(), |user| {
+            link_to
+                .into_seq_link(user.is_multi_branching())
+                .map_or(MessageLinks::default(), |link_to| {
+                    let public_payload = Bytes(Vec::from_raw_parts(
+                        public_payload_ptr as *mut u8,
+                        public_payload_size,
+                        public_payload_size,
+                    ));
+                    let masked_payload = Bytes(Vec::from_raw_parts(
+                        masked_payload_ptr as *mut u8,
+                        masked_payload_size,
+                        masked_payload_size,
+                    ));
+                    let response = user
+                        .send_tagged_packet(link_to, &public_payload, &masked_payload)
+                        .unwrap();
+                    let _ = core::mem::ManuallyDrop::new(public_payload.0);
+                    let _ = core::mem::ManuallyDrop::new(masked_payload.0);
+                    response.into()
+                })
+        })
+    }
+}
 
-        let link = Box::from_raw(link);
-        let (unwrapped_public, unwrapped_masked) = auth.auth.receive_tagged_packet(&link.0).unwrap();
-        mem::forget(auth);
-        mem::forget(link);
-
-        Box::into_raw(Box::new(PayloadResponse {
-            public_payload: CString::from_vec_unchecked(unwrapped_public.0).into_raw(),
-            private_payload: CString::from_vec_unchecked(unwrapped_masked.0).into_raw(),
-        }))
+#[no_mangle]
+pub extern "C" fn auth_receive_tagged_packet(user: *mut Author, link: *const Address) -> PacketPayloads {
+    unsafe {
+        user.as_mut().map_or(PacketPayloads::default(), |user| {
+            link.as_ref().map_or(PacketPayloads::default(), |link| {
+                let payloads = user.receive_tagged_packet(link).unwrap(); // TODO: handle Result
+                payloads.into()
+            })
+        })
     }
 }
 
 /// Process a Signed packet message
 #[no_mangle]
-pub extern "C" fn auth_receive_signed_packet<'a>(auth: *mut Author<&'a Client>, link: *mut Address) -> *mut PayloadResponse
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
+pub extern "C" fn auth_receive_signed_packet(user: *mut Author, link: *const Address) -> PacketPayloads {
     unsafe {
-        let mut auth = Box::from_raw(auth);
-
-        let link = Box::from_raw(link);
-
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = auth.auth.receive_signed_packet(&link.0).unwrap();
-        mem::forget(auth);
-        mem::forget(link);
-
-        Box::into_raw(Box::new(PayloadResponse {
-            public_payload: CString::from_vec_unchecked(unwrapped_public.0).into_raw(),
-            private_payload: CString::from_vec_unchecked(unwrapped_masked.0).into_raw(),
-        }))
+        user.as_mut().map_or(PacketPayloads::default(), |user| {
+            link.as_ref().map_or(PacketPayloads::default(), |link| {
+                let signed_payloads = user.receive_signed_packet(link).unwrap(); // TODO: handle Result
+                signed_payloads.into()
+            })
+        })
     }
 }
 
 #[no_mangle]
-pub extern "C" fn auth_receive_sequence<'a>(author: *mut Author<&'a Client>, link: *mut Address) -> *mut Address
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let mut auth = Box::from_raw(author);
-
-        let link = Box::from_raw(link);
-        let msg_link = auth.auth.receive_sequence(&link.0).unwrap();
-        mem::forget(auth);
-        mem::forget(link);
-        Box::into_raw(Box::new(Address(msg_link)))
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn auth_send_signed_packet<'a>(author: *mut Author<&'a Client>, link_to: *mut MessageLinks, public_payload_ptr: *const c_char, private_payload_ptr: *const c_char) -> *mut MessageLinks
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let mut auth = Box::from_raw(author);
-        let unboxed_link = Box::from_raw(link_to);
-
-        let tangle_address = utils::get_seq_link(unboxed_link, auth.auth.is_multi_branching());
-        let public_payload = CStr::from_ptr(public_payload_ptr);
-        let private_payload = CStr::from_ptr(private_payload_ptr);
-
-        let response = auth.auth.send_signed_packet(&tangle_address, &Bytes(public_payload.to_bytes().to_vec()), &Bytes(private_payload.to_bytes().to_vec())).unwrap();
-        mem::forget(auth);
-        retrieve_links(response)
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn auth_gen_next_msg_ids<'a>(author: *mut Author<&Client>) -> *mut NextMsgIds
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
+pub extern "C" fn author_receive_sequence(user: *mut Author, link: *const Address) -> *const Address {
     unsafe {
-        let mut auth = Box::from_raw(author);
-        let msg_ids = auth.auth.gen_next_msg_ids(auth.auth.is_multi_branching());
-        if !msg_ids.is_empty() {
-            let mut ids = Vec::new();
-            for msg in msg_ids {
-                ids.push(NextMsgId {
-                    pubkey: PubKey(msg.0),
-                    seq_state: SeqState {
-                        address: Address((msg.1).0),
-                        state: (msg.1).1 as usize
-                    }
-                });
+        user.as_mut().map_or(null(), |user| {
+            link.as_ref().map_or(null(), |link| {
+                let seq_link = user.receive_sequence(link).unwrap(); // TODO: handle Result
+                Box::into_raw(Box::new(seq_link))
+            })
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_send_signed_packet(
+    user: *mut Author,
+    link_to: MessageLinks,
+    public_payload_ptr: *const uint8_t,
+    public_payload_size: size_t,
+    masked_payload_ptr: *const uint8_t,
+    masked_payload_size: size_t,
+) -> MessageLinks {
+    unsafe {
+        user.as_mut().map_or(MessageLinks::default(), |user| {
+            link_to
+                .into_seq_link(user.is_multi_branching())
+                .map_or(MessageLinks::default(), |link_to| {
+                    let public_payload = Bytes(Vec::from_raw_parts(
+                        public_payload_ptr as *mut u8,
+                        public_payload_size,
+                        public_payload_size,
+                    ));
+                    let masked_payload = Bytes(Vec::from_raw_parts(
+                        masked_payload_ptr as *mut u8,
+                        masked_payload_size,
+                        masked_payload_size,
+                    ));
+                    let response = user
+                        .send_signed_packet(link_to, &public_payload, &masked_payload)
+                        .unwrap();
+                    let _ = core::mem::ManuallyDrop::new(public_payload.0);
+                    let _ = core::mem::ManuallyDrop::new(masked_payload.0);
+                    response.into()
+                })
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_gen_next_msg_ids(user: *mut Author) -> *const NextMsgIds {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
+            Box::into_raw(Box::new(next_msg_ids))
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_receive_msg(user: *mut Author, link: *const Address) -> *const UnwrappedMessage {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            link.as_ref().map_or(null(), |link| {
+                let u = user.receive_msg(link, None).unwrap(); // TODO: handle Result
+                Box::into_raw(Box::new(u))
+            })
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_fetch_next_msgs(user: *mut Author) -> *const UnwrappedMessages {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            let m = user.fetch_next_msgs();
+            Box::into_raw(Box::new(m))
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            let mut ms = Vec::new();
+            loop {
+                let m = user.fetch_next_msgs();
+                if m.is_empty() {
+                    break;
+                }
+                ms.extend(m);
             }
-            Box::into_raw(Box::new(NextMsgIds { ids }))
-        } else {
-            Box::into_raw(Box::new(NextMsgIds { ids: Vec::new() }))
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn auth_receive_msg<'a>(author: *mut Author<&Client>, link: *mut Address) -> *mut MsgReturn
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-    unsafe {
-        let mut auth = Box::from_raw(author);
-        let link = Box::from_raw(link);
-
-        let msg_return = auth.auth.receive_msg(&link.0, None).unwrap();
-        mem::forget(auth);
-        mem::forget(link);
-        Box::into_raw(Box::new(MsgReturn(msg_return)))
-    }
-}
-
-
-#[no_mangle]
-pub extern "C" fn auth_fetch_next_msgs<'a>(author: *mut Author<&Client>) -> *mut MessageReturns
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-unsafe {
-        let mut auth = Box::from_raw(author);
-
-        let returns = auth.auth.fetch_next_msgs();
-        mem::forget(auth);
-
-        let mut wrapped_returns = Vec::new();
-        for return_val in returns {
-            wrapped_returns.push(MsgReturn(return_val));
-        }
-        Box::into_raw(Box::new(MessageReturns(wrapped_returns)))
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn auth_sync_state<'a>(auth: *mut Author<&Client>) -> *mut MessageReturns
-    where
-        <&'a Client as Transport<DefaultF, TangleAddress>>::RecvOptions: Default + Copy,
-        <&'a Client as Transport<DefaultF, TangleAddress>>::SendOptions: Default + Copy,
-{
-    unsafe {
-        let mut auth = Box::from_raw(auth);
-        let mut returns = Vec::new();
-
-        loop {
-            let messages = auth.auth.fetch_next_msgs();
-            if messages.is_empty() {
-                break;
-            }
-            returns.extend(messages);
-        }
-
-        mem::forget(auth);
-
-        let mut wrapped_returns = Vec::new();
-        for return_val in returns {
-            wrapped_returns.push(MsgReturn(return_val));
-        }
-        Box::into_raw(Box::new(MessageReturns(wrapped_returns)))
-
+            Box::into_raw(Box::new(ms))
+        })
     }
 }

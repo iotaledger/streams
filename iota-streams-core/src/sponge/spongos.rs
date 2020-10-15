@@ -1,82 +1,23 @@
-use core::fmt;
-
-use super::prp::PRP;
-use crate::{
-    hash::Hash,
-    prelude::{
-        digest::Digest,
-        generic_array::{
-            typenum::U64,
-            GenericArray,
-        },
-        Vec,
-    },
+use core::{
+    fmt,
+    ops::Mul,
 };
 
-/// Implemented as a separate from `Spongos` struct in order to deal with life-times.
-pub struct Outer {
-    /// Current position (offset in bytes) within the outer state.
-    pos: usize,
-
-    /// Outer state is stored externally due to Troika implementation.
-    /// It is injected into Troika state before transform and extracted after.
-    buf: Vec<u8>,
-}
-
-impl Clone for Outer {
-    fn clone(&self) -> Self {
-        Self {
-            pos: self.pos,
-            buf: self.buf.clone(),
-        }
-    }
-}
-
-impl Outer {
-    /// Create a new outer state with a given rate (size).
-    pub fn new(rate: usize) -> Self {
-        Self {
-            pos: 0,
-            buf: vec![0; rate],
-        }
-    }
-
-    /// `outer_mut` must not be assigned to a variable.
-    /// It must be used via `self.outer.slice_mut()` as `self.outer.pos` may change
-    /// and it must be kept in sync with `outer_mut` object.
-    pub fn slice_mut(&mut self) -> &mut [u8] {
-        &mut self.buf[self.pos..]
-    }
-
-    pub fn slice_min_mut(&mut self, n: usize) -> &mut [u8] {
-        let m = core::cmp::min(self.pos + n, self.buf.len());
-        &mut self.buf[self.pos..m]
-    }
-
-    pub fn commit(&mut self) -> &mut [u8] {
-        for o in &mut self.buf[self.pos..] {
-            *o = 0
-        }
-        self.pos = 0;
-        &mut self.buf[..]
-    }
-
-    /// Rate (total size) of the outer state.
-    pub fn rate(&self) -> usize {
-        self.buf.len()
-    }
-
-    /// Available size of the outer tbits.
-    pub fn avail(&self) -> usize {
-        self.buf.len() - self.pos
-    }
-}
-
-impl fmt::Debug for Outer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:[{:?}]", self.pos, self.buf)
-    }
-}
+use super::prp::{PRP, Inner,};
+use crate::{
+    prelude::{
+        Vec,
+        digest::Digest,
+        generic_array::{
+            typenum::{
+                U2,
+                Unsigned as _,
+            },
+            ArrayLength,
+            GenericArray,
+        },
+    },
+};
 
 fn xor(s: &mut [u8], x: &[u8]) {
     for (si, xi) in s.iter_mut().zip(x.iter()) {
@@ -127,41 +68,30 @@ fn equals(s: &[u8], x: &[u8]) -> bool {
     eq
 }
 
+/// Sponge fixed key size in buf.
+pub type KeySize<F> = <F as PRP>::CapacitySize;
+pub type KeyType<F> = GenericArray<u8, KeySize<F>>;
+
+/// Sponge fixed nonce size in buf.
+pub type NonceSize<F> = <F as PRP>::CapacitySize;
+pub type NonceType<F> = GenericArray<u8, NonceSize<F>>;
+
+/// Sponge fixed hash size in buf.
+pub type HashSize<F> = <F as PRP>::CapacitySize;
+
+/// Sponge fixed MAC size in buf.
+pub type MacSize<F> = <F as PRP>::CapacitySize;
+
+#[derive(Clone)]
 pub struct Spongos<F> {
     /// Spongos transform together with its internal state.
     s: F,
 
-    /// Outer state.
-    outer: Outer,
+    /// Current position (offset in bytes) within the outer state.
+    pos: usize,
 }
 
-impl<F> Clone for Spongos<F>
-where
-    F: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            s: self.s.clone(),
-            outer: self.outer.clone(),
-        }
-    }
-}
-
-impl<F> Spongos<F>
-where
-    F: PRP,
-{
-    /// Sponge fixed key size in buf.
-    pub const KEY_SIZE: usize = F::CAPACITY_BITS / 8;
-
-    /// Sponge fixed nonce size in buf.
-    pub const NONCE_SIZE: usize = Self::KEY_SIZE;
-
-    /// Sponge fixed hash size in buf.
-    pub const HASH_SIZE: usize = F::CAPACITY_BITS / 8;
-
-    /// Sponge fixed MAC size in buf.
-    pub const MAC_SIZE: usize = F::CAPACITY_BITS / 8;
+impl<F: PRP> Spongos<F> {
 
     /// Create a Spongos object, initialize state with zero trits.
     pub fn init() -> Self {
@@ -172,27 +102,28 @@ where
     pub fn init_with_state(s: F) -> Self {
         Self {
             s,
-            outer: Outer::new(F::RATE),
+            pos: 0,
         }
     }
 
-    pub fn from_inner(inner: Vec<u8>) -> Self {
-        Self::init_with_state(inner.into())
+    fn outer_min_mut(&mut self, n: usize) -> &mut [u8] {
+        let m = core::cmp::min(self.pos + n, F::RateSize::USIZE);
+        &mut self.s.outer_mut()[self.pos..m]
     }
 
     /// Update Spongos after processing the current piece of data of `n` trits.
     fn update(&mut self, n: usize) {
-        assert!(!(F::RATE < self.outer.pos + n));
-        self.outer.pos += n;
-        if F::RATE == self.outer.pos {
+        self.pos += n;
+        if F::RateSize::USIZE == self.pos {
             self.commit();
         }
     }
 
     /// Absorb a slice into Spongos object.
-    pub fn absorb(&mut self, mut x: &[u8]) {
+    pub fn absorb(&mut self, xr: impl AsRef<[u8]>) {
+        let mut x = xr.as_ref();
         while !x.is_empty() {
-            let s = self.outer.slice_min_mut(x.len());
+            let s = self.outer_min_mut(x.len());
             let n = s.len();
             xor(s, &x[..n]);
             x = &x[n..];
@@ -200,19 +131,11 @@ where
         }
     }
 
-    /// Absorb buf.
-    pub fn absorb_buf(&mut self, x: &Vec<u8>) {
-        self.absorb(&x[..])
-    }
-
-    pub fn absorb_ref<X: AsRef<[u8]>>(&mut self, x: X) {
-        self.absorb(x.as_ref())
-    }
-
     /// Squeeze a trit slice from Spongos object.
-    pub fn squeeze(&mut self, mut y: &mut [u8]) {
+    pub fn squeeze(&mut self, mut yr: impl AsMut<[u8]>) {
+        let mut y = yr.as_mut();
         while !y.is_empty() {
-            let s = self.outer.slice_min_mut(y.len());
+            let s = self.outer_min_mut(y.len());
             let n = s.len();
             copy(s, &mut y[..n]);
             y = &mut y[n..];
@@ -221,10 +144,11 @@ where
     }
 
     /// Squeeze a trit slice from Spongos object and compare.
-    pub fn squeeze_eq(&mut self, mut y: &[u8]) -> bool {
+    pub fn squeeze_eq(&mut self, yr: impl AsRef<[u8]>) -> bool {
+        let mut y = yr.as_ref();
         let mut eq = true;
         while !y.is_empty() {
-            let s = self.outer.slice_min_mut(y.len());
+            let s = self.outer_min_mut(y.len());
             let n = s.len();
             eq = equals(s, &y[..n]) && eq;
             y = &y[n..];
@@ -233,24 +157,28 @@ where
         eq
     }
 
-    /// Squeeze buf.
-    pub fn squeeze_buf(&mut self, n: usize) -> Vec<u8> {
-        let mut y = vec![0; n];
-        self.squeeze(&mut y[..]);
+    /// Squeeze array, length inferred from output type.
+    pub fn squeeze_arr<N: ArrayLength<u8>>(&mut self) -> GenericArray<u8, N> {
+        let mut y = GenericArray::default();
+        self.squeeze(&mut y);
         y
     }
 
-    /// Squeeze buf and compare.
-    pub fn squeeze_eq_buf(&mut self, y: &Vec<u8>) -> bool {
-        self.squeeze_eq(&y[..])
+    /// Squeeze vector, length is known at runtime.
+    pub fn squeeze_n(&mut self, n: usize) -> Vec<u8> {
+        let mut v = vec![0; n];
+        self.squeeze(&mut v);
+        v
     }
 
     /// Encrypt a trit slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub fn encrypt(&mut self, mut x: &[u8], mut y: &mut [u8]) {
+    pub fn encrypt(&mut self, xr: impl AsRef<[u8]>, mut yr: impl AsMut<[u8]>) {
+        let mut x = xr.as_ref();
+        let mut y = yr.as_mut();
         assert_eq!(x.len(), y.len());
         while !x.is_empty() {
-            let s = self.outer.slice_min_mut(x.len());
+            let s = self.outer_min_mut(x.len());
             let n = s.len();
             encrypt_xor(s, &x[..n], &mut y[..n]);
             x = &x[n..];
@@ -260,9 +188,10 @@ where
     }
 
     /// Encrypt in-place a trit slice with Spongos object.
-    pub fn encrypt_mut(&mut self, mut xy: &mut [u8]) {
+    pub fn encrypt_mut(&mut self, mut xyr: impl AsMut<[u8]>) {
+        let mut xy = xyr.as_mut();
         while !xy.is_empty() {
-            let s = self.outer.slice_min_mut(xy.len());
+            let s = self.outer_min_mut(xy.len());
             let n = s.len();
             encrypt_xor_mut(s, &mut xy[..n]);
             xy = &mut xy[n..];
@@ -271,23 +200,26 @@ where
     }
 
     /// Encrypt buf.
-    pub fn encrypt_buf(&mut self, x: &Vec<u8>) -> Vec<u8> {
-        let mut y = vec![0; x.len()];
-        self.encrypt(&x[..], &mut y[..]);
+    pub fn encrypt_arr<N: ArrayLength<u8>>(&mut self, x: &GenericArray<u8, N>) -> GenericArray<u8, N> {
+        let mut y = GenericArray::default();
+        self.encrypt(x, &mut y);
         y
     }
 
-    /// Encrypt buf in-place.
-    pub fn encrypt_buf_mut(&mut self, xy: &mut Vec<u8>) {
-        self.encrypt_mut(&mut xy[..]);
+    pub fn encrypt_n(&mut self, x: impl AsRef<[u8]>) -> Vec<u8> {
+        let mut y = vec![0; x.as_ref().len()];
+        self.encrypt(x, &mut y);
+        y
     }
 
     /// Decrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub fn decrypt(&mut self, mut y: &[u8], mut x: &mut [u8]) {
+    pub fn decrypt(&mut self, yr: impl AsRef<[u8]>, mut xr: impl AsMut<[u8]>) {
+        let mut y = yr.as_ref();
+        let mut x = xr.as_mut();
         assert_eq!(x.len(), y.len());
         while !x.is_empty() {
-            let s = self.outer.slice_min_mut(y.len());
+            let s = self.outer_min_mut(y.len());
             let n = s.len();
             decrypt_xor(s, &y[..n], &mut x[..n]);
             y = &y[n..];
@@ -297,9 +229,10 @@ where
     }
 
     /// Decrypt in-place a byte slice with Spongos object.
-    pub fn decrypt_mut(&mut self, mut xy: &mut [u8]) {
+    pub fn decrypt_mut(&mut self, mut xyr: impl AsMut<[u8]>) {
+        let mut xy = xyr.as_mut();
         while !xy.is_empty() {
-            let s = self.outer.slice_min_mut(xy.len());
+            let s = self.outer_min_mut(xy.len());
             let n = s.len();
             decrypt_xor_mut(s, &mut xy[..n]);
             xy = &mut xy[n..];
@@ -308,37 +241,48 @@ where
     }
 
     /// Decrypt buf.
-    pub fn decrypt_buf(&mut self, y: &Vec<u8>) -> Vec<u8> {
-        let mut x = vec![0; y.len()];
-        self.decrypt(&y[..], &mut x[..]);
+    pub fn decrypt_arr<N: ArrayLength<u8>>(&mut self, y: impl AsRef<[u8]>) -> GenericArray<u8, N> {
+        let mut x = GenericArray::default();
+        self.decrypt(y, &mut x);
         x
     }
 
-    /// Decrypt buf in-place.
-    pub fn decrypt_buf_mut(&mut self, xy: &mut Vec<u8>) {
-        self.decrypt_mut(&mut xy[..]);
+    pub fn decrypt_n(&mut self, y: impl AsRef<[u8]>) -> Vec<u8> {
+        let mut x = vec![0; y.as_ref().len()];
+        self.decrypt(y, &mut x);
+        x
     }
 
     /// Force transform even if for incomplete (but non-empty!) outer state.
     /// Commit with empty outer state has no effect.
     pub fn commit(&mut self) {
-        if self.outer.pos != 0 {
-            let o = self.outer.commit();
-            self.s.transform(o);
+        if self.pos != 0 {
+            for o in &mut self.s.outer_mut()[self.pos..] {
+                *o = 0
+            }
+            self.s.transform();
+            self.pos = 0;
         }
     }
 
     /// Check whether spongos state is committed.
     pub fn is_committed(&self) -> bool {
-        0 == self.outer.pos
+        0 == self.pos
     }
 
     /// Join two Spongos objects.
     /// Joiner -- self -- object absorbs data squeezed from joinee.
     pub fn join(&mut self, joinee: &mut Self) {
-        let mut x = vec![0; F::CAPACITY_BITS / 8];
-        joinee.squeeze(&mut x[..]);
-        self.absorb(&x[..]);
+        joinee.commit();
+        // Clear outer state, this is equivalent to having joinee initialized from inner state
+        // as join must work in the same way for full and trimmed spongos.
+        for o in joinee.s.outer_mut() {
+            *o = 0;
+        }
+        joinee.s.transform();
+        let mut x = GenericArray::<u8, F::CapacitySize>::default();
+        joinee.squeeze(x.as_mut());
+        self.absorb(x.as_ref());
     }
 
     /// Fork Spongos object into another.
@@ -355,25 +299,59 @@ where
 
     /// Only `inner` part of the state may be serialized.
     /// State should be committed.
-    pub fn to_inner(&self) -> Vec<u8> {
+    pub fn to_inner(&self) -> Inner<F> {
         assert!(self.is_committed());
-        let r = self.s.clone().into();
-        r
+        self.s.inner().clone().into()
     }
 }
 
-impl<F> Default for Spongos<F>
-where
-    F: PRP,
+impl<F: PRP> Default for Spongos<F>
 {
     fn default() -> Self {
         Self::init()
     }
 }
 
-impl<F> fmt::Debug for Spongos<F> {
+impl<F: PRP> From<Inner<F>> for Spongos<F> {
+    fn from(inner: Inner<F>) -> Self {
+        Self {
+            s: F::from_inner(&inner.into()),
+            pos: 0,
+        }
+    }
+}
+
+impl<F: PRP> From<&Inner<F>> for Spongos<F> {
+    fn from(inner: &Inner<F>) -> Self {
+        Self {
+            s: F::from_inner(inner.into()),
+            pos: 0,
+        }
+    }
+}
+
+impl<F: PRP> Into<Inner<F>> for Spongos<F> {
+    fn into(self) -> Inner<F> {
+        self.to_inner()
+    }
+}
+
+impl<F: PRP> Into<Inner<F>> for &Spongos<F> {
+    fn into(self) -> Inner<F> {
+        self.to_inner()
+    }
+}
+
+impl<F: PRP> fmt::Debug for Spongos<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.outer)
+        //write!(f, "{}[{:?}]", self.pos, hex::encode(self.s.outer().as_ref()))
+        //write!(f, "[{}:{}]",
+        //       hex::encode(&self.s.outer().as_ref()[..self.pos]),
+        //       hex::encode(&self.s.outer().as_ref()[self.pos..]))
+        write!(f, "[{}:{}|{}]",
+               hex::encode(&self.s.outer().as_ref()[..self.pos]),
+               hex::encode(&self.s.outer().as_ref()[self.pos..]),
+               hex::encode(self.s.inner().as_ref()))
     }
 }
 
@@ -396,36 +374,12 @@ where
     s.squeeze(y);
 }
 
-impl<F> Hash for Spongos<F>
-where
-    F: PRP,
+impl<F: PRP> Digest for Spongos<F> where
+    F::CapacitySize: Mul<U2>,
+    <F::CapacitySize as Mul<U2>>::Output: ArrayLength<u8>,
 {
-    /// Hash value size in buf.
-    const HASH_SIZE: usize = F::CAPACITY_BITS / 8;
-
-    fn init() -> Self {
-        init::<F>()
-    }
-
-    fn update(&mut self, data: &[u8]) {
-        self.absorb(data);
-    }
-
-    fn done(&mut self, hash_value: &mut [u8]) {
-        self.commit();
-        self.squeeze(hash_value);
-    }
-}
-
-pub fn rehash<F: PRP>(h: &mut [u8]) {
-    let mut s = Spongos::<F>::init();
-    s.absorb(h);
-    s.commit();
-    s.squeeze(h);
-}
-
-impl<F: PRP> Digest for Spongos<F> {
-    type OutputSize = U64;
+    // This would normally result in U64, ie 512 bits needed for ed25519prehashed.
+    type OutputSize = <F::CapacitySize as Mul<U2>>::Output;
 
     fn new() -> Self {
         Spongos::init()

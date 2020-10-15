@@ -18,10 +18,10 @@ use crate::{
         Fallback,
         NBytes,
         Size,
-        Uint8,
         Uint16,
         Uint32,
         Uint64,
+        Uint8,
     },
 };
 use iota_streams_core::sponge::prp::PRP;
@@ -149,7 +149,7 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context
             Ok(apk) => {
                 *pk = apk;
                 Ok(self)
-            },
+            }
             Err(err) => Err(anyhow!("Bad ed25519 public key: {}", err)),
         }
     }

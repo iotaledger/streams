@@ -11,10 +11,10 @@ use crate::{
         Fallback,
         NBytes,
         Size,
-        Uint8,
         Uint16,
         Uint32,
         Uint64,
+        Uint8,
     },
 };
 
@@ -101,7 +101,8 @@ impl<F> Absorb<Size> for Context<F> {
 /// `bytes` has variable size thus the size is encoded before the content bytes.
 impl<'a, F> Absorb<&'a Bytes> for Context<F> {
     fn absorb(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
-        self.size += sizeof_sizet((bytes.0).len()) + (bytes.0).len();
+        let s = sizeof_sizet((bytes.0).len());
+        self.size += s + (bytes.0).len();
         Ok(self)
     }
 }

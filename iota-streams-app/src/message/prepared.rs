@@ -7,6 +7,10 @@ use core::cell::Ref;
 use super::*;
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::{
+    command::{
+        sizeof,
+        wrap,
+    },
     link_store::LinkStore,
     types::*,
 };
@@ -22,7 +26,8 @@ pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {
 impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {
     pub fn new(store: Ref<'a, Store>, header: HDF<Link>, content: Content) -> Self {
         let content = pcf::PCF::new_final_frame()
-            .with_payload_frame_num(1).unwrap()
+            .with_payload_frame_num(1)
+            .unwrap()
             .with_content(content);
 
         Self {
@@ -63,11 +68,13 @@ where
         };
 
         Ok(WrappedMessage {
-            spongos: spongos,
+            wrapped: WrapState {
+                link: self.header.link.clone(),
+                spongos: spongos,
+            },
             message: BinaryMessage {
                 link: self.header.link.clone(),
-                body: buf,
-                _phantom: core::marker::PhantomData,
+                body: buf.into(),
             },
         })
     }

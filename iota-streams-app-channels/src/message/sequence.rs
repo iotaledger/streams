@@ -50,12 +50,11 @@ where
     pub(crate) ref_link: &'a <Link as HasLink>::Rel,
 }
 
-impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link>
+impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, Link>
 where
     F: PRP,
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -66,7 +65,15 @@ where
             .commit()?;
         Ok(ctx)
     }
+}
 
+impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link>
+where
+    F: PRP,
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+{
     fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,

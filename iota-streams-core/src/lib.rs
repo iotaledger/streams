@@ -38,7 +38,6 @@ pub use alloc::format;
 #[cfg(feature = "std")]
 pub use std::format;
 
-pub mod hash;
 pub mod prelude;
 pub mod prng;
 pub mod psk;

@@ -28,9 +28,12 @@ use iota_streams_app::message::{
     self,
     HasLink,
 };
-use iota_streams_core::sponge::{
-    prp::PRP,
-    spongos,
+use iota_streams_core::{
+    prelude::typenum::Unsigned as _,
+    sponge::{
+        prp::PRP,
+        spongos,
+    },
 };
 use iota_streams_ddml::{
     command::*,
@@ -53,16 +56,15 @@ where
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: PRP,
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        let mac = Mac(spongos::Spongos::<F>::MAC_SIZE);
+        let mac = Mac(spongos::MacSize::<F>::USIZE);
         ctx.join(&store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
@@ -71,14 +73,23 @@ where
         // TODO: Is bot public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
+}
 
+impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+where
+    F: PRP,
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+{
     fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        let mac = Mac(spongos::Spongos::<F>::MAC_SIZE);
-        ctx.join(store, self.link)?
+        let mac = Mac(spongos::MacSize::<F>::USIZE);
+        ctx
+            .join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
@@ -87,6 +98,7 @@ where
     }
 }
 
+// TODO: factor out `public_payload` and `masked_payload` into `pub struct Content`
 pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) public_payload: Bytes,
@@ -121,8 +133,9 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mac = Mac(spongos::Spongos::<F>::MAC_SIZE);
-        ctx.join(store, &mut self.link)?
+        let mac = Mac(spongos::MacSize::<F>::USIZE);
+        ctx
+            .join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
             .commit()?

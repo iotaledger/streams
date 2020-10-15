@@ -13,7 +13,6 @@ use iota_streams_core::sponge::{
     spongos::*,
 };
 
-//#[derive(Debug)]
 pub struct Context<F, IS> {
     pub spongos: Spongos<F>,
     pub stream: IS,
@@ -36,8 +35,7 @@ impl<F, IS: io::IStream> Context<F, IS> {
     }
 }
 
-impl<F, IS> fmt::Debug for Context<F, IS>
-{
+impl<F, IS> fmt::Debug for Context<F, IS> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{header: {:?}, ctx: {:?}}}", "self.header", "self.ctx")
     }

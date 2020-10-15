@@ -12,70 +12,50 @@ use iota_streams_ddml::{
     types::*,
 };
 
-/// Binary network Message representation.
-pub struct BinaryMessage<F, AbsLink> {
-    /// Link -- message address.
-    pub link: AbsLink,
-
-    /// Message body -- header + content.
-    pub body: Vec<u8>,
+/// Binary Message body with information of how to parse it.
+pub struct BinaryBody<F> {
+    pub bytes: Vec<u8>,
 
     pub(crate) _phantom: core::marker::PhantomData<F>,
 }
 
-impl<F, AbsLink> PartialEq for BinaryMessage<F, AbsLink>
-where
-    AbsLink: PartialEq,
-{
+/// Binary network Message representation.
+pub type BinaryMessage<F, AbsLink> = GenericMessage<AbsLink, BinaryBody<F>>;
+
+impl<F> PartialEq for BinaryBody<F> {
     fn eq(&self, other: &Self) -> bool {
-        self.link.eq(&other.link) && self.body.eq(&other.body)
+        self.bytes.eq(&other.bytes)
     }
 }
 
-impl<F, AbsLink> fmt::Debug for BinaryMessage<F, AbsLink>
-where
-    AbsLink: fmt::Debug,
-{
+impl<F> fmt::Debug for BinaryBody<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // write!(f, "@{}[{}]", self.link, hex::encode(&self.body[..]))
         // TODO: first 10 bytes of body is average HDF
-        write!(f, "@{:?}[{}]", self.link, hex::encode(&self.body[..10]))
+        write!(f, "{}", hex::encode(&self.bytes[..10]))
     }
 }
 
-impl<F, AbsLink> fmt::Display for BinaryMessage<F, AbsLink>
-where
-    AbsLink: fmt::Display,
-{
+impl<F> fmt::Display for BinaryBody<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // write!(f, "@{}[{}]", self.link, hex::encode(&self.body))
-        write!(f, "@{}[{}]", self.link, hex::encode(&self.body[..]))
+        write!(f, "{}", hex::encode(&self.bytes[..]))
     }
 }
 
-impl<F, AbsLink> Clone for BinaryMessage<F, AbsLink>
-where
-    AbsLink: Clone,
-{
+impl<F> Clone for BinaryBody<F> {
     fn clone(&self) -> Self {
         Self {
-            link: self.link.clone(),
-            body: self.body.clone(),
+            bytes: self.bytes.clone(),
             _phantom: core::marker::PhantomData,
         }
     }
 }
 
-impl<F, AbsLink> BinaryMessage<F, AbsLink> {
-    pub fn new(link: AbsLink, body: Vec<u8>) -> Self {
+impl<F> From<Vec<u8>> for BinaryBody<F> {
+    fn from(bytes: Vec<u8>) -> Self {
         Self {
-            link,
-            body,
+            bytes,
             _phantom: core::marker::PhantomData,
         }
-    }
-    pub fn link(&self) -> &AbsLink {
-        &self.link
     }
 }
 
@@ -85,7 +65,7 @@ where
     Link: Clone + AbsorbExternalFallback<F>,
 {
     pub fn parse_header<'a>(&'a self) -> Result<PreparsedMessage<'a, F, Link>> {
-        let mut ctx = unwrap::Context::new(&self.body[..]);
+        let mut ctx = unwrap::Context::new(&self.body.bytes[..]);
         let mut header = HDF::<Link>::new(self.link().clone());
         let store = EmptyLinkStore::<F, Link, ()>::default();
         header.unwrap(&store, &mut ctx)?;

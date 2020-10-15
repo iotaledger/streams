@@ -1,144 +1,135 @@
 use anyhow::{
-    bail,
+    anyhow,
     ensure,
     Result,
 };
+
+#[cfg(not(feature = "async"))]
+use core::cell::RefCell;
 use core::hash;
-
-use iota_streams_core::prelude::{
-    HashMap,
-    Vec,
+#[cfg(feature = "async")]
+use core::marker::{
+    Send,
+    Sync,
 };
-
-use crate::message::BinaryMessage;
-
-/// Network transport abstraction.
-/// Parametrized by the type of message links.
-/// Message link is used to identify/locate a message (eg. like URL for HTTP).
-pub trait Transport<F, Link> // where Link: HasLink
-{
-    type SendOptions;
-
-    /// Send a message with explicit options.
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, opt: &Self::SendOptions) -> Result<()>;
-
-    /// Send a message with default options.
-    fn send_message(&mut self, msg: &BinaryMessage<F, Link>) -> Result<()>
-    where
-        Self::SendOptions: Default,
-    {
-        self.send_message_with_options(msg, &Self::SendOptions::default())
-    }
-
-    type RecvOptions;
-
-    /// Receive messages with explicit options.
-    fn recv_messages_with_options(
-        &mut self,
-        link: &Link,
-        opt: &Self::RecvOptions,
-    ) -> Result<Vec<BinaryMessage<F, Link>>>;
-
-    /// Receive messages with explicit options.
-    fn recv_message_with_options(&mut self, link: &Link, opt: &Self::RecvOptions) -> Result<BinaryMessage<F, Link>> {
-        let mut msgs = self.recv_messages_with_options(link, opt)?;
-        if let Some(msg) = msgs.pop() {
-            ensure!(msgs.is_empty(), "More than one message found.");
-            Ok(msg)
-        } else {
-            bail!("Message not found.");
-        }
-    }
-
-    /// Receive messages with default options.
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<BinaryMessage<F, Link>>>
-    where
-        Self::RecvOptions: Default,
-    {
-        self.recv_messages_with_options(link, &Self::RecvOptions::default())
-    }
-
-    /// Receive a message with default options.
-    fn recv_message(&mut self, link: &Link) -> Result<BinaryMessage<F, Link>>
-    where
-        Self::RecvOptions: Default,
-    {
-        self.recv_message_with_options(link, &Self::RecvOptions::default())
-    }
-}
-
-pub struct BucketTransport<F, Link> {
-    bucket: HashMap<Link, Vec<BinaryMessage<F, Link>>>,
-}
-
-impl<F, Link> BucketTransport<F, Link>
-where
-    Link: Eq + hash::Hash,
-{
-    pub fn new() -> Self {
-        Self { bucket: HashMap::new() }
-    }
-}
 
 #[cfg(feature = "async")]
 use async_trait::async_trait;
 
 #[cfg(feature = "async")]
-#[async_trait]
-impl<F, Link> Transport<F, Link> for BucketTransport<F, Link>
-where
-    Link: Eq + hash::Hash + Clone,
-{
-    type SendOptions = ();
+use iota_streams_core::prelude::Box;
+#[cfg(not(feature = "async"))]
+use iota_streams_core::prelude::Rc;
+use iota_streams_core::prelude::Vec;
 
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: &()) -> Result<()> {
-        if let Some(msgs) = self.bucket.get_mut(msg.link()) {
-            msgs.push(msg.clone());
-            Ok(())
+pub trait TransportOptions {
+    type SendOptions;
+    fn get_send_options(&self) -> Self::SendOptions;
+    fn set_send_options(&mut self, opt: Self::SendOptions);
+
+    type RecvOptions;
+    fn get_recv_options(&self) -> Self::RecvOptions;
+    fn set_recv_options(&mut self, opt: Self::RecvOptions);
+}
+
+/// Network transport abstraction.
+/// Parametrized by the type of message links.
+/// Message link is used to identify/locate a message (eg. like URL for HTTP).
+#[cfg(not(feature = "async"))]
+pub trait Transport<Link, Msg>: TransportOptions {
+    /// Send a message with default options.
+    fn send_message(&mut self, msg: &Msg) -> Result<()>;
+
+    /// Receive messages with default options.
+    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>;
+
+    /// Receive a message with default options.
+    fn recv_message(&mut self, link: &Link) -> Result<Msg> {
+        let mut msgs = self.recv_messages(link)?;
+        if let Some(msg) = msgs.pop() {
+            ensure!(msgs.is_empty(), "More than one message found.");
+            Ok(msg)
         } else {
-            self.bucket.insert(msg.link().clone(), vec![msg.clone()]);
-            Ok(())
+            Err(anyhow!("Message not found."))
         }
     }
+}
 
-    type RecvOptions = ();
+#[cfg(feature = "async")]
+#[async_trait]
+pub trait Transport<Link, Msg>: TransportOptions
+where
+    Link: Send + Sync,
+    Msg: Send + Sync,
+{
+    /// Send a message with default options.
+    async fn send_message(&mut self, msg: &Msg) -> Result<()>;
 
-    fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<BinaryMessage<F, Link>>> {
-        if let Some(msgs) = self.bucket.get(link) {
-            Ok(msgs.clone())
-        } else {
-            bail!("Link not found in the bucket.")
-        }
+    /// Receive messages with default options.
+    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>;
+
+    /// Receive a message with default options.
+    async fn recv_message(&mut self, link: &Link) -> Result<Msg>;
+    // For some reason compiler requires (Msg: `async_trait) lifetime bound for this default implementation.
+    // {
+    // let mut msgs = self.recv_messages(link).await?;
+    // if let Some(msg) = msgs.pop() {
+    // ensure!(msgs.is_empty(), "More than one message found.");
+    // Ok(msg)
+    // } else {
+    // Err(anyhow!("Message not found."))
+    // }
+    // }
+}
+
+#[cfg(not(feature = "async"))]
+impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
+    type SendOptions = <Tsp as TransportOptions>::SendOptions;
+    fn get_send_options(&self) -> Self::SendOptions {
+        (&*self).borrow().get_send_options()
+    }
+    fn set_send_options(&mut self, opt: Self::SendOptions) {
+        (&*self).borrow_mut().set_send_options(opt)
+    }
+
+    type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
+    fn get_recv_options(&self) -> Self::RecvOptions {
+        (&*self).borrow().get_recv_options()
+    }
+    fn set_recv_options(&mut self, opt: Self::RecvOptions) {
+        (&*self).borrow_mut().set_recv_options(opt)
     }
 }
 
 #[cfg(not(feature = "async"))]
-impl<F, Link> Transport<F, Link> for BucketTransport<F, Link>
-where
-    Link: Eq + hash::Hash + Clone,
-{
-    type SendOptions = ();
-
-    fn send_message_with_options(&mut self, msg: &BinaryMessage<F, Link>, _opt: &()) -> Result<()> {
-        if let Some(msgs) = self.bucket.get_mut(msg.link()) {
-            msgs.push(msg.clone());
-            Ok(())
-        } else {
-            self.bucket.insert(msg.link().clone(), vec![msg.clone()]);
-            Ok(())
+impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<Tsp>> {
+    /// Send a message.
+    fn send_message(&mut self, msg: &Msg) -> Result<()> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => tsp.send_message(msg),
+            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
         }
     }
 
-    type RecvOptions = ();
+    /// Receive messages with default options.
+    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => tsp.recv_messages(link),
+            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+        }
+    }
 
-    fn recv_messages_with_options(&mut self, link: &Link, _opt: &()) -> Result<Vec<BinaryMessage<F, Link>>> {
-        if let Some(msgs) = self.bucket.get(link) {
-            Ok(msgs.clone())
-        } else {
-            bail!("Link not found in the bucket.")
+    /// Receive a message with default options.
+    fn recv_message(&mut self, link: &Link) -> Result<Msg> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => tsp.recv_message(link),
+            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
         }
     }
 }
+
+mod bucket;
+pub use bucket::BucketTransport;
 
 #[cfg(feature = "tangle")]
 pub mod tangle;

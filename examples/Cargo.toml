@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-basic-scenario"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -8,22 +8,8 @@ readme = "README.md"
 keywords = ["iota", "streams"]
 description = "A rust implementation of the IOTA Streams"
 
-[workspace]
-
 [dependencies]
-iota-streams = { version = "0.2.0", path = ".." }
+iota-streams = { path = ".." }
 anyhow = { version = "1.0", default-features = false }
-failure = "0.1"
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
-core-error = "0.0.0"
-hex = "0.4.2"
-smol = {version = "0.1.18", features = ["tokio02"]}
-tokio = ""
 rand = "0.7.3"
-
-[profile.release]
-lto = true
-panic = 'abort'
-
-
 

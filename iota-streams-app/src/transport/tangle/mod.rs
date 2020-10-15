@@ -2,7 +2,10 @@
 
 use anyhow::Result;
 use core::{
-    convert::AsRef,
+    convert::{
+        AsMut,
+        AsRef,
+    },
     fmt,
     hash,
     str::FromStr,
@@ -13,7 +16,10 @@ use iota_streams_core::{
         U12,
         U40,
     },
-    sponge::prp::PRP,
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -24,40 +30,58 @@ use iota_streams_ddml::{
 
 use crate::message::{
     BinaryMessage,
+    Cursor,
     HasLink,
     LinkGenerator,
+    LinkedMessage,
 };
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
 
+#[derive(Clone)]
 pub struct TangleMessage<F> {
     /// Encapsulated binary encoded message.
-    pub binary_message: BinaryMessage<F, TangleAddress>,
+    pub binary: BinaryMessage<F, TangleAddress>,
 
     /// Timestamp is not an intrinsic part of Streams message; it's a part of the bundle.
     /// Timestamp is checked with Kerl as part of bundle essense trits.
-    pub timestamp: i64,
+    pub timestamp: u64,
 }
 
+impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
+    fn link(&self) -> &TangleAddress {
+        self.binary.link()
+    }
+}
+
+// TODO: Use better feature to detect `chrono::Utc::new()`.
 #[cfg(feature = "std")]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
     pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
         Self {
-            binary_message: msg,
-            timestamp: chrono::Utc::now().timestamp_millis(),
+            binary: msg,
+            timestamp: chrono::Utc::now().timestamp_millis() as u64,
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<F> TangleMessage<F> {
+    /// Create TangleMessage from BinaryMessage and add the current timestamp.
+    pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
+        Self {
+            binary: msg,
+            timestamp: 0_u64,
         }
     }
 }
 
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and an explicit timestamp.
-    pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: i64) -> Self {
-        Self {
-            binary_message: msg,
-            timestamp,
-        }
+    pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: u64) -> Self {
+        Self { binary: msg, timestamp }
     }
 }
 
@@ -157,62 +181,61 @@ impl<F> DefaultTangleLinkGenerator<F> {
 }
 
 impl<F: PRP> DefaultTangleLinkGenerator<F> {
-    fn gen_msgid(&self, msgid: &MsgId, pk: &ed25519::PublicKey, seq: u64) -> MsgId {
+    fn gen_uniform_msgid(&self, cursor: Cursor<&MsgId>) -> MsgId {
+        let mut s = Spongos::<F>::init();
+        s.absorb(self.addr.appinst.id.as_ref());
+        s.absorb(cursor.link.id.as_ref());
+        s.absorb(&cursor.branch_no.to_be_bytes());
+        s.absorb(&cursor.seq_no.to_be_bytes());
+        s.commit();
         let mut new = MsgId::default();
-        wrap::Context::<F, io::NoOStream>::new(io::NoOStream)
-            .absorb(External(&self.addr.appinst.id))
-            .unwrap()
-            .absorb(External(pk))
-            .unwrap()
-            .absorb(External(&msgid.id))
-            .unwrap()
-            .absorb(External(Uint64(seq)))
-            .unwrap()
-            // TODO: do we need `flags` here
-            //.absorb(External(Uint8(flags)))?
-            .commit()
-            .unwrap()
-            .squeeze(External(&mut new.id))
-            .unwrap();
+        s.squeeze(new.id.as_mut());
+        new
+    }
+    fn gen_msgid(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> MsgId {
+        let mut s = Spongos::<F>::init();
+        s.absorb(self.addr.appinst.id.as_ref());
+        s.absorb(pk.as_ref());
+        s.absorb(cursor.link.id.as_ref());
+        s.absorb(&cursor.branch_no.to_be_bytes());
+        s.absorb(&cursor.seq_no.to_be_bytes());
+        s.commit();
+        let mut new = MsgId::default();
+        s.squeeze(new.id.as_mut());
         new
     }
 }
 
-// Used by Author to generate a new application instance: channels address and announcement message identifier
-impl<'a, F: PRP> LinkGenerator<TangleAddress, (&'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F> {
-    fn link_from(&mut self, arg: (&ed25519::PublicKey, u64)) -> TangleAddress {
-        let (pk, channel_idx) = arg;
+impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
+    /// Used by Author to generate a new application instance: channels address and announcement message identifier
+    fn gen(&mut self, pk: &ed25519::PublicKey, channel_idx: u64) {
         self.addr.appinst = AppInst::new(pk, channel_idx);
-        self.addr.msgid = self.gen_msgid(&self.addr.msgid, pk, 0);
+        self.addr.msgid = self.gen_msgid(pk, Cursor::default().as_ref());
+    }
+
+    /// Used by Author to get announcement message id, it's just stored internally by link generator
+    fn get(&self) -> TangleAddress {
         self.addr.clone()
     }
-}
 
-// Used by Subscriber to initialize link generator with the same state as Author
-impl<F: PRP> LinkGenerator<TangleAddress, TangleAddress> for DefaultTangleLinkGenerator<F> {
-    fn link_from(&mut self, arg: TangleAddress) -> TangleAddress {
-        self.addr = arg;
-        self.addr.clone()
+    /// Used by Subscriber to initialize link generator with the same state as Author
+    fn reset(&mut self, announcement_link: TangleAddress) {
+        self.addr = announcement_link;
     }
-}
 
-// Used by Author to generate announcement message id, it's just stored internally by link generator
-impl<F: PRP> LinkGenerator<TangleAddress, ()> for DefaultTangleLinkGenerator<F> {
-    fn link_from(&mut self, _arg: ()) -> TangleAddress {
-        self.addr.clone()
-    }
-}
-
-// Used by users to pseudo-randomly generate a new message link from additional arguments
-impl<'a, F> LinkGenerator<TangleAddress, (&'a MsgId, &'a ed25519::PublicKey, u64)> for DefaultTangleLinkGenerator<F>
-where
-    F: PRP,
-{
-    fn link_from(&mut self, arg: (&MsgId, &ed25519::PublicKey, u64)) -> TangleAddress {
-        let (msgid, pk, seq) = arg;
+    /// Used by users to pseudo-randomly generate a new uniform message link from a cursor
+    fn uniform_link_from(&self, cursor: Cursor<&MsgId>) -> TangleAddress {
         TangleAddress {
             appinst: self.addr.appinst.clone(),
-            msgid: self.gen_msgid(msgid, pk, seq),
+            msgid: self.gen_uniform_msgid(cursor),
+        }
+    }
+
+    /// Used by users to pseudo-randomly generate a new message link from a cursor
+    fn link_from(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> TangleAddress {
+        TangleAddress {
+            appinst: self.addr.appinst.clone(),
+            msgid: self.gen_msgid(pk, cursor),
         }
     }
 }
@@ -223,7 +246,7 @@ pub const APPINST_SIZE: usize = 40;
 
 /// Application instance identifier.
 /// Currently, 81-byte string stored in `address` transaction field.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct AppInst {
     pub(crate) id: NBytes<AppInstSize>,
 }
@@ -247,17 +270,6 @@ impl<'a> From<&'a [u8]> for AppInst {
         }
     }
 }
-
-// impl TryFrom<[u8; 32]> for AppInst {
-// type Error = ();
-// fn try_from(v: [u8; 32]) -> Result<Self, ()> {
-// if v.len() == AppInstSize::to_usize() {
-// Ok(Self{ id: NBytes(v) })
-// } else {
-// Err(())
-// }
-// }
-// }
 
 impl FromStr for AppInst {
     type Err = ();
@@ -301,19 +313,6 @@ impl AsRef<[u8]> for AppInst {
     }
 }
 
-impl Default for AppInst {
-    fn default() -> Self {
-        Self { id: NBytes::default() }
-    }
-}
-
-// impl ToString for AppInst
-// {
-// fn to_string(&self) -> String {
-// self.id.to_string()
-// }
-// }
-
 impl hash::Hash for AppInst {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
@@ -323,9 +322,7 @@ impl hash::Hash for AppInst {
 /// (appinst+msgid) is (address+tag) in terms of IOTA transaction which are stored
 /// externally of message body, ie. in transaction header fields.
 /// Thus the trait implemntation absorbs appinst+msgid as `external`.
-impl<F> AbsorbExternalFallback<F> for TangleAddress
-where
-    F: PRP,
+impl<F: PRP> AbsorbExternalFallback<F> for TangleAddress
 {
     fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
         ctx.absorb(External(&self.appinst.id))?
@@ -344,12 +341,31 @@ where
     }
 }
 
+impl<F: PRP> AbsorbFallback<F> for TangleAddress
+{
+    fn sizeof_absorb(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
+        ctx.absorb(&self.appinst.id)?
+            .absorb(&self.msgid.id)?;
+        Ok(())
+    }
+    fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()> {
+        ctx.absorb(&self.appinst.id)?
+            .absorb(&self.msgid.id)?;
+        Ok(())
+    }
+    fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()> {
+        ctx.absorb(&mut self.appinst.id)?
+            .absorb(&mut self.msgid.id)?;
+        Ok(())
+    }
+}
+
 pub type MsgIdSize = U12;
 pub const MSGID_SIZE: usize = 12;
 
 /// Message identifier unique within application instance.
 /// Currently, 27-byte string stored in `tag` transaction field.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MsgId {
     pub(crate) id: NBytes<MsgIdSize>,
 }
@@ -411,19 +427,6 @@ impl AsRef<[u8]> for MsgId {
     }
 }
 
-impl Default for MsgId {
-    fn default() -> Self {
-        Self { id: NBytes::default() }
-    }
-}
-
-// impl ToString for MsgId
-// {
-// fn to_string(&self) -> String {
-// self.id.to_string()
-// }
-// }
-
 impl hash::Hash for MsgId {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
@@ -462,5 +465,5 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
     }
 }
 
-#[cfg(feature = "client")]
+#[cfg(any(feature = "sync-client", feature = "async-client"))]
 pub mod client;

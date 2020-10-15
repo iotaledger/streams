@@ -1,9 +1,11 @@
 /target
+/debug
 **/target/
 **/*.rs.bk
 *.rs~
 *.toml~
 *.md~
 
+.vscode
 .project
 Cargo.lock

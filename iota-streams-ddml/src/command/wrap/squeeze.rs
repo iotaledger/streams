@@ -15,3 +15,9 @@ impl<'a, F: PRP, OS: io::OStream> Squeeze<&'a Mac> for Context<F, OS> {
         Ok(self)
     }
 }
+
+impl<F: PRP, OS: io::OStream> Squeeze<Mac> for Context<F, OS> {
+    fn squeeze(&mut self, val: Mac) -> Result<&mut Self> {
+        self.squeeze(&val)
+    }
+}

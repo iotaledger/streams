@@ -1,15 +1,8 @@
 #![allow(non_snake_case)]
-use crate::{
-    api::{
-        tangle::{
-            Address,
-            Author,
-            Subscriber,
-            DefaultF,
-        },
-        transport::Transport,
-    },
-   // message,
+use crate::api::tangle::{
+    Address,
+    Author,
+    Subscriber,
 };
 use anyhow::{
     ensure,
@@ -27,20 +20,23 @@ use iota_streams_core::{
     println,
 };
 
-//TODO: Make core
-use std::cell::RefCell;
-use iota_streams_ddml::types::*;
+use core::cell::RefCell;
 
-pub fn example<T: Transport<DefaultF, Address>>(transport: T, _recv_opt: T::RecvOptions, _send_opt: T::SendOptions) -> Result<()>
-where
-    T::SendOptions: Default + Copy,
-    T::RecvOptions: Default + Copy,
+use super::*;
+
+pub fn example<T: Transport>(transport: T) -> Result<()>
 {
     let encoding = "utf-8";
     let multi_branching = false;
-    let transport = Rc::new(RefCell:: new(transport));
+    let transport = Rc::new(RefCell::new(transport));
 
-    let mut author = Author::new("AUTHOR9SEED", encoding, PAYLOAD_BYTES, multi_branching, transport.clone());
+    let mut author = Author::new(
+        "AUTHOR9SEED",
+        encoding,
+        PAYLOAD_BYTES,
+        multi_branching,
+        transport.clone(),
+    );
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone());
 
@@ -110,8 +106,9 @@ where
 
     {
         let resultA = subscriberA.receive_keyload(&keyload_link);
-        ensure!(resultA.is_err(), "failed to unwrap keyload");
-        subscriberB.receive_keyload(&keyload_link)?;
+        ensure!(resultA.is_ok() && !resultA.unwrap(), "sbuscriberA failed to unwrap keyload");
+        let resultB = subscriberB.receive_keyload(&keyload_link)?;
+        ensure!(resultB, "sbuscriberB failed to unwrap keyload");
     }
 
     println!("\ntag packet");
@@ -123,7 +120,7 @@ where
 
     {
         let resultA = subscriberA.receive_tagged_packet(&tagged_packet_link);
-        ensure!(resultA.is_err(), "failed to unwrap tagged packet");
+        ensure!(resultA.is_err(), "subscriberA failed to unwrap tagged packet");
         let (unwrapped_public, unwrapped_masked) = subscriberB.receive_tagged_packet(&tagged_packet_link)?;
         ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
         ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
@@ -133,11 +130,20 @@ where
         subscriberB.receive_keyload(&keyload_link)?;
     }
 
+    let subAdump = subscriberA.export("pwdSubA").unwrap();
+    let _subscriberA2 = Subscriber::import(subAdump.as_ref(), "pwdSubA", transport.clone()).unwrap();
+
+    let subBdump = subscriberB.export("pwdSubB").unwrap();
+    let _subscriberB2 = Subscriber::import(subBdump.as_ref(), "pwdSubB", transport.clone()).unwrap();
+
+    let authordump = author.export("pwdAuthor").unwrap();
+    let _author2 = Author::import(authordump.as_ref(), "pwdAuthor", transport.clone()).unwrap();
+
     Ok(())
 }
 
 #[test]
 fn run_basic_scenario() {
     let transport = crate::api::tangle::BucketTransport::new();
-    assert!(dbg!(example(transport, (), ())).is_ok());
+    assert!(dbg!(example(transport)).is_ok());
 }

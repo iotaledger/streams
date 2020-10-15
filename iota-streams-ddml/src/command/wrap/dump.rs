@@ -5,15 +5,18 @@ use crate::{
     command::Dump,
     io,
 };
-use iota_streams_core::println;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    println,
+};
 
-impl<F, OS: io::OStream> Dump for Context<F, OS> {
+impl<F: PRP, OS: io::OStream> Dump for Context<F, OS> {
     #[allow(unused_variables)]
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {
-        #[cfg(not(test))]
-        println!("dump: {}", args,);
+        //#[cfg(not(test))]
+        //println!("dump: {}", args,);
 
-        #[cfg(test)]
+        //#[cfg(test)]
         println!(
             "dump: {}: ostream=[{}] spongos=[{:?}]",
             args,

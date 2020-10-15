@@ -5,7 +5,6 @@ use iota_streams_core::sponge::{
     spongos::*,
 };
 
-//#[derive(Debug)]
 pub struct Context<F, OS> {
     pub spongos: Spongos<F>,
     pub stream: OS,

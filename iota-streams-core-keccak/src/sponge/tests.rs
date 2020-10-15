@@ -1,7 +1,10 @@
 use super::prp::keccak::KeccakF1600;
-use iota_streams_core::sponge::{
-    prp::PRP,
-    tests::*,
+use iota_streams_core::{
+    sponge::{
+        prp::PRP,
+        tests::*,
+    },
+    prelude::typenum::Unsigned,
 };
 
 #[test]
@@ -16,10 +19,10 @@ fn slices_with_size_boundary_cases_keccak_byte() {
 
 #[test]
 fn encrypt_decrypt_keccak_byte() {
-    const RATE: usize = <KeccakF1600 as PRP>::RATE;
+    let rate = <KeccakF1600 as PRP>::RateSize::USIZE;
     encrypt_decrypt_n::<KeccakF1600>(27);
-    encrypt_decrypt_n::<KeccakF1600>(RATE);
-    encrypt_decrypt_n::<KeccakF1600>(RATE - 28);
-    encrypt_decrypt_n::<KeccakF1600>(RATE + 28);
-    encrypt_decrypt_n::<KeccakF1600>(2 * RATE);
+    encrypt_decrypt_n::<KeccakF1600>(rate);
+    encrypt_decrypt_n::<KeccakF1600>(rate - 28);
+    encrypt_decrypt_n::<KeccakF1600>(rate + 28);
+    encrypt_decrypt_n::<KeccakF1600>(2 * rate);
 }

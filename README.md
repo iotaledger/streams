@@ -74,7 +74,7 @@ Add the following to your `Cargo.toml` file:
 [dependencies]
 anyhow = { version = "1.0", default-features = false }
 iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "binary"}
-iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "0ad8e7f" }
 iota-conversion = { git = "https://github.com/iotaledger/iota.rs", rev = "03cf531" }
 ```
 

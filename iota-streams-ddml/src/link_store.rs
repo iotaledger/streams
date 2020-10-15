@@ -1,16 +1,19 @@
 use anyhow::{
-    bail,
+    anyhow,
     Result,
 };
 use core::hash;
 
 use iota_streams_core::{
     prelude::{
-        HashMap,
         Vec,
+        HashMap,
     },
     sponge::{
-        prp::PRP,
+        prp::{
+            Inner,
+            PRP,
+        },
         spongos::Spongos,
     },
 };
@@ -26,7 +29,7 @@ pub trait LinkStore<F, Link> {
 
     /// Lookup link in the store and return spongos state and associated info.
     fn lookup(&self, _link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        bail!("Link not found.");
+        Err(anyhow!("Link not found."))
     }
 
     /// Put link into the store together with spongos state and associated info.
@@ -40,8 +43,12 @@ pub trait LinkStore<F, Link> {
     /// Not updating the spongos state means immutability -- "the first one makes the history".
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()>;
 
+    fn insert(&mut self, link: &Link, spongos: Inner<F>, info: Self::Info) -> Result<()> where F: PRP;
+
     /// Remove link and associated info from the store.
     fn erase(&mut self, _link: &Link) {}
+
+    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> where F: PRP;
 }
 
 /// Empty "dummy" link store that stores no links.
@@ -59,23 +66,30 @@ impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
     fn update(&mut self, _link: &Link, _spongos: Spongos<F>, _info: Self::Info) -> Result<()> {
         Ok(())
     }
+    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> where F: PRP {
+        Vec::new()
+    }
+    fn insert(&mut self, _link: &Link, _spongos: Inner<F>, _info: Self::Info) -> Result<()> where F: PRP {
+        Ok(())
+    }
 }
 
 /// Link store that contains a single link.
 /// This link store can be used in Streams Applications supporting a list-like "thread"
 /// of messages without access to the history as the link to the last message is stored.
-#[derive(Clone, Debug, Default)]
-pub struct SingleLinkStore<F, Link, Info> {
-    /// The link to the last message in the thread.
-    link: Link,
+#[derive(Clone, Default)]
+pub struct SingleLinkStore<F: PRP, Link, Info>(Link, (Inner<F>, Info));
 
-    /// Inner spongos state is stored to save up space.
-    spongos: Vec<u8>,
-
-    /// Associated info.
-    info: Info,
-
-    _phantom: core::marker::PhantomData<F>,
+impl<F: PRP, Link, Info> SingleLinkStore<F, Link, Info> {
+    pub fn link(&self) -> &Link {
+        &self.0
+    }
+    pub fn spongos(&self) -> &Inner<F> {
+        &self.1.0
+    }
+    pub fn info(&self) -> &Info {
+        &self.1.1
+    }
 }
 
 impl<F: PRP, Link, Info> LinkStore<F, Link> for SingleLinkStore<F, Link, Info>
@@ -85,26 +99,32 @@ where
 {
     type Info = Info;
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        if self.link == *link {
-            Ok((Spongos::<F>::from_inner(self.spongos.clone()), self.info.clone()))
+        if self.link() == link {
+            Ok((self.spongos().into(), self.info().clone()))
         } else {
-            bail!("Link not found.");
+            Err(anyhow!("Link not found."))
         }
     }
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
-        let inner = spongos.to_inner();
-        self.link = link.clone();
-        self.spongos = inner;
-        self.info = info;
+        self.0 = link.clone();
+        self.1 = (spongos.into(), info);
+        Ok(())
+    }
+    fn insert(&mut self, link: &Link, spongos: Inner<F>, info: Self::Info) -> Result<()> {
+        self.0 = link.clone();
+        self.1 = (spongos, info);
         Ok(())
     }
     fn erase(&mut self, _link: &Link) {
         // Can't really erase link.
     }
+    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> {
+        vec![(&self.0, &self.1)]
+    }
 }
 
-pub struct DefaultLinkStore<F, Link, Info> {
-    map: HashMap<Link, (Vec<u8>, Info)>,
+pub struct DefaultLinkStore<F: PRP, Link, Info> {
+    map: HashMap<Link, (Inner<F>, Info)>,
     _phantom: core::marker::PhantomData<F>,
 }
 
@@ -129,10 +149,10 @@ where
 
     /// Add info for the link.
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
-        if let Some((inner, info)) = self.map.get(link).cloned() {
-            Ok((Spongos::from_inner(inner), info))
+        if let Some((inner, info)) = self.map.get(link) {
+            Ok((inner.into(), info.clone()))
         } else {
-            bail!("Link not found")
+            Err(anyhow!("Link not found"))
         }
     }
 
@@ -143,8 +163,17 @@ where
         Ok(())
     }
 
+    fn insert(&mut self, link: &Link, inner: Inner<F>, info: Self::Info) -> Result<()> {
+        self.map.insert(link.clone(), (inner, info));
+        Ok(())
+    }
+
     /// Remove info for the link.
     fn erase(&mut self, link: &Link) {
         self.map.remove(link);
+    }
+
+    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> {
+        self.map.iter().collect()
     }
 }

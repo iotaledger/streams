@@ -1,35 +1,51 @@
 #[cfg(not(feature = "std"))]
 pub use alloc::{
+    boxed::{
+        self,
+        Box,
+    },
+    rc::{
+        self,
+        Rc,
+    },
     string::{
         self,
         String,
         ToString,
     },
+    sync::{
+        self,
+        Arc,
+    },
     vec::{
         self,
         Vec,
     },
-    rc::{
-        self,
-        Rc,
-    }
 };
 
 #[cfg(feature = "std")]
 pub use std::{
+    boxed::{
+        self,
+        Box,
+    },
+    rc::{
+        self,
+        Rc,
+    },
     string::{
         self,
         String,
         ToString,
     },
+    sync::{
+        self,
+        Arc,
+    },
     vec::{
         self,
         Vec,
     },
-    rc::{
-        self,
-        Rc,
-    }
 };
 
 pub use hashbrown::{
@@ -47,3 +63,5 @@ pub use digest::{
         typenum,
     },
 };
+
+pub use hex;

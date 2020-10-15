@@ -3,7 +3,6 @@ use anyhow::{
     ensure,
     Result,
 };
-use chrono::Utc;
 use core::{
     cmp::Ordering,
     convert::{
@@ -11,12 +10,21 @@ use core::{
         TryInto,
     },
 };
+#[cfg(not(feature = "async"))]
 use smol::block_on;
 
 use iota::{
-    bundle::*,
     client as iota_client,
     ternary as iota_ternary,
+};
+
+use bee_crypto::ternary::Hash;
+use bee_transaction::Vertex;
+
+use bee_transaction::bundled::{
+    Address, Bundle, BundledTransactionBuilder as TransactionBuilder, BundledTransactionField,
+    BundledTransaction as Transaction, Index, Nonce, OutgoingBundleBuilder, Payload, Tag, Timestamp, Value, 
+    PAYLOAD_TRIT_LEN, TAG_TRIT_LEN, ADDRESS_TRIT_LEN
 };
 
 use iota_streams_core::prelude::{
@@ -137,7 +145,7 @@ fn make_bundle(
         .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
     let tx_timestamp = Timestamp::try_from_inner(timestamp).map_err(|e| anyhow!("Bad tx timestamp: {:?}.", e))?;
 
-    let mut bundle_builder = OutgoingBundleBuilder::new();
+    let mut bundle_builder = OutgoingBundleBuilder::default();
     while !body.is_empty() {
         let (payload_chunk, rest_of_body) = body.split_at(core::cmp::min(PAYLOAD_BYTES, body.len()));
         let payload_tritbuf = pad_tritbuf(PAYLOAD_TRIT_LEN, bytes_to_tritbuf(payload_chunk));
@@ -201,7 +209,7 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
         .into_iter()
         .filter_map(|txs| {
             // TODO: This needs a proper incoming bundle building implementation, but it is not currently available
-            let mut bundle_builder = OutgoingBundleBuilder::new();
+            let mut bundle_builder = OutgoingBundleBuilder::default();
             let mut trunk = Hash::zeros();
             let mut branch = Hash::zeros();
             for tx in txs.into_iter() {
@@ -248,7 +256,8 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
-pub fn msg_from_bundle<F>(bundle: &Bundle) -> BinaryMessage<F, TangleAddress> {
+pub fn msg_from_bundle<F>(bundle: &Bundle) -> TangleMessage<F> {
+    // TODO: Check bundle is not empty.
     let tx = bundle.head();
     let appinst = AppInst::from(bytes_from_trits(tx.address().to_inner()).as_ref());
     let msgid = MsgId::from(bytes_from_trits(tx.tag().to_inner()).as_ref());
@@ -258,7 +267,12 @@ pub fn msg_from_bundle<F>(bundle: &Bundle) -> BinaryMessage<F, TangleAddress> {
         payload.resize(PAYLOAD_BYTES, 0);
         body.extend_from_slice(&payload);
     }
-    BinaryMessage::new(TangleAddress { appinst, msgid }, body)
+
+    let binary = BinaryMessage::new(TangleAddress { appinst, msgid }, body.into());
+    // let timestamp: u64 = *(tx.timestamp() as *const iota::bundle::Timestamp) as *const u64;
+    let timestamp: u64 = unsafe { core::mem::transmute(tx.timestamp()) };
+
+    TangleMessage { binary, timestamp }
 }
 
 /// As Streams Message are packed into a bundle, and different bundles can have the same hash
@@ -277,107 +291,11 @@ pub fn msg_to_bundle<F>(
     make_bundle(
         msg.link.appinst.as_ref(),
         msg.link.msgid.as_ref(),
-        &msg.body,
+        &msg.body.bytes,
         timestamp,
         trunk,
         branch,
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn cvt() {
-        let tbits = Tbits::<Trit>::from_str("DEADBEEF").unwrap();
-        let buf = bytes_to_tritbuf(&tbits);
-        let tbits2 = bytes_from_trits(&buf);
-        assert_eq!(tbits, tbits2);
-    }
-
-    #[test]
-    fn cmp() {
-        let x = iota_ternary::TritBuf::<iota_ternary::T1B1Buf>::new();
-        let x0 = iota_ternary::TritBuf::<iota_ternary::T1B1Buf>::zeros(1);
-        let x00 = iota_ternary::TritBuf::<iota_ternary::T1B1Buf>::zeros(2);
-        let x1 = iota_ternary::TritBuf::<iota_ternary::T1B1Buf>::filled(1, iota_ternary::Btrit::try_from(1i8).unwrap());
-        let x11 =
-            iota_ternary::TritBuf::<iota_ternary::T1B1Buf>::filled(2, iota_ternary::Btrit::try_from(1i8).unwrap());
-        assert_eq!(Ordering::Less, cmp_tritbuf(&x, &x0));
-        assert_eq!(Ordering::Greater, cmp_tritbuf(&x1, &x0));
-        assert_eq!(Ordering::Greater, cmp_tritbuf(&x1, &x0));
-    }
-
-    fn bundle_from_to_trytes<TW, F>()
-    where
-        TW: StringTbitWord + TritWord,
-    {
-        let trunk = Hash::zeros();
-        let branch = Hash::zeros();
-
-        let appinst = AppInst {
-            id: NTrytes(Tbits::<TW>::cycle_str(APPINST_SIZE, "A")),
-        };
-        // A,M,[D,E]
-        let m1 = {
-            let msgid = MsgId {
-                id: NTrytes(Tbits::<TW>::cycle_str(MSGID_SIZE, "M")),
-            };
-            let body = &Tbits::<TW>::cycle_str(6561, "D") + &Tbits::<TW>::cycle_str(6561, "E");
-            BinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body, 0)
-        };
-        // A,N,[F,G]
-        let m2 = {
-            let msgid = MsgId {
-                id: NTrytes(Tbits::<TW>::cycle_str(MSGID_SIZE, "N")),
-            };
-            let body = &Tbits::<TW>::cycle_str(6561, "F") + &Tbits::<TW>::cycle_str(6561, "G");
-            BinaryMessage::<TW, F, TangleAddress<TW>>::new(TangleAddress::<TW>::new(appinst.clone(), msgid), body, 0)
-        };
-
-        let bundle1 = msg_to_bundle(&m1, 0, trunk.clone(), branch.clone()).unwrap();
-        assert_eq!(2, bundle1.len());
-        let tx1_0 = bundle1.get(0).unwrap();
-        let tx1_1 = bundle1.get(1).unwrap();
-
-        let bundle2 = msg_to_bundle(&m2, 0, trunk.clone(), branch.clone()).unwrap();
-        assert_eq!(2, bundle2.len());
-        let tx2_0 = bundle2.get(0).unwrap();
-        let tx2_1 = bundle1.get(1).unwrap();
-
-        if false {
-            let trytes = vec![tx1_0.clone(), tx2_0.clone()];
-            let bundles = bundles_from_trytes(trytes);
-            assert_eq!(0, bundles.len());
-        }
-
-        {
-            let trytes = vec![tx2_1.clone(), tx1_0.clone(), tx2_0.clone()];
-            let bundles = bundles_from_trytes(trytes);
-            assert_eq!(1, bundles.len());
-            let m = msg_from_bundle(&bundles[0], 0);
-            assert_eq!(m, m2);
-        }
-
-        {
-            let trytes = vec![tx1_1.clone(), tx2_1.clone(), tx1_0.clone(), tx2_0.clone()];
-            let bundles = bundles_from_trytes(trytes);
-            assert_eq!(bundles.len(), 2);
-            let n1 = msg_from_bundle(&bundles[0], 0);
-            let n2 = msg_from_bundle(&bundles[1], 0);
-            assert!((n1 == m1 && n2 == m2) || (n1 == m2 && n1 == m1));
-        }
-    }
-
-    #[test]
-    fn test_bundle_from_to_trytes() {
-        use iota_streams_core::{
-            sponge::prp::troika::Troika,
-            tbits::trinary::Trit,
-        };
-        bundle_from_to_trytes::<Trit, Troika>();
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -403,9 +321,9 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| anyhow!("Failed iota_client: {}", err))
 }
 
-async fn get_bundles(tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>> {
+async fn get_bundles(client: &iota_client::Client, tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>> {
     let find_bundles = handle_client_result(
-        iota_client::Client::find_transactions()
+        client.find_transactions()
             .tags(&vec![tx_tag][..])
             .addresses(&vec![tx_address][..])
             .send()
@@ -413,14 +331,14 @@ async fn get_bundles(tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction
     )?;
     ensure!(!find_bundles.hashes.is_empty(), "Transaction hashes not found.");
 
-    let get_resp = handle_client_result(iota_client::Client::get_trytes(&find_bundles.hashes).await)?;
+    let get_resp = handle_client_result(client.get_trytes(&find_bundles.hashes).await)?;
     ensure!(!get_resp.trytes.is_empty(), "Transactions not found.");
     Ok(get_resp.trytes)
 }
 
-async fn send_trytes(opt: SendTrytesOptions, txs: Vec<Transaction>) -> Result<Vec<Transaction>> {
+async fn send_trytes(client: &iota_client::Client, opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<Vec<Transaction>> {
     let attached_txs = handle_client_result(
-        iota_client::Client::send_trytes()
+        client.send_trytes()
             .min_weight_magnitude(opt.min_weight_magnitude)
             .depth(opt.depth)
             .trytes(txs)
@@ -430,60 +348,132 @@ async fn send_trytes(opt: SendTrytesOptions, txs: Vec<Transaction>) -> Result<Ve
     Ok(attached_txs)
 }
 
-#[derive(Copy, Clone)]
-pub struct RecvOptions {
-    pub flags: u8,
+pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
+    // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
+    let trunk = Hash::zeros();
+    let branch = Hash::zeros();
+    let bundle = msg_to_bundle(&msg.binary, msg.timestamp, trunk, branch)?;
+    // TODO: Get transactions from bundle without copying.
+    let txs = bundle.into_iter().collect::<Vec<Transaction>>();
+    // Ignore attached transactions.
+    send_trytes(client, opt, txs).await?;
+    Ok(())
 }
 
-impl Default for RecvOptions {
+pub async fn async_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+    let tx_address = Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
+        .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
+    let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
+        .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
+
+    match get_bundles(client, tx_address, tx_tag).await {
+        Ok(txs) => Ok(bundles_from_trytes(txs)
+            .into_iter()
+            .map(|b| msg_from_bundle(&b))
+            .collect()),
+        Err(_) => Ok(Vec::new()), // Just ignore the error?
+    }
+}
+
+#[cfg(not(feature = "async"))]
+pub fn sync_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
+    block_on(async_send_message_with_options(client, msg, opt))
+}
+
+#[cfg(not(feature = "async"))]
+pub fn sync_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+    block_on(async_recv_messages(client, link))
+}
+
+/// Stub type for iota_client::Client.  Removed: Copy, Default
+#[derive(Clone)]
+pub struct Client {
+    send_opt: SendTrytesOptions,
+    client: iota_client::Client,
+}
+
+impl Default for Client {
+    // Creates a new instance which links to a node on localhost:14265
     fn default() -> Self {
-        Self { flags: 0 }
+        Self {
+            send_opt: SendTrytesOptions::default(),
+            client: iota_client::ClientBuilder::new().node("http://localhost:14265").unwrap().build().unwrap()
+        }
     }
 }
 
-impl<F> Transport<F, TangleAddress> for &iota_client::Client {
-    type SendOptions = SendTrytesOptions;
-
-    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
-    fn send_message_with_options(
-        &mut self,
-        msg: &BinaryMessage<F, TangleAddress>,
-        opt: &Self::SendOptions,
-    ) -> Result<()> {
-        let timestamp = Utc::now().timestamp() as u64;
-        // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
-        let trunk = Hash::zeros();
-        let branch = Hash::zeros();
-        let bundle = msg_to_bundle(msg, timestamp, trunk, branch)?;
-        // TODO: Get transactions from bundle without copying.
-        let txs = bundle.into_iter().collect::<Vec<Transaction>>();
-        // Ignore attached transactions.
-        block_on(send_trytes(opt.clone(), txs))?;
-        Ok(())
+impl Client {
+    // Create an instance of Client with a ready client and its send options
+    pub fn new(options: SendTrytesOptions, client: iota_client::Client) -> Self {
+        Self {
+            send_opt: options,
+            client: client
+        }
+    }
+    
+    // Create an instance of Client with a node pointing to the given URL
+    pub fn new_from_url(url: &str) -> Self {
+        Self {
+            send_opt: SendTrytesOptions::default(),
+            client: iota_client::ClientBuilder::new().node(url).unwrap().build().unwrap()
+        }
     }
 
-    type RecvOptions = RecvOptions;
+    pub fn add_node(&mut self, url: &str) -> Result<bool> {
+        self.client.add_node(url).map_err(|e| anyhow!("iota_client error {}:", e))
+    }
+}
+
+impl TransportOptions for Client {
+    type SendOptions = SendTrytesOptions;
+    fn get_send_options(&self) -> SendTrytesOptions {
+        self.send_opt.clone()
+    }
+    fn set_send_options(&mut self, opt: SendTrytesOptions) {
+        self.send_opt = opt;
+    }
+
+    type RecvOptions = ();
+    fn get_recv_options(&self) -> () {}
+    fn set_recv_options(&mut self, _opt: ()) {}
+}
+
+#[cfg(not(feature = "async"))]
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
+    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
+        sync_send_message_with_options(&self.client, msg, &self.send_opt)
+    }
 
     /// Receive a message.
-    fn recv_messages_with_options(
-        &mut self,
-        link: &TangleAddress,
-        _opt: &Self::RecvOptions,
-    ) -> Result<Vec<BinaryMessage<F, TangleAddress>>> {
-        let tx_address =
-            Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
-                .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
-        let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
-            .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
+    fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+        sync_recv_messages(&self.client, link)
+    }
+}
 
-        let txs = block_on(get_bundles(tx_address, tx_tag));
-        if !txs.is_err() {
-            Ok(bundles_from_trytes(txs.unwrap())
-                .into_iter()
-                .map(|b| msg_from_bundle(&b))
-                .collect())
+#[cfg(feature = "async")]
+#[async_trait]
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Client
+where
+    F: 'static + core::marker::Send + core::marker::Sync,
+{
+    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
+        async_send_message_with_options(msg, &self.send_opt).await
+    }
+
+    /// Receive a message.
+    async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+        async_recv_messages(link).await
+    }
+
+    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
+        let mut msgs = self.recv_messages(link).await?;
+        if let Some(msg) = msgs.pop() {
+            ensure!(msgs.is_empty(), "More than one message found.");
+            Ok(msg)
         } else {
-            Ok(Vec::new())
+            Err(anyhow!("Message not found."))
         }
     }
 }
