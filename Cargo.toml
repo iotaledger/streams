@@ -29,6 +29,7 @@ members = [
 ]
 exclude = [
     "bindings/c",
+    "bindings/wasm",
 ]
 
 [features]
