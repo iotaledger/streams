@@ -67,6 +67,11 @@ Because the library is not on [crates.io](https://crates.io/), you need to use t
 `no_std` is currently supported. However cargo nightly must be used to build with `no_std` feature.
 
 ## Getting started
+
+If you don't have a rust project setup yet you can create one by running,
+
+    cargo new my-library
+
 **Remote**
 Add the following to your `Cargo.toml` file:
 
