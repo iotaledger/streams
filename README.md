@@ -120,7 +120,7 @@ fn main() {
 }
 ```
 
- For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.2/overview).
+ For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.3/overview).
 
 ## API reference
 
