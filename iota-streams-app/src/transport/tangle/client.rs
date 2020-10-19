@@ -163,7 +163,6 @@ fn make_bundle(
     bundle_builder
         .seal()
         .map_err(|e| anyhow!("Failed to seal bundle: {:?}.", e))?
-        // TODO: `attach_remote` is not implemented in iota-bundle-preview atm.
         .attach_remote(trunk, branch)
         .map_err(|e| anyhow!("Failed to attach bundle: {:?}.", e))?
         .build()
