@@ -270,7 +270,7 @@ pub fn msg_from_bundle<F>(bundle: &Bundle) -> TangleMessage<F> {
 
     let binary = BinaryMessage::new(TangleAddress { appinst, msgid }, body.into());
     // let timestamp: u64 = *(tx.timestamp() as *const iota::bundle::Timestamp) as *const u64;
-    let timestamp: u64 = unsafe { core::mem::transmute(tx.timestamp()) };
+    let timestamp: u64 = unsafe { core::mem::transmute(tx.timestamp().clone()) };
 
     TangleMessage { binary, timestamp }
 }
