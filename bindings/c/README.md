@@ -20,3 +20,7 @@ A binary will be generated which you can run depending on your STATIC setting
 
 You can then run the static build or the dynamic executable. Keep in mind that by default the code points to a node on `http://localhost:14265`.
 If this node doesnt exist, we will exit with an error immediately.
+
+You can set the following environment variables to change this dynamically:
+- `URL`: Change the node we use to send and receive messages (Accepts string)
+- `MWM`: Change the MWM setting we use to do POW (Accepts integer)
