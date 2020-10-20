@@ -21,7 +21,7 @@ use cty::{
     uint8_t,
 };
 
-use iota_conversion::trytes_converter::bytes_to_trytes;
+use iota::client::bytes_to_trytes;
 
 #[no_mangle]
 pub extern "C" fn drop_address(addr: *const Address) {
@@ -257,28 +257,28 @@ pub extern "C" fn drop_str(s: *const c_char) {
 #[no_mangle]
 pub extern "C" fn get_channel_address_str(appinst: *const ChannelAddress) -> *const c_char {
     unsafe {
-        CString::new(bytes_to_trytes((*appinst).as_ref())).unwrap().into_raw()
+        CString::new(bytes_to_trytes((*appinst).as_ref()).to_string()).unwrap().into_raw()
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *const c_char {
     unsafe {
-        CString::new(bytes_to_trytes((*msgid).as_ref())).unwrap().into_raw()
+        CString::new(bytes_to_trytes((*msgid).as_ref()).to_string()).unwrap().into_raw()
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
     unsafe {
-        CString::new(bytes_to_trytes((*address).appinst.as_ref())).unwrap().into_raw()
+        CString::new(bytes_to_trytes((*address).appinst.as_ref()).to_string()).unwrap().into_raw()
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
     unsafe {
-        CString::new(bytes_to_trytes((*address).msgid.as_ref())).unwrap().into_raw()
+        CString::new(bytes_to_trytes((*address).msgid.as_ref()).to_string()).unwrap().into_raw()
     }
 }
 
