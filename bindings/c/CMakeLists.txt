@@ -14,9 +14,8 @@ else(${NO_STD})
 endif(${NO_STD})
 
 if(${SYNC_CLIENT})
-  message("sync client lets goooooo")
   add_definitions(-DIOTA_STREAMS_CHANNELS_CLIENT)
-  set(cargo_features "${cargo_features} sync-client")
+  set(cargo_features "${cargo_features}sync-client")
 endif(${SYNC_CLIENT})
 
 message("NO_STD=${NO_STD} SYNC_CLIENT=${SYNC_CLIENT} STATIC=${STATIC}")
