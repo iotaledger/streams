@@ -76,17 +76,13 @@ fn main_pure() {
 #[allow(dead_code)]
 fn main_client() {
     // Load or .env file, log message if we failed
-    match dotenv::dotenv() {
-        Ok(_) => (),
-        Err(_e) => println!(".env file not found; copy and rename example.env to \".env\""),
+    if dotenv::dotenv().is_err() {
+        println!(".env file not found; copy and rename example.env to \".env\"");
     };
 
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
-    let node_mwm: u8 = match env::var("MWM").unwrap_or("14".to_string()).parse() {
-        Ok(n) => n,
-        Err(_e) => 14,
-    };
+    let node_mwm: u8 = env::var("MWM").map(|s| s.parse().unwrap_or(14)).unwrap_or(14);
 
     // Fails at unwrap when the url isnt working
     // TODO: Fail gracefully

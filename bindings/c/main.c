@@ -28,15 +28,15 @@ int main()
   rand_seed(seed, sizeof(seed));
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
-  char *env_url = getenv("URL");
-  char *url = env_url ? env_url : "http://localhost:14265";
+  char const *env_url = getenv("URL");
+  char const *url = env_url ? env_url : "http://localhost:14265";
 
   printf("Loading using node: %s\n\n", url);
   tsp = tsp_client_new_from_url(url);
 
   // Make sure this mwm matches the node configuration
-  char *env_mwm = getenv("MWM");
-  int mwm = env_mwm ? atoi(env_mwm) : 14;
+  char const *env_mwm = getenv("MWM");
+  int const mwm = env_mwm ? atoi(env_mwm) : 14;
   tsp_client_set_mwm(tsp, mwm);
 #else
   printf("Doing local tests using bucket transport (offline) \n");
