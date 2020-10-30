@@ -66,7 +66,7 @@ where
 }
 
 #[cfg(feature = "async")]
-#[async_trait]
+#[async_trait(?Send)]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
     Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,

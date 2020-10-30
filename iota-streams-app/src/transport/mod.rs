@@ -59,7 +59,7 @@ pub trait Transport<Link, Msg>: TransportOptions {
 }
 
 #[cfg(feature = "async")]
-#[async_trait]
+#[async_trait(?Send)]
 pub trait Transport<Link, Msg>: TransportOptions
 where
     Link: Send + Sync,

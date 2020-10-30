@@ -26,10 +26,11 @@ members = [
     "iota-streams-app-channels-example",
     "examples",
     #"iota-streams-app-channels-js",
+    "bindings/wasm",
 ]
 exclude = [
     "bindings/c",
-    "bindings/wasm",
+    # "bindings/wasm",
 ]
 
 [features]
