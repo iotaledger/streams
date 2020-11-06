@@ -146,7 +146,7 @@ fn make_bundle(
         .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
     let tx_timestamp = Timestamp::try_from_inner(timestamp).map_err(|e| anyhow!("Bad tx timestamp: {:?}.", e))?;
 
-    let mut bundle_builder = OutgoingBundleBuilder::new();
+    let mut bundle_builder = OutgoingBundleBuilder::default();
     while !body.is_empty() {
         let (payload_chunk, rest_of_body) = body.split_at(core::cmp::min(PAYLOAD_BYTES, body.len()));
         let payload_tritbuf = pad_tritbuf(PAYLOAD_TRIT_LEN, bytes_to_tritbuf(payload_chunk));
@@ -209,7 +209,7 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
         .into_iter()
         .filter_map(|txs| {
             // TODO: This needs a proper incoming bundle building implementation, but it is not currently available
-            let mut bundle_builder = OutgoingBundleBuilder::new();
+            let mut bundle_builder = OutgoingBundleBuilder::default();
             let mut trunk = Hash::zeros();
             let mut branch = Hash::zeros();
             for tx in txs.into_iter() {
