@@ -24,6 +24,24 @@ use cty::{
 use iota::client::bytes_to_trytes;
 
 #[no_mangle]
+pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
+    unsafe {
+        let addr_vec: Vec<&str> = CStr::from_ptr(c_addr).to_str().unwrap().split(":").collect();
+        let addr = Address::from_str(addr_vec[0], addr_vec[1]).unwrap();
+        Box::into_raw(Box::new(addr))
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_char {
+    unsafe {
+        pubkey.as_ref().map_or(null(), |pk| {
+            CString::new(hex::encode(pk.as_bytes())).unwrap().into_raw()
+        })
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn drop_address(addr: *const Address) {
     unsafe { Box::from_raw(addr as *mut Address); }
 }
@@ -134,6 +152,11 @@ impl Default for MessageLinks {
             seq_link: null(),
         }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn new_message_links(msg_link: *const Address, seq_link: *const Address) -> *mut MessageLinks {
+    Box::into_raw(Box::new(MessageLinks { msg_link, seq_link }))
 }
 
 #[no_mangle]
@@ -269,16 +292,31 @@ pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *const c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
+pub extern "C" fn get_address_inst_trytes(address: *mut Address) -> *mut c_char {
     unsafe {
         CString::new(bytes_to_trytes((*address).appinst.as_ref()).to_string()).unwrap().into_raw()
     }
 }
 
 #[no_mangle]
-pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
+pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
+    unsafe {
+        CString::new(hex::encode((*address).appinst.as_ref())).unwrap().into_raw()
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn get_address_id_trytes(address: *mut Address) -> *mut c_char {
     unsafe {
         CString::new(bytes_to_trytes((*address).msgid.as_ref()).to_string()).unwrap().into_raw()
+    }
+}
+
+
+#[no_mangle]
+pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
+    unsafe {
+        CString::new(hex::encode((*address).msgid.as_ref())).unwrap().into_raw()
     }
 }
 
