@@ -142,8 +142,6 @@ extern char const *get_msgid_str(msgid_t const *msgid);
 
 extern char const *get_address_inst_str(address_t const *address);
 extern char const *get_address_id_str(address_t const *address);
-extern char const *get_address_inst_trytes(address_t const *address);
-extern char const *get_address_id_trytes(address_t const *address);
 
 extern char const *public_key_to_string(public_key_t *pk);
 

@@ -5,7 +5,7 @@ include(FetchContent)
 
 option(NO_STD "Enable no_std build, without iota_client" OFF)
 option(SYNC_CLIENT "Enable sync transport via iota_client" ON)
-option(STATIC "Build shared library" ON)
+option(STATIC "Build shared library" OFF)
 
 set(cargo_features "")
 if(${NO_STD})
@@ -47,11 +47,16 @@ else(${STATIC})
     target_link_libraries(${PROJECT_NAME} ../../../target/debug/iota_streams_c.dll)
   elseif (UNIX)
     message("Unix")
+    if (APPLE)
+      set(SHARED_OBJECT_FILE libiota_streams_c.dylib)
+    else (APPLE)
+      set(SHARED_OBJECT_FILE libiota_streams_c.so)
+    endif (APPLE)
     set(FAKE_TARGET fakeTarget)
-    add_custom_target(fakeTarget cargo build --target-dir ../../target --no-default-features --features "${cargo_features}" COMMAND cp ../../target/debug/libiota_streams_c.so ${CMAKE_CURRENT_SOURCE_DIR})
+    add_custom_target(fakeTarget cargo build --target-dir ../../target --no-default-features --features "${cargo_features}" COMMAND cp ../../target/debug/${SHARED_OBJECT_FILE} ${CMAKE_CURRENT_SOURCE_DIR})
     add_dependencies(${PROJECT_NAME} ${FAKE_TARGET})
 
-    target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/libiota_streams_c.so)
+    target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${SHARED_OBJECT_FILE})
   endif (WIN32)
   
 
