@@ -38,7 +38,7 @@ async-trait = { version = "0.1", optional = true }
 
 # Dependencies for "client" feature
 # `iota-core` crate is WIP with unstable API atm of writing.
-iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "iota-1.0", rev = "74fa5294", optional = true }
+iota-core = { git = "https://github.com/DyrellC/iota.rs", branch = "peg-revision", rev = "74fa5294", optional = true }
 #iota-constants = { version = "0.2.1", optional = true }
 bee-transaction = { git = "https://github.com/Alex6323/bee-p.git" }
 bee-crypto = { git = "https://github.com/iotaledger/bee.git", branch = "dev" }
