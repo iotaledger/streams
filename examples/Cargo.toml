@@ -12,4 +12,5 @@ description = "A rust implementation of the IOTA Streams"
 iota-streams = { path = ".." }
 anyhow = { version = "1.0", default-features = false }
 rand = "0.7.3"
+dotenv = {version = "0.15.0"}
 

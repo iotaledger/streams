@@ -85,10 +85,10 @@ impl<F: PRP, Link, Info> SingleLinkStore<F, Link, Info> {
         &self.0
     }
     pub fn spongos(&self) -> &Inner<F> {
-        &self.1.0
+        &(self.1).0
     }
     pub fn info(&self) -> &Info {
-        &self.1.1
+        &(self.1).1
     }
 }
 

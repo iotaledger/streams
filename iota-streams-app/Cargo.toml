@@ -18,8 +18,8 @@ async = ["async-trait", "std"]
 tangle = ["chrono"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-sync-client = ["num_cpus", "smol", "iota-core", "iota-constants", "tangle", "std"]
-async-client = ["num_cpus", "iota-core", "iota-constants", "tangle", "std", "async"]
+sync-client = ["num_cpus", "smol", "iota-core", "tangle", "std"] #, "iota-constants"
+async-client = ["num_cpus", "iota-core", "tangle", "std", "async"] #, "iota-constants"
 
 [lib]
 name = "iota_streams_app"
@@ -37,9 +37,9 @@ hex = { version = "0.4.2", default-features = false, optional = false }
 async-trait = { version = "0.1", optional = true }
 
 # Dependencies for "client" feature
-# `iota-core` crate is WIP with unstable API atm of writing.
 iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "dev", optional = true }
-iota-constants = { version = "0.2.1", optional = true }
+bee-transaction = { git = "https://github.com/Alex6323/bee-p.git" }
+
 bee-crypto = { git = "https://github.com/iotaledger/bee.git", branch = "dev" }
 
 # feature tokio02 explicitly required for block_on calls
