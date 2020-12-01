@@ -1,9 +1,10 @@
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::Result;
 
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    ErrorHandler,
+    Errors::ValueOutOfRange
+};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -58,7 +59,7 @@ impl PCF<()> {
 }
 
 fn payload_frame_num_from(n: u32) -> Result<NBytes<U3>> {
-    ensure!(n < 0x400000, "Payload frame num out of range: {}", n);
+    ErrorHandler::try_or(n < 0x400000, ValueOutOfRange(0x400000 as usize, n as usize))?;
     let v = n.to_be_bytes();
     let g = <GenericArray<u8, U3>>::from_slice(&v[1..]);
     Ok(NBytes::from(*g))
@@ -71,7 +72,9 @@ fn payload_frame_num_to(v: &NBytes<U3>) -> u32 {
 }
 
 fn payload_frame_num_check(v: &NBytes<U3>) -> Result<()> {
-    ensure!(v.as_ref()[0] < 0x40, "Payload frame num out of range");
+    ErrorHandler::try_or(v.as_ref()[0] < 0x40,
+                         ValueOutOfRange(0x40 as usize, v.as_ref()[0] as usize)
+    )?;
     Ok(())
 }
 

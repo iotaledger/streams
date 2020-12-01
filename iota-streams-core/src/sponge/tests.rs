@@ -27,7 +27,7 @@ fn bytes_spongosn<F: PRP>(n: usize)
         s.absorb(&k);
         s.absorb(&p);
         s.commit();
-        y = s.encrypt_n(&x);
+        y = s.encrypt_n(&x).unwrap();
         s.commit();
         t = s.squeeze_n(n);
         t2 = s.squeeze_n(n);
@@ -77,7 +77,7 @@ fn slice_spongosn<F: PRP>(n: usize)
         s.absorb(&k[..]);
         s.absorb(&p[..]);
         s.commit();
-        s.encrypt(&x[..], &mut y[..]);
+        s.encrypt(&x[..], &mut y[..]).unwrap();
         s.commit();
         s.squeeze(&mut t[..]);
         s.squeeze(&mut t23[..n]);
@@ -89,7 +89,7 @@ fn slice_spongosn<F: PRP>(n: usize)
         s.absorb(&k[..]);
         s.absorb(&p[..]);
         s.commit();
-        s.decrypt(&y[..], &mut z[..]);
+        s.decrypt(&y[..], &mut z[..]).unwrap();
         s.commit();
         s.squeeze(&mut u[..]);
         assert!(s.squeeze_eq(&t23[..n]));
@@ -149,11 +149,11 @@ pub fn encrypt_decrypt_n<F: PRP>(n: usize)
         let mut s3 = s.clone();
         let mut s4 = s.clone();
 
-        let ex = s.encrypt_n(&x);
+        let ex = s.encrypt_n(&x).unwrap();
         s.commit();
         let tag = s.squeeze_n(rate);
 
-        let dex = s2.decrypt_n(&ex);
+        let dex = s2.decrypt_n(&ex).unwrap();
         assert_eq!(x, dex);
         s2.commit();
         assert_eq!(tag, s2.squeeze_n(rate));

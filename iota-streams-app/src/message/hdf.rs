@@ -1,13 +1,7 @@
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::Result;
 use core::fmt;
 
-use iota_streams_core::{
-    format,
-    sponge::prp::PRP,
-};
+use iota_streams_core::{sponge::prp::PRP, ErrorHandler};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -21,6 +15,7 @@ use iota_streams_ddml::{
 };
 
 use super::*;
+use iota_streams_core::Errors::*;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
@@ -48,13 +43,13 @@ impl<Link> HDF<Link> {
             payload_length: 0,
             frame_type: HDF_ID,
             payload_frame_count: 0,
-            link: link,
+            link,
             seq_num: Uint64(0),
         }
     }
 
     pub fn with_content_type(mut self, content_type: u8) -> Result<Self> {
-        ensure!(content_type < 0x10, "Content type out of range: {}", content_type);
+        ErrorHandler::try_or(content_type < 0x10, ValueOutOfRange(0x10 as usize, content_type as usize))?;
         self.content_type = content_type;
         Ok(self)
     }
@@ -64,11 +59,10 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_payload_length(mut self, payload_length: usize) -> Result<Self> {
-        ensure!(
+        ErrorHandler::try_or(
             payload_length < 0x0400,
-            "Payload length out of range: {}",
-            payload_length
-        );
+            MaxSizeExceeded(0x0400 as usize, payload_length)
+        )?;
         self.payload_length = payload_length;
         Ok(self)
     }
@@ -78,11 +72,10 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_payload_frame_count(mut self, payload_frame_count: u32) -> Result<Self> {
-        ensure!(
+        ErrorHandler::try_or(
             payload_frame_count < 0x400000,
-            "Payload frame count out of range: {}",
-            payload_frame_count
-        );
+            MaxSizeExceeded(0x400000 as usize, payload_frame_count as usize)
+        )?;
         self.payload_frame_count = payload_frame_count;
         Ok(self)
     }
@@ -101,12 +94,11 @@ impl<Link> HDF<Link> {
     }
 
     pub fn new_with_fields(link: Link, content_type: u8, payload_length: usize, seq_num: u64) -> Result<Self> {
-        ensure!(content_type < 0x10, "Content type out of range: {}", content_type);
-        ensure!(
+        ErrorHandler::try_or(content_type < 0x10, ValueOutOfRange(0x10 as usize, content_type as usize))?;
+        ErrorHandler::try_or(
             payload_length < 0x0400,
-            "Payload length out of range: {}",
-            payload_length
-        );
+            MaxSizeExceeded(0x0400 as usize, payload_length),
+        )?;
         Ok(Self {
             encoding: UTF8,
             version: STREAMS_1_VER,
@@ -114,7 +106,7 @@ impl<Link> HDF<Link> {
             payload_length,
             frame_type: HDF_ID,
             payload_frame_count: 0,
-            link: link,
+            link,
             seq_num: Uint64(seq_num),
         })
     }
@@ -227,15 +219,12 @@ where
             .absorb(&mut self.version)?
             .guard(
                 self.version == STREAMS_1_VER,
-                &format!(
-                    "Message version not supported: expected {}, found {}.",
-                    STREAMS_1_VER, self.version
-                ),
+                    InvalidMsgVersion(STREAMS_1_VER.0, self.version.0)
             )?
             .skip(&mut content_type_and_payload_length)?;
         {
             let v = content_type_and_payload_length.as_ref();
-            ensure!(0 == v[0] & 0x0c, "Bad reserved bits");
+            ErrorHandler::try_or(0 == v[0] & 0x0c, InvalidBitReservation)?;
             self.content_type = v[0] >> 4;
             self.payload_length = (((v[0] & 0x03) as usize) << 8) | (v[1] as usize);
         }
@@ -244,15 +233,12 @@ where
             .absorb(&mut self.frame_type)?
             .guard(
                 self.frame_type == HDF_ID,
-                &format!(
-                    "Message frame type not supported: expected {}, found {}.",
-                    HDF_ID, self.frame_type
-                ),
+                InvalidMsgType(HDF_ID.0, self.frame_type.0)
             )?
             .skip(&mut payload_frame_count)?;
         {
             let v = payload_frame_count.as_ref();
-            ensure!(0 == v[0] & 0xc0, "Bad reserved bits");
+            ErrorHandler::try_or(0 == v[0] & 0xc0, InvalidBitReservation)?;
             let mut x = [0_u8; 4];
             x[1] = v[0];
             x[2] = v[1];

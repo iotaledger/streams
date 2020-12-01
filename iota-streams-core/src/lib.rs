@@ -42,3 +42,7 @@ pub mod prelude;
 pub mod prng;
 pub mod psk;
 pub mod sponge;
+pub mod errors;
+
+pub use errors::error_handler::*;
+pub use errors::error_messages::*;

@@ -220,9 +220,9 @@ where
             );
 
             if self.is_multi_branching() {
-                self.store_state(seq_msg.pk, &seq_link)
+                self.store_state(seq_msg.pk, &seq_link)?
             } else {
-                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)
+                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)?
             }
 
             Ok(msg_id)
@@ -310,9 +310,10 @@ where
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///
-    pub fn store_state(&mut self, pk: PublicKey, link: &Address) {
+    pub fn store_state(&mut self, pk: PublicKey, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(pk, link.msgid.clone())
+        self.user.store_state(pk, link.msgid.clone())?;
+        Ok(())
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -323,9 +324,10 @@ where
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
     ///
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state_for_all(link.msgid.clone(), seq_num)
+        self.user.store_state_for_all(link.msgid.clone(), seq_num)?;
+        Ok(())
     }
 
     /// Generate a vector containing the next sequenced message identifier for each publishing
@@ -359,7 +361,7 @@ where
                 let msg = self.handle_message(msg.unwrap(), Some(pk));
                 if let Ok(msg) = msg {
                     if !self.user.is_multi_branching() {
-                        self.user.store_state_for_all(link.msgid, seq_no);
+                        self.user.store_state_for_all(link.msgid, seq_no).unwrap();
                     }
 
                     msgs.push(msg);
@@ -408,7 +410,7 @@ where
                     Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
                 );
                 let msg = self.transport.recv_message(&msg_link)?;
-                self.user.store_state(pk.unwrap().clone(), store_link);
+                self.user.store_state(pk.unwrap().clone(), store_link)?;
                 self.handle_message(msg, pk)
             }
             unknown_content => Err(anyhow!("Not a recognised message type: {}", unknown_content)),

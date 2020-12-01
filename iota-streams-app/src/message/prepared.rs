@@ -1,11 +1,12 @@
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::Result;
 use core::cell::Ref;
 
 use super::*;
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    ErrorHandler,
+    Errors::OutputStreamNotFullyConsumed
+};
 use iota_streams_ddml::{
     command::{
         sizeof,
@@ -62,8 +63,9 @@ where
             let mut ctx = wrap::Context::new(&mut buf[..]);
             self.header.wrap(&*self.store, &mut ctx)?;
             self.content.wrap(&*self.store, &mut ctx)?;
-            ensure!(ctx.stream.is_empty(), "OStream has not been exhausted.");
-
+            ErrorHandler::try_or(ctx.stream.is_empty(),
+                                 OutputStreamNotFullyConsumed(ctx.stream.len())
+            )?;
             ctx.spongos
         };
 

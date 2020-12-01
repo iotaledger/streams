@@ -48,7 +48,7 @@ impl<F: PRP, OS: io::OStream> Wrap for MaskContext<F, OS> {
     }
     fn wrapn(&mut self, bytes: &[u8]) -> Result<&mut Self> {
         let mut slice = self.ctx.stream.try_advance(bytes.len())?;
-        self.ctx.spongos.encrypt(bytes, &mut slice);
+        self.ctx.spongos.encrypt(bytes, &mut slice)?;
         Ok(self)
     }
 }

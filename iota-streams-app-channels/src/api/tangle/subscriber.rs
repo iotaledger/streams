@@ -156,9 +156,9 @@ impl<Trans: Transport> Subscriber<Trans>
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) {
+    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(pk, link)
+        Ok(self.user.store_state(pk, link)?)
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -168,9 +168,9 @@ impl<Trans: Transport> Subscriber<Trans>
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
     ///
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state_for_all(link, seq_num)
+        Ok(self.user.store_state_for_all(link, seq_num)?)
     }
 
     /// Generate a vector containing the next sequenced message identifier for each publishing

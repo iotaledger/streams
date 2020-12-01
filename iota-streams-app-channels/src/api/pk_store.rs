@@ -1,4 +1,5 @@
 use core::fmt;
+use anyhow::Result;
 
 use iota_streams_core::prelude::{
     HashMap,
@@ -16,7 +17,7 @@ pub trait PublicKeyStore<Info>: Default {
     fn get(&self, pk: &ed25519::PublicKey) -> Option<&Info>;
     fn get_mut(&mut self, pk: &ed25519::PublicKey) -> Option<&mut Info>;
     fn get_ke_pk(&self, pk: &ed25519::PublicKey) -> Option<&x25519::PublicKey>;
-    fn insert(&mut self, pk: ed25519::PublicKey, info: Info);
+    fn insert(&mut self, pk: ed25519::PublicKey, info: Info) -> Result<()>;
     fn keys(&self) -> Vec<(&ed25519::PublicKey, &x25519::PublicKey)>;
     fn iter(&self) -> Vec<(&ed25519::PublicKey, &Info)>;
     fn iter_mut(&mut self) -> Vec<(&ed25519::PublicKey, &mut Info)>;
@@ -56,9 +57,10 @@ impl<Info> PublicKeyStore<Info> for PublicKeyMap<Info> {
     fn get_ke_pk(&self, pk: &ed25519::PublicKey) -> Option<&x25519::PublicKey> {
         self.pks.get(pk.into()).map(|(x, _i)| x)
     }
-    fn insert(&mut self, pk: ed25519::PublicKey, info: Info) {
-        let xpk = x25519::public_from_ed25519(&pk);
+    fn insert(&mut self, pk: ed25519::PublicKey, info: Info) -> Result<()>{
+        let xpk = x25519::public_from_ed25519(&pk)?;
         self.pks.insert(pk.into(), (xpk, info));
+        Ok(())
     }
     fn keys(&self) -> Vec<(&ed25519::PublicKey, &x25519::PublicKey)> {
         self.pks.iter().map(|(k, (x, _i))| (&k.0, x)).collect()

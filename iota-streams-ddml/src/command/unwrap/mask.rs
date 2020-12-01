@@ -46,13 +46,13 @@ impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<F, IS> {
     fn unwrap_u8(&mut self, u: &mut u8) -> Result<&mut Self> {
         let y = self.ctx.stream.try_advance(1)?;
         let mut x = [0_u8; 1];
-        self.ctx.spongos.decrypt(y, &mut x);
+        self.ctx.spongos.decrypt(y, &mut x)?;
         *u = x[0];
         Ok(self)
     }
     fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
         let y = self.ctx.stream.try_advance(bytes.len())?;
-        self.ctx.spongos.decrypt(y, bytes);
+        self.ctx.spongos.decrypt(y, bytes)?;
         Ok(self)
     }
 }

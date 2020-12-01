@@ -1,10 +1,15 @@
 use crate::signature::ed25519;
+use anyhow::Result;
 
 use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;
-use iota_streams_core::prelude::{
-    HashSet,
-    Vec,
+use iota_streams_core::{
+    prelude::{
+        HashSet,
+        Vec,
+    },
+    ErrorHandler,
+    Errors::KeyConversionFailure
 };
 pub use x25519_dalek::{
     EphemeralSecret,
@@ -25,14 +30,16 @@ pub fn keypair_from_ed25519(kp: &ed25519::Keypair) -> (StaticSecret, PublicKey) 
     (sk, pk)
 }
 
-pub fn public_from_ed25519(pk: &ed25519::PublicKey) -> PublicKey {
-    PublicKey::from(
-        edwards::CompressedEdwardsY(pk.to_bytes()) // `pk.to_bytes` returns Y coordinate
-            .decompress() // try reconstruct X,Y,Z,T coordinates of `EdwardsPoint`
-            .unwrap() // pk is a valid `PublicKey` hence contains valid `EdwardsPoint`
-            .to_montgomery() // x25519 uses Montgomery form, and `PublicKey` is just a `MontgomeryPoint`
-            .to_bytes(),
-    )
+pub fn public_from_ed25519(pk: &ed25519::PublicKey) -> Result<PublicKey> {
+    // `pk.to_bytes` returns Y coordinate
+    // try reconstruct X,Y,Z,T coordinates of `EdwardsPoint`
+    match edwards::CompressedEdwardsY(pk.to_bytes()).decompress() {
+        Some(compressed_edwards) => {// pk is a valid `PublicKey` hence contains valid `EdwardsPoint`
+            // x25519 uses Montgomery form, and `PublicKey` is just a `MontgomeryPoint`
+            Ok(PublicKey::from(compressed_edwards.to_montgomery().to_bytes()))
+        },
+        None => ErrorHandler::err(KeyConversionFailure)?
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
