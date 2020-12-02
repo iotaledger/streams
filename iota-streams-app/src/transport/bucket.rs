@@ -3,6 +3,11 @@ use crate::message::LinkedMessage;
 
 use iota_streams_core::prelude::HashMap;
 
+#[cfg(feature = "async")]
+use atomic_refcell::AtomicRefCell;
+#[cfg(feature = "async")]
+use iota_streams_core::prelude::Arc;
+
 pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
 }
@@ -86,12 +91,57 @@ where
     }
 
     async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-        let mut msgs = self.recv_messages(link).await?;
-        if let Some(msg) = msgs.pop() {
-            ensure!(msgs.is_empty(), "More than one message found.");
-            Ok(msg)
+        if let Some(mut msgs) = self.bucket.get(link).cloned() {
+            if let Some(msg) = msgs.pop() {
+                ensure!(msgs.is_empty(), "More than one message found.");
+                Ok(msg)
+            } else {
+                Err(anyhow!("Message not found."))
+            }
         } else {
-            Err(anyhow!("Message not found."))
+            Err(anyhow!("Link not found in the bucket."))
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[async_trait]
+impl<Link, Msg> Transport<Link, Msg> for Arc<AtomicRefCell<BucketTransport<Link, Msg>>>
+where
+    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,
+    Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
+{
+    async fn send_message(&mut self, msg: &Msg) -> Result<()> {
+        let mut tsp = (&*self).borrow_mut();
+        if let Some(msgs) = tsp.bucket.get_mut(msg.link()) {
+            msgs.push(msg.clone());
+            Ok(())
+        } else {
+            tsp.bucket.insert(msg.link().clone(), vec![msg.clone()]);
+            Ok(())
+        }
+    }
+
+    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
+        let tsp = (&*self).borrow_mut();
+        if let Some(msgs) = tsp.bucket.get(link) {
+            Ok(msgs.clone())
+        } else {
+            Err(anyhow!("Link not found in the bucket."))
+        }
+    }
+
+    async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
+        let tsp = (&*self).borrow_mut();
+        if let Some(mut msgs) = tsp.bucket.get(link).cloned() {
+            if let Some(msg) = msgs.pop() {
+                ensure!(msgs.is_empty(), "More than one message found.");
+                Ok(msg)
+            } else {
+                Err(anyhow!("Message not found."))
+            }
+        } else {
+            Err(anyhow!("Link not found in the bucket."))
         }
     }
 }

@@ -5,7 +5,7 @@ use iota_streams::{
     },
     app::{
         message::Cursor,
-        transport::tangle::MsgId,
+        transport::tangle::{MsgId, client::bytes_to_trytes,},
     },
     app_channels::api::tangle::*,
 };
@@ -20,8 +20,6 @@ use cty::{
     size_t,
     uint8_t,
 };
-
-use iota::client::bytes_to_trytes;
 
 #[no_mangle]
 pub extern "C" fn drop_address(addr: *const Address) {

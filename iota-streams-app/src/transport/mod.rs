@@ -4,22 +4,25 @@ use anyhow::{
     Result,
 };
 
+use core::hash;
+
+#[cfg(not(feature = "async"))]
+use iota_streams_core::prelude::Rc;
 #[cfg(not(feature = "async"))]
 use core::cell::RefCell;
-use core::hash;
+
 #[cfg(feature = "async")]
 use core::marker::{
     Send,
     Sync,
 };
-
 #[cfg(feature = "async")]
 use async_trait::async_trait;
-
 #[cfg(feature = "async")]
-use iota_streams_core::prelude::Box;
-#[cfg(not(feature = "async"))]
-use iota_streams_core::prelude::Rc;
+use atomic_refcell::AtomicRefCell;
+#[cfg(feature = "async")]
+use iota_streams_core::prelude::{Arc, Box, };
+
 use iota_streams_core::prelude::Vec;
 
 pub trait TransportOptions {
@@ -126,6 +129,67 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
             Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
         }
     }
+}
+
+#[cfg(not(feature = "async"))]
+pub type SharedTransport<T> = Rc<RefCell<T>>;
+
+#[cfg(not(feature = "async"))]
+pub fn new_shared_transport<T>(tsp: T) -> Rc<RefCell<T>> {
+    Rc::new(RefCell::new(tsp))
+}
+
+#[cfg(feature = "async")]
+impl<Tsp: TransportOptions> TransportOptions for Arc<AtomicRefCell<Tsp>> {
+    type SendOptions = <Tsp as TransportOptions>::SendOptions;
+    fn get_send_options(&self) -> Self::SendOptions {
+        (&*self).borrow().get_send_options()
+    }
+    fn set_send_options(&mut self, opt: Self::SendOptions) {
+        (&*self).borrow_mut().set_send_options(opt)
+    }
+
+    type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
+    fn get_recv_options(&self) -> Self::RecvOptions {
+        (&*self).borrow().get_recv_options()
+    }
+    fn set_recv_options(&mut self, opt: Self::RecvOptions) {
+        (&*self).borrow_mut().set_recv_options(opt)
+    }
+}
+
+/*
+// The impl below is too restrictive: Link and Msg require 'async_trait life-time, Tsp is Sync + Send.
+#[cfg(feature = "async")]
+#[async_trait]
+impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Arc<AtomicRefCell<Tsp>> where
+    Link: 'static + core::marker::Send + core::marker::Sync,
+    Msg: 'static + core::marker::Send + core::marker::Sync,
+    Tsp: core::marker::Send + core::marker::Sync,
+{
+    /// Send a message.
+    async fn send_message(&mut self, msg: &Msg) -> Result<()> {
+        (&*self).borrow_mut().send_message(msg).await
+    }
+
+    /// Receive messages with default options.
+    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
+        (&*self).borrow_mut().recv_messages(link).await
+    }
+
+    /// Receive a message with default options.
+    async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
+        (&*self).borrow_mut().recv_message(link).await
+    }
+}
+ */
+
+#[cfg(feature = "async")]
+pub type SharedTransport<T> = Arc<AtomicRefCell<T>>;
+
+#[cfg(feature = "async")]
+pub fn new_shared_transport<T>(tsp: T) -> Arc<AtomicRefCell<T>> {
+    Arc::new(AtomicRefCell::new(tsp))
 }
 
 mod bucket;

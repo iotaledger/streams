@@ -17,6 +17,7 @@ use iota::{
     client as iota_client,
     ternary as iota_ternary,
 };
+pub use iota::client::bytes_to_trytes;
 
 use bee_crypto::ternary::Hash;
 use bee_transaction::Vertex;

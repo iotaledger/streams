@@ -30,3 +30,7 @@ iota-streams-app = { version = "1.0.0", path = "../iota-streams-app", default-fe
 anyhow = { version = "1.0.26", default-features = false }
 
 hex = { version = "0.4.2", default-features = false, optional = false }
+
+[dev-dependencies]
+# feature tokio02 explicitly required for block_on calls
+smol = { version = "0.1.18", features = ["tokio02"] }

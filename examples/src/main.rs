@@ -113,6 +113,6 @@ fn main_client() {
 }
 
 fn main() {
-    //main_pure();
+    main_pure();
     main_client();
 }
