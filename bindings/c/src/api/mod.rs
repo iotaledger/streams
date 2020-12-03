@@ -10,7 +10,7 @@ use iota_streams::{
     app_channels::api::tangle::*,
 };
 
-use core::ptr::null;
+use core::ptr::{null, null_mut};
 use cstr_core::{
     CStr,
     CString,
@@ -25,9 +25,14 @@ use cty::{
 #[no_mangle]
 pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
     unsafe {
-        let addr_vec: Vec<&str> = CStr::from_ptr(c_addr).to_str().unwrap().split(":").collect();
-        let addr = Address::from_str(addr_vec[0], addr_vec[1]).unwrap();
-        Box::into_raw(Box::new(addr))
+        c_addr.as_ref().map_or(null(), |c_addr|
+            CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
+            let addr_vec: Vec<&str> = addr_str.split(":").collect();
+                Address::from_str(addr_vec[0], addr_vec[1])
+                    .map_or(null(), |addr| Box::into_raw(Box::new(addr))
+                )
+            })
+        )
     }
 }
 
@@ -35,7 +40,7 @@ pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
 pub extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_char {
     unsafe {
         pubkey.as_ref().map_or(null(), |pk| {
-            CString::new(hex::encode(pk.as_bytes())).unwrap().into_raw()
+            CString::new(hex::encode(pk.as_bytes())).map_or(null(), |pk| pk.into_raw())
         })
     }
 }
@@ -151,11 +156,6 @@ impl Default for MessageLinks {
             seq_link: null(),
         }
     }
-}
-
-#[no_mangle]
-pub extern "C" fn new_message_links(msg_link: *const Address, seq_link: *const Address) -> *mut MessageLinks {
-    Box::into_raw(Box::new(MessageLinks { msg_link, seq_link }))
 }
 
 #[no_mangle]
@@ -279,28 +279,39 @@ pub extern "C" fn drop_str(s: *const c_char) {
 #[no_mangle]
 pub extern "C" fn get_channel_address_str(appinst: *const ChannelAddress) -> *const c_char {
     unsafe {
-        CString::new(hex::encode((*appinst).as_ref())).unwrap().into_raw()
+        appinst.as_ref().map_or(null(), |inst|
+            CString::new(hex::encode(inst)).map_or(null(), |inst_str| inst_str.into_raw())
+        )
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *const c_char {
     unsafe {
-        CString::new(hex::encode((*msgid).as_ref())).unwrap().into_raw()
+        msgid.as_ref().map_or(null(), |id|
+            CString::new(hex::encode(id)).map_or(null(), |id_str| id_str.into_raw())
+        )
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
     unsafe {
-        CString::new(hex::encode((*address).appinst.as_ref())).unwrap().into_raw()
+        address.as_ref().map_or(null_mut(), |addr|
+            CString::new(hex::encode(addr.appinst.as_ref()))
+                .map_or(null_mut(), |inst| inst.into_raw())
+        )
+
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
     unsafe {
-        CString::new(hex::encode((*address).msgid.as_ref())).unwrap().into_raw()
+        address.as_ref().map_or(null_mut(), |addr|
+            CString::new(hex::encode(addr.msgid.as_ref()))
+                .map_or(null_mut(), |id| id.into_raw())
+        )
     }
 }
 

@@ -30,7 +30,6 @@ typedef struct MessageLinks {
 } message_links_t;
 
 extern void drop_links(message_links_t);
-extern message_links_t  new_message_links(address_t *msg_link, address_t *seq_link);
 
 typedef struct Buffer {
   uint8_t const *ptr;
