@@ -8,7 +8,9 @@ use iota_streams_core::{
         HashSet,
         Vec,
     },
-    ErrorHandler,
+    println,
+    err,
+    LOCATION_LOG,
     Errors::KeyConversionFailure
 };
 pub use x25519_dalek::{
@@ -38,7 +40,7 @@ pub fn public_from_ed25519(pk: &ed25519::PublicKey) -> Result<PublicKey> {
             // x25519 uses Montgomery form, and `PublicKey` is just a `MontgomeryPoint`
             Ok(PublicKey::from(compressed_edwards.to_montgomery().to_bytes()))
         },
-        None => ErrorHandler::err(KeyConversionFailure)?
+        None => err!(KeyConversionFailure)?
     }
 }
 

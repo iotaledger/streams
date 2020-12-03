@@ -3,8 +3,9 @@ use crate::message::LinkedMessage;
 
 use iota_streams_core::{
     prelude::{HashMap, string::ToString},
-    ErrorHandler,
-    Errors::MessageLinkNotFound
+    err,
+    Errors::MessageLinkNotFound,
+    LOCATION_LOG
 };
 
 #[cfg(feature = "async")]
@@ -62,7 +63,7 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            ErrorHandler::err(MessageLinkNotFound(link.to_string()))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 }
@@ -88,17 +89,17 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            ErrorHandler::err(MessageLinkNotFound(link.to_string()))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 
     async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
-            ErrorHandler::try_or(msgs.is_empty(), MessageNotUnique(link.to_string()));
+            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()));
             Ok(msg)
         } else {
-            ErrorHandler::err(MessageLinkNotFound(link.to_string()))?
+            err!(MessageLinkNotFound(link.to_string()))?
         }
     }
 }

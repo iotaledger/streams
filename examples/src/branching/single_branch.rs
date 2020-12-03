@@ -14,7 +14,9 @@ use iota_streams::{
         prelude::Rc,
         print,
         println,
-        ErrorHandler,
+        try_or,
+        panic_if_not,
+        LOCATION_LOG,
         Errors::*,
     },
     ddml::types::*,
@@ -56,30 +58,30 @@ pub fn example<T: Transport>(
     {
         subscriberA.receive_announcement(&announcement_link)?;
         print!("  SubscriberA: {}", subscriberA);
-        ErrorHandler::try_or(
+        try_or!(
             author.channel_address() == subscriberA.channel_address(),
             ApplicationInstanceMismatch(String::from("A"))
         )?;
         subscriberB.receive_announcement(&announcement_link)?;
         print!("  SubscriberB: {}", subscriberB);
-        ErrorHandler::try_or(
+        try_or!(
             author.channel_address() == subscriberB.channel_address(),
             ApplicationInstanceMismatch(String::from("B"))
         )?;
         subscriberC.receive_announcement(&announcement_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        ErrorHandler::try_or(
+        try_or!(
             author.channel_address() == subscriberC.channel_address(),
             ApplicationInstanceMismatch(String::from("C"))
         )?;
 
-        ErrorHandler::try_or(
+        try_or!(
             subscriberA
                 .channel_address()
                 .map_or(false, |appinst| appinst == announcement_link.base()),
             ApplicationInstanceMismatch(String::from("A"))
         )?;
-        ErrorHandler::try_or(
+        try_or!(
             subscriberA.is_multi_branching() == author.is_multi_branching(),
             BranchingFlagMismatch(String::from("A"))
         )?;
@@ -117,7 +119,7 @@ pub fn example<T: Transport>(
     let previous_msg_link = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
-        ErrorHandler::panic_if_not(seq.is_none());
+        panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
         msg
     };
@@ -126,7 +128,7 @@ pub fn example<T: Transport>(
     {
         let resultC = subscriberC.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        ErrorHandler::try_or(resultC == false,
+        try_or!(resultC == false,
                              SubscriberAccessMismatch(String::from("C"))
         )?;
         subscriberA.receive_keyload(&previous_msg_link)?;
@@ -140,7 +142,7 @@ pub fn example<T: Transport>(
         print!("  Author     : {}", author);
         let (msg, seq) = author.send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
-        ErrorHandler::panic_if_not(seq.is_none());
+        panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
         msg
     };
@@ -149,10 +151,10 @@ pub fn example<T: Transport>(
     {
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
-        ErrorHandler::try_or(public_payload == unwrapped_public,
+        try_or!(public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        ErrorHandler::try_or(masked_payload == unwrapped_masked,
+        try_or!(masked_payload == unwrapped_masked,
                              PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
     }
@@ -164,7 +166,7 @@ pub fn example<T: Transport>(
     let previous_msg_link = {
         let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
-        ErrorHandler::panic_if_not(seq.is_none());
+        panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
         msg
     };
@@ -173,16 +175,16 @@ pub fn example<T: Transport>(
     {
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&previous_msg_link)?;
         print!("  Author     : {}", author);
-        ErrorHandler::try_or(public_payload == unwrapped_public,
+        try_or!(public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        ErrorHandler::try_or(masked_payload == unwrapped_masked,
+        try_or!(masked_payload == unwrapped_masked,
                              PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
         let resultC = subscriberC.receive_tagged_packet(&previous_msg_link);
         print!("  SubscriberC: {}", subscriberC);
-        ErrorHandler::try_or(
+        try_or!(
             resultC.is_err(),
             SubscriberAccessMismatch(String::from("C"))
        )?;
@@ -192,7 +194,7 @@ pub fn example<T: Transport>(
     let previous_msg_link = {
         let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
-        ErrorHandler::panic_if_not(seq.is_none());
+        panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
         msg
     };
@@ -201,7 +203,7 @@ pub fn example<T: Transport>(
     let previous_msg_link = {
         let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
-        ErrorHandler::panic_if_not(seq.is_none());
+        panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
         msg
     };
@@ -213,7 +215,7 @@ pub fn example<T: Transport>(
     let previous_msg_link = {
         let (msg, seq) = subscriberB.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
-        ErrorHandler::panic_if_not(seq.is_none());
+        panic_if_not(seq.is_none());
         print!("  SubscriberB: {}", subscriberB);
         msg
     };
@@ -222,16 +224,16 @@ pub fn example<T: Transport>(
     {
         let (unwrapped_public, unwrapped_masked) = subscriberA.receive_tagged_packet(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
-        ErrorHandler::try_or(public_payload == unwrapped_public,
+        try_or!(public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        ErrorHandler::try_or(masked_payload == unwrapped_masked,
+        try_or!(masked_payload == unwrapped_masked,
                              PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
         let resultC = subscriberC.receive_tagged_packet(&previous_msg_link);
         print!("  SubscriberC: {}", subscriberC);
-        ErrorHandler::try_or(
+        try_or!(
             resultC.is_err(),
             SubscriberAccessMismatch(String::from("C"))
         )?;
@@ -244,7 +246,7 @@ pub fn example<T: Transport>(
     let previous_msg_link = {
         let (msg, seq) = author.send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
-        ErrorHandler::panic_if_not(seq.is_none());
+        panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
         msg
     };
@@ -253,19 +255,19 @@ pub fn example<T: Transport>(
     {
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
-        ErrorHandler::try_or(public_payload == unwrapped_public,
+        try_or!(public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        ErrorHandler::try_or(masked_payload == unwrapped_masked,
+        try_or!(masked_payload == unwrapped_masked,
                              PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&previous_msg_link)?;
         print!("  SubscriberB: {}", subscriberB);
-        ErrorHandler::try_or(public_payload == unwrapped_public,
+        try_or!(public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        ErrorHandler::try_or(masked_payload == unwrapped_masked,
+        try_or!(masked_payload == unwrapped_masked,
                              PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
     }

@@ -38,6 +38,12 @@ pub use alloc::format;
 #[cfg(feature = "std")]
 pub use std::format;
 
+#[cfg(not(feature = "err-location-log"))]
+pub const LOCATION_LOG: bool = false;
+
+#[cfg(feature = "err-location-log")]
+pub const LOCATION_LOG: bool = true;
+
 pub mod prelude;
 pub mod prng;
 pub mod psk;

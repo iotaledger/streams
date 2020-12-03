@@ -1,7 +1,7 @@
 use anyhow::Result;
 use core::fmt;
 
-use iota_streams_core::{sponge::prp::PRP, ErrorHandler};
+use iota_streams_core::{sponge::prp::PRP, try_or, LOCATION_LOG, Errors::*};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -15,7 +15,6 @@ use iota_streams_ddml::{
 };
 
 use super::*;
-use iota_streams_core::Errors::*;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
@@ -49,7 +48,7 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_content_type(mut self, content_type: u8) -> Result<Self> {
-        ErrorHandler::try_or(content_type < 0x10, ValueOutOfRange(0x10 as usize, content_type as usize))?;
+        try_or!(content_type < 0x10, ValueOutOfRange(0x10 as usize, content_type as usize))?;
         self.content_type = content_type;
         Ok(self)
     }
@@ -59,7 +58,7 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_payload_length(mut self, payload_length: usize) -> Result<Self> {
-        ErrorHandler::try_or(
+        try_or!(
             payload_length < 0x0400,
             MaxSizeExceeded(0x0400 as usize, payload_length)
         )?;
@@ -72,7 +71,7 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_payload_frame_count(mut self, payload_frame_count: u32) -> Result<Self> {
-        ErrorHandler::try_or(
+        try_or!(
             payload_frame_count < 0x400000,
             MaxSizeExceeded(0x400000 as usize, payload_frame_count as usize)
         )?;
@@ -94,10 +93,10 @@ impl<Link> HDF<Link> {
     }
 
     pub fn new_with_fields(link: Link, content_type: u8, payload_length: usize, seq_num: u64) -> Result<Self> {
-        ErrorHandler::try_or(content_type < 0x10, ValueOutOfRange(0x10 as usize, content_type as usize))?;
-        ErrorHandler::try_or(
+        try_or!(content_type < 0x10, ValueOutOfRange(0x10 as usize, content_type as usize))?;
+        try_or!(
             payload_length < 0x0400,
-            MaxSizeExceeded(0x0400 as usize, payload_length),
+            MaxSizeExceeded(0x0400 as usize, payload_length)
         )?;
         Ok(Self {
             encoding: UTF8,
@@ -224,7 +223,7 @@ where
             .skip(&mut content_type_and_payload_length)?;
         {
             let v = content_type_and_payload_length.as_ref();
-            ErrorHandler::try_or(0 == v[0] & 0x0c, InvalidBitReservation)?;
+            try_or!(0 == v[0] & 0x0c, InvalidBitReservation)?;
             self.content_type = v[0] >> 4;
             self.payload_length = (((v[0] & 0x03) as usize) << 8) | (v[1] as usize);
         }
@@ -238,7 +237,7 @@ where
             .skip(&mut payload_frame_count)?;
         {
             let v = payload_frame_count.as_ref();
-            ErrorHandler::try_or(0 == v[0] & 0xc0, InvalidBitReservation)?;
+            try_or!(0 == v[0] & 0xc0, InvalidBitReservation)?;
             let mut x = [0_u8; 4];
             x[1] = v[0];
             x[2] = v[1];

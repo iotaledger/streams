@@ -14,8 +14,10 @@ use iota_streams_core::{
     prng,
     psk,
     sponge::prp::{Inner, PRP},
-    ErrorHandler,
-    Errors::*
+    try_or,
+    err,
+    Errors::*,
+    LOCATION_LOG
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -236,10 +238,9 @@ where
 
     /// Create a new channel (without announcing it). User now becomes Author.
     pub fn create_channel(&mut self, channel_idx: u64) -> Result<()> {
-        ErrorHandler::try_or(
-            self.appinst.is_none(),
-            ChannelCreationFailure(self.appinst.as_ref().unwrap().base().to_string())
-        )?;
+        if self.appinst.is_some() {
+            return err!(ChannelCreationFailure(self.appinst.as_ref().unwrap().base().to_string()));
+        }
         self.link_gen.gen(&self.sig_kp.public, channel_idx);
         let appinst = self.link_gen.get();
         self.pk_store.insert(
@@ -281,7 +282,7 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, announce::ContentUnwrap<F>>> {
         if let Some(appinst) = &self.appinst {
-            ErrorHandler::try_or(
+            try_or!(
                 appinst == &preparsed.header.link,
                 UserAlreadyRegistered(appinst.base().to_string())
             )?;
@@ -300,7 +301,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
         let preparsed = msg.parse_header()?;
-        ErrorHandler::try_or(
+        try_or!(
             preparsed.content_type() == ANNOUNCE,
             NotAnnouncement(preparsed.content_type())
         )?;
@@ -351,10 +352,10 @@ where
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
             } else {
-                ErrorHandler::err(AuthorExchangeKeyNotFound)
+                err!(AuthorExchangeKeyNotFound)
             }
         } else {
-            ErrorHandler::err(AuthorSigKeyNotFound)
+            err!(AuthorSigKeyNotFound)
         }
     }
 
@@ -451,7 +452,7 @@ where
                 let ke_pks = self.pk_store.filter(pks);
                 self.do_prepare_keyload(header, link_to, psks.into_iter(), ke_pks.into_iter())
             },
-            None => ErrorHandler::err(SeqNumRetrievalFailure)
+            None => err!(SeqNumRetrievalFailure)
         }
     }
 
@@ -486,7 +487,7 @@ where
                 let ike_pks = self.pk_store.keys();
                 self.do_prepare_keyload(header, link_to, ipsks.into_iter(), ike_pks.into_iter())
             },
-            None => ErrorHandler::err(SeqNumRetrievalFailure)
+            None => err!(SeqNumRetrievalFailure)
         }
     }
 
@@ -549,7 +550,7 @@ where
             let unwrapped = preparsed.unwrap(&*self.link_store.borrow(), content)?;
             Ok(unwrapped)
         } else {
-            ErrorHandler::err(AuthorSigKeyNotFound)
+            err!(AuthorSigKeyNotFound)
         }
     }
 
@@ -611,7 +612,7 @@ where
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
             },
-            None => ErrorHandler::err(SeqNumRetrievalFailure)
+            None => err!(SeqNumRetrievalFailure)
         }
     }
 
@@ -675,7 +676,7 @@ where
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
             },
-            None => ErrorHandler::err(SeqNumRetrievalFailure)
+            None => err!(SeqNumRetrievalFailure)
         }
     }
 
@@ -868,8 +869,8 @@ where
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
-        ErrorHandler::try_or(self.appinst.is_some(), UserNotRegistered)?;
-        ErrorHandler::try_or(
+        try_or!(self.appinst.is_some(), UserNotRegistered)?;
+        try_or!(
             self.appinst.as_ref().unwrap().base() == preparsed.header.link.base(),
             MessageAppInstMismatch(
                 self.appinst.as_ref().unwrap().base().to_string(),
@@ -1265,7 +1266,7 @@ where
             ;
             let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
             self.wrap(&store, &mut ctx)?;
-            ErrorHandler::try_or(
+            try_or!(
                 ctx.stream.is_empty(),
                 OutputStreamNotFullyConsumed(ctx.stream.len())
             )?;
@@ -1310,7 +1311,7 @@ where
         let mut user = User::default();
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         user.unwrap(&store, &mut ctx)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             InputStreamNotFullyConsumed(ctx.stream.len())
         )?;

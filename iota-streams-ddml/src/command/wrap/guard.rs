@@ -5,11 +5,11 @@ use crate::{
     command::Guard,
     io,
 };
-use iota_streams_core::{ErrorHandler, Errors};
+use iota_streams_core::{try_or, Errors, LOCATION_LOG};
 
 impl<F, IS: io::OStream> Guard for Context<F, IS> {
     fn guard(&mut self, cond: bool, err: Errors) -> Result<&mut Self> {
-        ErrorHandler::try_or(cond, err)?;
+        try_or!(cond, err)?;
         Ok(self)
     }
 }

@@ -31,8 +31,12 @@ pub enum Errors {
     //////////
     // DDML Wrap/Unwrap
     //////////
-    #[error("")]
-    WrapFailure,
+    #[error("There was an issue with the calculated signature, cannot unwrap message")]
+    SignatureMismatch,
+    #[error("There was an issue with calculating the signature, cannot wrap message.")]
+    SignatureFailure,
+    #[error("Failure to generate ed25519 public key")]
+    PublicKeyGenerationFailure,
     #[error("Integrity violation. Bad MAC")]
     BadMac,
 

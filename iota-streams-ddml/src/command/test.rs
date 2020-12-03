@@ -14,7 +14,7 @@ use iota_streams_core::{
         prp::PRP,
         spongos::Spongos,
     },
-    ErrorHandler,
+    try_or,
     Errors::*
 };
 use iota_streams_core_edsig::{
@@ -37,13 +37,13 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
         let t = Uint8(t);
         let buf_size = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.get_size();
         let buf_size2 = sizeof::Context::<F>::new().absorb(&t)?.mask(&t)?.get_size();
-        ErrorHandler::try_or(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
-        ErrorHandler::try_or(buf_size == 2, ValueMismatch(2, buf_size))?;
+        try_or!(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
+        try_or!(buf_size == 2, ValueMismatch(2, buf_size))?;
 
         {
             let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
             ctx.commit()?.absorb(&t)?.mask(&t)?.commit()?.squeeze(&mut tag_wrap)?;
-            ErrorHandler::try_or(
+            try_or!(
                 ctx.stream.is_empty(),
                 OutputStreamNotFullyConsumed(ctx.stream.len())
             )?;
@@ -58,15 +58,15 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
                 .mask(&mut t3)?
                 .commit()?
                 .squeeze(&mut tag_unwrap)?;
-            ErrorHandler::try_or(
+            try_or!(
                 ctx.stream.is_empty(),
                 InputStreamNotFullyConsumed(ctx.stream.len())
             )?;
         }
 
-        ErrorHandler::try_or(t == t2, ValueMismatch(t as usize, t2 as usize))?;
-        ErrorHandler::try_or(t == t3, ValueMismatch(t as usize, t3 as usize))?;
-        ErrorHandler::try_or(
+        try_or!(t == t2, ValueMismatch(t as usize, t2 as usize))?;
+        try_or!(t == t3, ValueMismatch(t as usize, t3 as usize))?;
+        try_or!(
             tag_wrap == tag_unwrap,
             InvalidTagSqueeze(tag_wrap.to_string(), tag_unwrap.to_string())
         )?;
@@ -89,14 +89,14 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
         let s = Size(*n);
         let buf_size = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.get_size();
         let buf_size2 = sizeof::Context::<F>::new().absorb(&s)?.mask(&s)?.get_size();
-        ErrorHandler::try_or(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
+        try_or!(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
 
         let mut buf = vec![0_u8; buf_size];
 
         {
             let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
             ctx.commit()?.absorb(&s)?.mask(&s)?.commit()?.squeeze(&mut tag_wrap)?;
-            ErrorHandler::try_or(
+            try_or!(
                 ctx.stream.is_empty(),
                 OutputStreamNotFullyConsumed(ctx.stream.len())
             )?;
@@ -111,15 +111,15 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
                 .mask(&mut s3)?
                 .commit()?
                 .squeeze(&mut tag_unwrap)?;
-            ErrorHandler::try_or(
+            try_or!(
                 ctx.stream.is_empty(),
                 InputStreamNotFullyConsumed(ctx.stream.len())
             )?;
         }
 
-        ErrorHandler::try_or(s == s2, ValueMismatch(s.0, s2.0))?;
-        ErrorHandler::try_or(s == s3, ValueMismatch(s.0, s3.0))?;
-        ErrorHandler::try_or(
+        try_or!(s == s2, ValueMismatch(s.0, s2.0))?;
+        try_or!(s == s3, ValueMismatch(s.0, s3.0))?;
+        try_or!(
             tag_wrap == tag_unwrap,
             InvalidTagSqueeze(tag_wrap.to_string(), tag_unwrap.to_string())
         )?;
@@ -190,7 +190,7 @@ fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
                 //
                 .commit()?
                 .squeeze(&mut tag_wrap)?;
-            ErrorHandler::try_or(
+            try_or!(
                 ctx.stream.is_empty(),
                 OutputStreamNotFullyConsumed(ctx.stream.len())
             )?;
@@ -216,20 +216,20 @@ fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
                 //
                 .commit()?
                 .squeeze(&mut tag_unwrap)?;
-            ErrorHandler::try_or(
+            try_or!(
                 ctx.stream.is_empty(),
                 InputStreamNotFullyConsumed(ctx.stream.len())
             )?;
         }
 
-        ErrorHandler::try_or(ta == ta2,
+        try_or!(ta == ta2,
                              InvalidBytes(ta.to_string(), ta2.to_string()))?;
-        ErrorHandler::try_or(nta == nta2,
+        try_or!(nta == nta2,
                              InvalidBytes(nta.to_string(), nta2.to_string()))?;
-        // ErrorHandler::try_or(tm == tm2, "Invalid unwrapped tm value: {:?} != {:?}", tm, tm2);
-        // ErrorHandler::try_or(ntm == ntm2, "Invalid unwrapped ntm value: {:?} != {:?}", ntm, ntm2);
-        // ErrorHandler::try_or(ents == ents2, "Invalid unwrapped ents value: {:?} != {:?}", ents, ents2);
-        ErrorHandler::try_or(
+        // try_or!(tm == tm2, "Invalid unwrapped tm value: {:?} != {:?}", tm, tm2);
+        // try_or!(ntm == ntm2, "Invalid unwrapped ntm value: {:?} != {:?}", ntm, ntm2);
+        // try_or!(ents == ents2, "Invalid unwrapped ents value: {:?} != {:?}", ents, ents2);
+        try_or!(
             tag_wrap == tag_unwrap,
             InvalidTagSqueeze(tag_wrap.to_string(), tag_unwrap.to_string())
         )?;
@@ -273,7 +273,7 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
             .squeeze(&mut hash)?
             .ed25519(&kp, &hash)?
             .ed25519(&kp, HashSig)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             OutputStreamNotFullyConsumed(ctx.stream.len())
         )?;
@@ -286,17 +286,17 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
             .squeeze(&mut uhash)?
             .ed25519(&public, &uhash)?
             .ed25519(&public, HashSig)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             InputStreamNotFullyConsumed(ctx.stream.len())
         )?;
     }
 
-    ErrorHandler::try_or(
+    try_or!(
         ta == uta,
         InvalidTagSqueeze(ta.to_string(), uta.to_string())
     )?;
-    ErrorHandler::try_or(
+    try_or!(
         hash == uhash,
         InvalidHashSqueeze(hash.0.to_string(), uhash.0.to_string())
     )?;
@@ -335,7 +335,7 @@ fn x25519_static<F: PRP>() -> Result<()> {
             .x25519(&secret_b, &public_a)?
             .commit()?
             .mask(&ta)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             OutputStreamNotFullyConsumed(ctx.stream.len())
         )?;
@@ -347,13 +347,13 @@ fn x25519_static<F: PRP>() -> Result<()> {
             .x25519(&secret_a, &public_b2)?
             .commit()?
             .mask(&mut uta)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             InputStreamNotFullyConsumed(ctx.stream.len())
         )?;
     }
 
-    ErrorHandler::try_or(ta == uta,
+    try_or!(ta == uta,
                          InvalidTagSqueeze(ta.to_string(), uta.to_string())
     )?;
 
@@ -387,7 +387,7 @@ fn x25519_ephemeral<F: PRP>() -> Result<()> {
             .x25519(secret_b, &public_a)?
             .commit()?
             .mask(&ta)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             OutputStreamNotFullyConsumed(ctx.stream.len())
         )?;
@@ -399,13 +399,13 @@ fn x25519_ephemeral<F: PRP>() -> Result<()> {
             .x25519(secret_a, &public_b2)?
             .commit()?
             .mask(&mut uta)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             InputStreamNotFullyConsumed(ctx.stream.len())
         )?;
     }
 
-    ErrorHandler::try_or(ta == uta,
+    try_or!(ta == uta,
                          InvalidTagSqueeze(ta.to_string(), uta.to_string())
     )?;
 
@@ -430,7 +430,7 @@ fn x25519_transport<F: PRP>() -> Result<()> {
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
         ctx.x25519(&public_a, &key)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             OutputStreamNotFullyConsumed(ctx.stream.len())
         )?;
@@ -439,13 +439,13 @@ fn x25519_transport<F: PRP>() -> Result<()> {
     {
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
         ctx.x25519(&secret_a, &mut ukey)?;
-        ErrorHandler::try_or(
+        try_or!(
             ctx.stream.is_empty(),
             InputStreamNotFullyConsumed(ctx.stream.len())
         )?;
     }
 
-    ErrorHandler::try_or(
+    try_or!(
         key == ukey,
         InvalidKeySqueeze(key.to_string(), ukey.to_string())
     )?;
@@ -649,7 +649,7 @@ fn test_x25519() {
 // let mut wrap_ctx = wrap::Context::<F, TbitSliceMut<TW>>::new(buf.slice_mut());
 // let i = TestMessageInfo(1);
 // msg.wrap(&mut store, &mut wrap_ctx, i)?;
-// ErrorHandler::try_or(wrap_ctx.stream.is_empty());
+// try_or!(wrap_ctx.stream.is_empty());
 // }
 //
 // let mut msg2 = TestMessage::<TestAbsLink, TestRelLink>::default();
@@ -657,10 +657,10 @@ fn test_x25519() {
 // let mut unwrap_ctx = unwrap::Context::<F, TbitSlice<TW>>::new(buf.slice());
 // TODO: unwrap and check.
 // msg2.unwrap(&store, &mut unwrap_ctx)?;
-// ErrorHandler::try_or(unwrap_ctx.stream.is_empty());
+// try_or!(unwrap_ctx.stream.is_empty());
 // }
 //
-// ErrorHandler::try_or(msg == msg2);
+// try_or!(msg == msg2);
 // Ok(())
 // }
 //

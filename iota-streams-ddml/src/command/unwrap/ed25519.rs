@@ -1,7 +1,4 @@
-use anyhow::{
-    bail,
-    Result,
-};
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -19,7 +16,13 @@ use crate::{
         U64,
     },
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    Errors::SignatureMismatch,
+    wrapped_err,
+    WrappedError,
+    LOCATION_LOG,
+};
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Recover public key.
@@ -34,7 +37,7 @@ impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<N
         let signature = ed25519::Signature::new(bytes);
         match pk.verify_prehashed(prehashed, Some(context), &signature) {
             Ok(()) => Ok(self),
-            Err(err) => bail!("bad signature: {}", err),
+            Err(e) => Err(wrapped_err!(SignatureMismatch, WrappedError(e))),
         }
     }
 }

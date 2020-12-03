@@ -7,7 +7,9 @@ use anyhow::{
 use iota_streams_core::prelude::{hex, String, };
 use iota_streams_core::{
     Errors::{StreamAllocationExceededOut, StreamAllocationExceededIn},
-    ErrorHandler
+    panic_if_not,
+    try_or,
+    LOCATION_LOG,
 };
 
 /// Write
@@ -15,7 +17,7 @@ pub trait OStream {
     /// Try advance and panic in case of error.
     fn advance<'a>(&'a mut self, n: usize) -> &'a mut [u8] {
         let r = self.try_advance(n);
-        ErrorHandler::panic_if_not(r.is_ok());
+        panic_if_not(r.is_ok());
         r.unwrap()
     }
 
@@ -36,7 +38,7 @@ pub trait IStream {
     /// Try advance and panic in case of error.
     fn advance<'a>(&'a mut self, n: usize) -> &'a [u8] {
         let r = self.try_advance(n);
-        ErrorHandler::panic_if_not(r.is_ok());
+        panic_if_not(r.is_ok());
         r.unwrap()
     }
 
@@ -54,7 +56,7 @@ pub trait IStream {
 
 impl<'b> OStream for &'b mut [u8] {
     fn try_advance<'a>(&'a mut self, n: usize) -> Result<&'a mut [u8]> {
-        ErrorHandler::try_or(n <= self.len(), StreamAllocationExceededOut(n, self.len()))?;
+        try_or!(n <= self.len(), StreamAllocationExceededOut(n, self.len()))?;
         let (head, tail) = (*self).split_at_mut(n);
         unsafe {
             *self = core::mem::transmute::<&'a mut [u8], &'b mut [u8]>(tail);
@@ -69,7 +71,7 @@ impl<'b> OStream for &'b mut [u8] {
 
 impl<'b> IStream for &'b [u8] {
     fn try_advance<'a>(&'a mut self, n: usize) -> Result<&'a [u8]> {
-        ErrorHandler::try_or(n <= self.len(), StreamAllocationExceededIn(n, self.len()))?;
+        try_or!(n <= self.len(), StreamAllocationExceededIn(n, self.len()))?;
         let (head, tail) = (*self).split_at(n);
         unsafe {
             *self = core::mem::transmute::<&'a [u8], &'b [u8]>(tail);

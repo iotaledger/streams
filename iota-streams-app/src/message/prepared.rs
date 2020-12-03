@@ -4,8 +4,9 @@ use core::cell::Ref;
 use super::*;
 use iota_streams_core::{
     sponge::prp::PRP,
-    ErrorHandler,
-    Errors::OutputStreamNotFullyConsumed
+    try_or,
+    Errors::OutputStreamNotFullyConsumed,
+    LOCATION_LOG
 };
 use iota_streams_ddml::{
     command::{
@@ -63,7 +64,7 @@ where
             let mut ctx = wrap::Context::new(&mut buf[..]);
             self.header.wrap(&*self.store, &mut ctx)?;
             self.content.wrap(&*self.store, &mut ctx)?;
-            ErrorHandler::try_or(ctx.stream.is_empty(),
+            try_or!(ctx.stream.is_empty(),
                                  OutputStreamNotFullyConsumed(ctx.stream.len())
             )?;
             ctx.spongos

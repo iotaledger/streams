@@ -43,10 +43,10 @@ pub trait Transport<Link: Debug + Display, Msg>: TransportOptions {
     fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         let mut msgs = self.recv_messages(link)?;
         if let Some(msg) = msgs.pop() {
-            ErrorHandler::try_or(msgs.is_empty(), MessageNotUnique(link.to_string()))?;
+            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()))?;
             Ok(msg)
         } else {
-            ErrorHandler::err(MessageLinkNotFound(link.to_string()))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 }
@@ -73,7 +73,7 @@ where
     // ensure!(msgs.is_empty(), "More than one message found.");
     // Ok(msg)
     // } else {
-    // ErrorHandler::err()
+    // err!()
     // }
     // }
 }
@@ -103,7 +103,7 @@ impl<Link: Debug + Display, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg>
     fn send_message(&mut self, msg: &Msg) -> Result<()> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.send_message(msg),
-            Err(err) => Err(ErrorHandler::wrapped_err(TransportNotAvailable, WrappedError(err))),
+            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
         }
     }
 
@@ -111,7 +111,7 @@ impl<Link: Debug + Display, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg>
     fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_messages(link),
-            Err(err) => Err(ErrorHandler::wrapped_err(TransportNotAvailable, WrappedError(err))),
+            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
         }
     }
 
@@ -119,7 +119,7 @@ impl<Link: Debug + Display, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg>
     fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_message(link),
-            Err(err) => Err(ErrorHandler::wrapped_err(TransportNotAvailable, WrappedError(err))),
+            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
         }
     }
 }
@@ -127,7 +127,7 @@ impl<Link: Debug + Display, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg>
 mod bucket;
 pub use bucket::BucketTransport;
 use core::fmt::{Debug, Display};
-use iota_streams_core::{ErrorHandler, WrappedError};
+use iota_streams_core::{try_or, err, wrapped_err, WrappedError, LOCATION_LOG};
 use iota_streams_core::Errors::{MessageNotUnique, MessageLinkNotFound, TransportNotAvailable};
 
 #[cfg(feature = "tangle")]

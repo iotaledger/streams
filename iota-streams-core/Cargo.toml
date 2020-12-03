@@ -12,6 +12,7 @@ description = "A rust implementation of the IOTA Streams core utils"
 default = ["std"]
 # enable std
 std = ["rand/std", "digest/std", "hex/std"]
+err-location-log = []
 
 [lib]
 name = "iota_streams_core"

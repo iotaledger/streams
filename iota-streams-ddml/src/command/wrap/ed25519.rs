@@ -1,7 +1,4 @@
-use anyhow::{
-    bail,
-    Result,
-};
+use anyhow::Result;
 
 use super::Context;
 use crate::{
@@ -19,7 +16,13 @@ use crate::{
         U64,
     },
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    wrapped_err,
+    WrappedError,
+    LOCATION_LOG,
+    Errors::SignatureFailure,
+};
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Signature size depends on Merkle tree height.
@@ -33,10 +36,10 @@ impl<F: PRP, OS: io::OStream> Ed25519<&ed25519::Keypair, &External<NBytes<U64>>>
                 self.stream
                     .try_advance(ed25519::SIGNATURE_LENGTH)?
                     .copy_from_slice(&signature.to_bytes());
+                Ok(self)
             }
-            Err(err) => bail!("Failed to sign_prehashed: {}", err),
-        };
-        Ok(self)
+            Err(e) => Err(wrapped_err!(SignatureFailure, WrappedError(e))),
+        }
     }
 }
 

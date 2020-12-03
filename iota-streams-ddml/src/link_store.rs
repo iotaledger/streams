@@ -14,7 +14,9 @@ use iota_streams_core::{
         },
         spongos::Spongos,
     },
-    ErrorHandler,
+    try_or,
+    err,
+    LOCATION_LOG,
     Errors::{GenericLinkNotFound, MessageLinkNotFound}
 };
 use core::fmt::Display;
@@ -30,7 +32,7 @@ pub trait LinkStore<F, Link> {
 
     /// Lookup link in the store and return spongos state and associated info.
     fn lookup(&self, _link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        ErrorHandler::err(GenericLinkNotFound)
+        err!(GenericLinkNotFound)
     }
 
     /// Put link into the store together with spongos state and associated info.
@@ -100,7 +102,7 @@ where
 {
     type Info = Info;
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        ErrorHandler::try_or(self.link() == link,
+        try_or!(self.link() == link,
                              MessageLinkNotFound(link.to_string())
         )?;
         Ok((self.spongos().into(), self.info().clone()))
@@ -151,7 +153,7 @@ where
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
         match self.map.get(link) {
             Some((inner, info)) => Ok((inner.into(), info.clone())),
-            None => ErrorHandler::err(MessageLinkNotFound(link.to_string()))
+            None => err!(MessageLinkNotFound(link.to_string()))
         }
     }
 
