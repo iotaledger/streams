@@ -98,14 +98,19 @@ int main()
 
   printf("Unwrapping announcement packet... \n");
   sub_receive_announce(subA, ann_link);
+  sub_receive_announce(subB, ann_link);
   printf("Announcement unwrapped, generating subscription message...\n");
-  address_t const *sub_link = sub_send_subscribe(subA, ann_link);
-  printf("Subscription request sent... \nSuccess: %d\n\n", sub_link != NULL);
+  address_t const *sub_a_link = sub_send_subscribe(subA, ann_link);
+  address_t const *sub_b_link = sub_send_subscribe(subB, ann_link);
+
+  printf("Subscription request sent... \nSuccess: %d\n\n", sub_a_link != NULL && sub_b_link != NULL);
 
   printf("Accepting Sub A to author subscription list\n");
-  auth_receive_subscribe(auth, sub_link);
+  auth_receive_subscribe(auth, sub_a_link);
+  printf("Accepting Sub B to author subscription list\n");
+  auth_receive_subscribe(auth, sub_b_link);
 
-  printf("Sub A subscribed!\n\n");
+  printf("Subs A and B subscribed!\n\n");
 
   // Keyload share packet
 
@@ -120,7 +125,16 @@ int main()
   address_t const *keyload_packet_address = sub_receive_sequence(subA, keyload_packet_sequence_link);
 
   sub_receive_keyload(subA, keyload_packet_address);
-  printf("Subscriber handled keyload\n\n");
+  printf("Subscriber A handled keyload\n\n");
+
+  // Fetch next message ids and process keyload - Sub B
+  printf("Subscriber B fetching next messages\n");
+  next_msg_ids_t const *msgIds = sub_gen_next_msg_ids(subB);
+  printf("Got next message ids? Success: %d\n", msgIds != NULL);
+  message_links_t sub_received_links = sub_receive_keyload_from_ids(subB, msgIds);
+  printf("Subscriber B unwrapped keyload? %d\n\n", &sub_received_links != NULL);
+  drop_next_msg_ids(msgIds);
+  drop_links(sub_received_links);
 
   char const public_payload[] = "A public payload woopeee";
   char const masked_payload[] = "A masked payload uhu";
@@ -192,7 +206,8 @@ int main()
   }
 
   drop_address(ann_link);
-  drop_address(sub_link);
+  drop_address(sub_a_link);
+  drop_address(sub_b_link);
   drop_links(keyload_links);
   drop_address(keyload_packet_address);
   drop_links(signed_packet_links);
