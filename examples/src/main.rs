@@ -2,6 +2,9 @@
 #![allow(dead_code)]
 //#![no_std]
 
+use dotenv;
+use std::env;
+
 use anyhow::Result;
 use rand::Rng;
 
@@ -72,15 +75,22 @@ fn main_pure() {
 
 #[allow(dead_code)]
 fn main_client() {
-    let node = "http://localhost:14265"; //"https://nodes.devnet.iota.org:443";
+    // Load or .env file, log message if we failed
+    if dotenv::dotenv().is_err() {
+        println!(".env file not found; copy and rename example.env to \".env\"");
+    };
+
+    // Parse env vars with a fallback
+    let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
+    let node_mwm: u8 = env::var("MWM").map(|s| s.parse().unwrap_or(14)).unwrap_or(14);
 
     // Fails at unwrap when the url isnt working
     // TODO: Fail gracefully
-    let client = Client::new_from_url(node);
+    let client = Client::new_from_url(&node_url);
 
     let mut transport = Rc::new(RefCell::new(client));
     let mut send_opt = SendTrytesOptions::default();
-    send_opt.min_weight_magnitude = 14;
+    send_opt.min_weight_magnitude = node_mwm;
     transport.set_send_options(send_opt);
 
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
@@ -92,13 +102,13 @@ fn main_client() {
         .collect::<String>();
 
     println!("#######################################");
-    println!("Running tests accessing Tangle via node {}", node);
+    println!("Running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
     println!("\n");
 
     run_single_branch_test(transport.clone(), seed1);
     run_multi_branch_test(transport.clone(), seed2);
-    println!("Done running tests accessing Tangle via node {}", node);
+    println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }
 

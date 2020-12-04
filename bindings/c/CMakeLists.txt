@@ -23,7 +23,6 @@ message("NO_STD=${NO_STD} SYNC_CLIENT=${SYNC_CLIENT} STATIC=${STATIC}")
 include_directories(include/)
 
 if(${STATIC})
-  message("STATIC")
   FetchContent_Declare(
     Corrosion
     GIT_REPOSITORY https://github.com/AndrewGaspar/corrosion.git
@@ -38,7 +37,6 @@ if(${STATIC})
   target_link_libraries(iota_streams_c_static PUBLIC iota_streams_c)
 
 else(${STATIC})
-  message("SHARED")
   add_executable(${PROJECT_NAME} main.c)
 
   if (WIN32)
