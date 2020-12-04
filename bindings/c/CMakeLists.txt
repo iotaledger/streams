@@ -5,7 +5,7 @@ include(FetchContent)
 
 option(NO_STD "Enable no_std build, without iota_client" OFF)
 option(SYNC_CLIENT "Enable sync transport via iota_client" ON)
-option(STATIC "Build shared library" OFF)
+option(STATIC "Build static library" OFF)
 
 set(cargo_features "")
 if(${NO_STD})
@@ -58,7 +58,7 @@ else(${STATIC})
 
     target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${SHARED_OBJECT_FILE})
   endif (WIN32)
-  
+
 
 endif()
 
