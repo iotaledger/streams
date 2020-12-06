@@ -13,7 +13,7 @@ use iota_streams::{
             Author,
             Transport,
             Address,
-            ChannelAddress
+            ChannelAddress,
         },
     },
     core::{
@@ -32,7 +32,7 @@ use iota_streams::{
     },
     core::prelude::{ String,  },
 };
-  
+
 #[wasm_bindgen]
 pub struct AuthorW {
     author: Author<Rc<RefCell<Client>>>,
@@ -42,12 +42,12 @@ pub struct AuthorW {
 impl AuthorW {
     #[wasm_bindgen(constructor)]
     pub fn new(node: String, seed: String, options: SendTrytesOptionsW, multi_branching: bool) -> AuthorW {
-        //let node = "https://nodes.devnet.iota.org:443"; //"https://nodes.devnet.iota.org:443";
+        let node = "https://nodes.devnet.iota.org:443";
 
         let client = Client::new_from_url(&node);
 
         let mut transport = Rc::new(RefCell::new(client));
-    
+
         transport.set_send_options(SendTrytesOptions {
             depth: options.depth,
             min_weight_magnitude: options.min_weight_magnitude,
@@ -58,6 +58,11 @@ impl AuthorW {
         let author = Author::new(&seed, "utf-8", PAYLOAD_BYTES, multi_branching, transport);
 
         AuthorW { author: author }
+    }
+
+    pub fn timestamp(&self) -> f64 {
+        js_sys::Date::new_0().value_of()
+        //chrono::Utc::now().timestamp_millis() as f64
     }
 
     pub fn channel_address(&self) -> Result<String, JsValue> {

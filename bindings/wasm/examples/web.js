@@ -5,6 +5,8 @@ import("../pkg/index.js").then((streams) => {
     let auth = new streams.AuthorW("https://nodes.devnet.iota.org:443", seed, options, false);
     console.log("channel address: ", auth.channel_address());
     console.log("multi branching: ", auth.is_multi_branching());
+    console.log("timestamp: ", auth.timestamp());
+    console.log("announce: ", auth.auth_send_announce());
 
     auth.free();
 });

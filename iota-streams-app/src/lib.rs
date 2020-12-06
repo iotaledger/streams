@@ -38,6 +38,5 @@ pub mod message;
 /// Transport-related abstractions.
 pub mod transport;
 
-// pub trait TrustProvider<PublicKey> {
-// fn check_trusted(pk: &PublicKey) -> Result<()>;
-// }
+#[cfg(not(target_arch = "wasm32"))]
+fn error() { "bad target arch" }

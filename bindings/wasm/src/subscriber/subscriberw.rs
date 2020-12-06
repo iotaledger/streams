@@ -12,7 +12,7 @@ use iota_streams::{
           Subscriber,
           Transport,
           Address,
-          ChannelAddress
+          ChannelAddress,
       },
   },
   core::{
@@ -44,7 +44,7 @@ impl SubscriberW {
     let client = Client::new_from_url(&node);
 
     let mut transport = Rc::new(RefCell::new(client));
-    
+
     transport.set_send_options(SendTrytesOptions {
       depth: options.depth,
       min_weight_magnitude: options.min_weight_magnitude,

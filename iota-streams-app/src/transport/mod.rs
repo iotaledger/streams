@@ -4,11 +4,6 @@ use anyhow::{
     Result,
 };
 
-use core::hash;
-
-#[cfg(not(feature = "async"))]
-use iota_streams_core::prelude::Rc;
-#[cfg(not(feature = "async"))]
 use core::cell::RefCell;
 
 #[cfg(feature = "async")]
@@ -23,6 +18,7 @@ use atomic_refcell::AtomicRefCell;
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::{Arc, Box, };
 
+use iota_streams_core::prelude::Rc;
 use iota_streams_core::prelude::Vec;
 
 pub trait TransportOptions {
@@ -85,7 +81,6 @@ where
     // }
 }
 
-#[cfg(not(feature = "async"))]
 impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
     type SendOptions = <Tsp as TransportOptions>::SendOptions;
     fn get_send_options(&self) -> Self::SendOptions {

@@ -4,6 +4,7 @@ use anyhow::{
     Result,
 };
 use core::{
+    cell::RefCell,
     cmp::Ordering,
     convert::{
         TryFrom,
@@ -32,6 +33,7 @@ use iota_streams_core::prelude::{
     String,
     ToString,
     Vec,
+    Rc,
 };
 
 use crate::{
@@ -474,6 +476,45 @@ where
             Ok(msg)
         } else {
             Err(anyhow!("Message not found."))
+        }
+    }
+}
+
+// It's safe to impl async trait for Rc<RefCell<T>> targeting wasm as it's single-threaded.
+#[cfg(feature = "async")]
+#[async_trait(?Send)]
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Rc<RefCell<Client>>
+where
+    F: 'static + core::marker::Send + core::marker::Sync,
+{
+    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => async_send_message_with_options(&tsp.client, msg, &tsp.send_opt).await,
+            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+        }
+    }
+
+    /// Receive a message.
+    async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => async_recv_messages(&tsp.client, link).await,
+            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+        }
+    }
+
+    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => {
+                let mut msgs = async_recv_messages(&tsp.client, link).await?;
+                if let Some(msg) = msgs.pop() {
+                    ensure!(msgs.is_empty(), "More than one message found.");
+                    Ok(msg)
+                } else {
+                    Err(anyhow!("Message not found."))
+                }
+            },
+            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
         }
     }
 }

@@ -16,6 +16,7 @@ async = ["iota-streams-app/async"]
 tangle = ["iota-streams-app/tangle"]
 sync-client = ["iota-streams-app/sync-client", "tangle", "std"]
 async-client = ["iota-streams-app/async-client", "tangle", "std", "async"]
+wasmbind = ["iota-streams-app/wasmbind"]
 
 [lib]
 name = "iota_streams_app_channels"

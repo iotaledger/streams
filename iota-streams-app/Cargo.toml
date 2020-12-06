@@ -20,6 +20,7 @@ tangle = ["chrono"]
 # implement Transport for iota_client::Client.
 sync-client = ["num_cpus", "smol", "iota-core", "tangle", "std"] #, "iota-constants"
 async-client = ["num_cpus", "iota-core", "tangle", "std", "async"] #, "iota-constants"
+wasmbind = ["iota-core/surf-wasm", "chrono/wasmbind"]#] #["wasm-timer"]
 
 [lib]
 name = "iota_streams_app"
@@ -32,17 +33,18 @@ iota-streams-ddml = { version = "0.2.0", path = "../iota-streams-ddml", default-
 
 # anyhow and chrono are kept in sync with versions used in iota-core
 anyhow = { version = "1.0.26", default-features = false }
-chrono = { version = "0.4.11", default-features = false, optional = true }
+chrono = { version = "0.4", default-features = false, optional = true }
+wasm-timer = { version = "0.2.5", optional = true }
+js-sys = { version = "0.3.46", optional = true }
 hex = { version = "0.4.2", default-features = false, optional = false }
 async-trait = { version = "0.1", optional = true }
 atomic_refcell = { version = "0.1.6", optional = true }
 
 # Dependencies for "client" feature
 # `iota-core` crate is WIP with unstable API atm of writing.
-iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "iota-1.0", optional = true }
-#iota-core = { path = "../../iota.rs/iota-core", branch = "works", optional = true  }
-iota-constants = { version = "0.2.1", optional = true }
-bee-transaction = { git = "https://github.com/Alex6323/bee-p.git", branch = "master" }
+#iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "iota-1.0", optional = true }
+iota-core = { path = "../../iota.rs/iota-core/", optional = true, default-features = false }
+bee-transaction = { git = "https://github.com/Alex6323/bee-p.git", branch = "master"}#, rev = "02965e78a5cd43d0fb773771470ab3d891066562" }#
 bee-crypto = { git = "https://github.com/iotaledger/bee.git", branch = "dev" }
 
 # feature tokio02 explicitly required for block_on calls
