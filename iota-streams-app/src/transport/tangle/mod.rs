@@ -496,5 +496,5 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
     }
 }
 
-#[cfg(any(feature = "sync-client", feature = "async-client"))]
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
 pub mod client;

@@ -1,4 +1,5 @@
 use super::*;
+use core::hash;
 use crate::message::LinkedMessage;
 
 use iota_streams_core::prelude::HashMap;
@@ -105,7 +106,7 @@ where
 }
 
 #[cfg(feature = "async")]
-#[async_trait]
+#[async_trait(?Send)]
 impl<Link, Msg> Transport<Link, Msg> for Arc<AtomicRefCell<BucketTransport<Link, Msg>>>
 where
     Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,

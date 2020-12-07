@@ -308,13 +308,23 @@ pub struct SendTrytesOptions {
     pub threads: usize,
 }
 
+#[cfg(feature = "num_cpus")]
+fn get_num_cpus() -> usize {
+    num_cpus::get()
+}
+
+#[cfg(not(feature = "num_cpus"))]
+fn get_num_cpus() -> usize {
+    1_usize
+}
+
 impl Default for SendTrytesOptions {
     fn default() -> Self {
         Self {
             depth: 3,
             min_weight_magnitude: 14,
             local_pow: true,
-            threads: num_cpus::get(),
+            threads: get_num_cpus(),
         }
     }
 }

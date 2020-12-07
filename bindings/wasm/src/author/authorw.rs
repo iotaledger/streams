@@ -1,4 +1,5 @@
 use wasm_bindgen::prelude::*;
+//use wasm_bindgen_futures::*;
 
 use crate::types::*;
 
@@ -10,9 +11,9 @@ use iota_streams::{
     },
     app_channels::{
         api::tangle::{
-            Author,
-            Transport,
-            Address,
+            Author as ApiAuthor,
+            Transport as _,
+            Address as ApiAddress,
             ChannelAddress,
         },
     },
@@ -28,75 +29,91 @@ use core::cell::RefCell;
 use iota_streams::{
     app::transport::{
         TransportOptions,
-        tangle::client::{SendTrytesOptions, Client, },
+        tangle::client::{Client, },
     },
-    core::prelude::{ String,  },
+    core::prelude::{ String, ToString, },
 };
 
 #[wasm_bindgen]
-pub struct AuthorW {
-    author: Author<Rc<RefCell<Client>>>,
+pub struct Author {
+    author: Rc<RefCell<ApiAuthor<Rc<RefCell<Client>>>>>,
 }
 
 #[wasm_bindgen]
-impl AuthorW {
+impl Author {
     #[wasm_bindgen(constructor)]
-    pub fn new(node: String, seed: String, options: SendTrytesOptionsW, multi_branching: bool) -> AuthorW {
+    pub fn new(node: String, seed: String, options: SendTrytesOptions, multi_branching: bool) -> Author {
         let node = "https://nodes.devnet.iota.org:443";
+        let mut client = Client::new_from_url(&node);
+        client.set_send_options(options.into());
+        let transport = Rc::new(RefCell::new(client));
 
-        let client = Client::new_from_url(&node);
-
-        let mut transport = Rc::new(RefCell::new(client));
-
-        transport.set_send_options(SendTrytesOptions {
-            depth: options.depth,
-            min_weight_magnitude: options.min_weight_magnitude,
-            local_pow: options.local_pow,
-            threads: options.threads,
-        });
-
-        let author = Author::new(&seed, "utf-8", PAYLOAD_BYTES, multi_branching, transport);
-
-        AuthorW { author: author }
+        let author = Rc::new(RefCell::new(ApiAuthor::new(
+            &seed, "utf-8", PAYLOAD_BYTES, multi_branching, transport)));
+        Author { author }
     }
 
-    pub fn timestamp(&self) -> f64 {
-        js_sys::Date::new_0().value_of()
-        //chrono::Utc::now().timestamp_millis() as f64
+    pub fn channel_address(&self) -> Result<String> {
+        to_result(self.author.borrow()
+                  .channel_address()
+                  .map(|addr| addr.to_string())
+                  .ok_or("channel not created")
+        )
     }
 
-    pub fn channel_address(&self) -> Result<String, JsValue> {
-        let ch_addr = self.author.channel_address().unwrap();
-        Ok(ch_addr.to_string().to_owned())
+    pub fn is_multi_branching(&self) -> Result<bool> {
+        Ok(self.author.borrow().is_multi_branching())
     }
 
-    pub fn is_multi_branching(&self) -> Result<bool, JsValue> {
-        Ok(self.author.is_multi_branching())
-    }
-
-    pub fn get_public_key(&self) -> Result<String, JsValue> {
+    pub fn get_public_key(&self) -> Result<String> {
         Ok("pk".to_owned())
     }
 
-    pub fn auth_send_announce(&mut self) -> Result<String, JsValue> {
-        let announce = self.author.send_announce().unwrap();
-        Ok(announce.to_string().to_owned())
+    #[wasm_bindgen(catch)]
+    pub async fn send_announce(self) -> Result<String> {
+        self.author.borrow_mut().send_announce()
+            .await.map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |addr| Ok(addr.to_string().to_owned()))
     }
 
-    pub fn receive_subscribe(&mut self, link_to: AddressW) -> Result<(), JsValue> {
-        let addr = Address::from_str(&link_to.addr_id(), &link_to.msg_id()).unwrap();
+    /*
+    #[wasm_bindgen(catch)]
+    pub async fn auth_send_announce2(this: Rc<RefCell<Author>>) -> Result<String, JsValue> {
+        this.borrow_mut()
+            .author.send_announce()
+            .await.map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |addr| Ok(addr.to_string().to_owned()))
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn auth_send_announce3(&mut self) -> Promise {
+        let ann = JsFuture::from(self.author.send_announce());
+        future_to_promise(async move {
+            ann.await.map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |addr| Ok(addr.to_string().to_owned()))
+        })
+    }
+     */
+
+    pub fn receive_subscribe(&mut self, link_to: Address) -> Result<()> {
+        //let addr = link_to.try_into()?;
         // Errors on missing functions from iota-core/iota-client/ureq/rustls/ring in the env
         //self.author.receive_subscribe(&addr).unwrap();
         Ok(())
     }
 
-    pub fn send_keyload_for_everyone(&mut self, link_to: AddressW) -> Result<String, JsValue> {
+  /*
+    pub async fn send_keyload_for_everyone(&mut self, link_to: AddressW) -> Result<String, JsValue> {
         let addr = Address::from_str(&link_to.addr_id(), &link_to.msg_id()).unwrap();
-        let keyload_id = self.author.send_keyload_for_everyone(&addr).unwrap();
-        Ok(keyload_id.0.to_string().to_owned())
+        self.author.send_keyload_for_everyone(&addr)
+            .await.map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |addr| Ok(addr.0.to_string().to_owned()))
     }
 
-  /*
     // Keyload
     // message_links_t
     pub fn send_keyload(&self, link_to: AddressW, psk_ids_t *psk_ids, ke_pks_t ke_pks) -> Result<String, JsValue> {

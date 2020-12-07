@@ -1,3 +1,4 @@
+use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
 
 use crate::types::*;
@@ -9,9 +10,8 @@ use iota_streams::{
   },
   app_channels::{
       api::tangle::{
-          Subscriber,
-          Transport,
-          Address,
+          Subscriber as ApiSubscriber,
+          Transport as _,
           ChannelAddress,
       },
   },
@@ -27,33 +27,42 @@ use core::cell::RefCell;
 use iota_streams::{
   app::transport::{
       TransportOptions,
-      tangle::client::{SendTrytesOptions, Client, },
+      tangle::client::{Client, },
   },
   core::prelude::{ String,  },
 };
 
 #[wasm_bindgen]
-pub struct SubscriberW {
-  subscriber: Subscriber<Rc<RefCell<Client>>>,
+pub struct Subscriber {
+  subscriber: Rc<RefCell<ApiSubscriber<Rc<RefCell<Client>>>>>,
 }
 
 #[wasm_bindgen]
-impl SubscriberW {
-  #[wasm_bindgen(constructor)]
-  pub fn new(node: String, seed: String, options: SendTrytesOptionsW) -> SubscriberW {
-    let client = Client::new_from_url(&node);
+impl Subscriber {
+    #[wasm_bindgen(constructor)]
+    pub fn new(node: String, seed: String, options: SendTrytesOptions) -> Subscriber {
+        let mut client = Client::new_from_url(&node);
+        client.set_send_options(options.into());
+        let transport = Rc::new(RefCell::new(client));
 
-    let mut transport = Rc::new(RefCell::new(client));
+        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, "utf-8", PAYLOAD_BYTES, transport)));
+        Subscriber { subscriber }
+    }
 
-    transport.set_send_options(SendTrytesOptions {
-      depth: options.depth,
-      min_weight_magnitude: options.min_weight_magnitude,
-      local_pow: options.local_pow,
-      threads: options.threads,
-    });
+    pub fn channel_address(&self) -> Result<String> {
+        to_result(self.subscriber.borrow()
+                  .channel_address()
+                  .map(|addr| addr.to_string())
+                  .ok_or("channel not subscribed")
+        )
+    }
 
-    let subscriber = Subscriber::new(&seed, "utf-8", PAYLOAD_BYTES, transport);
-
-    SubscriberW { subscriber: subscriber }
-  }
+    /*
+    #[wasm_bindgen(catch)]
+    pub async fn receive_announcement(self, link: String) -> Result<()> {
+        to_result(self.subscriber.borrow_mut()
+                  .receive_announcement(&ApiAddress::from_str(&link)?)
+                  .await)
+    }
+     */
 }

@@ -41,7 +41,7 @@ async = ["iota-streams-app/async", "iota-streams-app-channels/async"]
 tangle = ["iota-streams-app/tangle", "iota-streams-app-channels/tangle"]
 sync-client = ["iota-streams-app/sync-client", "iota-streams-app-channels/sync-client"]
 async-client = ["iota-streams-app/async-client", "iota-streams-app-channels/async-client"]
-wasmbind = ["iota-streams-app/wasmbind", "iota-streams-app-channels/wasmbind"]
+wasm-client = ["iota-streams-app/wasm-client", "iota-streams-app-channels/wasm-client"]
 
 [dependencies]
 iota-streams-core = { version = "0.3.0", path = "iota-streams-core", default-features = false }

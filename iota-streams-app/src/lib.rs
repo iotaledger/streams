@@ -37,6 +37,3 @@ pub mod message;
 
 /// Transport-related abstractions.
 pub mod transport;
-
-#[cfg(not(target_arch = "wasm32"))]
-fn error() { "bad target arch" }

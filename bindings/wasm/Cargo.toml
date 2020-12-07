@@ -22,7 +22,5 @@ wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1.6"
 
 serde = { version = "1.0", features = ["derive"] }
-js-sys = "0.3.46"
-#chrono = { version = "0.4", default-features = false, features = ["wasmbind"] }
 
-iota-streams = {path = "../../", default-features = false, features = ["tangle", "wasmbind", "async-client"]}#
+iota-streams = {path = "../../", default-features = false, features = ["tangle", "wasm-client"]}#

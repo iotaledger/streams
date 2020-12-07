@@ -18,9 +18,9 @@ async = ["async-trait", "atomic_refcell"]
 tangle = ["chrono"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-sync-client = ["num_cpus", "smol", "iota-core", "tangle", "std"] #, "iota-constants"
-async-client = ["num_cpus", "iota-core", "tangle", "std", "async"] #, "iota-constants"
-wasmbind = ["iota-core/surf-wasm", "chrono/wasmbind"]#] #["wasm-timer"]
+sync-client = ["num_cpus", "smol", "iota-core", "iota-core/ureq", "tangle", "std"] #, "iota-constants"
+async-client = ["num_cpus", "iota-core", "iota-core/ureq", "tangle", "std", "async"] #, "iota-constants"
+wasm-client = ["iota-core", "iota-core/surf-wasm", "chrono/wasmbind", "tangle", "async", "std"]
 
 [lib]
 name = "iota_streams_app"
@@ -42,8 +42,9 @@ atomic_refcell = { version = "0.1.6", optional = true }
 
 # Dependencies for "client" feature
 # `iota-core` crate is WIP with unstable API atm of writing.
-#iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "iota-1.0", optional = true }
-iota-core = { path = "../../iota.rs/iota-core/", optional = true, default-features = false }
+# Branch `iota-1.0-surf` contains wasm-compat updates and is not merged atm.
+iota-core = { path = "https://github.com/semenov-vladyslav/iota.rs", branch = "iota-1.0-surf", optional = true, default-features = false }
+# Use same dependencies as `iota-core`
 bee-transaction = { git = "https://github.com/Alex6323/bee-p.git", branch = "master"}#, rev = "02965e78a5cd43d0fb773771470ab3d891066562" }#
 bee-crypto = { git = "https://github.com/iotaledger/bee.git", branch = "dev" }
 
