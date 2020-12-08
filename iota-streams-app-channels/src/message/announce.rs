@@ -85,6 +85,7 @@ pub struct ContentUnwrap<F> {
 impl<F> Default for ContentUnwrap<F> {
     fn default() -> Self {
         let sig_pk = ed25519::PublicKey::default();
+        // No need to worry about unwrap since it's operating from default input
         let ke_pk = x25519::public_from_ed25519(&sig_pk).unwrap();
         let flags = Uint8(0);
         Self {

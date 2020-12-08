@@ -39,7 +39,8 @@
 //! Note, the `unsubscribe_key` is masked and verified in the `ntrukem` operation and
 //! thus is not additionally `absorb`ed in this message.
 
-use iota_streams_core::Result;
+use iota_streams_core::{Result, WrappedError, wrapped_err, LOCATION_LOG};
+use iota_streams_core::Errors::MessageCreationFailure;
 use iota_streams_app::message::{
     self,
     HasLink,
@@ -117,13 +118,16 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Self {
-        Self {
-            link: <<Link as HasLink>::Rel as Default>::default(),
-            unsubscribe_key: NBytes::<U32>::default(),
-            subscriber_sig_pk: ed25519::PublicKey::from_bytes(&[0_u8; ed25519::PUBLIC_KEY_LENGTH]).unwrap(),
-            author_ke_sk,
-            _phantom: core::marker::PhantomData,
+    pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Result<Self> {
+        match ed25519::PublicKey::from_bytes(&[0_u8; ed25519::PUBLIC_KEY_LENGTH]) {
+            Ok(pk) => Ok(Self {
+                link: <<Link as HasLink>::Rel as Default>::default(),
+                unsubscribe_key: NBytes::<U32>::default(),
+                subscriber_sig_pk: pk,
+                author_ke_sk,
+                _phantom: core::marker::PhantomData,
+            }),
+            Err(e) => Err(wrapped_err!(MessageCreationFailure, WrappedError(e)))
         }
     }
 }

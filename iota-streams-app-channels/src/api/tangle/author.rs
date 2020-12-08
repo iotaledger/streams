@@ -191,10 +191,9 @@ impl<Trans: Transport> Author<Trans>
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
-    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     ///
-    pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<UnwrappedMessage> {
-        self.user.receive_message(link, pk)
+    pub fn receive_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.receive_message(link)
     }
 
     // Unsubscribe a subscriber

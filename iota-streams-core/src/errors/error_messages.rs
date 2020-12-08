@@ -37,6 +37,8 @@ pub enum Errors {
     SignatureFailure,
     #[error("Failure to generate ed25519 public key")]
     PublicKeyGenerationFailure,
+    #[error("Failure to generate x25519 public key")]
+    XPublicKeyGenerationFailure,
     #[error("Integrity violation. Bad MAC")]
     BadMac,
     #[error("No default Random Number Generator available for no_std usage")]
@@ -106,6 +108,8 @@ pub enum Errors {
     NotAnnouncement(u8),
     #[error("Message info provided is not registered (found: {0})")]
     BadMessageInfo(u8),
+    #[error("Failed to make message")]
+    MessageCreationFailure,
 
 
     //////////
@@ -125,6 +129,8 @@ pub enum Errors {
     AuthorSigKeyNotFound,
     #[error("Error retrieving sequence number for message preparation: No sequence number generated")]
     SeqNumRetrievalFailure,
+    #[error("State store has failed to retrieve")]
+    StateStoreFailure,
 
 
     //////////

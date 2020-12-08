@@ -369,7 +369,7 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, subscribe::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = subscribe::ContentUnwrap::new(&self.ke_kp.0);
+        let content = subscribe::ContentUnwrap::new(&self.ke_kp.0)?;
         preparsed.unwrap(&*self.link_store.borrow(), content)
     }
 
@@ -917,10 +917,12 @@ where
     }
 
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: <Link as HasLink>::Rel) -> Result<()> {
-        let mut cursor = self.pk_store.get(&pk).unwrap().clone();
-        cursor.link = link;
-        cursor.next_seq();
-        self.pk_store.insert(pk, cursor)?;
+        if let Some(cursor) = self.pk_store.get(&pk) {
+            let mut cursor = cursor.clone();
+            cursor.link = link;
+            cursor.next_seq();
+            self.pk_store.insert(pk, cursor)?;
+        }
         Ok(())
     }
 

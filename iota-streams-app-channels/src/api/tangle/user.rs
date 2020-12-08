@@ -2,12 +2,7 @@ use iota_streams_app::message::{
     HasLink as _,
     LinkGenerator,
 };
-use iota_streams_core::{
-    prelude::Vec,
-    prng,
-    {err, Result, LOCATION_LOG},
-    Errors::{UserNotRegistered, UnknownMsgType},
-};
+use iota_streams_core::{prelude::Vec, prng, {err, Result, LOCATION_LOG}, Errors::{UserNotRegistered, UnknownMsgType}, panic_if_not};
 
 use super::*;
 use crate::{
@@ -289,11 +284,10 @@ where
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
-    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     ///
-    pub fn receive_message(&mut self, link: &Address, pk: Option<PublicKey>) -> Result<UnwrappedMessage> {
+    pub fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link)?;
-        self.handle_message(msg, pk)
+        self.handle_message(msg)
     }
 
 
@@ -344,7 +338,7 @@ where
         let mut msgs = Vec::new();
 
         for (
-            pk,
+            _pk,
             Cursor {
                 link,
                 branch_no: _,
@@ -354,11 +348,11 @@ where
         {
             let msg = self.transport.recv_message(&link);
 
-            if msg.is_ok() {
-                let msg = self.handle_message(msg.unwrap(), Some(pk));
-                if let Ok(msg) = msg {
+            if let Ok(msg) = msg {
+                if let Ok(msg) = self.handle_message(msg) {
                     if !self.user.is_multi_branching() {
-                        self.user.store_state_for_all(link.msgid, seq_no).unwrap();
+                        let stored = self.user.store_state_for_all(link.msgid, seq_no);
+                        panic_if_not!(stored.is_ok())
                     }
 
                     msgs.push(msg);
@@ -373,9 +367,8 @@ where
     ///
     /// # Arguments
     /// * `msg` - Binary message of unknown type
-    /// * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     ///
-    pub fn handle_message(&mut self, msg: Message, pk: Option<PublicKey>) -> Result<UnwrappedMessage> {
+    pub fn handle_message(&mut self, msg: Message) -> Result<UnwrappedMessage> {
         // Forget TangleMessage and timestamp
         let msg = msg.binary;
         let preparsed = msg.parse_header()?;
@@ -407,8 +400,8 @@ where
                     Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
                 );
                 let msg = self.transport.recv_message(&msg_link)?;
-                self.user.store_state(pk.unwrap().clone(), store_link)?;
-                self.handle_message(msg, pk)
+                self.user.store_state(unwrapped.body.pk, store_link)?;
+                self.handle_message(msg)
             }
             unknown_content => err!(UnknownMsgType(unknown_content))
         }
