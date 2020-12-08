@@ -3,7 +3,7 @@ use crate::command::{
     unwrap,
     wrap,
 };
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use crate::io;
 

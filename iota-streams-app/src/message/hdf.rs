@@ -1,4 +1,4 @@
-use anyhow::Result;
+use iota_streams_core::Result;
 use core::fmt;
 
 use iota_streams_core::{sponge::prp::PRP, try_or, LOCATION_LOG, Errors::*};

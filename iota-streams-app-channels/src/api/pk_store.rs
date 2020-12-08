@@ -1,5 +1,5 @@
 use core::fmt;
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use iota_streams_core::prelude::{
     HashMap,

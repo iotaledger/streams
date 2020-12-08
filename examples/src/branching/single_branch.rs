@@ -24,7 +24,7 @@ use iota_streams::{
 
 use core::cell::RefCell;
 
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use super::utils;
 

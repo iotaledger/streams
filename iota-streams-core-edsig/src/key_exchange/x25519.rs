@@ -1,5 +1,5 @@
 use crate::signature::ed25519;
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;

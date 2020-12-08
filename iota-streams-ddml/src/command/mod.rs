@@ -21,7 +21,7 @@
 //!
 //! Command traits are implemented in modules `sizeof`, `wrap`, `unwrap`.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use iota_streams_core::{println, Errors};
 

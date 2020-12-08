@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 //#![no_std]
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use rand::Rng;
 
 use iota_streams::{

@@ -1,6 +1,6 @@
 #[cfg(not(feature = "std"))]
 use anyhow::anyhow;
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use super::Context;
 #[cfg(feature = "std")]

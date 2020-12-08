@@ -39,7 +39,7 @@
 //! Note, the `unsubscribe_key` is masked and verified in the `ntrukem` operation and
 //! thus is not additionally `absorb`ed in this message.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,

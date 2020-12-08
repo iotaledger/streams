@@ -1,4 +1,3 @@
-use anyhow::Result;
 use core::{
     fmt,
     ops::Mul,
@@ -18,8 +17,7 @@ use crate::{
             GenericArray,
         },
     },
-    try_or,
-    LOCATION_LOG,
+    {try_or, LOCATION_LOG, Result},
     Errors::LengthMismatch,
 };
 use crate::Errors::SpongosNotCommitted;

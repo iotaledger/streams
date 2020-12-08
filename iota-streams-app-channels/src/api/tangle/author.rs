@@ -1,6 +1,6 @@
 //! Customize Author with default implementation for use over the Tangle.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use core::fmt;
 
 use super::*;

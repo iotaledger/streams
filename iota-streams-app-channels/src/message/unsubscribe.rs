@@ -15,7 +15,7 @@
 //!
 //! * `mac` -- authentication tag proving knowledge of the `unsubscribe_key` from the `Subscribe` message.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,

@@ -21,7 +21,7 @@
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
 //!
 
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use iota_streams_app::message;
 use iota_streams_core::sponge::prp::PRP;

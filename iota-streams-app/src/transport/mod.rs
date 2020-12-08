@@ -1,4 +1,4 @@
-use anyhow::Result;
+use iota_streams_core::Result;
 
 #[cfg(not(feature = "async"))]
 use core::cell::RefCell;
