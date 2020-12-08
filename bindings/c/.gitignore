@@ -16,5 +16,5 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
-iota_streams_c*
+*iota_streams_c*
 *.so
