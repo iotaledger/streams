@@ -39,7 +39,8 @@ pub enum Errors {
     PublicKeyGenerationFailure,
     #[error("Integrity violation. Bad MAC")]
     BadMac,
-
+    #[error("No default Random Number Generator available for no_std usage")]
+    NoStdRngMissing,
 
     //////////
     // DDML IO
@@ -97,10 +98,14 @@ pub enum Errors {
     InvalidMsgVersion(u8, u8),
     #[error("Message frame type not supported (expected: {0}, found: {1})")]
     InvalidMsgType(u8, u8),
+    #[error("Message type is not known (found: {0})")]
+    UnknownMsgType(u8),
     #[error("Reserved bits are improperly formatted")]
     InvalidBitReservation,
     #[error("Message is not an announcement (found: {0})")]
     NotAnnouncement(u8),
+    #[error("Message info provided is not registered (found: {0})")]
+    BadMessageInfo(u8),
 
 
     //////////

@@ -1,6 +1,3 @@
-use anyhow::{
-    Result,
-};
 use core::{
     cmp::Ordering,
     convert::{
@@ -31,11 +28,7 @@ use iota_streams_core::{
         ToString,
         Vec,
     },
-    Errors::*,
-    wrapped_err,
-    try_or,
-    WrappedError,
-    LOCATION_LOG
+    {Errors::*, wrapped_err, try_or, WrappedError, LOCATION_LOG, Result},
 };
 
 use crate::{

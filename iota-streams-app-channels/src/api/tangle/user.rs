@@ -1,8 +1,3 @@
-use anyhow::{
-    anyhow,
-    Result,
-};
-
 use iota_streams_app::message::{
     HasLink as _,
     LinkGenerator,
@@ -10,6 +5,8 @@ use iota_streams_app::message::{
 use iota_streams_core::{
     prelude::Vec,
     prng,
+    {err, Result, LOCATION_LOG},
+    Errors::{UserNotRegistered, UnknownMsgType},
 };
 
 use super::*;
@@ -227,7 +224,7 @@ where
 
             Ok(msg_id)
         } else {
-            Err(anyhow!("No channel registered"))
+            err!(UserNotRegistered)
         }
     }
 
@@ -413,7 +410,7 @@ where
                 self.user.store_state(pk.unwrap().clone(), store_link)?;
                 self.handle_message(msg, pk)
             }
-            unknown_content => Err(anyhow!("Not a recognised message type: {}", unknown_content)),
+            unknown_content => err!(UnknownMsgType(unknown_content))
         }
     }
 

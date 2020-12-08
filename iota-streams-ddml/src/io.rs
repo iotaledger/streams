@@ -1,8 +1,5 @@
 //! Lightweight abstraction, a trinary equivalent of `Write` trait allowing access to trinary slices.
 
-use anyhow::{
-    Result,
-};
 
 use iota_streams_core::prelude::{hex, String, };
 use iota_streams_core::{
@@ -10,6 +7,7 @@ use iota_streams_core::{
     panic_if_not,
     try_or,
     LOCATION_LOG,
+    Result,
 };
 
 /// Write

@@ -1,7 +1,3 @@
-use anyhow::{
-    ensure,
-    Result,
-};
 use std::str::FromStr;
 
 use iota_streams_core::{
@@ -15,6 +11,7 @@ use iota_streams_core::{
         spongos::Spongos,
     },
     try_or,
+    Result,
     Errors::*
 };
 use iota_streams_core_edsig::{

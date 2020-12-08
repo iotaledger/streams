@@ -23,7 +23,6 @@ ed25519-dalek = { version = "1.0.0", default-features = false, features = ["u64_
 x25519-dalek = { version = "1.1.0", default-features = false, features = ["u64_backend"] }
 curve25519-dalek = { version = "3.0.0", default-features = false, features = ["u64_backend"] }
 hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }
-anyhow = { version = "1.0.34", default-features = false, optional = false }
 
 [dev-dependencies]
 criterion = "0.3"

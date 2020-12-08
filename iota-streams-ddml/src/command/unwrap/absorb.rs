@@ -1,7 +1,3 @@
-use anyhow::{
-    anyhow,
-    Result,
-};
 use core::mem;
 
 use super::{
@@ -24,7 +20,11 @@ use crate::{
         Uint8,
     },
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    {err, Result, LOCATION_LOG},
+    Errors::PublicKeyGenerationFailure,
+};
 use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,
@@ -150,7 +150,7 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context
                 *pk = apk;
                 Ok(self)
             }
-            Err(err) => Err(anyhow!("Bad ed25519 public key: {}", err)),
+            Err(_) => err!(PublicKeyGenerationFailure)
         }
     }
 }
