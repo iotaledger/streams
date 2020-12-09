@@ -95,7 +95,78 @@ pub extern "C" fn sub_send_subscribe(user: *mut Subscriber, announcement_link: *
     }
 }
 
-/// Process a keyload message
+#[no_mangle]
+pub extern "C" fn sub_send_tagged_packet(
+    user: *mut Subscriber,
+    link_to: MessageLinks,
+    public_payload_ptr: *const uint8_t,
+    public_payload_size: size_t,
+    masked_payload_ptr: *const uint8_t,
+    masked_payload_size: size_t,
+) -> MessageLinks {
+    unsafe {
+        user.as_mut().map_or(MessageLinks::default(), |user| {
+            link_to
+                .into_seq_link(user.is_multi_branching())
+                .map_or(MessageLinks::default(), |link_to| {
+                    let public_payload = Bytes(Vec::from_raw_parts(
+                        public_payload_ptr as *mut u8,
+                        public_payload_size,
+                        public_payload_size,
+                    ));
+                    let masked_payload = Bytes(Vec::from_raw_parts(
+                        masked_payload_ptr as *mut u8,
+                        masked_payload_size,
+                        masked_payload_size,
+                    ));
+                    let response = user
+                        .send_tagged_packet(link_to, &public_payload, &masked_payload)
+                        .unwrap();
+                    let _ = core::mem::ManuallyDrop::new(public_payload.0);
+                    let _ = core::mem::ManuallyDrop::new(masked_payload.0);
+                    response.into()
+                })
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn sub_send_signed_packet(
+    user: *mut Subscriber,
+    link_to: MessageLinks,
+    public_payload_ptr: *const uint8_t,
+    public_payload_size: size_t,
+    masked_payload_ptr: *const uint8_t,
+    masked_payload_size: size_t,
+) -> MessageLinks {
+    unsafe {
+        user.as_mut().map_or(MessageLinks::default(), |user| {
+            link_to
+                .into_seq_link(user.is_multi_branching())
+                .map_or(MessageLinks::default(), |link_to| {
+                    let public_payload = Bytes(Vec::from_raw_parts(
+                        public_payload_ptr as *mut u8,
+                        public_payload_size,
+                        public_payload_size,
+                    ));
+                    let masked_payload = Bytes(Vec::from_raw_parts(
+                        masked_payload_ptr as *mut u8,
+                        masked_payload_size,
+                        masked_payload_size,
+                    ));
+                    let response = user
+                        .send_signed_packet(link_to, &public_payload, &masked_payload)
+                        .unwrap();
+                    let _ = core::mem::ManuallyDrop::new(public_payload.0);
+                    let _ = core::mem::ManuallyDrop::new(masked_payload.0);
+                    response.into()
+                })
+        })
+    }
+}
+
+
+/// Process a keyload message 
 #[no_mangle]
 pub extern "C" fn sub_receive_keyload(user: *mut Subscriber, link: *const Address) {
     unsafe {
@@ -151,6 +222,29 @@ pub extern "C" fn sub_gen_next_msg_ids(user: *mut Subscriber) -> *const NextMsgI
         user.as_mut().map_or(null(), |user| {
             let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
             Box::into_raw(Box::new(next_msg_ids))
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn sub_receive_keyload_from_ids(user: *mut Subscriber, next_msg_ids: *const NextMsgIds) -> *const MessageLinks {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            next_msg_ids.as_ref().map_or(null(), |ids| {
+                for (_pk, cursor) in ids {
+                    let keyload_link = user.receive_sequence(&cursor.link);
+                    if keyload_link.is_ok() {
+                        let keyload_link = keyload_link.unwrap();
+                        if user.receive_keyload(&keyload_link).unwrap() {
+                            return Box::into_raw(Box::new(MessageLinks {
+                                msg_link: Box::into_raw(Box::new(cursor.link.clone())),
+                                seq_link: Box::into_raw(Box::new(keyload_link))
+                            }))
+                        }
+                    }
+                }
+                null()
+            })
         })
     }
 }

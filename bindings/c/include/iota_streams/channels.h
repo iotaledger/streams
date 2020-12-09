@@ -7,6 +7,7 @@
 
 typedef struct Address address_t;
 extern void drop_address(address_t const *);
+extern address_t *address_from_string(char const *addr_str);
 
 typedef struct ChannelAddress channel_address_t;
 typedef struct MsgId msgid_t;
@@ -113,6 +114,7 @@ extern void sub_receive_announce(subscriber_t *subscriber, address_t const *addr
 extern address_t const *sub_send_subscribe(subscriber_t *subscriber, address_t const *announcement_link);
 // Keyload
 extern void sub_receive_keyload(subscriber_t *subscriber, address_t const *address);
+extern message_links_t sub_receive_keyload_from_ids(subscriber_t *subscriber, next_msg_ids_t const *messageLinks);
 // Tagged Packets
 extern message_links_t sub_send_tagged_packet(subscriber_t *subscriber, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);
 extern packet_payloads_t sub_receive_tagged_packet(subscriber_t *subscriber, address_t const *address);
@@ -139,6 +141,8 @@ extern char const *get_msgid_str(msgid_t const *msgid);
 
 extern char const *get_address_inst_str(address_t const *address);
 extern char const *get_address_id_str(address_t const *address);
+
+extern char const *public_key_to_string(public_key_t *pk);
 
 extern packet_payloads_t get_payload(unwrapped_message_t const *message);
 extern packet_payloads_t get_indexed_payload(unwrapped_messages_t const *messages, size_t index);

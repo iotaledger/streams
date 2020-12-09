@@ -60,26 +60,65 @@ int main()
   // sending announcement
   printf("Sending announcement\n");
   address_t const *ann_link = auth_send_announce(auth);
-  printf("Made an announcement\n\n");
+  printf("Made an announcement. \nSuccess: %d\n\n", ann_link != NULL);
+
+  // Test conversions
+  printf("Converting announcement link to strings\n");
+  char const *ann_address_inst_str = get_address_inst_str(ann_link);
+  char const *ann_address_id_str = get_address_id_str(ann_link);
+  char const connector[] = ":";
+  char buffer[sizeof(ann_address_inst_str) + sizeof(ann_address_id_str) + 1];
+
+  strcat(buffer, ann_address_inst_str);
+  strcat(buffer, connector);
+  strcat(buffer, ann_address_id_str);
+
+  printf("Converted to string\n");
+
+  address_t *ann_link_copy = address_from_string(buffer);
+  char const *ann_cpy_inst_str = get_address_inst_str(ann_link);
+  char const *ann_cpy_id_str = get_address_id_str(ann_link);
+
+  printf("Converted back to link.\nOriginal: %s:%s\nConverted: %s:%s\n\n",
+         ann_address_inst_str, ann_address_id_str,
+         ann_cpy_inst_str, ann_cpy_id_str);
+
+  drop_str(ann_address_inst_str);
+  drop_str(ann_address_id_str);
+  drop_str(ann_cpy_inst_str);
+  drop_str(ann_cpy_id_str);
+
+  drop_address(ann_link_copy);
+
 
   // Subscriber
   char const sub_seed_a[] = "SUBSCRIBERA9SEED";
   printf("Making Sub A with %s\n", sub_seed_a);
   subscriber_t *subA = sub_new("sub_seed_a", encoding, size, tsp);
-  printf("Made an sub A... \n");
+  printf("Made a sub A... \n");
+
+  char const sub_seed_b[] = "SUBSCRIBERB9SEED";
+  printf("Making Sub B with %s\n", sub_seed_b);
+  subscriber_t *subB = sub_new("sub_seed_b", encoding, size, tsp);
+  printf("Made a sub B... \n");
 
   printf("Unwrapping announcement packet... \n");
   sub_receive_announce(subA, ann_link);
+  sub_receive_announce(subB, ann_link);
   printf("Announcement unwrapped, generating subscription message...\n");
-  address_t const *sub_link = sub_send_subscribe(subA, ann_link);
-  printf("Subscription request sent...\n\n");
+  address_t const *sub_a_link = sub_send_subscribe(subA, ann_link);
+  address_t const *sub_b_link = sub_send_subscribe(subB, ann_link);
+
+  printf("Subscription request sent... \nSuccess: %d\n\n", sub_a_link != NULL && sub_b_link != NULL);
 
   printf("Accepting Sub A to author subscription list\n");
-  auth_receive_subscribe(auth, sub_link);
+  auth_receive_subscribe(auth, sub_a_link);
+  printf("Accepting Sub B to author subscription list\n");
+  auth_receive_subscribe(auth, sub_b_link);
 
-  printf("Sub A subscribed!\n\n");
+  printf("Subs A and B subscribed!\n\n");
 
-  // Keyload share packet 
+  // Keyload share packet
 
   printf("Sending keyload\n");
   message_links_t keyload_links = auth_send_keyload_for_everyone(auth, ann_link);
@@ -92,12 +131,21 @@ int main()
   address_t const *keyload_packet_address = sub_receive_sequence(subA, keyload_packet_sequence_link);
 
   sub_receive_keyload(subA, keyload_packet_address);
-  printf("Subscriber handled keyload\n\n");
+  printf("Subscriber A handled keyload\n\n");
+
+  // Fetch next message ids and process keyload - Sub B
+  printf("Subscriber B fetching next messages\n");
+  next_msg_ids_t const *msgIds = sub_gen_next_msg_ids(subB);
+  printf("Got next message ids? Success: %d\n", msgIds != NULL);
+  message_links_t sub_received_links = sub_receive_keyload_from_ids(subB, msgIds);
+  printf("Subscriber B unwrapped keyload? %d\n\n", &sub_received_links != NULL);
+  drop_next_msg_ids(msgIds);
+  drop_links(sub_received_links);
 
   char const public_payload[] = "A public payload woopeee";
   char const masked_payload[] = "A masked payload uhu";
 
-  // Signed packet 
+  // Signed packet
   printf("Sending signed packet\n");
   message_links_t signed_packet_links = auth_send_signed_packet(
     auth, keyload_links,
@@ -115,7 +163,7 @@ int main()
   printf("public: '%s' \tmasked: '%s'\n", signed_packet_response.public_payload.ptr, signed_packet_response.masked_payload.ptr);
   printf("Subscriber handled Signed packet\n");
 
-  // Tagged packet 
+  // Tagged packet
   printf("Sending tagged packet\n");
   message_links_t tagged_packet_links = auth_send_tagged_packet(
     auth, signed_packet_links,
@@ -164,7 +212,8 @@ int main()
   }
 
   drop_address(ann_link);
-  drop_address(sub_link);
+  drop_address(sub_a_link);
+  drop_address(sub_b_link);
   drop_links(keyload_links);
   drop_address(keyload_packet_address);
   drop_links(signed_packet_links);
