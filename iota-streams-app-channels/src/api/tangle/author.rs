@@ -1,6 +1,6 @@
 //! Customize Author with default implementation for use over the Tangle.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use core::fmt;
 
 use super::*;
@@ -166,8 +166,8 @@ impl<Trans: Transport> Author<Trans>
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) {
-        self.user.store_state(pk, link)
+    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()>{
+        Ok(self.user.store_state(pk, link)?)
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -177,8 +177,8 @@ impl<Trans: Transport> Author<Trans>
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
     ///
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
-        self.user.store_state_for_all(link, seq_num)
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
+        Ok(self.user.store_state_for_all(link, seq_num)?)
     }
 
     /// Retrieves the next message for each user (if present in transport layer) and returns them
@@ -191,10 +191,9 @@ impl<Trans: Transport> Author<Trans>
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
-    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     ///
-    pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<UnwrappedMessage> {
-        self.user.receive_message(link, pk)
+    pub fn receive_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.receive_message(link)
     }
 
     // Unsubscribe a subscriber

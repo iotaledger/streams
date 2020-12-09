@@ -1,16 +1,8 @@
-use anyhow::{
-    anyhow,
-    Result,
-};
-
 use iota_streams_app::message::{
     HasLink as _,
     LinkGenerator,
 };
-use iota_streams_core::{
-    prelude::Vec,
-    prng,
-};
+use iota_streams_core::{prelude::Vec, prng, {err, Result, LOCATION_LOG}, Errors::{UserNotRegistered, UnknownMsgType}, panic_if_not};
 
 use super::*;
 use crate::{
@@ -220,14 +212,14 @@ where
             );
 
             if self.is_multi_branching() {
-                self.store_state(seq_msg.pk, &seq_link)
+                self.store_state(seq_msg.pk, &seq_link)?
             } else {
-                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)
+                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)?
             }
 
             Ok(msg_id)
         } else {
-            Err(anyhow!("No channel registered"))
+            err!(UserNotRegistered)
         }
     }
 
@@ -292,11 +284,10 @@ where
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
-    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     ///
-    pub fn receive_message(&mut self, link: &Address, pk: Option<PublicKey>) -> Result<UnwrappedMessage> {
+    pub fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link)?;
-        self.handle_message(msg, pk)
+        self.handle_message(msg)
     }
 
 
@@ -310,9 +301,10 @@ where
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///
-    pub fn store_state(&mut self, pk: PublicKey, link: &Address) {
+    pub fn store_state(&mut self, pk: PublicKey, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(pk, link.msgid.clone())
+        self.user.store_state(pk, link.msgid.clone())?;
+        Ok(())
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -323,9 +315,10 @@ where
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
     ///
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state_for_all(link.msgid.clone(), seq_num)
+        self.user.store_state_for_all(link.msgid.clone(), seq_num)?;
+        Ok(())
     }
 
     /// Generate a vector containing the next sequenced message identifier for each publishing
@@ -345,7 +338,7 @@ where
         let mut msgs = Vec::new();
 
         for (
-            pk,
+            _pk,
             Cursor {
                 link,
                 branch_no: _,
@@ -355,11 +348,11 @@ where
         {
             let msg = self.transport.recv_message(&link);
 
-            if msg.is_ok() {
-                let msg = self.handle_message(msg.unwrap(), Some(pk));
-                if let Ok(msg) = msg {
+            if let Ok(msg) = msg {
+                if let Ok(msg) = self.handle_message(msg) {
                     if !self.user.is_multi_branching() {
-                        self.user.store_state_for_all(link.msgid, seq_no);
+                        let stored = self.user.store_state_for_all(link.msgid, seq_no);
+                        panic_if_not!(stored.is_ok())
                     }
 
                     msgs.push(msg);
@@ -374,9 +367,8 @@ where
     ///
     /// # Arguments
     /// * `msg` - Binary message of unknown type
-    /// * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     ///
-    pub fn handle_message(&mut self, msg: Message, pk: Option<PublicKey>) -> Result<UnwrappedMessage> {
+    pub fn handle_message(&mut self, msg: Message) -> Result<UnwrappedMessage> {
         // Forget TangleMessage and timestamp
         let msg = msg.binary;
         let preparsed = msg.parse_header()?;
@@ -408,10 +400,10 @@ where
                     Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
                 );
                 let msg = self.transport.recv_message(&msg_link)?;
-                self.user.store_state(pk.unwrap().clone(), store_link);
-                self.handle_message(msg, pk)
+                self.user.store_state(unwrapped.body.pk, store_link)?;
+                self.handle_message(msg)
             }
-            unknown_content => Err(anyhow!("Not a recognised message type: {}", unknown_content)),
+            unknown_content => err!(UnknownMsgType(unknown_content))
         }
     }
 

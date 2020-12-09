@@ -1,8 +1,4 @@
-use anyhow::{
-    anyhow,
-    ensure,
-    Result,
-};
+use iota_streams_core::Result;
 
 #[cfg(not(feature = "async"))]
 use core::cell::RefCell;
@@ -20,7 +16,7 @@ use async_trait::async_trait;
 use iota_streams_core::prelude::Box;
 #[cfg(not(feature = "async"))]
 use iota_streams_core::prelude::Rc;
-use iota_streams_core::prelude::Vec;
+use iota_streams_core::prelude::{Vec, string::ToString};
 
 pub trait TransportOptions {
     type SendOptions;
@@ -36,7 +32,7 @@ pub trait TransportOptions {
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[cfg(not(feature = "async"))]
-pub trait Transport<Link, Msg>: TransportOptions {
+pub trait Transport<Link: Debug + Display, Msg>: TransportOptions {
     /// Send a message with default options.
     fn send_message(&mut self, msg: &Msg) -> Result<()>;
 
@@ -47,10 +43,10 @@ pub trait Transport<Link, Msg>: TransportOptions {
     fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         let mut msgs = self.recv_messages(link)?;
         if let Some(msg) = msgs.pop() {
-            ensure!(msgs.is_empty(), "More than one message found.");
+            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()))?;
             Ok(msg)
         } else {
-            Err(anyhow!("Message not found."))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 }
@@ -77,7 +73,7 @@ where
     // ensure!(msgs.is_empty(), "More than one message found.");
     // Ok(msg)
     // } else {
-    // Err(anyhow!("Message not found."))
+    // err!()
     // }
     // }
 }
@@ -102,12 +98,12 @@ impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
 }
 
 #[cfg(not(feature = "async"))]
-impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<Tsp>> {
+impl<Link: Debug + Display, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<Tsp>> {
     /// Send a message.
     fn send_message(&mut self, msg: &Msg) -> Result<()> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.send_message(msg),
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
         }
     }
 
@@ -115,7 +111,7 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
     fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_messages(link),
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
         }
     }
 
@@ -123,13 +119,16 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
     fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => tsp.recv_message(link),
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
         }
     }
 }
 
 mod bucket;
 pub use bucket::BucketTransport;
+use core::fmt::{Debug, Display};
+use iota_streams_core::{try_or, err, wrapped_err, WrappedError, LOCATION_LOG};
+use iota_streams_core::Errors::{MessageNotUnique, MessageLinkNotFound, TransportNotAvailable};
 
 #[cfg(feature = "tangle")]
 pub mod tangle;

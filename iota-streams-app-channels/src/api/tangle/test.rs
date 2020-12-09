@@ -4,10 +4,6 @@ use crate::api::tangle::{
     Author,
     Subscriber,
 };
-use anyhow::{
-    ensure,
-    Result,
-};
 use iota_streams_app::{
     message::HasLink,
     transport::tangle::PAYLOAD_BYTES,
@@ -18,6 +14,11 @@ use iota_streams_core::{
         Rc,
     },
     println,
+    try_or,
+    Result,
+    ensure,
+    LOCATION_LOG,
+    Errors::*,
 };
 
 use core::cell::RefCell;
@@ -82,8 +83,14 @@ pub fn example<T: Transport>(transport: T) -> Result<()>
 
     {
         let (_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&signed_packet_link)?;
-        ensure!(public_payload == unwrapped_public, "bad unwrapped public payload");
-        ensure!(masked_payload == unwrapped_masked, "bad unwrapped masked payload");
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
     }
 
     println!("\nsubscribe");
@@ -106,9 +113,10 @@ pub fn example<T: Transport>(transport: T) -> Result<()>
 
     {
         let resultA = subscriberA.receive_keyload(&keyload_link);
-        ensure!(resultA.is_ok() && !resultA.unwrap(), "sbuscriberA failed to unwrap keyload");
+        let unwrapped = resultA.is_ok() && !resultA.unwrap();
+        try_or!(unwrapped, SubscriberAccessMismatch("A".to_string()))?;
         let resultB = subscriberB.receive_keyload(&keyload_link)?;
-        ensure!(resultB, "sbuscriberB failed to unwrap keyload");
+        try_or!(resultB, MessageUnwrapFailure("B".to_string()))?;
     }
 
     println!("\ntag packet");

@@ -2,10 +2,10 @@
 #![allow(dead_code)]
 //#![no_std]
 
+use iota_streams_core::Result;
 use dotenv;
 use std::env;
 
-use anyhow::Result;
 use rand::Rng;
 
 use iota_streams::{

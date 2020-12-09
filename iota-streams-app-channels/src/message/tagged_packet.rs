@@ -23,7 +23,7 @@
 //! * `mac` -- MAC of the message.
 //!
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,

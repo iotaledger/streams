@@ -49,7 +49,7 @@
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,

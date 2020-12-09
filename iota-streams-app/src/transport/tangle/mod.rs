@@ -1,6 +1,6 @@
 //! Tangle-specific transport definitions.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use core::{
     convert::{
         AsMut,

@@ -1,6 +1,6 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use core::fmt;
 
 use super::*;
@@ -156,9 +156,9 @@ impl<Trans: Transport> Subscriber<Trans>
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) {
+    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(pk, link)
+        Ok(self.user.store_state(pk, link)?)
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -168,9 +168,9 @@ impl<Trans: Transport> Subscriber<Trans>
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
     ///
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) {
+    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state_for_all(link, seq_num)
+        Ok(self.user.store_state_for_all(link, seq_num)?)
     }
 
     /// Generate a vector containing the next sequenced message identifier for each publishing
@@ -193,10 +193,9 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
-    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     ///
-    pub fn receive_msg(&mut self, link: &Address, pk: Option<ed25519::PublicKey>) -> Result<UnwrappedMessage> {
-        self.user.receive_message(link, pk)
+    pub fn receive_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.receive_message(link)
     }
 
     /// Serialize user state and encrypt it with password.

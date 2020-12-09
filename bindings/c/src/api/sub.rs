@@ -190,7 +190,7 @@ pub extern "C" fn sub_receive_sequence(user: *mut Subscriber, link: *const Addre
     }
 }
 
-/// Process a Signed packet message 
+/// Process a Signed packet message
 #[no_mangle]
 pub extern "C" fn sub_receive_signed_packet(user: *mut Subscriber, link: *const Address) -> PacketPayloads {
     unsafe {
@@ -203,7 +203,7 @@ pub extern "C" fn sub_receive_signed_packet(user: *mut Subscriber, link: *const 
     }
 }
 
-/// Process a tagged packet message 
+/// Process a tagged packet message
 #[no_mangle]
 pub extern "C" fn sub_receive_tagged_packet(user: *mut Subscriber, link: *const Address) -> PacketPayloads {
     unsafe {
@@ -254,7 +254,7 @@ pub extern "C" fn sub_receive_msg(user: *mut Subscriber, link: *const Address) -
     unsafe {
         user.as_mut().map_or(null(), |user| {
             link.as_ref().map_or(null(), |link| {
-                let u = user.receive_msg(link, None).unwrap(); //TODO: handle Result
+                let u = user.receive_msg(link).unwrap(); //TODO: handle Result
                 Box::into_raw(Box::new(u))
             })
         })
