@@ -16,15 +16,15 @@ use smol::block_on;
 use iota::{
     client as iota_client,
     ternary as iota_ternary,
-};
-
-use bee_crypto::ternary::Hash;
-use bee_transaction::Vertex;
-
-use bee_transaction::bundled::{
-    Address, Bundle, BundledTransactionBuilder as TransactionBuilder, BundledTransactionField,
-    BundledTransaction as Transaction, Index, Nonce, OutgoingBundleBuilder, Payload, Tag, Timestamp, Value, 
-    PAYLOAD_TRIT_LEN, TAG_TRIT_LEN, ADDRESS_TRIT_LEN
+    transaction::{
+        Vertex,
+        bundled::{
+            Address, Bundle, BundledTransactionBuilder as TransactionBuilder, BundledTransactionField,
+            BundledTransaction as Transaction, Index, Nonce, OutgoingBundleBuilder, Payload, Tag, Timestamp, Value,
+            PAYLOAD_TRIT_LEN, TAG_TRIT_LEN, ADDRESS_TRIT_LEN
+        }
+    },
+    crypto::ternary::Hash,
 };
 
 use iota_streams_core::prelude::{
@@ -409,7 +409,7 @@ impl Client {
             client: client
         }
     }
-    
+
     // Create an instance of Client with a node pointing to the given URL
     pub fn new_from_url(url: &str) -> Self {
         Self {
