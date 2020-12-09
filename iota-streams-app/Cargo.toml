@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-app"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -26,9 +26,9 @@ name = "iota_streams_app"
 path = "src/lib.rs"
 
 [dependencies]
-iota-streams-core = { version = "0.3.0", path = "../iota-streams-core", default-features = false }
-iota-streams-core-edsig = { version = "0.2.0", path = "../iota-streams-core-edsig", default-features = false }
-iota-streams-ddml = { version = "0.2.0", path = "../iota-streams-ddml", default-features = false }
+iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-features = false }
+iota-streams-core-edsig = { version = "0.2.1", path = "../iota-streams-core-edsig", default-features = false }
+iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
 
 # anyhow and chrono are kept in sync with versions used in iota-core
 chrono = { version = "0.4.11", default-features = false, optional = true }

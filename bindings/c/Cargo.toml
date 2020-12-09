@@ -1,6 +1,6 @@
 [package]
 name = "streams-c-binding"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["DyrellC <dyrell.chapman@iota.org>"]
 edition = "2018"
 
@@ -16,7 +16,5 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 iota-streams = {path = "../../", default-features = false, features = ["tangle"]}
-cty = { version = "0.2.1" }
-cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 
 hex = "0.4.2"
