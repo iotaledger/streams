@@ -9,12 +9,17 @@ use core::{
     fmt,
     hash,
     str::FromStr,
+    ptr::null,
 };
 
 use iota_streams_core::{
-    prelude::typenum::{
-        U12,
-        U40,
+    prelude::{
+        typenum::{
+            U12,
+            U40,
+        },
+        Vec,
+        Box,
     },
     sponge::{
         prp::PRP,
@@ -27,6 +32,9 @@ use iota_streams_ddml::{
     io,
     types::*,
 };
+
+use cstr_core::CStr;
+use cty::c_char;
 
 use crate::message::{
     BinaryMessage,
@@ -97,6 +105,21 @@ impl TangleAddress {
         let msgid = MsgId::from_str(msgid_str)?;
         Ok(TangleAddress { appinst, msgid })
     }
+
+    pub fn from_c_str(c_addr: *const c_char) -> *const Self {
+        unsafe {
+            c_addr.as_ref().map_or(null(), |c_addr|
+                CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
+                    let addr_vec: Vec<&str> = addr_str.split(":").collect();
+                    Self::from_str(addr_vec[0], addr_vec[1])
+                        .map_or(null(), |addr|
+                            Box::into_raw(Box::new(addr))
+                        )
+                })
+            )
+        }
+    }
+
 }
 
 impl fmt::Debug for TangleAddress {

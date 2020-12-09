@@ -6,34 +6,18 @@ use iota_streams::{
     app::{
         message::Cursor,
         transport::tangle::MsgId,
+        cstr_core::{CStr, CString},
+        cty::{c_char, size_t, uint8_t},
     },
     app_channels::api::tangle::*,
 };
 
 use core::ptr::{null, null_mut};
-use cstr_core::{
-    CStr,
-    CString,
-};
-use cty::{
-    c_char,
-    size_t,
-    uint8_t,
-};
 
 
 #[no_mangle]
 pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
-    unsafe {
-        c_addr.as_ref().map_or(null(), |c_addr|
-            CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
-            let addr_vec: Vec<&str> = addr_str.split(":").collect();
-                Address::from_str(addr_vec[0], addr_vec[1])
-                    .map_or(null(), |addr| Box::into_raw(Box::new(addr))
-                )
-            })
-        )
-    }
+    Address::from_c_str(c_addr)
 }
 
 #[no_mangle]
