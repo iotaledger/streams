@@ -1,0 +1,48 @@
+div.container {
+  padding: 5px;
+  height: 100%;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  overflow-x: hidden;
+  padding-top: 20px;
+}
+
+div.left {
+  width: 59%;
+  left: 0;
+}
+
+div.right {
+  width: 39%;
+  right: 0;
+}
+
+form {
+  display: inline-block;
+}
+
+form li {
+  display: inline-block;
+}
+
+form li div label {
+  clear: both;
+  color: #444;
+  font-size: 12px;
+  line-height: 9px;
+  margin: 0;
+  padding-top: 3px;
+}
+
+form .guidelines {
+  background: #f5f5f5;
+  border: 1px solid #e6e6e6;
+  color: #444;
+  line-height: 130%;
+  padding: 8px 10px 9px;
+}
+
+form li#buttons {
+  text-align: center;
+}

@@ -10,6 +10,8 @@ use iota_streams::{
     core::prelude::{ String, ToString, Rc, },
 };
 
+use crate::log;
+
 pub type Result<T> = core::result::Result<T, JsValue>;
 pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {
     r.map_err(|e| JsValue::from_str(&e.to_string()))
@@ -55,10 +57,23 @@ pub struct Address {
 
 #[wasm_bindgen]
 impl Address {
+<<<<<<< Updated upstream
     pub fn new() -> Self {
         Address { addr_id: String::new(), msg_id: String::new() }
     }
 
+=======
+    #[wasm_bindgen(constructor)]
+    pub fn new(link: String) -> Self {
+        let addr: Vec<&str> = link.split(":").collect();
+        log("HALLO??");
+        log(&addr[0]);
+        Self {
+            addr_id: String::from(addr[0]),
+            msg_id: String::from(addr[1]),
+        }
+   }
+>>>>>>> Stashed changes
     #[wasm_bindgen(getter)]
     pub fn addr_id(&self) -> String {
         self.addr_id.clone()

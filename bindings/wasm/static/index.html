@@ -1,10 +1,235 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>IOTA Streams</title>
   </head>
   <body>
+    <!-- Streams code gets compiled into index.js -->
     <script src="index.js"></script>
+
+    <script src="streams-extra.js"></script>
+
+    <link rel="stylesheet" href="styles.css" />
   </body>
+  <div class="content">
+    <div class="container left">
+      <div id="settings">
+        <h1><a>settings</a></h1>
+        <form
+          id="settings"
+          class="settings"
+        >
+          <li id="li_seed_a">
+            <label class="title" for="seed_a">seed </label>
+            <div>
+              <input
+                id="seed_a"
+                type="text"
+                size="100"
+                minlength="81"
+                maxlength="81"
+                value="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+              />
+            </div>
+            <p class="guidelines" id="guide_1">
+              <small>Seed for the AUTHOR instance</small>
+            </p>
+          </li>
+          <li id="li_seed_b">
+            <label class="title" for="seed_b">seed </label>
+            <div>
+              <input
+                id="seed_b"
+                type="text"
+                size="100"
+                minlength="81"
+                maxlength="81"
+                value="BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBA"
+              />
+            </div>
+            <p class="guidelines" id="guide_1">
+              <small>Seed for the SUBSCRIBER instance</small>
+            </p>
+          </li>
+          <li id="li_url">
+            <label class="description" for="url">Node url </label>
+            <div>
+              <input
+                id="url"
+                type="text"
+                size="100"
+                maxlength="255"
+                value="https://nodes.devnet.iota.org:443"
+              />
+            </div>
+            <p class="guidelines" id="guide_2">
+              <small>URL of the node we connect with </small>
+            </p>
+          </li>
+          <br />
+          <li id="li_depth">
+            <label class="description" for="depth">Depth </label>
+            <div>
+              <input id="depth" type="number" maxlength="2" value="1" />
+            </div>
+            <p class="guidelines" id="guide_2">
+              <small>Depth for the node conenction settings</small>
+            </p>
+          </li>
+          <li id="li_mwm">
+            <label class="description" for="mwm">min weight magnitude </label>
+            <div>
+              <input id="mwm" type="number" maxlength="2" value="9" />
+            </div>
+            <p class="guidelines" id="guide_4">
+              <small>Amount of POW done for the node (default 14)</small>
+            </p>
+          </li>
+          <li id="li_threads">
+            <label class="description" for="threads">Threads </label>
+            <div>
+              <input id="threads" type="number" maxlength="2" value="1" />
+            </div>
+            <p class="guidelines" id="guide_5">
+              <small>Number of threads used in the stream instance</small>
+            </p>
+          </li>
+          <br />
+          <li id="li_pow">
+            <label class="description" for="pow">Local proof of work </label>
+            <div id="pow">
+              <input
+                type="radio"
+                id="pow_true"
+                name="local_pow"
+                value="true"
+                checked="checked"
+              />
+              <label for="pow_true">Local proof of work</label><br />
+              <input type="radio" id="pow_false" name="local_pow" value="false" />
+              <label for="pow_false">Remote proof of work</label><br />
+            </div>
+          </li>
+          <li id="li_multi">
+            <label class="description" for="multi">Branching settings </label>
+            <div id="multi">
+              <input
+                type="radio"
+                id="multi_true"
+                name="multi_branching"
+                value="true"
+                checked="checked"
+              />
+              <label for="multi_true">Multi branching</label><br />
+              <input
+                type="radio"
+                id="multi_false"
+                name="multi_branching"
+                value="false"
+              />
+              <label for="multi_false">Single branching</label><br />
+            </div>
+          </li>
+          <br />
+          <br />
+          <li id="buttons">
+            <input id="saveForm" type="button" value="Update author" onclick="updateAuthor()" />
+            <input id="saveForm" type="button" value="Update subscriber" onclick="updateSubscriber()" />
+          </li>
+        </form>
+        <div id="subscriber">
+          <br/>
+          <input
+              id="sub_link"
+              type="text"
+              size="100"
+              minlength="105"
+              maxlength="105"
+              value=""
+            />
+           <br/>
+          <button id="subscribe" onclick='subscribe("sub_link")'>Subscribe to link</button>
+          <button id="unsubscribe" onclick='unsubscribe("sub_link")' disabled>Unsubscribe to link</button>
+        </div>
+      </div>
+
+      <hr />
+
+      <div id="author">
+        <br />
+        <label>Address: </label>
+        <div id="announce-address">...</div>
+
+        <br />
+        <label>Multi branching: </label>
+        <div id="announce-multi">...</div>
+
+        <label>Link: <button onclick="copy_link()">Copy link</button></label>
+        <div id="announce-link">...</div>
+        <br />
+        <button id="send_keyload" onclick='send_keyload("announce-link")'>Send keyload to subscribers</button>
+      </div>
+    </div>
+
+    <div class="container right">
+      <form
+          id="settings"
+          class="settings"
+          action="javascript:;"
+          onsubmit="send_message(this)"
+        >
+          <li id="li_message">
+            <label class="title" for="message">seed </label>
+            <div>
+              <input
+                id="message"
+                type="textfield"
+                size="100"
+                value="My custom cool message!"
+              />
+            </div>
+            <p class="guidelines" id="guide_1">
+              <small>Custom message to send on your channel!</small>
+            </p>
+          </li>
+          <li id="li_secret">
+            <label class="description" for="masked">Encryption settings </label>
+            <div id="masked">
+              <input
+                type="radio"
+                id="masked_true"
+                name="masked"
+                value="true"
+                checked="checked"
+              />
+              <label for="masked_true">Masked message</label><br />
+              <input
+                type="radio"
+                id="masked_false"
+                name="masked"
+                value="false"
+              />
+              <label for="masked_false">Public message</label><br />
+            </div>
+          </li>
+          <li id="li_auto_fetch">
+            <label class="description" for="auto_fetch">Auto-fetch delay in seconds </label>
+            <div>
+              <input id="auto_fetch" type="number" maxlength="10" minlength="1" value="10" />
+            </div>
+          </li>
+          <br />
+          <br />
+          <li id="buttons">
+            <input id="sendForm" type="submit" value="Send message" />
+            <input id="fetchMessage" type="button" onclick="fetch_messages()" value="Fetch messages" />
+          </li>
+      </form>
+      <hr>
+      <div>
+        Channel messages: 
+      </div>
+    </div>
+  </div>
 </html>

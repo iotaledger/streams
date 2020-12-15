@@ -79,6 +79,7 @@ impl Subscriber {
         Subscriber { subscriber }
     }
 
+    #[wasm_bindgen(catch)]
     pub fn channel_address(&self) -> Result<String> {
         let sub = &self.subscriber;
         to_result(sub
@@ -88,6 +89,7 @@ impl Subscriber {
         )
     }
 
+<<<<<<< Updated upstream
 
     #[wasm_bindgen(catch)]
     pub async fn receive_announcement(mut self, link: Address) -> Result<Subscriber> {
@@ -118,6 +120,14 @@ impl Subscriber {
 
     }
 
+=======
+    #[wasm_bindgen(catch)]
+    pub fn subscribe(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /*
+>>>>>>> Stashed changes
     #[wasm_bindgen(catch)]
     pub async fn send_tagged_packet(
         mut self,

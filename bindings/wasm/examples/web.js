@@ -1,6 +1,6 @@
 import("../pkg/index.js").then(async (streams) => {
 
-    let node = "http://localhost:14265";
+    /*let node = "http://localhost:14265";
     let options = new streams.SendTrytesOptions(1, 9, true, 1);
     let seed = "LADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     let auth = new streams.Author(node, seed, options, false);
@@ -41,7 +41,13 @@ import("../pkg/index.js").then(async (streams) => {
     sub = response.to_sub();
     console.log("Tag packet at: ", tag_link.to_string());
 
-    //auth.free();
+    //auth.free();*/
+
+    window.streams = mod;
+    
+    mod.set_panic_hook();
+
+    console.log("Streams loaded!");
 });
 
 
