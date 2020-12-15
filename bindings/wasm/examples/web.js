@@ -8,7 +8,7 @@ import("../pkg/index.js").then(async (streams) => {
     //old_test();
 });
 
-function old_test(){
+async function old_test(){
     let node = "https://nodes.devnet.iota.org:443";
     let options = new streams.SendTrytesOptions(1, 9, true, 1);
     let seed = "LADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
