@@ -16,14 +16,13 @@ use iota_streams::{
         println,
         try_or,
         LOCATION_LOG,
-        Errors::*
+        Errors::*,
+        Result,
     },
     ddml::types::*,
 };
 
 use core::cell::RefCell;
-
-use iota_streams_core::Result;
 
 use super::utils;
 
