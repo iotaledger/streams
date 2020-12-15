@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 //#![no_std]
 
-use iota_streams_core::Result;
 use dotenv;
 use std::env;
 
@@ -14,7 +13,10 @@ use iota_streams::{
         tangle::client::{SendTrytesOptions, Client, },
     },
     app_channels::api::tangle::Transport,
-    core::prelude::{ String, Rc, },
+    core::{
+        prelude::{ String, Rc, },
+        Result,
+    },
 };
 
 use core::cell::RefCell;
