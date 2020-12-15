@@ -1,6 +1,15 @@
 import("../pkg/index.js").then(async (streams) => {
+    window.streams = streams;
+    
+    streams.set_panic_hook();
 
-    /*let node = "http://localhost:14265";
+    console.log("Streams loaded!");
+
+    //old_test();
+});
+
+function old_test(){
+    let node = "https://nodes.devnet.iota.org:443";
     let options = new streams.SendTrytesOptions(1, 9, true, 1);
     let seed = "LADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     let auth = new streams.Author(node, seed, options, false);
@@ -41,22 +50,14 @@ import("../pkg/index.js").then(async (streams) => {
     sub = response.to_sub();
     console.log("Tag packet at: ", tag_link.to_string());
 
-    //auth.free();*/
-
-    window.streams = streams;
-    
-    streams.set_panic_hook();
-
-    console.log("Streams loaded!");
-});
-
+    //auth.free();
+}
 
 function to_bytes(str) {
     var bytes = [];
     var charCode;
 
-    for (var i = 0; i < str.length; ++i)
-    {
+    for (var i = 0; i < str.length; ++i){
         charCode = str.charCodeAt(i);
         bytes.push((charCode & 0xFF00) >> 8);
         bytes.push(charCode & 0xFF);

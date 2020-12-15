@@ -57,6 +57,7 @@ pub struct Address {
 
 #[wasm_bindgen]
 impl Address {
+    #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Address { addr_id: String::new(), msg_id: String::new() }
     }
@@ -81,7 +82,7 @@ impl Address {
         self.msg_id = msg_id;
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(static_method_of = Address)]
     pub fn from_string(link: String) -> Self {
         let link_vec: Vec<&str> = link
             .strip_prefix("<").unwrap_or(&link)
