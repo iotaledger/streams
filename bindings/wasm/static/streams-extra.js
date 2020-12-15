@@ -46,13 +46,11 @@ async function updateSubscriber() {
 function copy_link() {
   var range = document.createRange();
   range.selectNode(document.getElementById("announce-link"));
-  window.getSelection().addRange(range);
-
+  window.getSelection().removeAllRanges(); // clear current selection
+  window.getSelection().addRange(range); // to select text
+  
   document.execCommand("copy");
-
-  alert(
-    "Copied the text: " + document.getElementById("announce-link").innerHTML
-  );
+  window.getSelection().removeAllRanges();// to deselect
 }
 
 async function announce() {
