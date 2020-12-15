@@ -43,9 +43,9 @@ import("../pkg/index.js").then(async (streams) => {
 
     //auth.free();*/
 
-    window.streams = mod;
+    window.streams = streams;
     
-    mod.set_panic_hook();
+    streams.set_panic_hook();
 
     console.log("Streams loaded!");
 });
