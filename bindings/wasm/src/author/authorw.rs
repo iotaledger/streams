@@ -176,7 +176,6 @@ impl Author {
             )
 
     }
-<<<<<<< Updated upstream
 
     #[wasm_bindgen(catch)]
     pub async fn send_signed_packet(
@@ -224,31 +223,7 @@ impl Author {
             )
     }
 
-  /*
-    pub async fn send_keyload_for_everyone(&mut self, link_to: AddressW) -> Result<String, JsValue> {
-        let addr = Address::from_str(&link_to.addr_id(), &link_to.msg_id()).unwrap();
-        self.author.send_keyload_for_everyone(&addr)
-=======
-     */
-/*
-    #[wasm_bindgen(catch)]
-    pub async fn receive_subscribe(&mut self, link_to: Address) -> Promise<Result<()>> {
-        let addr = ApiAddress::from_str(&link_to.addr_id(), &link_to.msg_id()).unwrap();
-        self.author.borrow_mut().receive_subscribe(&addr)
->>>>>>> Stashed changes
-            .await.map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |_| Ok(()))
-    }*/
 
-    #[wasm_bindgen(catch)]
-    pub async fn send_keyload_for_everyone(self, link_to: Address) -> Result<JsValue> {
-        let addr = ApiAddress::from_str(&link_to.addr_id(), &link_to.msg_id()).unwrap();
-        self.author.borrow_mut().send_keyload_for_everyone(&addr).await.map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |addr| Ok(JsValue::from(&addr.0.to_string().to_owned()))
-        )
-    }  
     /*
     // Keyload
     // message_links_t
@@ -256,11 +231,6 @@ impl Author {
         Ok(seed.to_owned())
     }
 
-<<<<<<< Updated upstream
-
-=======
-  
->>>>>>> Stashed changes
     // Tagged Packets
     // message_links_t
     pub fn send_tagged_packet(&self, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size) -> Result<String, JsValue> {
