@@ -561,7 +561,7 @@ impl<Trans: Transport> User<Trans>
             );
 
             if self.is_multi_branching() {
-                self.store_state(seq_msg.pk, &seq_link)
+                self.store_state(seq_msg.pk, &seq_link)?
             } else {
                 self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)?
             }
@@ -635,7 +635,7 @@ impl<Trans: Transport> User<Trans>
     ///   * `link` - Address of the message to be processed
     ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     ///
-    pub async fn receive_message(&mut self, link: &Address, _pk: Option<PublicKey>) -> Result<UnwrappedMessage> {
+    pub async fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
         self.handle_message(msg).await
     }
