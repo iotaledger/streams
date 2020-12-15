@@ -21,9 +21,9 @@
 //!
 //! Command traits are implemented in modules `sizeof`, `wrap`, `unwrap`.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 
-use iota_streams_core::println;
+use iota_streams_core::{println, Errors};
 
 /// Absorb command. Trinary representation of the field is absorbed into Spongos state.
 /// External fields are not encoded in the trinary stream. Non-trinary field is
@@ -94,7 +94,7 @@ pub trait Repeated<I, F> {
 
 /// Condition guard.
 pub trait Guard {
-    fn guard(&mut self, cond: bool, msg: &str) -> Result<&mut Self>;
+    fn guard(&mut self, cond: bool, err: Errors) -> Result<&mut Self>;
 }
 
 /// Dump context info into stdout.

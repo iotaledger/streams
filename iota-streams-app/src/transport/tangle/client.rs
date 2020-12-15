@@ -1,10 +1,4 @@
-use anyhow::{
-    anyhow,
-    ensure,
-    Result,
-};
 use core::{
-    cell::RefCell,
     cmp::Ordering,
     convert::{
         TryFrom,
@@ -14,26 +8,33 @@ use core::{
 #[cfg(not(feature = "async"))]
 use smol::block_on;
 
+#[cfg(feature = "async")]
+use iota_streams_core::prelude::Rc;
+#[cfg(feature = "async")]
+use core::cell::RefCell;
+
 use iota::{
     client as iota_client,
-    ternary as iota_ternary
+    ternary as iota_ternary,
+    transaction::{
+        Vertex,
+        bundled::{
+            Address, Bundle, BundledTransactionBuilder as TransactionBuilder, BundledTransactionField,
+            BundledTransaction as Transaction, Index, Nonce, OutgoingBundleBuilder, Payload, Tag, Timestamp, Value,
+            PAYLOAD_TRIT_LEN, TAG_TRIT_LEN, ADDRESS_TRIT_LEN
+        }
+    },
+    crypto::ternary::Hash,
 };
 pub use iota::client::bytes_to_trytes;
 
-use bee_crypto::ternary::Hash;
-use bee_transaction::Vertex;
-
-use bee_transaction::bundled::{
-    Address, Bundle, BundledTransactionBuilder as TransactionBuilder, BundledTransactionField,
-    BundledTransaction as Transaction, Index, Nonce, OutgoingBundleBuilder, Payload, Tag, Timestamp, Value, 
-    PAYLOAD_TRIT_LEN, TAG_TRIT_LEN, ADDRESS_TRIT_LEN
-};
-
-use iota_streams_core::prelude::{
-    String,
-    ToString,
-    Vec,
-    Rc,
+use iota_streams_core::{
+    prelude::{
+        String,
+        ToString,
+        Vec,
+    },
+    {Errors::*, wrapped_err, try_or, WrappedError, LOCATION_LOG, Result},
 };
 
 use crate::{
@@ -143,17 +144,18 @@ fn make_bundle(
     branch: Hash,
 ) -> Result<Bundle> {
     let tx_address = Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(address)))
-        .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
+        .map_err(|e| wrapped_err!(BadTransactionAddress, WrappedError(e)))?;
     let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(tag)))
-        .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
-    let tx_timestamp = Timestamp::try_from_inner(timestamp).map_err(|e| anyhow!("Bad tx timestamp: {:?}.", e))?;
+        .map_err(|e| wrapped_err!(BadTransactionTag, WrappedError(e)))?;
+    let tx_timestamp = Timestamp::try_from_inner(timestamp)
+        .map_err(|e| wrapped_err!(BadTransactionTimestamp, WrappedError(e)))?;
 
     let mut bundle_builder = OutgoingBundleBuilder::default();
     while !body.is_empty() {
         let (payload_chunk, rest_of_body) = body.split_at(core::cmp::min(PAYLOAD_BYTES, body.len()));
         let payload_tritbuf = pad_tritbuf(PAYLOAD_TRIT_LEN, bytes_to_tritbuf(payload_chunk));
         let tx_payload = Payload::try_from_inner(payload_tritbuf)
-            .map_err(|e| anyhow!("Failed to create payload chunk: {:?}.", e))?;
+            .map_err(|e| wrapped_err!(BadTransactionPayload, WrappedError(e)))?;
         bundle_builder.push(make_tx(
             tx_address.clone(),
             tx_tag.clone(),
@@ -165,11 +167,11 @@ fn make_bundle(
 
     bundle_builder
         .seal()
-        .map_err(|e| anyhow!("Failed to seal bundle: {:?}.", e))?
+        .map_err(|e| wrapped_err!(BundleSealFailure, WrappedError(e)))?
         .attach_remote(trunk, branch)
-        .map_err(|e| anyhow!("Failed to attach bundle: {:?}.", e))?
+        .map_err(|e| wrapped_err!(BundleAttachFailure, WrappedError(e)))?
         .build()
-        .map_err(|e| anyhow!("Failed to build bundle: {:?}.", e))
+        .map_err(|e| wrapped_err!(BundleBuildFailure, WrappedError(e)))
 }
 
 /// Reconstruct valid bundles from trytes (returned by client's `get_trytes` method)
@@ -242,13 +244,13 @@ pub fn bundles_from_trytes(mut txs: Vec<Transaction>) -> Vec<Bundle> {
 
             let bundle_builder = bundle_builder
                 .seal()
-                .map_err(|e| anyhow!("Failed to seal incoming bundle: {:?}.", e))
+                .map_err(|e| wrapped_err!(BundleSealFailure, WrappedError(e)))
                 .unwrap()
                 .attach_remote(trunk, branch)
-                .map_err(|e| anyhow!("Failed to attach bundle: {:?}.", e))
+                .map_err(|e| wrapped_err!(BundleAttachFailure, WrappedError(e)))
                 .unwrap()
                 .build()
-                .map_err(|e| anyhow!("Failed to build incoming bundle: {:?}.", e))
+                .map_err(|e| wrapped_err!(BundleBuildFailure, WrappedError(e)))
                 .unwrap();
 
             Some(bundle_builder)
@@ -330,7 +332,7 @@ impl Default for SendTrytesOptions {
 }
 
 fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
-    result.map_err(|err| anyhow!("Failed iota_client: {}", err))
+    result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
 async fn get_bundles(client: &iota_client::Client, tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>> {
@@ -341,10 +343,10 @@ async fn get_bundles(client: &iota_client::Client, tx_address: Address, tx_tag: 
             .send()
             .await,
     )?;
-    ensure!(!find_bundles.hashes.is_empty(), "Transaction hashes not found.");
+    try_or!(!find_bundles.hashes.is_empty(), HashNotFound)?;
 
     let get_resp = handle_client_result(client.get_trytes(&find_bundles.hashes).await)?;
-    ensure!(!get_resp.trytes.is_empty(), "Transactions not found.");
+    try_or!(!get_resp.trytes.is_empty(), TransactionContentsNotFound)?;
     Ok(get_resp.trytes)
 }
 
@@ -374,9 +376,9 @@ pub async fn async_send_message_with_options<F>(client: &iota_client::Client, ms
 
 pub async fn async_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
     let tx_address = Address::try_from_inner(pad_tritbuf(ADDRESS_TRIT_LEN, bytes_to_tritbuf(link.appinst.as_ref())))
-        .map_err(|e| anyhow!("Bad tx address: {:?}.", e))?;
+        .map_err(|e| wrapped_err!(BadTransactionAddress, WrappedError(e)))?;
     let tx_tag = Tag::try_from_inner(pad_tritbuf(TAG_TRIT_LEN, bytes_to_tritbuf(link.msgid.as_ref())))
-        .map_err(|e| anyhow!("Bad tx tag: {:?}.", e))?;
+        .map_err(|e| wrapped_err!(BadTransactionTag, WrappedError(e)))?;
 
     match get_bundles(client, tx_address, tx_tag).await {
         Ok(txs) => Ok(bundles_from_trytes(txs)
@@ -422,7 +424,7 @@ impl Client {
             client: client
         }
     }
-    
+
     // Create an instance of Client with a node pointing to the given URL
     pub fn new_from_url(url: &str) -> Self {
         Self {
@@ -432,7 +434,9 @@ impl Client {
     }
 
     pub fn add_node(&mut self, url: &str) -> Result<bool> {
-        self.client.add_node(url).map_err(|e| anyhow!("iota_client error {}:", e))
+        self.client.add_node(url).map_err(|e|
+            wrapped_err!(ClientOperationFailure, WrappedError(e))
+        )
     }
 }
 
@@ -482,10 +486,10 @@ where
     async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
-            ensure!(msgs.is_empty(), "More than one message found.");
+            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()))?;
             Ok(msg)
         } else {
-            Err(anyhow!("Message not found."))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 }
@@ -501,7 +505,7 @@ where
     async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => async_send_message_with_options(&tsp.client, msg, &tsp.send_opt).await,
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+            Err(_err) => err!(TransportNotAvailable),
         }
     }
 
@@ -509,7 +513,7 @@ where
     async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => async_recv_messages(&tsp.client, link).await,
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+            Err(err) => err!(TransportNotAvailable),
         }
     }
 
@@ -518,13 +522,13 @@ where
             Ok(mut tsp) => {
                 let mut msgs = async_recv_messages(&tsp.client, link).await?;
                 if let Some(msg) = msgs.pop() {
-                    ensure!(msgs.is_empty(), "More than one message found.");
+                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string()));
                     Ok(msg)
                 } else {
-                    Err(anyhow!("Message not found."))
+                    err!(MessageLinkNotFound(link.msgid.to_string()))
                 }
             },
-            Err(err) => Err(anyhow!("Transport already borrowed: {}", err)),
+            Err(err) => err!(TransportNotAvailable),
         }
     }
 }

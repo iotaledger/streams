@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-app"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -11,7 +11,7 @@ description = "A rust implementation of the IOTA Streams applications"
 [features]
 default = ["std", "tangle", "sync-client"]
 # Enable `std` feature in dependencies
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "anyhow/std", "chrono/std", "chrono/clock", "hex/std"]
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "chrono/std", "chrono/clock", "hex/std"]
 # rust doesn't support async traits, `async-trait` crate emulates `async` keyword
 # `async` implies `std` for now
 async = ["async-trait", "atomic_refcell"]
@@ -27,15 +27,15 @@ name = "iota_streams_app"
 path = "src/lib.rs"
 
 [dependencies]
-iota-streams-core = { version = "0.3.0", path = "../iota-streams-core", default-features = false }
-iota-streams-core-edsig = { version = "0.2.0", path = "../iota-streams-core-edsig", default-features = false }
-iota-streams-ddml = { version = "0.2.0", path = "../iota-streams-ddml", default-features = false }
+iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-features = false }
+iota-streams-core-edsig = { version = "0.2.1", path = "../iota-streams-core-edsig", default-features = false }
+iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
 
 # anyhow and chrono are kept in sync with versions used in iota-core
 anyhow = { version = "1.0.26", default-features = false }
-chrono = { version = "0.4", default-features = false, optional = true }
 wasm-timer = { version = "0.2.5", optional = true }
 js-sys = { version = "0.3.46", optional = true }
+chrono = { version = "0.4.11", default-features = false, optional = true }
 hex = { version = "0.4.2", default-features = false, optional = false }
 async-trait = { version = "0.1", optional = true }
 atomic_refcell = { version = "0.1.6", optional = true }
@@ -53,3 +53,5 @@ smol = { version = "1.2.4", optional = true }
 # core-futures-tls-0.1.1 is buggy and relies on unstable generators feature
 #core = { package = "core-futures-tls", version = "0.1.1", path = "../../core-futures-tls", optional = true }
 num_cpus = { version = "1.10", optional = true }
+cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
+cty = { version = "0.2.1" }

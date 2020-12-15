@@ -228,7 +228,7 @@ pub extern "C" fn auth_receive_msg(user: *mut Author, link: *const Address) -> *
     unsafe {
         user.as_mut().map_or(null(), |user| {
             link.as_ref().map_or(null(), |link| {
-                let u = user.receive_msg(link, None).unwrap(); // TODO: handle Result
+                let u = user.receive_msg(link).unwrap(); // TODO: handle Result
                 Box::into_raw(Box::new(u))
             })
         })

@@ -2,7 +2,15 @@ use super::*;
 use core::hash;
 use crate::message::LinkedMessage;
 
-use iota_streams_core::prelude::HashMap;
+use iota_streams_core::{
+    prelude::{HashMap, string::ToString},
+    err,
+    Errors::MessageLinkNotFound,
+    LOCATION_LOG
+};
+
+#[cfg(feature = "async")]
+use iota_streams_core::Errors::MessageNotUnique;
 
 #[cfg(feature = "async")]
 use atomic_refcell::AtomicRefCell;
@@ -44,7 +52,7 @@ impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
 #[cfg(not(feature = "async"))]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
-    Link: Eq + hash::Hash + Clone + core::fmt::Debug,
+    Link: Eq + hash::Hash + Clone + core::fmt::Debug + core::fmt::Display,
     Msg: LinkedMessage<Link> + Clone,
 {
     fn send_message(&mut self, msg: &Msg) -> Result<()> {
@@ -61,7 +69,7 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            Err(anyhow!("Link not found in the bucket: {:?}.", link))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 }
@@ -70,7 +78,7 @@ where
 #[async_trait(?Send)]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
-    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,
+    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
     Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
 {
     async fn send_message(&mut self, msg: &Msg) -> Result<()> {
@@ -87,62 +95,18 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            Err(anyhow!("Link not found in the bucket."))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 
     async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-        if let Some(mut msgs) = self.bucket.get(link).cloned() {
-            if let Some(msg) = msgs.pop() {
-                ensure!(msgs.is_empty(), "More than one message found.");
-                Ok(msg)
-            } else {
-                Err(anyhow!("Message not found."))
-            }
-        } else {
-            Err(anyhow!("Link not found in the bucket."))
-        }
-    }
-}
 
-#[cfg(feature = "async")]
-#[async_trait(?Send)]
-impl<Link, Msg> Transport<Link, Msg> for Arc<AtomicRefCell<BucketTransport<Link, Msg>>>
-where
-    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,
-    Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
-{
-    async fn send_message(&mut self, msg: &Msg) -> Result<()> {
-        let mut tsp = (&*self).borrow_mut();
-        if let Some(msgs) = tsp.bucket.get_mut(msg.link()) {
-            msgs.push(msg.clone());
-            Ok(())
+        let mut msgs = self.recv_messages(link).await?;
+        if let Some(msg) = msgs.pop() {
+            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()));
+            Ok(msg)
         } else {
-            tsp.bucket.insert(msg.link().clone(), vec![msg.clone()]);
-            Ok(())
-        }
-    }
-
-    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
-        let tsp = (&*self).borrow_mut();
-        if let Some(msgs) = tsp.bucket.get(link) {
-            Ok(msgs.clone())
-        } else {
-            Err(anyhow!("Link not found in the bucket."))
-        }
-    }
-
-    async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-        let tsp = (&*self).borrow_mut();
-        if let Some(mut msgs) = tsp.bucket.get(link).cloned() {
-            if let Some(msg) = msgs.pop() {
-                ensure!(msgs.is_empty(), "More than one message found.");
-                Ok(msg)
-            } else {
-                Err(anyhow!("Message not found."))
-            }
-        } else {
-            Err(anyhow!("Link not found in the bucket."))
+            err!(MessageLinkNotFound(link.to_string()))?
         }
     }
 }

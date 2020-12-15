@@ -1,13 +1,11 @@
-use anyhow::{
-    anyhow,
-    Result,
-};
+use iota_streams_core::Result;
 use core::hash;
 
 use iota_streams_core::{
     prelude::{
         Vec,
         HashMap,
+        string::ToString
     },
     sponge::{
         prp::{
@@ -16,7 +14,12 @@ use iota_streams_core::{
         },
         spongos::Spongos,
     },
+    try_or,
+    err,
+    LOCATION_LOG,
+    Errors::{GenericLinkNotFound, MessageLinkNotFound}
 };
+use core::fmt::Display;
 
 /// The `link` type is generic and transport-specific. Links can be address+tag pair
 /// when messages are published in the Tangle. Or links can be a URL when HTTP is used.
@@ -29,7 +32,7 @@ pub trait LinkStore<F, Link> {
 
     /// Lookup link in the store and return spongos state and associated info.
     fn lookup(&self, _link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        Err(anyhow!("Link not found."))
+        err!(GenericLinkNotFound)
     }
 
     /// Put link into the store together with spongos state and associated info.
@@ -66,11 +69,11 @@ impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
     fn update(&mut self, _link: &Link, _spongos: Spongos<F>, _info: Self::Info) -> Result<()> {
         Ok(())
     }
-    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> where F: PRP {
-        Vec::new()
-    }
     fn insert(&mut self, _link: &Link, _spongos: Inner<F>, _info: Self::Info) -> Result<()> where F: PRP {
         Ok(())
+    }
+    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> where F: PRP {
+        Vec::new()
     }
 }
 
@@ -94,16 +97,15 @@ impl<F: PRP, Link, Info> SingleLinkStore<F, Link, Info> {
 
 impl<F: PRP, Link, Info> LinkStore<F, Link> for SingleLinkStore<F, Link, Info>
 where
-    Link: Clone + Eq,
+    Link: Clone + Eq + Display,
     Info: Clone,
 {
     type Info = Info;
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        if self.link() == link {
-            Ok((self.spongos().into(), self.info().clone()))
-        } else {
-            Err(anyhow!("Link not found."))
-        }
+        try_or!(self.link() == link,
+                             MessageLinkNotFound(link.to_string())
+        )?;
+        Ok((self.spongos().into(), self.info().clone()))
     }
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
         self.0 = link.clone();
@@ -142,23 +144,22 @@ where
 
 impl<F: PRP, Link, Info> LinkStore<F, Link> for DefaultLinkStore<F, Link, Info>
 where
-    Link: Eq + hash::Hash + Clone,
+    Link: Eq + hash::Hash + Clone + Display,
     Info: Clone,
 {
     type Info = Info;
 
     /// Add info for the link.
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
-        if let Some((inner, info)) = self.map.get(link) {
-            Ok((inner.into(), info.clone()))
-        } else {
-            Err(anyhow!("Link not found"))
+        match self.map.get(link) {
+            Some((inner, info)) => Ok((inner.into(), info.clone())),
+            None => err!(MessageLinkNotFound(link.to_string()))
         }
     }
 
     /// Try to retrieve info for the link.
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Info) -> Result<()> {
-        let inner = spongos.to_inner();
+        let inner = spongos.to_inner()?;
         self.map.insert(link.clone(), (inner, info));
         Ok(())
     }

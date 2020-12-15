@@ -1,4 +1,4 @@
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use super::Context;
 use crate::command::Fork;

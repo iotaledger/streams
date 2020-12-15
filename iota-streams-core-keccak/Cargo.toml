@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-core-keccak"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -17,7 +17,7 @@ name = "iota_streams_core_keccak"
 path = "src/lib.rs"
 
 [dependencies]
-iota-streams-core = { version = "0.3.0", path = "../iota-streams-core", default-features = false }
+iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-features = false }
 keccak = "0.1"
 
 [dev-dependencies]

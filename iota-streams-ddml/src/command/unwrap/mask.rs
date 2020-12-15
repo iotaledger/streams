@@ -1,7 +1,4 @@
-use anyhow::{
-    bail,
-    Result,
-};
+use iota_streams_core::Result;
 use core::mem;
 
 use super::{
@@ -22,7 +19,13 @@ use crate::{
         Uint8,
     },
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    wrapped_err,
+    WrappedError,
+    LOCATION_LOG,
+    Errors::PublicKeyGenerationFailure
+};
 use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,
@@ -46,13 +49,13 @@ impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<F, IS> {
     fn unwrap_u8(&mut self, u: &mut u8) -> Result<&mut Self> {
         let y = self.ctx.stream.try_advance(1)?;
         let mut x = [0_u8; 1];
-        self.ctx.spongos.decrypt(y, &mut x);
+        self.ctx.spongos.decrypt(y, &mut x)?;
         *u = x[0];
         Ok(self)
     }
     fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
         let y = self.ctx.stream.try_advance(bytes.len())?;
-        self.ctx.spongos.decrypt(y, bytes);
+        self.ctx.spongos.decrypt(y, bytes)?;
         Ok(self)
     }
 }
@@ -157,7 +160,7 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F
                 *pk = apk;
                 Ok(self)
             }
-            Err(_err) => bail!("Bad ed25519 public key"),
+            Err(e) => Err(wrapped_err!(PublicKeyGenerationFailure, WrappedError(e))),
         }
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-app-channels"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -11,7 +11,7 @@ description = "A rust implementation of the IOTA Streams Channels Application"
 [features]
 default = ["std", "tangle", "sync-client"]
 # Enable `std` feature in dependencies
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "anyhow/std", "hex/std"]
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "hex/std"]
 async = ["iota-streams-app/async"]
 tangle = ["iota-streams-app/tangle"]
 sync-client = ["iota-streams-app/sync-client", "tangle", "std"]
@@ -23,12 +23,11 @@ name = "iota_streams_app_channels"
 path = "src/lib.rs"
 
 [dependencies]
-iota-streams-core = { version = "0.3.0", path = "../iota-streams-core", default-features = false }
-iota-streams-core-edsig = { version = "0.2.0", path = "../iota-streams-core-edsig", default-features = false }
-iota-streams-core-keccak = { version = "0.3.0", path = "../iota-streams-core-keccak", default-features = false }
-iota-streams-ddml = { version = "0.2.2", path = "../iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "1.0.0", path = "../iota-streams-app", default-features = false }
-anyhow = { version = "1.0.26", default-features = false }
+iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-features = false }
+iota-streams-core-edsig = { version = "0.2.1", path = "../iota-streams-core-edsig", default-features = false }
+iota-streams-core-keccak = { version = "0.3.1", path = "../iota-streams-core-keccak", default-features = false }
+iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
+iota-streams-app = { version = "1.0.1", path = "../iota-streams-app", default-features = false }
 
 hex = { version = "0.4.2", default-features = false, optional = false }
 

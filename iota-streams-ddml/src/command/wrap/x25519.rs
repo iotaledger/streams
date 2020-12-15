@@ -1,6 +1,7 @@
 #[cfg(not(feature = "std"))]
-use anyhow::anyhow;
-use anyhow::Result;
+use iota_streams_core::{err, LOCATION_LOG, Errors::NoStdRngMissing};
+
+use iota_streams_core::Result;
 
 use super::Context;
 #[cfg(feature = "std")]
@@ -53,6 +54,6 @@ impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicK
 impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F, OS> {
     fn x25519(&mut self, _pk: &x25519::PublicKey, _key: &NBytes<N>) -> Result<&mut Self> {
         // TODO: no_std make default rng
-        Err(anyhow!("no_std default RNG not implemented"))
+        err!(NoStdRngMissing)
     }
 }

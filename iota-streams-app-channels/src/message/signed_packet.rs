@@ -27,7 +27,7 @@
 //! * `sig` -- message signature generated with one of channel owner's private key.
 //!
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
