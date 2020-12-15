@@ -1,15 +1,13 @@
-use core::convert::TryFrom;
+use core::{convert::TryFrom, cell::RefCell};
 use wasm_bindgen::prelude::*;
 use iota_streams::{
     app::transport::{
-        tangle::client::{SendTrytesOptions as ApiSendTrytesOptions, },
+        tangle::client::{SendTrytesOptions as ApiSendTrytesOptions, Client },
     },
     app_channels::{
-        api::tangle::{
-            Address as ApiAddress,
-        },
+        api::tangle::Address as ApiAddress,
     },
-    core::prelude::{ String, ToString, },
+    core::prelude::{ String, ToString, Rc, },
 };
 
 pub type Result<T> = core::result::Result<T, JsValue>;
@@ -41,22 +39,26 @@ impl SendTrytesOptions {
     #[wasm_bindgen(constructor)]
     pub fn new(depth: u8, min_weight_magnitude: u8, local_pow: bool, threads: usize) -> Self {
         Self {
-            depth: depth,
-            min_weight_magnitude: min_weight_magnitude,
-            local_pow: local_pow,
-            threads: threads,
+            depth,
+            min_weight_magnitude,
+            local_pow,
+            threads,
         }
    }
 }
 
 #[wasm_bindgen]
 pub struct Address {
-    addr_id: String, 
+    addr_id: String,
     msg_id: String,
 }
 
 #[wasm_bindgen]
 impl Address {
+    pub fn new() -> Self {
+        Address { addr_id: String::new(), msg_id: String::new() }
+    }
+
     #[wasm_bindgen(getter)]
     pub fn addr_id(&self) -> String {
         self.addr_id.clone()
@@ -76,7 +78,32 @@ impl Address {
     pub fn set_msg_id(&mut self, msg_id: String) {
         self.msg_id = msg_id;
     }
+
+    #[wasm_bindgen]
+    pub fn from_string(link: String) -> Self {
+        let link_vec: Vec<&str> = link
+            .strip_prefix("<").unwrap_or(&link)
+            .strip_suffix(">").unwrap_or(&link)
+            .split(":").collect();
+
+        Address { addr_id: link_vec[0].to_string(), msg_id: link_vec[1].to_string() }
+    }
+
+    #[wasm_bindgen]
+    pub fn to_string(&self) -> String {
+        let mut link = String::new();
+        link.push_str(&self.addr_id);
+        link.push_str(":");
+        link.push_str(&self.msg_id);
+        link
+    }
+
+    pub fn copy(&self) -> Self {
+        Address { addr_id: self.addr_id.clone(), msg_id: self.msg_id.clone() }
+    }
 }
+
+pub type ClientWrap = Rc<RefCell<Client>>;
 
 impl TryFrom<Address> for ApiAddress {
     type Error = JsValue;

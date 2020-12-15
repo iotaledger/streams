@@ -20,6 +20,7 @@ wasm-opt = false
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1.6"
+js-sys = "0.3.46"
 
 serde = { version = "1.0", features = ["derive"] }
 

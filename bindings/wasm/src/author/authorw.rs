@@ -1,3 +1,4 @@
+use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
 //use wasm_bindgen_futures::*;
 
@@ -5,27 +6,17 @@ use crate::types::*;
 
 /// Streams imports
 use iota_streams::{
-    app::{
-        message::HasLink,
-        transport::tangle::PAYLOAD_BYTES,
-    },
+    app::transport::tangle::PAYLOAD_BYTES,
     app_channels::{
         api::tangle::{
             Author as ApiAuthor,
-            Transport as _,
             Address as ApiAddress,
-            ChannelAddress,
         },
     },
-    core::{
-        prelude::Rc,
-        print,
-        println,
-    },
+    core::prelude::Rc,
     ddml::types::*,
 };
 use core::cell::RefCell;
-  
 use iota_streams::{
     app::transport::{
         TransportOptions,
@@ -36,73 +27,197 @@ use iota_streams::{
 
 #[wasm_bindgen]
 pub struct Author {
-    author: Rc<RefCell<ApiAuthor<Rc<RefCell<Client>>>>>,
+    author: ApiAuthor<ClientWrap>,
+}
+
+#[wasm_bindgen]
+pub struct AuthorResponse {
+    author: Author,
+    link: Address,
+    seq_link: Option<Address>
+}
+
+#[wasm_bindgen]
+impl AuthorResponse {
+    fn new(author: ApiAuthor<ClientWrap>, link: Address, seq_link: Option<Address>) -> Self {
+        AuthorResponse { author: Author { author }, link, seq_link }
+    }
+
+    pub fn get_link(&self) -> Address {
+        let mut link = Address::new();
+        link.set_addr_id(self.link.addr_id());
+        link.set_msg_id(self.link.msg_id());
+        link
+    }
+
+    pub fn get_seq_link(&self) -> Address {
+        if self.seq_link.is_some() {
+            let seq_link = self.seq_link.as_ref().unwrap();
+            let mut link = Address::new();
+            link.set_addr_id(seq_link.addr_id());
+            link.set_msg_id(seq_link.msg_id());
+            link
+        } else {
+            Address::new()
+        }
+    }
+
+    pub fn to_auth(self) -> Author {
+        self.author
+    }
 }
 
 #[wasm_bindgen]
 impl Author {
     #[wasm_bindgen(constructor)]
     pub fn new(node: String, seed: String, options: SendTrytesOptions, multi_branching: bool) -> Author {
-        let node = "https://nodes.devnet.iota.org:443";
         let mut client = Client::new_from_url(&node);
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
-        let author = Rc::new(RefCell::new(ApiAuthor::new(
-            &seed, "utf-8", PAYLOAD_BYTES, multi_branching, transport)));
+        let author = ApiAuthor::new(
+            &seed, "utf-8", PAYLOAD_BYTES, multi_branching, transport);
         Author { author }
     }
 
     pub fn channel_address(&self) -> Result<String> {
-        to_result(self.author.borrow()
-                  .channel_address()
+        to_result(self.author.channel_address()
                   .map(|addr| addr.to_string())
                   .ok_or("channel not created")
         )
     }
 
     pub fn is_multi_branching(&self) -> Result<bool> {
-        Ok(self.author.borrow().is_multi_branching())
+        Ok(self.author.is_multi_branching())
     }
 
     pub fn get_public_key(&self) -> Result<String> {
         Ok("pk".to_owned())
     }
 
-    #[wasm_bindgen(catch)]
-    pub async fn send_announce(self) -> Result<String> {
-        self.author.borrow_mut().send_announce()
-            .await.map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |addr| Ok(addr.to_string().to_owned()))
-    }
 
-    /*
     #[wasm_bindgen(catch)]
-    pub async fn auth_send_announce2(this: Rc<RefCell<Author>>) -> Result<String, JsValue> {
-        this.borrow_mut()
-            .author.send_announce()
-            .await.map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |addr| Ok(addr.to_string().to_owned()))
+    pub async fn send_announce(mut self) -> Result<AuthorResponse> {
+        self.author.send_announce().await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |addr| Ok(
+                    AuthorResponse::new(
+                        self.author,
+                        Address::from_string(addr.to_string()),
+                        None
+                    )
+                )
+            )
     }
 
     #[wasm_bindgen(catch)]
-    pub fn auth_send_announce3(&mut self) -> Promise {
-        let ann = JsFuture::from(self.author.send_announce());
-        future_to_promise(async move {
-            ann.await.map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |addr| Ok(addr.to_string().to_owned()))
-        })
-    }
-     */
+    pub async fn send_keyload_for_everyone(mut self, link: Address) -> Result<AuthorResponse> {
+        self.author.send_keyload_for_everyone(
+            &link.try_into().map_or_else(
+                |_err| ApiAddress::default(),
+                |addr: ApiAddress| addr
+            )
+        ).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |(link, seq_link)| {
+                    let seq;
+                    if let Some(seq_link) = seq_link {
+                        seq = Some(Address::from_string(seq_link.to_string()));
+                    } else {
+                        seq = None;
+                    }
 
-    pub fn receive_subscribe(&mut self, link_to: Address) -> Result<()> {
-        //let addr = link_to.try_into()?;
-        // Errors on missing functions from iota-core/iota-client/ureq/rustls/ring in the env
-        //self.author.receive_subscribe(&addr).unwrap();
-        Ok(())
+                    Ok(AuthorResponse::new(
+                        self.author,
+                        Address::from_string(link.to_string()),
+                        seq
+                    ))
+                }
+            )
+
+    }
+
+
+    #[wasm_bindgen(catch)]
+    pub async fn send_tagged_packet(
+        mut self,
+        link: Address,
+        public_payload: Vec<u8>,
+        masked_payload: Vec<u8>
+    ) -> Result<AuthorResponse> {
+        self.author.send_tagged_packet(
+            &link.try_into().map_or_else(
+                |_err| ApiAddress::default(),
+                |addr: ApiAddress| addr
+            ), &Bytes(public_payload),
+            &Bytes(masked_payload)
+        ).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |(link, seq_link)| {
+                    let seq;
+                    if let Some(seq_link) = seq_link {
+                        seq = Some(Address::from_string(seq_link.to_string()));
+                    } else {
+                        seq = None;
+                    }
+
+                    Ok(AuthorResponse::new(
+                        self.author,
+                        Address::from_string(link.to_string()),
+                        seq
+                    ))
+                }
+            )
+
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn send_signed_packet(
+        mut self,
+        link: Address,
+        public_payload: Vec<u8>,
+        masked_payload: Vec<u8>
+    ) -> Result<AuthorResponse> {
+        self.author.send_signed_packet(
+            &link.try_into().map_or_else(
+                |_err| ApiAddress::default(),
+                |addr: ApiAddress| addr
+            ), &Bytes(public_payload),
+            &Bytes(masked_payload)
+        ).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |(link, seq_link)| {
+                    let seq;
+                    if let Some(seq_link) = seq_link {
+                        seq = Some(Address::from_string(seq_link.to_string()));
+                    } else {
+                        seq = None;
+                    }
+
+                    Ok(AuthorResponse::new(
+                        self.author,
+                        Address::from_string(link.to_string()),
+                        seq
+                    ))
+                }
+            )
+
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_subscribe(mut self, link_to: Address) -> Result<Author> {
+        self.author.receive_subscribe(&link_to.try_into().map_or_else(
+            |_err| ApiAddress::default(),
+            |addr| addr
+        )).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |_| Ok(Author { author: self.author })
+            )
     }
 
   /*
@@ -119,8 +234,8 @@ impl Author {
     pub fn send_keyload(&self, link_to: AddressW, psk_ids_t *psk_ids, ke_pks_t ke_pks) -> Result<String, JsValue> {
         Ok(seed.to_owned())
     }
-  
-  
+
+
     // Tagged Packets
     // message_links_t
     pub fn send_tagged_packet(&self, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size) -> Result<String, JsValue> {
