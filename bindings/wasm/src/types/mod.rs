@@ -120,25 +120,25 @@ impl TryFrom<Address> for ApiAddress {
 pub struct UserResponse {
     link: Address,
     seq_link: Option<Address>,
-    payload: Option<Payload>
+    message: Option<Message>
 }
 
 
 #[wasm_bindgen]
-pub struct Payload {
+pub struct Message {
     pk: Option<String>,
     public_payload: Vec<u8>,
     masked_payload: Vec<u8>,
 }
 
 #[wasm_bindgen]
-impl Payload {
-    pub fn default() -> Payload {
+impl Message {
+    pub fn default() -> Message {
         Self::new(None, Vec::new(), Vec::new())
     }
 
-    pub fn new(pk: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Payload {
-        Payload { pk, public_payload, masked_payload }
+    pub fn new(pk: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Message {
+        Message { pk, public_payload, masked_payload }
     }
 
     pub fn get_public_payload(&self) -> Array {
@@ -153,8 +153,8 @@ impl Payload {
 
 #[wasm_bindgen]
 impl UserResponse {
-    pub fn new(link: Address, seq_link: Option<Address>, payload: Option<Payload>) -> Self {
-        UserResponse { link, seq_link, payload }
+    pub fn new(link: Address, seq_link: Option<Address>, message: Option<Message>) -> Self {
+        UserResponse { link, seq_link, message }
     }
 
     pub fn get_link(&self) -> Address {
@@ -176,16 +176,16 @@ impl UserResponse {
         }
     }
 
-    pub fn get_payload(&mut self) -> Payload {
-        if self.payload.is_some() {
-            let payload = self.payload.as_ref().unwrap();
-            Payload {
-                pk: payload.pk.clone(),
-                public_payload: payload.public_payload.clone(),
-                masked_payload: payload.masked_payload.clone()
+    pub fn get_message(&mut self) -> Message {
+        if self.message.is_some() {
+            let message = self.message.as_ref().unwrap();
+            Message {
+                pk: message.pk.clone(),
+                public_payload: message.public_payload.clone(),
+                masked_payload: message.masked_payload.clone()
             }
         } else {
-            Payload::default()
+            Message::default()
         }
     }
 }

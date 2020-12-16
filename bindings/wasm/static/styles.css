@@ -24,6 +24,8 @@ form {
 
 form li {
   display: inline-block;
+  padding-bottom: 5px;
+  padding-right: 5px;
 }
 
 form li div label {
@@ -45,4 +47,16 @@ form .guidelines {
 
 form li#buttons {
   text-align: center;
+}
+
+.author {
+  display: inline;
+}
+
+.accept_sub_link{
+  display: inline;
+}
+
+.messages li:nth-child(odd){
+  background: #444;
 }

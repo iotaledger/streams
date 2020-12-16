@@ -1,6 +1,9 @@
 import("../pkg/index.js").then(async (streams) => {
     window.streams = streams;
 
+    window.streams.to_bytes = to_bytes;
+    window.streams.from_bytes = from_bytes;
+
     streams.set_panic_hook();
 
     console.log("Streams loaded!");

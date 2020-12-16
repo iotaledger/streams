@@ -210,16 +210,16 @@ impl Author {
         for msg in msgs {
             match msg.body {
                 MessageContent::SignedPacket {pk: pk, public_payload: p, masked_payload: m} => {
-                    payloads.push(Payload::new(
+                    payloads.push(Message::new(
                         Some(hex::encode(pk.to_bytes().to_vec())),
                     p.0,
                         m.0
                     ))
                 },
                 MessageContent::TaggedPacket {public_payload: p, masked_payload: m} => {
-                    payloads.push(Payload::new(None, p.0, m.0))
+                    payloads.push(Message::new(None, p.0, m.0))
                 },
-                _ => payloads.push(Payload::default())
+                _ => payloads.push(Message::default())
             }
         }
         Ok(payloads.into_iter().map(JsValue::from).collect())
@@ -270,9 +270,6 @@ impl Author {
     }
     // Fetching/Syncing
     // unwrapped_messages_t
-    pub fn fetch_next_msgs(&self) -> Result<String, JsValue> {
-        Ok(seed.to_owned())
-    }
 
     // unwrapped_messages_t
     pub fn sync_state(&self) -> Result<String, JsValue> {
