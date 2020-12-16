@@ -34,6 +34,28 @@ pub struct Author {
 }
 
 #[wasm_bindgen]
+pub struct AuthorMessage {
+    author: Author,
+    link: Address,
+    msg: Message,
+}
+
+
+#[wasm_bindgen]
+impl AuthorMessage {
+    fn new(author: ApiAuthor<ClientWrap>, link: Address, msg: Message) -> Self {
+        AuthorMessage { author: Author { author }, link, msg }
+    }
+
+    pub fn get_link(&self) -> Address {
+        let mut link = Address::new();
+        link.set_addr_id(self.link.addr_id());
+        link.set_msg_id(self.link.msg_id());
+        link
+    }
+}
+
+#[wasm_bindgen]
 pub struct AuthorResponse {
     author: Author,
     link: Address,
@@ -97,7 +119,6 @@ impl Author {
     pub fn get_public_key(&self) -> Result<String> {
         Ok("pk".to_owned())
     }
-
 
     #[wasm_bindgen(catch)]
     pub async fn send_announce(mut self) -> Result<AuthorResponse> {
@@ -222,7 +243,21 @@ impl Author {
                 |_| Ok(Author { author: self.author })
             )
     }
+    
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_next_msgs(&self) -> Result<AuthorMessage> {
+        let unwrapped_msgs_vec = self.author.fetch_next_msgs().await;
 
+        let unwrappedMessage = unwrapped_msgs_vec.get(0).unwrap();
+
+        //MessageContent::TaggedPacket { public_payload: p, masked_payload: m, } => (p, m).into(),
+        let body: (_, Bytes, Bytes) = unwrappedMessage.body;
+        Ok(AuthorMessage::new(
+            self.author,
+            Address::from_string(unwrappedMessage.link.to_string()),
+            Message::new(body.0.to_string(), body.1.to_string())
+        ))
+    }
 
     /*
     // Keyload
@@ -268,10 +303,7 @@ impl Author {
     }
     // Fetching/Syncing
     // unwrapped_messages_t
-    pub fn fetch_next_msgs(&self) -> Result<String, JsValue> {
-        Ok(seed.to_owned())
-    }
-
+    
     // unwrapped_messages_t
     pub fn sync_state(&self) -> Result<String, JsValue> {
         Ok(seed.to_owned())

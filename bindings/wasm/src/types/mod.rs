@@ -50,6 +50,23 @@ impl SendTrytesOptions {
 }
 
 #[wasm_bindgen]
+pub struct Message {
+    public: String,
+    masked: String,
+}
+
+#[wasm_bindgen]
+impl Message {
+    #[wasm_bindgen(constructor)]
+    pub fn new(public: String, masked: String) -> Self {
+        Message { 
+            public: public, 
+            masked: masked 
+        }
+    }
+}
+
+#[wasm_bindgen]
 pub struct Address {
     addr_id: String,
     msg_id: String,
