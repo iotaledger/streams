@@ -10,7 +10,7 @@ use iota_streams::{
     core::prelude::{ String, ToString, Rc, },
 };
 
-use crate::log;
+use js_sys::Array;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
 pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {
@@ -113,5 +113,79 @@ impl TryFrom<Address> for ApiAddress {
     fn try_from(addr: Address) -> Result<Self> {
         ApiAddress::from_str(&addr.addr_id, &addr.msg_id)
             .map_err(|()| JsValue::from_str("bad address"))
+    }
+}
+
+#[wasm_bindgen]
+pub struct UserResponse {
+    link: Address,
+    seq_link: Option<Address>,
+    payload: Option<Payload>
+}
+
+
+#[wasm_bindgen]
+pub struct Payload {
+    pk: Option<String>,
+    public_payload: Vec<u8>,
+    masked_payload: Vec<u8>,
+}
+
+#[wasm_bindgen]
+impl Payload {
+    pub fn default() -> Payload {
+        Self::new(None, Vec::new(), Vec::new())
+    }
+
+    pub fn new(pk: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Payload {
+        Payload { pk, public_payload, masked_payload }
+    }
+
+    pub fn get_public_payload(&self) -> Array {
+        self.public_payload.clone().into_iter().map(JsValue::from).collect()
+    }
+
+    pub fn get_masked_payload(&self) -> Array {
+        self.masked_payload.clone().into_iter().map(JsValue::from).collect()
+    }
+
+}
+
+#[wasm_bindgen]
+impl UserResponse {
+    pub fn new(link: Address, seq_link: Option<Address>, payload: Option<Payload>) -> Self {
+        UserResponse { link, seq_link, payload }
+    }
+
+    pub fn get_link(&self) -> Address {
+        let mut link = Address::new();
+        link.set_addr_id(self.link.addr_id());
+        link.set_msg_id(self.link.msg_id());
+        link
+    }
+
+    pub fn get_seq_link(&self) -> Address {
+        if self.seq_link.is_some() {
+            let seq_link = self.seq_link.as_ref().unwrap();
+            let mut link = Address::new();
+            link.set_addr_id(seq_link.addr_id());
+            link.set_msg_id(seq_link.msg_id());
+            link
+        } else {
+            Address::new()
+        }
+    }
+
+    pub fn get_payload(&mut self) -> Payload {
+        if self.payload.is_some() {
+            let payload = self.payload.as_ref().unwrap();
+            Payload {
+                pk: payload.pk.clone(),
+                public_payload: payload.public_payload.clone(),
+                masked_payload: payload.masked_payload.clone()
+            }
+        } else {
+            Payload::default()
+        }
     }
 }
