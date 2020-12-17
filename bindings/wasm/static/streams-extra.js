@@ -55,7 +55,7 @@ function copy_link() {
   range.selectNode(document.getElementById("announce-link"));
   window.getSelection().removeAllRanges(); // clear current selection
   window.getSelection().addRange(range); // to select text
-  
+
   document.execCommand("copy");
   window.getSelection().removeAllRanges();// to deselect
 }
@@ -66,9 +66,8 @@ async function announce() {
     return;
   }
 
-  let response = await auth.send_announce();
+  let response = await auth.clone().send_announce();
   let ann_link = response.get_link();
-  auth = response.to_auth();
   setText("announce-link", ann_link.to_string());
 }
 
@@ -80,11 +79,10 @@ async function subscribe(fieldname) {
   }
   let annLink = streams.Address.from_string(link);
 
-  sub = await sub.receive_announcement(annLink.copy());
+  await sub.clone().receive_announcement(annLink.copy());
 
-  let response = await sub.send_subscribe(annLink);
+  let response = await sub.clone().send_subscribe(annLink);
   let sub_link = response.get_link();
-  sub = response.to_sub();
 
   console.log("sub link: " + sub_link.to_string());
 }
@@ -96,16 +94,15 @@ async function receive_subscribe(fieldname){
     return;
   }
   let sub_link = streams.Address.from_string(link);
-  auth = await auth.receive_subscribe(sub_link);
+  await auth.clone().receive_subscribe(sub_link);
 }
 
 async function send_keyload(fieldname) {
   let link = document.getElementById(fieldname).textContent;
   let ann_link = streams.Address.from_string(link);
 
-  response = await auth.send_keyload_for_everyone(ann_link);
+  response = await auth.clone().send_keyload_for_everyone(ann_link);
   keyload_link = response.get_link();
-  auth = response.to_auth();
 
   console.log("keyload link: " + keyload_link.to_string());
 }
@@ -135,19 +132,17 @@ async function send_message(form) {
 
   let public_msg = streams.to_bytes(masked ? "" : msg);
   let masked_msg = streams.to_bytes(masked ? msg : "");
-  
+
   let link = last_link ? last_link : keyload_link;
 
   if (send_as_auth){
     console.log("Author Sending tagged packet");
-    response = await sub.send_tagged_packet(link, public_msg, masked_msg);
+    response = await auth.clone().send_tagged_packet(link, public_msg, masked_msg);
     last_link = response.get_link();
-    sub = response.to_sub();
   } else {
     console.log("Subscriber Sending tagged packet");
-    response = await sub.send_tagged_packet(link, public_msg, masked_msg);
+    response = await sub.clone().send_tagged_packet(link, public_msg, masked_msg);
     last_link = response.get_link();
-    sub = response.to_sub();
   }
 
   console.log("Tag packet at: ", last_link.to_string());
