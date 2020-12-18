@@ -208,19 +208,24 @@ impl Author {
         let msgs = self.author.borrow_mut().fetch_next_msgs().await;
 
         for msg in msgs {
-            match msg.body {
+            let jsMsg = match msg.body {
                 MessageContent::SignedPacket {pk: pk, public_payload: p, masked_payload: m} => {
-                    payloads.push(Message::new(
+                    Message::new(
                         Some(hex::encode(pk.to_bytes().to_vec())),
                     p.0,
                         m.0
-                    ))
+                    )
                 },
                 MessageContent::TaggedPacket {public_payload: p, masked_payload: m} => {
-                    payloads.push(Message::new(None, p.0, m.0))
+                    Message::new(None, p.0, m.0)
                 },
-                _ => payloads.push(Message::default())
-            }
+                _ => Message::default()
+            };
+
+            payloads.push(UserResponse::new(
+                Address::from_string(msg.link.to_string()),
+                None,
+                Some(jsMsg)));
         }
         Ok(payloads.into_iter().map(JsValue::from).collect())
     }
