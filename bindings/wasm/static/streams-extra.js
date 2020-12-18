@@ -4,6 +4,8 @@
 // keyload_link
 // last_link
 
+// fetching true/false
+
 async function updateAuthor() {
   if (!streams) {
     console.log("Not yet loaded...");
@@ -113,7 +115,7 @@ async function send_keyload(fieldname) {
   let link = document.getElementById(fieldname).textContent;
   let ann_link = streams.Address.from_string(link);
 
-  response = await auth.clone().send_keyload_for_everyone(ann_link);
+  let response = await auth.clone().send_keyload_for_everyone(ann_link);
   keyload_link = response.get_link();
   setText("latest-msg-link", keyload_link.to_string())
 
@@ -122,46 +124,108 @@ async function send_keyload(fieldname) {
 
 async function unsubscribe(fieldname) {}
 
+function stop_start() {
+  let btn = document.getElementById("stopstart");
+  if (btn.value === "Stop"){
+    btn.value = "Start";
+    stop_fetch();
+  } else {
+    btn.value = "Stop";
+    start_fetch();
+  }
+}
+
 function start_fetch(){
+  fetching = true;
   let amount = document.getElementById("auto_fetch").value;
   let interval = amount * 1000;
-  window.setInterval(function(){
+  fetch_id = window.setInterval(function(){
     fetch_messages();
   }, interval);
 }
 
 function stop_fetch(){
-  clearInterval();
+  fetching = false;
+  clearInterval(fetch_id);
 }
 
 async function fetch_messages() {
   console.log("fetching...");
 
-  let as_auth = document.getElementById("msg_who_auth").value === false;
+  let next_msgs = await auth.clone().fetch_next_msgs();
 
-  let msgs;
-  if (as_auth) {
-    msgs = await auth.clone().fetch_next_msgs();
-  } else {
-    msgs = await sub.clone().fetch_next_msgs();
+  if(next_msgs.length === 0) {
+      exists = false
+      return;
   }
 
-  let msg_text = document.getElementById("messages").textContent;
-  for (var i=0; i < msgs.length; ++i) {
-    let msg = msgs[i].get_message();
-    msg_text += "Msg found: ";
-    msg_text += msgs[i].get_link().to_string();
-    msg_text += "\nPublic: ";
-    msg_text += streams.from_bytes(msg.get_public_payload());
-    msg_text += "\nMasked: ";
-    msg_text += streams.from_bytes(msg.get_masked_payload());
-    msg_text += "\n\n";
+  for(var i = 0; i < next_msgs.length; i++) {
+      addMessage("messages", next_msgs[i]);
   }
 
-  setText("messages", msg_text);
+  last_link = next_msgs[next_msgs.length-1].get_link();
+}
+
+function addMessage(divId, message){
+  let doc = document.getElementById(divId);
+  let msg_id = message.get_link().msg_id;
+
+  var newMsg = document.createElement('div');
+  newMsg.className = "message";
+
+  // Msg id
+  var li = document.createElement('li');
+  var addr_label = document.createElement('label');
+  addr_label.setAttribute("for","addr_" + msg_id);
+  addr_label.innerHTML = "Msg id: ";
+  li.appendChild(addr_label);
+
+  var addr = document.createElement('div');
+  addr.className = "address";
+  addr.id = "addr_" + msg_id;
+  addr.innerHTML = msg_id;
+  li.appendChild(addr);
+  newMsg.appendChild(li);
+
+  // Public payload
+  li = document.createElement('li');
+  var pub_label = document.createElement('label');
+  pub_label.setAttribute("for","public_" + msg_id);
+  pub_label.innerHTML = "public: ";
+  li.appendChild(pub_label);
+
+  var pub = document.createElement('div');
+  pub.className = "public";
+  pub.id = "public_" + msg_id;
+  pub.innerHTML = streams.from_bytes(message.get_message().get_public_payload());
+  li.appendChild(pub);
+  newMsg.appendChild(li);
+
+  // Masked payload
+  li = document.createElement('li');
+  var mask_label = document.createElement('label');
+  mask_label.setAttribute("for","masked_" + msg_id);
+  mask_label.innerHTML = "masked: ";
+  li.appendChild(mask_label);
+
+  var mask = document.createElement('div');
+  mask.id = "masked_" + msg_id;
+  mask.className = "masked";
+  mask.innerHTML = streams.from_bytes(message.get_message().get_masked_payload());
+  li.appendChild(mask);
+  newMsg.appendChild(li);
+
+  // Add it all
+  doc.appendChild(newMsg);
+  doc.appendChild(document.createElement('hr'));
 }
 
 async function send_message(form) {
+  if ((typeof exists === 'undefined') || exists !== false || (typeof auth === 'undefined')){
+    alert("Author still loading... wait for sync to complete");
+    return;
+  }
+
   let msg = form["message"].value;
   let masked = form["masked"].value === "true";
   let send_as_auth = form["msg_who"].value === "true";
@@ -169,21 +233,19 @@ async function send_message(form) {
   let public_msg = streams.to_bytes(masked ? "" : msg);
   let masked_msg = streams.to_bytes(masked ? msg : "");
 
-  let last_link = document.getElementById("latest-msg-link").textContent;
-  console.log("Lastlink: ", last_link);
-  last_link = streams.Address.from_string(last_link);
-
+  let link = (typeof last_link !== 'undefined') ? last_link : keyload_link;
+  let response;
   if (send_as_auth){
     console.log("Author Sending tagged packet");
-    response = await auth.clone().send_tagged_packet(last_link, public_msg, masked_msg);
-    last_link = response.get_link();
+    response = await auth.clone().send_tagged_packet(link, public_msg, masked_msg);
   } else {
     console.log("Subscriber Sending tagged packet");
-    response = await sub.clone().send_tagged_packet(last_link, public_msg, masked_msg);
-    last_link = response.get_link();
+    response = await sub.clone().send_tagged_packet(link, public_msg, masked_msg);
   }
   setText("latest-msg-link", last_link.to_string())
 
+  last_link = response.get_link();
+  addMessage("messages", response);
   console.log("Tag packet at: ", last_link.to_string());
 }
 

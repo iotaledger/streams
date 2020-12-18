@@ -226,13 +226,10 @@
         <li id="li_message">
           <h1><a>Channel options</a></h1>
           <div>
-            <textarea
-              id="message"
-              type="textarea"
-              rows="4"
-              cols="50"
-            >My custom cool message!</textarea>
-            <br/>
+            <textarea id="message" type="textarea" rows="4" cols="50">
+                My custom cool message!
+            </textarea>
+            <br />
           </div>
           <p class="guidelines" id="guide_1">
             <small>Custom message to send on your channel!</small>
@@ -288,7 +285,7 @@
               type="number"
               maxlength="10"
               minlength="1"
-              value="10"
+              value="3"
             />
           </div>
         </li>
@@ -301,6 +298,12 @@
             type="button"
             onclick="fetch_messages()"
             value="Fetch messages"
+          />
+          <input
+            id="stopstart"
+            type="button"
+            value="Stop"
+            onclick="stop_start()"
           />
         </li>
       </form>

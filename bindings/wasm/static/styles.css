@@ -69,3 +69,19 @@ form li#buttons {
 .messages li:nth-child(odd){
   background: #444;
 }
+
+.message {
+  display: inline-block;
+}
+
+.message .address {
+  color: red;
+}
+
+.message .public {
+  color: green;
+}
+
+.message .masked {
+  color: blue;
+}

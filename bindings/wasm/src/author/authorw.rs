@@ -208,8 +208,9 @@ impl Author {
         let msgs = self.author.borrow_mut().fetch_next_msgs().await;
 
         for msg in msgs {
-            match msg.body {
+            let jsMsg = match msg.body {
                 MessageContent::SignedPacket {pk: pk, public_payload: p, masked_payload: m} => {
+<<<<<<< HEAD
                     payloads.push(UserResponse::new(
                         Address::from_string(msg.link.to_string()),
                         None,
