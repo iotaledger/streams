@@ -210,7 +210,6 @@ impl Author {
         for msg in msgs {
             let jsMsg = match msg.body {
                 MessageContent::SignedPacket {pk: pk, public_payload: p, masked_payload: m} => {
-<<<<<<< HEAD
                     payloads.push(UserResponse::new(
                         Address::from_string(msg.link.to_string()),
                         None,
@@ -239,7 +238,7 @@ impl Author {
                 _ => payloads.push(UserResponse::new(
                     Address::from_string(msg.link.to_string()), None, None)
                     )
-            }
+            };
         }
         Ok(payloads.into_iter().map(JsValue::from).collect())
     }
