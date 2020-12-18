@@ -14,7 +14,7 @@
   </body>
   <div class="content">
     <div class="container left">
-      <div id="settings">
+      <div id="settings-section">
         <h1><a>Settings</a></h1>
         <form id="settings" class="settings">
           <li id="li_seed_a">
@@ -155,18 +155,18 @@
       <div id="subscriber">
         <h1><a>Subscriber</a></h1>
         <input
-          id="sub_link"
+          id="sub_link_in"
           type="text"
           size="100"
           minlength="105"
           maxlength="105"
           value=""
         />
-        <br />
-        <button id="subscribe" onclick='subscribe("sub_link")'>
+        <br /><br />
+        <button id="subscribe" onclick='subscribe("sub_link_in")'>
           Subscribe to link
         </button>
-        <button id="unsubscribe" onclick='unsubscribe("sub_link")' disabled>
+        <button id="unsubscribe" onclick='unsubscribe("sub_link_in")' disabled>
           Unsubscribe to link
         </button>
       </div>
@@ -179,12 +179,6 @@
         <label id="announce-address">Click update author...</label> (multi:
         ...<label id="announce-multi"></label>)
 
-        <br /><br />
-
-        <label>Link: <button onclick="copy_link()">Copy link</button></label>
-        <div id="announce-link">Click update author...</div>
-
-        <br /><br />
         <input
           id="accept_sub_link"
           type="text"
@@ -207,8 +201,24 @@
     </div>
 
     <div class="container right">
+      <div id="links">
+        <h1>Links</h1>
+        <label>Announcement Link: </label>
+        <div id="announce-link">Click update author...</div>
+        <button onclick="copy_link()">Copy link</button>
+        <br /><br />
+        <label id="subscriber-link">Sub Link: </label>
+        <div id="sub-link-out">Subscribe to get link...</div>
+        <button onclick="copy_sub_link()">Copy sub link</button>
+        <br /><br />
+        <label id="latest-msg">Latest Message: </label>
+        <div id="latest-msg-link">Send a message to get link...</div>
+      </div>
+
+      <hr/>
+
       <form
-        id="settings"
+        id="msg-settings"
         class="settings"
         action="javascript:;"
         onsubmit="send_message(this)"
@@ -216,10 +226,10 @@
         <li id="li_message">
           <h1><a>Channel options</a></h1>
           <div>
-            <textarea 
+            <textarea
               id="message"
               type="textarea"
-              rows="4" 
+              rows="4"
               cols="50"
             >My custom cool message!</textarea>
             <br/>

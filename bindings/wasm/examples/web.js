@@ -75,8 +75,8 @@ async function old_test(){
 
         for(var i = 0; i < next_msgs.length; i++) {
             console.log("Found a message...",)
-            console.log("Public: ", from_bytes(next_msgs[i].get_public_payload()),
-                "\tMasked: ", from_bytes(next_msgs[i].get_masked_payload()))
+            console.log("Public: ", from_bytes(next_msgs[i].get_message().get_public_payload()),
+                "\tMasked: ", from_bytes(next_msgs[i].get_message().get_masked_payload()))
         }
     }
     //auth.free();

@@ -1,5 +1,6 @@
 use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
+use js_sys::Array;
 
 use crate::types::*;
 
@@ -24,6 +25,7 @@ use iota_streams::{
   core::prelude::{ String,  },
 };
 use crate::log;
+use iota_streams::app_channels::api::tangle::MessageContent;
 
 #[wasm_bindgen]
 pub struct Subscriber {
@@ -164,6 +166,48 @@ impl Subscriber {
         }
         Ok(())
     }
+
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_next_msgs(self) -> Result<Array> {
+        let mut payloads = Vec::new();
+        let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
+
+        for msg in msgs {
+            match msg.body {
+                MessageContent::SignedPacket {pk: pk, public_payload: p, masked_payload: m} => {
+                    payloads.push(UserResponse::new(
+                        Address::from_string(msg.link.to_string()),
+                        None,
+                        Some(Message::new(
+                            Some(hex::encode(pk.to_bytes().to_vec())),
+                            p.0,
+                            m.0
+                        )
+                        )
+                    ))
+                },
+                MessageContent::TaggedPacket {public_payload: p, masked_payload: m} => {
+                    payloads.push(UserResponse::new(
+                        Address::from_string(msg.link.to_string()),
+                        None,
+                        Some(Message::new(None, p.0, m.0))
+                    ))
+                },
+                MessageContent::Sequence => {
+                    payloads.push(UserResponse::new(
+                        Address::new(),
+                        Some(Address::from_string(msg.link.to_string())),
+                        None
+                    ))
+                },
+                _ => payloads.push(UserResponse::new(
+                    Address::from_string(msg.link.to_string()), None, None)
+                )
+            }
+        }
+        Ok(payloads.into_iter().map(JsValue::from).collect())
+    }
+
 
 
 

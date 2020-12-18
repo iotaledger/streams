@@ -210,16 +210,34 @@ impl Author {
         for msg in msgs {
             match msg.body {
                 MessageContent::SignedPacket {pk: pk, public_payload: p, masked_payload: m} => {
-                    payloads.push(Message::new(
-                        Some(hex::encode(pk.to_bytes().to_vec())),
-                    p.0,
-                        m.0
+                    payloads.push(UserResponse::new(
+                        Address::from_string(msg.link.to_string()),
+                        None,
+                        Some(Message::new(
+                            Some(hex::encode(pk.to_bytes().to_vec())),
+                            p.0,
+                            m.0
+                            )
+                        )
                     ))
                 },
                 MessageContent::TaggedPacket {public_payload: p, masked_payload: m} => {
-                    payloads.push(Message::new(None, p.0, m.0))
+                    payloads.push(UserResponse::new(
+                        Address::from_string(msg.link.to_string()),
+                        None,
+                        Some(Message::new(None, p.0, m.0))
+                    ))
                 },
-                _ => payloads.push(Message::default())
+                MessageContent::Sequence => {
+                    payloads.push(UserResponse::new(
+                        Address::new(),
+                        Some(Address::from_string(msg.link.to_string())),
+                        None
+                    ))
+                },
+                _ => payloads.push(UserResponse::new(
+                    Address::from_string(msg.link.to_string()), None, None)
+                    )
             }
         }
         Ok(payloads.into_iter().map(JsValue::from).collect())
