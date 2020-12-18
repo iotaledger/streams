@@ -29,7 +29,6 @@ async function updateAuthor() {
   setText("announce-address", auth.channel_address());
   setText("announce-multi", auth.is_multi_branching());
   announce();
-  start_fetch();
 }
 
 async function updateSubscriber() {
@@ -120,6 +119,7 @@ async function send_keyload(fieldname) {
   setText("latest-msg-link", keyload_link.to_string())
 
   console.log("keyload link: " + keyload_link.to_string());
+  start_fetch();
 }
 
 async function unsubscribe(fieldname) {}
@@ -174,13 +174,13 @@ function addMessage(divId, message){
   newMsg.className = "message";
 
   // Msg id
-  var li = document.createElement('li');
+  var li = document.createElement('div');
   var addr_label = document.createElement('label');
   addr_label.setAttribute("for","addr_" + msg_id);
   addr_label.innerHTML = "Msg id: ";
   li.appendChild(addr_label);
 
-  var addr = document.createElement('div');
+  var addr = document.createElement('lavel');
   addr.className = "address";
   addr.id = "addr_" + msg_id;
   addr.innerHTML = msg_id;
@@ -188,13 +188,13 @@ function addMessage(divId, message){
   newMsg.appendChild(li);
 
   // Public payload
-  li = document.createElement('li');
+  li = document.createElement('div');
   var pub_label = document.createElement('label');
   pub_label.setAttribute("for","public_" + msg_id);
   pub_label.innerHTML = "public: ";
   li.appendChild(pub_label);
 
-  var pub = document.createElement('div');
+  var pub = document.createElement('label');
   pub.className = "public";
   pub.id = "public_" + msg_id;
   pub.innerHTML = streams.from_bytes(message.get_message().get_public_payload());
@@ -202,13 +202,13 @@ function addMessage(divId, message){
   newMsg.appendChild(li);
 
   // Masked payload
-  li = document.createElement('li');
+  li = document.createElement('div');
   var mask_label = document.createElement('label');
   mask_label.setAttribute("for","masked_" + msg_id);
   mask_label.innerHTML = "masked: ";
   li.appendChild(mask_label);
 
-  var mask = document.createElement('div');
+  var mask = document.createElement('label');
   mask.id = "masked_" + msg_id;
   mask.className = "masked";
   mask.innerHTML = streams.from_bytes(message.get_message().get_masked_payload());
@@ -237,15 +237,16 @@ async function send_message(form) {
   let response;
   if (send_as_auth){
     console.log("Author Sending tagged packet");
+    await auth.clone().sync_state();
     response = await auth.clone().send_tagged_packet(link, public_msg, masked_msg);
   } else {
     console.log("Subscriber Sending tagged packet");
+    await sub.clone().sync_state();
     response = await sub.clone().send_tagged_packet(link, public_msg, masked_msg);
   }
-  setText("latest-msg-link", last_link.to_string())
 
   last_link = response.get_link();
-  addMessage("messages", response);
+  setText("latest-msg-link", last_link.to_string())
   console.log("Tag packet at: ", last_link.to_string());
 }
 

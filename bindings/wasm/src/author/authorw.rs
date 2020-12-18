@@ -228,13 +228,7 @@ impl Author {
                         Some(Message::new(None, p.0, m.0))
                     ))
                 },
-                MessageContent::Sequence => {
-                    payloads.push(UserResponse::new(
-                        Address::new(),
-                        Some(Address::from_string(msg.link.to_string())),
-                        None
-                    ))
-                },
+                MessageContent::Sequence => (),
                 _ => payloads.push(UserResponse::new(
                     Address::from_string(msg.link.to_string()), None, None)
                     )
