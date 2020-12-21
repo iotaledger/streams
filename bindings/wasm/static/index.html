@@ -163,7 +163,7 @@
           value=""
         />
         <br /><br />
-        <button id="subscribe" onclick='subscribe("sub_link_in")'>
+        <button id="subscribe" onclick='subscribe("sub_link_in")' disabled>
           Subscribe to link
         </button>
         <button id="unsubscribe" onclick='unsubscribe("sub_link_in")' disabled>
@@ -178,7 +178,7 @@
         <label>Address: </label>
         <label id="announce-address">Click update author...</label> (multi:
         ...<label id="announce-multi"></label>)
-
+        <br />
         <input
           id="accept_sub_link"
           type="text"
@@ -191,10 +191,11 @@
         <button
           id="receive_subscribe"
           onclick='receive_subscribe("accept_sub_link")'
+          disabled
         >
           Accept subscription link
         </button>
-        <button id="send_keyload" onclick='send_keyload("announce-link")'>
+        <button id="send_keyload" onclick='send_keyload("announce-link")' disabled>
           Send keyload to subscribers
         </button>
       </div>
@@ -204,7 +205,7 @@
       <div id="links">
         <h1>Links</h1>
         <label>Announcement Link: </label>
-        <div id="announce-link">Click update author...</div>
+        <div id="announce-link" class="announce-link">Click update author...</div>
         <button onclick="copy_link()">Copy link</button>
         <br /><br />
         <label id="subscriber-link">Sub Link: </label>

@@ -29,6 +29,9 @@ async function updateAuthor() {
   setText("announce-address", auth.channel_address());
   setText("announce-multi", auth.is_multi_branching());
   announce();
+  
+  document.getElementById("receive_subscribe").disabled = false;
+  document.getElementById("send_keyload").disabled = false;
 }
 
 async function updateSubscriber() {
@@ -49,21 +52,21 @@ async function updateSubscriber() {
     options,
     form["multi_branching"].value === "true"
   );
+
+  document.getElementById("subscribe").disabled = false;
 }
 
 function copy_link() {
-  var range = document.createRange();
-  range.selectNode(document.getElementById("announce-link"));
-  window.getSelection().removeAllRanges(); // clear current selection
-  window.getSelection().addRange(range); // to select text
-
-  document.execCommand("copy");
-  window.getSelection().removeAllRanges();// to deselect
+  _copy(document.getElementById("announce-link"));
 }
 
 function copy_sub_link() {
+  _copy(document.getElementById("sub-link-out"));
+}
+
+function _copy(element){
   var range = document.createRange();
-  range.selectNode(document.getElementById("sub-link-out"));
+  range.selectNodeContents(element);
   window.getSelection().removeAllRanges(); // clear current selection
   window.getSelection().addRange(range); // to select text
 
@@ -84,30 +87,38 @@ async function announce() {
 }
 
 async function subscribe(fieldname) {
-  let link = document.getElementById(fieldname).value;
-  if (link.length !== 105) {
+  let link = document.getElementById(fieldname);
+  if (link.value.length !== 105) {
     alert("Subscribe link is not correct (105 characters required)");
     return;
   }
-  let annLink = streams.Address.from_string(link);
+  let annLink = streams.Address.from_string(link.value);
 
   await sub.clone().receive_announcement(annLink.copy());
 
   let response = await sub.clone().send_subscribe(annLink);
   let sub_link = response.get_link();
+
+  link.value = "";
+
   setText("sub-link-out", sub_link.to_string());
 
   console.log("sub link: " + sub_link.to_string());
 }
 
 async function receive_subscribe(fieldname){
-  let link = document.getElementById(fieldname).value;
-  if (link.length !== 105) {
+  let link = document.getElementById(fieldname);
+  if (link.value.length !== 105) {
     alert("Subscribe link is not correct (105 characters required)");
     return;
   }
-  let sub_link = streams.Address.from_string(link);
+  let sub_link = streams.Address.from_string(link.value);
   await auth.clone().receive_subscribe(sub_link);
+
+  link.value = "";
+  document.getElementById("subscribe").disabled = true;
+
+  console.log("Accepted subscribe link");
 }
 
 async function send_keyload(fieldname) {
@@ -120,6 +131,10 @@ async function send_keyload(fieldname) {
 
   console.log("keyload link: " + keyload_link.to_string());
   start_fetch();
+
+  if ((typeof sub !== 'undefined')){
+    await sub.clone().sync_state();
+  }
 }
 
 async function unsubscribe(fieldname) {}
@@ -135,35 +150,38 @@ function stop_start() {
   }
 }
 
-function start_fetch(){
-  fetching = true;
+async function start_fetch(){
   let amount = document.getElementById("auto_fetch").value;
   let interval = amount * 1000;
-  fetch_id = window.setInterval(function(){
-    fetch_messages();
+
+  fetching = false;
+  // First sync, then start the reading each second
+  // to prevent double reading when we dont finish in the interval
+  await fetch_messages();
+  fetch_id = window.setInterval(async function(){
+    if (!fetching){
+      fetching = true;
+      await fetch_messages();
+      fetching = false;
+    }
   }, interval);
 }
 
 function stop_fetch(){
-  fetching = false;
   clearInterval(fetch_id);
 }
 
 async function fetch_messages() {
   console.log("fetching...");
 
-  let next_msgs = await auth.clone().fetch_next_msgs();
-
-  if(next_msgs.length === 0) {
-      exists = false
-      return;
-  }
-
-  for(var i = 0; i < next_msgs.length; i++) {
+  let next_msgs;
+  while ((next_msgs = await auth.clone().fetch_next_msgs()).length !== 0){
+    for(var i = 0; i < next_msgs.length; i++) {
       addMessage("messages", next_msgs[i]);
+    }
+    _update_last(next_msgs[next_msgs.length-1].get_link());
   }
-
-  last_link = next_msgs[next_msgs.length-1].get_link();
+  exists = false
 }
 
 function addMessage(divId, message){
@@ -239,15 +257,20 @@ async function send_message(form) {
     console.log("Author Sending tagged packet");
     await auth.clone().sync_state();
     response = await auth.clone().send_tagged_packet(link, public_msg, masked_msg);
+    console.log(response);
+    addMessage("messages", response);
   } else {
     console.log("Subscriber Sending tagged packet");
     await sub.clone().sync_state();
     response = await sub.clone().send_tagged_packet(link, public_msg, masked_msg);
   }
-
-  last_link = response.get_link();
-  setText("latest-msg-link", last_link.to_string())
+  _update_last(response.get_link());
   console.log("Tag packet at: ", last_link.to_string());
+}
+
+function _update_last(link){
+  last_link = link;
+  setText("latest-msg-link", link.to_string())
 }
 
 function setText(id, text) {

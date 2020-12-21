@@ -122,8 +122,8 @@ impl Author {
             &link.try_into().map_or_else(
                 |_err| ApiAddress::default(),
                 |addr: ApiAddress| addr
-            ), &Bytes(public_payload),
-            &Bytes(masked_payload)
+            ), &Bytes(public_payload.clone()),
+            &Bytes(masked_payload.clone())
         ).await
             .map_or_else(
                 |err| Err(JsValue::from_str(&err.to_string())),
@@ -138,7 +138,7 @@ impl Author {
                     Ok(UserResponse::new(
                         Address::from_string(link.to_string()),
                         seq,
-                        None
+                        Some(Message::new(None, public_payload, masked_payload))
                     ))
                 }
             )
@@ -239,18 +239,6 @@ impl Author {
 
 
     /*
-    // Keyload
-    // message_links_t
-    pub fn send_keyload(&self, link_to: AddressW, psk_ids_t *psk_ids, ke_pks_t ke_pks) -> Result<String, JsValue> {
-        Ok(seed.to_owned())
-    }
-
-    // Tagged Packets
-    // message_links_t
-    pub fn send_tagged_packet(&self, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size) -> Result<String, JsValue> {
-        Ok(seed.to_owned())
-    }
-
     // packet_payloads_t
     pub fn receive_tagged_packet(&self, address: AddressW) -> Result<String, JsValue> {
         Ok(seed.to_owned())
@@ -278,13 +266,6 @@ impl Author {
     // Generic Processing
     // unwrapped_message_t
     pub fn receive_msg(&self, address: AddressW) -> Result<String, JsValue> {
-        Ok(seed.to_owned())
-    }
-    // Fetching/Syncing
-    // unwrapped_messages_t
-
-    // unwrapped_messages_t
-    pub fn sync_state(&self) -> Result<String, JsValue> {
         Ok(seed.to_owned())
     }
     */
