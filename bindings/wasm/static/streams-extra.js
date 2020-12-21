@@ -1,8 +1,8 @@
 // auth
 // sub
 
-// keyload_link
-// last_link
+let keyload_link = null;
+let last_link = null;
 
 // fetching true/false
 
@@ -102,7 +102,7 @@ async function subscribe(fieldname) {
   link.value = "";
 
   setText("sub-link-out", sub_link.to_string());
-
+  start_fetch();
   console.log("sub link: " + sub_link.to_string());
 }
 
@@ -131,10 +131,6 @@ async function send_keyload(fieldname) {
 
   console.log("keyload link: " + keyload_link.to_string());
   start_fetch();
-
-  if ((typeof sub !== 'undefined')){
-    await sub.clone().sync_state();
-  }
 }
 
 async function unsubscribe(fieldname) {}
@@ -158,12 +154,18 @@ async function start_fetch(){
   // First sync, then start the reading each second
   // to prevent double reading when we dont finish in the interval
   await fetch_messages();
+  
   fetch_id = window.setInterval(async function(){
-    if (!fetching){
-      fetching = true;
-      await fetch_messages();
-      fetching = false;
+    try {
+      if (!fetching){
+        fetching = true;
+        await fetch_messages();
+        fetching = false;
+      }
+    } catch (err){
+      console.log(e);
     }
+    
   }, interval);
 }
 
@@ -175,11 +177,22 @@ async function fetch_messages() {
   console.log("fetching...");
 
   let next_msgs;
-  while ((next_msgs = await auth.clone().fetch_next_msgs()).length !== 0){
-    for(var i = 0; i < next_msgs.length; i++) {
-      addMessage("messages", next_msgs[i]);
+  if ((typeof auth !== 'undefined')){
+    while ((next_msgs = await auth.clone().fetch_next_msgs()).length !== 0){
+      for(var i = 0; i < next_msgs.length; i++) {
+        addMessage("messages_auth", next_msgs[i]);
+      }
+      _update_last(next_msgs[next_msgs.length-1].get_link());
     }
-    _update_last(next_msgs[next_msgs.length-1].get_link());
+  }
+  
+  if ((typeof sub !== 'undefined')){
+    while ((next_msgs = await sub.clone().fetch_next_msgs()).length !== 0){
+      for(var i = 0; i < next_msgs.length; i++) {
+        addMessage("messages_sub", next_msgs[i]);
+      }
+      _update_last(next_msgs[next_msgs.length-1].get_link());
+    }
   }
   exists = false
 }
@@ -239,11 +252,6 @@ function addMessage(divId, message){
 }
 
 async function send_message(form) {
-  if ((typeof exists === 'undefined') || exists !== false || (typeof auth === 'undefined')){
-    alert("Author still loading... wait for sync to complete");
-    return;
-  }
-
   let msg = form["message"].value;
   let masked = form["masked"].value === "true";
   let send_as_auth = form["msg_who"].value === "true";
@@ -251,18 +259,26 @@ async function send_message(form) {
   let public_msg = streams.to_bytes(masked ? "" : msg);
   let masked_msg = streams.to_bytes(masked ? msg : "");
 
-  let link = (typeof last_link !== 'undefined') ? last_link : keyload_link;
+  console.log(last_link);
+  console.log(keyload_link);
+  let link = last_link ? last_link : (keyload_link ? keyload_link : null);
+  if (!link){
+    alert("We are still loading... wait for sync to complete");
+    return;
+  }
+
   let response;
   if (send_as_auth){
     console.log("Author Sending tagged packet");
     await auth.clone().sync_state();
     response = await auth.clone().send_tagged_packet(link, public_msg, masked_msg);
     console.log(response);
-    addMessage("messages", response);
+    addMessage("messages_auth", response);
   } else {
     console.log("Subscriber Sending tagged packet");
     await sub.clone().sync_state();
     response = await sub.clone().send_tagged_packet(link, public_msg, masked_msg);
+    addMessage("messages_sub", response);
   }
   _update_last(response.get_link());
   console.log("Tag packet at: ", last_link.to_string());
