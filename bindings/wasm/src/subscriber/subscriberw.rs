@@ -58,6 +58,10 @@ impl Subscriber {
         )
     }
 
+    pub fn get_public_key(&self) -> Result<String> {
+        Ok(hex::encode(self.subscriber.borrow_mut().get_pk().to_bytes().to_vec()))
+    }
+
 
     #[wasm_bindgen(catch)]
     pub async fn receive_announcement(self, link: Address) -> Result<()> {

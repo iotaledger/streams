@@ -47,6 +47,9 @@ impl SendTrytesOptions {
             threads,
         }
    }
+
+    #[wasm_bindgen]
+    pub fn clone(&self) -> SendTrytesOptions { self.clone() }
 }
 
 #[wasm_bindgen]
@@ -139,6 +142,10 @@ impl Message {
 
     pub fn new(pk: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Message {
         Message { pk, public_payload, masked_payload }
+    }
+
+    pub fn get_pk(&self) -> String {
+        self.pk.clone().unwrap_or(String::new())
     }
 
     pub fn get_public_payload(&self) -> Array {
