@@ -43,9 +43,6 @@ async function updateAuthor() {
   );
 
   announce();
-
-  document.getElementById("receive_subscribe").disabled = false;
-  document.getElementById("send_keyload").disabled = false;
 }
 
 

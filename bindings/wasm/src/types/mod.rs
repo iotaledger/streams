@@ -52,6 +52,11 @@ impl SendTrytesOptions {
             threads,
         }
    }
+
+    #[wasm_bindgen]
+    pub fn clone(&self) -> Self {
+        self.clone()
+    }
 }
 
 #[wasm_bindgen]
