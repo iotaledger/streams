@@ -172,8 +172,8 @@ impl Author {
             &link.try_into().map_or_else(
                 |_err| ApiAddress::default(),
                 |addr: ApiAddress| addr
-            ), &Bytes(public_payload),
-            &Bytes(masked_payload)
+            ), &Bytes(public_payload.clone()),
+            &Bytes(masked_payload.clone())
         ).await
             .map_or_else(
                 |err| Err(JsValue::from_str(&err.to_string())),

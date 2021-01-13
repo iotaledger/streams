@@ -43,6 +43,9 @@ async function updateAuthor() {
   );
 
   announce();
+
+  document.getElementById("receive_subscribe").disabled = false;
+  document.getElementById("send_keyload").disabled = false;
 }
 
 
@@ -244,7 +247,14 @@ async function send_message() {
   let public_msg = streams.to_bytes(masked ? "" : msg);
   let masked_msg = streams.to_bytes(masked ? msg : "");
 
-  let link = (typeof last_link !== 'undefined') ? last_link : keyload_link;
+  console.log(last_link);
+  console.log(keyload_link);
+  let link = last_link ? last_link : (keyload_link ? keyload_link : null);
+  if (!link){
+    alert("We are still loading... wait for sync to complete");
+    return;
+  }
+
   let response;
 
   for(var x=0;x<subs.length;x++) {
@@ -256,6 +266,11 @@ async function send_message() {
     }
   }
 
+}
+
+function _update_last(link){
+  last_link = link;
+  setText("latest-msg-link", link.to_string())
 }
 
 function setText(id, text) {
