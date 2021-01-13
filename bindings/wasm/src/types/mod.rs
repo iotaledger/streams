@@ -5,9 +5,14 @@ use iota_streams::{
         tangle::client::{SendTrytesOptions as ApiSendTrytesOptions, Client },
     },
     app_channels::{
-        api::tangle::Address as ApiAddress,
+        api::tangle::{
+            Address as ApiAddress,
+            UnwrappedMessage,
+            MessageContent,
+        },
     },
     core::prelude::{ String, ToString, Rc, },
+    ddml::types::hex,
 };
 
 use js_sys::Array;
@@ -47,9 +52,6 @@ impl SendTrytesOptions {
             threads,
         }
    }
-
-    #[wasm_bindgen]
-    pub fn clone(&self) -> SendTrytesOptions { self.clone() }
 }
 
 #[wasm_bindgen]
@@ -107,6 +109,10 @@ impl Address {
     pub fn copy(&self) -> Self {
         Address { addr_id: self.addr_id.clone(), msg_id: self.msg_id.clone() }
     }
+
+    pub fn eq(&self, addr: Address) -> bool {
+        self.msg_id.eq(&addr.msg_id) && self.addr_id.eq(&addr.addr_id)
+    }
 }
 
 pub type ClientWrap = Rc<RefCell<Client>>;
@@ -119,11 +125,50 @@ impl TryFrom<Address> for ApiAddress {
     }
 }
 
+pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
+    let mut payloads = Vec::new();
+    for msg in msgs {
+        match msg.body {
+            MessageContent::SignedPacket { pk, public_payload: p, masked_payload: m } => {
+                payloads.push(UserResponse::new(
+                    Address::from_string(msg.link.to_string()),
+                    None,
+                    Some(Message::new(
+                        Some(hex::encode(pk.to_bytes())),
+                        p.0,
+                        m.0
+                    )
+                    )
+                ))
+            },
+            MessageContent::TaggedPacket { public_payload: p, masked_payload: m } => {
+                payloads.push(UserResponse::new(
+                    Address::from_string(msg.link.to_string()),
+                    None,
+                    Some(Message::new(None, p.0, m.0))
+                ))
+            },
+            MessageContent::Sequence => (),
+            _ => payloads.push(UserResponse::new(
+                Address::from_string(msg.link.to_string()), None, None)
+            )
+        };
+    };
+    payloads
+}
+
+
 #[wasm_bindgen]
 pub struct UserResponse {
     link: Address,
     seq_link: Option<Address>,
     message: Option<Message>
+}
+
+#[wasm_bindgen]
+pub struct NextMsgId {
+    pk: String,
+    msgid: Address
 }
 
 
@@ -133,6 +178,48 @@ pub struct Message {
     public_payload: Vec<u8>,
     masked_payload: Vec<u8>,
 }
+
+#[wasm_bindgen]
+pub struct PskIdsW {
+    ids: Vec<String>
+}
+
+
+#[wasm_bindgen]
+pub struct PublicKeysW {
+    pks: Vec<String>
+}
+
+#[wasm_bindgen]
+impl PskIdsW {
+    pub fn new() -> Self {
+        PskIdsW { ids: Vec::new() }
+    }
+
+    pub fn add(&mut self, id: String) {
+        self.ids.push(id);
+    }
+
+    pub fn get_ids(&self) -> Array {
+        self.ids.iter().map(JsValue::from).collect()
+    }
+}
+
+#[wasm_bindgen]
+impl PublicKeysW {
+    pub fn new() -> Self {
+        PublicKeysW { pks: Vec::new() }
+    }
+
+    pub fn add(&mut self, id: String) {
+        self.pks.push(id);
+    }
+
+    pub fn get_pks(&self) -> Array {
+        self.pks.iter().map(JsValue::from).collect()
+    }
+}
+
 
 #[wasm_bindgen]
 impl Message {
@@ -159,9 +246,51 @@ impl Message {
 }
 
 #[wasm_bindgen]
+impl NextMsgId {
+    pub fn new(pk: String, msgid: Address) -> Self {
+        NextMsgId { pk, msgid }
+    }
+
+    pub fn get_pk(&self) -> String {
+        self.pk.clone()
+    }
+
+    pub fn get_link(&self) -> Address {
+        self.msgid.copy()
+    }
+}
+
+#[wasm_bindgen]
 impl UserResponse {
     pub fn new(link: Address, seq_link: Option<Address>, message: Option<Message>) -> Self {
         UserResponse { link, seq_link, message }
+    }
+
+    pub fn from_strings(
+        link: String,
+        seq_link: Option<String>,
+        message: Option<Message>
+    ) -> Self {
+        let seq;
+        if let Some(seq_link) = seq_link {
+            seq = Some(Address::from_string(seq_link));
+        } else {
+            seq = None;
+        }
+
+        UserResponse {
+            link: Address::from_string(link.to_string()),
+            seq_link: seq,
+            message
+        }
+    }
+
+    pub fn copy(&self) -> Self {
+        let mut seq = None;
+        if !self.get_seq_link().eq(Address::new()) {
+            seq = Some(self.get_seq_link());
+        }
+        UserResponse::new(self.get_link(), seq, None)
     }
 
     pub fn get_link(&self) -> Address {
