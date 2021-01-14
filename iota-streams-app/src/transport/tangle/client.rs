@@ -9,7 +9,7 @@ use smol::block_on;
 
 use iota::{
     client as iota_client,
-    Message, MessageId, MessageBuilder,
+    Message, MessageId, MessageBuilder, ClientMiner,
     message::payload::{
         indexation::Indexation,
         Payload
@@ -100,11 +100,12 @@ fn make_bundle(
 ) -> Result<Vec<Message>> {
     let mut msgs = Vec::new();
 
+    dbg!( hex::encode([address, tag].concat()));
     let payload = Indexation::new(
         hex::encode([address, tag].concat()), 
         body).unwrap();
     //TODO: Multiple messages if payload size is over max. Currently no max decided
-    let msg = MessageBuilder::new()
+    let msg = MessageBuilder::<ClientMiner>::new()
         .with_parent1(trunk)
         .with_parent2(branch)
         .with_payload(Payload::Indexation(Box::new(payload)))
@@ -173,8 +174,7 @@ pub fn sync_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress)
     block_on(async_recv_messages(client, link))
 }
 
-/// Stub type for iota_client::Client.  Removed: Copy, Default
-#[derive(Clone)]
+/// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
 pub struct Client {
     send_opt: SendTrytesOptions,
     client: iota_client::Client,
@@ -185,7 +185,7 @@ impl Default for Client {
     fn default() -> Self {
         Self {
             send_opt: SendTrytesOptions::default(),
-            client: iota_client::ClientBuilder::new().node("http://localhost:14265").unwrap().build().unwrap()
+            client: iota_client::ClientBuilder::new().with_node("http://localhost:14265").unwrap().finish().unwrap()
         }
     }
 }
@@ -203,7 +203,7 @@ impl Client {
     pub fn new_from_url(url: &str) -> Self {
         Self {
             send_opt: SendTrytesOptions::default(),
-            client: iota_client::ClientBuilder::new().node(url).unwrap().build().unwrap()
+            client: iota_client::ClientBuilder::new().with_node(url).unwrap().finish().unwrap()
         }
     }
 }
