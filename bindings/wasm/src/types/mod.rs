@@ -185,20 +185,20 @@ pub struct Message {
 }
 
 #[wasm_bindgen]
-pub struct PskIdsW {
+pub struct PskIds {
     ids: Vec<String>
 }
 
 
 #[wasm_bindgen]
-pub struct PublicKeysW {
+pub struct PublicKeys {
     pks: Vec<String>
 }
 
 #[wasm_bindgen]
-impl PskIdsW {
+impl PskIds {
     pub fn new() -> Self {
-        PskIdsW { ids: Vec::new() }
+        PskIds { ids: Vec::new() }
     }
 
     pub fn add(&mut self, id: String) {
@@ -211,9 +211,9 @@ impl PskIdsW {
 }
 
 #[wasm_bindgen]
-impl PublicKeysW {
+impl PublicKeys {
     pub fn new() -> Self {
-        PublicKeysW { pks: Vec::new() }
+        PublicKeys { pks: Vec::new() }
     }
 
     pub fn add(&mut self, id: String) {

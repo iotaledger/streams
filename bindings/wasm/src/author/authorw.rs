@@ -3,6 +3,8 @@ use wasm_bindgen::prelude::*;
 //use wasm_bindgen_futures::*;
 
 use js_sys::Array;
+use crate::types::PskIds as PskIdsW;
+use crate::types::PublicKeys as PublicKeysW;
 use crate::types::*;
 
 /// Streams imports
