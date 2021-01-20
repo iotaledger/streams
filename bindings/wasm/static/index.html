@@ -3,300 +3,233 @@
   <head>
     <meta charset="UTF-8" />
     <title>IOTA Streams</title>
-  </head>
-  <body>
     <!-- Streams code gets compiled into index.js -->
     <script src="index.js"></script>
 
     <script src="streams-extra.js"></script>
 
     <link rel="stylesheet" href="styles.css" />
-  </body>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+  </head>
+  <body>
   <div class="content">
-    <div class="container left">
-      <div id="settings">
-        <h1><a>Settings</a></h1>
-        <form id="settings" class="settings">
-          <li id="li_seed_a">
-            <label class="title" for="seed_a"
-              >Seed for the AUTHOR instance</label
-            >
-            <div>
+
+    <div class="header-wrapper balance-left dark full-width">
+      <div class="main-nav">
+        <button type="button" class="settings" id="settings-button" onclick=menuToggle() >
+          <span class="material-icons">menu_open</span>
+        </button>
+      </div>
+      <div class="title header-right">Create Channel</div>
+    </div>
+
+    <div id="menu-wrapper" class="menu-show" hidden>
+      <div class="menu-list dark">
+        <div><button onclick="update_container(router.settings)" class="menu-item dark white-text">Create New Channel</button></div>
+        <hr>
+        <div><button onclick="update_container(router.users)" class="menu-item dark white-text">Add User</button></div>
+        <hr>
+        <div><button onclick="update_container(router.chat)" class="menu-item dark white-text">Open Chat</button></div>
+        <hr>
+      </div>
+    </div>
+
+    <div id="container-left" class="container left">
+
+      <div id="announcement-information" class="settings-section" hidden>
+        <p class="center label">New Channel Created</p>
+        <p id="announcement-address" class="center label-small"></p>
+        <br />
+        <div class="center ann-info">
+          <p class="guidelines" id="address_info">
+            <small>
+              A channel has been generated at the above channel location.<br>
+              The Channel Address is the Application Instance.<br>
+              The Announcment ID is the Msg ID for the entry point of a channel.
+            </small>
+          </p>
+          <br>
+
+          <button class="center dark menu-item white-text" onclick="update_container(router.users)">
+            Add Users
+          </button>
+        </div>
+
+      </div>
+
+      <div id="chat-menu" class="settings-section center" hidden>
+        <div id="users-choose" class="center user-button-list"></div>
+        <br />
+        <br />
+        <div id="send-menu" class="center">
+        <form id="msg-settings" class="center" action="javascript:;" onsubmit="send_message(this)" hidden>
+          <div>
+          <li id="li_message">
+            <h1><a>Channel options</a></h1>
+            <textarea id="message" type="textarea" class="center" rows="5" cols="80">My custom cool message!</textarea>
+            <br />
+            <p class="guidelines" id="guide_1">
+              <small>Custom message to send on your channel!</small>
+            </p>
+          </li>
+          </div>
+          <li id="li_secret">
+            <label class="description" for="masked">Encryption settings </label>
+            <div id="masked">
+              <input
+                      type="radio"
+                      id="masked_true"
+                      name="masked"
+                      value="true"
+                      checked="checked"
+              />
+              <label for="masked_true">Masked message</label><br />
+              <input type="radio" id="masked_false" name="masked" value="false" />
+              <label for="masked_false">Public message</label><br />
+            </div>
+          </li>
+
+          <br />
+          <br />
+          <li id="buttons">
+            <input id="sendMessage" type="button" class="user-button dark white-text" value="Send Message" onclick="send_message(this)" disabled/>
+          </li>
+          </form>
+        </div>
+
+      </div>
+
+      <div id="add-users" class="settings-section" hidden>
+          <form id="sub_settings" class="center">
+            <p class="center label">Sub Seed</p>
+
+            <li id="li_seed_b" class="center">
+              <input
+                      id="seed_b"
+                      type="text"
+                      size="100"
+                      minlength="81"
+                      maxlength="81"
+                      value="Place a randomized seed here"
+              />
+            </li>
+            <p class="center label">Username</p>
+
+            <li id="li_username" class="center">
+              <input
+                      id="username_entry"
+                      type="text"
+                      size="100"
+                      maxlength="100"
+                      value="And A Unique Username Here"
+              />
+            </li>
+            <br />
+            <div class="center">
+              <li id="add-subscriber">
+                <input
+                      id="addSubForm"
+                      type="button"
+                      value="Add User"
+                      class="dark white-text"
+                      onclick="subscribe()"
+                />
+              </li>
+              <li id="toggle-chat-from-sub">
+                <input
+                    id="toggle-chat"
+                    type="button"
+                    value="Open Chat"
+                    class="dark white-text"
+                    onclick=start_chat_channel()
+                />
+              </li>
+            </div>
+          </form>
+       </div>
+
+      <div id="settings-container" class="settings-section">
+        <form id="settings" class="center">
+          <p class="center label">Author Seed</p>
+
+          <li id="li_seed_a" class="center">
               <input
                 id="seed_a"
                 type="text"
                 size="100"
                 minlength="81"
                 maxlength="81"
-                value="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                value="Place a randomized seed here"
               />
-            </div>
           </li>
-          <li id="li_seed_b">
-            <label class="title" for="seed_b"
-              >Seed for the SUBSCRIBER instance</label
-            >
-            <div>
-              <input
-                id="seed_b"
-                type="text"
-                size="100"
-                minlength="81"
-                maxlength="81"
-                value="BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBA"
-              />
-            </div>
-          </li>
-          <li id="li_url">
-            <label class="description" for="url">Node url </label>
-            <div>
+          <p class="center label">Node Settings</p>
+
+          <li id="li_url" class="center">
               <input
                 id="url"
                 type="text"
                 size="100"
                 maxlength="255"
-                value="https://nodes.devnet.iota.org:443"
+                value="http://localhost:14265"
               />
-            </div>
             <p class="guidelines" id="guide_2">
               <small>URL of the node we connect with </small>
             </p>
           </li>
           <br />
+          <div class="center">
           <li id="li_depth">
             <label class="description" for="depth">Depth </label>
-            <div>
               <input id="depth" type="number" maxlength="2" value="1" />
-            </div>
             <p class="guidelines" id="guide_2">
               <small>Depth for the node conenction settings</small>
             </p>
           </li>
           <li id="li_mwm">
             <label class="description" for="mwm">min weight magnitude </label>
-            <div>
               <input id="mwm" type="number" maxlength="2" value="9" />
-            </div>
             <p class="guidelines" id="guide_4">
               <small>Amount of POW done for the node (default 14)</small>
             </p>
           </li>
-          <li id="li_threads">
-            <label class="description" for="threads">Threads </label>
-            <div>
-              <input id="threads" type="number" maxlength="2" value="1" />
-            </div>
-            <p class="guidelines" id="guide_5">
-              <small>Number of threads used in the stream instance</small>
-            </p>
-          </li>
           <br />
-          <li id="li_pow">
-            <label class="description" for="pow">Local proof of work </label>
-            <div id="pow">
-              <input
-                type="radio"
-                id="pow_true"
-                name="local_pow"
-                value="true"
-                checked="checked"
-              />
-              <label for="pow_true">Local proof of work</label><br />
-              <input
-                type="radio"
-                id="pow_false"
-                name="local_pow"
-                value="false"
-              />
-              <label for="pow_false">Remote proof of work</label><br />
-            </div>
-          </li>
-          <li id="li_multi">
-            <label class="description" for="multi">Branching settings </label>
-            <div id="multi">
-              <input
-                type="radio"
-                id="multi_true"
-                name="multi_branching"
-                value="true"
-                checked="checked"
-              />
-              <label for="multi_true">Multi branching</label><br />
-              <input
-                type="radio"
-                id="multi_false"
-                name="multi_branching"
-                value="false"
-              />
-              <label for="multi_false">Single branching</label><br />
-            </div>
-          </li>
-          <br />
-          <br />
-          <li id="buttons">
+          <li id="update_author">
             <input
               id="saveForm"
               type="button"
-              value="Update author"
+              value="Start Channel"
+              class="dark white-text"
               onclick="updateAuthor()"
             />
-            <input
-              id="saveForm"
-              type="button"
-              value="Update subscriber"
-              onclick="updateSubscriber()"
-            />
           </li>
+          </div>
         </form>
       </div>
-
-      <hr />
-
-      <div id="subscriber">
-        <h1><a>Subscriber</a></h1>
-        <input
-          id="sub_link"
-          type="text"
-          size="100"
-          minlength="105"
-          maxlength="105"
-          value=""
-        />
-        <br />
-        <button id="subscribe" onclick='subscribe("sub_link")'>
-          Subscribe to link
-        </button>
-        <button id="unsubscribe" onclick='unsubscribe("sub_link")' disabled>
-          Unsubscribe to link
-        </button>
-      </div>
-
-      <hr />
-
-      <div id="author">
-        <h1><a>Author</a></h1>
-        <label>Address: </label>
-        <label id="announce-address">Click update author...</label> (multi:
-        ...<label id="announce-multi"></label>)
-
-        <br /><br />
-
-        <label>Link: <button onclick="copy_link()">Copy link</button></label>
-        <div id="announce-link">Click update author...</div>
-
-        <br /><br />
-        <input
-          id="accept_sub_link"
-          type="text"
-          size="100"
-          minlength="105"
-          maxlength="105"
-          value=""
-        />
-        <br />
-        <button
-          id="receive_subscribe"
-          onclick='receive_subscribe("accept_sub_link")'
-        >
-          Accept subscription link
-        </button>
-        <button id="send_keyload" onclick='send_keyload("announce-link")'>
-          Send keyload to subscribers
-        </button>
-      </div>
     </div>
 
-    <div class="container right">
-      <form
-        id="settings"
-        class="settings"
-        action="javascript:;"
-        onsubmit="send_message(this)"
-      >
-        <li id="li_message">
-          <h1><a>Channel options</a></h1>
-          <div>
-            <textarea 
-              id="message"
-              type="textarea"
-              rows="4" 
-              cols="50"
-            >My custom cool message!</textarea>
-            <br/>
-          </div>
-          <p class="guidelines" id="guide_1">
-            <small>Custom message to send on your channel!</small>
-          </p>
-        </li>
-        <li id="li_secret">
-          <label class="description" for="masked">Encryption settings </label>
-          <div id="masked">
-            <input
-              type="radio"
-              id="masked_true"
-              name="masked"
-              value="true"
-              checked="checked"
-            />
-            <label for="masked_true">Masked message</label><br />
-            <input type="radio" id="masked_false" name="masked" value="false" />
-            <label for="masked_false">Public message</label><br />
-          </div>
-        </li>
+    <button id="feed-toggle-hidden" type="button" class="toggle-feed float-right" hidden onclick="feedToggle()" >
+      <span class="material-icons">more_horiz</span>
+    </button>
 
-        <li id="li_who">
-          <div id="msg_who">
-            <input
-              type="radio"
-              id="msg_who_sub"
-              name="msg_who"
-              value="true"
-              checked="checked"
-            />
-            <label for="msg_who_sub">Author</label>
-
-            <br />
-
-            <input
-              type="radio"
-              id="msg_who_auth"
-              name="msg_who"
-              value="false"
-            />
-            <label for="msg_who_auth">Subscriber</label>
-            <br />
-          </div>
-        </li>
-
-        <li id="li_auto_fetch">
-          <label class="description" for="auto_fetch"
-            >Auto-fetch delay in seconds
-          </label>
-          <div>
-            <input
-              id="auto_fetch"
-              type="number"
-              maxlength="10"
-              minlength="1"
-              value="10"
-            />
-          </div>
-        </li>
+    <div id="container-right" class="container right">
+      <div id="feed-wrapper" class="pad-left feed-wrapper" hidden>
+        <div id="feed-header" class="header-wrapper balance-right dark right-width">
+          <div id="feed-header-title" class="title header-left">Feed</div>
+          <button id="feed-toggle-button" type="button" class="toggle-feed" onclick=feedToggle() >
+            <span class="material-icons">more_horiz</span>
+          </button>
+        </div>
         <br />
         <br />
-        <li id="buttons">
-          <input id="sendForm" type="submit" value="Send message" />
-          <input
-            id="fetchMessage"
-            type="button"
-            onclick="fetch_messages()"
-            value="Fetch messages"
-          />
-        </li>
-      </form>
-      <hr />
-      <label>Channel messages:</label>
-      <div id="messages"></div>
+        <div class="center margin-top">
+          <label id="waiting-for-msgs" class="label white-text">Waiting for messages...</label>
+          <div id="messages" class="messages-container center">
+        </div>
+
+        </div>
+      </div>
     </div>
   </div>
+  </body>
 </html>

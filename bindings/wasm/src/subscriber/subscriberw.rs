@@ -1,71 +1,29 @@
 use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
+use js_sys::Array;
 
 use crate::types::*;
 
 use iota_streams::{
-  app::transport::tangle::PAYLOAD_BYTES,
+  app::transport::{
+      tangle::{PAYLOAD_BYTES, client::Client},
+      TransportOptions,
+  },
   app_channels::{
       api::tangle::{
           Address as ApiAddress,
           Subscriber as ApiSubscriber,
       },
   },
-  core::prelude::Rc,
+  core::prelude::{Rc, String},
   ddml::types::*,
 };
 use core::cell::RefCell;
 
-use iota_streams::{
-  app::transport::{
-      TransportOptions,
-      tangle::client::{Client, },
-  },
-  core::prelude::{ String,  },
-};
-
 #[wasm_bindgen]
 pub struct Subscriber {
-  subscriber: ApiSubscriber<ClientWrap>,
+  subscriber: Rc<RefCell<ApiSubscriber<ClientWrap>>>,
 }
-
-#[wasm_bindgen]
-pub struct SubscriberResponse {
-    subscriber: Subscriber,
-    link: Address,
-    seq_link: Option<Address>,
-}
-
-#[wasm_bindgen]
-impl SubscriberResponse {
-    fn new(subscriber: ApiSubscriber<ClientWrap>, link: Address, seq_link: Option<Address>) -> Self {
-        SubscriberResponse { subscriber: Subscriber { subscriber }, link, seq_link }
-    }
-
-    pub fn get_link(&self) -> Address {
-        let mut link = Address::new();
-        link.set_addr_id(self.link.addr_id());
-        link.set_msg_id(self.link.msg_id());
-        link
-    }
-
-    pub fn get_seq_link(&self) -> Address {
-        if self.seq_link.is_some() {
-            let seq_link = self.seq_link.as_ref().unwrap();
-            let mut link = Address::new();
-            link.set_addr_id(seq_link.addr_id());
-            link.set_msg_id(seq_link.msg_id());
-            link
-        } else {
-            Address::new()
-        }
-    }
-
-    pub fn to_sub(self) -> Subscriber {
-        self.subscriber
-    }
-}
-
 
 #[wasm_bindgen]
 impl Subscriber {
@@ -75,45 +33,159 @@ impl Subscriber {
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
-        let subscriber = ApiSubscriber::new(&seed, "utf-8", PAYLOAD_BYTES, transport);
+        let subscriber = Rc::new(RefCell::new(
+            ApiSubscriber::new(&seed, "utf-8", PAYLOAD_BYTES, transport)));
         Subscriber { subscriber }
+    }
+
+    pub fn clone(&self) -> Subscriber {
+        Subscriber { subscriber: self.subscriber.clone() }
     }
 
     #[wasm_bindgen(catch)]
     pub fn channel_address(&self) -> Result<String> {
-        let sub = &self.subscriber;
-        to_result(sub
+        to_result(self.subscriber.borrow_mut()
                   .channel_address()
                   .map(|addr| addr.to_string())
                   .ok_or("channel not subscribed")
         )
     }
 
+    #[wasm_bindgen(catch)]
+    pub fn is_multi_branching(&self) -> Result<bool> {
+        Ok(self.subscriber.borrow_mut().is_multi_branching())
+    }
 
     #[wasm_bindgen(catch)]
-    pub async fn receive_announcement(mut self, link: Address) -> Result<Subscriber> {
-        self.subscriber.receive_announcement(&link.try_into().map_or_else(
+    pub fn get_public_key(&self) -> Result<String> {
+        Ok(hex::encode(self.subscriber.borrow_mut().get_pk().to_bytes().to_vec()))
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn is_registered(&self) -> Result<bool> {
+        Ok(self.subscriber.borrow_mut().is_registered())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn unregister(&self) -> Result<()>{
+        Ok(self.subscriber.borrow_mut().unregister())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_announcement(self, link: Address) -> Result<()> {
+        self.subscriber.borrow_mut().receive_announcement(&link.try_into().map_or_else(
                 |_err| ApiAddress::default(),
                 |addr| addr
             )).await
             .map_or_else(
             |err| Err(JsValue::from_str(&err.to_string())),
-            |_| Ok(Subscriber { subscriber: self.subscriber })
+            |_| Ok(())
         )
     }
 
     #[wasm_bindgen(catch)]
-    pub async fn send_subscribe(mut self, link: Address) -> Result<SubscriberResponse> {
-        self.subscriber.send_subscribe(&link.try_into().map_or_else(
+    pub async fn receive_keyload(self, link: Address) -> Result<bool> {
+        self.subscriber.borrow_mut().receive_keyload(&link.try_into().map_or_else(
+            |_err| ApiAddress::default(),
+            |addr| addr
+        )).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |processed| Ok(processed)
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_tagged_packet(self, link: Address) -> Result<UserResponse> {
+        self.subscriber.borrow_mut().receive_tagged_packet(&link.copy().try_into().map_or_else(
+            |_err| ApiAddress::default(),
+            |addr| addr
+        )).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |(pub_bytes, masked_bytes)| {
+                    Ok(UserResponse::new(
+                        link,
+                        None,
+                        Some(
+                            Message::new(
+                                None,
+                                pub_bytes.0,
+                                masked_bytes.0
+                            )
+                        )
+                    ))
+                }
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_signed_packet(self, link: Address) -> Result<UserResponse> {
+        self.subscriber.borrow_mut().receive_signed_packet(&link.copy().try_into().map_or_else(
+            |_err| ApiAddress::default(),
+            |addr| addr
+        )).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |(pk, pub_bytes, masked_bytes)| {
+                    Ok(UserResponse::new(
+                        link,
+                        None,
+                        Some(
+                            Message::new(
+                                Some(hex::encode(pk.as_bytes())),
+                                pub_bytes.0,
+                                masked_bytes.0
+                            )
+                        )
+                    ))
+                }
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_sequence(self, link: Address) -> Result<Address> {
+        self.subscriber.borrow_mut().receive_sequence(&link.try_into().map_or_else(
+            |_err| ApiAddress::default(),
+            |addr| addr
+        )).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |address| {
+                    Ok(Address::from_string(address.to_string()))
+                }
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_msg(self, link: Address) -> Result<UserResponse> {
+        self.subscriber.borrow_mut().receive_msg(&link.try_into().map_or_else(
+            |_err| ApiAddress::default(),
+            |addr| addr
+        )).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msg| {
+                    let mut msgs = Vec::new();
+                    msgs.push(msg);
+                    let responses = get_message_contents(msgs);
+                    Ok(responses[0].copy())
+                }
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn send_subscribe(self, link: Address) -> Result<UserResponse> {
+        self.subscriber.borrow_mut().send_subscribe(&link.try_into().map_or_else(
                 |_err| ApiAddress::default(),
                 |addr: ApiAddress| addr
             )).await
             .map_or_else(
                 |err| Err(JsValue::from_str(&err.to_string())),
-                |link| Ok(SubscriberResponse::new(
-                    self.subscriber,
+                |link| Ok(UserResponse::new(
                     Address::from_string(link.to_string()),
                     None,
+                    None
                 ))
             )
 
@@ -121,12 +193,12 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub async fn send_tagged_packet(
-        mut self,
+        self,
         link: Address,
         public_payload: Vec<u8>,
         masked_payload: Vec<u8>
-    ) -> Result<SubscriberResponse> {
-        self.subscriber.send_tagged_packet(
+    ) -> Result<UserResponse> {
+        self.subscriber.borrow_mut().send_tagged_packet(
             &link.try_into().map_or_else(
                 |_err| ApiAddress::default(),
                 |addr: ApiAddress| addr
@@ -136,22 +208,60 @@ impl Subscriber {
             .map_or_else(
                 |err| Err(JsValue::from_str(&err.to_string())),
                 |(link, seq_link)| {
-                    let seq;
                     if let Some(seq_link) = seq_link {
-                        seq = Some(Address::from_string(seq_link.to_string()));
+                        Ok(UserResponse::from_strings(link.to_string(), Some(seq_link.to_string()), None))
                     } else {
-                        seq = None;
+                        Ok(UserResponse::from_strings(link.to_string(), None, None))
                     }
-
-                    Ok(SubscriberResponse::new(
-                        self.subscriber,
-                        Address::from_string(link.to_string()),
-                            seq
-                    ))
                 }
             )
-
     }
+
+    #[wasm_bindgen(catch)]
+    pub async fn send_signed_packet(
+        self,
+        link: Address,
+        public_payload: Vec<u8>,
+        masked_payload: Vec<u8>
+    ) -> Result<UserResponse> {
+        self.subscriber.borrow_mut().send_signed_packet(
+            &link.try_into().map_or_else(
+                |_err| ApiAddress::default(),
+                |addr: ApiAddress| addr
+            ), &Bytes(public_payload),
+            &Bytes(masked_payload)
+        ).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |(link, seq_link)| {
+                    if let Some(seq_link) = seq_link {
+                        Ok(UserResponse::from_strings(link.to_string(), Some(seq_link.to_string()), None))
+                    } else {
+                        Ok(UserResponse::from_strings(link.to_string(), None, None))
+                    }
+                }
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn sync_state(self) -> Result<()> {
+        loop {
+            let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
+            if msgs.is_empty() {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_next_msgs(self) -> Result<Array> {
+        let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
+        let payloads = get_message_contents(msgs);
+        Ok(payloads.into_iter().map(JsValue::from).collect())
+    }
+
+
 
 
 }

@@ -17,7 +17,7 @@ use iota_streams_core::{
     try_or,
     err,
     LOCATION_LOG,
-    Errors::{GenericLinkNotFound, MessageLinkNotFound}
+    Errors::{GenericLinkNotFound, MessageLinkNotFoundInTangle}
 };
 use core::fmt::Display;
 
@@ -103,7 +103,7 @@ where
     type Info = Info;
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
         try_or!(self.link() == link,
-                             MessageLinkNotFound(link.to_string())
+                             MessageLinkNotFoundInTangle(link.to_string())
         )?;
         Ok((self.spongos().into(), self.info().clone()))
     }
@@ -153,7 +153,7 @@ where
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
         match self.map.get(link) {
             Some((inner, info)) => Ok((inner.into(), info.clone())),
-            None => err!(MessageLinkNotFound(link.to_string()))
+            None => err!(MessageLinkNotFoundInTangle(link.to_string()))
         }
     }
 
