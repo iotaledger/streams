@@ -14,12 +14,13 @@ default = ["std", "tangle", "sync-client"]
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "chrono/std", "chrono/clock", "hex/std"]
 # rust doesn't support async traits, `async-trait` crate emulates `async` keyword
 # `async` implies `std` for now
-async = ["async-trait", "std"]
+async = ["async-trait", "atomic_refcell"]
 tangle = ["chrono"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-sync-client = ["num_cpus", "smol", "iota-core", "tangle", "std"] #, "iota-constants"
-async-client = ["num_cpus", "iota-core", "tangle", "std", "async"] #, "iota-constants"
+sync-client = ["num_cpus", "smol", "iota-core", "iota-core/ureq", "tangle", "std"] #, "iota-constants"
+async-client = ["num_cpus", "iota-core", "iota-core/ureq", "tangle", "std", "async"] #, "iota-constants"
+wasm-client = ["iota-core", "iota-core/surf-wasm", "chrono/wasmbind", "tangle", "async", "std"]
 
 [lib]
 name = "iota_streams_app"
@@ -31,17 +32,24 @@ iota-streams-core-edsig = { version = "0.2.1", path = "../iota-streams-core-edsi
 iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
 
 # anyhow and chrono are kept in sync with versions used in iota-core
+anyhow = { version = "1.0.26", default-features = false }
+wasm-timer = { version = "0.2.5", optional = true }
+js-sys = { version = "0.3.46", optional = true }
 chrono = { version = "0.4.11", default-features = false, optional = true }
 hex = { version = "0.4.2", default-features = false, optional = false }
 async-trait = { version = "0.1", optional = true }
+atomic_refcell = { version = "0.1.6", optional = true }
 
 # Dependencies for "client" feature
 # `iota-core` crate is WIP with unstable API atm of writing.
-iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "iota-1.0", optional = true }
-#iota-constants = { version = "0.2.1", optional = true }
+# Branch `iota-1.0-surf` contains wasm-compat updates and is not merged atm.
+iota-core = { git = "https://github.com/semenov-vladyslav/iota.rs", branch = "iota-1.0-surf", optional = true, default-features = false }
+# Use same dependencies as `iota-core`
+bee-transaction = { git = "https://github.com/Alex6323/bee-p.git", branch = "master"}#, rev = "02965e78a5cd43d0fb773771470ab3d891066562" }#
+bee-crypto = { git = "https://github.com/iotaledger/bee.git", branch = "dev" }
 
 # feature tokio02 explicitly required for block_on calls
-smol = { version = "0.1.18", features = ["tokio02"], optional = true }
+smol = { version = "1.2.4", optional = true }
 # core-futures-tls-0.1.1 is buggy and relies on unstable generators feature
 #core = { package = "core-futures-tls", version = "0.1.1", path = "../../core-futures-tls", optional = true }
 num_cpus = { version = "1.10", optional = true }

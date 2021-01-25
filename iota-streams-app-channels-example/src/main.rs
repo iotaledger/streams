@@ -15,6 +15,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 // Need to provide a tiny `panic_fmt` lang-item implementation for `#![no_std]`.
 // This implementation will translate panics into traps in the resulting
 // WebAssembly.
+/*
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     core::intrinsics::abort()
@@ -27,6 +28,7 @@ fn alloc_error(_: core::alloc::Layout) -> ! {
 
 #[lang = "eh_personality"]
 extern "C" fn eh_personality() {}
+ */
 
 #[no_mangle]
 pub extern "C" fn WinMainCRTStartup() -> () {

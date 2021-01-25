@@ -247,6 +247,7 @@ where
             self.sig_kp.public.clone(),
             Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
         )?;
+        self.author_sig_pk = Some(self.sig_kp.public);
         self.appinst = Some(appinst);
         Ok(())
     }

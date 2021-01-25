@@ -131,23 +131,16 @@ impl MessageContent {
 /// Generic unwrapped message type containing possible message contents
 pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
 
-#[cfg(not(feature = "async"))]
 mod user;
 /// User object storing the Auth/Sub implementation as well as the transport instance
-#[cfg(not(feature = "async"))]
 pub use user::User;
 
-#[cfg(not(feature = "async"))]
 mod author;
 /// Tangle-specific Channel Author type.
-#[cfg(not(feature = "async"))]
 pub use author::Author;
 
-#[cfg(not(feature = "async"))]
 mod subscriber;
 /// Tangle-specific Channel Subscriber type.
-#[cfg(not(feature = "async"))]
 pub use subscriber::Subscriber;
 
-#[cfg(not(feature = "async"))]
 pub mod test;

@@ -62,8 +62,10 @@ pub enum Errors {
     //////////
     #[error("More than one message found: with link {0}")]
     MessageNotUnique(String),
-    #[error("Message at link {0} not found")]
+    #[error("Message at link {0} not found in store")]
     MessageLinkNotFound(String),
+    #[error("Message at link {0} not found in tangle")]
+    MessageLinkNotFoundInTangle(String),
     #[error("Transport object is already borrowed")]
     TransportNotAvailable,
 

@@ -8,6 +8,11 @@ use core::{
 #[cfg(not(feature = "async"))]
 use smol::block_on;
 
+#[cfg(feature = "async")]
+use iota_streams_core::prelude::Rc;
+#[cfg(feature = "async")]
+use core::cell::RefCell;
+
 use iota::{
     client as iota_client,
     ternary as iota_ternary,
@@ -21,6 +26,7 @@ use iota::{
     },
     crypto::ternary::Hash,
 };
+pub use iota::client::bytes_to_trytes;
 
 use iota_streams_core::{
     prelude::{
@@ -304,13 +310,23 @@ pub struct SendTrytesOptions {
     pub threads: usize,
 }
 
+#[cfg(feature = "num_cpus")]
+fn get_num_cpus() -> usize {
+    num_cpus::get()
+}
+
+#[cfg(not(feature = "num_cpus"))]
+fn get_num_cpus() -> usize {
+    1_usize
+}
+
 impl Default for SendTrytesOptions {
     fn default() -> Self {
         Self {
             depth: 3,
             min_weight_magnitude: 14,
             local_pow: true,
-            threads: num_cpus::get(),
+            threads: get_num_cpus(),
         }
     }
 }
@@ -452,7 +468,7 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
 }
 
 #[cfg(feature = "async")]
-#[async_trait]
+#[async_trait(?Send)]
 impl<F> Transport<TangleAddress, TangleMessage<F>> for Client
 where
     F: 'static + core::marker::Send + core::marker::Sync,
@@ -474,6 +490,45 @@ where
             Ok(msg)
         } else {
             err!(MessageLinkNotFound(link.to_string()))
+        }
+    }
+}
+
+// It's safe to impl async trait for Rc<RefCell<T>> targeting wasm as it's single-threaded.
+#[cfg(feature = "async")]
+#[async_trait(?Send)]
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Rc<RefCell<Client>>
+where
+    F: 'static + core::marker::Send + core::marker::Sync,
+{
+    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => async_send_message_with_options(&tsp.client, msg, &tsp.send_opt).await,
+            Err(_err) => err!(TransportNotAvailable),
+        }
+    }
+
+    /// Receive a message.
+    async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => async_recv_messages(&tsp.client, link).await,
+            Err(err) => err!(TransportNotAvailable),
+        }
+    }
+
+    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => {
+                let mut msgs = async_recv_messages(&tsp.client, link).await?;
+                if let Some(msg) = msgs.pop() {
+                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string()));
+                    Ok(msg)
+                } else {
+                    err!(MessageLinkNotFound(link.msgid.to_string()))
+                }
+            },
+            Err(err) => err!(TransportNotAvailable),
         }
     }
 }

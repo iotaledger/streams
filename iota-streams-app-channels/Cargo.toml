@@ -16,6 +16,7 @@ async = ["iota-streams-app/async"]
 tangle = ["iota-streams-app/tangle"]
 sync-client = ["iota-streams-app/sync-client", "tangle", "std"]
 async-client = ["iota-streams-app/async-client", "tangle", "std", "async"]
+wasm-client = ["iota-streams-app/wasm-client", "tangle", "std", "async"]
 
 [lib]
 name = "iota_streams_app_channels"
@@ -29,3 +30,7 @@ iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-
 iota-streams-app = { version = "1.0.1", path = "../iota-streams-app", default-features = false }
 
 hex = { version = "0.4.2", default-features = false, optional = false }
+
+[dev-dependencies]
+# feature tokio02 explicitly required for block_on calls
+smol = { version = "0.1.18", features = ["tokio02"] }

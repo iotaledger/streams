@@ -1,4 +1,5 @@
 use super::*;
+use core::hash;
 use crate::message::LinkedMessage;
 
 use iota_streams_core::{
@@ -10,6 +11,11 @@ use iota_streams_core::{
 
 #[cfg(feature = "async")]
 use iota_streams_core::Errors::MessageNotUnique;
+
+#[cfg(feature = "async")]
+use atomic_refcell::AtomicRefCell;
+#[cfg(feature = "async")]
+use iota_streams_core::prelude::Arc;
 
 pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
@@ -69,10 +75,10 @@ where
 }
 
 #[cfg(feature = "async")]
-#[async_trait]
+#[async_trait(?Send)]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
-    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,
+    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
     Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
 {
     async fn send_message(&mut self, msg: &Msg) -> Result<()> {
@@ -94,6 +100,7 @@ where
     }
 
     async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
+
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
             try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()));
