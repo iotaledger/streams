@@ -1,6 +1,6 @@
 //! Tangle-specific transport definitions.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 use core::{
     convert::{
         AsMut,
@@ -9,12 +9,17 @@ use core::{
     fmt,
     hash,
     str::FromStr,
+    ptr::null,
 };
 
 use iota_streams_core::{
-    prelude::typenum::{
-        U12,
-        U40,
+    prelude::{
+        typenum::{
+            U12,
+            U40,
+        },
+        Vec,
+        Box,
     },
     sponge::{
         prp::PRP,
@@ -27,6 +32,9 @@ use iota_streams_ddml::{
     io,
     types::*,
 };
+
+use cstr_core::CStr;
+use cty::c_char;
 
 use crate::message::{
     BinaryMessage,
@@ -56,7 +64,8 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
 }
 
 // TODO: Use better feature to detect `chrono::Utc::new()`.
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std"))]//, not(feature = "wasmbind")
+//#[cfg(all(feature = "std"))]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
     pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
@@ -67,6 +76,36 @@ impl<F> TangleMessage<F> {
     }
 }
 
+/*
+#[cfg(feature = "wasmbind")]
+impl<F> TangleMessage<F> {
+    /// Create TangleMessage from BinaryMessage and add the current timestamp.
+    pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
+        let timestamp = js_sys::Date::new_0().value_of() as u64;
+        Self {
+            binary: msg,
+            timestamp,
+        }
+    }
+}
+*/
+/*
+#[cfg(feature = "wasmbind")]
+impl<F> TangleMessage<F> {
+    /// Create TangleMessage from BinaryMessage and add the current timestamp.
+    pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
+        Self {
+            binary: msg,
+            timestamp: wasm_timer::SystemTime::now()
+                .duration_since(wasm_timer::SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
+        }
+    }
+}
+ */
+
+//#[cfg(all(not(feature = "std"), not(feature = "wasmbind")))]
 #[cfg(not(feature = "std"))]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
@@ -97,6 +136,21 @@ impl TangleAddress {
         let msgid = MsgId::from_str(msgid_str)?;
         Ok(TangleAddress { appinst, msgid })
     }
+
+    pub fn from_c_str(c_addr: *const c_char) -> *const Self {
+        unsafe {
+            c_addr.as_ref().map_or(null(), |c_addr|
+                CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
+                    let addr_vec: Vec<&str> = addr_str.split(":").collect();
+                    Self::from_str(addr_vec[0], addr_vec[1])
+                        .map_or(null(), |addr|
+                            Box::into_raw(Box::new(addr))
+                        )
+                })
+            )
+        }
+    }
+
 }
 
 impl fmt::Debug for TangleAddress {
@@ -465,5 +519,5 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
     }
 }
 
-#[cfg(any(feature = "sync-client", feature = "async-client"))]
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
 pub mod client;

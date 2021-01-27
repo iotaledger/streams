@@ -21,7 +21,7 @@
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
 //!
 
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use iota_streams_app::message;
 use iota_streams_core::sponge::prp::PRP;
@@ -85,7 +85,8 @@ pub struct ContentUnwrap<F> {
 impl<F> Default for ContentUnwrap<F> {
     fn default() -> Self {
         let sig_pk = ed25519::PublicKey::default();
-        let ke_pk = x25519::public_from_ed25519(&sig_pk);
+        // No need to worry about unwrap since it's operating from default input
+        let ke_pk = x25519::public_from_ed25519(&sig_pk).unwrap();
         let flags = Uint8(0);
         Self {
             sig_pk,
@@ -106,7 +107,7 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.sig_pk)?;
-        self.ke_pk = x25519::public_from_ed25519(&self.sig_pk);
+        self.ke_pk = x25519::public_from_ed25519(&self.sig_pk)?;
         ctx.absorb(&mut self.flags)?;
         ctx.ed25519(&self.sig_pk, HashSig)?;
         Ok(ctx)

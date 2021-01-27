@@ -5,7 +5,6 @@
 use dotenv;
 use std::env;
 
-use anyhow::Result;
 use rand::Rng;
 
 use iota_streams::{
@@ -14,7 +13,10 @@ use iota_streams::{
         tangle::client::{SendTrytesOptions, Client, },
     },
     app_channels::api::tangle::Transport,
-    core::prelude::{ String, Rc, },
+    core::{
+        prelude::{ String, Rc, },
+        Result,
+    },
 };
 
 use core::cell::RefCell;
@@ -113,6 +115,6 @@ fn main_client() {
 }
 
 fn main() {
-    //main_pure();
+    main_pure();
     main_client();
 }

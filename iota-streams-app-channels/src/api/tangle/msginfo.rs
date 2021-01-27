@@ -1,5 +1,4 @@
 use core::convert::{TryFrom, TryInto, };
-use anyhow::{anyhow, Result,};
 
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::{
@@ -7,6 +6,7 @@ use iota_streams_ddml::{
     io,
     types::*,
 };
+use iota_streams_core::{err, LOCATION_LOG, Errors::BadMessageInfo, Result};
 
 /// Message associated info stored internally in User context, just message type indicator.
 #[derive(Copy, Clone)]
@@ -80,9 +80,7 @@ impl<F: PRP> AbsorbFallback<F> for MsgInfo {
                 *self = i;
                 Ok(())
             },
-            Err(_) => {
-                Err(anyhow!("Bad MsgInfo"))
-            },
+            Err(_) => err!(BadMessageInfo(x.0)),
         }
     }
 }

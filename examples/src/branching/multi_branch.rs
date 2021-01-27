@@ -14,16 +14,15 @@ use iota_streams::{
         prelude::Rc,
         print,
         println,
+        try_or,
+        LOCATION_LOG,
+        Errors::*,
+        Result,
     },
     ddml::types::*,
 };
 
 use core::cell::RefCell;
-
-use anyhow::{
-    ensure,
-    Result,
-};
 
 use super::utils;
 
@@ -57,33 +56,33 @@ pub fn example<T: Transport>(
     {
         subscriberA.receive_announcement(&announcement_link)?;
         print!("  SubscriberA: {}", subscriberA);
-        ensure!(
-            (author.channel_address() == subscriberA.channel_address()),
-            "SubscriberA channel address does not match Author channel address"
-        );
+        try_or!(
+            author.channel_address() == subscriberA.channel_address(),
+            ApplicationInstanceMismatch(String::from("A"))
+        )?;
         subscriberB.receive_announcement(&announcement_link)?;
         print!("  SubscriberB: {}", subscriberB);
-        ensure!(
-            subscriberA.channel_address() == subscriberB.channel_address(),
-            "SubscriberB channel address does not match Author channel address"
-        );
+        try_or!(
+            author.channel_address() == subscriberB.channel_address(),
+            ApplicationInstanceMismatch(String::from("B"))
+        )?;
         subscriberC.receive_announcement(&announcement_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        ensure!(
-            subscriberA.channel_address() == subscriberC.channel_address(),
-            "SubscriberC channel address does not match Author channel address"
-        );
+        try_or!(
+            author.channel_address() == subscriberC.channel_address(),
+            ApplicationInstanceMismatch(String::from("C"))
+        )?;
 
-        ensure!(
+        try_or!(
             subscriberA
                 .channel_address()
                 .map_or(false, |appinst| appinst == announcement_link.base()),
-            "SubscriberA app instance does not match announcement link base"
-        );
-        ensure!(
+            ApplicationInstanceAnnouncementMismatch(String::from("C"))
+        )?;
+        try_or!(
             subscriberA.is_multi_branching() == author.is_multi_branching(),
-            "Subscribers should have the same branching flag as the author after unwrapping"
-        );
+            BranchingFlagMismatch(String::from("A"))
+        )?;
     }
 
     println!("\nSubscribe A");
@@ -117,11 +116,11 @@ pub fn example<T: Transport>(
 
         let resultB = subscriberB.receive_keyload(&msg_tag)?;
         print!("  SubscriberB: {}", subscriberB);
-        ensure!(resultB == false, "SubscriberB should not be able to unwrap the keyload");
+        try_or!(resultB == false, SubscriberAccessMismatch(String::from("B")))?;
 
         let resultC = subscriberC.receive_keyload(&msg_tag)?;
         print!("  SubscriberC: {}", subscriberC);
-        ensure!(resultC == false, "SubscriberC should not be able to unwrap the keyload");
+        try_or!(resultC == false, SubscriberAccessMismatch(String::from("C")))?;
 
         println!("Subscriber a unwrapping");
         subscriberA.receive_keyload(&msg_tag)?;
@@ -148,22 +147,21 @@ pub fn example<T: Transport>(
 
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
         print!("  Author     : {}", author);
-        ensure!(public_payload == unwrapped_public, "Public payloads do not match");
-        ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
-
+        try_or!(public_payload == unwrapped_public,
+                             PublicPayloadMismatch(public_payload.to_string(),
+                                                   unwrapped_public.to_string())
+        )?;
+        try_or!(masked_payload == unwrapped_masked,
+                             MaskedPayloadMismatch(masked_payload.to_string(),
+                                                   unwrapped_masked.to_string())
+        )?;
         let resultB = subscriberB.receive_tagged_packet(&msg_tag);
         print!("  SubscriberB: {}", subscriberB);
-        ensure!(
-            resultB.is_err(),
-            "Subscriber B should not be able to access this message"
-        );
+        try_or!(resultB.is_err(), SubscriberAccessMismatch(String::from("B")))?;
 
         let resultC = subscriberC.receive_tagged_packet(&msg_tag);
         print!("  SubscriberC: {}", subscriberC);
-        ensure!(
-            resultC.is_err(),
-            "Subscriber C should not be able to access this message"
-        );
+        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
     }
 
     println!("\nAuthor fetching transactions...");
@@ -186,8 +184,12 @@ pub fn example<T: Transport>(
 
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
         print!("  SubscriberA: {}", subscriberA);
-        ensure!(public_payload == unwrapped_public, "Public payloads do not match");
-        ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
+        try_or!(public_payload == unwrapped_public,
+                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(masked_payload == unwrapped_masked,
+                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
     }
 
     println!("\nSubscribe B");
@@ -221,7 +223,7 @@ pub fn example<T: Transport>(
 
         let resultC = subscriberC.receive_keyload(&msg_tag)?;
         print!("  SubscriberC: {}", subscriberC);
-        ensure!(resultC == false, "SubscriberC should not be able to unwrap the keyload");
+        try_or!(!resultC, SubscriberAccessMismatch(String::from("C")))?;
         subscriberA.receive_keyload(&msg_tag)?;
         print!("  SubscriberA: {}", subscriberA);
         subscriberB.receive_keyload(&msg_tag)?;
@@ -248,15 +250,15 @@ pub fn example<T: Transport>(
 
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
         print!("  Author     : {}", author);
-        ensure!(public_payload == unwrapped_public, "Public payloads do not match");
-        ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
-
+        try_or!(public_payload == unwrapped_public,
+                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(masked_payload == unwrapped_masked,
+                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
         let resultC = subscriberC.receive_tagged_packet(&msg_tag);
         print!("  SubscriberC: {}", subscriberC);
-        ensure!(
-            resultC.is_err(),
-            "Subscriber C should not be able to access this message"
-        );
+        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
     }
 
     println!("\nSubscriber B fetching transactions...");
@@ -279,15 +281,15 @@ pub fn example<T: Transport>(
 
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
         print!("  Author     : {}", author);
-        ensure!(public_payload == unwrapped_public, "Public payloads do not match");
-        ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
-
+        try_or!(public_payload == unwrapped_public,
+                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(masked_payload == unwrapped_masked,
+                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
         let resultC = subscriberC.receive_tagged_packet(&msg_tag);
         print!("  SubscriberC: {}", subscriberC);
-        ensure!(
-            resultC.is_err(),
-            "Subscriber C should not be able to access this message"
-        );
+        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
     }
 
     println!("\nAuthor fetching transactions...");
@@ -315,13 +317,20 @@ pub fn example<T: Transport>(
 
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
         print!("  SubscriberA: {}", subscriberA);
-        ensure!(public_payload == unwrapped_public, "Public payloads do not match");
-        ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
-
+        try_or!(public_payload == unwrapped_public,
+                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(masked_payload == unwrapped_masked,
+                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&msg_tag)?;
         print!("  SubscriberB: {}", subscriberB);
-        ensure!(public_payload == unwrapped_public, "Public payloads do not match");
-        ensure!(masked_payload == unwrapped_masked, "Masked payloads do not match");
+        try_or!(public_payload == unwrapped_public,
+                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(masked_payload == unwrapped_masked,
+                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
     }
 
     Ok(())

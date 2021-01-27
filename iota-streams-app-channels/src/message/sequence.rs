@@ -25,7 +25,7 @@ use iota_streams_app::message::{
     HasLink,
 };
 
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::signature::ed25519;

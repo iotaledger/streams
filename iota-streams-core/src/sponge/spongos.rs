@@ -17,7 +17,10 @@ use crate::{
             GenericArray,
         },
     },
+    {try_or, LOCATION_LOG, Result},
+    Errors::LengthMismatch,
 };
+use crate::Errors::SpongosNotCommitted;
 
 fn xor(s: &mut [u8], x: &[u8]) {
     for (si, xi) in s.iter_mut().zip(x.iter()) {
@@ -171,12 +174,12 @@ impl<F: PRP> Spongos<F> {
         v
     }
 
-    /// Encrypt a trit slice with Spongos object.
+    /// Encrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub fn encrypt(&mut self, xr: impl AsRef<[u8]>, mut yr: impl AsMut<[u8]>) {
+    pub fn encrypt(&mut self, xr: impl AsRef<[u8]>, mut yr: impl AsMut<[u8]>) -> Result<()> {
         let mut x = xr.as_ref();
         let mut y = yr.as_mut();
-        assert_eq!(x.len(), y.len());
+        try_or!(x.len() == y.len(), LengthMismatch(x.len(), y.len()))?;
         while !x.is_empty() {
             let s = self.outer_min_mut(x.len());
             let n = s.len();
@@ -185,6 +188,7 @@ impl<F: PRP> Spongos<F> {
             y = &mut y[n..];
             self.update(n);
         }
+        Ok(())
     }
 
     /// Encrypt in-place a trit slice with Spongos object.
@@ -200,24 +204,24 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Encrypt buf.
-    pub fn encrypt_arr<N: ArrayLength<u8>>(&mut self, x: &GenericArray<u8, N>) -> GenericArray<u8, N> {
+    pub fn encrypt_arr<N: ArrayLength<u8>>(&mut self, x: &GenericArray<u8, N>) -> Result<GenericArray<u8, N>> {
         let mut y = GenericArray::default();
-        self.encrypt(x, &mut y);
-        y
+        self.encrypt(x, &mut y)?;
+        Ok(y)
     }
 
-    pub fn encrypt_n(&mut self, x: impl AsRef<[u8]>) -> Vec<u8> {
+    pub fn encrypt_n(&mut self, x: impl AsRef<[u8]>) -> Result<Vec<u8>> {
         let mut y = vec![0; x.as_ref().len()];
-        self.encrypt(x, &mut y);
-        y
+        self.encrypt(x, &mut y)?;
+        Ok(y)
     }
 
     /// Decrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub fn decrypt(&mut self, yr: impl AsRef<[u8]>, mut xr: impl AsMut<[u8]>) {
+    pub fn decrypt(&mut self, yr: impl AsRef<[u8]>, mut xr: impl AsMut<[u8]>) -> Result<()>{
         let mut y = yr.as_ref();
         let mut x = xr.as_mut();
-        assert_eq!(x.len(), y.len());
+        try_or!(x.len() == y.len(), LengthMismatch(x.len(), y.len()))?;
         while !x.is_empty() {
             let s = self.outer_min_mut(y.len());
             let n = s.len();
@@ -226,6 +230,7 @@ impl<F: PRP> Spongos<F> {
             x = &mut x[n..];
             self.update(n);
         }
+        Ok(())
     }
 
     /// Decrypt in-place a byte slice with Spongos object.
@@ -241,16 +246,16 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Decrypt buf.
-    pub fn decrypt_arr<N: ArrayLength<u8>>(&mut self, y: impl AsRef<[u8]>) -> GenericArray<u8, N> {
+    pub fn decrypt_arr<N: ArrayLength<u8>>(&mut self, y: impl AsRef<[u8]>) -> Result<GenericArray<u8, N>> {
         let mut x = GenericArray::default();
-        self.decrypt(y, &mut x);
-        x
+        self.decrypt(y, &mut x)?;
+        Ok(x)
     }
 
-    pub fn decrypt_n(&mut self, y: impl AsRef<[u8]>) -> Vec<u8> {
+    pub fn decrypt_n(&mut self, y: impl AsRef<[u8]>) -> Result<Vec<u8>> {
         let mut x = vec![0; y.as_ref().len()];
-        self.decrypt(y, &mut x);
-        x
+        self.decrypt(y, &mut x)?;
+        Ok(x)
     }
 
     /// Force transform even if for incomplete (but non-empty!) outer state.
@@ -299,9 +304,9 @@ impl<F: PRP> Spongos<F> {
 
     /// Only `inner` part of the state may be serialized.
     /// State should be committed.
-    pub fn to_inner(&self) -> Inner<F> {
-        assert!(self.is_committed());
-        self.s.inner().clone().into()
+    pub fn to_inner(&self) -> Result<Inner<F>> {
+        try_or!(self.is_committed(), SpongosNotCommitted)?;
+        Ok(self.s.inner().clone().into())
     }
 }
 
@@ -332,13 +337,13 @@ impl<F: PRP> From<&Inner<F>> for Spongos<F> {
 
 impl<F: PRP> Into<Inner<F>> for Spongos<F> {
     fn into(self) -> Inner<F> {
-        self.to_inner()
+        self.to_inner().unwrap()
     }
 }
 
 impl<F: PRP> Into<Inner<F>> for &Spongos<F> {
     fn into(self) -> Inner<F> {
-        self.to_inner()
+        self.to_inner().unwrap()
     }
 }
 

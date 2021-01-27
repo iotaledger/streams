@@ -1,4 +1,3 @@
-use anyhow::Result;
 use core::mem;
 
 use super::Context;
@@ -21,7 +20,10 @@ use crate::{
         Uint8,
     },
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    Result,
+};
 use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,

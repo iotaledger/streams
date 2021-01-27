@@ -1,6 +1,6 @@
 //! Implementation of command traits for unwrapping.
 
-use anyhow::Result;
+use iota_streams_core::Result;
 
 use core::fmt;
 

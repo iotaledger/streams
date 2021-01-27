@@ -4,8 +4,20 @@ use anyhow::{
     Result,
 };
 
+use core::{
+    cmp::Ordering,
+    convert::{
+        TryFrom,
+        TryInto,
+    },
+};
 #[cfg(not(feature = "async"))]
 use smol::block_on;
+
+#[cfg(feature = "async")]
+use iota_streams_core::prelude::Rc;
+#[cfg(feature = "async")]
+use core::cell::RefCell;
 
 use iota::{
     client as iota_client,
@@ -16,7 +28,16 @@ use iota::{
     }
 };
 
-use iota_streams_core::prelude::Vec;
+pub use iota::client::bytes_to_trytes;
+
+use iota_streams_core::{
+    prelude::{
+        String,
+        ToString,
+        Vec,
+    },
+    {Errors::*, wrapped_err, try_or, WrappedError, LOCATION_LOG, Result},
+};
 
 use crate::{
     message::BinaryMessage,
@@ -143,6 +164,66 @@ async fn send_messages(client: &iota_client::Client, _opt: &SendTrytesOptions, m
     Ok(msgs)
 }
 
+#[derive(Clone, Copy)]
+pub struct SendTrytesOptions {
+    pub depth: u8,
+    pub min_weight_magnitude: u8,
+    pub local_pow: bool,
+    pub threads: usize,
+}
+
+#[cfg(feature = "num_cpus")]
+fn get_num_cpus() -> usize {
+    num_cpus::get()
+}
+
+#[cfg(not(feature = "num_cpus"))]
+fn get_num_cpus() -> usize {
+    1_usize
+}
+
+impl Default for SendTrytesOptions {
+    fn default() -> Self {
+        Self {
+            depth: 3,
+            min_weight_magnitude: 14,
+            local_pow: true,
+            threads: get_num_cpus(),
+        }
+    }
+}
+
+fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
+    result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
+}
+
+async fn get_bundles(client: &iota_client::Client, tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>> {
+    let find_bundles = handle_client_result(
+        client.find_transactions()
+            .tags(&vec![tx_tag][..])
+            .addresses(&vec![tx_address][..])
+            .send()
+            .await,
+    )?;
+    try_or!(!find_bundles.hashes.is_empty(), HashNotFound)?;
+
+    let get_resp = handle_client_result(client.get_trytes(&find_bundles.hashes).await)?;
+    try_or!(!get_resp.trytes.is_empty(), TransactionContentsNotFound)?;
+    Ok(get_resp.trytes)
+}
+
+async fn send_trytes(client: &iota_client::Client, opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<Vec<Transaction>> {
+    let attached_txs = handle_client_result(
+        client.send_trytes()
+            .min_weight_magnitude(opt.min_weight_magnitude)
+            .depth(opt.depth)
+            .trytes(txs)
+            .send()
+            .await,
+    )?;
+    Ok(attached_txs)
+}
+
 pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
     // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
     let tips = client.get_tips().await.unwrap();
@@ -198,13 +279,19 @@ impl Client {
             client: client
         }
     }
-    
+
     // Create an instance of Client with a node pointing to the given URL
     pub fn new_from_url(url: &str) -> Self {
         Self {
             send_opt: SendTrytesOptions::default(),
             client: iota_client::ClientBuilder::new().with_node(url).unwrap().finish().unwrap()
         }
+    }
+
+    pub fn add_node(&mut self, url: &str) -> Result<bool> {
+        self.client.add_node(url).map_err(|e|
+            wrapped_err!(ClientOperationFailure, WrappedError(e))
+        )
     }
 }
 
@@ -236,7 +323,7 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
 }
 
 #[cfg(feature = "async")]
-#[async_trait]
+#[async_trait(?Send)]
 impl<F> Transport<TangleAddress, TangleMessage<F>> for Client
 where
     F: 'static + core::marker::Send + core::marker::Sync,
@@ -254,10 +341,49 @@ where
     async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
-            ensure!(msgs.is_empty(), "More than one message found.");
+            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()))?;
             Ok(msg)
         } else {
-            Err(anyhow!("Message not found."))
+            err!(MessageLinkNotFound(link.to_string()))
+        }
+    }
+}
+
+// It's safe to impl async trait for Rc<RefCell<T>> targeting wasm as it's single-threaded.
+#[cfg(feature = "async")]
+#[async_trait(?Send)]
+impl<F> Transport<TangleAddress, TangleMessage<F>> for Rc<RefCell<Client>>
+where
+    F: 'static + core::marker::Send + core::marker::Sync,
+{
+    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => async_send_message_with_options(&tsp.client, msg, &tsp.send_opt).await,
+            Err(_err) => err!(TransportNotAvailable),
+        }
+    }
+
+    /// Receive a message.
+    async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => async_recv_messages(&tsp.client, link).await,
+            Err(err) => err!(TransportNotAvailable),
+        }
+    }
+
+    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => {
+                let mut msgs = async_recv_messages(&tsp.client, link).await?;
+                if let Some(msg) = msgs.pop() {
+                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string()));
+                    Ok(msg)
+                } else {
+                    err!(MessageLinkNotFound(link.msgid.to_string()))
+                }
+            },
+            Err(err) => err!(TransportNotAvailable),
         }
     }
 }

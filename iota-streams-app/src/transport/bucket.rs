@@ -1,7 +1,21 @@
 use super::*;
+use core::hash;
 use crate::message::LinkedMessage;
 
-use iota_streams_core::prelude::HashMap;
+use iota_streams_core::{
+    prelude::{HashMap, string::ToString},
+    err,
+    Errors::MessageLinkNotFound,
+    LOCATION_LOG
+};
+
+#[cfg(feature = "async")]
+use iota_streams_core::Errors::MessageNotUnique;
+
+#[cfg(feature = "async")]
+use atomic_refcell::AtomicRefCell;
+#[cfg(feature = "async")]
+use iota_streams_core::prelude::Arc;
 
 pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
@@ -38,7 +52,7 @@ impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
 #[cfg(not(feature = "async"))]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
-    Link: Eq + hash::Hash + Clone + core::fmt::Debug,
+    Link: Eq + hash::Hash + Clone + core::fmt::Debug + core::fmt::Display,
     Msg: LinkedMessage<Link> + Clone,
 {
     fn send_message(&mut self, msg: &Msg) -> Result<()> {
@@ -55,16 +69,16 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            Err(anyhow!("Link not found in the bucket: {:?}.", link))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 }
 
 #[cfg(feature = "async")]
-#[async_trait]
+#[async_trait(?Send)]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
-    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync,
+    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
     Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
 {
     async fn send_message(&mut self, msg: &Msg) -> Result<()> {
@@ -81,17 +95,18 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            Err(anyhow!("Link not found in the bucket."))
+            err!(MessageLinkNotFound(link.to_string()))
         }
     }
 
     async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
+
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
-            ensure!(msgs.is_empty(), "More than one message found.");
+            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()));
             Ok(msg)
         } else {
-            Err(anyhow!("Message not found."))
+            err!(MessageLinkNotFound(link.to_string()))?
         }
     }
 }
