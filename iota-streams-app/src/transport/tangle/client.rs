@@ -1,16 +1,3 @@
-use anyhow::{
-    anyhow,
-    ensure,
-    Result,
-};
-
-use core::{
-    cmp::Ordering,
-    convert::{
-        TryFrom,
-        TryInto,
-    },
-};
 #[cfg(not(feature = "async"))]
 use smol::block_on;
 
@@ -23,20 +10,14 @@ use iota::{
     client as iota_client,
     Message, MessageId, MessageBuilder, ClientMiner,
     message::payload::{
-        indexation::Indexation,
+        indexation::IndexationPayload,
         Payload
     }
 };
 
-pub use iota::client::bytes_to_trytes;
-
 use iota_streams_core::{
-    prelude::{
-        String,
-        ToString,
-        Vec,
-    },
-    {Errors::*, wrapped_err, try_or, WrappedError, LOCATION_LOG, Result},
+    prelude::Vec,
+    {Errors::*, wrapped_err, try_or, err, WrappedError, LOCATION_LOG, Result},
 };
 
 use crate::{
@@ -71,7 +52,7 @@ impl Default for SendTrytesOptions {
 }
 
 fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
-    result.map_err(|err| anyhow!("Failed iota_client: {}", err))
+    result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
@@ -85,7 +66,7 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
     
         Ok(TangleMessage { binary, timestamp })
     } else {
-        Err(anyhow!("Message is not a Indexation type"))
+        err!(BadTransactionPayload)
     }
 }
 
@@ -94,7 +75,7 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
             .index(&hex::encode([tx_address, tx_tag].concat()))
             .await
         ).unwrap();
-    ensure!(!msg_ids.is_empty(), "Messade ids not found.");
+    try_or!(!msg_ids.is_empty(), HashNotFound)?;
 
     let msgs = join_all(
         msg_ids.iter().map(|msg| {
@@ -107,7 +88,7 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
             }
         }
     )).await;
-    ensure!(!msgs.is_empty(), "Messages not found.");
+    try_or!(!msgs.is_empty(), TransactionContentsNotFound)?;
     Ok(msgs)
 }
 
@@ -122,7 +103,7 @@ fn make_bundle(
     let mut msgs = Vec::new();
 
     dbg!( hex::encode([address, tag].concat()));
-    let payload = Indexation::new(
+    let payload = IndexationPayload::new(
         hex::encode([address, tag].concat()), 
         body).unwrap();
     //TODO: Multiple messages if payload size is over max. Currently no max decided
@@ -162,66 +143,6 @@ async fn send_messages(client: &iota_client::Client, _opt: &SendTrytesOptions, m
     )).await;
 
     Ok(msgs)
-}
-
-#[derive(Clone, Copy)]
-pub struct SendTrytesOptions {
-    pub depth: u8,
-    pub min_weight_magnitude: u8,
-    pub local_pow: bool,
-    pub threads: usize,
-}
-
-#[cfg(feature = "num_cpus")]
-fn get_num_cpus() -> usize {
-    num_cpus::get()
-}
-
-#[cfg(not(feature = "num_cpus"))]
-fn get_num_cpus() -> usize {
-    1_usize
-}
-
-impl Default for SendTrytesOptions {
-    fn default() -> Self {
-        Self {
-            depth: 3,
-            min_weight_magnitude: 14,
-            local_pow: true,
-            threads: get_num_cpus(),
-        }
-    }
-}
-
-fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
-    result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
-}
-
-async fn get_bundles(client: &iota_client::Client, tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>> {
-    let find_bundles = handle_client_result(
-        client.find_transactions()
-            .tags(&vec![tx_tag][..])
-            .addresses(&vec![tx_address][..])
-            .send()
-            .await,
-    )?;
-    try_or!(!find_bundles.hashes.is_empty(), HashNotFound)?;
-
-    let get_resp = handle_client_result(client.get_trytes(&find_bundles.hashes).await)?;
-    try_or!(!get_resp.trytes.is_empty(), TransactionContentsNotFound)?;
-    Ok(get_resp.trytes)
-}
-
-async fn send_trytes(client: &iota_client::Client, opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<Vec<Transaction>> {
-    let attached_txs = handle_client_result(
-        client.send_trytes()
-            .min_weight_magnitude(opt.min_weight_magnitude)
-            .depth(opt.depth)
-            .trytes(txs)
-            .send()
-            .await,
-    )?;
-    Ok(attached_txs)
 }
 
 pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
@@ -286,12 +207,6 @@ impl Client {
             send_opt: SendTrytesOptions::default(),
             client: iota_client::ClientBuilder::new().with_node(url).unwrap().finish().unwrap()
         }
-    }
-
-    pub fn add_node(&mut self, url: &str) -> Result<bool> {
-        self.client.add_node(url).map_err(|e|
-            wrapped_err!(ClientOperationFailure, WrappedError(e))
-        )
     }
 }
 

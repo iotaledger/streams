@@ -114,7 +114,8 @@ fn main_client() {
     println!("#######################################");
 }
 
-fn main() {
-    main_pure();
+#[tokio::main]
+async fn main() {
+    //main_pure();
     main_client();
 }
