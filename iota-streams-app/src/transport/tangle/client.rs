@@ -32,6 +32,10 @@ use futures::future::join_all;
 use std::boxed::Box;
 use std::str;
 
+use crate::std::borrow::ToOwned;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hasher;
+
 #[derive(Clone, Copy)]
 pub struct SendTrytesOptions {
     pub depth: u8,
@@ -59,8 +63,7 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
     if let Payload::Indexation(i) = message.payload().as_ref().unwrap() {
-        let binary = BinaryMessage::new(link.clone(), hex::decode(i.data())?.into());
-    
+        let binary = BinaryMessage::new(link.clone(), i.data().to_owned().into());
         // TODO get timestamp
         let timestamp: u64 = 0;
     
@@ -71,8 +74,13 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
 }
 
 async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &[u8]) -> Result<Vec<Message>> {
+    let total = [tx_address, tx_tag].concat();
+    let mut s = DefaultHasher::new();
+    s.write(&total);
+    let hash = s.finish();
+
     let msg_ids = handle_client_result(client.get_message()
-            .index(&hex::encode([tx_address, tx_tag].concat()))
+            .index(&hash.to_string())
             .await
         ).unwrap();
     try_or!(!msg_ids.is_empty(), HashNotFound)?;
@@ -92,66 +100,20 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
     Ok(msgs)
 }
 
-fn make_bundle(
-    address: &[u8],
-    tag: &[u8],
-    body: &[u8],
-    _timestamp: u64,
-    trunk: MessageId,
-    branch: MessageId,
-) -> Result<Vec<Message>> {
-    let mut msgs = Vec::new();
-
-    dbg!( hex::encode([address, tag].concat()));
-    let payload = IndexationPayload::new(
-        hex::encode([address, tag].concat()), 
-        body).unwrap();
-    //TODO: Multiple messages if payload size is over max. Currently no max decided
-    let msg = MessageBuilder::<ClientMiner>::new()
-        .with_parent1(trunk)
-        .with_parent2(branch)
-        .with_payload(Payload::Indexation(Box::new(payload)))
-        .finish();
-
-    msgs.push(msg.unwrap());
-    Ok(msgs)
-}
-
-pub fn msg_to_tangle<F>(
-    msg: &BinaryMessage<F, TangleAddress>,
-    timestamp: u64,
-    trunk: MessageId,
-    branch: MessageId,
-) -> Result<Vec<Message>> {
-    make_bundle(
-        msg.link.appinst.as_ref(),
-        msg.link.msgid.as_ref(),
-        &msg.body.bytes,
-        timestamp,
-        trunk,
-        branch,
-    )
-}
-
-async fn send_messages(client: &iota_client::Client, _opt: &SendTrytesOptions, msgs: Vec<Message>) -> Result<Vec<MessageId>> {
-    let msgs = join_all(
-        msgs.iter().map(|msg| {
-            async move {
-                handle_client_result(client.post_message(msg).await).unwrap()
-            }
-        }
-    )).await;
-
-    Ok(msgs)
-}
-
 pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
-    // TODO: Get trunk and branch hashes. Although, `send_trytes` should get these hashes.
-    let tips = client.get_tips().await.unwrap();
-    let messages = msg_to_tangle(&msg.binary, msg.timestamp, tips.0, tips.1)?;
+    let total = [msg.binary.link.appinst.as_ref(), msg.binary.link.msgid.as_ref()].concat();
+    let mut s = DefaultHasher::new();
+    s.write(&total);
+    let hash = s.finish();
+    let binary = &msg.binary;
 
-    // Ignore attached transactions.
-    send_messages(client, opt, messages).await?;
+    //TODO: Get rid of copy caused by to_owned
+    let message = client
+        .send()
+        .with_index(&hash.to_string())
+        .with_data(binary.body.bytes.to_owned())
+        .finish()
+        .await?;
     Ok(())
 }
 

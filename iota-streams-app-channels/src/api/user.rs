@@ -243,6 +243,7 @@ where
         }
         self.link_gen.gen(&self.sig_kp.public, channel_idx);
         let appinst = self.link_gen.get();
+        
         self.pk_store.insert(
             self.sig_kp.public.clone(),
             Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
