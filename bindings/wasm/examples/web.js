@@ -14,7 +14,7 @@ import("../pkg/index.js").then(async (streams) => {
 
 async function old_test(){
     let node = "https://nodes.devnet.iota.org:443";
-    let options = new streams.SendTrytesOptions(1, 9, true, 1);
+    let options = new streams.SendOptions(1, 9, true, 1);
     let seed = "LADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     let auth = new streams.Author(node, seed, options, false);
 
@@ -25,7 +25,7 @@ async function old_test(){
     let ann_link = response.get_link();
     console.log("announced at: ", ann_link.to_string());
 
-    let options2 = new streams.SendTrytesOptions(1, 9, true, 1);
+    let options2 = new streams.SendOptions(1, 9, true, 1);
     let seed2 = "EBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBA";
     let sub = new streams.Subscriber(node, seed2, options2, false);
 

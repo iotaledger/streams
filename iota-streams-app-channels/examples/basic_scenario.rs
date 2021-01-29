@@ -1,7 +1,7 @@
 use iota_streams_app::transport::{
     TransportOptions,
     tangle::client::{
-        Client, SendTrytesOptions,
+        Client, SendOptions,
     },
 };
 use iota_streams_app_channels::api::tangle::{
@@ -9,7 +9,7 @@ use iota_streams_app_channels::api::tangle::{
 };
 
 fn main() {
-    let mut send_opt = SendTrytesOptions::default();
+    let mut send_opt = SendOptions::default();
     send_opt.min_weight_magnitude = 9;
     let mut tsp = Client::default();
     tsp.set_send_options(send_opt);

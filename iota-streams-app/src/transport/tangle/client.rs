@@ -8,11 +8,8 @@ use core::cell::RefCell;
 
 use iota::{
     client as iota_client,
-    Message, MessageId, MessageBuilder, ClientMiner,
-    message::payload::{
-        indexation::IndexationPayload,
-        Payload
-    }
+    Message,
+    message::payload::Payload
 };
 
 use iota_streams_core::{
@@ -29,22 +26,20 @@ use crate::{
 };
 
 use futures::future::join_all;
-use std::boxed::Box;
-use std::str;
 
 use crate::std::borrow::ToOwned;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 
 #[derive(Clone, Copy)]
-pub struct SendTrytesOptions {
+pub struct SendOptions {
     pub depth: u8,
     pub min_weight_magnitude: u8,
     pub local_pow: bool,
     pub threads: usize,
 }
 
-impl Default for SendTrytesOptions {
+impl Default for SendOptions {
     fn default() -> Self {
         Self {
             depth: 3,
@@ -60,7 +55,7 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
 }
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
-/// the hash, consistency of indices, etc.). Checked bundles are returned by `bundles_from_trytes`.
+/// the hash, consistency of indices, etc.). Checked bundles are returned by `(client.get_message().index`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
     if let Payload::Indexation(i) = message.payload().as_ref().unwrap() {
         let binary = BinaryMessage::new(link.clone(), i.data().to_owned().into());
@@ -69,7 +64,7 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
     
         Ok(TangleMessage { binary, timestamp })
     } else {
-        err!(BadTransactionPayload)
+        err!(BadMessagePayload)
     }
 }
 
@@ -83,7 +78,7 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
             .index(&hash.to_string())
             .await
         ).unwrap();
-    try_or!(!msg_ids.is_empty(), HashNotFound)?;
+    try_or!(!msg_ids.is_empty(), IndexNotFound)?;
 
     let msgs = join_all(
         msg_ids.iter().map(|msg| {
@@ -96,11 +91,11 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
             }
         }
     )).await;
-    try_or!(!msgs.is_empty(), TransactionContentsNotFound)?;
+    try_or!(!msgs.is_empty(), MessageContentsNotFound)?;
     Ok(msgs)
 }
 
-pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
+pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>) -> Result<()> {
     let total = [msg.binary.link.appinst.as_ref(), msg.binary.link.msgid.as_ref()].concat();
     let mut s = DefaultHasher::new();
     s.write(&total);
@@ -108,7 +103,7 @@ pub async fn async_send_message_with_options<F>(client: &iota_client::Client, ms
     let binary = &msg.binary;
 
     //TODO: Get rid of copy caused by to_owned
-    let message = client
+    client
         .send()
         .with_index(&hash.to_string())
         .with_data(binary.body.bytes.to_owned())
@@ -129,8 +124,8 @@ pub async fn async_recv_messages<F>(client: &iota_client::Client, link: &TangleA
 }
 
 #[cfg(not(feature = "async"))]
-pub fn sync_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>, opt: &SendTrytesOptions) -> Result<()> {
-    block_on(async_send_message_with_options(client, msg, opt))
+pub fn sync_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>) -> Result<()> {
+    block_on(async_send_message_with_options(client, msg))
 }
 
 #[cfg(not(feature = "async"))]
@@ -140,7 +135,7 @@ pub fn sync_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress)
 
 /// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
 pub struct Client {
-    send_opt: SendTrytesOptions,
+    send_opt: SendOptions,
     client: iota_client::Client,
 }
 
@@ -148,7 +143,7 @@ impl Default for Client {
     // Creates a new instance which links to a node on localhost:14265
     fn default() -> Self {
         Self {
-            send_opt: SendTrytesOptions::default(),
+            send_opt: SendOptions::default(),
             client: iota_client::ClientBuilder::new().with_node("http://localhost:14265").unwrap().finish().unwrap()
         }
     }
@@ -156,7 +151,7 @@ impl Default for Client {
 
 impl Client {
     // Create an instance of Client with a ready client and its send options
-    pub fn new(options: SendTrytesOptions, client: iota_client::Client) -> Self {
+    pub fn new(options: SendOptions, client: iota_client::Client) -> Self {
         Self {
             send_opt: options,
             client: client
@@ -166,19 +161,22 @@ impl Client {
     // Create an instance of Client with a node pointing to the given URL
     pub fn new_from_url(url: &str) -> Self {
         Self {
-            send_opt: SendTrytesOptions::default(),
+            send_opt: SendOptions::default(),
             client: iota_client::ClientBuilder::new().with_node(url).unwrap().finish().unwrap()
         }
     }
 }
 
 impl TransportOptions for Client {
-    type SendOptions = SendTrytesOptions;
-    fn get_send_options(&self) -> SendTrytesOptions {
+    type SendOptions = SendOptions;
+    fn get_send_options(&self) -> SendOptions {
         self.send_opt.clone()
     }
-    fn set_send_options(&mut self, opt: SendTrytesOptions) {
+    fn set_send_options(&mut self, opt: SendOptions) {
         self.send_opt = opt;
+        
+        //TODO
+        //self.client.set_send_options()
     }
 
     type RecvOptions = ();
@@ -188,9 +186,9 @@ impl TransportOptions for Client {
 
 #[cfg(not(feature = "async"))]
 impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
-    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
-        sync_send_message_with_options(&self.client, msg, &self.send_opt)
+        sync_send_message_with_options(&self.client, msg)
     }
 
     /// Receive a message.
@@ -205,7 +203,7 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Client
 where
     F: 'static + core::marker::Send + core::marker::Sync,
 {
-    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
         async_send_message_with_options(&self.client, msg, &self.send_opt).await
     }
@@ -233,7 +231,7 @@ impl<F> Transport<TangleAddress, TangleMessage<F>> for Rc<RefCell<Client>>
 where
     F: 'static + core::marker::Send + core::marker::Sync,
 {
-    /// Send a Streams message over the Tangle with the current timestamp and default SendTrytesOptions.
+    /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
         match (&*self).try_borrow_mut() {
             Ok(mut tsp) => async_send_message_with_options(&tsp.client, msg, &tsp.send_opt).await,

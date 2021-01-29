@@ -40,7 +40,7 @@ pub struct Author {
 #[wasm_bindgen]
 impl Author {
     #[wasm_bindgen(constructor)]
-    pub fn new(node: String, seed: String, options: SendTrytesOptions, multi_branching: bool) -> Author {
+    pub fn new(node: String, seed: String, options: SendOptions, multi_branching: bool) -> Author {
         let mut client = Client::new_from_url(&node);
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));

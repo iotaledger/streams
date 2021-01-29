@@ -10,7 +10,7 @@ use rand::Rng;
 use iota_streams::{
     app::transport::{
         TransportOptions,
-        tangle::client::{SendTrytesOptions, Client, },
+        tangle::client::{SendOptions, Client, },
     },
     app_channels::api::tangle::Transport,
     core::{
@@ -91,7 +91,7 @@ fn main_client() {
     let client = Client::new_from_url(&node_url);
 
     let mut transport = Rc::new(RefCell::new(client));
-    let mut send_opt = SendTrytesOptions::default();
+    let mut send_opt = SendOptions::default();
     send_opt.min_weight_magnitude = node_mwm;
     transport.set_send_options(send_opt);
 
@@ -116,6 +116,6 @@ fn main_client() {
 
 #[tokio::main]
 async fn main() {
-    //main_pure();
-    main_client();
+    main_pure();
+    //main_client();
 }

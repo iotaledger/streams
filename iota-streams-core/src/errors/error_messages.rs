@@ -73,24 +73,24 @@ pub enum Errors {
     //////////
     // Iota Client
     //////////
-    #[error("Iota Transaction Address failed to generate.")]
+    #[error("Iota Message Address failed to generate.")] // UNUSED
     BadTransactionAddress,
-    #[error("Iota Transaction Tag failed to generate.")]
+    #[error("Iota Message Tag failed to generate.")] // UNUSED
     BadTransactionTag,
-    #[error("Transaction Hash not found")]
-    HashNotFound,
-    #[error("Transaction trytes not found")]
-    TransactionContentsNotFound,
-    #[error("Iota Transaction Timestamp failed to generate.")]
-    BadTransactionTimestamp,
-    #[error("Iota Transaction Payload failed to generate.")]
-    BadTransactionPayload,
-    #[error("Iota Transaction Bundle failed to seal.")]
-    BundleSealFailure,
-    #[error("Iota Transaction Bundle failed to attach.")]
-    BundleAttachFailure,
-    #[error("Iota Transaction Bundle failed to build.")]
-    BundleBuildFailure,
+    #[error("Message index not found")]
+    IndexNotFound,
+    #[error("Message data not found")]
+    MessageContentsNotFound,
+    #[error("Iota Message failed to generate.")] // UNUSED
+    BadMessageTimestamp,
+    #[error("Iota Message Payload failed to generate.")]
+    BadMessagePayload,
+    #[error("Iota Message failed to seal.")] // UNUSED
+    MessageSealFailure,
+    #[error("Iota Message failed to attach.")] // UNUSED
+    MessageAttachFailure,
+    #[error("Iota Message failed to build.")] // UNUSED
+    MessageBuildFailure,
     #[error("Iota Client failed to perform operation.")]
     ClientOperationFailure,
 

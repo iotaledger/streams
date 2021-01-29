@@ -28,7 +28,7 @@ pub struct Subscriber {
 #[wasm_bindgen]
 impl Subscriber {
     #[wasm_bindgen(constructor)]
-    pub fn new(node: String, seed: String, options: SendTrytesOptions) -> Subscriber {
+    pub fn new(node: String, seed: String, options: SendOptions) -> Subscriber {
         let mut client = Client::new_from_url(&node);
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));

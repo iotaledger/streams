@@ -42,14 +42,10 @@ atomic_refcell = { version = "0.1.6", optional = true }
 
 # Dependencies for "client" feature
 iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "dev", optional = true }
-bee-transaction = { git = "https://github.com/Alex6323/bee-p.git" }
 
 bee-crypto = { git = "https://github.com/iotaledger/bee.git", branch = "dev" }
 
-# feature tokio02 explicitly required for block_on calls
 smol = { version = "1.2.5", optional = true }
-# core-futures-tls-0.1.1 is buggy and relies on unstable generators feature
-#core = { package = "core-futures-tls", version = "0.1.1", path = "../../core-futures-tls", optional = true }
 num_cpus = { version = "1.10", optional = true }
 
 futures = { version = "0.3.8" }
