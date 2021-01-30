@@ -9,7 +9,8 @@ use core::cell::RefCell;
 use iota::{
     client as iota_client,
     Message,
-    message::payload::Payload
+    message::payload::Payload,
+    message::payload::indexation::HASHED_INDEX_LENGTH,
 };
 
 use iota_streams_core::{
@@ -27,9 +28,10 @@ use crate::{
 
 use futures::future::join_all;
 
-use crate::std::borrow::ToOwned;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
+use crypto::blake2b;
+
+use std::borrow::ToOwned;
+use std::str;
 
 #[derive(Clone, Copy)]
 pub struct SendOptions {
@@ -54,6 +56,13 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
+fn get_hash(tx_address: &[u8], tx_tag: &[u8]) ->  Result<[u8; HASHED_INDEX_LENGTH]>  {
+    let total = [tx_address, tx_tag].concat();
+    let mut hash = [0u8; HASHED_INDEX_LENGTH];
+    blake2b::hash(&total, &mut hash);
+    Ok(hash)
+}
+
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `(client.get_message().index`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
@@ -69,11 +78,9 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
 }
 
 async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &[u8]) -> Result<Vec<Message>> {
-    let total = [tx_address, tx_tag].concat();
-    let mut s = DefaultHasher::new();
-    s.write(&total);
-    let hash = s.finish();
-
+    let hashbytes = get_hash(tx_address, tx_tag)?;
+    let hash = hex::encode(&hashbytes);
+    
     let msg_ids = handle_client_result(client.get_message()
             .index(&hash.to_string())
             .await
@@ -96,10 +103,8 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
 }
 
 pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>) -> Result<()> {
-    let total = [msg.binary.link.appinst.as_ref(), msg.binary.link.msgid.as_ref()].concat();
-    let mut s = DefaultHasher::new();
-    s.write(&total);
-    let hash = s.finish();
+    let hashbytes = get_hash(msg.binary.link.appinst.as_ref(), msg.binary.link.msgid.as_ref())?;
+    let hash = hex::encode(&hashbytes);
     let binary = &msg.binary;
 
     //TODO: Get rid of copy caused by to_owned
