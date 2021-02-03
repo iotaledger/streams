@@ -30,8 +30,7 @@ use futures::future::join_all;
 
 use crypto::blake2b;
 
-use std::borrow::ToOwned;
-use std::str;
+use iota_streams_core::prelude::String;
 
 #[derive(Clone, Copy)]
 pub struct SendOptions {
@@ -56,18 +55,24 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
-fn get_hash(tx_address: &[u8], tx_tag: &[u8]) ->  Result<[u8; HASHED_INDEX_LENGTH]>  {
+fn get_hash(tx_address: &[u8], tx_tag: &[u8]) ->  Result<String>  {
     let total = [tx_address, tx_tag].concat();
     let mut hash = [0u8; HASHED_INDEX_LENGTH];
     blake2b::hash(&total, &mut hash);
-    Ok(hash)
+    Ok(hex::encode(&hash))
 }
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `(client.get_message().index`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
     if let Payload::Indexation(i) = message.payload().as_ref().unwrap() {
-        let binary = BinaryMessage::new(link.clone(), i.data().to_owned().into());
+        
+        let mut bytes = Vec::<u8>::new();
+        for b in i.data() {
+            bytes.push(*b);
+        }
+
+        let binary = BinaryMessage::new(link.clone(), bytes.into());
         // TODO get timestamp
         let timestamp: u64 = 0;
     
@@ -78,9 +83,7 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
 }
 
 async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &[u8]) -> Result<Vec<Message>> {
-    let hashbytes = get_hash(tx_address, tx_tag)?;
-    let hash = hex::encode(&hashbytes);
-    
+    let hash = get_hash(tx_address, tx_tag)?;
     let msg_ids = handle_client_result(client.get_message()
             .index(&hash.to_string())
             .await
@@ -103,15 +106,19 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
 }
 
 pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>) -> Result<()> {
-    let hashbytes = get_hash(msg.binary.link.appinst.as_ref(), msg.binary.link.msgid.as_ref())?;
-    let hash = hex::encode(&hashbytes);
+    let hash = get_hash(msg.binary.link.appinst.as_ref(), msg.binary.link.msgid.as_ref())?;
     let binary = &msg.binary;
+
+    let mut bytes = Vec::<u8>::new();
+    for b in &binary.body.bytes {
+        bytes.push(*b);
+    }
 
     //TODO: Get rid of copy caused by to_owned
     client
         .send()
         .with_index(&hash.to_string())
-        .with_data(binary.body.bytes.to_owned())
+        .with_data(bytes)
         .finish()
         .await?;
     Ok(())
@@ -210,7 +217,7 @@ where
 {
     /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
-        async_send_message_with_options(&self.client, msg, &self.send_opt).await
+        async_send_message_with_options(&self.client, msg).await
     }
 
     /// Receive a message.
@@ -239,7 +246,7 @@ where
     /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
         match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => async_send_message_with_options(&tsp.client, msg, &tsp.send_opt).await,
+            Ok(mut tsp) => async_send_message_with_options(&tsp.client, msg).await,
             Err(_err) => err!(TransportNotAvailable),
         }
     }
