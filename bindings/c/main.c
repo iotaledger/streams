@@ -64,8 +64,7 @@ int main()
 
   // Test conversions
   printf("Converting announcement link to strings\n");
-  char const *ann_address_inst_str = get_address_inst_str(ann_link);
-  char const *ann_address_id_str = get_address_id_str(ann_link);
+  char const *ann_address_inst_str = get_address_inst_str(ann_link),*ann_address_id_str = get_address_id_str(ann_link);
   char const connector[] = ":";
   char buffer[sizeof(ann_address_inst_str) + sizeof(ann_address_id_str) + 1];
 
@@ -76,8 +75,7 @@ int main()
   printf("Converted to string\n");
 
   address_t *ann_link_copy = address_from_string(buffer);
-  char const *ann_cpy_inst_str = get_address_inst_str(ann_link);
-  char const *ann_cpy_id_str = get_address_id_str(ann_link);
+  char const *ann_cpy_inst_str = get_address_inst_str(ann_link),*ann_cpy_id_str = get_address_id_str(ann_link);
 
   printf("Converted back to link.\nOriginal: %s:%s\nConverted: %s:%s\n\n",
          ann_address_inst_str, ann_address_id_str,
@@ -184,12 +182,8 @@ int main()
   // Several messages
 
   printf("Sending 3 tagged packets\n");
-  char const public_1[] = "Public 1";
-  char const public_2[] = "Public 2";
-  char const public_3[] = "Public 3";
-  char const masked_1[] = "Masked 1";
-  char const masked_2[] = "Masked 2";
-  char const masked_3[] = "Masked 3";
+  char const public_1[] = "Public 1",public_2[] = "Public 2",public_3[] = "Public 3";
+  char const masked_1[] = "Masked 1",masked_2[] = "Masked 2",masked_3[] = "Masked 3";
 
   message_links_t tagged_packet_1_links = auth_send_tagged_packet(
     auth, tagged_packet_links, (uint8_t const *)public_1, sizeof(public_1), (uint8_t const *)masked_1, sizeof(masked_1));
@@ -203,7 +197,7 @@ int main()
   unwrapped_messages_t const *message_returns = sub_sync_state(subA);
   printf("Found messages\n");
 
-  size_t x;
+  uint8_t x;
   for(x = 0; x < 3; x++)
   {
     packet_payloads_t response = get_indexed_payload(message_returns, x);
