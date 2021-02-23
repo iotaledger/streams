@@ -19,7 +19,7 @@ tangle = ["chrono"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
 sync-client = ["num_cpus", "smol", "iota-core", "tangle", "std"] #, "iota-constants"
-async-client = ["num_cpus", "iota-core", "tangle", "std", "async"] #, "iota-constants"
+async-client = ["num_cpus", "smol", "iota-core", "tangle", "std", "async"] #, "iota-constants"
 wasm-client = ["iota-core", "chrono/wasmbind", "tangle", "async", "std"]
 
 [lib]

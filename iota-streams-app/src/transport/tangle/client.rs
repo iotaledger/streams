@@ -1,4 +1,3 @@
-#[cfg(not(feature = "async"))]
 use smol::block_on;
 
 #[cfg(feature = "async")]
@@ -66,7 +65,7 @@ fn get_hash(tx_address: &[u8], tx_tag: &[u8]) ->  Result<String>  {
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `(client.get_message().index`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
     if let Payload::Indexation(i) = message.payload().as_ref().unwrap() {
-        
+
         let mut bytes = Vec::<u8>::new();
         for b in i.data() {
             bytes.push(*b);
@@ -75,7 +74,7 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
         let binary = BinaryMessage::new(link.clone(), bytes.into());
         // TODO get timestamp
         let timestamp: u64 = 0;
-    
+
         Ok(TangleMessage { binary, timestamp })
     } else {
         err!(BadMessagePayload)
@@ -116,7 +115,7 @@ pub async fn async_send_message_with_options<F>(client: &iota_client::Client, ms
 
     //TODO: Get rid of copy caused by to_owned
     client
-        .send()
+        .message()
         .with_index(&hash.to_string())
         .with_data(bytes)
         .finish()
@@ -156,7 +155,7 @@ impl Default for Client {
     fn default() -> Self {
         Self {
             send_opt: SendOptions::default(),
-            client: iota_client::ClientBuilder::new().with_node("http://localhost:14265").unwrap().finish().unwrap()
+            client: block_on(iota_client::ClientBuilder::new().with_node("http://localhost:14265").unwrap().finish()).unwrap()
         }
     }
 }
@@ -174,7 +173,7 @@ impl Client {
     pub fn new_from_url(url: &str) -> Self {
         Self {
             send_opt: SendOptions::default(),
-            client: iota_client::ClientBuilder::new().with_node(url).unwrap().finish().unwrap()
+            client: block_on(iota_client::ClientBuilder::new().with_node(url).unwrap().finish()).unwrap()
         }
     }
 }
@@ -186,7 +185,7 @@ impl TransportOptions for Client {
     }
     fn set_send_options(&mut self, opt: SendOptions) {
         self.send_opt = opt;
-        
+
         //TODO
         //self.client.set_send_options()
     }
