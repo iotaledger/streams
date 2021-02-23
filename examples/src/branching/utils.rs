@@ -11,7 +11,7 @@ use iota_streams::{
     },
 };
 
-pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
+pub async fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
 {
     let mut exists = true;
 
@@ -19,7 +19,7 @@ pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
         let msgs = subscriber.fetch_next_msgs();
         exists = false;
 
-        for msg in msgs {
+        for msg in msgs.await {
             println!("Message exists at {}... ", &msg.link.rel());
             exists = true;
         }
@@ -30,7 +30,7 @@ pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
     }
 }
 
-pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>)
+pub async fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>)
 {
     let mut exists = true;
 
@@ -38,7 +38,7 @@ pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>)
         let msgs = author.fetch_next_msgs();
         exists = false;
 
-        for msg in msgs {
+        for msg in msgs.await {
             println!("Message exists at {}... ", &msg.link.rel());
             exists = true;
         }

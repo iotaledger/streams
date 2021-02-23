@@ -10,7 +10,7 @@ description = "A rust implementation of the IOTA Streams"
 
 [dependencies]
 # run with features = ["err-location-log"] for err location logging
-iota-streams = { path = ".." }
+iota-streams = { path = "..", default-features = false, features = ["std", "tangle", "async-client", "async"] }
 anyhow = { version = "1.0", default-features = false }
 rand = "0.7.3"
 dotenv = {version = "0.15.0"}
