@@ -41,7 +41,7 @@ async-trait = { version = "0.1", optional = true }
 atomic_refcell = { version = "0.1.6", optional = true }
 
 # Dependencies for "client" feature
-iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "dev", optional = true }
+iota-core = { git = "https://github.com/iotaledger/iota.rs", rev = "9bd1963fe742a66fb7f9070f4f6c6069a17f513f", optional = true }
 iota-crypto = { git = "https://github.com/iotaledger/crypto.rs", features = ["blake2b"], branch = "dev" }
 bee-crypto = { git = "https://github.com/iotaledger/bee.git", branch = "dev" }
 
