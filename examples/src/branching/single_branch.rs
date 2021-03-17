@@ -18,13 +18,12 @@ use iota_streams::{
         panic_if_not,
         LOCATION_LOG,
         Errors::*,
+        Result
     },
     ddml::types::*,
 };
 
 use core::cell::RefCell;
-
-use iota_streams_core::Result;
 
 use super::utils;
 
