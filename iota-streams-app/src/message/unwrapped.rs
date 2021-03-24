@@ -20,7 +20,7 @@ where
     F: PRP,
     Link: HasLink,
 {
-    /// Save link for the current unwrapped message and accociated info into the store.
+    /// Save link for the current unwrapped message and associated info into the store.
     pub fn commit<Store>(
         mut self,
         mut store: RefMut<Store>,
