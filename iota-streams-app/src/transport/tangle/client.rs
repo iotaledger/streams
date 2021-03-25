@@ -1,5 +1,4 @@
-//#[cfg(not(feature = "async"))]
-use smol::block_on;
+use futures::executor::block_on;
 
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::Rc;
@@ -46,6 +45,9 @@ impl Default for SendOptions {
             depth: 3,
             min_weight_magnitude: 14,
             local_pow: true,
+            #[cfg(target_arch = "wasm32")]
+            threads: 1,
+            #[cfg(not(target_arch = "wasm32"))]
             threads: num_cpus::get(),
         }
     }
