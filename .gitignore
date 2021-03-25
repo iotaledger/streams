@@ -8,5 +8,4 @@
 
 .vscode
 .project
-Cargo.lock
 .env
