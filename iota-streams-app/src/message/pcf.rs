@@ -54,7 +54,7 @@ impl PCF<()> {
         PCF {
             frame_type: self.frame_type,
             payload_frame_num: self.payload_frame_num,
-            content: content,
+            content,
         }
     }
 }

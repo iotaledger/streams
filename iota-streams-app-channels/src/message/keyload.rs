@@ -263,7 +263,7 @@ where
                         ctx.x25519(ke_sk, &mut key)?;
                         self.key = Some(key);
                         // Save the relevant public key
-                        self.ke_pk = ke_pk.clone();
+                        self.ke_pk = ke_pk;
                         self.ke_pks.push(ke_pk);
                         Ok(ctx)
                     } else {

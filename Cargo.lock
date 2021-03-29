@@ -730,10 +730,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.15.0"
+name = "displaydoc"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+checksum = "3274a6bc8a6a4521291b53b9dcb8345e963fe931c3fc462a7d3ead71d7ccd30d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "ed25519"
@@ -1318,19 +1323,9 @@ dependencies = [
 name = "iota-streams-app-channels-example"
 version = "1.0.0"
 dependencies = [
+ "hex",
  "iota-streams",
  "wee_alloc",
-]
-
-[[package]]
-name = "iota-streams-basic-scenario"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "dotenv",
- "iota-streams",
- "rand 0.7.3",
- "tokio",
 ]
 
 [[package]]
@@ -1340,10 +1335,10 @@ dependencies = [
  "anyhow",
  "criterion",
  "digest 0.9.0",
+ "displaydoc",
  "hashbrown 0.8.2",
  "hex",
  "rand 0.7.3",
- "thiserror",
 ]
 
 [[package]]

@@ -14,11 +14,11 @@ impl<F: PRP, OS> Context<F, OS> {
     pub fn new(stream: OS) -> Self {
         Self {
             spongos: Spongos::<F>::init(),
-            stream: stream,
+            stream,
         }
     }
 }
-
+#[allow(clippy::module_inception)]
 mod wrap;
 pub(crate) use wrap::*;
 

@@ -94,6 +94,7 @@ pub struct WrappedSequence<F, Link: HasLink>(
 );
 
 impl<F, Link: HasLink> WrappedSequence<F, Link> {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self(None, None)
     }
@@ -206,7 +207,7 @@ where
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
     ) -> Self {
-        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
+        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
         // App instance link is generated using the 32 byte PubKey and the first 8 bytes of the nonce
@@ -249,10 +250,8 @@ where
         self.link_gen.gen(&self.sig_kp.public, channel_idx);
         let appinst = self.link_gen.get();
 
-        self.pk_store.insert(
-            self.sig_kp.public.clone(),
-            Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
-        )?;
+        self.pk_store
+            .insert(self.sig_kp.public, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
         self.author_sig_pk = Some(self.sig_kp.public);
         self.appinst = Some(appinst);
         Ok(())
@@ -326,7 +325,7 @@ where
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
         self.pk_store.insert(content.sig_pk.clone(), cursor.clone())?;
-        self.pk_store.insert(self.sig_kp.public.clone(), cursor)?;
+        self.pk_store.insert(self.sig_kp.public, cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.appinst = Some(link);
@@ -354,7 +353,7 @@ where
                     link: link_to,
                     unsubscribe_key,
                     subscriber_sig_kp: &self.sig_kp,
-                    author_ke_pk: author_ke_pk,
+                    author_ke_pk,
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -416,10 +415,10 @@ where
         let key = NBytes::from(prng::random_key());
         let content = keyload::ContentWrap {
             link: link_to,
-            nonce: nonce,
-            key: key,
-            psks: psks,
-            ke_pks: ke_pks,
+            nonce,
+            key,
+            psks,
+            ke_pks,
             sig_kp: &self.sig_kp,
             _phantom: core::marker::PhantomData,
         };
@@ -612,8 +611,8 @@ where
                     .with_seq_num(seq_no);
                 let content = signed_packet::ContentWrap {
                     link: link_to,
-                    public_payload: public_payload,
-                    masked_payload: masked_payload,
+                    public_payload,
+                    masked_payload,
                     sig_kp: &self.sig_kp,
                     _phantom: core::marker::PhantomData,
                 };
@@ -677,8 +676,8 @@ where
                     .with_seq_num(seq_no);
                 let content = tagged_packet::ContentWrap {
                     link: link_to,
-                    public_payload: public_payload,
-                    masked_payload: masked_payload,
+                    public_payload,
+                    masked_payload,
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -794,7 +793,7 @@ where
                 cursor.link = wrapped.link.rel().clone();
                 cursor.next_seq();
                 wrapped.commit(self.link_store.borrow_mut(), info)?;
-                self.pk_store.insert(self.sig_kp.public.clone(), cursor)?;
+                self.pk_store.insert(self.sig_kp.public, cursor)?;
                 Ok(Some(link))
             }
             None => {
@@ -903,12 +902,12 @@ where
         ) = pk_info;
         if branching {
             let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, 1));
-            ids.push((pk.clone(), Cursor::new_at(msg_id, 0, 1)));
+            ids.push((*pk, Cursor::new_at(msg_id, 0, 1)));
         } else {
             let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no));
             let msg_id1 = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no - 1));
-            ids.push((pk.clone(), Cursor::new_at(msg_id, 0, *seq_no)));
-            ids.push((pk.clone(), Cursor::new_at(msg_id1, 0, *seq_no - 1)));
+            ids.push((*pk, Cursor::new_at(msg_id, 0, *seq_no)));
+            ids.push((*pk, Cursor::new_at(msg_id1, 0, *seq_no - 1)));
         }
     }
 
@@ -935,7 +934,7 @@ where
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         self.pk_store
-            .insert(self.sig_kp.public.clone(), Cursor::new_at(link.clone(), 0, seq_no + 1))?;
+            .insert(self.sig_kp.public, Cursor::new_at(link.clone(), 0, seq_no + 1))?;
         for (_pk, cursor) in self.pk_store.iter_mut() {
             cursor.link = link.clone();
             cursor.seq_no = seq_no + 1;

@@ -24,12 +24,12 @@ members = [
     "iota-streams-app",
     "iota-streams-app-channels",
     "iota-streams-app-channels-example",
-    "examples",
     #"iota-streams-app-channels-js",
     "bindings/wasm",
 ]
 exclude = [
     "bindings/c",
+    "examples",
     # "bindings/wasm",
 ]
 

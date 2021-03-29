@@ -173,7 +173,7 @@ impl Client {
     pub fn new(options: SendOptions, client: iota_client::Client) -> Self {
         Self {
             send_opt: options,
-            client: client,
+            client,
         }
     }
 
@@ -196,7 +196,7 @@ impl Client {
 impl TransportOptions for Client {
     type SendOptions = SendOptions;
     fn get_send_options(&self) -> SendOptions {
-        self.send_opt.clone()
+        self.send_opt
     }
     fn set_send_options(&mut self, opt: SendOptions) {
         self.send_opt = opt;
@@ -206,7 +206,7 @@ impl TransportOptions for Client {
     }
 
     type RecvOptions = ();
-    fn get_recv_options(&self) -> () {}
+    fn get_recv_options(&self) {}
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 
@@ -260,7 +260,7 @@ where
     /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
         match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => async_send_message_with_options(&tsp.client, msg).await,
+            Ok(tsp) => async_send_message_with_options(&tsp.client, msg).await,
             Err(_err) => err!(TransportNotAvailable),
         }
     }
@@ -268,23 +268,23 @@ where
     /// Receive a message.
     async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
         match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => async_recv_messages(&tsp.client, link).await,
-            Err(err) => err!(TransportNotAvailable),
+            Ok(tsp) => async_recv_messages(&tsp.client, link).await,
+            Err(_err) => err!(TransportNotAvailable),
         }
     }
 
     async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
         match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => {
+            Ok(tsp) => {
                 let mut msgs = async_recv_messages(&tsp.client, link).await?;
                 if let Some(msg) = msgs.pop() {
-                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string()));
+                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string())).unwrap();
                     Ok(msg)
                 } else {
                     err!(MessageLinkNotFound(link.msgid.to_string()))
                 }
             }
-            Err(err) => err!(TransportNotAvailable),
+            Err(_err) => err!(TransportNotAvailable),
         }
     }
 }
