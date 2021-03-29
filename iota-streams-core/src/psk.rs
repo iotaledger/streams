@@ -35,7 +35,7 @@ pub type IPsk<'a> = (&'a PskId, &'a Psk);
 pub type Psks = HashMap<PskId, Psk>;
 
 /// Container (set) of pre-shared key identifiers.
-pub type PskIds = Vec<PskId>;
+pub type PskIds = [PskId];
 
 /// Select only pre-shared keys with given identifiers.
 pub fn filter_psks<'a>(psks: &'a Psks, psk_ids: &'_ PskIds) -> Vec<IPsk<'a>> {

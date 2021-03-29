@@ -6,7 +6,7 @@
 *.rs~
 *.toml~
 *.md~
-
+book
 .vscode
 .project
 .env

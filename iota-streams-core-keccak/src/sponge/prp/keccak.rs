@@ -8,7 +8,6 @@ use iota_streams_core::{
     },
     sponge::prp::PRP,
 };
-use keccak;
 
 #[derive(Clone)]
 pub struct KeccakF1600 {
@@ -51,7 +50,7 @@ impl PRP for KeccakF1600 {
     fn from_inner(inner: &GenericArray<u8, Self::CapacitySize>) -> Self {
         let mut state = [0_u64; 25];
         let i = unsafe { &mut *(state.as_mut_ptr().add(21) as *mut GenericArray<u8, Self::CapacitySize>) };
-        *i = inner.clone();
+        *i = *inner;
         Self { state }
     }
 }

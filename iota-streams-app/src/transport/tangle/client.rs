@@ -7,10 +7,7 @@ use iota_streams_core::prelude::Rc;
 
 use iota::{
     client as iota_client,
-    message::payload::{
-        indexation::HASHED_INDEX_LENGTH,
-        Payload,
-    },
+    message::payload::Payload,
     Message,
 };
 

@@ -133,15 +133,13 @@ impl TangleAddress {
         Ok(TangleAddress { appinst, msgid })
     }
 
-    pub fn from_c_str(c_addr: *const c_char) -> *const Self {
-        unsafe {
-            c_addr.as_ref().map_or(null(), |c_addr| {
-                CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
-                    let addr_vec: Vec<&str> = addr_str.split(":").collect();
-                    Self::from_str(addr_vec[0], addr_vec[1]).map_or(null(), |addr| Box::into_raw(Box::new(addr)))
-                })
+    pub unsafe fn from_c_str(c_addr: *const c_char) -> *const Self {
+        c_addr.as_ref().map_or(null(), |c_addr| {
+            CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
+                let addr_vec: Vec<&str> = addr_str.split(":").collect();
+                Self::from_str(addr_vec[0], addr_vec[1]).map_or(null(), |addr| Box::into_raw(Box::new(addr)))
             })
-        }
+        })
     }
 }
 
