@@ -9,7 +9,7 @@ on:
       - github-actions
       - dev
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 jobs:
   clippy:
@@ -39,5 +39,5 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --manifest-path=${{ matrix.project }}/Cargo.toml --all-targets --all-features -- -D warnings
+          args: --manifest-path=${{ matrix.project }}/Cargo.toml --all-targets --all-features -- -D clippy::all
           name: clippy-${{ matrix.project }}
