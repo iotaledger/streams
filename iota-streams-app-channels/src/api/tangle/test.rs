@@ -9,20 +9,19 @@ use iota_streams_app::{
     transport::tangle::PAYLOAD_BYTES,
 };
 use iota_streams_core::{
+    ensure,
     prelude::string::ToString,
     println,
     try_or,
-    Result,
-    ensure,
-    LOCATION_LOG,
     Errors::*,
+    Result,
+    LOCATION_LOG,
 };
 
 use super::*;
 
 #[cfg(not(feature = "async"))]
-pub fn example<T: Transport + Clone>(transport: T) -> Result<()>
-{
+pub fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     let encoding = "utf-8";
     let multi_branching = false;
 
@@ -195,7 +194,9 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> where
 
     println!("\nsign packet");
     let signed_packet_link = {
-        let (msg, _) = author.send_signed_packet(&announcement_link, &public_payload, &masked_payload).await?;
+        let (msg, _) = author
+            .send_signed_packet(&announcement_link, &public_payload, &masked_payload)
+            .await?;
         println!("  {}", msg);
         msg
     };
@@ -227,14 +228,19 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> where
 
     {
         let resultA = subscriberA.receive_keyload(&keyload_link).await;
-        ensure!(resultA.is_ok() && !resultA.unwrap(), "sbuscriberA failed to unwrap keyload");
+        ensure!(
+            resultA.is_ok() && !resultA.unwrap(),
+            "sbuscriberA failed to unwrap keyload"
+        );
         let resultB = subscriberB.receive_keyload(&keyload_link).await?;
         ensure!(resultB, "sbuscriberB failed to unwrap keyload");
     }
 
     println!("\ntag packet");
     let tagged_packet_link = {
-        let (msg, _) = author.send_tagged_packet(&keyload_link, &public_payload, &masked_payload).await?;
+        let (msg, _) = author
+            .send_tagged_packet(&keyload_link, &public_payload, &masked_payload)
+            .await?;
         println!("  {}", msg);
         msg
     };
@@ -266,15 +272,13 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> where
 #[test]
 #[cfg(not(feature = "async"))]
 fn run_basic_scenario() {
-    let transport = iota_streams_app::transport::new_shared_transport(
-        crate::api::tangle::BucketTransport::new());
+    let transport = iota_streams_app::transport::new_shared_transport(crate::api::tangle::BucketTransport::new());
     assert!(dbg!(example(transport)).is_ok());
 }
 
 #[test]
 #[cfg(feature = "async")]
 fn run_basic_scenario() {
-    let transport = iota_streams_app::transport::new_shared_transport(
-        crate::api::tangle::BucketTransport::new());
+    let transport = iota_streams_app::transport::new_shared_transport(crate::api::tangle::BucketTransport::new());
     assert!(dbg!(smol::block_on(example(transport))).is_ok());
 }

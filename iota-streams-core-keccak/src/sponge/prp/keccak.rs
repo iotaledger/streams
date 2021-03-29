@@ -1,5 +1,4 @@
 use iota_streams_core::{
-    sponge::prp::PRP,
     prelude::{
         generic_array::GenericArray,
         typenum::{
@@ -7,6 +6,7 @@ use iota_streams_core::{
             U32,
         },
     },
+    sponge::prp::PRP,
 };
 use keccak;
 

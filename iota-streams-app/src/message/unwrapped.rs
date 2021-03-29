@@ -1,5 +1,5 @@
-use iota_streams_core::Result;
 use core::cell::RefMut;
+use iota_streams_core::Result;
 
 use super::*;
 use iota_streams_core::sponge::{

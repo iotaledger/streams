@@ -57,7 +57,7 @@ impl<Info> PublicKeyStore<Info> for PublicKeyMap<Info> {
     fn get_ke_pk(&self, pk: &ed25519::PublicKey) -> Option<&x25519::PublicKey> {
         self.pks.get(pk.into()).map(|(x, _i)| x)
     }
-    fn insert(&mut self, pk: ed25519::PublicKey, info: Info) -> Result<()>{
+    fn insert(&mut self, pk: ed25519::PublicKey, info: Info) -> Result<()> {
         let xpk = x25519::public_from_ed25519(&pk)?;
         self.pks.insert(pk.into(), (xpk, info));
         Ok(())

@@ -1,10 +1,10 @@
 use super::prp::keccak::KeccakF1600;
 use iota_streams_core::{
+    prelude::typenum::Unsigned,
     sponge::{
         prp::PRP,
         tests::*,
     },
-    prelude::typenum::Unsigned,
 };
 
 #[test]

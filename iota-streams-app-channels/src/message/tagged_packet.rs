@@ -21,9 +21,7 @@
 //! * `masked_payload` -- masked part of payload.
 //!
 //! * `mac` -- MAC of the message.
-//!
 
-use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
@@ -34,6 +32,7 @@ use iota_streams_core::{
         prp::PRP,
         spongos,
     },
+    Result,
 };
 use iota_streams_ddml::{
     command::*,
@@ -88,8 +87,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         let mac = Mac(spongos::MacSize::<F>::USIZE);
-        ctx
-            .join(store, self.link)?
+        ctx.join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
@@ -134,8 +132,7 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mac = Mac(spongos::MacSize::<F>::USIZE);
-        ctx
-            .join(store, &mut self.link)?
+        ctx.join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
             .commit()?

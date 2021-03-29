@@ -18,7 +18,6 @@
 //! * `seqNum` -- Sequencing state of published message.
 //!
 //! * `reflink` -- The msgid for the preceding message referenced by the sequenced message
-//!
 
 use iota_streams_app::message::{
     self,

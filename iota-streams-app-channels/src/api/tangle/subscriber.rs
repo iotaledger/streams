@@ -1,7 +1,7 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 
-use iota_streams_core::Result;
 use core::fmt;
+use iota_streams_core::Result;
 
 use super::*;
 use crate::api::tangle::{
@@ -17,8 +17,7 @@ pub struct Subscriber<T> {
     user: User<T>,
 }
 
-impl<Trans> Subscriber<Trans>
-{
+impl<Trans> Subscriber<Trans> {
     /// Create a new Subscriber instance, generate new MSS keypair and optionally NTRU keypair.
     ///
     /// # Arguments
@@ -26,7 +25,6 @@ impl<Trans> Subscriber<Trans>
     /// * `encoding` - A string slice representing the encoding type for the message [supported: utf-8]
     /// * `payload_length` - Maximum size in bytes of payload per message chunk [1-1024],
     /// * `transport` - Transport object used for sending and receiving
-    ///
     pub fn new(seed: &str, encoding: &str, payload_length: usize, transport: Trans) -> Self {
         let user = User::new(seed, encoding, payload_length, false, transport);
         Self { user }
@@ -63,7 +61,6 @@ impl<Trans> Subscriber<Trans>
     ///   # Arguments
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
-    ///
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         Ok(self.user.store_state(pk, link)?)
@@ -75,7 +72,6 @@ impl<Trans> Subscriber<Trans>
     ///   # Arguments
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
-    ///
     pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         Ok(self.user.store_state_for_all(link, seq_num)?)
@@ -86,7 +82,6 @@ impl<Trans> Subscriber<Trans>
     ///
     ///   # Arguments
     ///   * `branching` - Boolean representing the sequencing nature of the channel
-    ///
     pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
     }
@@ -95,7 +90,6 @@ impl<Trans> Subscriber<Trans>
     ///
     ///   # Arguments
     ///   * `pwd` - Encryption password
-    ///
     pub fn export(&self, pwd: &str) -> Result<Vec<u8>> {
         self.user.export(1, pwd)
     }
@@ -106,20 +100,17 @@ impl<Trans> Subscriber<Trans>
     ///   * `bytes` - Encrypted serialized user state
     ///   * `pwd` - Encryption password
     ///   * `tsp` - Transport object
-    ///
     pub fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
         User::<Trans>::import(bytes, 1, pwd, tsp).map(|user| Self { user })
     }
 }
 
 #[cfg(not(feature = "async"))]
-impl<Trans: Transport> Subscriber<Trans>
-{
+impl<Trans: Transport> Subscriber<Trans> {
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
-    ///
     pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
         self.user.send_subscribe(link_to)
     }
@@ -130,7 +121,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `public_payload` - Wrapped vector of Bytes to have public access
     ///  * `masked_payload` - Wrapped vector of Bytes to have masked access
-    ///
     pub fn send_tagged_packet(
         &mut self,
         link_to: &Address,
@@ -146,7 +136,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `public_payload` - Wrapped vector of Bytes to have public access
     ///  * `masked_payload` - Wrapped vector of Bytes to have masked access
-    ///
     pub fn send_signed_packet(
         &mut self,
         link_to: &Address,
@@ -166,7 +155,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
-    ///
     pub fn receive_announcement(&mut self, link: &Address) -> Result<()> {
         self.user.receive_announcement(link)
     }
@@ -175,7 +163,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    ///
     pub fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         self.user.receive_keyload(link)
     }
@@ -184,7 +171,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    ///
     pub fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
         self.user.receive_signed_packet(link)
     }
@@ -193,7 +179,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    ///
     pub fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
         self.user.receive_tagged_packet(link)
     }
@@ -202,7 +187,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    ///
     pub fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         self.user.receive_sequence(link)
     }
@@ -218,21 +202,17 @@ impl<Trans: Transport> Subscriber<Trans>
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
     ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
-    ///
     pub fn receive_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         self.user.receive_message(link)
     }
-
 }
 
 #[cfg(feature = "async")]
-impl<Trans: Transport> Subscriber<Trans>
-{
+impl<Trans: Transport> Subscriber<Trans> {
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
-    ///
     pub async fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
         self.user.send_subscribe(link_to).await
     }
@@ -243,14 +223,15 @@ impl<Trans: Transport> Subscriber<Trans>
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `public_payload` - Wrapped vector of Bytes to have public access
     ///  * `masked_payload` - Wrapped vector of Bytes to have masked access
-    ///
     pub async fn send_tagged_packet(
         &mut self,
         link_to: &Address,
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        self.user.send_tagged_packet(link_to, public_payload, masked_payload).await
+        self.user
+            .send_tagged_packet(link_to, public_payload, masked_payload)
+            .await
     }
 
     /// Create and send a tagged packet.
@@ -259,14 +240,15 @@ impl<Trans: Transport> Subscriber<Trans>
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `public_payload` - Wrapped vector of Bytes to have public access
     ///  * `masked_payload` - Wrapped vector of Bytes to have masked access
-    ///
     pub async fn send_signed_packet(
         &mut self,
         link_to: &Address,
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        self.user.send_signed_packet(link_to, public_payload, masked_payload).await
+        self.user
+            .send_signed_packet(link_to, public_payload, masked_payload)
+            .await
     }
 
     // Unsubscribe from the Channel app instance.
@@ -279,7 +261,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     /// # Arguments
     /// * `link` - Address of the Channel Announcement message
-    ///
     pub async fn receive_announcement(&mut self, link: &Address) -> Result<()> {
         self.user.receive_announcement(link).await
     }
@@ -288,7 +269,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    ///
     pub async fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         self.user.receive_keyload(link).await
     }
@@ -297,7 +277,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    ///
     pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
         self.user.receive_signed_packet(link).await
     }
@@ -306,7 +285,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    ///
     pub async fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
         self.user.receive_tagged_packet(link).await
     }
@@ -315,7 +293,6 @@ impl<Trans: Transport> Subscriber<Trans>
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    ///
     pub async fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         self.user.receive_sequence(link).await
     }
@@ -331,11 +308,9 @@ impl<Trans: Transport> Subscriber<Trans>
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
     ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
-    ///
     pub async fn receive_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         self.user.receive_message(link).await
     }
-
 }
 
 impl<T: Transport> fmt::Display for Subscriber<T> {

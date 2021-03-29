@@ -1,20 +1,28 @@
 use futures::executor::block_on;
 
 #[cfg(feature = "async")]
-use iota_streams_core::prelude::Rc;
-#[cfg(feature = "async")]
 use core::cell::RefCell;
+#[cfg(feature = "async")]
+use iota_streams_core::prelude::Rc;
 
 use iota::{
     client as iota_client,
+    message::payload::{
+        indexation::HASHED_INDEX_LENGTH,
+        Payload,
+    },
     Message,
-    message::payload::Payload,
-    message::payload::indexation::HASHED_INDEX_LENGTH,
 };
 
 use iota_streams_core::{
+    err,
     prelude::Vec,
-    {Errors::*, wrapped_err, try_or, err, WrappedError, LOCATION_LOG, Result},
+    try_or,
+    wrapped_err,
+    Errors::*,
+    Result,
+    WrappedError,
+    LOCATION_LOG,
 };
 
 use crate::{
@@ -27,7 +35,10 @@ use crate::{
 
 use futures::future::join_all;
 
-use crypto::hashes::{Digest, blake2b};
+use crypto::hashes::{
+    blake2b,
+    Digest,
+};
 
 use iota_streams_core::prelude::String;
 
@@ -57,7 +68,7 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
-fn get_hash(tx_address: &[u8], tx_tag: &[u8]) ->  Result<String>  {
+fn get_hash(tx_address: &[u8], tx_tag: &[u8]) -> Result<String> {
     let total = [tx_address, tx_tag].concat();
     let hash = blake2b::Blake2b256::digest(&total);
     Ok(hex::encode(&hash))
@@ -67,7 +78,6 @@ fn get_hash(tx_address: &[u8], tx_tag: &[u8]) ->  Result<String>  {
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `(client.get_message().index`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
     if let Payload::Indexation(i) = message.payload().as_ref().unwrap() {
-
         let mut bytes = Vec::<u8>::new();
         for b in i.data() {
             bytes.push(*b);
@@ -85,23 +95,15 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
 
 async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &[u8]) -> Result<Vec<Message>> {
     let hash = get_hash(tx_address, tx_tag)?;
-    let msg_ids = handle_client_result(client.get_message()
-            .index(&hash.to_string())
-            .await
-        ).unwrap();
+    let msg_ids = handle_client_result(client.get_message().index(&hash.to_string()).await).unwrap();
     try_or!(!msg_ids.is_empty(), IndexNotFound)?;
 
     let msgs = join_all(
-        msg_ids.iter().map(|msg| {
-            async move {
-                handle_client_result(client
-                    .get_message()
-                    .data(msg)
-                    .await
-                ).unwrap()
-            }
-        }
-    )).await;
+        msg_ids
+            .iter()
+            .map(|msg| async move { handle_client_result(client.get_message().data(msg).await).unwrap() }),
+    )
+    .await;
     try_or!(!msgs.is_empty(), MessageContentsNotFound)?;
     Ok(msgs)
 }
@@ -115,7 +117,7 @@ pub async fn async_send_message_with_options<F>(client: &iota_client::Client, ms
         bytes.push(*b);
     }
 
-    //TODO: Get rid of copy caused by to_owned
+    // TODO: Get rid of copy caused by to_owned
     client
         .message()
         .with_index(&hash.to_string())
@@ -125,13 +127,14 @@ pub async fn async_send_message_with_options<F>(client: &iota_client::Client, ms
     Ok(())
 }
 
-pub async fn async_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+pub async fn async_recv_messages<F>(
+    client: &iota_client::Client,
+    link: &TangleAddress,
+) -> Result<Vec<TangleMessage<F>>> {
     let tx_address = link.appinst.as_ref();
     let tx_tag = link.msgid.as_ref();
     match get_messages(client, tx_address, tx_tag).await {
-        Ok(txs) => Ok(txs.iter()
-            .map(|b| msg_from_tangle_message(b, link).unwrap())
-            .collect()),
+        Ok(txs) => Ok(txs.iter().map(|b| msg_from_tangle_message(b, link).unwrap()).collect()),
         Err(_) => Ok(Vec::new()), // Just ignore the error?
     }
 }
@@ -157,7 +160,13 @@ impl Default for Client {
     fn default() -> Self {
         Self {
             send_opt: SendOptions::default(),
-            client: block_on(iota_client::ClientBuilder::new().with_node("http://localhost:14265").unwrap().finish()).unwrap()
+            client: block_on(
+                iota_client::ClientBuilder::new()
+                    .with_node("http://localhost:14265")
+                    .unwrap()
+                    .finish(),
+            )
+            .unwrap(),
         }
     }
 }
@@ -167,7 +176,7 @@ impl Client {
     pub fn new(options: SendOptions, client: iota_client::Client) -> Self {
         Self {
             send_opt: options,
-            client: client
+            client: client,
         }
     }
 
@@ -175,7 +184,14 @@ impl Client {
     pub fn new_from_url(url: &str) -> Self {
         Self {
             send_opt: SendOptions::default(),
-            client: block_on(iota_client::ClientBuilder::new().with_node(url).unwrap().with_local_pow(false).finish()).unwrap()
+            client: block_on(
+                iota_client::ClientBuilder::new()
+                    .with_node(url)
+                    .unwrap()
+                    .with_local_pow(false)
+                    .finish(),
+            )
+            .unwrap(),
         }
     }
 }
@@ -188,8 +204,8 @@ impl TransportOptions for Client {
     fn set_send_options(&mut self, opt: SendOptions) {
         self.send_opt = opt;
 
-        //TODO
-        //self.client.set_send_options()
+        // TODO
+        // self.client.set_send_options()
     }
 
     type RecvOptions = ();
@@ -270,7 +286,7 @@ where
                 } else {
                     err!(MessageLinkNotFound(link.msgid.to_string()))
                 }
-            },
+            }
             Err(err) => err!(TransportNotAvailable),
         }
     }

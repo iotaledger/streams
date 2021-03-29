@@ -39,13 +39,18 @@
 //! Note, the `unsubscribe_key` is masked and verified in the `ntrukem` operation and
 //! thus is not additionally `absorb`ed in this message.
 
-use iota_streams_core::{Result, WrappedError, wrapped_err, LOCATION_LOG};
-use iota_streams_core::Errors::MessageCreationFailure;
 use iota_streams_app::message::{
     self,
     HasLink,
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    wrapped_err,
+    Errors::MessageCreationFailure,
+    Result,
+    WrappedError,
+    LOCATION_LOG,
+};
 use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,
@@ -127,7 +132,7 @@ where
                 author_ke_sk,
                 _phantom: core::marker::PhantomData,
             }),
-            Err(e) => Err(wrapped_err!(MessageCreationFailure, WrappedError(e)))
+            Err(e) => Err(wrapped_err!(MessageCreationFailure, WrappedError(e))),
         }
     }
 }

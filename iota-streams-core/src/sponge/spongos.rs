@@ -3,24 +3,31 @@ use core::{
     ops::Mul,
 };
 
-use super::prp::{PRP, Inner,};
+use super::prp::{
+    Inner,
+    PRP,
+};
 use crate::{
     prelude::{
-        Vec,
         digest::Digest,
         generic_array::{
             typenum::{
-                U2,
                 Unsigned as _,
+                U2,
             },
             ArrayLength,
             GenericArray,
         },
+        Vec,
     },
-    {try_or, LOCATION_LOG, Result},
-    Errors::LengthMismatch,
+    try_or,
+    Errors::{
+        LengthMismatch,
+        SpongosNotCommitted,
+    },
+    Result,
+    LOCATION_LOG,
 };
-use crate::Errors::SpongosNotCommitted;
 
 fn xor(s: &mut [u8], x: &[u8]) {
     for (si, xi) in s.iter_mut().zip(x.iter()) {
@@ -95,7 +102,6 @@ pub struct Spongos<F> {
 }
 
 impl<F: PRP> Spongos<F> {
-
     /// Create a Spongos object, initialize state with zero trits.
     pub fn init() -> Self {
         Self::init_with_state(F::default())
@@ -103,10 +109,7 @@ impl<F: PRP> Spongos<F> {
 
     /// Create a Spongos object with an explicit state.
     pub fn init_with_state(s: F) -> Self {
-        Self {
-            s,
-            pos: 0,
-        }
+        Self { s, pos: 0 }
     }
 
     fn outer_min_mut(&mut self, n: usize) -> &mut [u8] {
@@ -218,7 +221,7 @@ impl<F: PRP> Spongos<F> {
 
     /// Decrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub fn decrypt(&mut self, yr: impl AsRef<[u8]>, mut xr: impl AsMut<[u8]>) -> Result<()>{
+    pub fn decrypt(&mut self, yr: impl AsRef<[u8]>, mut xr: impl AsMut<[u8]>) -> Result<()> {
         let mut y = yr.as_ref();
         let mut x = xr.as_mut();
         try_or!(x.len() == y.len(), LengthMismatch(x.len(), y.len()))?;
@@ -310,8 +313,7 @@ impl<F: PRP> Spongos<F> {
     }
 }
 
-impl<F: PRP> Default for Spongos<F>
-{
+impl<F: PRP> Default for Spongos<F> {
     fn default() -> Self {
         Self::init()
     }
@@ -349,14 +351,17 @@ impl<F: PRP> Into<Inner<F>> for &Spongos<F> {
 
 impl<F: PRP> fmt::Debug for Spongos<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        //write!(f, "{}[{:?}]", self.pos, hex::encode(self.s.outer().as_ref()))
-        //write!(f, "[{}:{}]",
+        // write!(f, "{}[{:?}]", self.pos, hex::encode(self.s.outer().as_ref()))
+        // write!(f, "[{}:{}]",
         //       hex::encode(&self.s.outer().as_ref()[..self.pos]),
         //       hex::encode(&self.s.outer().as_ref()[self.pos..]))
-        write!(f, "[{}:{}|{}]",
-               hex::encode(&self.s.outer().as_ref()[..self.pos]),
-               hex::encode(&self.s.outer().as_ref()[self.pos..]),
-               hex::encode(self.s.inner().as_ref()))
+        write!(
+            f,
+            "[{}:{}|{}]",
+            hex::encode(&self.s.outer().as_ref()[..self.pos]),
+            hex::encode(&self.s.outer().as_ref()[self.pos..]),
+            hex::encode(self.s.inner().as_ref())
+        )
     }
 }
 
@@ -379,7 +384,8 @@ where
     s.squeeze(y);
 }
 
-impl<F: PRP> Digest for Spongos<F> where
+impl<F: PRP> Digest for Spongos<F>
+where
     F::CapacitySize: Mul<U2>,
     <F::CapacitySize as Mul<U2>>::Output: ArrayLength<u8>,
 {

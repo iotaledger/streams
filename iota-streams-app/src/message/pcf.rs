@@ -73,8 +73,9 @@ fn payload_frame_num_to(v: &NBytes<U3>) -> u32 {
 }
 
 fn payload_frame_num_check(v: &NBytes<U3>) -> Result<()> {
-    try_or!(v.as_ref()[0] < 0x40,
-                         ValueOutOfRange(0x40 as usize, v.as_ref()[0] as usize)
+    try_or!(
+        v.as_ref()[0] < 0x40,
+        ValueOutOfRange(0x40 as usize, v.as_ref()[0] as usize)
     )?;
     Ok(())
 }

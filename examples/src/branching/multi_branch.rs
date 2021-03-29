@@ -3,21 +3,19 @@ use iota_streams::{
         message::HasLink,
         transport::tangle::PAYLOAD_BYTES,
     },
-    app_channels::{
-        api::tangle::{
-            Author,
-            Subscriber,
-            Transport,
-        },
+    app_channels::api::tangle::{
+        Author,
+        Subscriber,
+        Transport,
     },
     core::{
         prelude::Rc,
         print,
         println,
         try_or,
-        LOCATION_LOG,
         Errors::*,
         Result,
+        LOCATION_LOG,
     },
     ddml::types::*,
 };
@@ -26,12 +24,7 @@ use core::cell::RefCell;
 
 use super::utils;
 
-pub fn example<T: Transport>(
-    transport: Rc<RefCell<T>>,
-    multi_branching: bool,
-    seed: &str,
-) -> Result<()>
-{
+pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, seed: &str) -> Result<()> {
     let encoding = "utf-8";
 
     let mut author = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching, transport.clone());
@@ -147,13 +140,13 @@ pub fn example<T: Transport>(
 
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
         print!("  Author     : {}", author);
-        try_or!(public_payload == unwrapped_public,
-                             PublicPayloadMismatch(public_payload.to_string(),
-                                                   unwrapped_public.to_string())
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             MaskedPayloadMismatch(masked_payload.to_string(),
-                                                   unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
         let resultB = subscriberB.receive_tagged_packet(&msg_tag);
         print!("  SubscriberB: {}", subscriberB);
@@ -184,11 +177,13 @@ pub fn example<T: Transport>(
 
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
         print!("  SubscriberA: {}", subscriberA);
-        try_or!(public_payload == unwrapped_public,
-                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
     }
 
@@ -250,11 +245,13 @@ pub fn example<T: Transport>(
 
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
         print!("  Author     : {}", author);
-        try_or!(public_payload == unwrapped_public,
-                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
         let resultC = subscriberC.receive_tagged_packet(&msg_tag);
         print!("  SubscriberC: {}", subscriberC);
@@ -281,11 +278,13 @@ pub fn example<T: Transport>(
 
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
         print!("  Author     : {}", author);
-        try_or!(public_payload == unwrapped_public,
-                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
         let resultC = subscriberC.receive_tagged_packet(&msg_tag);
         print!("  SubscriberC: {}", subscriberC);
@@ -317,19 +316,23 @@ pub fn example<T: Transport>(
 
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
         print!("  SubscriberA: {}", subscriberA);
-        try_or!(public_payload == unwrapped_public,
-                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&msg_tag)?;
         print!("  SubscriberB: {}", subscriberB);
-        try_or!(public_payload == unwrapped_public,
-                             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
     }
 

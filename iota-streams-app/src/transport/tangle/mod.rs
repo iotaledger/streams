@@ -1,6 +1,5 @@
 //! Tangle-specific transport definitions.
 
-use iota_streams_core::Result;
 use core::{
     convert::{
         AsMut,
@@ -8,9 +7,10 @@ use core::{
     },
     fmt,
     hash,
-    str::FromStr,
     ptr::null,
+    str::FromStr,
 };
+use iota_streams_core::Result;
 
 use iota_streams_core::{
     prelude::{
@@ -18,8 +18,8 @@ use iota_streams_core::{
             U12,
             U40,
         },
-        Vec,
         Box,
+        Vec,
     },
     sponge::{
         prp::PRP,
@@ -64,8 +64,8 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
 }
 
 // TODO: Use better feature to detect `chrono::Utc::new()`.
-#[cfg(all(feature = "std"))]//, not(feature = "wasmbind")
-//#[cfg(all(feature = "std"))]
+#[cfg(all(feature = "std"))] //, not(feature = "wasmbind")
+                             //#[cfg(all(feature = "std"))]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
     pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
@@ -76,34 +76,30 @@ impl<F> TangleMessage<F> {
     }
 }
 
-/*
-#[cfg(feature = "wasmbind")]
-impl<F> TangleMessage<F> {
-    /// Create TangleMessage from BinaryMessage and add the current timestamp.
-    pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
-        let timestamp = js_sys::Date::new_0().value_of() as u64;
-        Self {
-            binary: msg,
-            timestamp,
-        }
-    }
-}
-*/
-/*
-#[cfg(feature = "wasmbind")]
-impl<F> TangleMessage<F> {
-    /// Create TangleMessage from BinaryMessage and add the current timestamp.
-    pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
-        Self {
-            binary: msg,
-            timestamp: wasm_timer::SystemTime::now()
-                .duration_since(wasm_timer::SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64,
-        }
-    }
-}
- */
+// #[cfg(feature = "wasmbind")]
+// impl<F> TangleMessage<F> {
+// Create TangleMessage from BinaryMessage and add the current timestamp.
+// pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
+// let timestamp = js_sys::Date::new_0().value_of() as u64;
+// Self {
+// binary: msg,
+// timestamp,
+// }
+// }
+// }
+// #[cfg(feature = "wasmbind")]
+// impl<F> TangleMessage<F> {
+// Create TangleMessage from BinaryMessage and add the current timestamp.
+// pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
+// Self {
+// binary: msg,
+// timestamp: wasm_timer::SystemTime::now()
+// .duration_since(wasm_timer::SystemTime::UNIX_EPOCH)
+// .unwrap()
+// .as_millis() as u64,
+// }
+// }
+// }
 
 //#[cfg(all(not(feature = "std"), not(feature = "wasmbind")))]
 #[cfg(not(feature = "std"))]
@@ -139,18 +135,14 @@ impl TangleAddress {
 
     pub fn from_c_str(c_addr: *const c_char) -> *const Self {
         unsafe {
-            c_addr.as_ref().map_or(null(), |c_addr|
+            c_addr.as_ref().map_or(null(), |c_addr| {
                 CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
                     let addr_vec: Vec<&str> = addr_str.split(":").collect();
-                    Self::from_str(addr_vec[0], addr_vec[1])
-                        .map_or(null(), |addr|
-                            Box::into_raw(Box::new(addr))
-                        )
+                    Self::from_str(addr_vec[0], addr_vec[1]).map_or(null(), |addr| Box::into_raw(Box::new(addr)))
                 })
-            )
+            })
         }
     }
-
 }
 
 impl fmt::Debug for TangleAddress {
@@ -376,8 +368,7 @@ impl hash::Hash for AppInst {
 /// (appinst+msgid) is (address+tag) in terms of IOTA transaction which are stored
 /// externally of message body, ie. in transaction header fields.
 /// Thus the trait implemntation absorbs appinst+msgid as `external`.
-impl<F: PRP> AbsorbExternalFallback<F> for TangleAddress
-{
+impl<F: PRP> AbsorbExternalFallback<F> for TangleAddress {
     fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
         ctx.absorb(External(&self.appinst.id))?
             .absorb(External(&self.msgid.id))?;
@@ -395,21 +386,17 @@ impl<F: PRP> AbsorbExternalFallback<F> for TangleAddress
     }
 }
 
-impl<F: PRP> AbsorbFallback<F> for TangleAddress
-{
+impl<F: PRP> AbsorbFallback<F> for TangleAddress {
     fn sizeof_absorb(&self, ctx: &mut sizeof::Context<F>) -> Result<()> {
-        ctx.absorb(&self.appinst.id)?
-            .absorb(&self.msgid.id)?;
+        ctx.absorb(&self.appinst.id)?.absorb(&self.msgid.id)?;
         Ok(())
     }
     fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()> {
-        ctx.absorb(&self.appinst.id)?
-            .absorb(&self.msgid.id)?;
+        ctx.absorb(&self.appinst.id)?.absorb(&self.msgid.id)?;
         Ok(())
     }
     fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()> {
-        ctx.absorb(&mut self.appinst.id)?
-            .absorb(&mut self.msgid.id)?;
+        ctx.absorb(&mut self.appinst.id)?.absorb(&mut self.msgid.id)?;
         Ok(())
     }
 }

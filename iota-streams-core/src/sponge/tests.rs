@@ -3,12 +3,11 @@ use super::{
     spongos::*,
 };
 use crate::prelude::{
-    Vec,
     generic_array::typenum::Unsigned as _,
+    Vec,
 };
 
-fn bytes_spongosn<F: PRP>(n: usize)
-{
+fn bytes_spongosn<F: PRP>(n: usize) {
     let mut rng = Spongos::<F>::init();
     rng.absorb(&vec![0; 10]);
     rng.commit();
@@ -51,8 +50,7 @@ fn bytes_spongosn<F: PRP>(n: usize)
     assert!(t == u, "{}: MAC(x) != MAC(D(E(x)))", n);
 }
 
-fn slice_spongosn<F: PRP>(n: usize)
-{
+fn slice_spongosn<F: PRP>(n: usize) {
     let mut k = vec![0_u8; n];
     let mut p = vec![0_u8; n];
     let mut x = vec![0_u8; n];
@@ -100,8 +98,7 @@ fn slice_spongosn<F: PRP>(n: usize)
     assert!(t == u, "{}: MAC(x) != MAC(D(E(x)))", n);
 }
 
-pub fn bytes_with_size_boundary_cases<F: PRP>()
-{
+pub fn bytes_with_size_boundary_cases<F: PRP>() {
     let rate = F::RateSize::USIZE;
     for i in 1..100 {
         bytes_spongosn::<F>(i);
@@ -118,8 +115,7 @@ pub fn bytes_with_size_boundary_cases<F: PRP>()
     bytes_spongosn::<F>(rate * 5);
 }
 
-pub fn slices_with_size_boundary_cases<F: PRP>()
-{
+pub fn slices_with_size_boundary_cases<F: PRP>() {
     let rate = F::RateSize::USIZE;
     for i in 1..100 {
         slice_spongosn::<F>(i);
@@ -136,8 +132,7 @@ pub fn slices_with_size_boundary_cases<F: PRP>()
     slice_spongosn::<F>(rate * 5);
 }
 
-pub fn encrypt_decrypt_n<F: PRP>(n: usize)
-{
+pub fn encrypt_decrypt_n<F: PRP>(n: usize) {
     let rate = F::RateSize::USIZE;
     let mut s = Spongos::<F>::init();
     s.absorb(&vec![1; 32]);

@@ -1,6 +1,6 @@
-use thiserror::Error;
 use crate::prelude::String;
 use core::fmt::Debug;
+use thiserror::Error;
 
 pub struct WrappedError<T: Debug>(pub T);
 
@@ -56,7 +56,6 @@ pub enum Errors {
     #[error("Input stream has not been exhausted. Remaining: {0}")]
     InputStreamNotFullyConsumed(usize),
 
-
     //////////
     // Generic Transport
     //////////
@@ -68,7 +67,6 @@ pub enum Errors {
     MessageLinkNotFoundInTangle(String),
     #[error("Transport object is already borrowed")]
     TransportNotAvailable,
-
 
     //////////
     // Iota Client
@@ -94,7 +92,6 @@ pub enum Errors {
     #[error("Iota Client failed to perform operation.")]
     ClientOperationFailure,
 
-
     //////////
     // Messages
     //////////
@@ -112,7 +109,6 @@ pub enum Errors {
     BadMessageInfo(u8),
     #[error("Failed to make message")]
     MessageCreationFailure,
-
 
     //////////
     // Users
@@ -134,7 +130,6 @@ pub enum Errors {
     #[error("State store has failed to retrieve")]
     StateStoreFailure,
 
-
     //////////
     // User Recovery
     //////////
@@ -146,7 +141,6 @@ pub enum Errors {
     UserVersionRecoveryFailure(u8, u8),
     #[error("Recovered flag does not match expected: flag (expected: {0}, found: {1})")]
     UserFlagRecoveryFailure(u8, u8),
-
 
     //////////
     // Examples
@@ -163,7 +157,6 @@ pub enum Errors {
     ApplicationInstanceAnnouncementMismatch(String),
     #[error("Subscriber {0} should not be able to access this message")]
     SubscriberAccessMismatch(String),
-
 
     //////////
     // Tests

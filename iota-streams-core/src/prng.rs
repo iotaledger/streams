@@ -137,7 +137,7 @@ pub fn dbg_init_str<G: PRP>(secret_key: &str) -> Prng<G> {
 
 /// Rng fixed nonce size.
 pub type NonceSize<F> = spongos::NonceSize<F>;
-//pub type NonceType<F> = spongos::NonceType<F>;
+// pub type NonceType<F> = spongos::NonceType<F>;
 pub type NonceType = Vec<u8>;
 
 pub struct Rng<G: PRP> {
@@ -156,7 +156,7 @@ impl<G: PRP> Rng<G> {
                 return true;
             }
         }
-        //self.nonce.push(0);
+        // self.nonce.push(0);
         false
     }
 }

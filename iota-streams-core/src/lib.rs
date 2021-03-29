@@ -44,13 +44,21 @@ pub const LOCATION_LOG: bool = false;
 #[cfg(feature = "err-location-log")]
 pub const LOCATION_LOG: bool = true;
 
-pub use anyhow::{Result, ensure, Error, bail, anyhow};
+pub use anyhow::{
+    anyhow,
+    bail,
+    ensure,
+    Error,
+    Result,
+};
 
+pub mod errors;
 pub mod prelude;
 pub mod prng;
 pub mod psk;
 pub mod sponge;
-pub mod errors;
 
-pub use errors::error_handler::*;
-pub use errors::error_messages::*;
+pub use errors::{
+    error_handler::*,
+    error_messages::*,
+};

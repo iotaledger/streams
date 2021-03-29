@@ -1,23 +1,26 @@
-use iota_streams_core::Result;
 use core::{
     cell::RefCell,
     fmt,
 };
+use iota_streams_core::Result;
 
 use iota_streams_core::{
+    err,
     prelude::{
+        string::ToString,
+        typenum::U32,
         vec,
         Vec,
-        typenum::U32,
-        string::ToString,
     },
     prng,
     psk,
-    sponge::prp::{Inner, PRP},
+    sponge::prp::{
+        Inner,
+        PRP,
+    },
     try_or,
-    err,
     Errors::*,
-    LOCATION_LOG
+    LOCATION_LOG,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -239,11 +242,13 @@ where
     /// Create a new channel (without announcing it). User now becomes Author.
     pub fn create_channel(&mut self, channel_idx: u64) -> Result<()> {
         if self.appinst.is_some() {
-            return err!(ChannelCreationFailure(self.appinst.as_ref().unwrap().base().to_string()));
+            return err!(ChannelCreationFailure(
+                self.appinst.as_ref().unwrap().base().to_string()
+            ));
         }
         self.link_gen.gen(&self.sig_kp.public, channel_idx);
         let appinst = self.link_gen.get();
-        
+
         self.pk_store.insert(
             self.sig_kp.public.clone(),
             Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
@@ -453,8 +458,8 @@ where
                 let psks = self.psk_store.filter(psk_ids);
                 let ke_pks = self.pk_store.filter(pks);
                 self.do_prepare_keyload(header, link_to, psks.into_iter(), ke_pks.into_iter())
-            },
-            None => err!(SeqNumRetrievalFailure)
+            }
+            None => err!(SeqNumRetrievalFailure),
         }
     }
 
@@ -488,8 +493,8 @@ where
                 let ipsks = self.psk_store.iter();
                 let ike_pks = self.pk_store.keys();
                 self.do_prepare_keyload(header, link_to, ipsks.into_iter(), ike_pks.into_iter())
-            },
-            None => err!(SeqNumRetrievalFailure)
+            }
+            None => err!(SeqNumRetrievalFailure),
         }
     }
 
@@ -564,8 +569,7 @@ where
     ) -> Result<GenericMessage<Link, bool>> {
         let preparsed = msg.parse_header()?;
 
-        let unwrapped = self
-            .unwrap_keyload(preparsed)?;
+        let unwrapped = self.unwrap_keyload(preparsed)?;
 
         if unwrapped.pcf.content.key.is_some() {
             // Do not commit if key not found hence spongos state is invalid
@@ -579,7 +583,8 @@ where
                 for ke_pk in content.ke_pks {
                     if self.pk_store.get(&ke_pk).is_none() {
                         // Store at state 2 since 0 and 1 are reserved states
-                        self.pk_store.insert(ke_pk, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
+                        self.pk_store
+                            .insert(ke_pk, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
                     }
                 }
             }
@@ -613,8 +618,8 @@ where
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
-            },
-            None => err!(SeqNumRetrievalFailure)
+            }
+            None => err!(SeqNumRetrievalFailure),
         }
     }
 
@@ -677,8 +682,8 @@ where
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
-            },
-            None => err!(SeqNumRetrievalFailure)
+            }
+            None => err!(SeqNumRetrievalFailure),
         }
     }
 
@@ -928,7 +933,7 @@ where
         Ok(())
     }
 
-    pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()>{
+    pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         self.pk_store
             .insert(self.sig_kp.public.clone(), Cursor::new_at(link.clone(), 0, seq_no + 1))?;
         for (_pk, cursor) in self.pk_store.iter_mut() {
@@ -952,17 +957,15 @@ where
     PSKS: PresharedKeyStore,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx
-            .mask(<&NBytes::<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
-            .absorb(Uint64(self.uniform_payload_length as u64))?
-        ;
+            .absorb(Uint64(self.uniform_payload_length as u64))?;
 
         let oneof_appinst = Uint8(if self.appinst.is_some() { 1 } else { 0 });
         ctx.absorb(&oneof_appinst)?;
         if let Some(ref appinst) = self.appinst {
-            ctx.absorb(<&Fallback::<Link>>::from(appinst))?;
+            ctx.absorb(<&Fallback<Link>>::from(appinst))?;
         }
 
         let oneof_author_sig_pk = Uint8(if self.author_sig_pk.is_some() { 1 } else { 0 });
@@ -978,38 +981,31 @@ where
         let repeated_psks = Size(psks.len());
         let pks = self.pk_store.iter();
         let repeated_pks = Size(pks.len());
-        ctx
-            .absorb(repeated_links)?
+        ctx.absorb(repeated_links)?
             .repeated(links.into_iter(), |ctx, (link, (s, info))| {
-                ctx
-                    .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(link))?
-                    .mask(<&NBytes::<F::CapacitySize>>::from(s.arr()))?
-                    .absorb(<&Fallback::<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(info))?
-                ;
+                ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
+                    .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
+                    .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
+                        info,
+                    ))?;
                 Ok(ctx)
             })?
             .absorb(repeated_psks)?
             .repeated(psks.into_iter(), |ctx, (pskid, psk)| {
-                ctx
-                    .mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
-                    .mask(<&NBytes<psk::PskSize>>::from(psk))?
-                ;
+                ctx.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
+                    .mask(<&NBytes<psk::PskSize>>::from(psk))?;
                 Ok(ctx)
             })?
             .absorb(repeated_pks)?
             .repeated(pks.into_iter(), |ctx, (pk, cursor)| {
-                ctx
-                    .absorb(pk)?
-                    .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(&cursor.link))?
+                ctx.absorb(pk)?
+                    .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
                     .absorb(Uint32(cursor.branch_no))?
-                    .absorb(Uint32(cursor.seq_no))?
-                ;
+                    .absorb(Uint32(cursor.seq_no))?;
                 Ok(ctx)
             })?
-
             .commit()?
-            .squeeze(Mac(32))?
-            ;
+            .squeeze(Mac(32))?;
         Ok(ctx)
     }
 }
@@ -1032,17 +1028,15 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx
-            .mask(<&NBytes::<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
-            .absorb(Uint64(self.uniform_payload_length as u64))?
-        ;
+            .absorb(Uint64(self.uniform_payload_length as u64))?;
 
         let oneof_appinst = Uint8(if self.appinst.is_some() { 1 } else { 0 });
         ctx.absorb(&oneof_appinst)?;
         if let Some(ref appinst) = self.appinst {
-            ctx.absorb(<&Fallback::<Link>>::from(appinst))?;
+            ctx.absorb(<&Fallback<Link>>::from(appinst))?;
         }
 
         let oneof_author_sig_pk = Uint8(if self.author_sig_pk.is_some() { 1 } else { 0 });
@@ -1058,38 +1052,31 @@ where
         let repeated_psks = Size(psks.len());
         let pks = self.pk_store.iter();
         let repeated_pks = Size(pks.len());
-        ctx
-            .absorb(repeated_links)?
+        ctx.absorb(repeated_links)?
             .repeated(links.into_iter(), |ctx, (link, (s, info))| {
-                ctx
-                    .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(link))?
-                    .mask(<&NBytes::<F::CapacitySize>>::from(s.arr()))?
-                    .absorb(<&Fallback::<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(info))?
-                ;
+                ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
+                    .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
+                    .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
+                        info,
+                    ))?;
                 Ok(ctx)
             })?
             .absorb(repeated_psks)?
             .repeated(psks.into_iter(), |ctx, (pskid, psk)| {
-                ctx
-                    .mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
-                    .mask(<&NBytes<psk::PskSize>>::from(psk))?
-                ;
+                ctx.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
+                    .mask(<&NBytes<psk::PskSize>>::from(psk))?;
                 Ok(ctx)
             })?
             .absorb(repeated_pks)?
             .repeated(pks.into_iter(), |ctx, (pk, cursor)| {
-                ctx
-                    .absorb(pk)?
-                    .absorb(<&Fallback::<<Link as HasLink>::Rel>>::from(&cursor.link))?
+                ctx.absorb(pk)?
+                    .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
                     .absorb(Uint32(cursor.branch_no))?
-                    .absorb(Uint32(cursor.seq_no))?
-                ;
+                    .absorb(Uint32(cursor.seq_no))?;
                 Ok(ctx)
             })?
-
             .commit()?
-            .squeeze(Mac(32))?
-            ;
+            .squeeze(Mac(32))?;
         Ok(ctx)
     }
 }
@@ -1121,30 +1108,25 @@ where
             .mask(&mut sig_sk_bytes)?
             .absorb(&mut flags)?
             .absorb(&mut message_encoding)?
-            .absorb(&mut uniform_payload_length)?
-        ;
+            .absorb(&mut uniform_payload_length)?;
 
         let mut oneof_appinst = Uint8(0);
-        ctx
-            .absorb(&mut oneof_appinst)?
-            .guard(oneof_appinst.0 < 2,
-                   AppInstRecoveryFailure(oneof_appinst.0)
-            )?;
+        ctx.absorb(&mut oneof_appinst)?
+            .guard(oneof_appinst.0 < 2, AppInstRecoveryFailure(oneof_appinst.0))?;
 
         let appinst = if oneof_appinst.0 == 1 {
             let mut appinst = Link::default();
-            ctx.absorb(<&mut Fallback::<Link>>::from(&mut appinst))?;
+            ctx.absorb(<&mut Fallback<Link>>::from(&mut appinst))?;
             Some(appinst)
         } else {
             None
         };
 
         let mut oneof_author_sig_pk = Uint8(0);
-        ctx
-            .absorb(&mut oneof_author_sig_pk)?
-            .guard(oneof_author_sig_pk.0 < 2,
-                   AuthorSigPkRecoveryFailure(oneof_author_sig_pk.0)
-            )?;
+        ctx.absorb(&mut oneof_author_sig_pk)?.guard(
+            oneof_author_sig_pk.0 < 2,
+            AuthorSigPkRecoveryFailure(oneof_author_sig_pk.0),
+        )?;
 
         let author_sig_pk = if oneof_author_sig_pk.0 == 1 {
             let mut author_sig_pk = ed25519::PublicKey::default();
@@ -1156,60 +1138,43 @@ where
 
         let mut repeated_links = Size(0);
         let mut link_store = LS::default();
-        ctx
-            .absorb(&mut repeated_links)?
-            .repeated(repeated_links, |ctx| {
-                let mut link = Fallback(<Link as HasLink>::Rel::default());
-                let mut s = NBytes::<F::CapacitySize>::default();
-                let mut info = Fallback(<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info::default());
-                ctx
-                    .absorb(&mut link)?
-                    .mask(&mut s)?
-                    .absorb(&mut info)?
-                ;
-                let a: GenericArray::<u8, F::CapacitySize> = s.into();
-                link_store.insert(&link.0, Inner::<F>::from(a), info.0)?;
-                Ok(ctx)
-            })?
-        ;
+        ctx.absorb(&mut repeated_links)?.repeated(repeated_links, |ctx| {
+            let mut link = Fallback(<Link as HasLink>::Rel::default());
+            let mut s = NBytes::<F::CapacitySize>::default();
+            let mut info = Fallback(<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info::default());
+            ctx.absorb(&mut link)?.mask(&mut s)?.absorb(&mut info)?;
+            let a: GenericArray<u8, F::CapacitySize> = s.into();
+            link_store.insert(&link.0, Inner::<F>::from(a), info.0)?;
+            Ok(ctx)
+        })?;
 
         let mut repeated_psks = Size(0);
         let mut psk_store = PSKS::default();
-        ctx
-            .absorb(&mut repeated_psks)?
-            .repeated(repeated_psks, |ctx| {
-                let mut pskid = NBytes::<psk::PskIdSize>::default();
-                let mut psk = NBytes::<psk::PskSize>::default();
-                ctx
-                    .mask(&mut pskid)?
-                    .mask(&mut psk)?
-                ;
-                psk_store.insert(pskid.0, psk.0);
-                Ok(ctx)
-            })?
-        ;
+        ctx.absorb(&mut repeated_psks)?.repeated(repeated_psks, |ctx| {
+            let mut pskid = NBytes::<psk::PskIdSize>::default();
+            let mut psk = NBytes::<psk::PskSize>::default();
+            ctx.mask(&mut pskid)?.mask(&mut psk)?;
+            psk_store.insert(pskid.0, psk.0);
+            Ok(ctx)
+        })?;
 
         let mut repeated_pks = Size(0);
         let mut pk_store = PKS::default();
-        ctx
-            .absorb(&mut repeated_pks)?
+        ctx.absorb(&mut repeated_pks)?
             .repeated(repeated_pks, |ctx| {
                 let mut pk = ed25519::PublicKey::default();
                 let mut link = Fallback(<Link as HasLink>::Rel::default());
                 let mut branch_no = Uint32(0);
                 let mut seq_no = Uint32(0);
-                ctx
-                    .absorb(&mut pk)?
+                ctx.absorb(&mut pk)?
                     .absorb(&mut link)?
                     .absorb(&mut branch_no)?
-                    .absorb(&mut seq_no)?
-                ;
+                    .absorb(&mut seq_no)?;
                 pk_store.insert(pk, Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
                 Ok(ctx)
             })?
             .commit()?
-            .squeeze(Mac(32))?
-        ;
+            .squeeze(Mac(32))?;
 
         let sig_sk = ed25519::SecretKey::from_bytes(sig_sk_bytes.as_ref()).unwrap();
         let sig_pk = ed25519::PublicKey::from(&sig_sk);
@@ -1249,10 +1214,7 @@ where
         const VERSION: u8 = 0;
         let buf_size = {
             let mut ctx = sizeof::Context::<F>::new();
-            ctx
-                .absorb(Uint8(VERSION))?
-                .absorb(Uint8(flag))?
-            ;
+            ctx.absorb(Uint8(VERSION))?.absorb(Uint8(flag))?;
             self.sizeof(&mut ctx)?;
             ctx.get_size()
         };
@@ -1263,17 +1225,12 @@ where
             let mut ctx = wrap::Context::new(&mut buf[..]);
             let prng = prng::from_seed::<F>("IOTA Streams Channels app", pwd);
             let key = NBytes::<U32>(prng.gen_arr("user export key"));
-            ctx
-                .absorb(Uint8(VERSION))?
+            ctx.absorb(Uint8(VERSION))?
                 .absorb(Uint8(flag))?
-                .absorb(External(&key))?
-            ;
+                .absorb(External(&key))?;
             let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
             self.wrap(&store, &mut ctx)?;
-            try_or!(
-                ctx.stream.is_empty(),
-                OutputStreamNotFullyConsumed(ctx.stream.len())
-            )?;
+            try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
         Ok(buf)
@@ -1300,25 +1257,16 @@ where
         let key = NBytes::<U32>(prng.gen_arr("user export key"));
         let mut version = Uint8(0);
         let mut flag2 = Uint8(0);
-        ctx
-            .absorb(&mut version)?
-            .guard(version.0 == VERSION,
-                   UserVersionRecoveryFailure(VERSION, version.0)
-            )?
+        ctx.absorb(&mut version)?
+            .guard(version.0 == VERSION, UserVersionRecoveryFailure(VERSION, version.0))?
             .absorb(&mut flag2)?
-            .guard(flag2.0 == flag,
-                   UserFlagRecoveryFailure(flag, flag2.0)
-            )?
-            .absorb(External(&key))?
-        ;
+            .guard(flag2.0 == flag, UserFlagRecoveryFailure(flag, flag2.0))?
+            .absorb(External(&key))?;
 
         let mut user = User::default();
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         user.unwrap(&store, &mut ctx)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            InputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
         Ok(user)
     }
 }

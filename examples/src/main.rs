@@ -9,12 +9,18 @@ use rand::Rng;
 
 use iota_streams::{
     app::transport::{
+        tangle::client::{
+            Client,
+            SendOptions,
+        },
         TransportOptions,
-        tangle::client::{SendOptions, Client, },
     },
     app_channels::api::tangle::Transport,
     core::{
-        prelude::{ String, Rc, },
+        prelude::{
+            Rc,
+            String,
+        },
         Result,
     },
 };
@@ -23,10 +29,7 @@ use core::cell::RefCell;
 
 mod branching;
 
-fn run_single_branch_test<T: Transport>(
-    transport: Rc<RefCell<T>>,
-    seed: &str,
-){
+fn run_single_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
     println!("\tRunning Single Branch Test, seed: {}", seed);
     match branching::single_branch::example(transport, false, seed) {
         Err(err) => println!("Error in Single Branch test: {:?}", err),
@@ -35,10 +38,7 @@ fn run_single_branch_test<T: Transport>(
     println!("#######################################");
 }
 
-fn run_multi_branch_test<T: Transport>(
-    transport: Rc<RefCell<T>>,
-    seed: &str,
-){
+fn run_multi_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
     println!("\tRunning Multi Branch Test, seed: {}", seed);
     match branching::multi_branch::example(transport, true, seed) {
         Err(err) => println!("Error in Multi Branch test: {:?}", err),
@@ -47,8 +47,7 @@ fn run_multi_branch_test<T: Transport>(
     println!("#######################################");
 }
 
-fn run_main<T: Transport>(transport: T) -> Result<()>
-{
+fn run_main<T: Transport>(transport: T) -> Result<()> {
     let seed1: &str = "SEEDSINGLE";
     let seed2: &str = "SEEDMULTI9";
 
@@ -117,5 +116,5 @@ fn main_client() {
 #[tokio::main]
 async fn main() {
     main_pure();
-    //main_client();
+    // main_client();
 }

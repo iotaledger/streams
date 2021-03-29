@@ -49,21 +49,21 @@
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
 
-use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
 };
 use iota_streams_core::{
     prelude::{
-        Vec,
         typenum::Unsigned as _,
+        Vec,
     },
     psk,
     sponge::{
         prp::PRP,
         spongos,
     },
+    Result,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -139,8 +139,7 @@ where
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         let repeated_psks = Size(self.psks.len());
         let repeated_ke_pks = Size(self.ke_pks.len());
-        ctx
-            .join(store, self.link)?
+        ctx.join(store, self.link)?
             .absorb(&self.nonce)?
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
@@ -153,11 +152,7 @@ where
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone().into_iter(), |ctx, (sig_pk, ke_pk)| {
-                ctx.fork(|ctx|
-                         ctx
-                         .absorb(sig_pk)?
-                         .x25519(ke_pk, &self.key)
-                )
+                ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
             })?
             .absorb(External(&self.key))?
             .ed25519(self.sig_kp, HashSig)?
@@ -283,11 +278,7 @@ where
             //.guard(self.key.is_some(), "Key not found")?
         ;
         if let Some(ref key) = self.key {
-            ctx
-                .absorb(External(key))?
-                .ed25519(self.sig_pk, HashSig)?
-                .commit()?
-            ;
+            ctx.absorb(External(key))?.ed25519(self.sig_pk, HashSig)?.commit()?;
         }
         Ok(ctx)
     }

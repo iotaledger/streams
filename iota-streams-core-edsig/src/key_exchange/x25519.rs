@@ -4,14 +4,14 @@ use iota_streams_core::Result;
 use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;
 use iota_streams_core::{
+    err,
     prelude::{
         HashSet,
         Vec,
     },
     println,
-    err,
+    Errors::KeyConversionFailure,
     LOCATION_LOG,
-    Errors::KeyConversionFailure
 };
 pub use x25519_dalek::{
     EphemeralSecret,
@@ -36,11 +36,12 @@ pub fn public_from_ed25519(pk: &ed25519::PublicKey) -> Result<PublicKey> {
     // `pk.to_bytes` returns Y coordinate
     // try reconstruct X,Y,Z,T coordinates of `EdwardsPoint`
     match edwards::CompressedEdwardsY(pk.to_bytes()).decompress() {
-        Some(compressed_edwards) => {// pk is a valid `PublicKey` hence contains valid `EdwardsPoint`
+        Some(compressed_edwards) => {
+            // pk is a valid `PublicKey` hence contains valid `EdwardsPoint`
             // x25519 uses Montgomery form, and `PublicKey` is just a `MontgomeryPoint`
             Ok(PublicKey::from(compressed_edwards.to_montgomery().to_bytes()))
-        },
-        None => err!(KeyConversionFailure)?
+        }
+        None => err!(KeyConversionFailure)?,
     }
 }
 

@@ -1,11 +1,13 @@
-use iota_streams_core::Result;
 use core::hash;
+use iota_streams_core::Result;
 
+use core::fmt::Display;
 use iota_streams_core::{
+    err,
     prelude::{
-        Vec,
+        string::ToString,
         HashMap,
-        string::ToString
+        Vec,
     },
     sponge::{
         prp::{
@@ -15,11 +17,12 @@ use iota_streams_core::{
         spongos::Spongos,
     },
     try_or,
-    err,
+    Errors::{
+        GenericLinkNotFound,
+        MessageLinkNotFoundInTangle,
+    },
     LOCATION_LOG,
-    Errors::{GenericLinkNotFound, MessageLinkNotFoundInTangle}
 };
-use core::fmt::Display;
 
 /// The `link` type is generic and transport-specific. Links can be address+tag pair
 /// when messages are published in the Tangle. Or links can be a URL when HTTP is used.
@@ -46,12 +49,16 @@ pub trait LinkStore<F, Link> {
     /// Not updating the spongos state means immutability -- "the first one makes the history".
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()>;
 
-    fn insert(&mut self, link: &Link, spongos: Inner<F>, info: Self::Info) -> Result<()> where F: PRP;
+    fn insert(&mut self, link: &Link, spongos: Inner<F>, info: Self::Info) -> Result<()>
+    where
+        F: PRP;
 
     /// Remove link and associated info from the store.
     fn erase(&mut self, _link: &Link) {}
 
-    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> where F: PRP;
+    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))>
+    where
+        F: PRP;
 }
 
 /// Empty "dummy" link store that stores no links.
@@ -69,10 +76,16 @@ impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
     fn update(&mut self, _link: &Link, _spongos: Spongos<F>, _info: Self::Info) -> Result<()> {
         Ok(())
     }
-    fn insert(&mut self, _link: &Link, _spongos: Inner<F>, _info: Self::Info) -> Result<()> where F: PRP {
+    fn insert(&mut self, _link: &Link, _spongos: Inner<F>, _info: Self::Info) -> Result<()>
+    where
+        F: PRP,
+    {
         Ok(())
     }
-    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> where F: PRP {
+    fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))>
+    where
+        F: PRP,
+    {
         Vec::new()
     }
 }
@@ -102,9 +115,7 @@ where
 {
     type Info = Info;
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        try_or!(self.link() == link,
-                             MessageLinkNotFoundInTangle(link.to_string())
-        )?;
+        try_or!(self.link() == link, MessageLinkNotFoundInTangle(link.to_string()))?;
         Ok((self.spongos().into(), self.info().clone()))
     }
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
@@ -153,7 +164,7 @@ where
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
         match self.map.get(link) {
             Some((inner, info)) => Ok((inner.into(), info.clone())),
-            None => err!(MessageLinkNotFoundInTangle(link.to_string()))
+            None => err!(MessageLinkNotFoundInTangle(link.to_string())),
         }
     }
 

@@ -3,22 +3,20 @@ use iota_streams::{
         message::HasLink,
         transport::tangle::PAYLOAD_BYTES,
     },
-    app_channels::{
-        api::tangle::{
-            Author,
-            Subscriber,
-            Transport,
-        },
+    app_channels::api::tangle::{
+        Author,
+        Subscriber,
+        Transport,
     },
     core::{
+        panic_if_not,
         prelude::Rc,
         print,
         println,
         try_or,
-        panic_if_not,
-        LOCATION_LOG,
         Errors::*,
         Result,
+        LOCATION_LOG,
     },
     ddml::types::*,
 };
@@ -27,12 +25,7 @@ use core::cell::RefCell;
 
 use super::utils;
 
-pub fn example<T: Transport>(
-    transport: Rc<RefCell<T>>,
-    multi_branching: bool,
-    seed: &str,
-) -> Result<()>
-{
+pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, seed: &str) -> Result<()> {
     let encoding = "utf-8";
     let mut author = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching, transport.clone());
     println!("Author multi branching?: {}", author.is_multi_branching());
@@ -127,9 +120,7 @@ pub fn example<T: Transport>(
     {
         let resultC = subscriberC.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(resultC == false,
-                             SubscriberAccessMismatch(String::from("C"))
-        )?;
+        try_or!(resultC == false, SubscriberAccessMismatch(String::from("C")))?;
         subscriberA.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
         subscriberB.receive_keyload(&previous_msg_link)?;
@@ -150,11 +141,13 @@ pub fn example<T: Transport>(
     {
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
-        try_or!(public_payload == unwrapped_public,
+        try_or!(
+            public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
     }
 
@@ -174,19 +167,18 @@ pub fn example<T: Transport>(
     {
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&previous_msg_link)?;
         print!("  Author     : {}", author);
-        try_or!(public_payload == unwrapped_public,
+        try_or!(
+            public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
         let resultC = subscriberC.receive_tagged_packet(&previous_msg_link);
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(
-            resultC.is_err(),
-            SubscriberAccessMismatch(String::from("C"))
-       )?;
+        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
     }
 
     println!("\nTagged packet 2 - SubscriberA");
@@ -223,19 +215,18 @@ pub fn example<T: Transport>(
     {
         let (unwrapped_public, unwrapped_masked) = subscriberA.receive_tagged_packet(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
-        try_or!(public_payload == unwrapped_public,
+        try_or!(
+            public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
         let resultC = subscriberC.receive_tagged_packet(&previous_msg_link);
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(
-            resultC.is_err(),
-            SubscriberAccessMismatch(String::from("C"))
-        )?;
+        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
     }
 
     println!("\nAuthor fetching transactions...");
@@ -254,20 +245,24 @@ pub fn example<T: Transport>(
     {
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
-        try_or!(public_payload == unwrapped_public,
+        try_or!(
+            public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&previous_msg_link)?;
         print!("  SubscriberB: {}", subscriberB);
-        try_or!(public_payload == unwrapped_public,
+        try_or!(
+            public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
         )?;
-        try_or!(masked_payload == unwrapped_masked,
-                             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
     }
 

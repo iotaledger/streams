@@ -3,7 +3,10 @@ use core::{
     hash,
 };
 
-use iota_streams_core::prelude::{Vec, hex,};
+use iota_streams_core::prelude::{
+    hex,
+    Vec,
+};
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
 #[derive(PartialEq, Eq, Clone, Debug, Default)]

@@ -15,20 +15,18 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 // Need to provide a tiny `panic_fmt` lang-item implementation for `#![no_std]`.
 // This implementation will translate panics into traps in the resulting
 // WebAssembly.
-/*
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    core::intrinsics::abort()
-}
-
-#[alloc_error_handler]
-fn alloc_error(_: core::alloc::Layout) -> ! {
-    core::intrinsics::abort()
-}
-
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}
- */
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+// core::intrinsics::abort()
+// }
+//
+// #[alloc_error_handler]
+// fn alloc_error(_: core::alloc::Layout) -> ! {
+// core::intrinsics::abort()
+// }
+//
+// #[lang = "eh_personality"]
+// extern "C" fn eh_personality() {}
 
 #[no_mangle]
 pub extern "C" fn WinMainCRTStartup() -> () {
@@ -110,7 +108,10 @@ pub unsafe extern "C" fn memcmp(mem1: *const u8, mem2: *const u8, n: usize) -> i
     0
 }
 
-use iota_streams::app_channels::api::tangle::{BucketTransport, test::example, };
+use iota_streams::app_channels::api::tangle::{
+    test::example,
+    BucketTransport,
+};
 
 fn minmain() {
     let transport = BucketTransport::new();

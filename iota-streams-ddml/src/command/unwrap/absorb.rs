@@ -21,9 +21,11 @@ use crate::{
     },
 };
 use iota_streams_core::{
+    err,
     sponge::prp::PRP,
-    {err, Result, LOCATION_LOG},
     Errors::PublicKeyGenerationFailure,
+    Result,
+    LOCATION_LOG,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -150,7 +152,7 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context
                 *pk = apk;
                 Ok(self)
             }
-            Err(_) => err!(PublicKeyGenerationFailure)
+            Err(_) => err!(PublicKeyGenerationFailure),
         }
     }
 }

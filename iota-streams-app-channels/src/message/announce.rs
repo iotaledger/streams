@@ -19,7 +19,6 @@
 //! * `tag` -- hash-value to be signed.
 //!
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
-//!
 
 use iota_streams_core::Result;
 
@@ -51,8 +50,7 @@ impl<'a, F> ContentWrap<'a, F> {
     }
 }
 
-impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F>
-{
+impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.sig_kp.public)?;
         ctx.absorb(&self.flags)?;
@@ -61,8 +59,7 @@ impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F>
     }
 }
 
-impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F>
-{
+impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
     fn wrap<'c, OS: io::OStream>(
         &self,
         _store: &Store,

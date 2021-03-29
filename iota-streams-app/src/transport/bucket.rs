@@ -1,12 +1,15 @@
 use super::*;
-use core::hash;
 use crate::message::LinkedMessage;
+use core::hash;
 
 use iota_streams_core::{
-    prelude::{HashMap, string::ToString},
     err,
+    prelude::{
+        string::ToString,
+        HashMap,
+    },
     Errors::MessageLinkNotFound,
-    LOCATION_LOG
+    LOCATION_LOG,
 };
 
 #[cfg(feature = "async")]
@@ -100,7 +103,6 @@ where
     }
 
     async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
             try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()));
