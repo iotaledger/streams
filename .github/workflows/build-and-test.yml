@@ -9,7 +9,7 @@ on:
       - github-actions
       - dev
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 jobs:
   build-and-test:
@@ -38,12 +38,12 @@ jobs:
           override: true
 
       - name: Get current date
-        if: matrix.os == 'ubuntu-latest'
-        run: echo "::set-env name=CURRENT_DATE::$(date +'%Y-%m-%d')"
+        run: echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+        if: matrix.os == 'macos-latest' || matrix.os == 'ubuntu-latest'
 
       - name: Get current date
         if: matrix.os == 'windows-latest'
-        run: echo "::set-env name=CURRENT_DATE::$(Get-Date -Format "yyyy-MM-dd")"
+        run: echo "CURRENT_DATE=$(Get-Date -Format "yyyy-MM-dd")" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Cache cargo registry
         uses: actions/cache@v2
