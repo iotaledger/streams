@@ -16,16 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        project:
-          [
-            "iota-streams-core",
-            "iota-streams-core-edsig",
-            "iota-streams-core-keccak",
-            "iota-streams-ddml",
-            "iota-streams-app",
-            "iota-streams-app-channels",
-          ]
 
     steps:
       - uses: actions/checkout@v2
@@ -39,5 +29,5 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --manifest-path=${{ matrix.project }}/Cargo.toml --all-targets --all-features -- -D warnings
-          name: clippy-${{ matrix.project }}
+          args: --all-targets --all-features -- -D warnings
+          name: clippy-streams-rust
