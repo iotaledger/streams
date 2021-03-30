@@ -17,4 +17,4 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [dependencies]
 iota-streams = {path = "../../", default-features = false, features = ["tangle"]}
 
-hex = "0.4.3"
+hex = "0.4"

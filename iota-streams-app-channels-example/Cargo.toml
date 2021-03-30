@@ -14,7 +14,7 @@ tangle = ["iota-streams/tangle"]
 [dependencies]
 wee_alloc = "0.4.5"
 iota-streams = { version = "1.0.0", path = "..", default-features = false}
-hex = { version = "0.4.3", default-features = false }
+hex = { version = "0.4", default-features = false}
 #[profile.release]
 ##inherits = "release"
 #opt-level = 's'
