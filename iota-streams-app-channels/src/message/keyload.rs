@@ -243,13 +243,13 @@ where
                             Ok(ctx)
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
-                            let n = Size(0 + 0 + spongos::KeySize::<F>::USIZE);
+                            let n = Size(spongos::KeySize::<F>::USIZE);
                             ctx.drop(n)
                         }
                     })
                 } else {
                     // Drop entire fork.
-                    let n = Size(psk::PSKID_SIZE + 0 + 0 + spongos::KeySize::<F>::USIZE);
+                    let n = Size(psk::PSKID_SIZE + spongos::KeySize::<F>::USIZE);
                     ctx.drop(n)
                 }
             })?

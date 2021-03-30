@@ -11,7 +11,7 @@ use iota_streams_core_edsig::{
 };
 
 pub trait PublicKeyStore<Info>: Default {
-    fn filter<'a>(&'a self, pks: &'a Vec<ed25519::PublicKey>) -> Vec<(&'a ed25519::PublicKey, &'a x25519::PublicKey)>;
+    fn filter<'a>(&'a self, pks: &'a [ed25519::PublicKey]) -> Vec<(&'a ed25519::PublicKey, &'a x25519::PublicKey)>;
 
     /// Retrieve the sequence state for a given publisher
     fn get(&self, pk: &ed25519::PublicKey) -> Option<&Info>;
@@ -42,7 +42,7 @@ impl<Info> Default for PublicKeyMap<Info> {
 }
 
 impl<Info> PublicKeyStore<Info> for PublicKeyMap<Info> {
-    fn filter<'a>(&'a self, pks: &'a Vec<ed25519::PublicKey>) -> Vec<(&'a ed25519::PublicKey, &'a x25519::PublicKey)> {
+    fn filter<'a>(&'a self, pks: &'a [ed25519::PublicKey]) -> Vec<(&'a ed25519::PublicKey, &'a x25519::PublicKey)> {
         pks.iter()
             .filter_map(|pk| self.pks.get_key_value(pk.into()).map(|(e, (x, _))| (&e.0, x)))
             .collect()

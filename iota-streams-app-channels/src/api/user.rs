@@ -107,7 +107,9 @@ impl<F, Link: HasLink> WrappedSequence<F, Link> {
     pub fn with_wrapped(mut self, m: WrappedMessage<F, Link>) -> Self {
         self.0 = Some(m.message);
         let wrapped = m.wrapped;
-        self.1.as_mut().map(|w| w.set_state(wrapped));
+        if let Some(w) = self.1.as_mut() {
+            w.set_state(wrapped)
+        }
         self
     }
 }
@@ -283,9 +285,9 @@ where
         self.prepare_announcement()?.wrap()
     }
 
-    pub fn unwrap_announcement<'a>(
+    pub fn unwrap_announcement(
         &self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, announce::ContentUnwrap<F>>> {
         if let Some(appinst) = &self.appinst {
             try_or!(
@@ -301,7 +303,7 @@ where
 
     /// Bind Subscriber (or anonymously subscribe) to the channel announced
     /// in the message.
-    pub fn handle_announcement<'a>(
+    pub fn handle_announcement(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -324,7 +326,7 @@ where
         // At the moment the Author is free to choose any address, not tied to PK.
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
-        self.pk_store.insert(content.sig_pk.clone(), cursor.clone())?;
+        self.pk_store.insert(content.sig_pk, cursor.clone())?;
         self.pk_store.insert(self.sig_kp.public, cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
@@ -380,7 +382,7 @@ where
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
-    pub fn handle_subscribe<'a>(
+    pub fn handle_subscribe(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -561,7 +563,7 @@ where
     }
 
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or NTRU private key (if any).
-    pub fn handle_keyload<'a>(
+    pub fn handle_keyload(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -643,8 +645,8 @@ where
     }
 
     /// Verify new Author's MSS public key and update Author's MSS public key.
-    pub fn handle_signed_packet<'a>(
-        &'a mut self,
+    pub fn handle_signed_packet(
+        &'_ mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, (ed25519::PublicKey, Bytes, Bytes)>> {
@@ -698,9 +700,9 @@ where
             .wrap()
     }
 
-    pub fn unwrap_tagged_packet<'a>(
+    pub fn unwrap_tagged_packet(
         &self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, tagged_packet::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
         let content = tagged_packet::ContentUnwrap::new();
@@ -708,7 +710,7 @@ where
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
-    pub fn handle_tagged_packet<'a>(
+    pub fn handle_tagged_packet(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -843,9 +845,9 @@ where
     // }
     // }
 
-    pub fn unwrap_sequence<'a>(
+    pub fn unwrap_sequence(
         &self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, sequence::ContentUnwrap<Link>>> {
         self.ensure_appinst(&preparsed)?;
         let content = sequence::ContentUnwrap::default();
@@ -853,7 +855,7 @@ where
     }
 
     // Fetch unwrapped sequence message to fetch referenced message
-    pub fn handle_sequence<'a>(
+    pub fn handle_sequence(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
