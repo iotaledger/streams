@@ -18,6 +18,7 @@ use iota_streams_ddml::{
 
 use super::*;
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct PCF<Content> {
     pub frame_type: Uint8,
     // 22-bit field

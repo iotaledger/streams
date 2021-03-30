@@ -25,6 +25,9 @@ use iota_streams_core::{
         prp::PRP,
         spongos::Spongos,
     },
+    try_or,
+    Errors::*,
+    LOCATION_LOG,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -127,10 +130,17 @@ pub struct TangleAddress {
 }
 
 impl TangleAddress {
-    pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self, ()> {
-        let appinst = AppInst::from_str(appinst_str)?;
-        let msgid = MsgId::from_str(msgid_str)?;
-        Ok(TangleAddress { appinst, msgid })
+    pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self> {
+        let appinst = AppInst::from_str(appinst_str);
+        try_or!(appinst.is_ok(), StateStoreFailure)?;
+
+        let msgid = MsgId::from_str(msgid_str);
+        try_or!(msgid.is_ok(), StateStoreFailure)?;
+
+        Ok(TangleAddress {
+            appinst: appinst.unwrap(),
+            msgid: msgid.unwrap(),
+        })
     }
     /// # Safety
     ///

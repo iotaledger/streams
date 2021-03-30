@@ -24,6 +24,7 @@ use super::*;
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
 #[derive(Clone)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct HDF<Link> {
     pub encoding: Uint8,
     pub version: Uint8,
