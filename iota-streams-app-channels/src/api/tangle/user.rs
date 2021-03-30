@@ -217,7 +217,7 @@ impl<Trans: Transport> User<Trans> {
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
-        ke_pks: &[PublicKey],
+        ke_pks: &Vec<PublicKey>,
     ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload(&link_to.msgid, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
