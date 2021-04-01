@@ -26,7 +26,7 @@ use iota_streams_core::{
         spongos::Spongos,
     },
     try_or,
-    Errors::*,
+    Errors::InvalidHex,
     LOCATION_LOG,
 };
 use iota_streams_core_edsig::signature::ed25519;
@@ -132,10 +132,10 @@ pub struct TangleAddress {
 impl TangleAddress {
     pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self> {
         let appinst = AppInst::from_str(appinst_str);
-        try_or!(appinst.is_ok(), StateStoreFailure)?;
+        try_or!(appinst.is_ok(), InvalidHex(appinst_str.into()))?;
 
         let msgid = MsgId::from_str(msgid_str);
-        try_or!(msgid.is_ok(), StateStoreFailure)?;
+        try_or!(msgid.is_ok(), InvalidHex(msgid_str.into()))?;
 
         Ok(TangleAddress {
             appinst: appinst.unwrap(),

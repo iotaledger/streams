@@ -54,10 +54,7 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_content_type(mut self, content_type: u8) -> Result<Self> {
-        try_or!(
-            content_type < 0x10,
-            ValueOutOfRange(0x10 as usize, content_type as usize)
-        )?;
+        try_or!(content_type < 0x10, ValueOutOfRange(0x10_usize, content_type as usize))?;
         self.content_type = content_type;
         Ok(self)
     }
@@ -67,10 +64,7 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_payload_length(mut self, payload_length: usize) -> Result<Self> {
-        try_or!(
-            payload_length < 0x0400,
-            MaxSizeExceeded(0x0400 as usize, payload_length)
-        )?;
+        try_or!(payload_length < 0x0400, MaxSizeExceeded(0x0400_usize, payload_length))?;
         self.payload_length = payload_length;
         Ok(self)
     }
@@ -82,7 +76,7 @@ impl<Link> HDF<Link> {
     pub fn with_payload_frame_count(mut self, payload_frame_count: u32) -> Result<Self> {
         try_or!(
             payload_frame_count < 0x400000,
-            MaxSizeExceeded(0x400000 as usize, payload_frame_count as usize)
+            MaxSizeExceeded(0x400000_usize, payload_frame_count as usize)
         )?;
         self.payload_frame_count = payload_frame_count;
         Ok(self)
@@ -102,14 +96,8 @@ impl<Link> HDF<Link> {
     }
 
     pub fn new_with_fields(link: Link, content_type: u8, payload_length: usize, seq_num: u64) -> Result<Self> {
-        try_or!(
-            content_type < 0x10,
-            ValueOutOfRange(0x10 as usize, content_type as usize)
-        )?;
-        try_or!(
-            payload_length < 0x0400,
-            MaxSizeExceeded(0x0400 as usize, payload_length)
-        )?;
+        try_or!(content_type < 0x10, ValueOutOfRange(0x10_usize, content_type as usize))?;
+        try_or!(payload_length < 0x0400, MaxSizeExceeded(0x0400_usize, payload_length))?;
         Ok(Self {
             encoding: UTF8,
             version: STREAMS_1_VER,
