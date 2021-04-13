@@ -85,10 +85,8 @@ fn main_client() {
 
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
-    let node_mwm: u8 = env::var("MWM").map(|s| s.parse().unwrap_or(14)).unwrap_or(14);
 
     let mut send_opt = SendOptions::default();
-    send_opt.min_weight_magnitude = node_mwm;
 
     // Fails at unwrap when the url isnt working
     // TODO: Fail gracefully

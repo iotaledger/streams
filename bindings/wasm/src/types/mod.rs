@@ -31,7 +31,6 @@ pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {
 #[wasm_bindgen]
 pub struct SendOptions {
     pub depth: u8,
-    pub min_weight_magnitude: u8,
     pub local_pow: bool,
     pub threads: usize,
 }
@@ -40,7 +39,6 @@ impl From<SendOptions> for ApiSendOptions {
     fn from(options: SendOptions) -> Self {
         Self {
             depth: options.depth,
-            min_weight_magnitude: options.min_weight_magnitude,
             local_pow: options.local_pow,
             threads: options.threads,
         }
@@ -50,10 +48,9 @@ impl From<SendOptions> for ApiSendOptions {
 #[wasm_bindgen]
 impl SendOptions {
     #[wasm_bindgen(constructor)]
-    pub fn new(depth: u8, min_weight_magnitude: u8, local_pow: bool, threads: usize) -> Self {
+    pub fn new(depth: u8, local_pow: bool, threads: usize) -> Self {
         Self {
             depth,
-            min_weight_magnitude,
             local_pow,
             threads,
         }
