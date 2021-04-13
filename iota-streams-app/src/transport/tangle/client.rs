@@ -8,7 +8,6 @@ use iota_streams_core::prelude::Rc;
 pub use iota::client as iota_client;
 
 use iota::{
-    client as iota_client,
     message::payload::Payload,
     Message,
 };
