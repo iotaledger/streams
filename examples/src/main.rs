@@ -3,6 +3,7 @@
 //#![no_std]
 
 use dotenv;
+use futures::executor::block_on;
 use std::env;
 
 use rand::Rng;
@@ -10,6 +11,7 @@ use rand::Rng;
 use iota_streams::{
     app::transport::{
         tangle::client::{
+            iota_client,
             Client,
             SendOptions,
         },
@@ -83,15 +85,24 @@ fn main_client() {
 
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
-    let node_mwm: u8 = env::var("MWM").map(|s| s.parse().unwrap_or(14)).unwrap_or(14);
+
+    let mut send_opt = SendOptions::default();
 
     // Fails at unwrap when the url isnt working
     // TODO: Fail gracefully
-    let client = Client::new_from_url(&node_url);
+    let iota_client = block_on(
+        iota_client::ClientBuilder::new()
+            .with_node(&node_url)
+            .unwrap()
+            //.with_node_sync_disabled()
+            .with_local_pow(false)
+            .finish(),
+    )
+    .unwrap();
+
+    let client = Client::new(send_opt, iota_client);
 
     let mut transport = Rc::new(RefCell::new(client));
-    let mut send_opt = SendOptions::default();
-    send_opt.min_weight_magnitude = node_mwm;
     transport.set_send_options(send_opt);
 
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
@@ -115,6 +126,6 @@ fn main_client() {
 
 #[tokio::main]
 async fn main() {
-    main_pure();
-    // main_client();
+    // main_pure();
+    main_client();
 }

@@ -5,6 +5,8 @@ use core::cell::RefCell;
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::Rc;
 
+pub use iota::client as iota_client;
+
 use iota::{
     client as iota_client,
     message::payload::Payload,
@@ -42,7 +44,6 @@ use iota_streams_core::prelude::String;
 #[derive(Clone, Copy)]
 pub struct SendOptions {
     pub depth: u8,
-    pub min_weight_magnitude: u8,
     pub local_pow: bool,
     pub threads: usize,
 }
@@ -51,7 +52,6 @@ impl Default for SendOptions {
     fn default() -> Self {
         Self {
             depth: 3,
-            min_weight_magnitude: 14,
             local_pow: true,
             #[cfg(target_arch = "wasm32")]
             threads: 1,
