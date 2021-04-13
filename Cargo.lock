@@ -211,9 +211,9 @@ dependencies = [
 [[package]]
 name = "bee-crypto"
 version = "0.2.0-alpha"
-source = "git+https://github.com/iotaledger/bee.git?branch=dev#a65bfad5dfdc8aa46d34b6b58899007a43d72340"
+source = "git+https://github.com/iotaledger/bee.git?rev=c42171ff33c80cc2efb183e244dc79b7f58d9ac4#c42171ff33c80cc2efb183e244dc79b7f58d9ac4"
 dependencies = [
- "bee-ternary 0.4.1-alpha",
+ "bee-ternary 0.4.0-alpha",
  "byteorder",
  "lazy_static",
  "thiserror",
@@ -1319,18 +1319,6 @@ dependencies = [
  "hex",
  "iota-streams",
  "wee_alloc",
-]
-
-[[package]]
-name = "iota-streams-basic-scenario"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "dotenv",
- "futures",
- "iota-streams",
- "rand 0.7.3",
- "tokio",
 ]
 
 [[package]]
