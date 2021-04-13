@@ -1,0 +1,43 @@
+name: Format
+
+on:
+  push:
+    branches:
+      - github-actions
+      - dev
+  pull_request:
+    branches:
+      - github-actions
+      - dev
+    paths-ignore:
+      - 'docs/**'
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          [
+            "iota-streams-core",
+            "iota-streams-core-edsig",
+            "iota-streams-core-keccak",
+            "iota-streams-ddml",
+            "iota-streams-app",
+            "iota-streams-app-channels",
+          ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install rustfmt with nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --manifest-path=${{ matrix.project }}/Cargo.toml --all -- --check

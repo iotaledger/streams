@@ -337,15 +337,15 @@ impl<F: PRP> From<&Inner<F>> for Spongos<F> {
     }
 }
 
-impl<F: PRP> Into<Inner<F>> for Spongos<F> {
-    fn into(self) -> Inner<F> {
-        self.to_inner().unwrap()
+impl<F: PRP> From<Spongos<F>> for Inner<F> {
+    fn from(inner: Spongos<F>) -> Self {
+        inner.to_inner().unwrap()
     }
 }
 
-impl<F: PRP> Into<Inner<F>> for &Spongos<F> {
-    fn into(self) -> Inner<F> {
-        self.to_inner().unwrap()
+impl<F: PRP> From<&Spongos<F>> for Inner<F> {
+    fn from(inner: &Spongos<F>) -> Self {
+        inner.to_inner().unwrap()
     }
 }
 

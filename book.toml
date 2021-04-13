@@ -1,0 +1,25 @@
+[book]
+authors = ["Brord van Wierst <brord@iota.org>"]
+language = "en"
+multilingual = false
+src = "./docs"
+title = "IOTA Streams"
+
+[output.html]
+default-theme = "iota"
+theme = "./docs/theme"
+git-repository-url = "https://github.com/iotaledger/streams"
+git-repository-icon = "fa-github"
+additional-css = ["./docs/theme/css/custom/header.css"]
+
+[output.html.playpen]
+editable = false
+
+[output.html.search]
+limit-results = 20
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 2
+boost-paragraph = 1
+expand = true
+heading-split-level = 2

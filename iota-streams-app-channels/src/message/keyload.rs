@@ -168,6 +168,8 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub nonce: NBytes<U16>, // TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
     pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
+
+    #[allow(dead_code)]
     pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub(crate) ke_pks: Vec<ed25519::PublicKey>,
@@ -243,13 +245,13 @@ where
                             Ok(ctx)
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
-                            let n = Size(0 + 0 + spongos::KeySize::<F>::USIZE);
+                            let n = Size(spongos::KeySize::<F>::USIZE);
                             ctx.drop(n)
                         }
                     })
                 } else {
                     // Drop entire fork.
-                    let n = Size(psk::PSKID_SIZE + 0 + 0 + spongos::KeySize::<F>::USIZE);
+                    let n = Size(psk::PSKID_SIZE + spongos::KeySize::<F>::USIZE);
                     ctx.drop(n)
                 }
             })?
@@ -263,7 +265,7 @@ where
                         ctx.x25519(ke_sk, &mut key)?;
                         self.key = Some(key);
                         // Save the relevant public key
-                        self.ke_pk = ke_pk.clone();
+                        self.ke_pk = ke_pk;
                         self.ke_pks.push(ke_pk);
                         Ok(ctx)
                     } else {

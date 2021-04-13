@@ -109,6 +109,7 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),

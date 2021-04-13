@@ -71,7 +71,7 @@ where
         Ok(WrappedMessage {
             wrapped: WrapState {
                 link: self.header.link.clone(),
-                spongos: spongos,
+                spongos,
             },
             message: BinaryMessage {
                 link: self.header.link.clone(),

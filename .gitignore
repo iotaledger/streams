@@ -1,11 +1,12 @@
 /target
 /debug
+/act
 **/target/
 **/*.rs.bk
 *.rs~
 *.toml~
 *.md~
-
+book
 .vscode
 .project
 .env

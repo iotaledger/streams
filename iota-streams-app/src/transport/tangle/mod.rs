@@ -25,6 +25,9 @@ use iota_streams_core::{
         prp::PRP,
         spongos::Spongos,
     },
+    try_or,
+    Errors::InvalidHex,
+    LOCATION_LOG,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -127,21 +130,28 @@ pub struct TangleAddress {
 }
 
 impl TangleAddress {
-    pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self, ()> {
-        let appinst = AppInst::from_str(appinst_str)?;
-        let msgid = MsgId::from_str(msgid_str)?;
-        Ok(TangleAddress { appinst, msgid })
-    }
+    pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self> {
+        let appinst = AppInst::from_str(appinst_str);
+        try_or!(appinst.is_ok(), InvalidHex(appinst_str.into()))?;
 
-    pub fn from_c_str(c_addr: *const c_char) -> *const Self {
-        unsafe {
-            c_addr.as_ref().map_or(null(), |c_addr| {
-                CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
-                    let addr_vec: Vec<&str> = addr_str.split(":").collect();
-                    Self::from_str(addr_vec[0], addr_vec[1]).map_or(null(), |addr| Box::into_raw(Box::new(addr)))
-                })
+        let msgid = MsgId::from_str(msgid_str);
+        try_or!(msgid.is_ok(), InvalidHex(msgid_str.into()))?;
+
+        Ok(TangleAddress {
+            appinst: appinst.unwrap(),
+            msgid: msgid.unwrap(),
+        })
+    }
+    /// # Safety
+    ///
+    /// This function uses CStr::from_ptr which is unsafe...
+    pub unsafe fn from_c_str(c_addr: *const c_char) -> *const Self {
+        c_addr.as_ref().map_or(null(), |c_addr| {
+            CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
+                let addr_vec: Vec<&str> = addr_str.split(':').collect();
+                Self::from_str(addr_vec[0], addr_vec[1]).map_or(null(), |addr| Box::into_raw(Box::new(addr)))
             })
-        }
+        })
     }
 }
 

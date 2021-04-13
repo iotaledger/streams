@@ -29,7 +29,7 @@ iota-streams-core-keccak = { version = "0.3.1", path = "../iota-streams-core-kec
 iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
 iota-streams-app = { version = "1.0.1", path = "../iota-streams-app", default-features = false }
 
-hex = { version = "0.4.2", default-features = false, optional = false }
+hex = { version = "0.4", default-features = false, optional = false }
 
 [dev-dependencies]
 smol = { version = "1.2.5" }

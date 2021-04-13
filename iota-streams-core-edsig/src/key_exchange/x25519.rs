@@ -73,7 +73,7 @@ impl<'a> From<&'a mut PublicKey> for &'a mut PublicKeyWrap {
 pub type Pks = HashSet<PublicKeyWrap>;
 pub type IPk<'a> = &'a PublicKey;
 
-pub fn filter_ke_pks<'a>(allowed_pks: &'a Pks, target_pks: &'a Vec<PublicKey>) -> Vec<IPk<'a>> {
+pub fn filter_ke_pks<'a>(allowed_pks: &'a Pks, target_pks: &'a [PublicKey]) -> Vec<IPk<'a>> {
     target_pks
         .iter()
         .filter_map(|pk| allowed_pks.get(pk.into()).map(|pk| &pk.0))

@@ -15,8 +15,14 @@ use core::hash::{
 
 pub type IPk<'a> = &'a PublicKey;
 
-#[derive(Copy, Clone, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Eq)]
 pub struct PublicKeyWrap(pub PublicKey);
+
+impl PartialEq for PublicKeyWrap {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}
 
 impl Hash for PublicKeyWrap {
     fn hash<H: Hasher>(&self, state: &mut H) {

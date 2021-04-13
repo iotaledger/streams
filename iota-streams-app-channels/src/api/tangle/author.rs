@@ -64,7 +64,7 @@ impl<Trans> Author<Trans> {
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
     pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()> {
-        Ok(self.user.store_state(pk, link)?)
+        self.user.store_state(pk, link)
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -74,7 +74,7 @@ impl<Trans> Author<Trans> {
     ///   * `link` - Address link to be stored in internal sequence state mapping
     ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
     pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
-        Ok(self.user.store_state_for_all(link, seq_num)?)
+        self.user.store_state_for_all(link, seq_num)
     }
 
     /// Serialize user state and encrypt it with password.

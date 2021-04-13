@@ -94,6 +94,7 @@ pub struct WrappedSequence<F, Link: HasLink>(
 );
 
 impl<F, Link: HasLink> WrappedSequence<F, Link> {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self(None, None)
     }
@@ -106,7 +107,9 @@ impl<F, Link: HasLink> WrappedSequence<F, Link> {
     pub fn with_wrapped(mut self, m: WrappedMessage<F, Link>) -> Self {
         self.0 = Some(m.message);
         let wrapped = m.wrapped;
-        self.1.as_mut().map(|w| w.set_state(wrapped));
+        if let Some(w) = self.1.as_mut() {
+            w.set_state(wrapped)
+        }
         self
     }
 }
@@ -206,7 +209,7 @@ where
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
     ) -> Self {
-        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng.clone(), nonce.clone()));
+        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
         // App instance link is generated using the 32 byte PubKey and the first 8 bytes of the nonce
@@ -249,10 +252,8 @@ where
         self.link_gen.gen(&self.sig_kp.public, channel_idx);
         let appinst = self.link_gen.get();
 
-        self.pk_store.insert(
-            self.sig_kp.public.clone(),
-            Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
-        )?;
+        self.pk_store
+            .insert(self.sig_kp.public, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
         self.author_sig_pk = Some(self.sig_kp.public);
         self.appinst = Some(appinst);
         Ok(())
@@ -284,9 +285,9 @@ where
         self.prepare_announcement()?.wrap()
     }
 
-    pub fn unwrap_announcement<'a>(
+    pub fn unwrap_announcement(
         &self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, announce::ContentUnwrap<F>>> {
         if let Some(appinst) = &self.appinst {
             try_or!(
@@ -302,7 +303,7 @@ where
 
     /// Bind Subscriber (or anonymously subscribe) to the channel announced
     /// in the message.
-    pub fn handle_announcement<'a>(
+    pub fn handle_announcement(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -325,8 +326,8 @@ where
         // At the moment the Author is free to choose any address, not tied to PK.
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
-        self.pk_store.insert(content.sig_pk.clone(), cursor.clone())?;
-        self.pk_store.insert(self.sig_kp.public.clone(), cursor)?;
+        self.pk_store.insert(content.sig_pk, cursor.clone())?;
+        self.pk_store.insert(self.sig_kp.public, cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.appinst = Some(link);
@@ -354,7 +355,7 @@ where
                     link: link_to,
                     unsubscribe_key,
                     subscriber_sig_kp: &self.sig_kp,
-                    author_ke_pk: author_ke_pk,
+                    author_ke_pk,
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -381,7 +382,7 @@ where
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
-    pub fn handle_subscribe<'a>(
+    pub fn handle_subscribe(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -416,10 +417,10 @@ where
         let key = NBytes::from(prng::random_key());
         let content = keyload::ContentWrap {
             link: link_to,
-            nonce: nonce,
-            key: key,
-            psks: psks,
-            ke_pks: ke_pks,
+            nonce,
+            key,
+            psks,
+            ke_pks,
             sig_kp: &self.sig_kp,
             _phantom: core::marker::PhantomData,
         };
@@ -562,7 +563,7 @@ where
     }
 
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or NTRU private key (if any).
-    pub fn handle_keyload<'a>(
+    pub fn handle_keyload(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -612,8 +613,8 @@ where
                     .with_seq_num(seq_no);
                 let content = signed_packet::ContentWrap {
                     link: link_to,
-                    public_payload: public_payload,
-                    masked_payload: masked_payload,
+                    public_payload,
+                    masked_payload,
                     sig_kp: &self.sig_kp,
                     _phantom: core::marker::PhantomData,
                 };
@@ -644,8 +645,8 @@ where
     }
 
     /// Verify new Author's MSS public key and update Author's MSS public key.
-    pub fn handle_signed_packet<'a>(
-        &'a mut self,
+    pub fn handle_signed_packet(
+        &'_ mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, (ed25519::PublicKey, Bytes, Bytes)>> {
@@ -677,8 +678,8 @@ where
                     .with_seq_num(seq_no);
                 let content = tagged_packet::ContentWrap {
                     link: link_to,
-                    public_payload: public_payload,
-                    masked_payload: masked_payload,
+                    public_payload,
+                    masked_payload,
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -699,9 +700,9 @@ where
             .wrap()
     }
 
-    pub fn unwrap_tagged_packet<'a>(
+    pub fn unwrap_tagged_packet(
         &self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, tagged_packet::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
         let content = tagged_packet::ContentUnwrap::new();
@@ -709,7 +710,7 @@ where
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
-    pub fn handle_tagged_packet<'a>(
+    pub fn handle_tagged_packet(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -794,7 +795,7 @@ where
                 cursor.link = wrapped.link.rel().clone();
                 cursor.next_seq();
                 wrapped.commit(self.link_store.borrow_mut(), info)?;
-                self.pk_store.insert(self.sig_kp.public.clone(), cursor)?;
+                self.pk_store.insert(self.sig_kp.public, cursor)?;
                 Ok(Some(link))
             }
             None => {
@@ -844,9 +845,9 @@ where
     // }
     // }
 
-    pub fn unwrap_sequence<'a>(
+    pub fn unwrap_sequence(
         &self,
-        preparsed: PreparsedMessage<'a, F, Link>,
+        preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, sequence::ContentUnwrap<Link>>> {
         self.ensure_appinst(&preparsed)?;
         let content = sequence::ContentUnwrap::default();
@@ -854,7 +855,7 @@ where
     }
 
     // Fetch unwrapped sequence message to fetch referenced message
-    pub fn handle_sequence<'a>(
+    pub fn handle_sequence(
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
@@ -903,12 +904,12 @@ where
         ) = pk_info;
         if branching {
             let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, 1));
-            ids.push((pk.clone(), Cursor::new_at(msg_id, 0, 1)));
+            ids.push((*pk, Cursor::new_at(msg_id, 0, 1)));
         } else {
             let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no));
             let msg_id1 = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no - 1));
-            ids.push((pk.clone(), Cursor::new_at(msg_id, 0, *seq_no)));
-            ids.push((pk.clone(), Cursor::new_at(msg_id1, 0, *seq_no - 1)));
+            ids.push((*pk, Cursor::new_at(msg_id, 0, *seq_no)));
+            ids.push((*pk, Cursor::new_at(msg_id1, 0, *seq_no - 1)));
         }
     }
 
@@ -935,7 +936,7 @@ where
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         self.pk_store
-            .insert(self.sig_kp.public.clone(), Cursor::new_at(link.clone(), 0, seq_no + 1))?;
+            .insert(self.sig_kp.public, Cursor::new_at(link.clone(), 0, seq_no + 1))?;
         for (_pk, cursor) in self.pk_store.iter_mut() {
             cursor.link = link.clone();
             cursor.seq_no = seq_no + 1;

@@ -189,13 +189,18 @@ pub fn new_shared_transport<T>(tsp: T) -> Arc<AtomicRefCell<T>> {
 
 mod bucket;
 pub use bucket::BucketTransport;
+
+#[cfg(not(feature = "async"))]
 use core::fmt::{
     Debug,
     Display,
 };
+
+use iota_streams_core::try_or;
+
+#[cfg(not(feature = "async"))]
 use iota_streams_core::{
     err,
-    try_or,
     wrapped_err,
     Errors::{
         MessageLinkNotFound,

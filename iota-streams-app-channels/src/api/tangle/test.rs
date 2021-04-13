@@ -8,14 +8,19 @@ use iota_streams_app::{
     message::HasLink,
     transport::tangle::PAYLOAD_BYTES,
 };
+
+#[cfg(not(feature = "async"))]
+use iota_streams_core::{
+    try_or,
+    Errors::*,
+    LOCATION_LOG,
+};
+
 use iota_streams_core::{
     ensure,
     prelude::string::ToString,
     println,
-    try_or,
-    Errors::*,
     Result,
-    LOCATION_LOG,
 };
 
 use super::*;

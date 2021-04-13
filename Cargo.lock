@@ -211,9 +211,9 @@ dependencies = [
 [[package]]
 name = "bee-crypto"
 version = "0.2.0-alpha"
-source = "git+https://github.com/iotaledger/bee.git?rev=c42171ff33c80cc2efb183e244dc79b7f58d9ac4#c42171ff33c80cc2efb183e244dc79b7f58d9ac4"
+source = "git+https://github.com/iotaledger/bee.git?branch=dev#a65bfad5dfdc8aa46d34b6b58899007a43d72340"
 dependencies = [
- "bee-ternary 0.4.0-alpha",
+ "bee-ternary 0.4.1-alpha",
  "byteorder",
  "lazy_static",
  "thiserror",
@@ -724,10 +724,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.15.0"
+name = "displaydoc"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+checksum = "3274a6bc8a6a4521291b53b9dcb8345e963fe931c3fc462a7d3ead71d7ccd30d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "ed25519"
@@ -1311,6 +1316,7 @@ dependencies = [
 name = "iota-streams-app-channels-example"
 version = "1.0.0"
 dependencies = [
+ "hex",
  "iota-streams",
  "wee_alloc",
 ]
@@ -1334,10 +1340,10 @@ dependencies = [
  "anyhow",
  "criterion",
  "digest 0.9.0",
+ "displaydoc",
  "hashbrown 0.8.2",
  "hex",
  "rand 0.7.3",
- "thiserror",
 ]
 
 [[package]]

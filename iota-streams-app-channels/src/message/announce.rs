@@ -74,6 +74,8 @@ impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
 
 pub struct ContentUnwrap<F> {
     pub(crate) sig_pk: ed25519::PublicKey,
+
+    #[allow(dead_code)]
     pub(crate) ke_pk: x25519::PublicKey,
     pub(crate) flags: Uint8,
     _phantom: core::marker::PhantomData<F>,
