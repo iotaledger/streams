@@ -3,12 +3,16 @@ name: Build and run tests
 on:
   push:
     branches:
-      - github-actions
+      - master
+      - develop
+      - chrysalis-2
   pull_request:
     branches:
-      - github-actions
-      - dev
+      - master
+      - develop
+      - chrysalis-2
     paths-ignore:
+      - "specification/**"
       - "docs/**"
 
 jobs:
