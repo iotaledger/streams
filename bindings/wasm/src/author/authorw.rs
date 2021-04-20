@@ -31,6 +31,7 @@ use iota_streams::{
             ToString,
         },
         psk::{
+            PskId,
             PskIds,
             PSKID_SIZE,
         },
@@ -124,7 +125,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub async fn send_keyload(self, link: Address, psk_ids: PskIdsW, sig_pks: PublicKeysW) -> Result<UserResponse> {
-        let mut preshared = PskIds::new();
+        let mut preshared: Vec<PskId> = vec![];
 
         let ids = psk_ids.get_ids().entries();
 
