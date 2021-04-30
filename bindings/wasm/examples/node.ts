@@ -109,14 +109,7 @@ async function main() {
     if (auth2.channel_address !== auth.channel_address) {
         console.log("import failed");
     } else {
-        let exp2 = auth2.export(password);
-        // Cannot compate uint8array directly unless looping...
-        console.log(exp2.toString());
-        console.log(exp.toString());
-        console.log(exp2.toString() == exp.toString());
-        if (exp2.toString() === exp.toString()) {
-            console.log("Export equal")
-        }
+        console.log("import succesfull")
     }
 
     function to_bytes(str) {
