@@ -5,6 +5,8 @@ pub mod author;
 
 pub mod subscriber;
 
+pub mod user;
+
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

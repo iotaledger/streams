@@ -58,7 +58,11 @@ impl SendOptions {
 
     #[wasm_bindgen]
     pub fn clone(&self) -> Self {
-        self.clone()
+        SendOptions {
+            depth: self.depth,
+            local_pow: self.local_pow,
+            threads: self.threads
+        }
     }
 }
 
