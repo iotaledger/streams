@@ -101,7 +101,7 @@ async function main() {
     // Import export example
     // TODO: Use stronghold
     let password = "password"
-    let exp = auth.export(password);
+    let exp = auth.clone().export(password);
 
     let client = new streams.Client(node, options.clone());
     let auth2 = streams.Author.import(client, exp, password);
