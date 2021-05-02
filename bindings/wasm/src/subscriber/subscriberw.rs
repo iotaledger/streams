@@ -2,8 +2,10 @@ use core::convert::TryInto as _;
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
-use crate::types::*;
-use crate::user::userw::*;
+use crate::{
+    types::*,
+    user::userw::*,
+};
 
 use core::cell::RefCell;
 use iota_streams::{
@@ -59,18 +61,19 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Subscriber> {
-        ApiSubscriber::import(&bytes, password, client.to_inner())
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())), 
-                |v| Ok(Subscriber {
+        ApiSubscriber::import(&bytes, password, client.to_inner()).map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |v| {
+                Ok(Subscriber {
                     subscriber: Rc::new(RefCell::new(v)),
                 })
-            )
+            },
+        )
     }
 
     pub fn clone(&self) -> Subscriber {
         Subscriber {
-            subscriber: self.subscriber.clone()
+            subscriber: self.subscriber.clone(),
         }
     }
 
@@ -107,12 +110,10 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn export(&self, password: &str) -> Result<Vec<u8>> {
-        self.subscriber.borrow_mut()
+        self.subscriber
+            .borrow_mut()
             .export(password)
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())), 
-                |v| Ok(v)
-            )
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |v| Ok(v))
     }
 
     #[wasm_bindgen(catch)]

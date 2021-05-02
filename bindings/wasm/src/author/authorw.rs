@@ -1,11 +1,13 @@
 use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
 
-use crate::user::userw::*;
-use crate::types::{
-    PskIds as PskIdsW,
-    PublicKeys as PublicKeysW,
-    *,
+use crate::{
+    types::{
+        PskIds as PskIdsW,
+        PublicKeys as PublicKeysW,
+        *,
+    },
+    user::userw::*,
 };
 use js_sys::Array;
 
@@ -75,23 +77,22 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Author> {
-        ApiAuthor::import(&bytes, password, client.to_inner())
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())), 
-                |v| Ok(Author {
+        ApiAuthor::import(&bytes, password, client.to_inner()).map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |v| {
+                Ok(Author {
                     author: Rc::new(RefCell::new(v)),
                 })
-            )
+            },
+        )
     }
 
     #[wasm_bindgen(catch)]
     pub fn export(&self, password: &str) -> Result<Vec<u8>> {
-        self.author.borrow_mut()
+        self.author
+            .borrow_mut()
             .export(password)
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())), 
-                |v| Ok(v)
-            )
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |v| Ok(v))
     }
 
     pub fn clone(&self) -> Author {

@@ -61,7 +61,7 @@ impl SendOptions {
         SendOptions {
             depth: self.depth,
             local_pow: self.local_pow,
-            threads: self.threads
+            threads: self.threads,
         }
     }
 }
