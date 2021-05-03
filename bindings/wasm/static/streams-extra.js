@@ -31,7 +31,6 @@ async function updateAuthor() {
   let form = document.forms.settings;
   send_options = new streams.SendOptions(
     form["depth"].value,
-    form["mwm"].value,
     true,
     1,
   );
@@ -79,7 +78,6 @@ async function subscribe() {
   let form = document.forms.sub_settings;
   let options = new streams.SendOptions(
       send_options.depth,
-      send_options.min_weight_magnitude,
       send_options.local_pow,
       send_options.threads
   )
@@ -87,8 +85,7 @@ async function subscribe() {
   let sub = new streams.Subscriber(
       node_url,
       form["seed_b"].value,
-      options,
-      false
+      options
   );
 
   await sub.clone().receive_announcement(ann_link.copy());

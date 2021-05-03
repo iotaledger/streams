@@ -1,20 +1,23 @@
 use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
-// use wasm_bindgen_futures::*;
 
-use crate::types::{
-    PskIds as PskIdsW,
-    PublicKeys as PublicKeysW,
-    *,
+use crate::{
+    types::{
+        PskIds as PskIdsW,
+        PublicKeys as PublicKeysW,
+        *,
+    },
+    user::userw::*,
 };
 use js_sys::Array;
 
 use core::cell::RefCell;
+
 /// Streams imports
 use iota_streams::{
     app::transport::{
         tangle::{
-            client::Client,
+            client::Client as ApiClient,
             PAYLOAD_BYTES,
         },
         TransportOptions,
@@ -32,7 +35,6 @@ use iota_streams::{
         },
         psk::{
             PskId,
-            PskIds,
             PSKID_SIZE,
         },
     },
@@ -48,7 +50,7 @@ pub struct Author {
 impl Author {
     #[wasm_bindgen(constructor)]
     pub fn new(node: String, seed: String, options: SendOptions, multi_branching: bool) -> Author {
-        let mut client = Client::new_from_url(&node);
+        let mut client = ApiClient::new_from_url(&node);
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
@@ -60,6 +62,37 @@ impl Author {
             transport,
         )));
         Author { author }
+    }
+
+    pub fn from_client(client: Client, seed: String, multi_branching: bool) -> Author {
+        let author = Rc::new(RefCell::new(ApiAuthor::new(
+            &seed,
+            "utf-8",
+            PAYLOAD_BYTES,
+            multi_branching,
+            client.to_inner(),
+        )));
+        Author { author }
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Author> {
+        ApiAuthor::import(&bytes, password, client.to_inner()).map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |v| {
+                Ok(Author {
+                    author: Rc::new(RefCell::new(v)),
+                })
+            },
+        )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn export(&self, password: &str) -> Result<Vec<u8>> {
+        self.author
+            .borrow_mut()
+            .export(password)
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |v| Ok(v))
     }
 
     pub fn clone(&self) -> Author {
