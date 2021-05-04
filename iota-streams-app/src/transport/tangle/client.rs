@@ -5,10 +5,10 @@ use core::cell::RefCell;
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::Rc;
 
-pub use iota::client as iota_client;
+pub use iota_client;
 
-use iota::{
-    message::payload::Payload,
+use iota_client::bee_message::{
+    payload::Payload,
     Message,
 };
 

@@ -18,9 +18,9 @@ async = ["async-trait", "atomic_refcell"]
 tangle = ["chrono"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-sync-client = ["num_cpus", "iota-core/default", "iota-core/sync", "tangle", "std"]
-async-client = ["num_cpus", "iota-core/default", "tangle", "async", "std"]
-wasm-client = ["iota-core/async", "iota-core/wasm", "chrono/wasmbind", "tangle", "async", "std"]
+sync-client = ["num_cpus", "iota-client/default", "iota-client/sync", "tangle", "std"]
+async-client = ["num_cpus", "iota-client/default", "tangle", "async", "std"]
+wasm-client = ["iota-client/async", "iota-client/wasm", "chrono/wasmbind", "tangle", "async", "std"]
 
 [lib]
 name = "iota_streams_app"
@@ -31,7 +31,7 @@ iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-
 iota-streams-core-edsig = { version = "0.2.1", path = "../iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
 
-# anyhow and chrono are kept in sync with versions used in iota-core
+# anyhow and chrono are kept in sync with versions used in iota-client
 anyhow = { version = "1.0.26", default-features = false }
 wasm-timer = { version = "0.2.5", optional = true }
 js-sys = { version = "0.3.46", optional = true }
@@ -41,7 +41,7 @@ async-trait = { version = "0.1", optional = true }
 atomic_refcell = { version = "0.1.6", optional = true }
 
 # Dependencies for "client" feature
-iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "dev", default-features = false, optional = true }
+iota-client = { git = "https://github.com/iotaledger/iota.rs", branch = "dev", default-features = false, optional = true }
 iota-crypto = { git = "https://github.com/iotaledger/crypto.rs", features = ["blake2b"], branch = "dev" }
 bee-crypto = { git = "https://github.com/iotaledger/bee.git", branch = "dev" }
 
