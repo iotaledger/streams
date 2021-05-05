@@ -18,7 +18,7 @@ async = ["async-trait", "atomic_refcell"]
 tangle = ["chrono"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-sync-client = ["num_cpus", "iota-client/default", "iota-client/sync", "tangle", "std"]
+sync-client = ["num_cpus", "iota-client/sync", "tangle", "std"]
 async-client = ["num_cpus", "iota-client/default", "tangle", "async", "std"]
 wasm-client = ["iota-client/async", "iota-client/wasm", "chrono/wasmbind", "tangle", "async", "std"]
 
