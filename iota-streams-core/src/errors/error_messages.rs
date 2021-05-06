@@ -130,6 +130,8 @@ pub enum Errors {
     SeqNumRetrievalFailure,
     /// State store has failed to retrieve
     StateStoreFailure,
+    /// Cannot generate new channel, it may already exists. please try using a different seed
+    ChannelDuplication,
 
     //////////
     // User Recovery
