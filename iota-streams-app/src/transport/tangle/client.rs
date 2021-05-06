@@ -64,7 +64,7 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
-fn get_hash(tx_address: &[u8], tx_tag: &[u8]) -> Result<String> {
+pub fn get_hash(tx_address: &[u8], tx_tag: &[u8]) -> Result<String> {
     let total = [tx_address, tx_tag].concat();
     let hash = blake2b::Blake2b256::digest(&total);
     Ok(hex::encode(&hash))

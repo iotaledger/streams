@@ -943,6 +943,17 @@ where
         }
         Ok(())
     }
+
+    pub fn fetch_state(&self) -> Result<Vec<(ed25519::PublicKey, Cursor<Link>)>> {
+        let mut state = Vec::new();
+        try_or!(self.appinst.is_some(), UserNotRegistered)?;
+
+        for (pk, Cursor { link, branch_no, seq_no }) in self.pk_store.iter() {
+            let link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), link);
+            state.push((pk.clone(), Cursor::new_at(link, branch_no.clone(), seq_no.clone())))
+        }
+        Ok(state)
+    }
 }
 
 impl<F, Link, LG, LS, PKS, PSKS> ContentSizeof<F> for User<F, Link, LG, LS, PKS, PSKS>

@@ -20,6 +20,7 @@ use iota_streams_core::{
         },
         Box,
         Vec,
+        String,
     },
     sponge::{
         prp::PRP,
@@ -163,7 +164,8 @@ impl fmt::Debug for TangleAddress {
 
 impl fmt::Display for TangleAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{}:{}>", self.appinst, self.msgid)
+        let hash = client::get_hash(self.appinst.as_ref(), self.msgid.as_ref()).unwrap_or(String::new());
+        write!(f, "<{}>", hash)
     }
 }
 
