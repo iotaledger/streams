@@ -17,6 +17,27 @@ pub extern "C" fn sub_new(
     Box::into_raw(Box::new(subscriber))
 }
 
+/// Recover an existing channel from seed and existing announcement message
+#[no_mangle]
+pub extern "C" fn sub_recover(
+    c_seed: *const c_char,
+    c_ann_address: *const Address,
+    transport: *mut TransportWrap
+) -> *mut Subscriber {
+    unsafe {
+        c_ann_address.as_ref().map_or(null_mut(), |addr| {
+            let seed = CStr::from_ptr(c_seed).to_str().unwrap();
+            let tsp = (*transport).clone();
+            Subscriber::recover(seed, addr, tsp)
+                .map_or(null_mut(), |sub| {
+                    Box::into_raw(Box::new(sub))
+                })
+        })
+    }
+}
+
+
+
 #[no_mangle]
 pub extern "C" fn sub_drop(user: *mut Subscriber) {
     unsafe { Box::from_raw(user); }
@@ -166,7 +187,7 @@ pub extern "C" fn sub_send_signed_packet(
 }
 
 
-/// Process a keyload message 
+/// Process a keyload message
 #[no_mangle]
 pub extern "C" fn sub_receive_keyload(user: *mut Subscriber, link: *const Address) {
     unsafe {
@@ -284,6 +305,17 @@ pub extern "C" fn sub_sync_state(user: *mut Subscriber) -> *const UnwrappedMessa
                 ms.extend(m);
             }
             Box::into_raw(Box::new(ms))
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn sub_fetch_state(user: *mut Subscriber) -> *const UserState {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            user.fetch_state().map_or(null(), |state| {
+                Box::into_raw(Box::new(state))
+            })
         })
     }
 }

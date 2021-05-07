@@ -40,8 +40,9 @@ use crypto::hashes::{
 
 use iota_streams_core::prelude::String;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct SendOptions {
+    pub url: String,
     pub depth: u8,
     pub local_pow: bool,
     pub threads: usize,
@@ -50,6 +51,7 @@ pub struct SendOptions {
 impl Default for SendOptions {
     fn default() -> Self {
         Self {
+            url: "https://chrysalis-nodes.iota.org".to_string(),
             depth: 3,
             local_pow: true,
             #[cfg(target_arch = "wasm32")]
@@ -178,8 +180,10 @@ impl Client {
 
     // Create an instance of Client with a node pointing to the given URL
     pub fn new_from_url(url: &str) -> Self {
+        let mut send_options = SendOptions::default();
+        send_options.url = url.to_string();
         Self {
-            send_opt: SendOptions::default(),
+            send_opt: send_options,
             client: block_on(
                 iota_client::ClientBuilder::new()
                     .with_node(url)
@@ -190,12 +194,26 @@ impl Client {
             .unwrap(),
         }
     }
+
+    pub fn clone(&self) -> Self {
+        Self {
+            send_opt: self.send_opt.clone(),
+            client: block_on(
+                iota_client::ClientBuilder::new()
+                    .with_node(&self.send_opt.url)
+                    .unwrap()
+                    .with_local_pow(self.send_opt.local_pow)
+                    .finish()
+            )
+            .unwrap(),
+        }
+    }
 }
 
 impl TransportOptions for Client {
     type SendOptions = SendOptions;
     fn get_send_options(&self) -> SendOptions {
-        self.send_opt
+        self.send_opt.clone()
     }
     fn set_send_options(&mut self, opt: SendOptions) {
         self.send_opt = opt;

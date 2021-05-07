@@ -18,6 +18,27 @@ pub extern "C" fn auth_new(
     Box::into_raw(Box::new(user))
 }
 
+/// Recover an existing channel from seed and existing announcement message
+#[no_mangle]
+pub extern "C" fn auth_recover(
+    c_seed: *const c_char,
+    c_ann_address: *const Address,
+    multi_branching: uint8_t,
+    transport: *mut TransportWrap
+) -> *mut Author {
+    unsafe {
+        c_ann_address.as_ref().map_or(null_mut(), |addr| {
+            let seed = CStr::from_ptr(c_seed).to_str().unwrap();
+            let tsp = (*transport).clone();
+            Author::recover(seed, addr, multi_branching != 0, tsp)
+                .map_or(null_mut(), |auth| {
+                    Box::into_raw(Box::new(auth))
+                })
+        })
+    }
+}
+
+
 #[no_mangle]
 pub extern "C" fn auth_drop(user: *mut Author) {
     unsafe {
@@ -258,6 +279,17 @@ pub extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages
                 ms.extend(m);
             }
             Box::into_raw(Box::new(ms))
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_fetch_state(user: *mut Author) -> *const UserState {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            user.fetch_state().map_or(null(), |state| {
+                Box::into_raw(Box::new(state))
+            })
         })
     }
 }
