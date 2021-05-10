@@ -2,10 +2,19 @@ use iota_streams_app::message::{
     HasLink as _,
     LinkGenerator,
 };
-use iota_streams_core::{err, panic_if_not, prelude::Vec, prng, Errors::{
-    UnknownMsgType,
-    UserNotRegistered,
-}, Result, LOCATION_LOG, try_or};
+use iota_streams_core::{
+    err,
+    panic_if_not,
+    prelude::Vec,
+    prng,
+    try_or,
+    Errors::{
+        UnknownMsgType,
+        UserNotRegistered,
+    },
+    Result,
+    LOCATION_LOG,
+};
 
 use super::*;
 use crate::{
@@ -182,7 +191,10 @@ impl<Trans: Transport> User<Trans> {
     /// Send an announcement message, generating a channel [Author].
     pub fn send_announce(&mut self) -> Result<Address> {
         let msg = self.user.announce()?;
-        try_or!(self.transport.recv_message(&msg.message.link).is_err(), ChannelDuplication)?;
+        try_or!(
+            self.transport.recv_message(&msg.message.link).is_err(),
+            ChannelDuplication
+        )?;
         self.send_message(msg, MsgInfo::Announce)
     }
 
@@ -468,7 +480,10 @@ impl<Trans: Transport> User<Trans> {
     /// Send an announcement message, generating a channel [Author].
     pub async fn send_announce(&mut self) -> Result<Address> {
         let msg = self.user.announce()?;
-        try_or!(self.transport.recv_message(&msg.message.link).await.is_err(),ChannelDuplication)?;
+        try_or!(
+            self.transport.recv_message(&msg.message.link).await.is_err(),
+            ChannelDuplication
+        )?;
         self.send_message(msg, MsgInfo::Announce).await
     }
 

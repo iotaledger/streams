@@ -948,7 +948,15 @@ where
         let mut state = Vec::new();
         try_or!(self.appinst.is_some(), UserNotRegistered)?;
 
-        for (pk, Cursor { link, branch_no, seq_no }) in self.pk_store.iter() {
+        for (
+            pk,
+            Cursor {
+                link,
+                branch_no,
+                seq_no,
+            },
+        ) in self.pk_store.iter()
+        {
             let link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), link);
             state.push((pk.clone(), Cursor::new_at(link, branch_no.clone(), seq_no.clone())))
         }

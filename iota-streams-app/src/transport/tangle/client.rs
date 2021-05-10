@@ -203,7 +203,7 @@ impl Client {
                     .with_node(&self.send_opt.url)
                     .unwrap()
                     .with_local_pow(self.send_opt.local_pow)
-                    .finish()
+                    .finish(),
             )
             .unwrap(),
         }

@@ -10,8 +10,11 @@ use crate::api::tangle::{
 };
 
 use iota_streams_core::{
-    prelude::{Vec, String},
     panic_if_not,
+    prelude::{
+        String,
+        Vec,
+    },
 };
 use iota_streams_core_edsig::signature::ed25519;
 
@@ -406,7 +409,6 @@ impl<Trans: Transport> Author<Trans> {
         }
         msgs
     }
-
 
     /// Iteratively fetches next messages until internal state has caught up
     pub async fn sync_state(&mut self) {

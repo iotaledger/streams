@@ -19,8 +19,8 @@ use iota_streams_core::{
             U40,
         },
         Box,
-        Vec,
         String,
+        Vec,
     },
     sponge::{
         prp::PRP,

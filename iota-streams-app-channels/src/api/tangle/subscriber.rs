@@ -9,7 +9,10 @@ use crate::api::tangle::{
     User,
 };
 
-use iota_streams_core::prelude::{Vec, String};
+use iota_streams_core::prelude::{
+    String,
+    Vec,
+};
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Subscriber Object. Contains User API.
@@ -382,7 +385,6 @@ impl<Trans: Transport> Subscriber<Trans> {
         }
         msgs
     }
-
 
     /// Iteratively fetches next messages until internal state has caught up
     pub async fn sync_state(&mut self) {
