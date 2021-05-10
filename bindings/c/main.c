@@ -29,7 +29,7 @@ int main()
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
   char const *env_url = getenv("URL");
-  char const *url = env_url ? env_url : "http://68.183.204.5:14265";
+  char const *url = env_url ? env_url : "http://localhost:14265";
 
   printf("Loading using node: %s\n\n", url);
   tsp = tsp_client_new_from_url(url);
