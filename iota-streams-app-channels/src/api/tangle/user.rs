@@ -368,8 +368,8 @@ impl<Trans: Transport> User<Trans> {
         {
             let msg = self.transport.recv_message(&link);
 
-            if msg.is_ok() {
-                let msg = self.handle_message(msg.unwrap());
+            if let Ok(msg) = msg {
+                let msg = self.handle_message(msg);
                 if let Ok(msg) = msg {
                     if !self.user.is_multi_branching() {
                         let stored = self.user.store_state_for_all(link.msgid, seq_no);
@@ -422,7 +422,7 @@ impl<Trans: Transport> User<Trans> {
                         Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
                     );
                     let msg = self.transport.recv_message(&msg_link)?;
-                    self.user.store_state(unwrapped.body.pk.clone(), store_link)?;
+                    self.user.store_state(unwrapped.body.pk, store_link)?;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),

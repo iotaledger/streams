@@ -958,7 +958,7 @@ where
         ) in self.pk_store.iter()
         {
             let link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), link);
-            state.push((pk.clone(), Cursor::new_at(link, branch_no.clone(), seq_no.clone())))
+            state.push((*pk, Cursor::new_at(link, *branch_no, *seq_no)))
         }
         Ok(state)
     }

@@ -180,10 +180,11 @@ impl Client {
 
     // Create an instance of Client with a node pointing to the given URL
     pub fn new_from_url(url: &str) -> Self {
-        let mut send_options = SendOptions::default();
-        send_options.url = url.to_string();
         Self {
-            send_opt: send_options,
+            send_opt: SendOptions {
+                url: url.to_string(),
+                ..Default::default()
+            },
             client: block_on(
                 iota_client::ClientBuilder::new()
                     .with_node(url)
@@ -194,8 +195,10 @@ impl Client {
             .unwrap(),
         }
     }
+}
 
-    pub fn clone(&self) -> Self {
+impl Clone for Client {
+    fn clone(&self) -> Self {
         Self {
             send_opt: self.send_opt.clone(),
             client: block_on(
