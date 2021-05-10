@@ -3,20 +3,12 @@
 //#![no_std]
 
 use dotenv;
-use futures::executor::block_on;
 use std::env;
 
 use rand::Rng;
 
 use iota_streams::{
-    app::transport::{
-        tangle::client::{
-            iota_client,
-            Client,
-            SendOptions,
-        },
-        TransportOptions,
-    },
+    app::transport::tangle::client::Client,
     app_channels::api::tangle::Transport,
     core::{
         prelude::{
@@ -96,24 +88,9 @@ fn main_client() {
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
 
-    let send_opt = SendOptions::default();
+    let client = Client::new_from_url(&node_url);
 
-    // Fails at unwrap when the url isnt working
-    // TODO: Fail gracefully
-    let iota_client = block_on(
-        iota_client::ClientBuilder::new()
-            .with_node(&node_url)
-            .unwrap()
-            //.with_node_sync_disabled()
-            .with_local_pow(false)
-            .finish(),
-    )
-    .unwrap();
-
-    let client = Client::new(send_opt, iota_client);
-
-    let mut transport = Rc::new(RefCell::new(client));
-    transport.set_send_options(send_opt);
+    let transport = Rc::new(RefCell::new(client));
 
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
     let seed1: &str = &(0..10)
