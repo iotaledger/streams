@@ -229,6 +229,21 @@ impl<Trans: Transport> Author<Trans> {
         self.user.fetch_next_msgs()
     }
 
+    /// Iteratively fetches next message until no new messages can be found, and return a vector
+    /// containing all of them.
+    pub fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
+        let mut exists = true;
+        let mut msgs = Vec::new();
+        while exists {
+            let next_msgs = self.fetch_next_msgs();
+            if next_msgs.is_empty() {
+                exists = false
+            } else {
+                msgs.extend(next_msgs)
+            }
+        }
+        msgs
+    }
 
     /// Iteratively fetches next messages until internal state has caught up
     pub fn sync_state(&mut self) {
@@ -375,6 +390,23 @@ impl<Trans: Transport> Author<Trans> {
     pub async fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
         self.user.fetch_next_msgs().await
     }
+
+    /// Iteratively fetches next message until no new messages can be found, and return a vector
+    /// containing all of them.
+    pub async fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
+        let mut exists = true;
+        let mut msgs = Vec::new();
+        while exists {
+            let next_msgs = self.fetch_next_msgs().await;
+            if next_msgs.is_empty() {
+                exists = false
+            } else {
+                msgs.extend(next_msgs)
+            }
+        }
+        msgs
+    }
+
 
     /// Iteratively fetches next messages until internal state has caught up
     pub async fn sync_state(&mut self) {
