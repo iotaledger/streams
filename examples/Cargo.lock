@@ -100,7 +100,6 @@ dependencies = [
 
 [[package]]
 name = "bee-crypto"
-version = "0.2.1-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e9be03c91825c26fa8c93613362341df1136da233c8462ec2c59fe1be81c237"
 dependencies = [
