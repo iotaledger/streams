@@ -101,22 +101,10 @@ dependencies = [
 [[package]]
 name = "bee-crypto"
 version = "0.2.1-alpha"
-source = "git+https://github.com/iotaledger/bee.git?branch=dev#02a3cb65d167868e7e146d9f908061d360762997"
-dependencies = [
- "bee-ternary 0.4.2-alpha (git+https://github.com/iotaledger/bee.git?branch=dev)",
- "byteorder",
- "lazy_static",
- "thiserror",
- "tiny-keccak",
-]
-
-[[package]]
-name = "bee-crypto"
-version = "0.2.1-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e9be03c91825c26fa8c93613362341df1136da233c8462ec2c59fe1be81c237"
 dependencies = [
- "bee-ternary 0.4.2-alpha (registry+https://github.com/rust-lang/crates.io-index)",
+ "bee-ternary",
  "byteorder",
  "lazy_static",
  "thiserror",
@@ -143,7 +131,7 @@ dependencies = [
  "bech32",
  "bee-common",
  "bee-pow",
- "bee-ternary 0.4.2-alpha (registry+https://github.com/rust-lang/crates.io-index)",
+ "bee-ternary",
  "bytemuck",
  "digest 0.9.0",
  "hex",
@@ -167,8 +155,8 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "612452ebcbc440512f0131a7058db63470b13828f1dc9c9b2024302673c767de"
 dependencies = [
- "bee-crypto 0.2.1-alpha (registry+https://github.com/rust-lang/crates.io-index)",
- "bee-ternary 0.4.2-alpha (registry+https://github.com/rust-lang/crates.io-index)",
+ "bee-crypto",
+ "bee-ternary",
  "iota-crypto 0.4.2",
  "thiserror",
 ]
@@ -196,15 +184,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
-]
-
-[[package]]
-name = "bee-ternary"
-version = "0.4.2-alpha"
-source = "git+https://github.com/iotaledger/bee.git?branch=dev#02a3cb65d167868e7e146d9f908061d360762997"
-dependencies = [
- "autocfg",
- "num-traits",
 ]
 
 [[package]]
@@ -861,7 +840,6 @@ name = "iota-streams-app"
 version = "1.0.1"
 dependencies = [
  "anyhow",
- "bee-crypto 0.2.1-alpha (git+https://github.com/iotaledger/bee.git?branch=dev)",
  "chrono",
  "cstr_core",
  "cty",
