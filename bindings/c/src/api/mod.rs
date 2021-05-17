@@ -158,6 +158,7 @@ impl MessageLinks {
             }
         }
     }
+
 }
 
 impl Default for MessageLinks {
@@ -173,6 +174,26 @@ impl Default for MessageLinks {
 pub extern "C" fn drop_links(links: MessageLinks) {
     links.drop()
 }
+
+#[no_mangle]
+pub extern "C" fn get_msg_link(msg_links: *const MessageLinks) -> *const Address {
+    unsafe {
+        msg_links.as_ref().map_or(null(), |links| {
+            links.msg_link
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn get_seq_link(msg_links: *const MessageLinks) -> *const Address {
+    unsafe {
+        msg_links.as_ref().map_or(null(), |links| {
+            links.seq_link
+        })
+    }
+}
+
+
 
 #[repr(C)]
 pub struct Buffer {
