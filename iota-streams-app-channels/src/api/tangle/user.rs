@@ -4,7 +4,6 @@ use iota_streams_app::message::{
 };
 use iota_streams_core::{
     err,
-    panic_if_not,
     prelude::Vec,
     prng,
     try_or,
@@ -156,7 +155,9 @@ impl<Trans: Transport> User<Trans> {
             self.transport.send_message(&Message::new(seq_msg))?;
         }
 
+        println!("Wrap state is some? {}", wrapped.1.is_some());
         if let Some(wrap_state) = wrapped.1 {
+            println!("Committing wrap state: {}, {}", wrap_state.0.link, wrap_state.0.seq_no);
             self.user.commit_sequence(wrap_state, MsgInfo::Sequence)
         } else {
             Ok(None)
@@ -181,6 +182,7 @@ impl<Trans: Transport> User<Trans> {
         ref_link: &MsgId,
         info: MsgInfo,
     ) -> Result<(Address, Option<Address>)> {
+        println!("Putting {} in wrap_state", ref_link);
         let seq = self.user.wrap_sequence(ref_link)?;
         self.transport.send_message(&Message::new(msg.message))?;
         let seq_link = self.send_sequence(seq)?;
@@ -210,7 +212,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.sign_packet(&link_to.msgid, public_payload, masked_payload)?;
+        let msg = self.user.sign_packet(&link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
     }
 
@@ -226,7 +228,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.tag_packet(&link_to.msgid, public_payload, masked_payload)?;
+        let msg = self.user.tag_packet(&link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
     }
 
@@ -242,7 +244,7 @@ impl<Trans: Transport> User<Trans> {
         psk_ids: &PskIds,
         ke_pks: &Vec<PublicKey>,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(&link_to.msgid, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(&link_to, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -251,7 +253,7 @@ impl<Trans: Transport> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload_for_everyone(&link_to.msgid)?;
+        let msg = self.user.share_keyload_for_everyone(&link_to)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -260,7 +262,7 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
     pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
-        let msg = self.user.subscribe(&link_to.msgid)?;
+        let msg = self.user.subscribe(&link_to)?;
         self.send_message(msg, MsgInfo::Subscribe)
     }
 
@@ -273,18 +275,11 @@ impl<Trans: Transport> User<Trans> {
     pub fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         let msg = self.transport.recv_message(link)?;
         if let Some(_addr) = &self.user.appinst {
-            let seq_link = msg.binary.link.clone();
             let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence)?.body;
             let msg_id = self.user.link_gen.link_from(
                 &seq_msg.pk,
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
-
-            if self.is_multi_branching() {
-                self.store_state(seq_msg.pk, &seq_link)?
-            } else {
-                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)?
-            }
 
             Ok(msg_id)
         } else {
@@ -362,20 +357,14 @@ impl<Trans: Transport> User<Trans> {
             Cursor {
                 link,
                 branch_no: _,
-                seq_no,
+                seq_no: _,
             },
         ) in ids
         {
             let msg = self.transport.recv_message(&link);
 
             if let Ok(msg) = msg {
-                let msg = self.handle_message(msg);
-                if let Ok(msg) = msg {
-                    if !self.user.is_multi_branching() {
-                        let stored = self.user.store_state_for_all(link.msgid, seq_no);
-                        panic_if_not!(stored.is_ok())
-                    }
-
+                if let Ok(msg) = self.handle_message(msg) {
                     msgs.push(msg);
                 }
             }
@@ -415,14 +404,12 @@ impl<Trans: Transport> User<Trans> {
                     return Ok(u);
                 }
                 message::SEQUENCE => {
-                    let store_link = msg.link.rel().clone();
                     let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
                     let msg_link = self.user.link_gen.link_from(
                         &unwrapped.body.pk,
                         Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
                     );
                     let msg = self.transport.recv_message(&msg_link)?;
-                    self.user.store_state(unwrapped.body.pk, store_link)?;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
@@ -499,7 +486,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.sign_packet(&link_to.msgid, public_payload, masked_payload)?;
+        let msg = self.user.sign_packet(&link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
             .await
     }
@@ -516,7 +503,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.tag_packet(&link_to.msgid, public_payload, masked_payload)?;
+        let msg = self.user.tag_packet(&link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
             .await
     }
@@ -533,7 +520,7 @@ impl<Trans: Transport> User<Trans> {
         psk_ids: &PskIds,
         ke_pks: &Vec<PublicKey>,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(&link_to.msgid, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(&link_to, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
@@ -542,7 +529,7 @@ impl<Trans: Transport> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub async fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload_for_everyone(&link_to.msgid)?;
+        let msg = self.user.share_keyload_for_everyone(&link_to)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
@@ -551,7 +538,7 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
     pub async fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
-        let msg = self.user.subscribe(&link_to.msgid)?;
+        let msg = self.user.subscribe(&link_to)?;
         self.send_message(msg, MsgInfo::Subscribe).await
     }
 
@@ -570,12 +557,6 @@ impl<Trans: Transport> User<Trans> {
                 &seq_msg.pk,
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
-
-            if self.is_multi_branching() {
-                self.store_state(seq_msg.pk, &seq_link)?
-            } else {
-                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)?
-            }
 
             Ok(msg_id)
         } else {
@@ -662,11 +643,6 @@ impl<Trans: Transport> User<Trans> {
 
             if let Ok(msg) = msg {
                 if let Ok(msg) = self.handle_message(msg).await {
-                    if !self.user.is_multi_branching() {
-                        let stored = self.user.store_state_for_all(link.msgid, seq_no);
-                        panic_if_not!(stored.is_ok())
-                    }
-
                     msgs.push(msg);
                 }
             }
@@ -712,7 +688,6 @@ impl<Trans: Transport> User<Trans> {
                         Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
                     );
                     let msg = self.transport.recv_message(&msg_link).await?;
-                    self.user.store_state(unwrapped.body.pk, store_link)?;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),

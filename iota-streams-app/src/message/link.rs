@@ -1,9 +1,10 @@
 use core::fmt;
 
-use iota_streams_core::Result;
+use iota_streams_core::{prelude::Vec, Result};
 use iota_streams_core_edsig::signature::ed25519;
 
 use super::hdf::HDF;
+use iota_streams_ddml::types::Bytes;
 
 /// Type of "absolute" links. For http it's the absolute URL.
 pub trait HasLink: Sized + Default + Clone + Eq {
@@ -21,6 +22,12 @@ pub trait HasLink: Sized + Default + Clone + Eq {
 
     /// Construct absolute link from base and relative parts.
     fn from_base_rel(base: &Self::Base, rel: &Self::Rel) -> Self;
+
+    /// Represent absolute link as bytes
+    fn to_bytes(&self) -> Vec<u8>;
+
+    /// Get link from bytes
+    fn from_bytes(bytes: &[u8]) -> Self;
 }
 
 /// Represents an input state for message identifier generation.
@@ -117,12 +124,14 @@ pub trait LinkGenerator<Link: HasLink>: Default {
     /// Derive a new link and construct a header with given content type.
     fn uniform_header_from(
         &self,
+        pk: &ed25519::PublicKey,
         cursor: Cursor<&<Link as HasLink>::Rel>,
         content_type: u8,
         payload_length: usize,
         seq_num: u64,
+        previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
-        HDF::new_with_fields(self.uniform_link_from(cursor), content_type, payload_length, seq_num)
+        HDF::new_with_fields(self.uniform_link_from(cursor), Bytes(previous_msg_link.to_bytes()), content_type, payload_length, seq_num, pk)
     }
 
     /// Derive a new link and construct a header with given content type.
@@ -133,11 +142,13 @@ pub trait LinkGenerator<Link: HasLink>: Default {
         content_type: u8,
         payload_length: usize,
         seq_num: u64,
+        previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
-        HDF::new_with_fields(self.link_from(pk, cursor), content_type, payload_length, seq_num)
+        HDF::new_with_fields(self.link_from(pk, cursor), Bytes(previous_msg_link.to_bytes()),content_type, payload_length, seq_num, pk)
     }
 }
 
 pub trait LinkedMessage<Link> {
     fn link(&self) -> &Link;
+    fn prev_link(&self) -> &Link;
 }

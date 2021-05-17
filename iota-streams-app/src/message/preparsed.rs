@@ -7,12 +7,12 @@ use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::command::unwrap;
 
 /// Message context preparsed for unwrapping.
-pub struct PreparsedMessage<'a, F, Link> {
+pub struct PreparsedMessage<'a, F, Link: Default> {
     pub header: HDF<Link>,
     pub(crate) ctx: unwrap::Context<F, &'a [u8]>,
 }
 
-impl<'a, F, Link> PreparsedMessage<'a, F, Link> {
+impl<'a, F, Link: Default + Clone> PreparsedMessage<'a, F, Link> {
     pub fn check_content_type(&self, content_type: u8) -> bool {
         self.content_type() == content_type
     }
@@ -44,7 +44,7 @@ impl<'a, F, Link> PreparsedMessage<'a, F, Link> {
 impl<'a, F, Link> Clone for PreparsedMessage<'a, F, Link>
 where
     F: Clone,
-    Link: Clone,
+    Link: Clone + Default,
 {
     fn clone(&self) -> Self {
         Self {
@@ -56,7 +56,7 @@ where
 
 impl<'a, F, Link> fmt::Debug for PreparsedMessage<'a, F, Link>
 where
-    Link: fmt::Debug,
+    Link: fmt::Debug + Default + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{header: {:?}, ctx: {:?}}}", self.header, "self.ctx")

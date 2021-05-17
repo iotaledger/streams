@@ -81,7 +81,7 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
             bytes.push(*b);
         }
 
-        let binary = BinaryMessage::new(link.clone(), bytes.into());
+        let binary = BinaryMessage::new(link.clone(), TangleAddress::default(), bytes.into());
         // TODO get timestamp
         let timestamp: u64 = 0;
 

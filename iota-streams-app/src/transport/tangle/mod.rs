@@ -64,6 +64,7 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
     fn link(&self) -> &TangleAddress {
         self.binary.link()
     }
+    fn prev_link(&self) -> &TangleAddress { self.binary.prev_link() }
 }
 
 // TODO: Use better feature to detect `chrono::Utc::new()`.
@@ -214,6 +215,20 @@ impl HasLink for TangleAddress {
             msgid: rel.clone(),
         }
     }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.appinst.as_ref().to_vec();
+        bytes.extend_from_slice(self.msgid.as_ref());
+        bytes
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        println!("From bytes: {}", bytes.len());
+        TangleAddress::new(
+            AppInst::from(&bytes[0..APPINST_SIZE]),
+            MsgId::from(&bytes[APPINST_SIZE..])
+        )
+    }
 }
 
 #[derive(Clone)]
@@ -250,6 +265,7 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         new
     }
     fn gen_msgid(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> MsgId {
+        println!("Making msgid with {}, {}", cursor.link, cursor.seq_no);
         let mut s = Spongos::<F>::init();
         s.absorb(self.addr.appinst.id.as_ref());
         s.absorb(pk.as_ref());
@@ -259,6 +275,7 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         s.commit();
         let mut new = MsgId::default();
         s.squeeze(new.id.as_mut());
+        println!("Made: {}", new);
         new
     }
 }

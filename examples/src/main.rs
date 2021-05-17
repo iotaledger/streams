@@ -86,7 +86,7 @@ fn main_client() {
     };
 
     // Parse env vars with a fallback
-    let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
+    let node_url = env::var("URL").unwrap_or("http://68.183.204.5:14265".to_string());
 
     let client = Client::new_from_url(&node_url);
 
@@ -109,8 +109,8 @@ fn main_client() {
     println!("\n");
 
     run_single_branch_test(transport.clone(), seed1);
-    run_multi_branch_test(transport.clone(), seed2);
-    run_recovery_test(transport.clone(), seed3);
+    //run_multi_branch_test(transport.clone(), seed2);
+    //run_recovery_test(transport.clone(), seed3);
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

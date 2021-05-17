@@ -109,6 +109,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
 
     println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
     let previous_msg_link = {
+        println!("  Author   : {}", author);
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
         panic_if_not(seq.is_none());
@@ -156,6 +157,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
 
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
+        println!("  SubscriberA: {}", subscriberA);
         let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
         panic_if_not(seq.is_none());
