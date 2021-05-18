@@ -20,6 +20,8 @@ use iota_streams_core::{
         },
         Box,
         Vec,
+        ToString,
+        String,
     },
     sponge::{
         prp::PRP,
@@ -142,6 +144,15 @@ impl TangleAddress {
             msgid: msgid.unwrap(),
         })
     }
+
+    pub fn to_string(&self) -> String {
+        let mut address = String::new();
+        address.push_str(&self.appinst.to_string());
+        address.push_str(":");
+        address.push_str(&self.msgid.to_string());
+        address
+    }
+
     /// # Safety
     ///
     /// This function uses CStr::from_ptr which is unsafe...

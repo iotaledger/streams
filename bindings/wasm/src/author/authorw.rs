@@ -49,8 +49,8 @@ pub struct Author {
 #[wasm_bindgen]
 impl Author {
     #[wasm_bindgen(constructor)]
-    pub fn new(node: String, seed: String, options: SendOptions, multi_branching: bool) -> Author {
-        let mut client = ApiClient::new_from_url(&node);
+    pub fn new(seed: String, options: SendOptions, multi_branching: bool) -> Author {
+        let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 

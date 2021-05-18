@@ -25,9 +25,9 @@ main()
 
 async function main() {
     let node = "https://api.lb-0.testnet.chrysalis2.com/";
-    let options = new streams.SendOptions(9, true, 1);
+    let options = new streams.SendOptions(node, 9, true, 1);
     let seed = make_seed(81);
-    let auth = new streams.Author(node, seed, options.clone(), false);
+    let auth = new streams.Author(seed, options.clone(), false);
 
     console.log("channel address: ", auth.channel_address());
     console.log("multi branching: ", auth.is_multi_branching());
@@ -37,7 +37,7 @@ async function main() {
     console.log("announced at: ", ann_link.to_string());
 
     let seed2 = make_seed(81);
-    let sub = new streams.Subscriber(node, seed2, options.clone());
+    let sub = new streams.Subscriber(seed2, options.clone());
     let ann_link_copy = ann_link.copy();
     await sub.clone().receive_announcement(ann_link_copy);
 

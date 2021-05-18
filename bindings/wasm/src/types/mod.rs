@@ -30,6 +30,7 @@ pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {
 
 #[wasm_bindgen]
 pub struct SendOptions {
+    url: String,
     pub depth: u8,
     pub local_pow: bool,
     pub threads: usize,
@@ -38,6 +39,7 @@ pub struct SendOptions {
 impl From<SendOptions> for ApiSendOptions {
     fn from(options: SendOptions) -> Self {
         Self {
+            url: options.url,
             depth: options.depth,
             local_pow: options.local_pow,
             threads: options.threads,
@@ -48,17 +50,29 @@ impl From<SendOptions> for ApiSendOptions {
 #[wasm_bindgen]
 impl SendOptions {
     #[wasm_bindgen(constructor)]
-    pub fn new(depth: u8, local_pow: bool, threads: usize) -> Self {
+    pub fn new(url: String, depth: u8, local_pow: bool, threads: usize) -> Self {
         Self {
+            url,
             depth,
             local_pow,
             threads,
         }
     }
 
+    #[wasm_bindgen(setter)]
+    pub fn set_url(&mut self, url: String) {
+        self.url = url
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn url(&self) -> String {
+        self.url.clone()
+    }
+
     #[wasm_bindgen]
     pub fn clone(&self) -> Self {
         SendOptions {
+            url: self.url.clone(),
             depth: self.depth,
             local_pow: self.local_pow,
             threads: self.threads,

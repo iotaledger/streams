@@ -18,7 +18,6 @@ use iota_streams_core::prelude::{
 };
 
 use iota_streams_core::prelude::{
-    string::ToString,
     Rc,
     Vec,
 };
