@@ -19,9 +19,9 @@ use iota_streams_core::{
             U40,
         },
         Box,
-        Vec,
-        ToString,
         String,
+        ToString,
+        Vec,
     },
     sponge::{
         prp::PRP,
@@ -145,10 +145,11 @@ impl TangleAddress {
         })
     }
 
+    #[allow(clippy::inherent_to_string_shadow_display)]
     pub fn to_string(&self) -> String {
         let mut address = String::new();
         address.push_str(&self.appinst.to_string());
-        address.push_str(":");
+        address.push(':');
         address.push_str(&self.msgid.to_string());
         address
     }
