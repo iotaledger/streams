@@ -5,6 +5,7 @@ use iota_streams_core::Result;
 
 use super::*;
 use crate::api::tangle::{
+    ImplementationType::SingleBranch,
     UnwrappedMessage,
     User,
 };
@@ -25,11 +26,9 @@ impl<Trans> Subscriber<Trans> {
     ///
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
-    /// * `encoding` - A string slice representing the encoding type for the message [supported: utf-8]
-    /// * `payload_length` - Maximum size in bytes of payload per message chunk [1-1024],
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, encoding: &str, payload_length: usize, transport: Trans) -> Self {
-        let user = User::new(seed, encoding, payload_length, false, transport);
+    pub fn new(seed: &str, transport: Trans) -> Self {
+        let user = User::new(seed, SingleBranch, transport);
         Self { user }
     }
 
@@ -56,6 +55,11 @@ impl<Trans> Subscriber<Trans> {
     /// Return boolean representing the sequencing nature of the channel
     pub fn is_multi_branching(&self) -> bool {
         self.user.is_multi_branching()
+    }
+
+    /// Return boolean representing whether the implementation type is single depth
+    pub fn is_single_depth(&self) -> bool {
+        self.user.is_single_depth()
     }
 
     /// Stores the provided link to the internal sequencing state for the provided participant
@@ -129,7 +133,7 @@ impl<Trans: Transport> Subscriber<Trans> {
     /// * `announcement` - An existing announcement message link for processing
     /// * `transport` - Transport object used for sending and receiving
     pub fn recover(seed: &str, announcement: &Address, transport: Trans) -> Result<Self> {
-        let mut subscriber = Subscriber::new(seed, "utf-8", 1024, transport);
+        let mut subscriber = Subscriber::new(seed, transport);
         subscriber.receive_announcement(announcement)?;
         subscriber.sync_state();
 
@@ -225,6 +229,10 @@ impl<Trans: Transport> Subscriber<Trans> {
         self.user.fetch_next_msgs()
     }
 
+    pub fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.fetch_prev_msg(link)
+    }
+
     /// Iteratively fetches next message until no new messages can be found, and return a vector
     /// containing all of them.
     pub fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
@@ -270,7 +278,7 @@ impl<Trans: Transport> Subscriber<Trans> {
     /// * `announcement` - An existing announcement message link for processing
     /// * `transport` - Transport object used for sending and receiving
     pub async fn recover(seed: &str, announcement: &Address, transport: Trans) -> Result<Self> {
-        let mut subscriber = Subscriber::new(seed, "utf-8", 1024, transport);
+        let mut subscriber = Subscriber::new(seed, transport);
         subscriber.receive_announcement(announcement).await?;
         subscriber.sync_state().await;
 
@@ -369,6 +377,11 @@ impl<Trans: Transport> Subscriber<Trans> {
     pub async fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
         self.user.fetch_next_msgs().await
     }
+
+    pub fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.fetch_prev_msg(link)
+    }
+
 
     /// Iteratively fetches next message until no new messages can be found, and return a vector
     /// containing all of them.

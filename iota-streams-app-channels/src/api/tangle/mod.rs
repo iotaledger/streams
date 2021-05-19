@@ -30,6 +30,7 @@ use iota_streams_core::psk;
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
+pub use super::ImplementationType;
 
 use iota_streams_core_edsig::signature::ed25519;
 

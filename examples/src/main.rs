@@ -9,7 +9,10 @@ use rand::Rng;
 
 use iota_streams::{
     app::transport::tangle::client::Client,
-    app_channels::api::tangle::Transport,
+    app_channels::api::tangle::{
+        ImplementationType,
+        Transport,
+    },
     core::{
         prelude::{
             Rc,
@@ -25,7 +28,7 @@ mod branching;
 
 fn run_recovery_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
     println!("\tRunning Recovery Test, seed: {}", seed);
-    match branching::recovery::example(transport, false, seed) {
+    match branching::recovery::example(transport, ImplementationType::SingleBranch, seed) {
         Err(err) => println!("Error in recovery test: {:?}", err),
         Ok(_) => println!("\tRecovery test completed!!"),
     }
@@ -34,7 +37,7 @@ fn run_recovery_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
 
 fn run_single_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
     println!("\tRunning Single Branch Test, seed: {}", seed);
-    match branching::single_branch::example(transport, false, seed) {
+    match branching::single_branch::example(transport, ImplementationType::SingleBranch, seed) {
         Err(err) => println!("Error in Single Branch test: {:?}", err),
         Ok(_) => println!("\tSingle Branch Test completed!!"),
     }
@@ -43,7 +46,7 @@ fn run_single_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
 
 fn run_multi_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
     println!("\tRunning Multi Branch Test, seed: {}", seed);
-    match branching::multi_branch::example(transport, true, seed) {
+    match branching::multi_branch::example(transport, ImplementationType::MultiBranch, seed) {
         Err(err) => println!("Error in Multi Branch test: {:?}", err),
         Ok(_) => println!("\tMulti Branch Test completed!!"),
     }
@@ -109,8 +112,8 @@ fn main_client() {
     println!("\n");
 
     run_single_branch_test(transport.clone(), seed1);
-    //run_multi_branch_test(transport.clone(), seed2);
-    //run_recovery_test(transport.clone(), seed3);
+    run_multi_branch_test(transport.clone(), seed2);
+    run_recovery_test(transport.clone(), seed3);
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

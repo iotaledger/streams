@@ -1,7 +1,7 @@
 use iota_streams::{
-    app::transport::tangle::PAYLOAD_BYTES,
     app_channels::api::tangle::{
         Author,
+        ImplementationType,
         Subscriber,
         Transport,
     },
@@ -21,12 +21,11 @@ use super::utils;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, seed: &str) -> Result<()> {
-    let encoding = "utf-8";
-    let mut author = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching, transport.clone());
+pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: ImplementationType, seed: &str) -> Result<()> {
+    let mut author = Author::new(seed, impl_type.clone(), transport.clone());
     println!("Author multi branching?: {}", author.is_multi_branching());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone());
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED",  transport.clone());
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -93,7 +92,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
 
 
     println!("\n\nTime to try to recover the instance...");
-    let mut new_author = Author::recover(seed, &announcement_link, multi_branching, transport.clone())?;
+    let mut new_author = Author::recover(seed, &announcement_link, impl_type, transport.clone())?;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;

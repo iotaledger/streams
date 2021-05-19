@@ -47,6 +47,7 @@ use iota_streams_ddml::{
 
 use crate::{
     api::{
+        ImplementationType,
         pk_store::*,
         psk_store::*,
     },
@@ -206,25 +207,18 @@ where
     pub fn gen(
         prng: prng::Prng<F>,
         nonce: Vec<u8>,
-        flags: u8,
+        impl_type: ImplementationType,
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
     ) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
-        // App instance link is generated using the 32 byte PubKey and the first 8 bytes of the nonce
-        // let mut appinst_input = Vec::new();
-        // appinst_input.extend_from_slice(&sig_kp.public.to_bytes()[..]);
-        // appinst_input.extend_from_slice(&nonce[0..8]);
-        //
-        // let appinst = link_gen.link_from((&appinst_input, &ke_kp.1, ANN_MESSAGE_NUM));
-
-        // Start sequence state of new publishers to 2
-        // 0 is used for Announce/Subscribe/Unsubscribe
-        // 1 is used for sequence messages
-        // let mut seq_map = HashMap::new();
-        // seq_map.insert(ke_kp.1.as_bytes().to_vec(), (appinst.clone(), 2 as usize));
+        let flags: u8 = match impl_type {
+            ImplementationType::SingleBranch => 0,
+            ImplementationType::MultiBranch => 1,
+            ImplementationType::SingleDepth => 2,
+        };
 
         Self {
             _phantom: core::marker::PhantomData,
@@ -604,7 +598,7 @@ where
             processed = GenericMessage::new(msg.link.clone(), prev_link.clone(), false);
         }
         if !self.is_multi_branching() {
-            self.store_state_for_all(prev_link.rel().clone(), seq_no.0 as u32 + 1)?;
+            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
         }
 
         Ok(processed)
@@ -676,7 +670,7 @@ where
             .unwrap_signed_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
         if !self.is_multi_branching() {
-            self.store_state_for_all(prev_link.rel().clone(), seq_no.0 as u32 + 1)?;
+            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
         }
 
         let body = (content.sig_pk, content.public_payload, content.masked_payload);
@@ -747,7 +741,7 @@ where
             .unwrap_tagged_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
         if !self.is_multi_branching() {
-            self.store_state_for_all(prev_link.rel().clone(), seq_no.0 as u32 + 1)?;
+            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
         }
 
         let body = (content.public_payload, content.masked_payload);
@@ -894,6 +888,7 @@ where
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+        store: bool
     ) -> Result<GenericMessage<Link, sequence::ContentUnwrap<Link>>> {
         let preparsed = msg.parse_header()?;
         let sender_pk = preparsed.header.sender_key_pk;
@@ -901,12 +896,18 @@ where
         let content = self
             .unwrap_sequence(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
-        self.store_state(sender_pk, msg.link.rel().clone())?;
+        if store {
+            self.store_state(sender_pk, msg.link.rel().clone())?;
+        }
         Ok(GenericMessage::new(msg.link, prev_link, content))
     }
 
     pub fn is_multi_branching(&self) -> bool {
         (self.flags & FLAG_BRANCHING_MASK) != 0
+    }
+
+    pub fn is_single_depth(&self) -> bool {
+        self.flags == 2
     }
 
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
@@ -971,11 +972,13 @@ where
     }
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
-        self.pk_store
-            .insert(self.sig_kp.public, Cursor::new_at(link.clone(), 0, seq_no))?;
-        for (_pk, cursor) in self.pk_store.iter_mut() {
-            cursor.link = link.clone();
-            cursor.seq_no = seq_no;
+        if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
+            self.pk_store
+                .insert(self.sig_kp.public, Cursor::new_at(link.clone(), 0, seq_no))?;
+            for (_pk, cursor) in self.pk_store.iter_mut() {
+                cursor.link = link.clone();
+                cursor.seq_no = seq_no;
+            }
         }
         Ok(())
     }

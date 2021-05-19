@@ -235,7 +235,6 @@ impl HasLink for TangleAddress {
     }
 
     fn from_bytes(bytes: &[u8]) -> Self {
-        println!("From bytes: {}", bytes.len());
         TangleAddress::new(
             AppInst::from(&bytes[0..APPINST_SIZE]),
             MsgId::from(&bytes[APPINST_SIZE..])
@@ -277,7 +276,6 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         new
     }
     fn gen_msgid(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> MsgId {
-        println!("Making msgid with {}, {}", cursor.link, cursor.seq_no);
         let mut s = Spongos::<F>::init();
         s.absorb(self.addr.appinst.id.as_ref());
         s.absorb(pk.as_ref());
@@ -287,7 +285,6 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         s.commit();
         let mut new = MsgId::default();
         s.squeeze(new.id.as_mut());
-        println!("Made: {}", new);
         new
     }
 }

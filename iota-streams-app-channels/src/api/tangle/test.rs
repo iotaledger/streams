@@ -6,7 +6,6 @@ use crate::api::tangle::{
 };
 use iota_streams_app::{
     message::HasLink,
-    transport::tangle::PAYLOAD_BYTES,
 };
 
 #[cfg(not(feature = "async"))]
@@ -27,20 +26,15 @@ use super::*;
 
 #[cfg(not(feature = "async"))]
 pub fn example<T: Transport + Clone>(transport: T) -> Result<()> {
-    let encoding = "utf-8";
-    let multi_branching = false;
-
     let mut author = Author::new(
         "AUTHOR9SEED",
-        encoding,
-        PAYLOAD_BYTES,
-        multi_branching,
+        ImplementationType::SingleBranch,
         transport.clone(),
     );
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone());
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
 
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES, transport.clone());
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -152,20 +146,15 @@ pub fn example<T: Transport + Clone>(transport: T) -> Result<()> {
 #[cfg(feature = "async")]
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> where
 {
-    let encoding = "utf-8";
-    let multi_branching = false;
-
     let mut author = Author::new(
         "AUTHOR9SEED",
-        encoding,
-        PAYLOAD_BYTES,
-        multi_branching,
+        ImplementationType::SingleBranch,
         transport.clone(),
     );
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone());
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
 
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES, transport.clone());
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
