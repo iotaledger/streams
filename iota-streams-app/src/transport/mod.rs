@@ -17,8 +17,10 @@ use iota_streams_core::prelude::{
     Box,
 };
 
+#[cfg(not(feature = "async"))]
+use iota_streams_core::prelude::ToString;
+
 use iota_streams_core::prelude::{
-    string::ToString,
     Rc,
     Vec,
 };

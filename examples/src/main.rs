@@ -3,20 +3,12 @@
 //#![no_std]
 
 use dotenv;
-use futures::executor::block_on;
 use std::env;
 
 use rand::Rng;
 
 use iota_streams::{
-    app::transport::{
-        tangle::client::{
-            iota_client,
-            Client,
-            SendOptions,
-        },
-        TransportOptions,
-    },
+    app::transport::tangle::client::Client,
     app_channels::api::tangle::Transport,
     core::{
         prelude::{
@@ -30,6 +22,15 @@ use iota_streams::{
 use core::cell::RefCell;
 
 mod branching;
+
+fn run_recovery_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
+    println!("\tRunning Recovery Test, seed: {}", seed);
+    match branching::recovery::example(transport, false, seed) {
+        Err(err) => println!("Error in recovery test: {:?}", err),
+        Ok(_) => println!("\tRecovery test completed!!"),
+    }
+    println!("#######################################");
+}
 
 fn run_single_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
     println!("\tRunning Single Branch Test, seed: {}", seed);
@@ -72,6 +73,7 @@ fn main_pure() {
     let transport = Rc::new(RefCell::new(transport));
     run_single_branch_test(transport.clone(), "PURESEEDA");
     run_multi_branch_test(transport.clone(), "PURESEEDB");
+    run_recovery_test(transport.clone(), "PURESEEDC");
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }
@@ -86,30 +88,18 @@ fn main_client() {
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
 
-    let mut send_opt = SendOptions::default();
+    let client = Client::new_from_url(&node_url);
 
-    // Fails at unwrap when the url isnt working
-    // TODO: Fail gracefully
-    let iota_client = block_on(
-        iota_client::ClientBuilder::new()
-            .with_node(&node_url)
-            .unwrap()
-            //.with_node_sync_disabled()
-            .with_local_pow(false)
-            .finish(),
-    )
-    .unwrap();
-
-    let client = Client::new(send_opt, iota_client);
-
-    let mut transport = Rc::new(RefCell::new(client));
-    transport.set_send_options(send_opt);
+    let transport = Rc::new(RefCell::new(client));
 
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
     let seed1: &str = &(0..10)
         .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
         .collect::<String>();
     let seed2: &str = &(0..10)
+        .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
+        .collect::<String>();
+    let seed3: &str = &(0..10)
         .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
         .collect::<String>();
 
@@ -120,6 +110,7 @@ fn main_client() {
 
     run_single_branch_test(transport.clone(), seed1);
     run_multi_branch_test(transport.clone(), seed2);
+    run_recovery_test(transport.clone(), seed3);
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

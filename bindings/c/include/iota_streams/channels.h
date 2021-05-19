@@ -18,6 +18,9 @@ typedef struct KePks ke_pks_t;
 typedef struct NextMsgIds next_msg_ids_t;
 extern void drop_next_msg_ids(next_msg_ids_t const *);
 
+typedef struct UserState user_state_t;
+extern void drop_user_state(user_state_t const *);
+
 typedef struct UnwrappedMessage unwrapped_message_t;
 extern void drop_unwrapped_message(unwrapped_message_t const *);
 
@@ -63,6 +66,7 @@ extern void tsp_client_set_mwm(transport_t *tsp, uint8_t mwm);
 typedef struct Author author_t;
 
 extern author_t *auth_new(char const *seed, char const *encoding, size_t payload_length, uint8_t multi_branching, transport_t *tsp);
+extern author_t *auth_recover(char const *seed, address_t const *announcement, uint8_t multi_branching, transport_t *tsp);
 extern void auth_drop(author_t *);
 
 extern channel_address_t const *auth_channel_address(author_t const *user);
@@ -92,12 +96,14 @@ extern unwrapped_message_t const *auth_receive_msg(author_t *author, address_t c
 // Fetching/Syncing
 extern unwrapped_messages_t const *auth_fetch_next_msgs(author_t *author);
 extern unwrapped_messages_t const *auth_sync_state(author_t *author);
+extern user_state_t const * auth_fetch_state(author_t *author);
 
 /////////////
 // Subscriber
 /////////////
 typedef struct Subscriber subscriber_t;
 extern subscriber_t *sub_new(char const *seed, char const *encoding, size_t payload_length, transport_t *tsp);
+extern subscriber_t *sub_recover(char const *seed, address_t const *announcement, transport_t *tsp);
 extern void sub_drop(subscriber_t *);
 
 extern channel_address_t const *sub_channel_address(subscriber_t const *user);
@@ -130,6 +136,7 @@ extern unwrapped_message_t const *sub_receive_msg(subscriber_t *subscriber, addr
 // Fetching/Syncing
 extern unwrapped_messages_t const *sub_fetch_next_msgs(subscriber_t *subscriber);
 extern unwrapped_messages_t const *sub_sync_state(subscriber_t *subscriber);
+extern user_state_t  const *sub_fetch_state(subscriber_t *subscriber);
 
 /////////////
 /// Utility
@@ -146,5 +153,9 @@ extern char const *public_key_to_string(public_key_t *pk);
 
 extern packet_payloads_t get_payload(unwrapped_message_t const *message);
 extern packet_payloads_t get_indexed_payload(unwrapped_messages_t const *messages, size_t index);
+
+extern char const *get_address_index_str(address_t const *address);
+
+extern address_t  const *get_link_from_state(user_state_t const *userState, public_key_t const *publicKey);
 
 #endif //IOTA_STREAMS_CHANNELS_H

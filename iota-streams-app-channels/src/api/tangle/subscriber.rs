@@ -9,7 +9,10 @@ use crate::api::tangle::{
     User,
 };
 
-use iota_streams_core::prelude::Vec;
+use iota_streams_core::prelude::{
+    String,
+    Vec,
+};
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Subscriber Object. Contains User API.
@@ -77,6 +80,17 @@ impl<Trans> Subscriber<Trans> {
         self.user.store_state_for_all(link, seq_num)
     }
 
+    /// Fetches the latest PublicKey -> Cursor state mapping from the implementation, allowing the
+    /// user to see the latest messages present from each publisher
+    pub fn fetch_state(&self) -> Result<Vec<(String, Cursor<Address>)>> {
+        let state_list = self.user.fetch_state()?;
+        let mut state = Vec::new();
+        for (pk, cursor) in state_list {
+            state.push((hex::encode(pk.as_bytes()), cursor))
+        }
+        Ok(state)
+    }
+
     /// Generate a vector containing the next sequenced message identifier for each publishing
     /// participant in the channel
     ///
@@ -107,6 +121,21 @@ impl<Trans> Subscriber<Trans> {
 
 #[cfg(not(feature = "async"))]
 impl<Trans: Transport> Subscriber<Trans> {
+    /// Generates a new Subscriber implementation from input. It then syncs state of the user from
+    /// the given announcement message link
+    ///
+    ///  # Arguements
+    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
+    /// * `announcement` - An existing announcement message link for processing
+    /// * `transport` - Transport object used for sending and receiving
+    pub fn recover(seed: &str, announcement: &Address, transport: Trans) -> Result<Self> {
+        let mut subscriber = Subscriber::new(seed, "utf-8", 1024, transport);
+        subscriber.receive_announcement(announcement)?;
+        subscriber.sync_state();
+
+        Ok(subscriber)
+    }
+
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments
@@ -196,6 +225,30 @@ impl<Trans: Transport> Subscriber<Trans> {
         self.user.fetch_next_msgs()
     }
 
+    /// Iteratively fetches next message until no new messages can be found, and return a vector
+    /// containing all of them.
+    pub fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
+        let mut exists = true;
+        let mut msgs = Vec::new();
+        while exists {
+            let next_msgs = self.fetch_next_msgs();
+            if next_msgs.is_empty() {
+                exists = false
+            } else {
+                msgs.extend(next_msgs)
+            }
+        }
+        msgs
+    }
+
+    /// Iteratively fetches next messages until internal state has caught up
+    pub fn sync_state(&mut self) {
+        let mut exists = true;
+        while exists {
+            exists = !self.fetch_next_msgs().is_empty()
+        }
+    }
+
     /// Receive and process a message of unknown type. Message will be handled appropriately and
     /// the unwrapped contents returned
     ///
@@ -209,6 +262,21 @@ impl<Trans: Transport> Subscriber<Trans> {
 
 #[cfg(feature = "async")]
 impl<Trans: Transport> Subscriber<Trans> {
+    /// Generates a new Subscriber implementation from input. It then syncs state of the user from
+    /// the given announcement message link
+    ///
+    ///  # Arguements
+    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
+    /// * `announcement` - An existing announcement message link for processing
+    /// * `transport` - Transport object used for sending and receiving
+    pub async fn recover(seed: &str, announcement: &Address, transport: Trans) -> Result<Self> {
+        let mut subscriber = Subscriber::new(seed, "utf-8", 1024, transport);
+        subscriber.receive_announcement(announcement).await?;
+        subscriber.sync_state().await;
+
+        Ok(subscriber)
+    }
+
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments
@@ -300,6 +368,30 @@ impl<Trans: Transport> Subscriber<Trans> {
     /// Retrieves the next message for each user (if present in transport layer) and returns them
     pub async fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
         self.user.fetch_next_msgs().await
+    }
+
+    /// Iteratively fetches next message until no new messages can be found, and return a vector
+    /// containing all of them.
+    pub async fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
+        let mut exists = true;
+        let mut msgs = Vec::new();
+        while exists {
+            let next_msgs = self.fetch_next_msgs().await;
+            if next_msgs.is_empty() {
+                exists = false
+            } else {
+                msgs.extend(next_msgs)
+            }
+        }
+        msgs
+    }
+
+    /// Iteratively fetches next messages until internal state has caught up
+    pub async fn sync_state(&mut self) {
+        let mut exists = true;
+        while exists {
+            exists = !self.fetch_next_msgs().await.is_empty()
+        }
     }
 
     /// Receive and process a message of unknown type. Message will be handled appropriately and

@@ -19,6 +19,8 @@ use iota_streams_core::{
             U40,
         },
         Box,
+        String,
+        ToString,
         Vec,
     },
     sponge::{
@@ -142,6 +144,16 @@ impl TangleAddress {
             msgid: msgid.unwrap(),
         })
     }
+
+    #[allow(clippy::inherent_to_string_shadow_display)]
+    pub fn to_string(&self) -> String {
+        let mut address = String::new();
+        address.push_str(&self.appinst.to_string());
+        address.push(':');
+        address.push_str(&self.msgid.to_string());
+        address
+    }
+
     /// # Safety
     ///
     /// This function uses CStr::from_ptr which is unsafe...
@@ -163,7 +175,8 @@ impl fmt::Debug for TangleAddress {
 
 impl fmt::Display for TangleAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{}:{}>", self.appinst, self.msgid)
+        let hash = client::get_hash(self.appinst.as_ref(), self.msgid.as_ref()).unwrap_or_default();
+        write!(f, "<{}>", hash)
     }
 }
 
