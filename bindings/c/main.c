@@ -33,11 +33,6 @@ int main()
 
   printf("Loading using node: %s\n\n", url);
   tsp = tsp_client_new_from_url(url);
-
-  // Make sure this mwm matches the node configuration
-  char const *env_mwm = getenv("MWM");
-  int const mwm = env_mwm ? atoi(env_mwm) : 14;
-  tsp_client_set_mwm(tsp, mwm);
 #else
   printf("Doing local tests using bucket transport (offline) \n");
   tsp = tsp_new();
@@ -66,18 +61,21 @@ int main()
   printf("Converting announcement link to strings\n");
   char const *ann_address_inst_str = get_address_inst_str(ann_link);
   char const *ann_address_id_str = get_address_id_str(ann_link);
+  printf("Appinst: %s,  \nMsgId: %s\n", ann_address_inst_str, ann_address_id_str);
+
   char const connector[] = ":";
-  char buffer[sizeof(ann_address_inst_str) + sizeof(ann_address_id_str) + 1];
+  char buffer[sizeof(*ann_address_inst_str) + sizeof(*ann_address_id_str) + 1];
 
   strcat(buffer, ann_address_inst_str);
   strcat(buffer, connector);
   strcat(buffer, ann_address_id_str);
+  //printf("Buffer length: %ld\n", sizeof(buffer));
 
-  printf("Converted to string\n");
+  printf("Converted to string: %s\n", buffer);
 
   address_t *ann_link_copy = address_from_string(buffer);
-  char const *ann_cpy_inst_str = get_address_inst_str(ann_link);
-  char const *ann_cpy_id_str = get_address_id_str(ann_link);
+  char const *ann_cpy_inst_str = get_address_inst_str(ann_link_copy);
+  char const *ann_cpy_id_str = get_address_id_str(ann_link_copy);
 
   printf("Converted back to link.\nOriginal: %s:%s\nConverted: %s:%s\n\n",
          ann_address_inst_str, ann_address_id_str,
@@ -88,6 +86,12 @@ int main()
   drop_str(ann_cpy_inst_str);
   drop_str(ann_cpy_id_str);
 
+  printf("Converting link to tangle index\n");
+  char const *link_index = get_address_index_str(ann_link_copy);
+
+  printf("Tangle index: %s", link_index);
+
+  drop_str(link_index);
   drop_address(ann_link_copy);
 
 
@@ -211,7 +215,31 @@ int main()
     //`get_indexed_payload` does not allocate, no need to drop `response`
   }
 
+
+  printf("\n\n ----------------------- \n");
+  printf("Beginning author recovery...\n");
+
+  author_t *recovered_auth = auth_recover(seed, ann_link, multi_branching, tsp);
+
+  user_state_t const *recovered_auth_state = auth_fetch_state(recovered_auth);
+  user_state_t const *original_auth_state = auth_fetch_state(auth);
+
+  public_key_t const *recovered_auth_pk = auth_get_public_key(recovered_auth);
+  public_key_t const *original_auth_pk = auth_get_public_key(auth);
+
+  address_t const *recovered_state_link = get_link_from_state(recovered_auth_state, recovered_auth_pk);
+  address_t const *original_state_link = get_link_from_state(original_auth_state, original_auth_pk);
+
+  char const *recovered_link_id = get_address_id_str(recovered_state_link);
+  char const *original_link_id = get_address_id_str(original_state_link);
+
+  printf("Recovered/Original state links: %s, %s\n", recovered_link_id, original_link_id);
+
+  drop_user_state(recovered_auth_state);
+  drop_user_state(original_auth_state);
   drop_address(ann_link);
+  drop_address(recovered_state_link);
+  drop_address(original_state_link);
   drop_address(sub_a_link);
   drop_address(sub_b_link);
   drop_links(keyload_links);
@@ -227,8 +255,9 @@ int main()
   drop_links(tagged_packet_3_links);
   drop_unwrapped_messages(message_returns);
 
-  auth_drop(auth);
   sub_drop(subA);
+  auth_drop(auth);
+  auth_drop(recovered_auth);
   tsp_drop(tsp);
   return 0;
 }

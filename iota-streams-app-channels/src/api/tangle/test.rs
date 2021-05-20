@@ -144,7 +144,7 @@ pub fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     let _subscriberB2 = Subscriber::import(subBdump.as_ref(), "pwdSubB", transport.clone()).unwrap();
 
     let authordump = author.export("pwdAuthor").unwrap();
-    let _author2 = Author::import(authordump.as_ref(), "pwdAuthor", transport.clone()).unwrap();
+    let _author2 = Author::import(authordump.as_ref(), "pwdAuthor", transport).unwrap();
 
     Ok(())
 }

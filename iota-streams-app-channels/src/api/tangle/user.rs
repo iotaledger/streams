@@ -7,6 +7,7 @@ use iota_streams_core::{
     panic_if_not,
     prelude::Vec,
     prng,
+    try_or,
     Errors::{
         UnknownMsgType,
         UserNotRegistered,
@@ -20,6 +21,7 @@ use crate::{
     api,
     message,
 };
+use iota_streams_core::Errors::ChannelDuplication;
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
@@ -102,6 +104,13 @@ impl<Trans> User<Trans> {
         self.user.store_state_for_all(link.msgid.clone(), seq_num)
     }
 
+    /// Fetches the latest PublicKey -> Cursor state mapping from the implementation, allowing the
+    /// user to see the latest messages present from each publisher
+    /// [Author, Subscriber]
+    pub fn fetch_state(&self) -> Result<Vec<(PublicKey, Cursor<Address>)>> {
+        self.user.fetch_state()
+    }
+
     /// Generate a vector containing the next sequenced message identifier for each publishing
     /// participant in the channel
     /// [Author, Subscriber]
@@ -110,6 +119,16 @@ impl<Trans> User<Trans> {
     ///   * `branching` - Boolean representing the sequencing nature of the channel
     pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(PublicKey, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
+    }
+
+    /// Commit to state a wrapped message and type
+    /// [Author, Subscriber]
+    ///
+    ///  # Arguments
+    ///  * `wrapped` - A wrapped message intended to be committed to the link store
+    ///  * `info` - The type of wrapped message being committed to the link store
+    pub fn commit_wrapped(&mut self, wrapped: WrapState, info: MsgInfo) -> Result<Address> {
+        self.user.commit_wrapped(wrapped, info)
     }
 
     pub fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
@@ -147,7 +166,7 @@ impl<Trans: Transport> User<Trans> {
     /// Send a message without using sequencing logic. Reserved for Announce and Subscribe messages
     fn send_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<Address> {
         self.transport.send_message(&Message::new(msg.message))?;
-        self.user.commit_wrapped(msg.wrapped, info)
+        self.commit_wrapped(msg.wrapped, info)
     }
 
     /// Send a message using sequencing logic.
@@ -165,13 +184,17 @@ impl<Trans: Transport> User<Trans> {
         let seq = self.user.wrap_sequence(ref_link)?;
         self.transport.send_message(&Message::new(msg.message))?;
         let seq_link = self.send_sequence(seq)?;
-        let msg_link = self.user.commit_wrapped(msg.wrapped, info)?;
+        let msg_link = self.commit_wrapped(msg.wrapped, info)?;
         Ok((msg_link, seq_link))
     }
 
     /// Send an announcement message, generating a channel [Author].
     pub fn send_announce(&mut self) -> Result<Address> {
         let msg = self.user.announce()?;
+        try_or!(
+            self.transport.recv_message(&msg.message.link).is_err(),
+            ChannelDuplication
+        )?;
         self.send_message(msg, MsgInfo::Announce)
     }
 
@@ -345,8 +368,8 @@ impl<Trans: Transport> User<Trans> {
         {
             let msg = self.transport.recv_message(&link);
 
-            if msg.is_ok() {
-                let msg = self.handle_message(msg.unwrap());
+            if let Ok(msg) = msg {
+                let msg = self.handle_message(msg);
                 if let Ok(msg) = msg {
                     if !self.user.is_multi_branching() {
                         let stored = self.user.store_state_for_all(link.msgid, seq_no);
@@ -399,7 +422,7 @@ impl<Trans: Transport> User<Trans> {
                         Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
                     );
                     let msg = self.transport.recv_message(&msg_link)?;
-                    self.user.store_state(unwrapped.body.pk.clone(), store_link)?;
+                    self.user.store_state(unwrapped.body.pk, store_link)?;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
@@ -432,7 +455,7 @@ impl<Trans: Transport> User<Trans> {
     /// Send a message without using sequencing logic. Reserved for Announce and Subscribe messages
     async fn send_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<Address> {
         self.transport.send_message(&Message::new(msg.message)).await?;
-        self.user.commit_wrapped(msg.wrapped, info)
+        self.commit_wrapped(msg.wrapped, info)
     }
 
     /// Send a message using sequencing logic.
@@ -450,13 +473,17 @@ impl<Trans: Transport> User<Trans> {
         let seq = self.user.wrap_sequence(ref_link)?;
         self.transport.send_message(&Message::new(msg.message)).await?;
         let seq_link = self.send_sequence(seq).await?;
-        let msg_link = self.user.commit_wrapped(msg.wrapped, info)?;
+        let msg_link = self.commit_wrapped(msg.wrapped, info)?;
         Ok((msg_link, seq_link))
     }
 
     /// Send an announcement message, generating a channel [Author].
     pub async fn send_announce(&mut self) -> Result<Address> {
         let msg = self.user.announce()?;
+        try_or!(
+            self.transport.recv_message(&msg.message.link).await.is_err(),
+            ChannelDuplication
+        )?;
         self.send_message(msg, MsgInfo::Announce).await
     }
 
