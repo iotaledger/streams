@@ -888,6 +888,10 @@ where
         Ok(())
     }
 
+    pub fn store_psk(&mut self, pskid: psk::PskId, psk: psk::Psk) {
+        self.psk_store.insert(pskid, psk)
+    }
+
     fn gen_next_msg_id(
         ids: &mut Vec<(ed25519::PublicKey, Cursor<Link>)>,
         link_gen: &LG,
