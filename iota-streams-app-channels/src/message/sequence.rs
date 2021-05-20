@@ -13,7 +13,7 @@
 //!
 //! # Fields
 //!
-//! * `ntrupkid` -- publisher NTRU public key identifier.
+//! * `pk` -- publisher Ed25519 public key.
 //!
 //! * `seqNum` -- Sequencing state of published message.
 //!

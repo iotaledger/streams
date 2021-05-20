@@ -2,7 +2,7 @@
 //! in the channel. It contains both plain and masked payloads. The message is
 //! authenticated with MAC and can be published by channel owner or by a recipient.
 //!
-//! ```pb3
+//! ```ddml
 //! message TaggedPacket {
 //!     join link msgid;
 //!     absorb bytes public_payload;

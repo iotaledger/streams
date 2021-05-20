@@ -27,7 +27,7 @@ pub struct Subscriber<T> {
 }
 
 impl<Trans> Subscriber<Trans> {
-    /// Create a new Subscriber instance, generate new MSS keypair and optionally NTRU keypair.
+    /// Create a new Subscriber instance, generate new Ed25519 key pair.
     ///
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]

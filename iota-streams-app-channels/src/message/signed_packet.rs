@@ -3,7 +3,7 @@
 //! be signed and published by channel owner. Channel owner must firstly publish
 //! corresponding public key certificate in either `Announce` or `ChangeKey` message.
 //!
-//! ```pb3
+//! ```ddml
 //! message SignedPacket {
 //!     join link msgid;
 //!     absorb bytes public_payload;

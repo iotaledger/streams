@@ -1,6 +1,6 @@
 use core::fmt;
 
-/// PB3 `size_t` type, unsigned.
+/// DDML `size_t` type, unsigned.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]
 pub struct Size(pub usize);
 

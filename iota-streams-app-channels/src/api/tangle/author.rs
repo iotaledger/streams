@@ -28,7 +28,7 @@ pub struct Author<Trans> {
 }
 
 impl<Trans> Author<Trans> {
-    /// Create a new Author instance, generate new MSS keypair and optionally NTRU keypair.
+    /// Create a new Author instance, generate new Ed25519 key pair.
     ///
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
