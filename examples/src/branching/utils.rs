@@ -11,7 +11,6 @@ pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>) {
     let mut exists = true;
 
     while exists {
-        println!("Subscriber state: {}", subscriber);
         let msgs = subscriber.fetch_next_msgs();
         exists = false;
 

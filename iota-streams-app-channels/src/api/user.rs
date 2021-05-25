@@ -804,7 +804,11 @@ where
 
                     Ok(WrappedSequence::new().with_cursor(cursor).with_wrapped(wrapped))
                 } else {
-                    cursor.link = ref_link.clone();
+                    let msg_link = self
+                        .link_gen
+                        .link_from(&self.sig_kp.public, Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no));
+
+                    cursor.link = msg_link.rel().clone();
                     Ok(WrappedSequence::new().with_cursor(cursor))
                 }
             }

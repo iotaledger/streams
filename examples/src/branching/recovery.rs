@@ -66,7 +66,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
             println!("  msg => <{}> {}", msg.msgid, msg);
             panic_if_not(seq.is_none());
             msg
-        };
+        };birtualbox osx
     }
 
     println!("\nWait a moment for messages to propogate...");
@@ -121,10 +121,17 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     //Wait a second for message to propagate
     sleep(Duration::from_secs(1));
-    println!("Subscriber A fetching transactions...");
+    println!("\nSubscriber A fetching transactions...");
     let msgs = subscriberA.fetch_next_msgs();
     panic_if_not!(!msgs.is_empty());
-    panic_if_not!(!(msgs[0].link == last_msg));
+
+    let mut matches = false;
+    for msg in msgs {
+        if last_msg == msg.link {
+            matches = true
+        }
+    }
+    panic_if_not!(matches);
 
     println!("Last message matches, recovery, sync and send successful");
 
