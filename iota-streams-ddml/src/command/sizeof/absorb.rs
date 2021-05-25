@@ -137,7 +137,7 @@ impl<'a, F> Absorb<&'a ed25519::PublicKey> for Context<F> {
     }
 }
 
-/// NTRU public key has fixed size.
+/// X25519 public key has fixed size.
 impl<'a, F> Absorb<&'a x25519::PublicKey> for Context<F> {
     fn absorb(&mut self, _pk: &'a x25519::PublicKey) -> Result<&mut Self> {
         self.size += x25519::PUBLIC_KEY_LENGTH;

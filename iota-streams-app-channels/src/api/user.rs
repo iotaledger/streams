@@ -502,7 +502,7 @@ where
     }
 
     /// Create keyload message with a new session key shared with recipients
-    /// identified by pre-shared key IDs and by NTRU public key IDs.
+    /// identified by pre-shared key IDs and by Ed25519 public keys.
     pub fn share_keyload(
         &mut self,
         link_to: &Link,
@@ -564,7 +564,7 @@ where
         }
     }
 
-    /// Try unwrapping session key from keyload using Subscriber's pre-shared key or NTRU private key (if any).
+    /// Try unwrapping session key from keyload using Subscriber's pre-shared key or Ed25519 private key (if any).
     pub fn handle_keyload(
         &mut self,
         msg: BinaryMessage<F, Link>,
@@ -925,6 +925,10 @@ where
             )
         )?;
         Ok(())
+    }
+
+    pub fn store_psk(&mut self, pskid: psk::PskId, psk: psk::Psk) {
+        self.psk_store.insert(pskid, psk)
     }
 
     fn gen_next_msg_id(

@@ -162,7 +162,7 @@ where
 }
 
 // This whole mess with `'a` and `LookupArg: 'a` is needed in order to allow `LookupPsk`
-// and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
+// and `LookupKeSk` avoid copying and return `&'a Psk` and `&'a ed25519::PublicKey`.
 pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupKeSk> {
     pub link: <Link as HasLink>::Rel,
     pub nonce: NBytes<U16>, // TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
