@@ -263,6 +263,17 @@ impl<Trans: Transport> Author<Trans> {
         msgs
     }
 
+    /// Retrieves the previous message from the message specified (provided the user has access to it)
+    pub fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.fetch_prev_msg(link)
+    }
+
+    /// Retrieves a specified number of previous messages from an original specified messsage link
+    pub fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+        self.user.fetch_prev_msgs(link, max)
+    }
+
+
     /// Iteratively fetches next messages until internal state has caught up
     pub fn sync_state(&mut self) {
         let mut exists = true;
@@ -424,6 +435,17 @@ impl<Trans: Transport> Author<Trans> {
         }
         msgs
     }
+
+    /// Retrieves the previous message from the message specified (provided the user has access to it)
+    pub async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.fetch_prev_msg(link)
+    }
+
+    /// Retrieves a specified number of previous messages from an original specified messsage link
+    pub async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+        self.user.fetch_prev_msgs(link, max)
+    }
+
 
     /// Iteratively fetches next messages until internal state has caught up
     pub async fn sync_state(&mut self) {

@@ -66,7 +66,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
             println!("  msg => <{}> {}", msg.msgid, msg);
             panic_if_not(seq.is_none());
             msg
-        };birtualbox osx
+        };
     }
 
     println!("\nWait a moment for messages to propogate...");

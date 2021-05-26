@@ -101,8 +101,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     println!("\nHandle Share keyload for everyone [SubscriberA]: {}", &keyload_link);
     {
         let msg_tag = subscriberA.receive_sequence(&keyload_link)?;
-        print!("  Author     : {}", author);
-
         let resultB = subscriberB.receive_keyload(&msg_tag)?;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(resultB == false, SubscriberAccessMismatch(String::from("B")))?;
@@ -131,9 +129,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     println!("\nHandle Tagged packet 1 - SubscriberA");
     {
-        let msg_tag = subscriberA.receive_sequence(&tagged_packet_link)?;
-        print!("  SubscriberA: {}", subscriberA);
-
+        let msg_tag = author.receive_sequence(&tagged_packet_link)?;
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
         print!("  Author     : {}", author);
         try_or!(
@@ -169,8 +165,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     println!("\nHandle Signed packet");
     {
         let msg_tag = subscriberA.receive_sequence(&signed_packet_link)?;
-        print!("  Author     : {}", author);
-
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
         print!("  SubscriberA: {}", subscriberA);
         try_or!(
@@ -213,7 +207,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
         print!("  Author     : {}", author);
 
         let resultC = subscriberC.receive_keyload(&msg_tag)?;
-        print!("  SubscriberC: {}", subscriberC);
         try_or!(!resultC, SubscriberAccessMismatch(String::from("C")))?;
         subscriberA.receive_keyload(&msg_tag)?;
         print!("  SubscriberA: {}", subscriberA);
@@ -236,9 +229,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     println!("\nHandle Tagged packet 2 - SubscriberA");
     {
-        let msg_tag = subscriberA.receive_sequence(&tagged_packet_link)?;
-        print!("  SubscriberA: {}", subscriberA);
-
+        let msg_tag = author.receive_sequence(&tagged_packet_link)?;
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
         print!("  Author     : {}", author);
         try_or!(
@@ -250,7 +241,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
         let resultC = subscriberC.receive_tagged_packet(&msg_tag);
-        print!("  SubscriberC: {}", subscriberC);
         try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
     }
 
@@ -259,7 +249,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     println!("\nTagged packet 3 - SubscriberB");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberB.send_tagged_packet(&keyload_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = subscriberB.send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
         let seq = seq.unwrap();
         println!("  msg => <{}> {:?}", msg.msgid, msg);
         println!("  seq => <{}> {:?}", seq.msgid, seq);
@@ -341,6 +331,17 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
             LinkMismatch(msg.link.msgid.to_string(), tagged_packet_link.msgid.to_string())
             )?;
         println!("  SubscriberA: {}", subscriberA);
+    }
+
+    println!("\nSubscriber A checking 3 previous messages");
+    {
+        let msgs = subscriberA.fetch_prev_msgs(&signed_packet_link, 3)?;
+        try_or!(
+            msgs.len() == 3,
+            ValueMismatch(3, msgs.len())
+        )?;
+        println!("Found {} messages", msgs.len());
+        println!("  SubscriberB: {}", subscriberA);
     }
 
     Ok(())

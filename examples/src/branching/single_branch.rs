@@ -106,7 +106,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
     let previous_msg_link = {
-        println!("  Author   : {}", author);
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
         panic_if_not(seq.is_none());
@@ -127,7 +126,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     println!("\nSigned packet");
     let previous_msg_link = {
-        print!("  Author     : {}", author);
         let (msg, seq) = author.send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
         panic_if_not(seq.is_none());
@@ -154,7 +152,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
-        println!("  SubscriberA: {}", subscriberA);
         let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
         panic_if_not(seq.is_none());
@@ -274,6 +271,17 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
             LinkMismatch(msg.link.msgid.to_string(), previous_msg_link.msgid.to_string())
             )?;
         println!("  SubscriberA: {}", subscriberA);
+    }
+
+    println!("\nSubscriber B checking 5 previous messages");
+    {
+        let msgs = subscriberB.fetch_prev_msgs(&signed_packet_link, 5)?;
+        try_or!(
+            msgs.len() == 5,
+            ValueMismatch(5, msgs.len())
+        )?;
+        println!("Found {} messages", msgs.len());
+        println!("  SubscriberB: {}", subscriberB);
     }
 
     Ok(())

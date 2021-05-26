@@ -398,6 +398,20 @@ impl<Trans: Transport> User<Trans> {
         Ok(unwrapped)
     }
 
+    /// Retrieves a specified number of previous messages from an original specified messsage link [Author, Subscriber]
+    pub fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+        let mut fetch_link = link.clone();
+        let mut msgs = Vec::new();
+        for _ in 0..max {
+            let msg = self.fetch_prev_msg(&fetch_link)?;
+            fetch_link = msg.link.clone();
+            msgs.push(msg);
+        }
+        //Messages will be fetched in order of newest to oldest, so we reverse them here
+        msgs.reverse();
+        Ok(msgs)
+    }
+
     /// Handle message of unknown type. Ingests a message and unwraps it according to its determined
     /// content type [Author, Subscriber].
     ///
@@ -685,6 +699,20 @@ impl<Trans: Transport> User<Trans> {
         let prev_msg = self.transport.recv_message(&prev_msg_link).await?;
         let unwrapped = self.handle_message(prev_msg, false).await?;
         Ok(unwrapped)
+    }
+
+    /// Retrieves a specified number of previous messages from an original specified messsage link [Author, Subscriber]
+    pub async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+        let mut fetch_link = link.to_owned();
+        let mut msgs = Vec::new();
+        for _ in 0..max {
+            let msg = self.fetch_prev_msg(&fetch_link).await?;
+            fetch_link = msg.link.clone();
+            msgs.push(msg);
+        }
+        //Messages will be fetched in order of newest to oldest, so we reverse them here
+        msgs.reverse();
+        Ok(msgs)
     }
 
     /// Handle message of unknown type. Ingests a message and unwraps it according to its determined
