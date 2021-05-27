@@ -139,7 +139,12 @@ impl<Trans: Transport> Author<Trans> {
     /// * `announcement` - An existing announcement message link for validation of ownership
     /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
     /// * `transport` - Transport object used for sending and receiving
-    pub fn recover(seed: &str, announcement: &Address, impl_type: ImplementationType, transport: Trans) -> Result<Self> {
+    pub fn recover(
+        seed: &str,
+        announcement: &Address,
+        impl_type: ImplementationType,
+        transport: Trans,
+    ) -> Result<Self> {
         let mut author = Author::new(seed, impl_type, transport);
 
         let ann = author.user.user.announce()?;
@@ -273,7 +278,6 @@ impl<Trans: Transport> Author<Trans> {
         self.user.fetch_prev_msgs(link, max)
     }
 
-
     /// Iteratively fetches next messages until internal state has caught up
     pub fn sync_state(&mut self) {
         let mut exists = true;
@@ -308,7 +312,12 @@ impl<Trans: Transport> Author<Trans> {
     /// * `announcement` - An existing announcement message link for validation of ownership
     /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
     /// * `transport` - Transport object used for sending and receiving
-    pub async fn recover(seed: &str, announcement: &Address, impl_type: ImplementationType, transport: Trans) -> Result<Self> {
+    pub async fn recover(
+        seed: &str,
+        announcement: &Address,
+        impl_type: ImplementationType,
+        transport: Trans,
+    ) -> Result<Self> {
         let mut author = Author::new(seed, impl_type, transport);
 
         let ann = author.user.user.announce()?;
@@ -445,7 +454,6 @@ impl<Trans: Transport> Author<Trans> {
     pub async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
         self.user.fetch_prev_msgs(link, max)
     }
-
 
     /// Iteratively fetches next messages until internal state has caught up
     pub async fn sync_state(&mut self) {

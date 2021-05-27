@@ -18,14 +18,16 @@ use iota_streams::{
 use core::cell::RefCell;
 
 use super::utils;
-use std::thread::sleep;
-use std::time::Duration;
+use std::{
+    thread::sleep,
+    time::Duration,
+};
 
 pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: ImplementationType, seed: &str) -> Result<()> {
     let mut author = Author::new(seed, impl_type.clone(), transport.clone());
     println!("Author multi branching?: {}", author.is_multi_branching());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED",  transport.clone());
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -74,7 +76,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     println!("Subscriber A fetching transactions...");
     utils::s_fetch_next_messages(&mut subscriberA);
 
-
     for i in 6..11 {
         println!("Tagged packet {} - SubscriberA", i);
         previous_msg_link = {
@@ -90,9 +91,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     println!("Author fetching transactions...");
     utils::a_fetch_next_messages(&mut author);
 
-
     println!("\n\nTime to try to recover the instance...");
-    let mut new_author = Author::recover(seed, &announcement_link, impl_type, transport.clone())?;
+    let mut new_author = Author::recover(seed, &announcement_link, impl_type, transport)?;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;
@@ -102,14 +102,10 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     for (pk, cursor) in state.iter() {
         let mut exists = false;
         for (p, c) in old_state.iter() {
-            if pk == p {
-                if cursor.link == c.link &&
-                    cursor.branch_no == c.branch_no &&
-                    cursor.seq_no == c.seq_no {
-                    //Set latest link for sequencing later
-                    latest_link = &cursor.link;
-                    exists = true
-                }
+            if pk == p && cursor.link == c.link && cursor.branch_no == c.branch_no && cursor.seq_no == c.seq_no {
+                // Set latest link for sequencing later
+                latest_link = &cursor.link;
+                exists = true
             }
         }
         panic_if_not!(exists);
@@ -119,7 +115,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     let (last_msg, _seq) = new_author.send_signed_packet(latest_link, &public_payload, &masked_payload)?;
     println!("  msg => <{}> {}", last_msg.msgid, last_msg);
 
-    //Wait a second for message to propagate
+    // Wait a second for message to propagate
     sleep(Duration::from_secs(1));
     println!("\nSubscriber A fetching transactions...");
     let msgs = subscriberA.fetch_next_msgs();
@@ -134,7 +130,5 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     panic_if_not!(matches);
 
     println!("Last message matches, recovery, sync and send successful");
-
-
     Ok(())
 }

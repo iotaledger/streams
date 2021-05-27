@@ -405,8 +405,6 @@ impl<Trans: Transport> Subscriber<Trans> {
         self.user.fetch_prev_msgs(link, max)
     }
 
-
-
     /// Iteratively fetches next message until no new messages can be found, and return a vector
     /// containing all of them.
     pub async fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {

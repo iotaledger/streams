@@ -26,9 +26,9 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     let mut author = Author::new(seed, impl_type, transport.clone());
     println!("Author multi branching?: {}", author.is_multi_branching());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED",  transport.clone());
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED",  transport.clone());
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED",  transport.clone());
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport);
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -103,11 +103,11 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
         let msg_tag = subscriberA.receive_sequence(&keyload_link)?;
         let resultB = subscriberB.receive_keyload(&msg_tag)?;
         print!("  SubscriberB: {}", subscriberB);
-        try_or!(resultB == false, SubscriberAccessMismatch(String::from("B")))?;
+        try_or!(!resultB, SubscriberAccessMismatch(String::from("B")))?;
 
         let resultC = subscriberC.receive_keyload(&msg_tag)?;
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(resultC == false, SubscriberAccessMismatch(String::from("C")))?;
+        try_or!(!resultC, SubscriberAccessMismatch(String::from("C")))?;
 
         println!("Subscriber a unwrapping");
         subscriberA.receive_keyload(&msg_tag)?;
@@ -329,17 +329,14 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
         try_or!(
             msg.link == tagged_packet_link,
             LinkMismatch(msg.link.msgid.to_string(), tagged_packet_link.msgid.to_string())
-            )?;
+        )?;
         println!("  SubscriberA: {}", subscriberA);
     }
 
     println!("\nSubscriber A checking 3 previous messages");
     {
         let msgs = subscriberA.fetch_prev_msgs(&signed_packet_link, 3)?;
-        try_or!(
-            msgs.len() == 3,
-            ValueMismatch(3, msgs.len())
-        )?;
+        try_or!(msgs.len() == 3, ValueMismatch(3, msgs.len()))?;
         println!("Found {} messages", msgs.len());
         println!("  SubscriberB: {}", subscriberA);
     }

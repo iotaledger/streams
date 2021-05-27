@@ -29,7 +29,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
     let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport.clone());
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport);
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -117,7 +117,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     {
         let resultC = subscriberC.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(resultC == false, SubscriberAccessMismatch(String::from("C")))?;
+        try_or!(!resultC, SubscriberAccessMismatch(String::from("C")))?;
         subscriberA.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
         subscriberB.receive_keyload(&previous_msg_link)?;
@@ -239,7 +239,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
 
     println!("\nHandle Signed packet");
     {
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&signed_packet_link)?;
+        let (_signer_pk, unwrapped_public, unwrapped_masked) =
+            subscriberA.receive_signed_packet(&signed_packet_link)?;
         print!("  SubscriberA: {}", subscriberA);
         try_or!(
             public_payload == unwrapped_public,
@@ -250,7 +251,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&signed_packet_link)?;
+        let (_signer_pk, unwrapped_public, unwrapped_masked) =
+            subscriberB.receive_signed_packet(&signed_packet_link)?;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(
             public_payload == unwrapped_public,
@@ -269,17 +271,14 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
         try_or!(
             msg.link == previous_msg_link,
             LinkMismatch(msg.link.msgid.to_string(), previous_msg_link.msgid.to_string())
-            )?;
+        )?;
         println!("  SubscriberA: {}", subscriberA);
     }
 
     println!("\nSubscriber B checking 5 previous messages");
     {
         let msgs = subscriberB.fetch_prev_msgs(&signed_packet_link, 5)?;
-        try_or!(
-            msgs.len() == 5,
-            ValueMismatch(5, msgs.len())
-        )?;
+        try_or!(msgs.len() == 5, ValueMismatch(5, msgs.len()))?;
         println!("Found {} messages", msgs.len());
         println!("  SubscriberB: {}", subscriberB);
     }

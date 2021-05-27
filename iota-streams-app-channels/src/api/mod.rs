@@ -14,5 +14,5 @@ pub mod tangle;
 pub enum ImplementationType {
     SingleBranch,
     MultiBranch,
-    SingleDepth
+    SingleDepth,
 }

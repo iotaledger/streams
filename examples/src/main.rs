@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 //#![no_std]
 
-use dotenv;
 use std::env;
 
 use rand::Rng;
@@ -56,10 +55,12 @@ fn run_multi_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
 fn run_main<T: Transport>(transport: T) -> Result<()> {
     let seed1: &str = "SEEDSINGLE";
     let seed2: &str = "SEEDMULTI9";
+    let seed3: &str = "SEEDRECOVERY";
 
     let transport = Rc::new(RefCell::new(transport));
     run_single_branch_test(transport.clone(), seed1);
     run_multi_branch_test(transport.clone(), seed2);
+    run_recovery_test(transport, seed3);
 
     Ok(())
 }
@@ -76,7 +77,7 @@ fn main_pure() {
     let transport = Rc::new(RefCell::new(transport));
     run_single_branch_test(transport.clone(), "PURESEEDA");
     run_multi_branch_test(transport.clone(), "PURESEEDB");
-    run_recovery_test(transport.clone(), "PURESEEDC");
+    run_recovery_test(transport, "PURESEEDC");
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }
@@ -89,7 +90,7 @@ fn main_client() {
     };
 
     // Parse env vars with a fallback
-    let node_url = env::var("URL").unwrap_or("http://68.183.204.5:14265".to_string());
+    let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
 
     let client = Client::new_from_url(&node_url);
 
@@ -113,7 +114,7 @@ fn main_client() {
 
     run_single_branch_test(transport.clone(), seed1);
     run_multi_branch_test(transport.clone(), seed2);
-    run_recovery_test(transport.clone(), seed3);
+    run_recovery_test(transport, seed3);
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

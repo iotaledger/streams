@@ -31,7 +31,11 @@ impl<AbsLink, Body> GenericMessage<AbsLink, Body> {
 
     pub fn map_err<B, F: FnOnce(Body) -> Result<B>>(self, f: F) -> Result<GenericMessage<AbsLink, B>> {
         let body = f(self.body)?;
-        Ok(GenericMessage { link: self.link, prev_link: self.prev_link, body })
+        Ok(GenericMessage {
+            link: self.link,
+            prev_link: self.prev_link,
+            body,
+        })
     }
 }
 

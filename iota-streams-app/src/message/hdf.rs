@@ -7,6 +7,7 @@ use iota_streams_core::{
     Errors::*,
     LOCATION_LOG,
 };
+use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -17,9 +18,6 @@ use iota_streams_ddml::{
         },
         *,
     },
-};
-use iota_streams_core_edsig::{
-    signature::ed25519
 };
 
 use super::*;
@@ -56,7 +54,7 @@ impl<Link: Default> HDF<Link> {
             payload_frame_count: 0,
             previous_msg_link: Bytes::default(),
             seq_num: Uint64(0),
-            sender_key_pk: ed25519::PublicKey::default()
+            sender_key_pk: ed25519::PublicKey::default(),
         }
     }
 
@@ -120,7 +118,14 @@ impl<Link: Default> HDF<Link> {
         &self.previous_msg_link
     }
 
-    pub fn new_with_fields(link: Link, previous_msg_link: Bytes, content_type: u8, payload_length: usize, seq_num: u64, pub_key: &ed25519::PublicKey) -> Result<Self> {
+    pub fn new_with_fields(
+        link: Link,
+        previous_msg_link: Bytes,
+        content_type: u8,
+        payload_length: usize,
+        seq_num: u64,
+        pub_key: &ed25519::PublicKey,
+    ) -> Result<Self> {
         try_or!(content_type < 0x10, ValueOutOfRange(0x10_usize, content_type as usize))?;
         try_or!(payload_length < 0x0400, MaxSizeExceeded(0x0400_usize, payload_length))?;
         Ok(Self {
@@ -133,7 +138,7 @@ impl<Link: Default> HDF<Link> {
             previous_msg_link,
             link,
             seq_num: Uint64(seq_num),
-            sender_key_pk: pub_key.clone()
+            sender_key_pk: pub_key.clone(),
         })
     }
 }

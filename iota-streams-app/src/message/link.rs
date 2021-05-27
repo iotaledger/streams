@@ -1,6 +1,9 @@
 use core::fmt;
 
-use iota_streams_core::{prelude::Vec, Result};
+use iota_streams_core::{
+    prelude::Vec,
+    Result,
+};
 use iota_streams_core_edsig::signature::ed25519;
 
 use super::hdf::HDF;
@@ -131,7 +134,14 @@ pub trait LinkGenerator<Link: HasLink>: Default {
         seq_num: u64,
         previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
-        HDF::new_with_fields(self.uniform_link_from(cursor), Bytes(previous_msg_link.to_bytes()), content_type, payload_length, seq_num, pk)
+        HDF::new_with_fields(
+            self.uniform_link_from(cursor),
+            Bytes(previous_msg_link.to_bytes()),
+            content_type,
+            payload_length,
+            seq_num,
+            pk,
+        )
     }
 
     /// Derive a new link and construct a header with given content type.
@@ -144,7 +154,14 @@ pub trait LinkGenerator<Link: HasLink>: Default {
         seq_num: u64,
         previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
-        HDF::new_with_fields(self.link_from(pk, cursor), Bytes(previous_msg_link.to_bytes()),content_type, payload_length, seq_num, pk)
+        HDF::new_with_fields(
+            self.link_from(pk, cursor),
+            Bytes(previous_msg_link.to_bytes()),
+            content_type,
+            payload_length,
+            seq_num,
+            pk,
+        )
     }
 }
 

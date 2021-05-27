@@ -66,7 +66,9 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
     fn link(&self) -> &TangleAddress {
         self.binary.link()
     }
-    fn prev_link(&self) -> &TangleAddress { self.binary.prev_link() }
+    fn prev_link(&self) -> &TangleAddress {
+        self.binary.prev_link()
+    }
 }
 
 // TODO: Use better feature to detect `chrono::Utc::new()`.
@@ -237,7 +239,7 @@ impl HasLink for TangleAddress {
     fn from_bytes(bytes: &[u8]) -> Self {
         TangleAddress::new(
             AppInst::from(&bytes[0..APPINST_SIZE]),
-            MsgId::from(&bytes[APPINST_SIZE..])
+            MsgId::from(&bytes[APPINST_SIZE..]),
         )
     }
 }

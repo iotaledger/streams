@@ -72,7 +72,9 @@ impl<Trans> User<Trans> {
     }
 
     /// Return boolean representing whether the implementation type is single depth
-    pub fn is_single_depth(&self) -> bool { self.user.is_single_depth() }
+    pub fn is_single_depth(&self) -> bool {
+        self.user.is_single_depth()
+    }
 
     /// Fetch the user ed25519 public key
     pub fn get_pk(&self) -> &PublicKey {
@@ -386,7 +388,8 @@ impl<Trans: Transport> User<Trans> {
         msgs
     }
 
-    /// Retrieves the previous message from the message specified (provided the user has access to it) [Author, Subscriber]
+    /// Retrieves the previous message from the message specified (provided the user has access to it) [Author,
+    /// Subscriber]
     ///
     /// # Arguments
     /// * `link` - Address of message to act as root of previous message fetching
@@ -718,7 +721,8 @@ impl<Trans: Transport> User<Trans> {
         msgs
     }
 
-    /// Retrieves the previous message from the message specified (provided the user has access to it) [Author, Subscriber]
+    /// Retrieves the previous message from the message specified (provided the user has access to it) [Author,
+    /// Subscriber]
     ///
     /// # Arguments
     /// * `link` - Address of message to act as root of previous message fetching

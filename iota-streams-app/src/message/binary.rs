@@ -66,8 +66,8 @@ where
 {
     pub fn parse_header(&self) -> Result<PreparsedMessage<F, Link>> {
         let mut ctx = unwrap::Context::new(&self.body.bytes[..]);
-        let mut header = HDF::<Link>::new(self.link().clone())
-            .with_previous_msg_link(Bytes(self.prev_link().to_bytes()));
+        let mut header =
+            HDF::<Link>::new(self.link().clone()).with_previous_msg_link(Bytes(self.prev_link().to_bytes()));
         let store = EmptyLinkStore::<F, Link, ()>::default();
         header.unwrap(&store, &mut ctx)?;
 

@@ -47,9 +47,9 @@ use iota_streams_ddml::{
 
 use crate::{
     api::{
-        ImplementationType,
         pk_store::*,
         psk_store::*,
+        ImplementationType,
     },
     message::*,
 };
@@ -602,7 +602,6 @@ where
         }
 
         Ok(processed)
-
     }
 
     /// Prepare SignedPacket message.
@@ -759,7 +758,7 @@ where
             .link_from(&self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
         let header = HDF::new(msg_link)
             .with_previous_msg_link(Bytes(link_to.to_bytes()))
-                    .with_content_type(SEQUENCE)?
+            .with_content_type(SEQUENCE)?
             .with_payload_length(1)?
             .with_seq_num(SEQ_MESSAGE_NUM)
             .with_public_key(&self.sig_kp.public);
@@ -892,7 +891,7 @@ where
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-        store: bool
+        store: bool,
     ) -> Result<GenericMessage<Link, sequence::ContentUnwrap<Link>>> {
         let preparsed = msg.parse_header()?;
         let sender_pk = preparsed.header.sender_key_pk;
