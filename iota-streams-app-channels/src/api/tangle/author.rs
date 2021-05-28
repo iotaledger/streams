@@ -447,12 +447,12 @@ impl<Trans: Transport> Author<Trans> {
 
     /// Retrieves the previous message from the message specified (provided the user has access to it)
     pub async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
-        self.user.fetch_prev_msg(link)
+        self.user.fetch_prev_msg(link).await
     }
 
     /// Retrieves a specified number of previous messages from an original specified messsage link
     pub async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
-        self.user.fetch_prev_msgs(link, max)
+        self.user.fetch_prev_msgs(link, max).await
     }
 
     /// Iteratively fetches next messages until internal state has caught up
