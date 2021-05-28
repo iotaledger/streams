@@ -622,7 +622,6 @@ impl<Trans: Transport> User<Trans> {
     pub async fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         let msg = self.transport.recv_message(link).await?;
         if let Some(_addr) = &self.user.appinst {
-            let seq_link = msg.binary.link.clone();
             let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, true)?.body;
             let msg_id = self.user.link_gen.link_from(
                 &seq_msg.pk,
@@ -706,7 +705,7 @@ impl<Trans: Transport> User<Trans> {
             Cursor {
                 link,
                 branch_no: _,
-                seq_no,
+                seq_no: _,
             },
         ) in ids
         {
@@ -805,7 +804,6 @@ impl<Trans: Transport> User<Trans> {
                     return Ok(u);
                 }
                 message::SEQUENCE => {
-                    let store_link = msg.link.rel().clone();
                     let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store)?;
                     let msg_link = self.user.link_gen.link_from(
                         &unwrapped.body.pk,
