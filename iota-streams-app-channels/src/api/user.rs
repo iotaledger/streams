@@ -593,9 +593,9 @@ where
                     }
                 }
             }
-            processed = GenericMessage::new(msg.link.clone(), prev_link.clone(), true);
+            processed = GenericMessage::new(msg.link.clone(), prev_link, true);
         } else {
-            processed = GenericMessage::new(msg.link.clone(), prev_link.clone(), false);
+            processed = GenericMessage::new(msg.link.clone(), prev_link, false);
         }
         if !self.is_multi_branching() {
             self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;

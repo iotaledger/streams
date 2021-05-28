@@ -101,7 +101,7 @@ impl<Link: Default> HDF<Link> {
     }
 
     pub fn with_public_key(mut self, pub_key: &ed25519::PublicKey) -> Self {
-        self.sender_key_pk = pub_key.clone();
+        self.sender_key_pk = *pub_key;
         self
     }
 
@@ -138,7 +138,7 @@ impl<Link: Default> HDF<Link> {
             previous_msg_link,
             link,
             seq_num: Uint64(seq_num),
-            sender_key_pk: pub_key.clone(),
+            sender_key_pk: *pub_key,
         })
     }
 }
