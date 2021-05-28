@@ -65,8 +65,8 @@ extern void tsp_client_set_mwm(transport_t *tsp, uint8_t mwm);
 ////////////
 typedef struct Author author_t;
 
-extern author_t *auth_new(char const *seed, char const *encoding, size_t payload_length, uint8_t multi_branching, transport_t *tsp);
-extern author_t *auth_recover(char const *seed, address_t const *announcement, uint8_t multi_branching, transport_t *tsp);
+extern author_t *auth_new(char const *seed, uint8_t implementation, transport_t *tsp);
+extern author_t *auth_recover(char const *seed, address_t const *announcement, uint8_t implementation, transport_t *tsp);
 extern void auth_drop(author_t *);
 
 extern channel_address_t const *auth_channel_address(author_t const *user);
@@ -95,6 +95,8 @@ extern next_msg_ids_t const *auth_gen_next_msg_ids(author_t *author);
 extern unwrapped_message_t const *auth_receive_msg(author_t *author, address_t const *address);
 // Fetching/Syncing
 extern unwrapped_messages_t const *auth_fetch_next_msgs(author_t *author);
+extern unwrapped_message_t  const *auth_fetch_prev_msg(author_t *author, address_t const *address);
+extern unwrapped_messages_t  const *auth_fetch_prev_msgs(author_t  *author, address_t const *address, size_t num_msgs);
 extern unwrapped_messages_t const *auth_sync_state(author_t *author);
 extern user_state_t const * auth_fetch_state(author_t *author);
 
@@ -102,7 +104,7 @@ extern user_state_t const * auth_fetch_state(author_t *author);
 // Subscriber
 /////////////
 typedef struct Subscriber subscriber_t;
-extern subscriber_t *sub_new(char const *seed, char const *encoding, size_t payload_length, transport_t *tsp);
+extern subscriber_t *sub_new(char const *seed, transport_t *tsp);
 extern subscriber_t *sub_recover(char const *seed, address_t const *announcement, transport_t *tsp);
 extern void sub_drop(subscriber_t *);
 
@@ -135,6 +137,8 @@ extern next_msg_ids_t const *sub_gen_next_msg_ids(subscriber_t *subscriber);
 extern unwrapped_message_t const *sub_receive_msg(subscriber_t *subscriber, address_t const *address);
 // Fetching/Syncing
 extern unwrapped_messages_t const *sub_fetch_next_msgs(subscriber_t *subscriber);
+extern unwrapped_message_t  const *sub_fetch_prev_msg(subscriber_t *subscriber, address_t const *address);
+extern unwrapped_messages_t  const *sub_fetch_prev_msgs(subscriber_t *subscriber, address_t const *address, size_t num_msgs);
 extern unwrapped_messages_t const *sub_sync_state(subscriber_t *subscriber);
 extern user_state_t  const *sub_fetch_state(subscriber_t *subscriber);
 

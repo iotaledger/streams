@@ -20,11 +20,14 @@ int main()
 {
   printf("Starting c bindings test\n\n");
   transport_t *tsp = NULL;
-  uint8_t multi_branching = 1;
-  char seed[] = "bindings test seed";
-  char const encoding[] = "utf-8";
-  const size_t size = 1024;
 
+  // Implementation type:
+  // 0: Single Branch
+  // 1: Multi Branch
+  // 2: Single Depth
+  // _: Single Branch
+  uint8_t implementation_type = 1;
+  char seed[] = "bindings test seed";
   rand_seed(seed, sizeof(seed));
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
@@ -38,7 +41,7 @@ int main()
   tsp = tsp_new();
 #endif
   printf("Making author with %s\n", seed);
-  author_t *auth = auth_new(seed, encoding, size, multi_branching, tsp);
+  author_t *auth = auth_new(seed, implementation_type, tsp);
   printf("Made an author... ");
 
   // Fetch Application instance
@@ -98,12 +101,12 @@ int main()
   // Subscriber
   char const sub_seed_a[] = "SUBSCRIBERA9SEED";
   printf("Making Sub A with %s\n", sub_seed_a);
-  subscriber_t *subA = sub_new("sub_seed_a", encoding, size, tsp);
+  subscriber_t *subA = sub_new("sub_seed_a", tsp);
   printf("Made a sub A... \n");
 
   char const sub_seed_b[] = "SUBSCRIBERB9SEED";
   printf("Making Sub B with %s\n", sub_seed_b);
-  subscriber_t *subB = sub_new("sub_seed_b", encoding, size, tsp);
+  subscriber_t *subB = sub_new("sub_seed_b", tsp);
   printf("Made a sub B... \n");
 
   printf("Unwrapping announcement packet... \n");
@@ -219,7 +222,7 @@ int main()
   printf("\n\n ----------------------- \n");
   printf("Beginning author recovery...\n");
 
-  author_t *recovered_auth = auth_recover(seed, ann_link, multi_branching, tsp);
+  author_t *recovered_auth = auth_recover(seed, ann_link, implementation_type, tsp);
 
   user_state_t const *recovered_auth_state = auth_fetch_state(recovered_auth);
   user_state_t const *original_auth_state = auth_fetch_state(auth);
@@ -234,6 +237,10 @@ int main()
   char const *original_link_id = get_address_id_str(original_state_link);
 
   printf("Recovered/Original state links: %s, %s\n", recovered_link_id, original_link_id);
+
+  unwrapped_messages_t const *prev_msgs = auth_fetch_prev_msgs(auth, recovered_state_link, 3);
+  printf("Previous messages retrieved... \nSuccess: %d\n\n", prev_msgs != NULL);
+
 
   drop_user_state(recovered_auth_state);
   drop_user_state(original_auth_state);
@@ -254,6 +261,7 @@ int main()
   drop_links(tagged_packet_2_links);
   drop_links(tagged_packet_3_links);
   drop_unwrapped_messages(message_returns);
+  drop_unwrapped_messages(prev_msgs);
 
   sub_drop(subA);
   auth_drop(auth);

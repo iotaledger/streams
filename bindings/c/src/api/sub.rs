@@ -6,14 +6,11 @@ pub type Subscriber = iota_streams::app_channels::api::tangle::Subscriber<Transp
 #[no_mangle]
 pub extern "C" fn sub_new(
     c_seed: *const c_char,
-    c_encoding: *const c_char,
-    payload_length: size_t,
     transport: *mut TransportWrap,
 ) -> *mut Subscriber {
     let seed = unsafe { CStr::from_ptr(c_seed).to_str().unwrap() };
-    let encoding = unsafe { CStr::from_ptr(c_encoding).to_str().unwrap() };
     let tsp = unsafe { (*transport).clone() };
-    let subscriber = Subscriber::new(seed, encoding, payload_length, tsp);
+    let subscriber = Subscriber::new(seed, tsp);
     Box::into_raw(Box::new(subscriber))
 }
 
@@ -291,6 +288,31 @@ pub extern "C" fn sub_fetch_next_msgs(user: *mut Subscriber) -> *const Unwrapped
         })
     }
 }
+
+#[no_mangle]
+pub extern "C" fn sub_fetch_prev_msg(user: *mut Subscriber, address: *const Address) -> *const UnwrappedMessage {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            address.as_ref().map_or(null(), |addr| {
+                let m = user.fetch_prev_msg(addr).unwrap();
+                Box::into_raw(Box::new(m))
+            })
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn sub_fetch_prev_msgs(user: *mut Subscriber, address: *const Address, num_msgs: size_t) -> *const UnwrappedMessages {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            address.as_ref().map_or(null(), |addr| {
+                let m = user.fetch_prev_msgs(addr, num_msgs).unwrap();
+                Box::into_raw(Box::new(m))
+            })
+        })
+    }
+}
+
 
 #[no_mangle]
 pub extern "C" fn sub_sync_state(user: *mut Subscriber) -> *const UnwrappedMessages {

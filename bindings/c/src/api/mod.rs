@@ -27,6 +27,15 @@ use core::ptr::{
     null_mut,
 };
 
+pub fn get_impl(implementation: uint8_t) -> ImplementationType {
+    match implementation {
+        0 => ImplementationType::SingleBranch,
+        1 => ImplementationType::MultiBranch,
+        2 => ImplementationType::SingleDepth,
+        _ => ImplementationType::SingleBranch,
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
     unsafe {
