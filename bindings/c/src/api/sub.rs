@@ -245,23 +245,23 @@ pub extern "C" fn sub_gen_next_msg_ids(user: *mut Subscriber) -> *const NextMsgI
 }
 
 #[no_mangle]
-pub extern "C" fn sub_receive_keyload_from_ids(user: *mut Subscriber, next_msg_ids: *const NextMsgIds) -> *const MessageLinks {
+pub extern "C" fn sub_receive_keyload_from_ids(user: *mut Subscriber, next_msg_ids: *const NextMsgIds) -> MessageLinks {
     unsafe {
-        user.as_mut().map_or(null(), |user| {
-            next_msg_ids.as_ref().map_or(null(), |ids| {
+        user.as_mut().map_or(MessageLinks::default(), |user| {
+            next_msg_ids.as_ref().map_or(MessageLinks::default(), |ids| {
                 for (_pk, cursor) in ids {
                     let keyload_link = user.receive_sequence(&cursor.link);
                     if keyload_link.is_ok() {
                         let keyload_link = keyload_link.unwrap();
                         if user.receive_keyload(&keyload_link).unwrap() {
-                            return Box::into_raw(Box::new(MessageLinks {
-                                msg_link: Box::into_raw(Box::new(cursor.link.clone())),
-                                seq_link: Box::into_raw(Box::new(keyload_link))
-                            }))
+                            return MessageLinks {
+                                seq_link: Box::into_raw(Box::new(cursor.link.clone())),
+                                msg_link: Box::into_raw(Box::new(keyload_link))
+                            }
                         }
                     }
                 }
-                null()
+                MessageLinks::default()
             })
         })
     }
