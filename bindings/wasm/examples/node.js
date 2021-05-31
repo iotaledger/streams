@@ -17,8 +17,8 @@ main()
   });
 
 async function main() {
-  let node = "https://api.lb-0.testnet.chrysalis2.com/";
-  let options = new streams.SendOptions(node, 9, true, 1);
+  let node = "https://chrysalis-nodes.iota.org";
+  let options = new streams.SendOptions(node, true);
   let seed = make_seed(81);
   let auth = new streams.Author(seed, options.clone(), streams.ImplementationType.SingleBranch);
 
@@ -89,6 +89,12 @@ async function main() {
         from_bytes(next_msgs[i].get_message().get_masked_payload())
       );
     }
+  }
+
+  console.log("\nAuthor fetching prev messages");
+  let prev_msgs = await auth.clone().fetch_prev_msgs(last_link, 3);
+  for (var i = 0; i < prev_msgs.length; i++) {
+    console.log("Found a message at ", prev_msgs[i].get_link().to_string());
   }
 
   // Import export example

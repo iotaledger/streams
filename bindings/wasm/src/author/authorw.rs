@@ -16,10 +16,7 @@ use core::cell::RefCell;
 /// Streams imports
 use iota_streams::{
     app::transport::{
-        tangle::{
-            client::Client as ApiClient,
-            PAYLOAD_BYTES,
-        },
+        tangle::client::Client as ApiClient,
         TransportOptions,
     },
     app_channels::api::tangle::{
@@ -56,7 +53,7 @@ impl Author {
 
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,
-            implementation,
+            implementation.into(),
             transport,
         )));
         Author { author }
@@ -65,7 +62,7 @@ impl Author {
     pub fn from_client(client: Client, seed: String, implementation: ImplementationType) -> Author {
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,
-            implementation,
+            implementation.into(),
             client.to_inner(),
         )));
         Author { author }
@@ -378,6 +375,42 @@ impl Author {
         let msgs = self.author.borrow_mut().fetch_next_msgs().await;
         let payloads = get_message_contents(msgs);
         Ok(payloads.into_iter().map(JsValue::from).collect())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_prev_msg(self, link: Address) -> Result<UserResponse> {
+        self.author
+            .borrow_mut()
+            .fetch_prev_msg(&link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr))
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msg| {
+                    let mut msgs = Vec::new();
+                    msgs.push(msg);
+                    let responses = get_message_contents(msgs);
+                    Ok(responses[0].copy())
+                },
+            )
+    }
+
+
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_prev_msgs(self, link: Address, num_msgs: usize) -> Result<Array> {
+        self.author
+            .borrow_mut()
+            .fetch_prev_msgs(
+                &link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr),
+                num_msgs
+            )
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msgs| {
+                    let responses = get_message_contents(msgs);
+                    Ok(responses.into_iter().map(JsValue::from).collect())
+                }
+            )
     }
 
     #[wasm_bindgen(catch)]

@@ -9,9 +9,9 @@ use iota_streams::{
     },
     app_channels::api::tangle::{
         Address as ApiAddress,
+        ImplementationType as ApiImplType,
         MessageContent,
         UnwrappedMessage,
-        self,
     },
     core::prelude::{
         Rc,
@@ -32,18 +32,14 @@ pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {
 #[wasm_bindgen]
 pub struct SendOptions {
     url: String,
-    pub depth: u8,
     pub local_pow: bool,
-    pub threads: usize,
 }
 
 impl From<SendOptions> for ApiSendOptions {
     fn from(options: SendOptions) -> Self {
         Self {
             url: options.url,
-            depth: options.depth,
             local_pow: options.local_pow,
-            threads: options.threads,
         }
     }
 }
@@ -51,12 +47,10 @@ impl From<SendOptions> for ApiSendOptions {
 #[wasm_bindgen]
 impl SendOptions {
     #[wasm_bindgen(constructor)]
-    pub fn new(url: String, depth: u8, local_pow: bool, threads: usize) -> Self {
+    pub fn new(url: String, local_pow: bool) -> Self {
         Self {
             url,
-            depth,
             local_pow,
-            threads,
         }
     }
 
@@ -74,9 +68,7 @@ impl SendOptions {
     pub fn clone(&self) -> Self {
         SendOptions {
             url: self.url.clone(),
-            depth: self.depth,
             local_pow: self.local_pow,
-            threads: self.threads,
         }
     }
 }
@@ -196,7 +188,21 @@ pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
 }
 
 #[wasm_bindgen]
-pub use tangle::ImplementationType;
+pub enum ImplementationType {
+    SingleBranch,
+    MultiBranch,
+    SingleDepth,
+}
+
+impl From<ImplementationType> for ApiImplType {
+    fn from(impl_type: ImplementationType) -> Self {
+        match impl_type {
+            ImplementationType::SingleBranch => ApiImplType::SingleBranch,
+            ImplementationType::MultiBranch => ApiImplType::MultiBranch,
+            ImplementationType::SingleDepth => ApiImplType::SingleDepth
+        }
+    }
+}
 
 #[wasm_bindgen]
 pub struct UserResponse {
