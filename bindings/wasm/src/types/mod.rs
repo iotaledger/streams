@@ -11,6 +11,7 @@ use iota_streams::{
         Address as ApiAddress,
         MessageContent,
         UnwrappedMessage,
+        self,
     },
     core::prelude::{
         Rc,
@@ -193,6 +194,9 @@ pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
     }
     payloads
 }
+
+#[wasm_bindgen]
+pub use tangle::ImplementationType;
 
 #[wasm_bindgen]
 pub struct UserResponse {

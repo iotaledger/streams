@@ -42,8 +42,6 @@ impl Subscriber {
 
         let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(
             &seed,
-            "utf-8",
-            PAYLOAD_BYTES,
             transport,
         )));
         Subscriber { subscriber }
@@ -52,8 +50,6 @@ impl Subscriber {
     pub fn from_client(client: Client, seed: String) -> Subscriber {
         let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(
             &seed,
-            "utf-8",
-            PAYLOAD_BYTES,
             client.to_inner(),
         )));
         Subscriber { subscriber }

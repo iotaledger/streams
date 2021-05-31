@@ -49,27 +49,23 @@ pub struct Author {
 #[wasm_bindgen]
 impl Author {
     #[wasm_bindgen(constructor)]
-    pub fn new(seed: String, options: SendOptions, multi_branching: bool) -> Author {
+    pub fn new(seed: String, options: SendOptions, implementation: ImplementationType) -> Author {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,
-            "utf-8",
-            PAYLOAD_BYTES,
-            multi_branching,
+            implementation,
             transport,
         )));
         Author { author }
     }
 
-    pub fn from_client(client: Client, seed: String, multi_branching: bool) -> Author {
+    pub fn from_client(client: Client, seed: String, implementation: ImplementationType) -> Author {
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,
-            "utf-8",
-            PAYLOAD_BYTES,
-            multi_branching,
+            implementation,
             client.to_inner(),
         )));
         Author { author }
