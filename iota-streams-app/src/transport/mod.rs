@@ -3,19 +3,27 @@ use iota_streams_core::Result;
 use core::cell::RefCell;
 
 #[cfg(feature = "async")]
+use async_trait::async_trait;
+#[cfg(feature = "async")]
+use atomic_refcell::AtomicRefCell;
+#[cfg(feature = "async")]
 use core::marker::{
     Send,
     Sync,
 };
 #[cfg(feature = "async")]
-use async_trait::async_trait;
-#[cfg(feature = "async")]
-use atomic_refcell::AtomicRefCell;
-#[cfg(feature = "async")]
-use iota_streams_core::prelude::{Arc, Box, };
+use iota_streams_core::prelude::{
+    Arc,
+    Box,
+};
 
-use iota_streams_core::prelude::Rc;
-use iota_streams_core::prelude::{Vec, string::ToString};
+#[cfg(not(feature = "async"))]
+use iota_streams_core::prelude::ToString;
+
+use iota_streams_core::prelude::{
+    Rc,
+    Vec,
+};
 
 pub trait TransportOptions {
     type SendOptions;
@@ -149,31 +157,29 @@ impl<Tsp: TransportOptions> TransportOptions for Arc<AtomicRefCell<Tsp>> {
     }
 }
 
-/*
 // The impl below is too restrictive: Link and Msg require 'async_trait life-time, Tsp is Sync + Send.
-#[cfg(feature = "async")]
-#[async_trait]
-impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Arc<AtomicRefCell<Tsp>> where
-    Link: 'static + core::marker::Send + core::marker::Sync,
-    Msg: 'static + core::marker::Send + core::marker::Sync,
-    Tsp: core::marker::Send + core::marker::Sync,
-{
-    /// Send a message.
-    async fn send_message(&mut self, msg: &Msg) -> Result<()> {
-        (&*self).borrow_mut().send_message(msg).await
-    }
-
-    /// Receive messages with default options.
-    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
-        (&*self).borrow_mut().recv_messages(link).await
-    }
-
-    /// Receive a message with default options.
-    async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-        (&*self).borrow_mut().recv_message(link).await
-    }
-}
- */
+// #[cfg(feature = "async")]
+// #[async_trait]
+// impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Arc<AtomicRefCell<Tsp>> where
+// Link: 'static + core::marker::Send + core::marker::Sync,
+// Msg: 'static + core::marker::Send + core::marker::Sync,
+// Tsp: core::marker::Send + core::marker::Sync,
+// {
+// Send a message.
+// async fn send_message(&mut self, msg: &Msg) -> Result<()> {
+// (&*self).borrow_mut().send_message(msg).await
+// }
+//
+// Receive messages with default options.
+// async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
+// (&*self).borrow_mut().recv_messages(link).await
+// }
+//
+// Receive a message with default options.
+// async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
+// (&*self).borrow_mut().recv_message(link).await
+// }
+// }
 
 #[cfg(feature = "async")]
 pub type SharedTransport<T> = Arc<AtomicRefCell<T>>;
@@ -185,9 +191,27 @@ pub fn new_shared_transport<T>(tsp: T) -> Arc<AtomicRefCell<T>> {
 
 mod bucket;
 pub use bucket::BucketTransport;
-use core::fmt::{Debug, Display};
-use iota_streams_core::{try_or, err, wrapped_err, WrappedError, LOCATION_LOG};
-use iota_streams_core::Errors::{MessageNotUnique, MessageLinkNotFound, TransportNotAvailable};
+
+#[cfg(not(feature = "async"))]
+use core::fmt::{
+    Debug,
+    Display,
+};
+
+use iota_streams_core::try_or;
+
+#[cfg(not(feature = "async"))]
+use iota_streams_core::{
+    err,
+    wrapped_err,
+    Errors::{
+        MessageLinkNotFound,
+        MessageNotUnique,
+        TransportNotAvailable,
+    },
+    WrappedError,
+    LOCATION_LOG,
+};
 
 #[cfg(feature = "tangle")]
 pub mod tangle;

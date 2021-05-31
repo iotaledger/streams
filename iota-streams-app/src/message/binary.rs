@@ -1,5 +1,5 @@
-use iota_streams_core::Result;
 use core::fmt;
+use iota_streams_core::Result;
 
 use super::*;
 use iota_streams_core::{
@@ -64,15 +64,12 @@ where
     F: PRP,
     Link: Clone + AbsorbExternalFallback<F>,
 {
-    pub fn parse_header<'a>(&'a self) -> Result<PreparsedMessage<'a, F, Link>> {
+    pub fn parse_header(&self) -> Result<PreparsedMessage<F, Link>> {
         let mut ctx = unwrap::Context::new(&self.body.bytes[..]);
         let mut header = HDF::<Link>::new(self.link().clone());
         let store = EmptyLinkStore::<F, Link, ()>::default();
         header.unwrap(&store, &mut ctx)?;
 
-        Ok(PreparsedMessage {
-            header: header,
-            ctx: ctx,
-        })
+        Ok(PreparsedMessage { header, ctx })
     }
 }

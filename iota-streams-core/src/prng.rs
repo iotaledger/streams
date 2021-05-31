@@ -137,7 +137,7 @@ pub fn dbg_init_str<G: PRP>(secret_key: &str) -> Prng<G> {
 
 /// Rng fixed nonce size.
 pub type NonceSize<F> = spongos::NonceSize<F>;
-//pub type NonceType<F> = spongos::NonceType<F>;
+// pub type NonceType<F> = spongos::NonceType<F>;
 pub type NonceType = Vec<u8>;
 
 pub struct Rng<G: PRP> {
@@ -149,6 +149,8 @@ impl<G: PRP> Rng<G> {
     pub fn new(prng: Prng<G>, nonce: NonceType) -> Self {
         Self { prng, nonce }
     }
+
+    #[allow(clippy::assign_op_pattern)]
     fn inc(&mut self) -> bool {
         for i in self.nonce.iter_mut() {
             *i = *i + 1;
@@ -156,7 +158,7 @@ impl<G: PRP> Rng<G> {
                 return true;
             }
         }
-        //self.nonce.push(0);
+        // self.nonce.push(0);
         false
     }
 }

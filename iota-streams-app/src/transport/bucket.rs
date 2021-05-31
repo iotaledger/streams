@@ -1,21 +1,19 @@
 use super::*;
-use core::hash;
 use crate::message::LinkedMessage;
+use core::hash;
 
 use iota_streams_core::{
-    prelude::{HashMap, string::ToString},
     err,
+    prelude::{
+        string::ToString,
+        HashMap,
+    },
     Errors::MessageLinkNotFound,
-    LOCATION_LOG
+    LOCATION_LOG,
 };
 
 #[cfg(feature = "async")]
 use iota_streams_core::Errors::MessageNotUnique;
-
-#[cfg(feature = "async")]
-use atomic_refcell::AtomicRefCell;
-#[cfg(feature = "async")]
-use iota_streams_core::prelude::Arc;
 
 pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
@@ -41,11 +39,11 @@ where
 
 impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
     type SendOptions = ();
-    fn get_send_options(&self) -> () {}
+    fn get_send_options(&self) {}
     fn set_send_options(&mut self, _opt: ()) {}
 
     type RecvOptions = ();
-    fn get_recv_options(&self) -> () {}
+    fn get_recv_options(&self) {}
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 
@@ -100,10 +98,9 @@ where
     }
 
     async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
-            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()));
+            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string())).unwrap();
             Ok(msg)
         } else {
             err!(MessageLinkNotFound(link.to_string()))?

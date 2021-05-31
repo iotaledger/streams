@@ -86,6 +86,7 @@ mod msginfo;
 pub use msginfo::MsgInfo;
 
 /// Message body returned as part of handle message routine.
+#[allow(clippy::large_enum_variant)]
 pub enum MessageContent {
     Announce,
     Keyload,
@@ -131,10 +132,12 @@ impl MessageContent {
 /// Generic unwrapped message type containing possible message contents
 pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
 
+#[allow(clippy::ptr_arg)]
 mod user;
 /// User object storing the Auth/Sub implementation as well as the transport instance
 pub use user::User;
 
+#[allow(clippy::ptr_arg)]
 mod author;
 /// Tangle-specific Channel Author type.
 pub use author::Author;

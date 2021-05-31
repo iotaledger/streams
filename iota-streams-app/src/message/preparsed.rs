@@ -35,7 +35,7 @@ impl<'a, F, Link> PreparsedMessage<'a, F, Link> {
         // Discard what's left of `self.ctx.stream`
         Ok(UnwrappedMessage {
             link: self.header.link,
-            pcf: pcf,
+            pcf,
             spongos: self.ctx.spongos,
         })
     }

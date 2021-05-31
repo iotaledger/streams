@@ -22,7 +22,7 @@ impl<F: PRP, IS> Context<F, IS> {
     pub fn new(stream: IS) -> Self {
         Self {
             spongos: Spongos::<F>::init(),
-            stream: stream,
+            stream,
         }
     }
 }
@@ -31,7 +31,6 @@ impl<F, IS: io::IStream> Context<F, IS> {
     pub fn drop(&mut self, n: Size) -> Result<&mut Self> {
         self.stream.try_advance(n.0)?;
         Ok(self)
-        //<IS as io::IStream<TW>>::try_advance(&mut self.stream, n)
     }
 }
 
@@ -53,7 +52,7 @@ where
         }
     }
 }
-
+#[allow(clippy::module_inception)]
 mod unwrap;
 
 mod absorb;

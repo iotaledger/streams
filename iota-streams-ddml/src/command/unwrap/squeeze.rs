@@ -6,16 +6,17 @@ use crate::{
     io,
     types::Mac,
 };
-use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core::{try_or, Errors::BadMac, LOCATION_LOG};
+use iota_streams_core::{
+    sponge::prp::PRP,
+    try_or,
+    Errors::BadMac,
+    LOCATION_LOG,
+};
 
 /// External values are not encoded. Squeeze and compare tag trits.
 impl<'a, F: PRP, IS: io::IStream> Squeeze<&'a Mac> for Context<F, IS> {
     fn squeeze(&mut self, val: &'a Mac) -> Result<&mut Self> {
-        try_or!(
-            self.spongos.squeeze_eq(self.stream.try_advance(val.0)?),
-            BadMac
-        )?;
+        try_or!(self.spongos.squeeze_eq(self.stream.try_advance(val.0)?), BadMac)?;
         Ok(self)
     }
 }

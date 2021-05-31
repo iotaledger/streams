@@ -13,16 +13,17 @@
 //! - `iota_streams_core`: Modules for the core cryptographic features used by Streamsç
 //! - `iota_streams_core_keccak`: Modules for using sponge constructions with KeccakF1600B
 //! and KeccakF1600T permutations
-//! - `iota_streams_core_edsig`: A module for working with Edwards curve-25519 based Schnorr signature scheme and Diffie-Hellman key exchange.
+//! - `iota_streams_core_edsig`: A module for working with Edwards curve-25519 based Schnorr signature scheme and
+//!   Diffie-Hellman key exchange.
 //! - `iota_streams_ddml`: Modules for working with
 //! the IOTA data description language called DDML, in which all Streams messages are encoded
 
 #![no_std]
 
-/// Streams Channel Application implementation.
-pub use iota_streams_app_channels as app_channels;
 /// Streams Application layer definitions.
 pub use iota_streams_app as app;
+/// Streams Channel Application implementation.
+pub use iota_streams_app_channels as app_channels;
 pub use iota_streams_core as core;
 
 /// Edwards curve-25519 based Schnorr signature scheme and Diffie-Hellman key exchange.

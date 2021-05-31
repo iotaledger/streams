@@ -1,5 +1,5 @@
-use iota_streams_core::Result;
 use core::iter;
+use iota_streams_core::Result;
 
 use super::Context;
 use crate::command::Repeated;

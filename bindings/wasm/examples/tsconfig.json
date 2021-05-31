@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"module": "commonjs",
+		"target": "es2015",
+		"declaration": true,
+		"outDir": "./dist",
+		"baseUrl": ".",
+		"sourceMap": true
+	},
+	"include": [
+		"node.ts"
+	]
+}

@@ -1,7 +1,12 @@
-use iota_streams_core::Result;
 use core::fmt;
+use iota_streams_core::Result;
 
-use iota_streams_core::{sponge::prp::PRP, try_or, LOCATION_LOG, Errors::*};
+use iota_streams_core::{
+    sponge::prp::PRP,
+    try_or,
+    Errors::*,
+    LOCATION_LOG,
+};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -19,6 +24,7 @@ use super::*;
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
 #[derive(Clone)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct HDF<Link> {
     pub encoding: Uint8,
     pub version: Uint8,
@@ -48,7 +54,7 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_content_type(mut self, content_type: u8) -> Result<Self> {
-        try_or!(content_type < 0x10, ValueOutOfRange(0x10 as usize, content_type as usize))?;
+        try_or!(content_type < 0x10, ValueOutOfRange(0x10_usize, content_type as usize))?;
         self.content_type = content_type;
         Ok(self)
     }
@@ -58,10 +64,7 @@ impl<Link> HDF<Link> {
     }
 
     pub fn with_payload_length(mut self, payload_length: usize) -> Result<Self> {
-        try_or!(
-            payload_length < 0x0400,
-            MaxSizeExceeded(0x0400 as usize, payload_length)
-        )?;
+        try_or!(payload_length < 0x0400, MaxSizeExceeded(0x0400_usize, payload_length))?;
         self.payload_length = payload_length;
         Ok(self)
     }
@@ -73,7 +76,7 @@ impl<Link> HDF<Link> {
     pub fn with_payload_frame_count(mut self, payload_frame_count: u32) -> Result<Self> {
         try_or!(
             payload_frame_count < 0x400000,
-            MaxSizeExceeded(0x400000 as usize, payload_frame_count as usize)
+            MaxSizeExceeded(0x400000_usize, payload_frame_count as usize)
         )?;
         self.payload_frame_count = payload_frame_count;
         Ok(self)
@@ -93,11 +96,8 @@ impl<Link> HDF<Link> {
     }
 
     pub fn new_with_fields(link: Link, content_type: u8, payload_length: usize, seq_num: u64) -> Result<Self> {
-        try_or!(content_type < 0x10, ValueOutOfRange(0x10 as usize, content_type as usize))?;
-        try_or!(
-            payload_length < 0x0400,
-            MaxSizeExceeded(0x0400 as usize, payload_length)
-        )?;
+        try_or!(content_type < 0x10, ValueOutOfRange(0x10_usize, content_type as usize))?;
+        try_or!(payload_length < 0x0400, MaxSizeExceeded(0x0400_usize, payload_length))?;
         Ok(Self {
             encoding: UTF8,
             version: STREAMS_1_VER,
@@ -218,7 +218,7 @@ where
             .absorb(&mut self.version)?
             .guard(
                 self.version == STREAMS_1_VER,
-                    InvalidMsgVersion(STREAMS_1_VER.0, self.version.0)
+                InvalidMsgVersion(STREAMS_1_VER.0, self.version.0),
             )?
             .skip(&mut content_type_and_payload_length)?;
         {
@@ -230,10 +230,7 @@ where
 
         ctx.absorb(External(Uint8(self.content_type << 4)))?
             .absorb(&mut self.frame_type)?
-            .guard(
-                self.frame_type == HDF_ID,
-                InvalidMsgType(HDF_ID.0, self.frame_type.0)
-            )?
+            .guard(self.frame_type == HDF_ID, InvalidMsgType(HDF_ID.0, self.frame_type.0))?
             .skip(&mut payload_frame_count)?;
         {
             let v = payload_frame_count.as_ref();

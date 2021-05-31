@@ -1,0 +1,37 @@
+name: Clippy
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - chrysalis-2
+  pull_request:
+    branches:
+      - master
+      - develop
+      - chrysalis-2
+    paths-ignore:
+      - "docs/**"
+      - "specification/**"
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install clippy with Nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: clippy
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-targets --all-features -- -D warnings
+          name: clippy-streams-rust

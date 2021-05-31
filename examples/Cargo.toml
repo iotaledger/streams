@@ -1,7 +1,7 @@
 [package]
 name = "iota-streams-basic-scenario"
 version = "1.0.0"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>"]
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
@@ -14,4 +14,4 @@ iota-streams = { path = ".." }
 anyhow = { version = "1.0", default-features = false }
 rand = "0.7.3"
 dotenv = {version = "0.15.0"}
-
+tokio = {version = "1.1"}

@@ -1,5 +1,9 @@
 #[cfg(not(feature = "std"))]
-use iota_streams_core::{err, LOCATION_LOG, Errors::NoStdRngMissing};
+use iota_streams_core::{
+    err,
+    Errors::NoStdRngMissing,
+    LOCATION_LOG,
+};
 
 use iota_streams_core::Result;
 

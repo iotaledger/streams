@@ -1,13 +1,18 @@
 //! Lightweight abstraction, a trinary equivalent of `Write` trait allowing access to trinary slices.
 
-
-use iota_streams_core::prelude::{hex, String, };
 use iota_streams_core::{
-    Errors::{StreamAllocationExceededOut, StreamAllocationExceededIn},
     panic_if_not,
+    prelude::{
+        hex,
+        String,
+    },
     try_or,
-    LOCATION_LOG,
+    Errors::{
+        StreamAllocationExceededIn,
+        StreamAllocationExceededOut,
+    },
     Result,
+    LOCATION_LOG,
 };
 
 /// Write

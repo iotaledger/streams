@@ -1,12 +1,12 @@
-use iota_streams_core::Result;
 use core::cell::Ref;
+use iota_streams_core::Result;
 
 use super::*;
 use iota_streams_core::{
     sponge::prp::PRP,
     try_or,
     Errors::OutputStreamNotFullyConsumed,
-    LOCATION_LOG
+    LOCATION_LOG,
 };
 use iota_streams_ddml::{
     command::{
@@ -64,16 +64,14 @@ where
             let mut ctx = wrap::Context::new(&mut buf[..]);
             self.header.wrap(&*self.store, &mut ctx)?;
             self.content.wrap(&*self.store, &mut ctx)?;
-            try_or!(ctx.stream.is_empty(),
-                                 OutputStreamNotFullyConsumed(ctx.stream.len())
-            )?;
+            try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
             ctx.spongos
         };
 
         Ok(WrappedMessage {
             wrapped: WrapState {
                 link: self.header.link.clone(),
-                spongos: spongos,
+                spongos,
             },
             message: BinaryMessage {
                 link: self.header.link.clone(),

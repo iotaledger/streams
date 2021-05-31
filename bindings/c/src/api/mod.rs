@@ -1,23 +1,37 @@
 use iota_streams::{
+    app::{
+        cstr_core::{
+            CStr,
+            CString,
+        },
+        cty::{
+            c_char,
+            size_t,
+            uint8_t,
+        },
+        message::Cursor,
+        transport::tangle::{
+            MsgId,
+            client::get_hash,
+        },
+    },
+    app_channels::api::tangle::*,
     core::{
         prelude::*,
         psk,
     },
-    app::{
-        message::Cursor,
-        transport::tangle::MsgId,
-        cstr_core::{CStr, CString},
-        cty::{c_char, size_t, uint8_t},
-    },
-    app_channels::api::tangle::*,
 };
 
-use core::ptr::{null, null_mut};
-
+use core::ptr::{
+    null,
+    null_mut,
+};
 
 #[no_mangle]
 pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
-    Address::from_c_str(c_addr)
+    unsafe {
+        Address::from_c_str(c_addr)
+    }
 }
 
 #[no_mangle]
@@ -31,9 +45,10 @@ pub extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_cha
 
 #[no_mangle]
 pub extern "C" fn drop_address(addr: *const Address) {
-    unsafe { Box::from_raw(addr as *mut Address); }
+    unsafe {
+        Box::from_raw(addr as *mut Address);
+    }
 }
-
 
 pub type PskIds = psk::PskIds;
 pub type KePks = Vec<PublicKey>;
@@ -42,19 +57,45 @@ pub type NextMsgIds = Vec<(PublicKey, Cursor<Address>)>;
 
 #[no_mangle]
 pub extern "C" fn drop_next_msg_ids(m: *const NextMsgIds) {
-    unsafe { Box::from_raw(m as *mut NextMsgIds); }
+    unsafe {
+        Box::from_raw(m as *mut NextMsgIds);
+    }
+}
+
+pub type UserState = Vec<(String, Cursor<Address>)>;
+#[no_mangle]
+pub extern "C" fn drop_user_state(s: *const UserState) {
+    unsafe {
+        Box::from_raw(s as *mut UserState);
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn drop_unwrapped_message(m: *const UnwrappedMessage) {
-    unsafe { Box::from_raw(m as *mut UnwrappedMessage); }
+pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const PublicKey) -> *const Address {
+    unsafe {
+        s.as_ref().map_or(null(), |state| {
+            pub_key.as_ref().map_or(null(), |pub_key| {
+                let pk_str = hex::encode(pub_key.as_bytes());
+                for (pk, cursor) in state {
+                    if pk == &pk_str {
+                        return Box::into_raw(Box::new(cursor.link.clone()))
+                    }
+                }
+                return null()
+            })
+        })
+    }
 }
 
 pub type UnwrappedMessages = Vec<UnwrappedMessage>;
 #[no_mangle]
 pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
-    unsafe { Box::from_raw(ms as *mut UnwrappedMessages); }
+    unsafe {
+        Box::from_raw(ms as *mut UnwrappedMessages);
+    }
 }
+
+
 
 #[cfg(feature = "sync-client")]
 pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
@@ -69,31 +110,20 @@ pub extern "C" fn tsp_new() -> *mut TransportWrap {
 
 #[no_mangle]
 pub extern "C" fn tsp_drop(tsp: *mut TransportWrap) {
-    unsafe { Box::from_raw(tsp); }
+    unsafe {
+        Box::from_raw(tsp);
+    }
 }
 
 #[cfg(feature = "sync-client")]
 #[no_mangle]
 pub extern "C" fn tsp_client_new_from_url(c_url: *const c_char) -> *mut TransportWrap {
     unsafe {
-        let url =  CStr::from_ptr(c_url).to_str().unwrap();
+        let url = CStr::from_ptr(c_url).to_str().unwrap();
 
         Box::into_raw(Box::new(TransportWrap::new_from_url(url)))
     }
 }
-
-#[cfg(feature = "sync-client")]
-#[no_mangle]
-pub extern "C" fn tsp_client_set_mwm(tsp: *mut TransportWrap, mwm: uint8_t) {
-    unsafe {
-        tsp.as_mut().map_or((), |tsp| {
-            let mut send_opt = (&*tsp).get_send_options();
-            send_opt.min_weight_magnitude = mwm;
-            tsp.set_send_options(send_opt);
-        })
-    }
-}
-
 
 #[repr(C)]
 pub struct MessageLinks {
@@ -105,10 +135,7 @@ impl From<(Address, Option<Address>)> for MessageLinks {
     fn from(links: (Address, Option<Address>)) -> Self {
         let msg_link = Box::into_raw(Box::new(links.0));
         let seq_link = links.1.map_or(null(), |s| Box::into_raw(Box::new(s)));
-        Self {
-            msg_link,
-            seq_link,
-        }
+        Self { msg_link, seq_link }
     }
 }
 
@@ -131,6 +158,7 @@ impl MessageLinks {
             }
         }
     }
+
 }
 
 impl Default for MessageLinks {
@@ -146,6 +174,26 @@ impl Default for MessageLinks {
 pub extern "C" fn drop_links(links: MessageLinks) {
     links.drop()
 }
+
+#[no_mangle]
+pub extern "C" fn get_msg_link(msg_links: *const MessageLinks) -> *const Address {
+    unsafe {
+        msg_links.as_ref().map_or(null(), |links| {
+            links.msg_link
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn get_seq_link(msg_links: *const MessageLinks) -> *const Address {
+    unsafe {
+        msg_links.as_ref().map_or(null(), |links| {
+            links.seq_link
+        })
+    }
+}
+
+
 
 #[repr(C)]
 pub struct Buffer {
@@ -189,11 +237,7 @@ impl<'a> From<&'a Bytes> for Buffer {
 impl Buffer {
     pub fn drop(self) {
         unsafe {
-            Vec::from_raw_parts(
-                self.ptr as *mut u8,
-                self.size,
-                self.cap,
-            );
+            Vec::from_raw_parts(self.ptr as *mut u8, self.size, self.cap);
         }
     }
 }
@@ -257,69 +301,86 @@ pub extern "C" fn drop_payloads(payloads: PacketPayloads) {
 
 #[no_mangle]
 pub extern "C" fn drop_str(s: *const c_char) {
-    unsafe { CString::from_raw(s as *mut c_char); }
+    unsafe {
+        CString::from_raw(s as *mut c_char);
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn get_channel_address_str(appinst: *const ChannelAddress) -> *const c_char {
     unsafe {
-        appinst.as_ref().map_or(null(), |inst|
+        appinst.as_ref().map_or(null(), |inst| {
             CString::new(hex::encode(inst)).map_or(null(), |inst_str| inst_str.into_raw())
-        )
+        })
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *const c_char {
     unsafe {
-        msgid.as_ref().map_or(null(), |id|
+        msgid.as_ref().map_or(null(), |id| {
             CString::new(hex::encode(id)).map_or(null(), |id_str| id_str.into_raw())
-        )
+        })
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
     unsafe {
-        address.as_ref().map_or(null_mut(), |addr|
-            CString::new(hex::encode(addr.appinst.as_ref()))
-                .map_or(null_mut(), |inst| inst.into_raw())
-        )
-
+        address.as_ref().map_or(null_mut(), |addr| {
+            CString::new(hex::encode(addr.appinst.as_ref())).map_or(null_mut(), |inst| inst.into_raw())
+        })
     }
 }
 
 #[no_mangle]
 pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
     unsafe {
-        address.as_ref().map_or(null_mut(), |addr|
-            CString::new(hex::encode(addr.msgid.as_ref()))
-                .map_or(null_mut(), |id| id.into_raw())
-        )
+        address.as_ref().map_or(null_mut(), |addr| {
+            CString::new(hex::encode(addr.msgid.as_ref())).map_or(null_mut(), |id| id.into_raw())
+        })
     }
 }
 
 #[no_mangle]
-pub extern "C" fn get_payload(msg: *const UnwrappedMessage) -> PacketPayloads {
+pub extern "C" fn get_address_index_str(address: *mut Address) -> *mut c_char {
     unsafe {
-        msg.as_ref().map_or(PacketPayloads::default(), handle_message_contents)
+        address.as_ref().map_or(null_mut(), |addr| {
+            get_hash(addr.appinst.as_ref(), addr.msgid.as_ref())
+                .map_or(null_mut(), |index| {
+                    CString::new(index)
+                        .map_or(null_mut(), |index| index.into_raw())
+                })
+        })
     }
+
+}
+
+#[no_mangle]
+pub extern "C" fn get_payload(msg: *const UnwrappedMessage) -> PacketPayloads {
+    unsafe { msg.as_ref().map_or(PacketPayloads::default(), handle_message_contents) }
 }
 
 #[no_mangle]
 pub extern "C" fn get_indexed_payload(msgs: *const UnwrappedMessages, index: size_t) -> PacketPayloads {
     unsafe {
-        msgs.as_ref().map_or(PacketPayloads::default(), |msgs| {
-            handle_message_contents(&msgs[index])
-        })
+        msgs.as_ref()
+            .map_or(PacketPayloads::default(), |msgs| handle_message_contents(&msgs[index]))
     }
 }
 
 fn handle_message_contents(m: &UnwrappedMessage) -> PacketPayloads {
     match &m.body {
-        MessageContent::TaggedPacket { public_payload: p, masked_payload: m, } => (p, m).into(),
+        MessageContent::TaggedPacket {
+            public_payload: p,
+            masked_payload: m,
+        } => (p, m).into(),
 
-        MessageContent::SignedPacket { pk: _, public_payload: p, masked_payload: m } => (p, m).into(),
+        MessageContent::SignedPacket {
+            pk: _,
+            public_payload: p,
+            masked_payload: m,
+        } => (p, m).into(),
 
         _ => PacketPayloads::default(),
     }

@@ -3,7 +3,7 @@
 [package]
 name = "iota-streams"
 version = "1.0.0"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
@@ -24,12 +24,12 @@ members = [
     "iota-streams-app",
     "iota-streams-app-channels",
     "iota-streams-app-channels-example",
-    "examples",
     #"iota-streams-app-channels-js",
     "bindings/wasm",
 ]
 exclude = [
     "bindings/c",
+    "examples",
     # "bindings/wasm",
 ]
 

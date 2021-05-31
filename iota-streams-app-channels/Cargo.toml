@@ -1,7 +1,7 @@
 [package]
 name = "iota-streams-app-channels"
 version = "1.0.1"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>"]
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
@@ -29,8 +29,7 @@ iota-streams-core-keccak = { version = "0.3.1", path = "../iota-streams-core-kec
 iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
 iota-streams-app = { version = "1.0.1", path = "../iota-streams-app", default-features = false }
 
-hex = { version = "0.4.2", default-features = false, optional = false }
+hex = { version = "0.4", default-features = false, optional = false }
 
 [dev-dependencies]
-# feature tokio02 explicitly required for block_on calls
-smol = { version = "0.1.18", features = ["tokio02"] }
+smol = { version = "1.2.5" }

@@ -2,7 +2,7 @@
 //! in the channel. It contains both plain and masked payloads. The message is
 //! authenticated with MAC and can be published by channel owner or by a recipient.
 //!
-//! ```pb3
+//! ```ddml
 //! message TaggedPacket {
 //!     join link msgid;
 //!     absorb bytes public_payload;
@@ -21,9 +21,7 @@
 //! * `masked_payload` -- masked part of payload.
 //!
 //! * `mac` -- MAC of the message.
-//!
 
-use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
@@ -34,6 +32,7 @@ use iota_streams_core::{
         prp::PRP,
         spongos,
     },
+    Result,
 };
 use iota_streams_ddml::{
     command::*,
@@ -88,8 +87,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         let mac = Mac(spongos::MacSize::<F>::USIZE);
-        ctx
-            .join(store, self.link)?
+        ctx.join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
@@ -111,6 +109,7 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
@@ -134,8 +133,7 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mac = Mac(spongos::MacSize::<F>::USIZE);
-        ctx
-            .join(store, &mut self.link)?
+        ctx.join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
             .commit()?

@@ -3,7 +3,7 @@
 //! be signed and published by channel owner. Channel owner must firstly publish
 //! corresponding public key certificate in either `Announce` or `ChangeKey` message.
 //!
-//! ```pb3
+//! ```ddml
 //! message SignedPacket {
 //!     join link msgid;
 //!     absorb bytes public_payload;
@@ -25,14 +25,15 @@
 //! * `hash` -- hash value to be signed.
 //!
 //! * `sig` -- message signature generated with one of channel owner's private key.
-//!
 
-use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    Result,
+};
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,

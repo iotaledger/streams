@@ -1,7 +1,7 @@
 var auth;
 var subs;
 var node_url;
-var send_trytes_options;
+var send_options;
 
 var ann_link;
 var last_link;
@@ -25,11 +25,12 @@ async function updateAuthor() {
     console.log("Not yet loaded...");
     return;
   }
+
+  console.log(streams);
   auth = null;
   let form = document.forms.settings;
-  send_trytes_options = new streams.SendTrytesOptions(
+  send_options = new streams.SendOptions(
     form["depth"].value,
-    form["mwm"].value,
     true,
     1,
   );
@@ -38,7 +39,7 @@ async function updateAuthor() {
   auth = new streams.Author(
     node_url,
     form["seed_a"].value,
-    send_trytes_options.clone(),
+    send_options.clone(),
     false,
   );
 
@@ -75,18 +76,16 @@ async function subscribe() {
   button.disabled = true;
 
   let form = document.forms.sub_settings;
-  let options = new streams.SendTrytesOptions(
-      send_trytes_options.depth,
-      send_trytes_options.min_weight_magnitude,
-      send_trytes_options.local_pow,
-      send_trytes_options.threads
+  let options = new streams.SendOptions(
+      send_options.depth,
+      send_options.local_pow,
+      send_options.threads
   )
 
   let sub = new streams.Subscriber(
       node_url,
       form["seed_b"].value,
-      options,
-      false
+      options
   );
 
   await sub.clone().receive_announcement(ann_link.copy());

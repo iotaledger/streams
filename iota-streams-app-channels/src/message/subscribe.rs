@@ -1,24 +1,24 @@
 //! `Subscribe` message content. This message is published by a user willing to become
-//! a subscriber to this channel. It contains subscriber's NTRU public key that will be used
-//! in keyload to encrypt session keys. Subscriber's NTRU public key is encrypted with
+//! a subscriber to this channel. It contains subscriber's Ed25519 public key that will be used
+//! in keyload to encrypt session keys. Subscriber's Ed25519 public key is encrypted with
 //! the `unsubscribe_key` which in turn is encapsulated for channel owner using
-//! owner's NTRU public key. The resulting spongos state will be used for unsubscription.
-//! Subscriber must trust channel owner's NTRU public key in order to maintain privacy.
+//! owner's Ed25519 public key. The resulting spongos state will be used for unsubscription.
+//! Subscriber must trust channel owner's Ed25519 public key in order to maintain privacy.
 //!
 //! Channel Owner must maintain the resulting spongos state associated to the Subscriber's
-//! NTRU public key.
+//! Ed25519 public key.
 //!
 //! Note, in the `Channel` Application Subscriber doesn't have signature keys and thus
-//! can't prove possesion of the NTRU private key with signature. Such proof can
+//! can't prove possession of the Ed25519 private key with signature. Such proof can
 //! be established in an interactive protocol by channel Owner's request.
 //! Such protocol is out of scope. To be discussed.
 //!
-//! ```pb3
+//! ```ddml
 //! message Subscribe {
 //!     join link msgid;
-//!     ntrukem(key) byte unsubscribe_key[3072];
+//!     x25519(key) byte unsubscribe_key[3072];
 //!     commit;
-//!     mask byte ntrupk[3072];
+//!     mask byte pk[3072];
 //!     commit;
 //!     squeeze byte mac[27];
 //! }
@@ -26,26 +26,31 @@
 //!
 //! # Fields:
 //!
-//! * `msgid` -- link to the `Announce` message containing channel owner's trusted NTRU public key.
-//! This key is used to protect subscriber's identity by encrypting subscriber's NTRU public key.
+//! * `msgid` -- link to the `Announce` message containing channel owner's trusted Ed25519 public key.
+//! This key is used to protect subscriber's identity by encrypting subscriber's Ed25519 public key.
 //!
 //! * `unsubscribe_key` -- encapsulated secret key that serves as encryption key and as password to unsubscribe from the
 //!   channel.
 //!
-//! * `ntrupk` -- subscriber's NTRU public key.
+//! * `pk` -- subscriber's Ed25519 public key.
 //!
 //! * `mac` -- authentication tag.
 //!
-//! Note, the `unsubscribe_key` is masked and verified in the `ntrukem` operation and
+//! Note, the `unsubscribe_key` is masked and verified in the `x25519` operation and
 //! thus is not additionally `absorb`ed in this message.
 
-use iota_streams_core::{Result, WrappedError, wrapped_err, LOCATION_LOG};
-use iota_streams_core::Errors::MessageCreationFailure;
 use iota_streams_app::message::{
     self,
     HasLink,
 };
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    wrapped_err,
+    Errors::MessageCreationFailure,
+    Result,
+    WrappedError,
+    LOCATION_LOG,
+};
 use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,
@@ -127,7 +132,7 @@ where
                 author_ke_sk,
                 _phantom: core::marker::PhantomData,
             }),
-            Err(e) => Err(wrapped_err!(MessageCreationFailure, WrappedError(e)))
+            Err(e) => Err(wrapped_err!(MessageCreationFailure, WrappedError(e))),
         }
     }
 }

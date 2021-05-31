@@ -3,10 +3,13 @@ use core::{
     hash,
 };
 
-use iota_streams_core::prelude::{Vec, hex,};
+use iota_streams_core::prelude::{
+    hex,
+    Vec,
+};
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
-#[derive(PartialEq, Eq, Clone, Debug, Default)]
+#[derive(Eq, Clone, Debug, Default)]
 pub struct Bytes(pub Vec<u8>);
 
 impl Bytes {
@@ -18,6 +21,12 @@ impl Bytes {
 impl fmt::Display for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", hex::encode(&self.0))
+    }
+}
+
+impl PartialEq for Bytes {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
     }
 }
 

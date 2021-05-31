@@ -2,17 +2,21 @@ use std::str::FromStr;
 
 use iota_streams_core::{
     prelude::{
-        Vec,
-        typenum::{U32, U64, },
         string::ToString,
+        typenum::{
+            U32,
+            U64,
+        },
+        Vec,
     },
-    prng, sponge::{
+    prng,
+    sponge::{
         prp::PRP,
         spongos::Spongos,
     },
     try_or,
+    Errors::*,
     Result,
-    Errors::*
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -40,10 +44,7 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
         {
             let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
             ctx.commit()?.absorb(&t)?.mask(&t)?.commit()?.squeeze(&mut tag_wrap)?;
-            try_or!(
-                ctx.stream.is_empty(),
-                OutputStreamNotFullyConsumed(ctx.stream.len())
-            )?;
+            try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
         let mut t2 = Uint8(0_u8);
@@ -55,10 +56,7 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
                 .mask(&mut t3)?
                 .commit()?
                 .squeeze(&mut tag_unwrap)?;
-            try_or!(
-                ctx.stream.is_empty(),
-                InputStreamNotFullyConsumed(ctx.stream.len())
-            )?;
+            try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
         try_or!(t == t2, ValueMismatch(t as usize, t2 as usize))?;
@@ -93,10 +91,7 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
         {
             let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
             ctx.commit()?.absorb(&s)?.mask(&s)?.commit()?.squeeze(&mut tag_wrap)?;
-            try_or!(
-                ctx.stream.is_empty(),
-                OutputStreamNotFullyConsumed(ctx.stream.len())
-            )?;
+            try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
         let mut s2 = Size::default();
@@ -108,10 +103,7 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
                 .mask(&mut s3)?
                 .commit()?
                 .squeeze(&mut tag_unwrap)?;
-            try_or!(
-                ctx.stream.is_empty(),
-                InputStreamNotFullyConsumed(ctx.stream.len())
-            )?;
+            try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
         try_or!(s == s2, ValueMismatch(s.0, s2.0))?;
@@ -187,10 +179,7 @@ fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
                 //
                 .commit()?
                 .squeeze(&mut tag_wrap)?;
-            try_or!(
-                ctx.stream.is_empty(),
-                OutputStreamNotFullyConsumed(ctx.stream.len())
-            )?;
+            try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
         let mut ta2 = Bytes::default();
@@ -213,16 +202,11 @@ fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
                 //
                 .commit()?
                 .squeeze(&mut tag_unwrap)?;
-            try_or!(
-                ctx.stream.is_empty(),
-                InputStreamNotFullyConsumed(ctx.stream.len())
-            )?;
+            try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
-        try_or!(ta == ta2,
-                             InvalidBytes(ta.to_string(), ta2.to_string()))?;
-        try_or!(nta == nta2,
-                             InvalidBytes(nta.to_string(), nta2.to_string()))?;
+        try_or!(ta == ta2, InvalidBytes(ta.to_string(), ta2.to_string()))?;
+        try_or!(nta == nta2, InvalidBytes(nta.to_string(), nta2.to_string()))?;
         // try_or!(tm == tm2, "Invalid unwrapped tm value: {:?} != {:?}", tm, tm2);
         // try_or!(ntm == ntm2, "Invalid unwrapped ntm value: {:?} != {:?}", ntm, ntm2);
         // try_or!(ents == ents2, "Invalid unwrapped ents value: {:?} != {:?}", ents, ents2);
@@ -270,10 +254,7 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
             .squeeze(&mut hash)?
             .ed25519(&kp, &hash)?
             .ed25519(&kp, HashSig)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            OutputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
     {
@@ -283,16 +264,10 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
             .squeeze(&mut uhash)?
             .ed25519(&public, &uhash)?
             .ed25519(&public, HashSig)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            InputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
-    try_or!(
-        ta == uta,
-        InvalidTagSqueeze(ta.to_string(), uta.to_string())
-    )?;
+    try_or!(ta == uta, InvalidTagSqueeze(ta.to_string(), uta.to_string()))?;
     try_or!(
         hash == uhash,
         InvalidHashSqueeze(hash.0.to_string(), uhash.0.to_string())
@@ -332,10 +307,7 @@ fn x25519_static<F: PRP>() -> Result<()> {
             .x25519(&secret_b, &public_a)?
             .commit()?
             .mask(&ta)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            OutputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
     {
@@ -344,15 +316,10 @@ fn x25519_static<F: PRP>() -> Result<()> {
             .x25519(&secret_a, &public_b2)?
             .commit()?
             .mask(&mut uta)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            InputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
-    try_or!(ta == uta,
-                         InvalidTagSqueeze(ta.to_string(), uta.to_string())
-    )?;
+    try_or!(ta == uta, InvalidTagSqueeze(ta.to_string(), uta.to_string()))?;
 
     Ok(())
 }
@@ -384,10 +351,7 @@ fn x25519_ephemeral<F: PRP>() -> Result<()> {
             .x25519(secret_b, &public_a)?
             .commit()?
             .mask(&ta)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            OutputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
     {
@@ -396,15 +360,10 @@ fn x25519_ephemeral<F: PRP>() -> Result<()> {
             .x25519(secret_a, &public_b2)?
             .commit()?
             .mask(&mut uta)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            InputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
-    try_or!(ta == uta,
-                         InvalidTagSqueeze(ta.to_string(), uta.to_string())
-    )?;
+    try_or!(ta == uta, InvalidTagSqueeze(ta.to_string(), uta.to_string()))?;
 
     Ok(())
 }
@@ -427,25 +386,16 @@ fn x25519_transport<F: PRP>() -> Result<()> {
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
         ctx.x25519(&public_a, &key)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            OutputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
     {
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
         ctx.x25519(&secret_a, &mut ukey)?;
-        try_or!(
-            ctx.stream.is_empty(),
-            InputStreamNotFullyConsumed(ctx.stream.len())
-        )?;
+        try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
-    try_or!(
-        key == ukey,
-        InvalidKeySqueeze(key.to_string(), ukey.to_string())
-    )?;
+    try_or!(key == ukey, InvalidKeySqueeze(key.to_string(), ukey.to_string()))?;
 
     Ok(())
 }

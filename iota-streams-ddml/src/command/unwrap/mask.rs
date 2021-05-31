@@ -1,5 +1,5 @@
-use iota_streams_core::Result;
 use core::mem;
+use iota_streams_core::Result;
 
 use super::{
     unwrap::*,
@@ -22,9 +22,9 @@ use crate::{
 use iota_streams_core::{
     sponge::prp::PRP,
     wrapped_err,
+    Errors::PublicKeyGenerationFailure,
     WrappedError,
     LOCATION_LOG,
-    Errors::PublicKeyGenerationFailure
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,

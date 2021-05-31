@@ -19,9 +19,9 @@ use crate::{
 use iota_streams_core::{
     sponge::prp::PRP,
     wrapped_err,
+    Errors::SignatureFailure,
     WrappedError,
     LOCATION_LOG,
-    Errors::SignatureFailure,
 };
 use iota_streams_core_edsig::signature::ed25519;
 

@@ -1,7 +1,7 @@
 //! `Unsubscribe` message content. This message is published by a subscriber
 //! willing to unsubscribe from this channel.
 //!
-//! ```pb3
+//! ```ddml
 //! message Unsubscribe {
 //!     join link msgid;
 //!     commit;

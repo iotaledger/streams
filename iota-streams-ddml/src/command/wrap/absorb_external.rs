@@ -1,5 +1,5 @@
-use iota_streams_core::Result;
 use core::mem;
+use iota_streams_core::Result;
 
 use super::{
     wrap::*,

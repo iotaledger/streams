@@ -15,14 +15,18 @@ extern crate std;
 #[macro_export]
 macro_rules! println {
     () => {};
-    ($($arg:tt)*) => {};
+    ($($arg:tt)*) => {
+        return ();
+    };
 }
 
 #[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! print {
     () => {};
-    ($($arg:tt)*) => {};
+    ($($arg:tt)*) => {
+        return ();
+    };
 }
 
 // Reexport macro at the same level as `no_std`.
@@ -44,13 +48,21 @@ pub const LOCATION_LOG: bool = false;
 #[cfg(feature = "err-location-log")]
 pub const LOCATION_LOG: bool = true;
 
-pub use anyhow::{Result, ensure, Error, bail, anyhow};
+pub use anyhow::{
+    anyhow,
+    bail,
+    ensure,
+    Error,
+    Result,
+};
 
+pub mod errors;
 pub mod prelude;
 pub mod prng;
 pub mod psk;
 pub mod sponge;
-pub mod errors;
 
-pub use errors::error_handler::*;
-pub use errors::error_messages::*;
+pub use errors::{
+    error_handler::*,
+    error_messages::*,
+};

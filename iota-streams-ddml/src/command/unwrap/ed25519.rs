@@ -18,8 +18,8 @@ use crate::{
 };
 use iota_streams_core::{
     sponge::prp::PRP,
-    Errors::SignatureMismatch,
     wrapped_err,
+    Errors::SignatureMismatch,
     WrappedError,
     LOCATION_LOG,
 };

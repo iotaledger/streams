@@ -4,14 +4,14 @@ use iota_streams_core::Result;
 use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;
 use iota_streams_core::{
+    err,
     prelude::{
         HashSet,
         Vec,
     },
     println,
-    err,
+    Errors::KeyConversionFailure,
     LOCATION_LOG,
-    Errors::KeyConversionFailure
 };
 pub use x25519_dalek::{
     EphemeralSecret,
@@ -36,11 +36,12 @@ pub fn public_from_ed25519(pk: &ed25519::PublicKey) -> Result<PublicKey> {
     // `pk.to_bytes` returns Y coordinate
     // try reconstruct X,Y,Z,T coordinates of `EdwardsPoint`
     match edwards::CompressedEdwardsY(pk.to_bytes()).decompress() {
-        Some(compressed_edwards) => {// pk is a valid `PublicKey` hence contains valid `EdwardsPoint`
+        Some(compressed_edwards) => {
+            // pk is a valid `PublicKey` hence contains valid `EdwardsPoint`
             // x25519 uses Montgomery form, and `PublicKey` is just a `MontgomeryPoint`
             Ok(PublicKey::from(compressed_edwards.to_montgomery().to_bytes()))
-        },
-        None => err!(KeyConversionFailure)?
+        }
+        None => err!(KeyConversionFailure)?,
     }
 }
 
@@ -72,7 +73,7 @@ impl<'a> From<&'a mut PublicKey> for &'a mut PublicKeyWrap {
 pub type Pks = HashSet<PublicKeyWrap>;
 pub type IPk<'a> = &'a PublicKey;
 
-pub fn filter_ke_pks<'a>(allowed_pks: &'a Pks, target_pks: &'a Vec<PublicKey>) -> Vec<IPk<'a>> {
+pub fn filter_ke_pks<'a>(allowed_pks: &'a Pks, target_pks: &'a [PublicKey]) -> Vec<IPk<'a>> {
     target_pks
         .iter()
         .filter_map(|pk| allowed_pks.get(pk.into()).map(|pk| &pk.0))

@@ -1,5 +1,5 @@
-use iota_streams_core::Result;
 use core::fmt;
+use iota_streams_core::Result;
 
 use super::LinkedMessage;
 

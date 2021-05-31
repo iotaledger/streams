@@ -1,18 +1,13 @@
 use iota_streams::{
     app::message::HasLink as _,
-    app_channels::{
-        api::{
-            tangle::{
-                Transport,
-                Author,
-                Subscriber
-            },
-        },
+    app_channels::api::tangle::{
+        Author,
+        Subscriber,
+        Transport,
     },
 };
 
-pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
-{
+pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>) {
     let mut exists = true;
 
     while exists {
@@ -30,8 +25,7 @@ pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
     }
 }
 
-pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>)
-{
+pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>) {
     let mut exists = true;
 
     while exists {
@@ -47,5 +41,4 @@ pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>)
             println!("No more messages in sequence.");
         }
     }
-
 }

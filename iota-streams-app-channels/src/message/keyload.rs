@@ -49,21 +49,21 @@
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
 
-use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
 };
 use iota_streams_core::{
     prelude::{
-        Vec,
         typenum::Unsigned as _,
+        Vec,
     },
     psk,
     sponge::{
         prp::PRP,
         spongos,
     },
+    Result,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -139,8 +139,7 @@ where
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         let repeated_psks = Size(self.psks.len());
         let repeated_ke_pks = Size(self.ke_pks.len());
-        ctx
-            .join(store, self.link)?
+        ctx.join(store, self.link)?
             .absorb(&self.nonce)?
             .skip(repeated_psks)?
             .repeated(self.psks.clone().into_iter(), |ctx, (pskid, psk)| {
@@ -153,11 +152,7 @@ where
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone().into_iter(), |ctx, (sig_pk, ke_pk)| {
-                ctx.fork(|ctx|
-                         ctx
-                         .absorb(sig_pk)?
-                         .x25519(ke_pk, &self.key)
-                )
+                ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
             })?
             .absorb(External(&self.key))?
             .ed25519(self.sig_kp, HashSig)?
@@ -167,12 +162,14 @@ where
 }
 
 // This whole mess with `'a` and `LookupArg: 'a` is needed in order to allow `LookupPsk`
-// and `LookupNtruSk` avoid copying and return `&'a Psk` and `&'a NtruSk`.
+// and `LookupKeSk` avoid copying and return `&'a Psk` and `&'a ed25519::PublicKey`.
 pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupKeSk> {
     pub link: <Link as HasLink>::Rel,
     pub nonce: NBytes<U16>, // TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
     pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
+
+    #[allow(dead_code)]
     pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub(crate) ke_pks: Vec<ed25519::PublicKey>,
@@ -248,13 +245,13 @@ where
                             Ok(ctx)
                         } else {
                             // Just drop the rest of the forked message so not to waste Spongos operations
-                            let n = Size(0 + 0 + spongos::KeySize::<F>::USIZE);
+                            let n = Size(spongos::KeySize::<F>::USIZE);
                             ctx.drop(n)
                         }
                     })
                 } else {
                     // Drop entire fork.
-                    let n = Size(psk::PSKID_SIZE + 0 + 0 + spongos::KeySize::<F>::USIZE);
+                    let n = Size(psk::PSKID_SIZE + spongos::KeySize::<F>::USIZE);
                     ctx.drop(n)
                 }
             })?
@@ -268,7 +265,7 @@ where
                         ctx.x25519(ke_sk, &mut key)?;
                         self.key = Some(key);
                         // Save the relevant public key
-                        self.ke_pk = ke_pk.clone();
+                        self.ke_pk = ke_pk;
                         self.ke_pks.push(ke_pk);
                         Ok(ctx)
                     } else {
@@ -283,11 +280,7 @@ where
             //.guard(self.key.is_some(), "Key not found")?
         ;
         if let Some(ref key) = self.key {
-            ctx
-                .absorb(External(key))?
-                .ed25519(self.sig_pk, HashSig)?
-                .commit()?
-            ;
+            ctx.absorb(External(key))?.ed25519(self.sig_pk, HashSig)?.commit()?;
         }
         Ok(ctx)
     }
