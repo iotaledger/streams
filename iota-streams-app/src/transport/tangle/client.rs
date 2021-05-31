@@ -43,21 +43,14 @@ use iota_streams_core::prelude::String;
 #[derive(Clone)]
 pub struct SendOptions {
     pub url: String,
-    pub depth: u8,
     pub local_pow: bool,
-    pub threads: usize,
 }
 
 impl Default for SendOptions {
     fn default() -> Self {
         Self {
             url: "https://chrysalis-nodes.iota.org".to_string(),
-            depth: 3,
             local_pow: true,
-            #[cfg(target_arch = "wasm32")]
-            threads: 1,
-            #[cfg(not(target_arch = "wasm32"))]
-            threads: num_cpus::get(),
         }
     }
 }
