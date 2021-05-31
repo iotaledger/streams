@@ -93,8 +93,8 @@ async function main() {
 
   console.log("\nAuthor fetching prev messages");
   let prev_msgs = await auth.clone().fetch_prev_msgs(last_link, 3);
-  for (var i = 0; i < prev_msgs.length; i++) {
-    console.log("Found a message at ", prev_msgs[i].get_link().to_string());
+  for (var j = 0; j < prev_msgs.length; j++) {
+    console.log("Found a message at ", prev_msgs[j].get_link().to_string());
   }
 
   // Import export example

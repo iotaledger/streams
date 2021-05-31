@@ -48,10 +48,7 @@ impl From<SendOptions> for ApiSendOptions {
 impl SendOptions {
     #[wasm_bindgen(constructor)]
     pub fn new(url: String, local_pow: bool) -> Self {
-        Self {
-            url,
-            local_pow,
-        }
+        Self { url, local_pow }
     }
 
     #[wasm_bindgen(setter)]
@@ -65,6 +62,7 @@ impl SendOptions {
     }
 
     #[wasm_bindgen]
+    #[allow(clippy::should_implement_trait)]
     pub fn clone(&self) -> Self {
         SendOptions {
             url: self.url.clone(),
@@ -74,6 +72,7 @@ impl SendOptions {
 }
 
 #[wasm_bindgen]
+#[derive(Default, PartialEq)]
 pub struct Address {
     addr_id: String,
     msg_id: String,
@@ -81,14 +80,6 @@ pub struct Address {
 
 #[wasm_bindgen]
 impl Address {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        Address {
-            addr_id: String::new(),
-            msg_id: String::new(),
-        }
-    }
-
     #[wasm_bindgen(getter)]
     pub fn addr_id(&self) -> String {
         self.addr_id.clone()
@@ -116,7 +107,7 @@ impl Address {
             .unwrap_or(&link)
             .strip_suffix(">")
             .unwrap_or(&link)
-            .split(":")
+            .split(':')
             .collect();
 
         Address {
@@ -126,10 +117,11 @@ impl Address {
     }
 
     #[wasm_bindgen]
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         let mut link = String::new();
         link.push_str(&self.addr_id);
-        link.push_str(":");
+        link.push(':');
         link.push_str(&self.msg_id);
         link
     }
@@ -139,10 +131,6 @@ impl Address {
             addr_id: self.addr_id.clone(),
             msg_id: self.msg_id.clone(),
         }
-    }
-
-    pub fn eq(&self, addr: Address) -> bool {
-        self.msg_id.eq(&addr.msg_id) && self.addr_id.eq(&addr.addr_id)
     }
 }
 
@@ -199,7 +187,7 @@ impl From<ImplementationType> for ApiImplType {
         match impl_type {
             ImplementationType::SingleBranch => ApiImplType::SingleBranch,
             ImplementationType::MultiBranch => ApiImplType::MultiBranch,
-            ImplementationType::SingleDepth => ApiImplType::SingleDepth
+            ImplementationType::SingleDepth => ApiImplType::SingleDepth,
         }
     }
 }
@@ -225,21 +213,19 @@ pub struct Message {
 }
 
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct PskIds {
     ids: Vec<String>,
 }
 
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct PublicKeys {
     pks: Vec<String>,
 }
 
 #[wasm_bindgen]
 impl PskIds {
-    pub fn new() -> Self {
-        PskIds { ids: Vec::new() }
-    }
-
     pub fn add(&mut self, id: String) {
         self.ids.push(id);
     }
@@ -251,10 +237,6 @@ impl PskIds {
 
 #[wasm_bindgen]
 impl PublicKeys {
-    pub fn new() -> Self {
-        PublicKeys { pks: Vec::new() }
-    }
-
     pub fn add(&mut self, id: String) {
         self.pks.push(id);
     }
@@ -279,7 +261,7 @@ impl Message {
     }
 
     pub fn get_pk(&self) -> String {
-        self.pk.clone().unwrap_or(String::new())
+        self.pk.clone().unwrap_or_default()
     }
 
     pub fn get_public_payload(&self) -> Array {
@@ -325,7 +307,7 @@ impl UserResponse {
         }
 
         UserResponse {
-            link: Address::from_string(link.to_string()),
+            link: Address::from_string(link),
             seq_link: seq,
             message,
         }
@@ -333,14 +315,14 @@ impl UserResponse {
 
     pub fn copy(&self) -> Self {
         let mut seq = None;
-        if !self.get_seq_link().eq(Address::new()) {
+        if !self.get_seq_link().eq(&Address::default()) {
             seq = Some(self.get_seq_link());
         }
         UserResponse::new(self.get_link(), seq, None)
     }
 
     pub fn get_link(&self) -> Address {
-        let mut link = Address::new();
+        let mut link = Address::default();
         link.set_addr_id(self.link.addr_id());
         link.set_msg_id(self.link.msg_id());
         link
@@ -349,12 +331,12 @@ impl UserResponse {
     pub fn get_seq_link(&self) -> Address {
         if self.seq_link.is_some() {
             let seq_link = self.seq_link.as_ref().unwrap();
-            let mut link = Address::new();
+            let mut link = Address::default();
             link.set_addr_id(seq_link.addr_id());
             link.set_msg_id(seq_link.msg_id());
             link
         } else {
-            Address::new()
+            Address::default()
         }
     }
 

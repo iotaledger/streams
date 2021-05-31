@@ -28,6 +28,7 @@ impl Client {
 }
 
 impl Client {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_inner(self) -> ClientWrap {
         self.0
     }
