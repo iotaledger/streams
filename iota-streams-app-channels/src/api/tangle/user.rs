@@ -158,6 +158,16 @@ impl<Trans> User<Trans> {
         self.user.store_psk(id, psk);
         id
     }
+
+    /// Consume a binary sequence message and return the derived message link
+    fn process_sequence(&mut self, msg: BinaryMessage, store: bool) -> Result<Address> {
+        let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store)?;
+        let msg_link = self.user.link_gen.link_from(
+            &unwrapped.body.pk,
+            Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
+        );
+        Ok(msg_link)
+    }
 }
 
 #[cfg(not(feature = "async"))]
@@ -410,28 +420,17 @@ impl<Trans: Transport> User<Trans> {
     /// * `link` - Address of message to act as root of previous message fetching
     /// * `max` - The number of msgs to try and parse
     pub fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
-        let mut msg = self.transport.recv_message(link)?;
-        let mut header = msg.binary.parse_header()?.header;
-
+        let mut msg_info: (Address, u8, Message) = self.parse_msg_info(link)?;
         let mut to_process = Vec::new();
         let mut msgs = Vec::new();
 
         for _ in 0..max {
-            let prev_msg_link = Address::from_bytes(&header.previous_msg_link.0);
-            msg = self.transport.recv_message(&prev_msg_link)?;
-            header = msg.binary.parse_header()?.header;
-
-            if header.content_type == message::SEQUENCE {
-                let unwrapped = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, false)?;
-                let msg_link = self.user.link_gen.link_from(
-                    &unwrapped.body.pk,
-                    Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
-                );
-                msg = self.transport.recv_message(&msg_link)?;
-                header = msg.binary.parse_header()?.header;
+            msg_info = self.parse_msg_info(&msg_info.0)?;
+            if msg_info.1 == message::SEQUENCE {
+                let msg_link = self.process_sequence(msg_info.2.binary, false)?;
+                msg_info = self.parse_msg_info(&msg_link)?;
             }
-
-            to_process.push(msg.clone());
+            to_process.push(msg_info.2);
         }
 
         to_process.reverse();
@@ -475,17 +474,21 @@ impl<Trans: Transport> User<Trans> {
                     return Ok(u);
                 }
                 message::SEQUENCE => {
-                    let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store)?;
-                    let msg_link = self.user.link_gen.link_from(
-                        &unwrapped.body.pk,
-                        Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
-                    );
+                    let msg_link = self.process_sequence(msg, store)?;
                     let msg = self.transport.recv_message(&msg_link)?;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
             }
         }
+    }
+
+    // Get the previous msg link and msg type from header of message
+    fn parse_msg_info(&mut self, link: &Address) -> Result<(Address, u8, Message)> {
+        let msg = self.transport.recv_message(link)?;
+        let header = msg.binary.parse_header()?.header;
+        let link = Address::from_bytes(&header.previous_msg_link.0);
+        Ok((link, header.content_type, msg))
     }
 }
 
@@ -740,28 +743,17 @@ impl<Trans: Transport> User<Trans> {
     /// * `link` - Address of message to act as root of previous message fetching
     /// * `max` - The number of msgs to try and parse
     pub async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
-        let mut msg = self.transport.recv_message(link).await?;
-        let mut header = msg.binary.parse_header()?.header;
-
+        let mut msg_info: (Address, u8, Message) = self.parse_msg_info(link).await?;
         let mut to_process = Vec::new();
         let mut msgs = Vec::new();
 
         for _ in 0..max {
-            let prev_msg_link = Address::from_bytes(&header.previous_msg_link.0);
-            msg = self.transport.recv_message(&prev_msg_link).await?;
-            header = msg.binary.parse_header()?.header;
-
-            if header.content_type == message::SEQUENCE {
-                let unwrapped = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, false)?;
-                let msg_link = self.user.link_gen.link_from(
-                    &unwrapped.body.pk,
-                    Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
-                );
-                msg = self.transport.recv_message(&msg_link).await?;
-                header = msg.binary.parse_header()?.header;
+            msg_info = self.parse_msg_info(&msg_info.0).await?;
+            if msg_info.1 == message::SEQUENCE {
+                let msg_link = self.process_sequence(msg_info.2.binary, false)?;
+                msg_info = self.parse_msg_info(&msg_link).await?;
             }
-
-            to_process.push(msg.clone());
+            to_process.push(msg_info.2);
         }
 
         to_process.reverse();
@@ -804,16 +796,21 @@ impl<Trans: Transport> User<Trans> {
                     return Ok(u);
                 }
                 message::SEQUENCE => {
-                    let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store)?;
-                    let msg_link = self.user.link_gen.link_from(
-                        &unwrapped.body.pk,
-                        Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
-                    );
+                    let msg_link = self.process_sequence(msg, store)?;
                     let msg = self.transport.recv_message(&msg_link).await?;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
             }
         }
+    }
+
+    /// Get the previous msg link and msg type from header of message and return in a tuple alongside
+    /// the message itself
+    async fn parse_msg_info(&mut self, link: &Address) -> Result<(Address, u8, Message)> {
+        let msg = self.transport.recv_message(link).await?;
+        let header = msg.binary.parse_header()?.header;
+        let link = Address::from_bytes(&header.previous_msg_link.0);
+        Ok((link, header.content_type, msg))
     }
 }

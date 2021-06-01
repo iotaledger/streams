@@ -5,7 +5,10 @@ use super::{
     psk_store::PresharedKeyMap,
 };
 use iota_streams_app::{
-    message,
+    message::{
+        self,
+        BinaryBody,
+    },
     transport::{
         self,
         tangle::{
@@ -132,6 +135,9 @@ impl MessageContent {
 
 /// Generic unwrapped message type containing possible message contents
 pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
+
+/// Generic binary message type for sequence handling
+pub type BinaryMessage = message::GenericMessage<Address, BinaryBody<DefaultF>>;
 
 #[allow(clippy::ptr_arg)]
 mod user;
