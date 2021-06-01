@@ -2,7 +2,7 @@ use iota_streams::{
     app::message::HasLink,
     app_channels::api::tangle::{
         Author,
-        ImplementationType,
+        ChannelType,
         Subscriber,
         Transport,
     },
@@ -22,8 +22,8 @@ use core::cell::RefCell;
 
 use super::utils;
 
-pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: ImplementationType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, impl_type, transport.clone());
+pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelType, seed: &str) -> Result<()> {
+    let mut author = Author::new(seed, channel_type, transport.clone());
     println!("Author multi branching?: {}", author.is_multi_branching());
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());

@@ -5,7 +5,7 @@ use iota_streams_core::Result;
 
 use super::*;
 use crate::api::tangle::{
-    ImplementationType,
+    ChannelType,
     UnwrappedMessage,
     User,
 };
@@ -37,8 +37,8 @@ impl<Trans> Author<Trans> {
     /// * `payload_length` - Maximum size in bytes of payload per message chunk [1-1024],
     /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, impl_type: ImplementationType, transport: Trans) -> Self {
-        let mut user = User::new(seed, impl_type, transport);
+    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
+        let mut user = User::new(seed, channel_type, transport);
         let channel_idx = 0_u64;
         let _ = user.user.create_channel(channel_idx);
         Self { user }
@@ -142,10 +142,10 @@ impl<Trans: Transport> Author<Trans> {
     pub fn recover(
         seed: &str,
         announcement: &Address,
-        impl_type: ImplementationType,
+        channel_type: ChannelType,
         transport: Trans,
     ) -> Result<Self> {
-        let mut author = Author::new(seed, impl_type, transport);
+        let mut author = Author::new(seed, channel_type, transport);
 
         let ann = author.user.user.announce()?;
         let retrieved: Message = author.user.transport.recv_message(announcement)?;
@@ -315,10 +315,10 @@ impl<Trans: Transport> Author<Trans> {
     pub async fn recover(
         seed: &str,
         announcement: &Address,
-        impl_type: ImplementationType,
+        channel_type: ChannelType,
         transport: Trans,
     ) -> Result<Self> {
-        let mut author = Author::new(seed, impl_type, transport);
+        let mut author = Author::new(seed, channel_type, transport);
 
         let ann = author.user.user.announce()?;
         let retrieved: Message = author.user.transport.recv_message(announcement).await?;

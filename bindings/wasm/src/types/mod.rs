@@ -9,7 +9,7 @@ use iota_streams::{
     },
     app_channels::api::tangle::{
         Address as ApiAddress,
-        ImplementationType as ApiImplType,
+        ChannelType as ApiChannelType,
         MessageContent,
         UnwrappedMessage,
     },
@@ -176,18 +176,18 @@ pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
 }
 
 #[wasm_bindgen]
-pub enum ImplementationType {
+pub enum ChannelType {
     SingleBranch,
     MultiBranch,
     SingleDepth,
 }
 
-impl From<ImplementationType> for ApiImplType {
-    fn from(impl_type: ImplementationType) -> Self {
-        match impl_type {
-            ImplementationType::SingleBranch => ApiImplType::SingleBranch,
-            ImplementationType::MultiBranch => ApiImplType::MultiBranch,
-            ImplementationType::SingleDepth => ApiImplType::SingleDepth,
+impl From<ChannelType> for ApiChannelType {
+    fn from(channel_type: ImplementationType) -> Self {
+        match channel_type {
+            ChannelType::SingleBranch => ApiChannelType::SingleBranch,
+            ChannelType::MultiBranch => ApiChannelType::MultiBranch,
+            ChannelType::SingleDepth => ApiChannelType::SingleDepth,
         }
     }
 }

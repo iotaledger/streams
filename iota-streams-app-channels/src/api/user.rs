@@ -49,7 +49,7 @@ use crate::{
     api::{
         pk_store::*,
         psk_store::*,
-        ImplementationType,
+        ChannelType,
     },
     message::*,
 };
@@ -207,17 +207,17 @@ where
     pub fn gen(
         prng: prng::Prng<F>,
         nonce: Vec<u8>,
-        impl_type: ImplementationType,
+        channel_type: ChannelType,
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
     ) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
-        let flags: u8 = match impl_type {
-            ImplementationType::SingleBranch => 0,
-            ImplementationType::MultiBranch => 1,
-            ImplementationType::SingleDepth => 2,
+        let flags: u8 = match channel_type {
+            ChannelType::SingleBranch => 0,
+            ChannelType::MultiBranch => 1,
+            ChannelType::SingleDepth => 2,
         };
 
         Self {

@@ -11,7 +11,7 @@ pub mod user;
 pub mod tangle;
 
 #[derive(Clone)]
-pub enum ImplementationType {
+pub enum ChannelType {
     SingleBranch,
     MultiBranch,
     SingleDepth,

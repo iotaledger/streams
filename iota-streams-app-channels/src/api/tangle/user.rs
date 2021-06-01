@@ -45,14 +45,14 @@ impl<Trans> User<Trans> {
     ///
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
-    /// * `impl_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
+    /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, impl_type: ImplementationType, transport: Trans) -> Self {
+    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
         let user = UserImp::gen(
             prng::from_seed("IOTA Streams Channels user sig keypair", seed),
             nonce,
-            impl_type,
+            channel_type,
             ENCODING.as_bytes().to_vec(),
             PAYLOAD_LENGTH,
         );

@@ -26,7 +26,7 @@ pub use transport::{
     TransportOptions as _,
 };
 
-pub use super::ImplementationType;
+pub use super::ChannelType;
 use iota_streams_core::psk;
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::link_store::DefaultLinkStore;

@@ -5,7 +5,7 @@ use iota_streams_core::Result;
 
 use super::*;
 use crate::api::tangle::{
-    ImplementationType::SingleBranch,
+    ChannelType::SingleBranch,
     UnwrappedMessage,
     User,
 };

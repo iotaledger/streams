@@ -1,7 +1,7 @@
 use iota_streams::{
     app_channels::api::tangle::{
         Author,
-        ImplementationType,
+        ChannelType,
         Subscriber,
         Transport,
     },
@@ -23,8 +23,8 @@ use std::{
     time::Duration,
 };
 
-pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: ImplementationType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, impl_type.clone(), transport.clone());
+pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelType, seed: &str) -> Result<()> {
+    let mut author = Author::new(seed, channel_type.clone(), transport.clone());
     println!("Author multi branching?: {}", author.is_multi_branching());
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
@@ -92,7 +92,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, impl_type: Implementatio
     utils::a_fetch_next_messages(&mut author);
 
     println!("\n\nTime to try to recover the instance...");
-    let mut new_author = Author::recover(seed, &announcement_link, impl_type, transport)?;
+    let mut new_author = Author::recover(seed, &announcement_link, channel_type, transport)?;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;

@@ -27,12 +27,12 @@ use core::ptr::{
     null_mut,
 };
 
-pub fn get_impl(implementation: uint8_t) -> ImplementationType {
+pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
     match implementation {
-        0 => ImplementationType::SingleBranch,
-        1 => ImplementationType::MultiBranch,
-        2 => ImplementationType::SingleDepth,
-        _ => ImplementationType::SingleBranch,
+        0 => ChannelType::SingleBranch,
+        1 => ChannelType::MultiBranch,
+        2 => ChannelType::SingleDepth,
+        _ => ChannelType::SingleBranch,
     }
 }
 
