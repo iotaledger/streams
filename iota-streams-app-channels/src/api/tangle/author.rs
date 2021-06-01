@@ -312,12 +312,7 @@ impl<Trans: Transport> Author<Trans> {
     /// * `announcement` - An existing announcement message link for validation of ownership
     /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
     /// * `transport` - Transport object used for sending and receiving
-    pub async fn recover(
-        seed: &str,
-        announcement: &Address,
-        channel_type: ChannelType,
-        transport: Trans,
-    ) -> Result<Self> {
+    pub async fn recover(seed: &str, announcement: &Address, channel_type: ChannelType, transport: Trans) -> Result<Self> {
         let mut author = Author::new(seed, channel_type, transport);
 
         let ann = author.user.user.announce()?;
