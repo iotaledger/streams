@@ -20,7 +20,7 @@ tangle = ["chrono"]
 # implement Transport for iota_client::Client.
 sync-client = ["num_cpus", "iota-client/sync", "tangle", "std"]
 async-client = ["num_cpus", "iota-client/default", "tangle", "async", "std"]
-wasm-client = ["iota-client/async", "iota-client/wasm", "chrono/wasmbind", "tangle", "async", "std"]
+wasm-client = ["iota-client/wasm", "chrono/wasmbind", "tangle", "async", "std"]
 
 [lib]
 name = "iota_streams_app"
