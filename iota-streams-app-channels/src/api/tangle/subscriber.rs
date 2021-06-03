@@ -9,9 +9,15 @@ use crate::api::tangle::{
     User,
 };
 
-use iota_streams_core::prelude::{
-    String,
-    Vec,
+use iota_streams_core::{
+    prelude::{
+        String,
+        Vec,
+    },
+    psk::{
+        Psk,
+        PskId,
+    },
 };
 use iota_streams_core_edsig::signature::ed25519;
 
@@ -21,7 +27,7 @@ pub struct Subscriber<T> {
 }
 
 impl<Trans> Subscriber<Trans> {
-    /// Create a new Subscriber instance, generate new MSS keypair and optionally NTRU keypair.
+    /// Create a new Subscriber instance, generate new Ed25519 key pair.
     ///
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
@@ -46,6 +52,11 @@ impl<Trans> Subscriber<Trans> {
     /// Fetch the user ed25519 public key
     pub fn get_pk(&self) -> &ed25519::PublicKey {
         self.user.get_pk()
+    }
+
+    /// Store a PSK in the user instance, returns the PskId for identifying purposes in keyloads
+    pub fn store_psk(&mut self, psk: Psk) -> PskId {
+        self.user.store_psk(psk)
     }
 
     /// Fetch the Address (application instance) of the channel.
