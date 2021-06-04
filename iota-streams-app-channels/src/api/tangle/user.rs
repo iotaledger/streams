@@ -403,20 +403,35 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// * `msg` - Binary message of unknown type
     /// * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     pub fn handle_message(&mut self, mut msg0: Message) -> Result<UnwrappedMessage> {
+        let mut sequenced = false;
         loop {
             // Forget TangleMessage and timestamp
             let msg = msg0.binary;
             let preparsed = msg.parse_header()?;
+            let link = preparsed.header.link.clone();
             match preparsed.header.content_type {
                 message::SIGNED_PACKET => {
-                    let m = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
-                    let u = m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked));
-                    return Ok(u);
+                    match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                        Ok(m) =>
+                            return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked))),
+                        Err(e) => {
+                            match sequenced {
+                                true => return Ok(UnwrappedMessage::new(link, MessageContent::unreadable())),
+                                false => return Err(e)
+                            }
+                        }
+                    }
                 }
                 message::TAGGED_PACKET => {
-                    let m = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)?;
-                    let u = m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked));
-                    return Ok(u);
+                    match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                        Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                        Err(e) => {
+                            match sequenced {
+                                true => return Ok(UnwrappedMessage::new(link, MessageContent::unreadable())),
+                                false => return Err(e)
+                            }
+                        }
+                    }
                 }
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
@@ -436,6 +451,7 @@ impl<Trans: Transport + Clone> User<Trans> {
                     );
                     let msg = self.transport.recv_message(&msg_link)?;
                     self.user.store_state(unwrapped.body.pk, store_link)?;
+                    sequenced = true;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
@@ -693,20 +709,35 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// # Arguments
     /// * `msg` - Binary message of unknown type
     pub async fn handle_message(&mut self, mut msg0: Message) -> Result<UnwrappedMessage> {
+        let mut sequenced = false;
         loop {
             // Forget TangleMessage and timestamp
             let msg = msg0.binary;
             let preparsed = msg.parse_header()?;
+            let link = preparsed.header.link.clone();
             match preparsed.header.content_type {
                 message::SIGNED_PACKET => {
-                    let m = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
-                    let u = m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked));
-                    return Ok(u);
+                    match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                        Ok(m) =>
+                            return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked))),
+                        Err(e) => {
+                            match sequenced {
+                                true => return Ok(UnwrappedMessage::new(link, MessageContent::unreadable())),
+                                false => return Err(e)
+                            }
+                        }
+                    }
                 }
                 message::TAGGED_PACKET => {
-                    let m = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)?;
-                    let u = m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked));
-                    return Ok(u);
+                    match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                        Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                        Err(e) => {
+                            match sequenced {
+                                true => return Ok(UnwrappedMessage::new(link, MessageContent::unreadable())),
+                                false => return Err(e)
+                            }
+                        }
+                    }
                 }
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
@@ -726,6 +757,7 @@ impl<Trans: Transport + Clone> User<Trans> {
                     );
                     let msg = self.transport.recv_message(&msg_link).await?;
                     self.user.store_state(unwrapped.body.pk, store_link)?;
+                    sequenced = true;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),

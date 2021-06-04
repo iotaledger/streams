@@ -105,6 +105,7 @@ pub enum MessageContent {
     Sequence,
     Subscribe,
     Unsubscribe,
+    Unreadable,
 }
 
 impl MessageContent {
@@ -130,6 +131,8 @@ impl MessageContent {
             masked_payload,
         }
     }
+
+    pub fn unreadable() -> Self { Self::Unreadable }
 }
 
 /// Generic unwrapped message type containing possible message contents
