@@ -183,7 +183,7 @@ pub enum ChannelType {
 }
 
 impl From<ChannelType> for ApiChannelType {
-    fn from(channel_type: ImplementationType) -> Self {
+    fn from(channel_type: ChannelType) -> Self {
         match channel_type {
             ChannelType::SingleBranch => ApiChannelType::SingleBranch,
             ChannelType::MultiBranch => ApiChannelType::MultiBranch,

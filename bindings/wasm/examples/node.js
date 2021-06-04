@@ -20,7 +20,7 @@ async function main() {
   let node = "https://chrysalis-nodes.iota.org";
   let options = new streams.SendOptions(node, true);
   let seed = make_seed(81);
-  let auth = new streams.Author(seed, options.clone(), streams.ImplementationType.SingleBranch);
+  let auth = new streams.Author(seed, options.clone(), streams.ChannelType.SingleBranch);
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
