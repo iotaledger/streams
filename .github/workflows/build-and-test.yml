@@ -127,42 +127,35 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libudev-dev libusb-1.0-0-dev
-      - name: Cache cargo registry
-        uses: actions/cache@v2.1.4
-        with:
-          path: ~/.cargo/registry
-          # Add date to the cache to keep it up to date
-          key: ${{ matrix.os }}-stable-cargo-registry-${{ hashFiles('**/Cargo.lock') }}-${{ env.CURRENT_DATE }}
-          # Restore from outdated cache for speed
-          restore-keys: |
-            ${{ matrix.os }}-stable-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-            ${{ matrix.os }}-stable-cargo-registry-
-      - name: Cache cargo index
-        uses: actions/cache@v2.1.4
-        with:
-          path: ~/.cargo/git
-          # Add date to the cache to keep it up to date
-          key: ${{ matrix.os }}-stable-cargo-index-${{ hashFiles('**/Cargo.lock') }}-${{ env.CURRENT_DATE }}
-          # Restore from outdated cache for speed
-          restore-keys: |
-            ${{ matrix.os }}-stable-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-            ${{ matrix.os }}-stable-cargo-index-
-     
-      - name: Cache nodejs binding cargo target
-        uses: actions/cache@v2.1.4
+      - name: Cache cargo
+        - uses: actions/cache@v2
+          with:
+            path: |
+              ~/.cargo/bin/
+              ~/.cargo/registry/index/
+              ~/.cargo/registry/cache/
+              ~/.cargo/git/db/
+              target/
+            key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Mac and Ubuntu nodejs cache
+      - uses: actions/cache@v2
         if: matrix.os != 'windows-latest'
-        # We get a linker error on Windows when using the cache (LNK1181: cannot open input file 'node.lib')
-        # https://github.com/iotaledger/wallet.rs/pull/467/checks?check_run_id=2214108362#step:11:41
         with:
-          path: |
-            bindings/nodejs/native/target
-            bindings/nodejs/native/artifacts.json
-          # Add date to the cache to keep it up to date
-          key: ${{ matrix.os }}-stable-cargo-build-node-target-${{ hashFiles('**/Cargo.lock') }}-${{ env.CURRENT_DATE }}
-          # Restore from outdated cache for speed
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ matrix.os }}-stable-cargo-build-node-target-${{ hashFiles('**/Cargo.lock') }}
-            ${{ matrix.os }}-stable-cargo-build-node-target-
+            ${{ runner.os }}-node- 
+      - name: Get npm cache directory
+        if: matrix.os == 'windows-latest'
+        id: npm-cache
+        run: |
+          echo "::set-output name=dir::$(npm config get cache)"
+      - uses: actions/cache@v2
+        with:
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
       - name: Build nodejs binding
         run: npm run build:nodejs
-        working-directory: bindings/nodejs
+        working-directory: bindings/wasm
