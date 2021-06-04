@@ -46,7 +46,7 @@ pub struct Author {
 #[wasm_bindgen]
 impl Author {
     #[wasm_bindgen(constructor)]
-    pub fn new(seed: String, options: SendOptions, implementation: ImplementationType) -> Author {
+    pub fn new(seed: String, options: SendOptions, implementation: ChannelType) -> Author {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
@@ -55,7 +55,7 @@ impl Author {
         Author { author }
     }
 
-    pub fn from_client(client: Client, seed: String, implementation: ImplementationType) -> Author {
+    pub fn from_client(client: Client, seed: String, implementation: ChannelType) -> Author {
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,
             implementation.into(),
