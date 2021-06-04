@@ -11,8 +11,8 @@ use iota_streams::{
         },
         message::Cursor,
         transport::tangle::{
-            MsgId,
             client::get_hash,
+            MsgId,
         },
     },
     app_channels::api::tangle::*,
@@ -28,7 +28,7 @@ use core::ptr::{
 };
 
 pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
-    match implementation {
+    match channel_type {
         0 => ChannelType::SingleBranch,
         1 => ChannelType::MultiBranch,
         2 => ChannelType::SingleDepth,
@@ -38,9 +38,7 @@ pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
 
 #[no_mangle]
 pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
-    unsafe {
-        Address::from_c_str(c_addr)
-    }
+    unsafe { Address::from_c_str(c_addr) }
 }
 
 #[no_mangle]
@@ -87,10 +85,10 @@ pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const Publi
                 let pk_str = hex::encode(pub_key.as_bytes());
                 for (pk, cursor) in state {
                     if pk == &pk_str {
-                        return Box::into_raw(Box::new(cursor.link.clone()))
+                        return Box::into_raw(Box::new(cursor.link.clone()));
                     }
                 }
-                return null()
+                return null();
             })
         })
     }
@@ -103,8 +101,6 @@ pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
         Box::from_raw(ms as *mut UnwrappedMessages);
     }
 }
-
-
 
 #[cfg(feature = "sync-client")]
 pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
@@ -167,7 +163,6 @@ impl MessageLinks {
             }
         }
     }
-
 }
 
 impl Default for MessageLinks {
@@ -186,23 +181,13 @@ pub extern "C" fn drop_links(links: MessageLinks) {
 
 #[no_mangle]
 pub extern "C" fn get_msg_link(msg_links: *const MessageLinks) -> *const Address {
-    unsafe {
-        msg_links.as_ref().map_or(null(), |links| {
-            links.msg_link
-        })
-    }
+    unsafe { msg_links.as_ref().map_or(null(), |links| links.msg_link) }
 }
 
 #[no_mangle]
 pub extern "C" fn get_seq_link(msg_links: *const MessageLinks) -> *const Address {
-    unsafe {
-        msg_links.as_ref().map_or(null(), |links| {
-            links.seq_link
-        })
-    }
+    unsafe { msg_links.as_ref().map_or(null(), |links| links.seq_link) }
 }
-
-
 
 #[repr(C)]
 pub struct Buffer {
@@ -355,14 +340,11 @@ pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
 pub extern "C" fn get_address_index_str(address: *mut Address) -> *mut c_char {
     unsafe {
         address.as_ref().map_or(null_mut(), |addr| {
-            get_hash(addr.appinst.as_ref(), addr.msgid.as_ref())
-                .map_or(null_mut(), |index| {
-                    CString::new(index)
-                        .map_or(null_mut(), |index| index.into_raw())
-                })
+            get_hash(addr.appinst.as_ref(), addr.msgid.as_ref()).map_or(null_mut(), |index| {
+                CString::new(index).map_or(null_mut(), |index| index.into_raw())
+            })
         })
     }
-
 }
 
 #[no_mangle]
