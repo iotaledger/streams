@@ -174,7 +174,9 @@ jobs:
     
     steps:
       - uses: actions/checkout@v2
+      
       - uses: lukka/get-cmake@latest
+
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
