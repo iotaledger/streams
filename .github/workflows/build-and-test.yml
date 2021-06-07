@@ -193,14 +193,23 @@ jobs:
       - name: Set LIBCLANG_PATH (Windows)
         run: echo "LIBCLANG_PATH=$((gcm clang).source -replace "clang.exe")" >> $env:GITHUB_ENV
         if: matrix.os == 'windows-latest'
+
+      - name: Cache cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: configure build
         uses: lukka/run-cmake@v3
         with:
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
-          cmakeAppendedArgs: '-GNinja'
+          cmakeAppendedArgs: '-GNinja -DCMAKE_BUILD_TYPE=Release'
           buildWithCMakeArgs: '-- -v'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
-      - name: make c binding
-        run: make
-        working-directory: bindings/c
