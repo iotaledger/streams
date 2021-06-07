@@ -202,7 +202,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            ${{ github.workspace }}/bindings/c/target/
+            ${{ github.workspace }}/bindings/c/build/
+            ${{ github.workspace }}/bindings/c/./cargo/build/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: configure build
