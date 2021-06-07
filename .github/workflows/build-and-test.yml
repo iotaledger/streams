@@ -195,7 +195,6 @@ jobs:
         if: matrix.os == 'windows-latest'
       - name: configure build
         uses: lukka/run-cmake@v3
-        working-directory: bindings/c
         with:
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeListsTxtPath: '${{ github.workspace }}bindings/c/CMakeLists.txt'
