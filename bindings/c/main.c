@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <malloc.h>
+
 void rand_seed(char *seed, size_t n)
 {
   static char const alphabet[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+";
@@ -67,7 +69,8 @@ int main()
   printf("Appinst: %s,  \nMsgId: %s\n", ann_address_inst_str, ann_address_id_str);
 
   char const connector[] = ":";
-  char buffer[sizeof(*ann_address_inst_str) + sizeof(*ann_address_id_str) + 1];
+  char * buffer = malloc(strlen(ann_address_inst_str) + strlen(ann_address_id_str) + strlen(connector) + 1);
+  buffer[0] = 0;
 
   strcat(buffer, ann_address_inst_str);
   strcat(buffer, connector);
