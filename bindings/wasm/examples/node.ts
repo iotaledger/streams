@@ -50,7 +50,8 @@ async function main() {
     console.log("Subscription processed");
 
     console.log("Sending Keyload");
-    response = await auth.clone().send_keyload_for_everyone(ann_link);
+    ann_link_copy = ann_link.copy();
+    response = await auth.clone().send_keyload_for_everyone(ann_link_copy);
     let keyload_link = response.get_link();
     console.log("Keyload message at: ", keyload_link.to_string());
 
@@ -78,8 +79,25 @@ async function main() {
         console.log("Signed packet at: ", last_link.to_string());
     }
 
-    console.log("\nAuthor fetching next messages");
+    console.log("\nAuthor listening for next message");
     let exists = true;
+    let next_msgs = await auth.clone().listen();
+
+    if (next_msgs.length === 0) {
+        exists = false;
+    }
+
+    for (var i = 0; i < next_msgs.length; i++) {
+        console.log("Found a message...");
+        console.log(
+            "Public: ",
+            from_bytes(next_msgs[i].get_message().get_public_payload()),
+            "\tMasked: ",
+            from_bytes(next_msgs[i].get_message().get_masked_payload())
+        );
+    }
+
+    console.log("\nAuthor fetching next messages");
     while (exists) {
         let next_msgs = await auth.clone().fetch_next_msgs();
 
@@ -104,7 +122,7 @@ async function main() {
         console.log("Found a message at ", prev_msgs[j].get_link().to_string());
     }
 
-
+    console.log("\nExporting and importing state")
     // Import export example
     // TODO: Use stronghold
     let password = "password"
@@ -118,6 +136,15 @@ async function main() {
     } else {
         console.log("import succesfull")
     }
+
+    console.log("\nRecovering without state import");
+    let auth3 = await streams.Author.recover(seed, ann_link, streams.ChannelType.SingleBranch, options.clone());
+    if (auth3.channel_address !== auth.channel_address) {
+        console.log("recovery failed")
+    } else {
+        console.log("recovery succesfull")
+    }
+
 
     function to_bytes(str) {
         var bytes = new Uint8Array(str.length);

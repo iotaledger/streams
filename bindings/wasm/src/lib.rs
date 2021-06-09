@@ -22,6 +22,17 @@ extern "C" {
     pub fn error(s: &str);
 }
 
+pub async fn wait(ms: u32) {
+    let mut date = js_sys::Date::new_0();
+    let now = date.get_milliseconds();
+    loop {
+        date = js_sys::Date::new_0();
+        if (date.get_milliseconds() - now) >= ms {
+            break;
+        }
+    }
+}
+
 // Unused currently
 // macro_rules! console_log {
 // Note that this is using the `log` function imported above during

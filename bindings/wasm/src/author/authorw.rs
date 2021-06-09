@@ -8,6 +8,7 @@ use crate::{
         *,
     },
     user::userw::*,
+    wait
 };
 use js_sys::Array;
 
@@ -447,7 +448,7 @@ impl Author {
                 let payloads = get_message_contents(msgs);
                 return Ok(payloads.into_iter().map(JsValue::from).collect());
             }
-            std::thread::sleep(std::time::Duration::from_millis(TIMEOUT))
+            wait(TIMEOUT).await;
         }
     }
 }

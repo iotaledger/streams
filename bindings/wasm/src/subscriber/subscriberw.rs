@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 use crate::{
     types::*,
     user::userw::*,
+    wait,
 };
 
 use core::cell::RefCell;
@@ -363,7 +364,7 @@ impl Subscriber {
                 let payloads = get_message_contents(msgs);
                 return Ok(payloads.into_iter().map(JsValue::from).collect());
             }
-            std::thread::sleep(std::time::Duration::from_millis(TIMEOUT))
+            wait(TIMEOUT).await;
         }
     }
 }
