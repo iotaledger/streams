@@ -67,18 +67,21 @@ impl Subscriber {
 
         ApiSubscriber::recover(
             &seed,
-            &ann_address.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr),
-            transport
-        ).await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |sub|
-                    Ok(Subscriber {
-                        subscriber: Rc::new(RefCell::new(sub))
-                    })
-            )
+            &ann_address
+                .try_into()
+                .map_or_else(|_err| ApiAddress::default(), |addr| addr),
+            transport,
+        )
+        .await
+        .map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |sub| {
+                Ok(Subscriber {
+                    subscriber: Rc::new(RefCell::new(sub)),
+                })
+            },
+        )
     }
-
 
     pub fn clone(&self) -> Subscriber {
         Subscriber {

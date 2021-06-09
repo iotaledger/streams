@@ -8,7 +8,7 @@ use crate::{
         *,
     },
     user::userw::*,
-    wait
+    wait,
 };
 use js_sys::Array;
 
@@ -86,23 +86,33 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
-    pub async fn recover(seed: String, ann_address: Address, implementation: ChannelType, options: SendOptions) -> Result<Author> {
+    pub async fn recover(
+        seed: String,
+        ann_address: Address,
+        implementation: ChannelType,
+        options: SendOptions,
+    ) -> Result<Author> {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
         ApiAuthor::recover(
             &seed,
-            &ann_address.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr),
+            &ann_address
+                .try_into()
+                .map_or_else(|_err| ApiAddress::default(), |addr| addr),
             implementation.into(),
-            transport
-        ).await
-            .map_or_else(
+            transport,
+        )
+        .await
+        .map_or_else(
             |err| Err(JsValue::from_str(&err.to_string())),
-            |auth|  Ok(Author {
-                    author: Rc::new(RefCell::new(auth))
+            |auth| {
+                Ok(Author {
+                    author: Rc::new(RefCell::new(auth)),
                 })
-            )
+            },
+        )
     }
 
     pub fn clone(&self) -> Author {
