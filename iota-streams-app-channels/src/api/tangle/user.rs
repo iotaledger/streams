@@ -238,7 +238,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.sign_packet(&link_to, public_payload, masked_payload)?;
+        let msg = self.user.sign_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
     }
 
@@ -254,7 +254,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.tag_packet(&link_to, public_payload, masked_payload)?;
+        let msg = self.user.tag_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
     }
 
@@ -270,7 +270,7 @@ impl<Trans: Transport> User<Trans> {
         psk_ids: &PskIds,
         ke_pks: &Vec<PublicKey>,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(&link_to, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(link_to, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -279,7 +279,7 @@ impl<Trans: Transport> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload_for_everyone(&link_to)?;
+        let msg = self.user.share_keyload_for_everyone(link_to)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -288,7 +288,7 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
     pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
-        let msg = self.user.subscribe(&link_to)?;
+        let msg = self.user.subscribe(link_to)?;
         self.send_message(msg, MsgInfo::Subscribe)
     }
 
