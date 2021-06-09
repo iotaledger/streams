@@ -49,9 +49,11 @@ use crate::{
     api::{
         pk_store::*,
         psk_store::*,
+        ChannelType,
     },
     message::*,
 };
+use core::fmt::Debug;
 
 const ANN_MESSAGE_NUM: u32 = 0;
 const SUB_MESSAGE_NUM: u32 = 0;
@@ -193,7 +195,7 @@ where
 impl<F, Link, LG, LS, PKS, PSKS> User<F, Link, LG, LS, PKS, PSKS>
 where
     F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F>,
+    Link: HasLink + AbsorbExternalFallback<F> + Default + Debug,
     <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display,
     <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
     LG: LinkGenerator<Link>,
@@ -205,25 +207,18 @@ where
     pub fn gen(
         prng: prng::Prng<F>,
         nonce: Vec<u8>,
-        flags: u8,
+        channel_type: ChannelType,
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
     ) -> Self {
         let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
-        // App instance link is generated using the 32 byte PubKey and the first 8 bytes of the nonce
-        // let mut appinst_input = Vec::new();
-        // appinst_input.extend_from_slice(&sig_kp.public.to_bytes()[..]);
-        // appinst_input.extend_from_slice(&nonce[0..8]);
-        //
-        // let appinst = link_gen.link_from((&appinst_input, &ke_kp.1, ANN_MESSAGE_NUM));
-
-        // Start sequence state of new publishers to 2
-        // 0 is used for Announce/Subscribe/Unsubscribe
-        // 1 is used for sequence messages
-        // let mut seq_map = HashMap::new();
-        // seq_map.insert(ke_kp.1.as_bytes().to_vec(), (appinst.clone(), 2 as usize));
+        let flags: u8 = match channel_type {
+            ChannelType::SingleBranch => 0,
+            ChannelType::MultiBranch => 1,
+            ChannelType::SingleDepth => 2,
+        };
 
         Self {
             _phantom: core::marker::PhantomData,
@@ -275,7 +270,8 @@ where
         let header = HDF::new(msg_link)
             .with_content_type(ANNOUNCE)?
             .with_payload_length(1)?
-            .with_seq_num(ANN_MESSAGE_NUM);
+            .with_seq_num(ANN_MESSAGE_NUM)
+            .with_public_key(&self.sig_kp.public);
         let content = announce::ContentWrap::new(&self.sig_kp, self.flags);
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
     }
@@ -339,20 +335,22 @@ where
     /// Prepare Subscribe message.
     pub fn prepare_subscribe<'a>(
         &'a mut self,
-        link_to: &'a <Link as HasLink>::Rel,
+        link_to: &'a Link,
     ) -> Result<PreparedMessage<'a, F, Link, LS, subscribe::ContentWrap<'a, F, Link>>> {
         if let Some(author_sig_pk) = &self.author_sig_pk {
             if let Some(author_ke_pk) = self.pk_store.get_ke_pk(author_sig_pk) {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, SUB_MESSAGE_NUM));
+                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM));
                 let header = HDF::new(msg_link)
+                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SUBSCRIBE)?
                     .with_payload_length(1)?
-                    .with_seq_num(SUB_MESSAGE_NUM);
+                    .with_seq_num(SUB_MESSAGE_NUM)
+                    .with_public_key(&self.sig_kp.public);
                 let unsubscribe_key = NBytes::from(prng::random_key());
                 let content = subscribe::ContentWrap {
-                    link: link_to,
+                    link: link_to.rel(),
                     unsubscribe_key,
                     subscriber_sig_kp: &self.sig_kp,
                     author_ke_pk,
@@ -368,7 +366,7 @@ where
     }
 
     /// Subscribe to the channel.
-    pub fn subscribe(&mut self, link_to: &<Link as HasLink>::Rel) -> Result<WrappedMessage<F, Link>> {
+    pub fn subscribe(&mut self, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
         self.prepare_subscribe(link_to)?.wrap()
     }
 
@@ -429,7 +427,7 @@ where
 
     pub fn prepare_keyload<'a>(
         &'a mut self,
-        link_to: &'a <Link as HasLink>::Rel,
+        link_to: &'a Link,
         psk_ids: &psk::PskIds,
         pks: &'a Vec<ed25519::PublicKey>,
     ) -> Result<
@@ -451,14 +449,16 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, seq_no));
+                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
+                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
                     .with_payload_length(1)?
-                    .with_seq_num(seq_no);
+                    .with_seq_num(seq_no)
+                    .with_public_key(&self.sig_kp.public);
                 let psks = self.psk_store.filter(psk_ids);
                 let ke_pks = self.pk_store.filter(pks);
-                self.do_prepare_keyload(header, link_to, psks.into_iter(), ke_pks.into_iter())
+                self.do_prepare_keyload(header, link_to.rel(), psks.into_iter(), ke_pks.into_iter())
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -466,7 +466,7 @@ where
 
     pub fn prepare_keyload_for_everyone<'a>(
         &'a mut self,
-        link_to: &'a <Link as HasLink>::Rel,
+        link_to: &'a Link,
     ) -> Result<
         PreparedMessage<
             'a,
@@ -486,14 +486,16 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, seq_no));
+                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = hdf::HDF::new(msg_link)
+                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
                     .with_payload_length(1)?
-                    .with_seq_num(seq_no);
+                    .with_seq_num(seq_no)
+                    .with_public_key(&self.sig_kp.public);
                 let ipsks = self.psk_store.iter();
                 let ike_pks = self.pk_store.keys();
-                self.do_prepare_keyload(header, link_to, ipsks.into_iter(), ike_pks.into_iter())
+                self.do_prepare_keyload(header, link_to.rel(), ipsks.into_iter(), ike_pks.into_iter())
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -503,7 +505,7 @@ where
     /// identified by pre-shared key IDs and by Ed25519 public keys.
     pub fn share_keyload(
         &mut self,
-        link_to: &<Link as HasLink>::Rel,
+        link_to: &Link,
         psk_ids: &psk::PskIds,
         ke_pks: &Vec<ed25519::PublicKey>,
     ) -> Result<WrappedMessage<F, Link>> {
@@ -512,7 +514,7 @@ where
 
     /// Create keyload message with a new session key shared with all Subscribers
     /// known to Author.
-    pub fn share_keyload_for_everyone(&mut self, link_to: &<Link as HasLink>::Rel) -> Result<WrappedMessage<F, Link>> {
+    pub fn share_keyload_for_everyone(&mut self, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
         self.prepare_keyload_for_everyone(link_to)?.wrap()
     }
 
@@ -569,8 +571,10 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, bool>> {
         let preparsed = msg.parse_header()?;
-
+        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let seq_no = preparsed.header.seq_num;
         let unwrapped = self.unwrap_keyload(preparsed)?;
+        let processed;
 
         if unwrapped.pcf.content.key.is_some() {
             // Do not commit if key not found hence spongos state is invalid
@@ -589,16 +593,21 @@ where
                     }
                 }
             }
-            Ok(GenericMessage::new(msg.link, true))
+            processed = GenericMessage::new(msg.link.clone(), prev_link, true);
         } else {
-            Ok(GenericMessage::new(msg.link, false))
+            processed = GenericMessage::new(msg.link.clone(), prev_link, false);
         }
+        if !self.is_multi_branching() {
+            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
+        }
+
+        Ok(processed)
     }
 
     /// Prepare SignedPacket message.
     pub fn prepare_signed_packet<'a>(
         &'a mut self,
-        link_to: &'a <Link as HasLink>::Rel,
+        link_to: &'a Link,
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, LS, signed_packet::ContentWrap<'a, F, Link>>> {
@@ -606,13 +615,15 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, seq_no));
+                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
+                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SIGNED_PACKET)?
                     .with_payload_length(1)?
-                    .with_seq_num(seq_no);
+                    .with_seq_num(seq_no)
+                    .with_public_key(&self.sig_kp.public);
                 let content = signed_packet::ContentWrap {
-                    link: link_to,
+                    link: link_to.rel(),
                     public_payload,
                     masked_payload,
                     sig_kp: &self.sig_kp,
@@ -627,7 +638,7 @@ where
     /// Create a signed message with public and masked payload.
     pub fn sign_packet(
         &mut self,
-        link_to: &<Link as HasLink>::Rel,
+        link_to: &Link,
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<WrappedMessage<F, Link>> {
@@ -652,18 +663,23 @@ where
     ) -> Result<GenericMessage<Link, (ed25519::PublicKey, Bytes, Bytes)>> {
         // TODO: pass author_pk to unwrap
         let preparsed = msg.parse_header()?;
-
+        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let seq_no = preparsed.header.seq_num;
         let content = self
             .unwrap_signed_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
+        if !self.is_multi_branching() {
+            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
+        }
+
         let body = (content.sig_pk, content.public_payload, content.masked_payload);
-        Ok(GenericMessage::new(msg.link, body))
+        Ok(GenericMessage::new(msg.link, prev_link, body))
     }
 
     /// Prepare TaggedPacket message.
     pub fn prepare_tagged_packet<'a>(
         &'a mut self,
-        link_to: &'a <Link as HasLink>::Rel,
+        link_to: &'a Link,
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, LS, tagged_packet::ContentWrap<'a, F, Link>>> {
@@ -671,13 +687,15 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, seq_no));
+                    .link_from(&self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
+                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(TAGGED_PACKET)?
                     .with_payload_length(1)?
-                    .with_seq_num(seq_no);
+                    .with_seq_num(seq_no)
+                    .with_public_key(&self.sig_kp.public);
                 let content = tagged_packet::ContentWrap {
-                    link: link_to,
+                    link: link_to.rel(),
                     public_payload,
                     masked_payload,
                     _phantom: core::marker::PhantomData,
@@ -692,7 +710,7 @@ where
     /// Tagged messages must be linked to a secret spongos state, ie. keyload or a message linked to keyload.
     pub fn tag_packet(
         &mut self,
-        link_to: &<Link as HasLink>::Rel,
+        link_to: &Link,
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<WrappedMessage<F, Link>> {
@@ -716,30 +734,37 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, (Bytes, Bytes)>> {
         let preparsed = msg.parse_header()?;
-
+        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let seq_no = preparsed.header.seq_num;
         let content = self
             .unwrap_tagged_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
+        if !self.is_multi_branching() {
+            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
+        }
+
         let body = (content.public_payload, content.masked_payload);
-        Ok(GenericMessage::new(msg.link, body))
+        Ok(GenericMessage::new(msg.link, prev_link, body))
     }
 
     pub fn prepare_sequence<'a>(
         &'a mut self,
-        link_to: &'a <Link as HasLink>::Rel,
+        link_to: &'a Link,
         seq_no: u64,
         ref_link: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<'a, F, Link, LS, sequence::ContentWrap<'a, Link>>> {
         let msg_link = self
             .link_gen
-            .link_from(&self.sig_kp.public, Cursor::new_at(link_to, 0, SEQ_MESSAGE_NUM));
+            .link_from(&self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
         let header = HDF::new(msg_link)
+            .with_previous_msg_link(Bytes(link_to.to_bytes()))
             .with_content_type(SEQUENCE)?
             .with_payload_length(1)?
-            .with_seq_num(SEQ_MESSAGE_NUM);
+            .with_seq_num(SEQ_MESSAGE_NUM)
+            .with_public_key(&self.sig_kp.public);
 
         let content = sequence::ContentWrap {
-            link: link_to,
+            link: link_to.rel(),
             pk: &self.sig_kp.public,
             seq_num: seq_no,
             ref_link,
@@ -756,10 +781,13 @@ where
                     let msg_link = self
                         .link_gen
                         .link_from(&self.sig_kp.public, Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
+                    let previous_msg_link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), &cursor.link);
                     let header = HDF::new(msg_link)
+                        .with_previous_msg_link(Bytes(previous_msg_link.to_bytes()))
                         .with_content_type(SEQUENCE)?
                         .with_payload_length(1)?
-                        .with_seq_num(SEQ_MESSAGE_NUM);
+                        .with_seq_num(SEQ_MESSAGE_NUM)
+                        .with_public_key(&self.sig_kp.public);
 
                     let content = sequence::ContentWrap::<Link> {
                         link: &cursor.link,
@@ -775,7 +803,11 @@ where
 
                     Ok(WrappedSequence::new().with_cursor(cursor).with_wrapped(wrapped))
                 } else {
-                    cursor.link = ref_link.clone();
+                    let msg_link = self
+                        .link_gen
+                        .link_from(&self.sig_kp.public, Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no));
+
+                    cursor.link = msg_link.rel().clone();
                     Ok(WrappedSequence::new().with_cursor(cursor))
                 }
             }
@@ -799,7 +831,7 @@ where
                 Ok(Some(link))
             }
             None => {
-                self.store_state_for_all(cursor.link, cursor.seq_no)?;
+                self.store_state_for_all(cursor.link, cursor.seq_no + 1)?;
                 Ok(None)
             }
         }
@@ -859,16 +891,26 @@ where
         &mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+        store: bool,
     ) -> Result<GenericMessage<Link, sequence::ContentUnwrap<Link>>> {
         let preparsed = msg.parse_header()?;
+        let sender_pk = preparsed.header.sender_key_pk;
+        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
         let content = self
             .unwrap_sequence(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
-        Ok(GenericMessage::new(msg.link, content))
+        if store {
+            self.store_state(sender_pk, msg.link.rel().clone())?;
+        }
+        Ok(GenericMessage::new(msg.link, prev_link, content))
     }
 
     pub fn is_multi_branching(&self) -> bool {
         (self.flags & FLAG_BRANCHING_MASK) != 0
+    }
+
+    pub fn is_single_depth(&self) -> bool {
+        self.flags == 2
     }
 
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
@@ -911,9 +953,7 @@ where
             ids.push((*pk, Cursor::new_at(msg_id, 0, 1)));
         } else {
             let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no));
-            let msg_id1 = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no - 1));
             ids.push((*pk, Cursor::new_at(msg_id, 0, *seq_no)));
-            ids.push((*pk, Cursor::new_at(msg_id1, 0, *seq_no - 1)));
         }
     }
 
@@ -939,11 +979,13 @@ where
     }
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
-        self.pk_store
-            .insert(self.sig_kp.public, Cursor::new_at(link.clone(), 0, seq_no + 1))?;
-        for (_pk, cursor) in self.pk_store.iter_mut() {
-            cursor.link = link.clone();
-            cursor.seq_no = seq_no + 1;
+        if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
+            self.pk_store
+                .insert(self.sig_kp.public, Cursor::new_at(link.clone(), 0, seq_no))?;
+            for (_pk, cursor) in self.pk_store.iter_mut() {
+                cursor.link = link.clone();
+                cursor.seq_no = seq_no;
+            }
         }
         Ok(())
     }

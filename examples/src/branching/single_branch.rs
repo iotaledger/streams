@@ -1,10 +1,8 @@
 use iota_streams::{
-    app::{
-        message::HasLink,
-        transport::tangle::PAYLOAD_BYTES,
-    },
+    app::message::HasLink,
     app_channels::api::tangle::{
         Author,
+        ChannelType,
         Subscriber,
         Transport,
     },
@@ -25,14 +23,13 @@ use core::cell::RefCell;
 
 use super::utils;
 
-pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, seed: &str) -> Result<()> {
-    let encoding = "utf-8";
-    let mut author = Author::new(seed, encoding, PAYLOAD_BYTES, multi_branching, transport.clone());
+pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelType, seed: &str) -> Result<()> {
+    let mut author = Author::new(seed, channel_impl, transport.clone());
     println!("Author multi branching?: {}", author.is_multi_branching());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", encoding, PAYLOAD_BYTES, transport.clone());
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", encoding, PAYLOAD_BYTES, transport.clone());
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", encoding, PAYLOAD_BYTES, transport.clone());
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport);
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -120,7 +117,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
     {
         let resultC = subscriberC.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(resultC == false, SubscriberAccessMismatch(String::from("C")))?;
+        try_or!(!resultC, SubscriberAccessMismatch(String::from("C")))?;
         subscriberA.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
         subscriberB.receive_keyload(&previous_msg_link)?;
@@ -129,7 +126,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
 
     println!("\nSigned packet");
     let previous_msg_link = {
-        print!("  Author     : {}", author);
         let (msg, seq) = author.send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
         panic_if_not(seq.is_none());
@@ -233,7 +229,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
     utils::a_fetch_next_messages(&mut author);
 
     println!("\nSigned packet");
-    let previous_msg_link = {
+    let signed_packet_link = {
         let (msg, seq) = author.send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
         panic_if_not(seq.is_none());
@@ -243,7 +239,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
 
     println!("\nHandle Signed packet");
     {
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&previous_msg_link)?;
+        let (_signer_pk, unwrapped_public, unwrapped_masked) =
+            subscriberA.receive_signed_packet(&signed_packet_link)?;
         print!("  SubscriberA: {}", subscriberA);
         try_or!(
             public_payload == unwrapped_public,
@@ -254,7 +251,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&previous_msg_link)?;
+        let (_signer_pk, unwrapped_public, unwrapped_masked) =
+            subscriberB.receive_signed_packet(&signed_packet_link)?;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(
             public_payload == unwrapped_public,
@@ -264,6 +262,25 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, multi_branching: bool, s
             masked_payload == unwrapped_masked,
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
+    }
+
+    println!("\nSubscriber A checking previous message");
+    {
+        let msg = subscriberA.fetch_prev_msg(&signed_packet_link)?;
+        println!("Found message: {}", msg.link.msgid);
+        try_or!(
+            msg.link == previous_msg_link,
+            LinkMismatch(msg.link.msgid.to_string(), previous_msg_link.msgid.to_string())
+        )?;
+        println!("  SubscriberA: {}", subscriberA);
+    }
+
+    println!("\nSubscriber B checking 5 previous messages");
+    {
+        let msgs = subscriberB.fetch_prev_msgs(&signed_packet_link, 5)?;
+        try_or!(msgs.len() == 5, ValueMismatch(5, msgs.len()))?;
+        println!("Found {} messages", msgs.len());
+        println!("  SubscriberB: {}", subscriberB);
     }
 
     Ok(())

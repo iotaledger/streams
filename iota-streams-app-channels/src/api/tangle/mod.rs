@@ -5,7 +5,10 @@ use super::{
     psk_store::PresharedKeyMap,
 };
 use iota_streams_app::{
-    message,
+    message::{
+        self,
+        BinaryBody,
+    },
     transport::{
         self,
         tangle::{
@@ -26,6 +29,7 @@ pub use transport::{
     TransportOptions as _,
 };
 
+pub use super::ChannelType;
 use iota_streams_core::psk;
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::link_store::DefaultLinkStore;
@@ -102,6 +106,7 @@ pub enum MessageContent {
     Sequence,
     Subscribe,
     Unsubscribe,
+    Unreadable,
 }
 
 impl MessageContent {
@@ -127,10 +132,17 @@ impl MessageContent {
             masked_payload,
         }
     }
+
+    pub fn unreadable() -> Self {
+        Self::Unreadable
+    }
 }
 
 /// Generic unwrapped message type containing possible message contents
 pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
+
+/// Generic binary message type for sequence handling
+pub type BinaryMessage = message::GenericMessage<Address, BinaryBody<DefaultF>>;
 
 #[allow(clippy::ptr_arg)]
 mod user;

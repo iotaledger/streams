@@ -18,14 +18,14 @@ use iota_streams_ddml::{
 };
 
 /// Message context prepared for wrapping.
-pub struct PreparedMessage<'a, F, Link, Store: 'a, Content> {
+pub struct PreparedMessage<'a, F, Link: Default, Store: 'a, Content> {
     store: Ref<'a, Store>,
     pub header: HDF<Link>,
     pub content: PCF<Content>,
     _phantom: core::marker::PhantomData<F>,
 }
 
-impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {
+impl<'a, F, Link: Default, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Content> {
     pub fn new(store: Ref<'a, Store>, header: HDF<Link>, content: Content) -> Self {
         let content = pcf::PCF::new_final_frame()
             .with_payload_frame_num(1)
@@ -44,7 +44,7 @@ impl<'a, F, Link, Store: 'a, Content> PreparedMessage<'a, F, Link, Store, Conten
 impl<'a, F, Link, Store, Content> PreparedMessage<'a, F, Link, Store, Content>
 where
     F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + Clone,
+    Link: HasLink + AbsorbExternalFallback<F> + Clone + Default,
     <Link as HasLink>::Rel: Eq + SkipFallback<F>,
     Store: 'a + LinkStore<F, <Link as HasLink>::Rel>,
     HDF<Link>: ContentWrap<F, Store>,
@@ -75,6 +75,7 @@ where
             },
             message: BinaryMessage {
                 link: self.header.link.clone(),
+                prev_link: Link::default(),
                 body: buf.into(),
             },
         })

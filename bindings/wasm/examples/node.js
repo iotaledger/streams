@@ -17,10 +17,10 @@ main()
   });
 
 async function main() {
-  let node = "https://api.lb-0.testnet.chrysalis2.com/";
-  let options = new streams.SendOptions(node, 9, true, 1);
+  let node = "https://chrysalis-nodes.iota.org";
+  let options = new streams.SendOptions(node, true);
   let seed = make_seed(81);
-  let auth = new streams.Author(seed, options.clone(), false);
+  let auth = new streams.Author(seed, options.clone(), streams.ChannelType.SingleBranch);
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
@@ -89,6 +89,12 @@ async function main() {
         from_bytes(next_msgs[i].get_message().get_masked_payload())
       );
     }
+  }
+
+  console.log("\nAuthor fetching prev messages");
+  let prev_msgs = await auth.clone().fetch_prev_msgs(last_link, 3);
+  for (var j = 0; j < prev_msgs.length; j++) {
+    console.log("Found a message at ", prev_msgs[j].get_link().to_string());
   }
 
   // Import export example

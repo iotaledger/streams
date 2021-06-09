@@ -5,6 +5,7 @@ use iota_streams_core::Result;
 
 use super::*;
 use crate::api::tangle::{
+    ChannelType,
     UnwrappedMessage,
     User,
 };
@@ -36,8 +37,8 @@ impl<Trans> Author<Trans> {
     /// * `payload_length` - Maximum size in bytes of payload per message chunk [1-1024],
     /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool, transport: Trans) -> Self {
-        let mut user = User::new(seed, encoding, payload_length, multi_branching, transport);
+    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
+        let mut user = User::new(seed, channel_type, transport);
         let channel_idx = 0_u64;
         let _ = user.user.create_channel(channel_idx);
         Self { user }
@@ -46,6 +47,11 @@ impl<Trans> Author<Trans> {
     /// Return boolean representing the sequencing nature of the channel
     pub fn is_multi_branching(&self) -> bool {
         self.user.is_multi_branching()
+    }
+
+    /// Return boolean representing whether the implementation type is single depth
+    pub fn is_single_depth(&self) -> bool {
+        self.user.is_single_depth()
     }
 
     /// Fetch the Address (application instance) of the channel.
@@ -133,8 +139,8 @@ impl<Trans: Transport> Author<Trans> {
     /// * `announcement` - An existing announcement message link for validation of ownership
     /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
     /// * `transport` - Transport object used for sending and receiving
-    pub fn recover(seed: &str, announcement: &Address, multi_branching: bool, transport: Trans) -> Result<Self> {
-        let mut author = Author::new(seed, "utf-8", 1024, multi_branching, transport);
+    pub fn recover(seed: &str, announcement: &Address, channel_type: ChannelType, transport: Trans) -> Result<Self> {
+        let mut author = Author::new(seed, channel_type, transport);
 
         let ann = author.user.user.announce()?;
         let retrieved: Message = author.user.transport.recv_message(announcement)?;
@@ -257,6 +263,16 @@ impl<Trans: Transport> Author<Trans> {
         msgs
     }
 
+    /// Retrieves the previous message from the message specified (provided the user has access to it)
+    pub fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.fetch_prev_msg(link)
+    }
+
+    /// Retrieves a specified number of previous messages from an original specified messsage link
+    pub fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+        self.user.fetch_prev_msgs(link, max)
+    }
+
     /// Iteratively fetches next messages until internal state has caught up
     pub fn sync_state(&mut self) {
         let mut exists = true;
@@ -291,8 +307,13 @@ impl<Trans: Transport> Author<Trans> {
     /// * `announcement` - An existing announcement message link for validation of ownership
     /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
     /// * `transport` - Transport object used for sending and receiving
-    pub async fn recover(seed: &str, announcement: &Address, multi_branching: bool, transport: Trans) -> Result<Self> {
-        let mut author = Author::new(seed, "utf-8", 1024, multi_branching, transport);
+    pub async fn recover(
+        seed: &str,
+        announcement: &Address,
+        channel_type: ChannelType,
+        transport: Trans,
+    ) -> Result<Self> {
+        let mut author = Author::new(seed, channel_type, transport);
 
         let ann = author.user.user.announce()?;
         let retrieved: Message = author.user.transport.recv_message(announcement).await?;
@@ -417,6 +438,16 @@ impl<Trans: Transport> Author<Trans> {
             }
         }
         msgs
+    }
+
+    /// Retrieves the previous message from the message specified (provided the user has access to it)
+    pub async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        self.user.fetch_prev_msg(link).await
+    }
+
+    /// Retrieves a specified number of previous messages from an original specified messsage link
+    pub async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+        self.user.fetch_prev_msgs(link, max).await
     }
 
     /// Iteratively fetches next messages until internal state has caught up

@@ -16,10 +16,7 @@ use core::cell::RefCell;
 /// Streams imports
 use iota_streams::{
     app::transport::{
-        tangle::{
-            client::Client as ApiClient,
-            PAYLOAD_BYTES,
-        },
+        tangle::client::Client as ApiClient,
         TransportOptions,
     },
     app_channels::api::tangle::{
@@ -49,27 +46,19 @@ pub struct Author {
 #[wasm_bindgen]
 impl Author {
     #[wasm_bindgen(constructor)]
-    pub fn new(seed: String, options: SendOptions, multi_branching: bool) -> Author {
+    pub fn new(seed: String, options: SendOptions, implementation: ChannelType) -> Author {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
-        let author = Rc::new(RefCell::new(ApiAuthor::new(
-            &seed,
-            "utf-8",
-            PAYLOAD_BYTES,
-            multi_branching,
-            transport,
-        )));
+        let author = Rc::new(RefCell::new(ApiAuthor::new(&seed, implementation.into(), transport)));
         Author { author }
     }
 
-    pub fn from_client(client: Client, seed: String, multi_branching: bool) -> Author {
+    pub fn from_client(client: Client, seed: String, implementation: ChannelType) -> Author {
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,
-            "utf-8",
-            PAYLOAD_BYTES,
-            multi_branching,
+            implementation.into(),
             client.to_inner(),
         )));
         Author { author }
@@ -92,7 +81,7 @@ impl Author {
         self.author
             .borrow_mut()
             .export(password)
-            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |v| Ok(v))
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
     }
 
     pub fn clone(&self) -> Author {
@@ -358,8 +347,7 @@ impl Author {
             .map_or_else(
                 |err| Err(JsValue::from_str(&err.to_string())),
                 |msg| {
-                    let mut msgs = Vec::new();
-                    msgs.push(msg);
+                    let msgs = vec![msg];
                     let responses = get_message_contents(msgs);
                     Ok(responses[0].copy())
                 },
@@ -382,6 +370,40 @@ impl Author {
         let msgs = self.author.borrow_mut().fetch_next_msgs().await;
         let payloads = get_message_contents(msgs);
         Ok(payloads.into_iter().map(JsValue::from).collect())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_prev_msg(self, link: Address) -> Result<UserResponse> {
+        self.author
+            .borrow_mut()
+            .fetch_prev_msg(&link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr))
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msg| {
+                    let msgs = vec![msg];
+                    let responses = get_message_contents(msgs);
+                    Ok(responses[0].copy())
+                },
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_prev_msgs(self, link: Address, num_msgs: usize) -> Result<Array> {
+        self.author
+            .borrow_mut()
+            .fetch_prev_msgs(
+                &link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr),
+                num_msgs,
+            )
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msgs| {
+                    let responses = get_message_contents(msgs);
+                    Ok(responses.into_iter().map(JsValue::from).collect())
+                },
+            )
     }
 
     #[wasm_bindgen(catch)]

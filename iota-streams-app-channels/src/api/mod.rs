@@ -9,3 +9,10 @@ pub mod user;
 /// Tangle-specific Channel API.
 #[cfg(all(feature = "tangle"))]
 pub mod tangle;
+
+#[derive(Clone)]
+pub enum ChannelType {
+    SingleBranch,
+    MultiBranch,
+    SingleDepth,
+}

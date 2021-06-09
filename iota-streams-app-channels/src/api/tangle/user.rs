@@ -4,7 +4,6 @@ use iota_streams_app::message::{
 };
 use iota_streams_core::{
     err,
-    panic_if_not,
     prelude::Vec,
     prng,
     try_or,
@@ -32,6 +31,9 @@ use iota_streams_ddml::types::GenericArray;
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
+const ENCODING: &str = "utf-8";
+const PAYLOAD_LENGTH: usize = 32_000;
+
 /// Baseline User api object. Contains the api user implementation as well as the transport object
 pub struct User<Trans> {
     pub user: UserImp,
@@ -43,18 +45,16 @@ impl<Trans> User<Trans> {
     ///
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
-    /// * `encoding` - A string slice representing the encoding type for the message [supported: utf-8]
-    /// * `payload_length` - Maximum size in bytes of payload per message chunk [1-1024],
-    /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
+    /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, encoding: &str, payload_length: usize, multi_branching: bool, transport: Trans) -> Self {
+    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
         let user = UserImp::gen(
             prng::from_seed("IOTA Streams Channels user sig keypair", seed),
             nonce,
-            if multi_branching { 1 } else { 0 },
-            encoding.as_bytes().to_vec(),
-            payload_length,
+            channel_type,
+            ENCODING.as_bytes().to_vec(),
+            PAYLOAD_LENGTH,
         );
         Self { user, transport }
     }
@@ -69,6 +69,11 @@ impl<Trans> User<Trans> {
     /// Return boolean representing the sequencing nature of the channel
     pub fn is_multi_branching(&self) -> bool {
         self.user.is_multi_branching()
+    }
+
+    /// Return boolean representing whether the implementation type is single depth
+    pub fn is_single_depth(&self) -> bool {
+        self.user.is_single_depth()
     }
 
     /// Fetch the user ed25519 public key
@@ -153,6 +158,16 @@ impl<Trans> User<Trans> {
         self.user.store_psk(id, psk);
         id
     }
+
+    /// Consume a binary sequence message and return the derived message link
+    fn process_sequence(&mut self, msg: BinaryMessage, store: bool) -> Result<Address> {
+        let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store)?;
+        let msg_link = self.user.link_gen.link_from(
+            &unwrapped.body.pk,
+            Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
+        );
+        Ok(msg_link)
+    }
 }
 
 #[cfg(not(feature = "async"))]
@@ -223,7 +238,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.sign_packet(&link_to.msgid, public_payload, masked_payload)?;
+        let msg = self.user.sign_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
     }
 
@@ -239,7 +254,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.tag_packet(&link_to.msgid, public_payload, masked_payload)?;
+        let msg = self.user.tag_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
     }
 
@@ -255,7 +270,7 @@ impl<Trans: Transport> User<Trans> {
         psk_ids: &PskIds,
         ke_pks: &Vec<PublicKey>,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(&link_to.msgid, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(link_to, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -264,7 +279,7 @@ impl<Trans: Transport> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload_for_everyone(&link_to.msgid)?;
+        let msg = self.user.share_keyload_for_everyone(link_to)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -273,7 +288,7 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
     pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
-        let msg = self.user.subscribe(&link_to.msgid)?;
+        let msg = self.user.subscribe(link_to)?;
         self.send_message(msg, MsgInfo::Subscribe)
     }
 
@@ -286,18 +301,11 @@ impl<Trans: Transport> User<Trans> {
     pub fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         let msg = self.transport.recv_message(link)?;
         if let Some(_addr) = &self.user.appinst {
-            let seq_link = msg.binary.link.clone();
-            let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence)?.body;
+            let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, true)?.body;
             let msg_id = self.user.link_gen.link_from(
                 &seq_msg.pk,
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
-
-            if self.is_multi_branching() {
-                self.store_state(seq_msg.pk, &seq_link)?
-            } else {
-                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)?
-            }
 
             Ok(msg_id)
         } else {
@@ -362,7 +370,7 @@ impl<Trans: Transport> User<Trans> {
     ///   * `link` - Address of the message to be processed
     pub fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link)?;
-        self.handle_message(msg)
+        self.handle_message(msg, true)
     }
 
     /// Retrieves the next message for each user (if present in transport layer) and returns them [Author, Subscriber]
@@ -375,25 +383,63 @@ impl<Trans: Transport> User<Trans> {
             Cursor {
                 link,
                 branch_no: _,
-                seq_no,
+                seq_no: _,
             },
         ) in ids
         {
             let msg = self.transport.recv_message(&link);
 
             if let Ok(msg) = msg {
-                let msg = self.handle_message(msg);
-                if let Ok(msg) = msg {
-                    if !self.user.is_multi_branching() {
-                        let stored = self.user.store_state_for_all(link.msgid, seq_no);
-                        panic_if_not!(stored.is_ok())
-                    }
-
+                if let Ok(msg) = self.handle_message(msg, true) {
                     msgs.push(msg);
                 }
             }
         }
         msgs
+    }
+
+    /// Retrieves the previous message from the message specified (provided the user has access to it) [Author,
+    /// Subscriber]
+    ///
+    /// # Arguments
+    /// * `link` - Address of message to act as root of previous message fetching
+    pub fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        let msg = self.transport.recv_message(link)?;
+        let header = msg.binary.parse_header()?.header;
+
+        let prev_msg_link = Address::from_bytes(&header.previous_msg_link.0);
+        let prev_msg = self.transport.recv_message(&prev_msg_link)?;
+        let unwrapped = self.handle_message(prev_msg, false)?;
+
+        Ok(unwrapped)
+    }
+
+    /// Retrieves a specified number of previous messages from an original specified messsage link [Author, Subscriber]
+    ///
+    /// # Arguments
+    /// * `link` - Address of message to act as root of previous message fetching
+    /// * `max` - The number of msgs to try and parse
+    pub fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+        let mut msg_info: (Address, u8, Message) = self.parse_msg_info(link)?;
+        let mut to_process = Vec::new();
+        let mut msgs = Vec::new();
+
+        for _ in 0..max {
+            msg_info = self.parse_msg_info(&msg_info.0)?;
+            if msg_info.1 == message::SEQUENCE {
+                let msg_link = self.process_sequence(msg_info.2.binary, false)?;
+                msg_info = self.parse_msg_info(&msg_link)?;
+            }
+            to_process.push(msg_info.2);
+        }
+
+        to_process.reverse();
+        for msg in to_process {
+            let unwrapped = self.handle_message(msg, false)?;
+            msgs.push(unwrapped);
+        }
+
+        Ok(msgs)
     }
 
     /// Handle message of unknown type. Ingests a message and unwraps it according to its determined
@@ -402,22 +448,31 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `msg` - Binary message of unknown type
     /// * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
-    pub fn handle_message(&mut self, mut msg0: Message) -> Result<UnwrappedMessage> {
+    pub fn handle_message(&mut self, mut msg0: Message, store: bool) -> Result<UnwrappedMessage> {
+        let mut sequenced = false;
         loop {
             // Forget TangleMessage and timestamp
             let msg = msg0.binary;
             let preparsed = msg.parse_header()?;
+            let link = preparsed.header.link.clone();
+            let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => {
-                    let m = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
-                    let u = m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked));
-                    return Ok(u);
-                }
-                message::TAGGED_PACKET => {
-                    let m = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)?;
-                    let u = m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked));
-                    return Ok(u);
-                }
+                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                    Ok(m) => {
+                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                    }
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
+                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of
@@ -428,19 +483,22 @@ impl<Trans: Transport> User<Trans> {
                     return Ok(u);
                 }
                 message::SEQUENCE => {
-                    let store_link = msg.link.rel().clone();
-                    let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
-                    let msg_link = self.user.link_gen.link_from(
-                        &unwrapped.body.pk,
-                        Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
-                    );
+                    let msg_link = self.process_sequence(msg, store)?;
                     let msg = self.transport.recv_message(&msg_link)?;
-                    self.user.store_state(unwrapped.body.pk, store_link)?;
+                    sequenced = true;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
             }
         }
+    }
+
+    // Get the previous msg link and msg type from header of message
+    fn parse_msg_info(&mut self, link: &Address) -> Result<(Address, u8, Message)> {
+        let msg = self.transport.recv_message(link)?;
+        let header = msg.binary.parse_header()?.header;
+        let link = Address::from_bytes(&header.previous_msg_link.0);
+        Ok((link, header.content_type, msg))
     }
 }
 
@@ -512,7 +570,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.sign_packet(&link_to.msgid, public_payload, masked_payload)?;
+        let msg = self.user.sign_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
             .await
     }
@@ -529,7 +587,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.tag_packet(&link_to.msgid, public_payload, masked_payload)?;
+        let msg = self.user.tag_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
             .await
     }
@@ -546,7 +604,7 @@ impl<Trans: Transport> User<Trans> {
         psk_ids: &PskIds,
         ke_pks: &Vec<PublicKey>,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(&link_to.msgid, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(link_to, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
@@ -555,7 +613,7 @@ impl<Trans: Transport> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub async fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload_for_everyone(&link_to.msgid)?;
+        let msg = self.user.share_keyload_for_everyone(link_to)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
@@ -564,7 +622,7 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
     pub async fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
-        let msg = self.user.subscribe(&link_to.msgid)?;
+        let msg = self.user.subscribe(link_to)?;
         self.send_message(msg, MsgInfo::Subscribe).await
     }
 
@@ -577,18 +635,11 @@ impl<Trans: Transport> User<Trans> {
     pub async fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         let msg = self.transport.recv_message(link).await?;
         if let Some(_addr) = &self.user.appinst {
-            let seq_link = msg.binary.link.clone();
-            let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence)?.body;
+            let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, true)?.body;
             let msg_id = self.user.link_gen.link_from(
                 &seq_msg.pk,
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
-
-            if self.is_multi_branching() {
-                self.store_state(seq_msg.pk, &seq_link)?
-            } else {
-                self.store_state_for_all(&seq_link, seq_msg.seq_num.0 as u32)?
-            }
 
             Ok(msg_id)
         } else {
@@ -654,7 +705,7 @@ impl<Trans: Transport> User<Trans> {
     ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     pub async fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
-        self.handle_message(msg).await
+        self.handle_message(msg, true).await
     }
 
     /// Retrieves the next message for each user (if present in transport layer) and returns them [Author, Subscriber]
@@ -667,19 +718,14 @@ impl<Trans: Transport> User<Trans> {
             Cursor {
                 link,
                 branch_no: _,
-                seq_no,
+                seq_no: _,
             },
         ) in ids
         {
             let msg = self.transport.recv_message(&link).await;
 
             if let Ok(msg) = msg {
-                if let Ok(msg) = self.handle_message(msg).await {
-                    if !self.user.is_multi_branching() {
-                        let stored = self.user.store_state_for_all(link.msgid, seq_no);
-                        panic_if_not!(stored.is_ok())
-                    }
-
+                if let Ok(msg) = self.handle_message(msg, true).await {
                     msgs.push(msg);
                 }
             }
@@ -687,27 +733,78 @@ impl<Trans: Transport> User<Trans> {
         msgs
     }
 
+    /// Retrieves the previous message from the message specified (provided the user has access to it) [Author,
+    /// Subscriber]
+    ///
+    /// # Arguments
+    /// * `link` - Address of message to act as root of previous message fetching
+    pub async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+        let msg = self.transport.recv_message(link).await?;
+        let header = msg.binary.parse_header()?.header;
+
+        let prev_msg_link = Address::from_bytes(&header.previous_msg_link.0);
+        let prev_msg = self.transport.recv_message(&prev_msg_link).await?;
+        let unwrapped = self.handle_message(prev_msg, false).await?;
+        Ok(unwrapped)
+    }
+
+    /// Retrieves a specified number of previous messages from an original specified messsage link [Author, Subscriber]
+    /// # Arguments
+    /// * `link` - Address of message to act as root of previous message fetching
+    /// * `max` - The number of msgs to try and parse
+    pub async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+        let mut msg_info: (Address, u8, Message) = self.parse_msg_info(link).await?;
+        let mut to_process = Vec::new();
+        let mut msgs = Vec::new();
+
+        for _ in 0..max {
+            msg_info = self.parse_msg_info(&msg_info.0).await?;
+            if msg_info.1 == message::SEQUENCE {
+                let msg_link = self.process_sequence(msg_info.2.binary, false)?;
+                msg_info = self.parse_msg_info(&msg_link).await?;
+            }
+            to_process.push(msg_info.2);
+        }
+
+        to_process.reverse();
+        for msg in to_process {
+            let unwrapped = self.handle_message(msg, false).await?;
+            msgs.push(unwrapped);
+        }
+
+        Ok(msgs)
+    }
+
     /// Handle message of unknown type. Ingests a message and unwraps it according to its determined
     /// content type [Author, Subscriber].
     ///
     /// # Arguments
     /// * `msg` - Binary message of unknown type
-    pub async fn handle_message(&mut self, mut msg0: Message) -> Result<UnwrappedMessage> {
+    pub async fn handle_message(&mut self, mut msg0: Message, store: bool) -> Result<UnwrappedMessage> {
+        let mut sequenced = false;
         loop {
             // Forget TangleMessage and timestamp
             let msg = msg0.binary;
             let preparsed = msg.parse_header()?;
+            let link = preparsed.header.link.clone();
+            let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => {
-                    let m = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
-                    let u = m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked));
-                    return Ok(u);
-                }
-                message::TAGGED_PACKET => {
-                    let m = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)?;
-                    let u = m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked));
-                    return Ok(u);
-                }
+                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                    Ok(m) => {
+                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                    }
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
+                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of
@@ -718,18 +815,22 @@ impl<Trans: Transport> User<Trans> {
                     return Ok(u);
                 }
                 message::SEQUENCE => {
-                    let store_link = msg.link.rel().clone();
-                    let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence)?;
-                    let msg_link = self.user.link_gen.link_from(
-                        &unwrapped.body.pk,
-                        Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
-                    );
+                    let msg_link = self.process_sequence(msg, store)?;
                     let msg = self.transport.recv_message(&msg_link).await?;
-                    self.user.store_state(unwrapped.body.pk, store_link)?;
+                    sequenced = true;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
             }
         }
+    }
+
+    /// Get the previous msg link and msg type from header of message and return in a tuple alongside
+    /// the message itself
+    async fn parse_msg_info(&mut self, link: &Address) -> Result<(Address, u8, Message)> {
+        let msg = self.transport.recv_message(link).await?;
+        let header = msg.binary.parse_header()?.header;
+        let link = Address::from_bytes(&header.previous_msg_link.0);
+        Ok((link, header.content_type, msg))
     }
 }

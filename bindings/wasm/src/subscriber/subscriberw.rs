@@ -10,10 +10,7 @@ use crate::{
 use core::cell::RefCell;
 use iota_streams::{
     app::transport::{
-        tangle::{
-            client::Client as ApiClient,
-            PAYLOAD_BYTES,
-        },
+        tangle::client::Client as ApiClient,
         TransportOptions,
     },
     app_channels::api::tangle::{
@@ -40,22 +37,12 @@ impl Subscriber {
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
-        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(
-            &seed,
-            "utf-8",
-            PAYLOAD_BYTES,
-            transport,
-        )));
+        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, transport)));
         Subscriber { subscriber }
     }
 
     pub fn from_client(client: Client, seed: String) -> Subscriber {
-        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(
-            &seed,
-            "utf-8",
-            PAYLOAD_BYTES,
-            client.to_inner(),
-        )));
+        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.to_inner())));
         Subscriber { subscriber }
     }
 
@@ -105,7 +92,8 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn unregister(&self) -> Result<()> {
-        Ok(self.subscriber.borrow_mut().unregister())
+        self.subscriber.borrow_mut().unregister();
+        Ok(())
     }
 
     #[wasm_bindgen(catch)]
@@ -113,7 +101,7 @@ impl Subscriber {
         self.subscriber
             .borrow_mut()
             .export(password)
-            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |v| Ok(v))
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
     }
 
     #[wasm_bindgen(catch)]
@@ -131,10 +119,7 @@ impl Subscriber {
             .borrow_mut()
             .receive_keyload(&link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr))
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |processed| Ok(processed),
-            )
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
     }
 
     #[wasm_bindgen(catch)]
@@ -208,8 +193,7 @@ impl Subscriber {
             .map_or_else(
                 |err| Err(JsValue::from_str(&err.to_string())),
                 |msg| {
-                    let mut msgs = Vec::new();
-                    msgs.push(msg);
+                    let msgs = vec![msg];
                     let responses = get_message_contents(msgs);
                     Ok(responses[0].copy())
                 },
@@ -314,5 +298,39 @@ impl Subscriber {
         let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
         let payloads = get_message_contents(msgs);
         Ok(payloads.into_iter().map(JsValue::from).collect())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_prev_msg(self, link: Address) -> Result<UserResponse> {
+        self.subscriber
+            .borrow_mut()
+            .fetch_prev_msg(&link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr))
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msg| {
+                    let msgs = vec![msg];
+                    let responses = get_message_contents(msgs);
+                    Ok(responses[0].copy())
+                },
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn fetch_prev_msgs(self, link: Address, num_msgs: usize) -> Result<Array> {
+        self.subscriber
+            .borrow_mut()
+            .fetch_prev_msgs(
+                &link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr),
+                num_msgs,
+            )
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msgs| {
+                    let responses = get_message_contents(msgs);
+                    Ok(responses.into_iter().map(JsValue::from).collect())
+                },
+            )
     }
 }

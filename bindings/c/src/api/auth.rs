@@ -4,17 +4,11 @@ pub type Author = iota_streams::app_channels::api::tangle::Author<TransportWrap>
 
 /// Generate a new Author Instance
 #[no_mangle]
-pub extern "C" fn auth_new(
-    c_seed: *const c_char,
-    c_encoding: *const c_char,
-    payload_length: size_t,
-    multi_branching: uint8_t,
-    transport: *mut TransportWrap,
-) -> *mut Author {
+pub extern "C" fn auth_new(c_seed: *const c_char, channel_type: uint8_t, transport: *mut TransportWrap) -> *mut Author {
     let seed = unsafe { CStr::from_ptr(c_seed).to_str().unwrap() };
-    let encoding = unsafe { CStr::from_ptr(c_encoding).to_str().unwrap() };
+    let channel_impl = get_channel_type(channel_type);
     let tsp = unsafe { (*transport).clone() };
-    let user = Author::new(seed, encoding, payload_length, multi_branching != 0, tsp);
+    let user = Author::new(seed, channel_impl, tsp);
     Box::into_raw(Box::new(user))
 }
 
@@ -23,21 +17,18 @@ pub extern "C" fn auth_new(
 pub extern "C" fn auth_recover(
     c_seed: *const c_char,
     c_ann_address: *const Address,
-    multi_branching: uint8_t,
-    transport: *mut TransportWrap
+    channel_type: uint8_t,
+    transport: *mut TransportWrap,
 ) -> *mut Author {
     unsafe {
         c_ann_address.as_ref().map_or(null_mut(), |addr| {
             let seed = CStr::from_ptr(c_seed).to_str().unwrap();
+            let channel_impl = get_channel_type(channel_type);
             let tsp = (*transport).clone();
-            Author::recover(seed, addr, multi_branching != 0, tsp)
-                .map_or(null_mut(), |auth| {
-                    Box::into_raw(Box::new(auth))
-                })
+            Author::recover(seed, addr, channel_impl, tsp).map_or(null_mut(), |auth| Box::into_raw(Box::new(auth)))
         })
     }
 }
-
 
 #[no_mangle]
 pub extern "C" fn auth_drop(user: *mut Author) {
@@ -267,6 +258,34 @@ pub extern "C" fn auth_fetch_next_msgs(user: *mut Author) -> *const UnwrappedMes
 }
 
 #[no_mangle]
+pub extern "C" fn auth_fetch_prev_msg(user: *mut Author, address: *const Address) -> *const UnwrappedMessage {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            address.as_ref().map_or(null(), |addr| {
+                let m = user.fetch_prev_msg(addr).unwrap();
+                Box::into_raw(Box::new(m))
+            })
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_fetch_prev_msgs(
+    user: *mut Author,
+    address: *const Address,
+    num_msgs: size_t,
+) -> *const UnwrappedMessages {
+    unsafe {
+        user.as_mut().map_or(null(), |user| {
+            address.as_ref().map_or(null(), |addr| {
+                let m = user.fetch_prev_msgs(addr, num_msgs).unwrap();
+                Box::into_raw(Box::new(m))
+            })
+        })
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages {
     unsafe {
         user.as_mut().map_or(null(), |user| {
@@ -287,9 +306,8 @@ pub extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages
 pub extern "C" fn auth_fetch_state(user: *mut Author) -> *const UserState {
     unsafe {
         user.as_mut().map_or(null(), |user| {
-            user.fetch_state().map_or(null(), |state| {
-                Box::into_raw(Box::new(state))
-            })
+            user.fetch_state()
+                .map_or(null(), |state| Box::into_raw(Box::new(state)))
         })
     }
 }

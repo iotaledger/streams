@@ -160,6 +160,8 @@ pub enum Errors {
     ApplicationInstanceAnnouncementMismatch(String),
     /// Subscriber {0} should not be able to access this message
     SubscriberAccessMismatch(String),
+    /// Expected Link does not match (expected: {0}, found {1})
+    LinkMismatch(String, String),
 
     //////////
     // Tests
