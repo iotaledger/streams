@@ -58,6 +58,27 @@ impl Subscriber {
         )
     }
 
+    #[wasm_bindgen(catch)]
+    pub async fn recover(seed: String, ann_address: Address, options: SendOptions) -> Result<Subscriber> {
+        let mut client = ApiClient::new_from_url(&options.url());
+        client.set_send_options(options.into());
+        let transport = Rc::new(RefCell::new(client));
+
+        ApiSubscriber::recover(
+            &seed,
+            &ann_address.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr),
+            transport
+        ).await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |sub|
+                    Ok(Subscriber {
+                        subscriber: Rc::new(RefCell::new(sub))
+                    })
+            )
+    }
+
+
     pub fn clone(&self) -> Subscriber {
         Subscriber {
             subscriber: self.subscriber.clone(),
