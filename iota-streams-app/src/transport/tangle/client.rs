@@ -40,6 +40,7 @@ use crypto::hashes::{
 
 use iota_streams_core::prelude::String;
 
+/// Options for the user Client
 #[derive(Clone)]
 pub struct SendOptions {
     pub url: String,
@@ -66,14 +67,17 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
-pub fn get_hash(tx_address: &[u8], tx_tag: &[u8]) -> Result<String> {
-    let total = [tx_address, tx_tag].concat();
+/// Generate a hex encoded Tangle index hash from an application instance and msgid
+pub fn get_hash(app_instance: &[u8], msgid: &[u8]) -> Result<String> {
+    let total = [app_instance, msgid].concat();
     let hash = blake2b::Blake2b256::digest(&total);
     Ok(hex::encode(&hash))
 }
 
-/// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
-/// the hash, consistency of indices, etc.). Checked bundles are returned by `(client.get_message().index`.
+/// Reconstruct Streams Message from bundle.
+///
+/// The input bundle is not checked (for validity of the hash, consistency of indices, etc.).
+/// Checked bundles are returned by `client.get_message().index`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
     if let Payload::Indexation(i) = message.payload().as_ref().unwrap() {
         let mut bytes = Vec::<u8>::new();
@@ -106,6 +110,7 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
     Ok(msgs)
 }
 
+/// Send a message to the Tangle using a node client
 pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>) -> Result<()> {
     let hash = get_hash(msg.binary.link.appinst.as_ref(), msg.binary.link.msgid.as_ref())?;
     let binary = &msg.binary;
@@ -125,6 +130,7 @@ pub async fn async_send_message_with_options<F>(client: &iota_client::Client, ms
     Ok(())
 }
 
+/// Retrieve a message from the tangle using a node client
 pub async fn async_recv_messages<F>(
     client: &iota_client::Client,
     link: &TangleAddress,
@@ -137,17 +143,19 @@ pub async fn async_recv_messages<F>(
     }
 }
 
+/// Synchronised - Send message to the tangle using a node client
 #[cfg(not(feature = "async"))]
 pub fn sync_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>) -> Result<()> {
     block_on(async_send_message_with_options(client, msg))
 }
 
+/// Synchronised - Retrieve a message from the tangle using a node client
 #[cfg(not(feature = "async"))]
 pub fn sync_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
     block_on(async_recv_messages(client, link))
 }
 
-/// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
+/// Wrapper for iota_client::Client and user send options.
 pub struct Client {
     send_opt: SendOptions,
     client: iota_client::Client,

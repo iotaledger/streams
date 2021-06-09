@@ -52,6 +52,7 @@ use crate::message::{
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
 
+/// Wrapper for a tangle formatted message
 #[derive(Clone)]
 pub struct TangleMessage<F> {
     /// Encapsulated binary encoded message.
@@ -125,6 +126,7 @@ impl<F> TangleMessage<F> {
     }
 }
 
+/// Tangle representation of a Message Link
 #[derive(Clone)]
 pub struct TangleAddress {
     pub appinst: AppInst,
@@ -228,6 +230,7 @@ impl HasLink for TangleAddress {
     }
 }
 
+/// Default Message Identifer Generator. Used for deriving MsgId's for sequencing
 #[derive(Clone)]
 pub struct DefaultTangleLinkGenerator<F> {
     addr: TangleAddress,
@@ -309,12 +312,11 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     }
 }
 
-// ed25519 public key size in bytes + 64-bit additional index
 pub type AppInstSize = U40;
+/// ed25519 public key [32] + 64-bit additional index
 pub const APPINST_SIZE: usize = 40;
 
-/// Application instance identifier.
-/// Currently, 81-byte string stored in `address` transaction field.
+/// 40 byte Application Instance identifier.
 #[derive(Clone, Default)]
 pub struct AppInst {
     pub(crate) id: NBytes<AppInstSize>,
@@ -425,10 +427,10 @@ impl<F: PRP> AbsorbFallback<F> for TangleAddress {
 }
 
 pub type MsgIdSize = U12;
+/// Unique 12 byte identifier
 pub const MSGID_SIZE: usize = 12;
 
-/// Message identifier unique within application instance.
-/// Currently, 27-byte string stored in `tag` transaction field.
+/// 12 byte Message Identifier unique within application instance.
 #[derive(Clone, Default)]
 pub struct MsgId {
     pub(crate) id: NBytes<MsgIdSize>,
@@ -529,5 +531,7 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
     }
 }
 
+/// Tangle-specific Transport Client. Uses [iota_client](https://github.com/iotaledger/iota.rs/tree/dev/iota-client)
+/// crate for node interfacing
 #[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
 pub mod client;

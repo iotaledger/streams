@@ -1,7 +1,9 @@
-//! `SignedPacket` message content. The message may be linked to any other message
-//! in the channel. It contains both plain and masked payloads. The message can only
-//! be signed and published by channel owner. Channel owner must firstly publish
-//! corresponding public key certificate in either `Announce` or `ChangeKey` message.
+//! `SignedPacket` message content. This message contains a plain and masked payload, signed by the
+//! sender.
+//!
+//! The message may be linked to any other message in the channel. It contains both plain and masked
+//! payloads. Each packet is signed by the sender's corresponding ed25519 private key for
+//! validation.
 //!
 //! ```ddml
 //! message SignedPacket {
@@ -24,7 +26,7 @@
 //!
 //! * `hash` -- hash value to be signed.
 //!
-//! * `sig` -- message signature generated with one of channel owner's private key.
+//! * `sig` -- message signature generated with the senders private key.
 
 use iota_streams_app::message::{
     self,
