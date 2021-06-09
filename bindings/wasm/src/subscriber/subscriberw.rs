@@ -333,4 +333,16 @@ impl Subscriber {
                 },
             )
     }
+
+    #[wasm_bindgen(catch)]
+    pub async fn listen(self) -> Result<Array> {
+        loop {
+            let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
+            if !msgs.is_empty() {
+                let payloads = get_message_contents(msgs);
+                return Ok(payloads.into_iter().map(JsValue::from).collect());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(TIMEOUT))
+        }
+    }
 }
