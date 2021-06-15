@@ -152,7 +152,7 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.frame_type)?.skip(&mut self.payload_frame_num)?;
         payload_frame_num_check(&self.payload_frame_num)?;
-        self.content.unwrap(&store, &mut ctx)?;
+        self.content.unwrap(store, &mut ctx)?;
         Ok(ctx)
     }
 }
