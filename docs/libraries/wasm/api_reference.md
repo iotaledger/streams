@@ -15,7 +15,7 @@ Generates an Author instance
 
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
-| url             | `string`            | A node URL         |
+| seed            | `string`            | Unique user seed   |
 | options         | `SendOptions`       | Options for Client |
 | multi_branching | `bool`              | Channel Type       | 
 **Returns:** An Author instance for administrating a channel.
@@ -26,7 +26,7 @@ Create an Author instance from a client
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
 | client          | [`Client`](#Client) | A Client Instance  |
-| url             | `string`            | A node URL         |
+| seed            | `string`            | Unique user seed   |
 | multi_branching | `bool`              | Channel Type       | 
 **Returns:** An Author instance for administrating a channel.
 
@@ -197,7 +197,7 @@ Generates a Subscriber instance
 
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
-| url             | `string`            | A node URL         |
+| seed            | `string`            | Unique user seed   |
 | options         | `SendOptions`       | Options for Client |
 **Returns:** A Subscriber instance.
 
@@ -207,7 +207,7 @@ Create a Subscriber instance from a client
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
 | client          | [`Client`](#Client) | A Client Instance  |
-| url             | `string`            | A node URL         |
+| seed            | `string`            | Unique user seed   |
 **Returns:** A Subscriber instance.
 
 #### import(client, bytes, password): Subscriber 
