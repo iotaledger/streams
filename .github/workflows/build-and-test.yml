@@ -46,36 +46,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libudev-dev libusb-1.0-0-dev
-      - name: Cache cargo registry
-        uses: actions/cache@v2.1.4
+
+      - name: Cache cargo
+        uses: actions/cache@v2
         with:
-          path: ~/.cargo/registry
-          # Add date to the cache to keep it up to date
-          key: ${{ matrix.os }}-stable-cargo-registry-${{ hashFiles('**/Cargo.lock') }}-${{ env.CURRENT_DATE }}
-          # Restore from outdated cache for speed
-          restore-keys: |
-            ${{ matrix.os }}-stable-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-            ${{ matrix.os }}-stable-cargo-registry-
-      - name: Cache cargo index
-        uses: actions/cache@v2.1.4
-        with:
-          path: ~/.cargo/git
-          # Add date to the cache to keep it up to date
-          key: ${{ matrix.os }}-stable-cargo-index-${{ hashFiles('**/Cargo.lock') }}-${{ env.CURRENT_DATE }}
-          # Restore from outdated cache for speed
-          restore-keys: |
-            ${{ matrix.os }}-stable-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-            ${{ matrix.os }}-stable-cargo-index-
-      - name: Cache cargo target
-        uses: actions/cache@v2.1.4
-        with:
-          path: target
-          # Add date to the cache to keep it up to date
-          key: ${{ matrix.os }}-stable-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ env.CURRENT_DATE }}
-          # Restore from outdated cache for speed
-          restore-keys: |
-            ${{ matrix.os }}-stable-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-            ${{ matrix.os }}-stable-cargo-build-target-
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Run tests
         timeout-minutes: 40
         uses: actions-rs/cargo@v1
@@ -202,6 +183,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
+            target/
+            ${{ github.workspace }}/bindings/c/target
             ${{ github.workspace }}/bindings/c/build/
             ${{ github.workspace }}/bindings/c/./cargo/build/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
