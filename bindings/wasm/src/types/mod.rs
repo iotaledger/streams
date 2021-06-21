@@ -29,7 +29,7 @@ pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {
     r.map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
-pub const TIMEOUT: u32 = 5000;
+pub const TIMEOUT: i32 = 5000;
 
 #[wasm_bindgen]
 pub struct SendOptions {

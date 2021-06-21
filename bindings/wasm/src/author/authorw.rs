@@ -458,7 +458,7 @@ impl Author {
                 let payloads = get_message_contents(msgs);
                 return Ok(payloads.into_iter().map(JsValue::from).collect());
             }
-            wait(TIMEOUT).await;
+            wait(TIMEOUT).await?;
         }
     }
 }

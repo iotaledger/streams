@@ -9,6 +9,11 @@ pub mod user;
 
 use wasm_bindgen::prelude::*;
 
+// Used for sleep()
+use wasm_bindgen_futures::JsFuture;
+use js_sys::Promise;
+use web_sys::window;
+
 #[wasm_bindgen]
 pub fn set_panic_hook() {
     console_error_panic_hook::set_once();
@@ -22,15 +27,15 @@ extern "C" {
     pub fn error(s: &str);
 }
 
-pub async fn wait(ms: u32) {
-    let mut date = js_sys::Date::new_0();
-    let now = date.get_milliseconds();
-    loop {
-        date = js_sys::Date::new_0();
-        if (date.get_milliseconds() - now) >= ms {
-            break;
-        }
-    }
+pub async fn wait(ms: i32) -> Result<(), JsValue> {
+    let promise = Promise::new(&mut |yes, _| {
+        let win = window().unwrap();
+        win.set_timeout_with_callback_and_timeout_and_arguments_0(&yes, ms)
+            .unwrap();
+    });
+    let js_fut = JsFuture::from(promise);
+    js_fut.await?;
+    Ok(())
 }
 
 // Unused currently
