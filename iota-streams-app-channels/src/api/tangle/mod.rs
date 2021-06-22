@@ -1,7 +1,7 @@
 //! Default parameters for Author and Subscriber types.
 
 use super::{
-    pk_store::PublicKeyMap,
+    pk_store::KeyMap,
     psk_store::PresharedKeyMap,
 };
 use iota_streams_app::{
@@ -68,7 +68,7 @@ pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 /// Sequence State information
 pub type SeqState = Cursor<MsgId>;
 /// Public Key Mapping for sequence states
-pub type PkStore = PublicKeyMap<SeqState>;
+pub type PkStore = KeyMap<SeqState>;
 /// Pre-Shared Key Mapping
 pub type PskStore = PresharedKeyMap;
 

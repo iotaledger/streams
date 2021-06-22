@@ -21,6 +21,7 @@ use iota_streams_core::{
     },
 };
 use iota_streams_core_edsig::signature::ed25519;
+use crate::api::pk_store::Identifier;
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
@@ -79,9 +80,9 @@ impl<Trans> Subscriber<Trans> {
     ///   # Arguments
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()> {
+    pub fn store_state(&mut self, id: Identifier, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(pk, link)
+        self.user.store_state(id, link)
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -101,7 +102,7 @@ impl<Trans> Subscriber<Trans> {
         let state_list = self.user.fetch_state()?;
         let mut state = Vec::new();
         for (pk, cursor) in state_list {
-            state.push((hex::encode(pk.as_bytes()), cursor))
+            state.push((hex::encode(pk.to_bytes()), cursor))
         }
         Ok(state)
     }
@@ -111,7 +112,7 @@ impl<Trans> Subscriber<Trans> {
     ///
     ///   # Arguments
     ///   * `branching` - Boolean representing the sequencing nature of the channel
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(Identifier, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
     }
 

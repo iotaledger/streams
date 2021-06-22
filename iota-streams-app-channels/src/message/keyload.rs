@@ -78,6 +78,7 @@ use iota_streams_ddml::{
     },
     types::*,
 };
+use crate::api::pk_store::Identifier;
 
 pub struct ContentWrap<'a, F, Link: HasLink, Psks, KePks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
@@ -95,7 +96,7 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
     Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
-    KePks: Clone + ExactSizeIterator<Item = (ed25519::IPk<'a>, x25519::IPk<'a>)>,
+    KePks: Clone + ExactSizeIterator<Item = (&'a Identifier, &'a Identifier)>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -113,8 +114,10 @@ where
                 })
             })?
             .skip(repeated_ke_pks)?
-            .repeated(self.ke_pks.clone(), |ctx, (sig_pk, ke_pk)| {
-                ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
+            .repeated(self.ke_pks.clone(), |ctx, (sig_pk_id, ke_pk_id)| {
+                ctx.fork(|ctx| ctx.absorb(sig_pk_id.get_pk().unwrap())?
+                    .x25519(ke_pk_id.get_xpk().unwrap(), &self.key)
+                )
             })?
             .absorb(External(&self.key))?
             .ed25519(self.sig_kp, HashSig)?
@@ -130,7 +133,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
-    KePks: Clone + ExactSizeIterator<Item = (ed25519::IPk<'a>, x25519::IPk<'a>)>,
+    KePks: Clone + ExactSizeIterator<Item = (&'a Identifier, &'a Identifier)>,
 {
     fn wrap<'c, OS: io::OStream>(
         &self,
@@ -152,7 +155,9 @@ where
             })?
             .skip(repeated_ke_pks)?
             .repeated(self.ke_pks.clone().into_iter(), |ctx, (sig_pk, ke_pk)| {
-                ctx.fork(|ctx| ctx.absorb(sig_pk)?.x25519(ke_pk, &self.key))
+                ctx.fork(|ctx| ctx.absorb(sig_pk.get_pk().unwrap())?
+                    .x25519(ke_pk.get_xpk().unwrap(), &self.key)
+                )
             })?
             .absorb(External(&self.key))?
             .ed25519(self.sig_kp, HashSig)?

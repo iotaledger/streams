@@ -22,6 +22,7 @@ use iota_streams_core::{
     },
 };
 use iota_streams_core_edsig::signature::ed25519;
+use crate::api::pk_store::Identifier;
 
 /// Author Object. Contains User API.
 pub struct Author<Trans> {
@@ -74,7 +75,7 @@ impl<Trans> Author<Trans> {
     ///
     ///   # Arguments
     ///   * `branching` - Boolean representing the sequencing nature of the channel
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(Identifier, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
     }
 
@@ -84,7 +85,7 @@ impl<Trans> Author<Trans> {
     ///   # Arguments
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()> {
+    pub fn store_state(&mut self, pk: Identifier, link: &Address) -> Result<()> {
         self.user.store_state(pk, link)
     }
 
@@ -104,7 +105,7 @@ impl<Trans> Author<Trans> {
         let state_list = self.user.fetch_state()?;
         let mut state = Vec::new();
         for (pk, cursor) in state_list {
-            state.push((hex::encode(pk.as_bytes()), cursor))
+            state.push((hex::encode(pk.to_bytes()), cursor))
         }
         Ok(state)
     }
@@ -167,7 +168,7 @@ impl<Trans: Transport> Author<Trans> {
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
-        ke_pks: &Vec<ed25519::PublicKey>,
+        ke_pks: &Vec<&Identifier>,
     ) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, psk_ids, ke_pks)
     }
@@ -340,7 +341,7 @@ impl<Trans: Transport> Author<Trans> {
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
-        ke_pks: &Vec<ed25519::PublicKey>,
+        ke_pks: &Vec<&Identifier>,
     ) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, psk_ids, ke_pks).await
     }

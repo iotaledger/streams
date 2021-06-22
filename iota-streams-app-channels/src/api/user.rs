@@ -164,7 +164,7 @@ where
     Link: HasLink,
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PKS: KeyStore<Cursor<<Link as HasLink>::Rel>>,
     PSKS: PresharedKeyStore,
 {
     fn default() -> Self {
@@ -200,7 +200,7 @@ where
     <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PKS: KeyStore<Cursor<<Link as HasLink>::Rel>>,
     PSKS: PresharedKeyStore,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
@@ -247,8 +247,9 @@ where
         self.link_gen.gen(&self.sig_kp.public, channel_idx);
         let appinst = self.link_gen.get();
 
+        let identifier = Identifier::EdPubKey(self.sig_kp.public.into());
         self.pk_store
-            .insert(self.sig_kp.public, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
+            .insert(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
         self.author_sig_pk = Some(self.sig_kp.public);
         self.appinst = Some(appinst);
         Ok(())
@@ -322,8 +323,8 @@ where
         // At the moment the Author is free to choose any address, not tied to PK.
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
-        self.pk_store.insert(content.sig_pk, cursor.clone())?;
-        self.pk_store.insert(self.sig_kp.public, cursor)?;
+        self.pk_store.insert(Identifier::EdPubKey(content.sig_pk.into()), cursor.clone())?;
+        self.pk_store.insert(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.appinst = Some(link);
@@ -338,7 +339,8 @@ where
         link_to: &'a Link,
     ) -> Result<PreparedMessage<'a, F, Link, LS, subscribe::ContentWrap<'a, F, Link>>> {
         if let Some(author_sig_pk) = &self.author_sig_pk {
-            if let Some(author_ke_pk) = self.pk_store.get_ke_pk(author_sig_pk) {
+            let identifier = Identifier::EdPubKey(ed25519::PublicKeyWrap(*author_sig_pk));
+            if let Some(author_ke_pk) = self.pk_store.get_ke_pk(&identifier) {
                 let msg_link = self
                     .link_gen
                     .link_from(&self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM));
@@ -395,7 +397,9 @@ where
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let ref_link = self.appinst.as_ref().unwrap().rel().clone();
         self.pk_store
-            .insert(subscriber_sig_pk, Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM))?;
+            .insert(Identifier::EdPubKey(subscriber_sig_pk.into()),
+                    Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM)
+            )?;
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }
@@ -409,7 +413,7 @@ where
     ) -> Result<PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, Psks, KePks>>>
     where
         Psks: Clone + ExactSizeIterator<Item = psk::IPsk<'a>>,
-        KePks: Clone + ExactSizeIterator<Item = (ed25519::IPk<'a>, x25519::IPk<'a>)>,
+        KePks: Clone + ExactSizeIterator<Item = (&'a Identifier, &'a Identifier)>,
     {
         let nonce = NBytes::from(prng::random_nonce());
         let key = NBytes::from(prng::random_key());
@@ -429,7 +433,7 @@ where
         &'a mut self,
         link_to: &'a Link,
         psk_ids: &psk::PskIds,
-        pks: &'a Vec<ed25519::PublicKey>,
+        pks: &'a Vec<&Identifier>,
     ) -> Result<
         PreparedMessage<
             'a,
@@ -441,7 +445,7 @@ where
                 F,
                 Link,
                 vec::IntoIter<psk::IPsk<'a>>,
-                vec::IntoIter<(ed25519::IPk<'a>, x25519::IPk<'a>)>,
+                vec::IntoIter<(&Identifier, &Identifier)>,
             >,
         >,
     > {
@@ -478,7 +482,7 @@ where
                 F,
                 Link,
                 vec::IntoIter<(&'a psk::PskId, &'a psk::Psk)>,
-                vec::IntoIter<(&'a ed25519::PublicKey, &'a x25519::PublicKey)>,
+                vec::IntoIter<(&'a Identifier, &'a Identifier)>,
             >,
         >,
     > {
@@ -507,7 +511,7 @@ where
         &mut self,
         link_to: &Link,
         psk_ids: &psk::PskIds,
-        ke_pks: &Vec<ed25519::PublicKey>,
+        ke_pks: &Vec<&Identifier>,
     ) -> Result<WrappedMessage<F, Link>> {
         self.prepare_keyload(link_to, psk_ids, ke_pks)?.wrap()
     }
@@ -586,10 +590,11 @@ where
             // Store any unknown publishers
             if let Some(appinst) = &self.appinst {
                 for ke_pk in content.ke_pks {
-                    if self.pk_store.get(&ke_pk).is_none() {
+                    let identifier = Identifier::EdPubKey(ke_pk.into());
+                    if self.pk_store.get(&identifier).is_none() {
                         // Store at state 2 since 0 and 1 are reserved states
                         self.pk_store
-                            .insert(ke_pk, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
+                            .insert(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
                     }
                 }
             }
@@ -774,7 +779,7 @@ where
     }
 
     pub fn wrap_sequence(&self, ref_link: &<Link as HasLink>::Rel) -> Result<WrappedSequence<F, Link>> {
-        match self.pk_store.get(&self.sig_kp.public) {
+        match self.pk_store.get(&Identifier::EdPubKey(self.sig_kp.public.into())) {
             Some(cursor) => {
                 let mut cursor = cursor.clone();
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
@@ -827,7 +832,7 @@ where
                 cursor.link = wrapped.link.rel().clone();
                 cursor.next_seq();
                 wrapped.commit(self.link_store.borrow_mut(), info)?;
-                self.pk_store.insert(self.sig_kp.public, cursor)?;
+                self.pk_store.insert(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
                 Ok(Some(link))
             }
             None => {
@@ -900,7 +905,7 @@ where
             .unwrap_sequence(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
         if store {
-            self.store_state(sender_pk, msg.link.rel().clone())?;
+            self.store_state(Identifier::EdPubKey(sender_pk.into()), msg.link.rel().clone())?;
         }
         Ok(GenericMessage::new(msg.link, prev_link, content))
     }
@@ -915,7 +920,8 @@ where
 
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn get_seq_no(&self) -> Option<u32> {
-        self.pk_store.get(&self.sig_kp.public).map(|cursor| cursor.seq_no)
+        self.pk_store.get(&Identifier::EdPubKey(self.sig_kp.public.into()))
+            .map(|cursor| cursor.seq_no)
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -935,9 +941,9 @@ where
     }
 
     fn gen_next_msg_id(
-        ids: &mut Vec<(ed25519::PublicKey, Cursor<Link>)>,
+        ids: &mut Vec<(Identifier, Cursor<Link>)>,
         link_gen: &LG,
-        pk_info: (&ed25519::PublicKey, &Cursor<<Link as HasLink>::Rel>),
+        pk_info: (&Identifier, &Cursor<<Link as HasLink>::Rel>),
         branching: bool,
     ) {
         let (
@@ -949,16 +955,16 @@ where
             },
         ) = pk_info;
         if branching {
-            let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, 1));
+            let msg_id = link_gen.link_from(&pk.get_pk().unwrap(), Cursor::new_at(&*seq_link, 0, 1));
             ids.push((*pk, Cursor::new_at(msg_id, 0, 1)));
         } else {
-            let msg_id = link_gen.link_from(pk, Cursor::new_at(&*seq_link, 0, *seq_no));
+            let msg_id = link_gen.link_from(&pk.get_pk().unwrap(), Cursor::new_at(&*seq_link, 0, *seq_no));
             ids.push((*pk, Cursor::new_at(msg_id, 0, *seq_no)));
         }
     }
 
     // TODO: Turn it into iterator.
-    pub fn gen_next_msg_ids(&self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Link>)> {
+    pub fn gen_next_msg_ids(&self, branching: bool) -> Vec<(Identifier, Cursor<Link>)> {
         let mut ids = Vec::new();
 
         // TODO: Do the same for self.sig_kp.public
@@ -968,20 +974,22 @@ where
         ids
     }
 
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: <Link as HasLink>::Rel) -> Result<()> {
-        if let Some(cursor) = self.pk_store.get(&pk) {
+    pub fn store_state(&mut self, id: Identifier, link: <Link as HasLink>::Rel) -> Result<()> {
+        if let Some(cursor) = self.pk_store.get(&id) {
             let mut cursor = cursor.clone();
             cursor.link = link;
             cursor.next_seq();
-            self.pk_store.insert(pk, cursor)?;
+            self.pk_store.insert(id, cursor)?;
         }
         Ok(())
     }
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
-            self.pk_store
-                .insert(self.sig_kp.public, Cursor::new_at(link.clone(), 0, seq_no))?;
+            self.pk_store.insert(
+                    Identifier::EdPubKey(self.sig_kp.public.into()),
+                    Cursor::new_at(link.clone(), 0, seq_no)
+            )?;
             for (_pk, cursor) in self.pk_store.iter_mut() {
                 cursor.link = link.clone();
                 cursor.seq_no = seq_no;
@@ -990,7 +998,7 @@ where
         Ok(())
     }
 
-    pub fn fetch_state(&self) -> Result<Vec<(ed25519::PublicKey, Cursor<Link>)>> {
+    pub fn fetch_state(&self) -> Result<Vec<(Identifier, Cursor<Link>)>> {
         let mut state = Vec::new();
         try_or!(self.appinst.is_some(), UserNotRegistered)?;
 
@@ -1019,7 +1027,7 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
     <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
-    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PKS: KeyStore<Cursor<<Link as HasLink>::Rel>>,
     PSKS: PresharedKeyStore,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
@@ -1064,6 +1072,7 @@ where
             })?
             .absorb(repeated_pks)?
             .repeated(pks.into_iter(), |ctx, (pk, cursor)| {
+                let pk = pk.get_pk().unwrap();
                 ctx.absorb(pk)?
                     .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
                     .absorb(Uint32(cursor.branch_no))?
@@ -1086,7 +1095,7 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
     <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
-    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PKS: KeyStore<Cursor<<Link as HasLink>::Rel>>,
     PSKS: PresharedKeyStore,
 {
     fn wrap<'c, OS: io::OStream>(
@@ -1135,6 +1144,7 @@ where
             })?
             .absorb(repeated_pks)?
             .repeated(pks.into_iter(), |ctx, (pk, cursor)| {
+                let pk = pk.get_pk().unwrap();
                 ctx.absorb(pk)?
                     .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
                     .absorb(Uint32(cursor.branch_no))?
@@ -1157,7 +1167,7 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
     <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: Default + AbsorbFallback<F>,
-    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>> + Default,
+    PKS: KeyStore<Cursor<<Link as HasLink>::Rel>> + Default,
     PSKS: PresharedKeyStore + Default,
 {
     fn unwrap<'c, IS: io::IStream>(
@@ -1236,7 +1246,7 @@ where
                     .absorb(&mut link)?
                     .absorb(&mut branch_no)?
                     .absorb(&mut seq_no)?;
-                pk_store.insert(pk, Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
+                pk_store.insert(Identifier::EdPubKey(pk.into()), Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
                 Ok(ctx)
             })?
             .commit()?
@@ -1273,7 +1283,7 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
     <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
-    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>>,
+    PKS: KeyStore<Cursor<<Link as HasLink>::Rel>>,
     PSKS: PresharedKeyStore,
 {
     pub fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
@@ -1312,7 +1322,7 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
     <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: Default + AbsorbFallback<F>,
-    PKS: PublicKeyStore<Cursor<<Link as HasLink>::Rel>> + Default,
+    PKS: KeyStore<Cursor<<Link as HasLink>::Rel>> + Default,
     PSKS: PresharedKeyStore + Default,
 {
     pub fn import(bytes: &[u8], flag: u8, pwd: &str) -> Result<Self> {
