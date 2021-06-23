@@ -67,7 +67,7 @@ typedef struct Author author_t;
 
 extern author_t *auth_new(char const *seed, char const *encoding, size_t payload_length, uint8_t multi_branching, transport_t *tsp);
 extern author_t *auth_recover(char const *seed, address_t const *announcement, uint8_t multi_branching, transport_t *tsp);
-extern author_t *auth_import(uint8_t const *bytes, size_t bytes_size, char const *password, transport_t *transport);
+extern author_t *auth_import(buffer_t buffer, char const *password, transport_t *transport);
 extern buffer_t auth_export(author_t const *user, char const *password);
 
 extern void auth_drop(author_t *);

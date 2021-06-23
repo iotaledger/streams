@@ -53,19 +53,9 @@ int main()
   }
 
   buffer_t bytes = auth_export(auth, "my_password");
-  printf("Pointer: %p %zu\n", bytes.ptr, sizeof(bytes.ptr));
-  printf("Size of bytes: %zu\nBytes: \n", bytes.size);
+  //drop_buffer(bytes);
 
-  uint8_t *new_bytes = malloc(sizeof(uint8_t) * bytes.size);
-
-  for (int i=0; i<bytes.size; i++){
-    printf("%i ", bytes.ptr[i]);
-    new_bytes[i] = bytes.ptr[i];
-  }
-  printf("\nPointer: %p\n", bytes.ptr);
-
-  author_t *auth_new = auth_import(new_bytes, bytes.size, "my_password", tsp);
-
+  author_t *auth_new = auth_import(bytes, "my_password", tsp);
   printf("Made new auth\n");
   // Fetch Application instance
   {

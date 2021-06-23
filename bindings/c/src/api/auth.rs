@@ -41,16 +41,15 @@ pub extern "C" fn auth_recover(
 /// Import an Author instance from an encrypted binary array
 #[no_mangle]
 pub extern "C" fn auth_import(
-    bytes: *const uint8_t,
-    bytes_size: size_t,
+    buffer: Buffer,
     password: *const c_char,
     transport: *mut TransportWrap,
 ) -> *mut Author {
     unsafe {
         let bytes_vec = Vec::from_raw_parts(
-            bytes as *mut u8,
-            bytes_size,
-            bytes_size,
+            buffer.ptr as *mut u8,
+            buffer.size,
+            buffer.cap,
         );
         let password_str = CStr::from_ptr(password).to_str().unwrap();
         let tsp = (*transport).clone();

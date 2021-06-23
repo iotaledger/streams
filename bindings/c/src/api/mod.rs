@@ -206,13 +206,12 @@ pub struct Buffer {
 }
 
 impl From<Vec<u8>> for Buffer {
-    fn from(mut vec: Vec<u8>) -> Self {
-        let ptr = vec.as_mut_ptr();
-        core::mem::forget(ptr);
+    fn from(vec: Vec<u8>) -> Self {
+        let p = core::mem::ManuallyDrop::new(vec);
         Self {
-            ptr,
-            size: vec.len(),
-            cap: vec.capacity(),
+            ptr: p.as_ptr(),
+            size: p.len(),
+            cap: p.capacity(),
         }
     }
 }
