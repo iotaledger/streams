@@ -107,8 +107,8 @@ int main()
   printf("Made a sub B... \n");
 
   printf("Unwrapping announcement packet... \n");
-  sub_receive_announce(subA, ann_link);
-  sub_receive_announce(subB, ann_link);
+  sub_receive_announcement(subA, ann_link);
+  sub_receive_announcement(subB, ann_link);
   printf("Announcement unwrapped, generating subscription message...\n");
   address_t const *sub_a_link = sub_send_subscribe(subA, ann_link);
   address_t const *sub_b_link = sub_send_subscribe(subB, ann_link);

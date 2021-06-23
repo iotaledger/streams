@@ -51,7 +51,7 @@ Export an Author instance as an encrypted array using a given password
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | user            | `*mut Author`       | Author instance           |
-| password        | `*cosnt char`       | Key to encrypt            | 
+| password        | `*const char`       | Key to encrypt            | 
 **Returns:** Binary array representing an encrypted state of the author.
 
 
@@ -98,7 +98,7 @@ Send a keyload message for all subscribed participants in the channel, linked to
 | link_to         | [`*const Address`](#Address) | Address of message being linked to |
 **Returns:** A Message Links wrapper around the keyload message link and sequence link.
 
-#### auth_send_keyload(user, link_to, psk_ids, sig_pks): [MessageLinks](#MessageLinks)
+#### auth_send_keyload(user, link_to, psk_ids, ke_pks): [MessageLinks](#MessageLinks)
 Send a keyload message for specified subscribers and pre shared keys in the channel, linked to a previous 
 message (usually the announcement in a multi branch).
 
@@ -107,10 +107,10 @@ message (usually the announcement in a multi branch).
 | user            | `*mut Author`                 | Author instance                               |
 | link_to         | [`*const Address`](#Address)  | Address of message being linked to            |
 | psk_ids         | [`*const PskIds`](#PskIds)    | Array of PskId's for included subscribers     |
-| sig_pks         | [`*const SigPks`](#PublicKeys)| Array of Public Keys for included subscribers |
+| ke_pks          | [`*const KePks`](#PublicKeys) | Array of Public Keys for included subscribers |
 **Returns:** A Message Links wrapper around the keyload message link and sequence link.
 
-#### auth_send_tagged_packet(user, link_to, public_payload_ptr, public_payload_ptr, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
+#### auth_send_tagged_packet(user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
 Send a tagged packet message linked to a previous message.
 
 | Param              | Type                              | Description                                   |
@@ -123,7 +123,7 @@ Send a tagged packet message linked to a previous message.
 | masked_payload_size| `size_t`                          | Length of masked payload byte array           |
 **Returns:** A MessageLinks wrapper around the tagged packet link and sequence link.
 
-#### auth_send_signed_packet(user, link_to, public_payload_ptr, public_payload_ptr, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
+#### auth_send_signed_packet(user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
 Send a signed packet message linked to a previous message.
 
 | Param              | Type                              | Description                                   |
@@ -263,7 +263,7 @@ Export an Author instance as an encrypted array using a given password
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | user            | `*mut Subscriber`   | Subscriber instance      |
-| password        | `*cosnt c_char`     | Key to encrypt            | 
+| password        | `*const c_char`     | Key to encrypt            | 
 **Returns:** Binary array representing an encrypted state of the Subscriber.
 
 
@@ -324,7 +324,7 @@ Send a subscription message, initialising the channel
 | announcement_link | [`*const Address`](#Address) | Announcement link         |
 **Returns:** The address of the subscription message.
 
-#### sub_send_tagged_packet(user, link_to, public_payload_ptr, public_payload_ptr, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
+#### sub_send_tagged_packet(user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
 Send a tagged packet message linked to a previous message.
 
 | Param              | Type                              | Description                                   |
@@ -337,7 +337,7 @@ Send a tagged packet message linked to a previous message.
 | masked_payload_size| `size_t`                          | Length of masked payload byte array           |
 **Returns:** A MessageLinks wrapper around the tagged packet link and sequence link.
 
-#### auth_send_signed_packet(user, link_to, public_payload_ptr, public_payload_ptr, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
+#### sub_send_signed_packet(user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
 Send a signed packet message linked to a previous message. 
 
 | Param              | Type                              | Description                                   |
@@ -497,7 +497,7 @@ Get the string representation of the streams message Tangle Index
 **Returns:** A string representation of the message Tangle Index
 
 #### drop_address(address)
-Drop a PacketPayloads wrapper from memory 
+Drop an Address wrapper from memory 
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
@@ -554,7 +554,7 @@ Fetch the payload from an Unwrapped Message wrapper
 | msg             | `*const UnwrappedMessage`     | Unwrapped Message Wrapper           |
 **Returns:** The PacketPayloads wrapper of the message
 
-#### drop_unwrapped_messages(ms) 
+#### drop_unwrapped_message(ms) 
 Drop an Unwrapped Message wrapper from memory
 
 | Param           | Type                          | Description                         |
@@ -619,16 +619,16 @@ Drop a NextMsgIds wrapper from memory
 ### UserState
 A wrapper for a list mapping Public Key strings and a state cursor.
 
-#### get_link_from_state(s, pub_key): *const Address
+#### get_link_from_state(state, pub_key): *const Address
 Get the latest link of a specific user by their Ed25519 Public Key
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| s               | `*const UserState`            | User State Wrapper                  |
+| state           | `*const UserState`            | User State Wrapper                  |
 | pubkey          | `*const PublicKey`            | Ed25519 Public Key                  |
 **Returns:** Latest address link of the provided user key
 
-#### drop_user_state(s)
+#### drop_user_state(state)
 Drop a User State wrapper from memory 
 
 | Param           | Type                          | Description                         |

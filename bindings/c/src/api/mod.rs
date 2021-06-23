@@ -64,19 +64,19 @@ pub extern "C" fn drop_next_msg_ids(m: *const NextMsgIds) {
 
 pub type UserState = Vec<(String, Cursor<Address>)>;
 #[no_mangle]
-pub extern "C" fn drop_user_state(s: *const UserState) {
+pub extern "C" fn drop_user_state(state: *const UserState) {
     unsafe {
-        Box::from_raw(s as *mut UserState);
+        Box::from_raw(state as *mut UserState);
     }
 }
 
 #[no_mangle]
-pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const PublicKey) -> *const Address {
+pub extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
     unsafe {
-        s.as_ref().map_or(null(), |state| {
+        state.as_ref().map_or(null(), |state_ref| {
             pub_key.as_ref().map_or(null(), |pub_key| {
                 let pk_str = hex::encode(pub_key.as_bytes());
-                for (pk, cursor) in state {
+                for (pk, cursor) in state_ref {
                     if pk == &pk_str {
                         return Box::into_raw(Box::new(cursor.link.clone()))
                     }
@@ -87,6 +87,13 @@ pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const Publi
     }
 }
 
+#[no_mangle]
+pub extern "C" fn drop_unwrapped_message(ms: *const UnwrappedMessage) {
+    unsafe {
+        Box::from_raw(ms as *mut UnwrappedMessage);
+    }
+}
+
 pub type UnwrappedMessages = Vec<UnwrappedMessage>;
 #[no_mangle]
 pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
@@ -94,8 +101,6 @@ pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
         Box::from_raw(ms as *mut UnwrappedMessages);
     }
 }
-
-
 
 #[cfg(feature = "sync-client")]
 pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
@@ -300,9 +305,9 @@ pub extern "C" fn drop_payloads(payloads: PacketPayloads) {
 }
 
 #[no_mangle]
-pub extern "C" fn drop_str(s: *const c_char) {
+pub extern "C" fn drop_str(string: *const c_char) {
     unsafe {
-        CString::from_raw(s as *mut c_char);
+        CString::from_raw(string as *mut c_char);
     }
 }
 

@@ -188,7 +188,7 @@ pub extern "C" fn auth_receive_signed_packet(user: *mut Author, link: *const Add
 }
 
 #[no_mangle]
-pub extern "C" fn author_receive_sequence(user: *mut Author, link: *const Address) -> *const Address {
+pub extern "C" fn auth_receive_sequence(user: *mut Author, link: *const Address) -> *const Address {
     unsafe {
         user.as_mut().map_or(null(), |user| {
             link.as_ref().map_or(null(), |link| {

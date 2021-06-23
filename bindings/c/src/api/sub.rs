@@ -93,7 +93,7 @@ pub extern "C" fn sub_unregister(user: *mut Subscriber) {
 
 /// Handle Channel app instance announcement.
 #[no_mangle]
-pub extern "C" fn sub_receive_announce(user: *mut Subscriber, link: *const Address) {
+pub extern "C" fn sub_receive_announcement(user: *mut Subscriber, link: *const Address) {
     unsafe {
         user.as_mut().map_or((), |user| {
             link.as_ref().map_or((), |link| {

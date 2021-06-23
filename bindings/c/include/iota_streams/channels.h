@@ -115,7 +115,7 @@ extern uint8_t sub_is_registered(subscriber_t const *subscriber);
 extern void sub_unregister(subscriber_t *subscriber);
 
 // Announce
-extern void sub_receive_announce(subscriber_t *subscriber, address_t const *address);
+extern void sub_receive_announcement(subscriber_t *subscriber, address_t const *address);
 // Subscribe
 extern address_t const *sub_send_subscribe(subscriber_t *subscriber, address_t const *announcement_link);
 // Keyload
