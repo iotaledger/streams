@@ -24,6 +24,12 @@ char const *ann_address_id_str = get_address_id_str(ann_link);
 // Link used by subscribers to attach to instance
 printf("Link: %s:%s\n", ann_address_inst_str, ann_address_id_str);
 
+// Clean up
+drop_str(ann_address_inst_str);
+drop_str(ann_address_id_str);
+drop_address(ann_link);
+auth_drop(auth);
+tsp_drop(tsp);
 ```
 
 ### Subscriber Generation
@@ -41,6 +47,10 @@ subscriber_t *sub = sub_new(seed, encoding, size, tsp);
 address_t const *ann_link = address_from_string("Announcement:Link");
 sub_receive_announcement(sub, ann_link);
 
+// Clean up
+drop_address(ann_link);
+sub_drop(sub);
+tsp_drop(tsp);
 ```
 
 ### Subscription
@@ -51,12 +61,18 @@ char const *sub_inst_str = get_address_inst_str(ann_link);
 char const *sub_id_str = get_address_id_str(ann_link);
 // Link used by Author to process subscription
 printf("Link: %s:%s\n", sub_inst_str, sub_id_str);
+
+// Clean up
+drop_str(sub_inst_str);
+drop_str(sub_id_str);
+drop_address(sub_link);
 ```
 
 Author accepts and processes subscription: 
 ```c
 address_t const *sub_link = address_from_string("Subscribe:Link");
 auth_receive_subscribe(auth, sub_link);
+drop_address(sub_link);
 ```
 
 ### Keyload
@@ -67,6 +83,11 @@ char const *keyload_inst_str = get_address_inst_str(keyload_links.msg_link);
 char const *keyload_id_str = get_address_id_str(keyload_links.msg_link);
 // Keyload message can now act as starting point for a protected branch
 printf("Link: %s:%s\n", keyload_inst_str, keyload_id_str);
+
+// Clean up
+drop_str(keyload_inst_str);
+drop_str(keyload_id_str);
+drop_links(keyload_links);
 ```
 
 Author sends a keyload for just one subscriber in the channel:
@@ -77,6 +98,11 @@ char const *keyload_inst_str = get_address_inst_str(keyload_links.msg_link);
 char const *keyload_id_str = get_address_id_str(keyload_links.msg_link);
 // Keyload message can now act as starting point for a protected branch
 printf("Link: %s:%s\n", keyload_inst_str, keyload_id_str);
+
+// Clean up
+drop_str(keyload_inst_str);
+drop_str(keyload_id_str);
+drop_links(keyload_links);
 ```
 
 ### Sending Messages
@@ -103,6 +129,11 @@ message_links_t signed_packet_links = sub_send_signed_packet(
 char const *signed_packet_inst_str = get_address_inst_str(signed_packet_links.msg_link);
 char const *signed_packet_id_str = get_address_id_str(signed_packet_links.msg_link);
 printf("Signed Packet link: %s:%s\n", keyload_inst_str, keyload_id_str);
+
+// Clean up
+drop_str(signed_packet_inst_str);
+drop_str(signed_packet_id_str);
+drop_links(signed_packet_links);
 ```
 
 ### Message Fetching 
@@ -119,6 +150,9 @@ for(x = 0; x < sizeof(message_returns); x++)
     packet_payloads_t response = get_indexed_payload(message_returns, x);
     printf("Unpacking message...\npublic: '%s' \tmasked: '%s'\n", response.public_payload.ptr, response.masked_payload.ptr);
   }
+
+// Clean up
+drop_unwrapped_messages(message_returns);
 ```
 
 If no new messages are present, the returned array will be empty.
@@ -137,4 +171,6 @@ for(x = 0; x < sizeof(message_returns); x++)
     printf("Unpacking message...\npublic: '%s' \tmasked: '%s'\n", response.public_payload.ptr, response.masked_payload.ptr);
   }
 
+// Clean up
+drop_unwrapped_messages(prev_msgs);
 ```
