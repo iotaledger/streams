@@ -26,8 +26,8 @@ Once the package has been built, you can pull it into a script file like so:
 const streams = require("./wasm-node/iota_streams_wasm");
 
 let node = "https://chrysalis-nodes.iota.org/";
-// Options include: (node-url, MWM, local pow, # of threads)
-let options = new streams.SendOptions(node, 9, true, 1);
+// Options include: (node-url, depth, local pow, # of threads)
+let options = new streams.SendOptions(node, 3, true, 1);
 
 // Author generated with: (Seed, Options, Multi-branching flag)
 let auth = new streams.Author("Unique Seed Here", options, false);

@@ -57,7 +57,6 @@ extern transport_t *tsp_new();
 extern void tsp_drop(transport_t *);
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
 extern transport_t *tsp_client_new_from_url(char const *url);
-extern void tsp_client_set_mwm(transport_t *tsp, uint8_t mwm);
 #endif
 
 ////////////

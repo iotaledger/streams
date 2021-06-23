@@ -26,7 +26,7 @@ main()
 async function main() {
     // Default is a load balancer, if you have your own node it's recommended to use that instead
     let node = "https://chrysalis-nodes.iota.org/";
-    let options = new streams.SendOptions(node, 9, true, 1);
+    let options = new streams.SendOptions(node, 3, true, 1);
     let seed = make_seed(81);
     let auth = new streams.Author(seed, options.clone(), false);
 

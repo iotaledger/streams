@@ -9,7 +9,7 @@ The general API is simply an abstraction over the rust library, so the examples 
 Create an Author and generate a new channel:
 ```
 let node = "https://chrysalis-nodes.iota.org/";
-let options = new streams.SendOptions(node, 9, true, 1);
+let options = new streams.SendOptions(node, 3, true, 1);
 let multi_branching = false;
 let auth = new streams.Author("Unique Seed", options, multi_branching);
 
@@ -23,7 +23,7 @@ console.log("Announced at: ", ann_link.to_string());
 Create a Subscriber and attach to a channel:
 ```
 let node = "https://chrysalis-nodes.iota.org/";
-let options = new streams.SendOptions(node, 9, true, 1);
+let options = new streams.SendOptions(node, 3, true, 1);
 let sub = new streams.Subscriber("Unique Seed", options);
 
 let ann_link = streams.Address.from_str("AnnouncementLink:Here");
