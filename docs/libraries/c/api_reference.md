@@ -34,18 +34,17 @@ Drop an Author instance from memory.
 
 
 
-#### auth_import(transport, bytes, bytes_size, password): Author 
+#### auth_import(buffer, password, transport): Author 
 Import an Author instance from an encrypted binary array
 
 | Param           | Type                                   | Description               |
 | --------------- | -------------------------------------- | ------------------------- |
-| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper  |
-| bytes           | `*const uint8_t`                       | Exported binary of author |
-| bytes_size      | `size_t`                               | Binary array length       |
+| bytes           | `Buffer`                               | Buffer with exported data |
 | password        | `*const c_char`                        | Key to decrypt binary     | 
+| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper  |
 **Returns:** A recovered Author instance for administrating a channel.
 
-#### auth_export(user, password): *const uint8_t 
+#### auth_export(user, password): Buffer 
 Export an Author instance as an encrypted array using a given password
 
 | Param           | Type                | Description               |
@@ -245,19 +244,17 @@ Drop a Subscriber instance from memory.
 | user            | `*mut Subscriber`                      | Subscriber instance      |
 
 
-
-#### sub_import(transport, bytes, bytes_size, password): Author 
-Import a Subscriber instance from an encrypted binary array
+#### sub_import(buffer, bytes, password): Author 
+Import a Subscriber instance from an encrypted binary array 
 
 | Param           | Type                                   | Description               |
 | --------------- | -------------------------------------- | ------------------------- |
-| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper  |
-| bytes           | `*const uint8_t`                       | Exported binary of author |
-| bytes_size      | `size_t`                               | Binary array length       |
+| buffer          | `Buffer`                               | Buffer with exported data |
 | password        | `*const c_char`                        | Key to decrypt binary     | 
+| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper  |
 **Returns:** A recovered Subscriber instance for publishing to and reading from a channel.
 
-#### sub_export(user, password): *const uint8_t 
+#### sub_export(user, password): Buffer 
 Export an Author instance as an encrypted array using a given password
 
 | Param           | Type                | Description               |
@@ -639,7 +636,7 @@ Drop a User State wrapper from memory
 
 ### strings
 #### drop_str(string)
-Drop a PacketPayloads wrapper from memory 
+Drop a rust allocated string from memory 
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
