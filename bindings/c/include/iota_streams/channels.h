@@ -107,8 +107,8 @@ extern user_state_t const * auth_fetch_state(author_t *author);
 typedef struct Subscriber subscriber_t;
 extern subscriber_t *sub_new(char const *seed, char const *encoding, size_t payload_length, transport_t *tsp);
 extern subscriber_t *sub_recover(char const *seed, address_t const *announcement, transport_t *tsp);
-extern subscriber_t *sub_import(uint8_t const *bytes, size_t bytes_size, char const *password, transport_t *transport);
-extern uint8_t const*sub_export(subscriber_t const *user, char const *password, size_t* bytes_size);
+extern subscriber_t *sub_import(buffer_t buffer, char const *password, transport_t *transport);
+extern buffer_t sub_export(subscriber_t const *user, char const *password);
 extern void sub_drop(subscriber_t *);
 
 extern channel_address_t const *sub_channel_address(subscriber_t const *user);

@@ -52,21 +52,15 @@ int main()
     auth_get_public_key(auth);
   }
 
+  // Import export example
   buffer_t bytes = auth_export(auth, "my_password");
-  //drop_buffer(bytes);
-
   author_t *auth_new = auth_import(bytes, "my_password", tsp);
-  printf("Made new auth\n");
-  // Fetch Application instance
-  {
-    channel_address_t const *appinst = auth_channel_address(auth_new);
-    // `auth_channel_address` does not allocate, no need to drop `appinst`
-    char const *appinst_str = get_channel_address_str(appinst);
-    printf("With AppInst: %s\n\n", appinst_str);
-    drop_str(appinst_str);
-  }
+  // By using it in auth, e pass ownership and it gets dropped on auth_drop. 
+  // If we dont use it in auth_import, we need to drop it manually instead 
+  // drop_buffer(bytes);
 
-  return 0;
+  auth_drop(auth_new);
+
   // sending announcement
   printf("Sending announcement\n");
   address_t const *ann_link = auth_send_announce(auth);
@@ -109,12 +103,18 @@ int main()
   drop_str(link_index);
   drop_address(ann_link_copy);
 
-
   // Subscriber
   char const sub_seed_a[] = "SUBSCRIBERA9SEED";
   printf("Making Sub A with %s\n", sub_seed_a);
   subscriber_t *subA = sub_new("sub_seed_a", encoding, size, tsp);
   printf("Made a sub A... \n");
+
+  bytes = sub_export(subA, "my_password");
+  subscriber_t *sub_a_new = sub_import(bytes, "my_password", tsp);
+  // By using it in sub, we pass ownership and it gets dropped on sub_drop. 
+  // If we dont use it in sub_import, we need to drop it manually instead 
+  // drop_buffer(bytes);
+  sub_drop(sub_a_new);
 
   char const sub_seed_b[] = "SUBSCRIBERB9SEED";
   printf("Making Sub B with %s\n", sub_seed_b);
