@@ -108,7 +108,14 @@ impl<Trans> Author<Trans> {
     ///   # Arguments
     ///   * `pwd` - Encryption password
     pub fn export(&self, pwd: &str) -> Result<Vec<u8>> {
-        self.user.export(0, pwd)
+        match self.user.export(0, pwd) {
+            Ok(v) => {
+                dbg!(v.len());
+                dbg!(&v);
+                Ok(v)
+            },
+            Err(e) => Err(e),
+        }
     }
 
     /// Deserialize user state and decrypt it with password.

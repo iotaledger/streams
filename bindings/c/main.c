@@ -52,6 +52,31 @@ int main()
     auth_get_public_key(auth);
   }
 
+  buffer_t bytes = auth_export(auth, "my_password");
+  printf("Pointer: %p %zu\n", bytes.ptr, sizeof(bytes.ptr));
+  printf("Size of bytes: %zu\nBytes: \n", bytes.size);
+
+  uint8_t *new_bytes = malloc(sizeof(uint8_t) * bytes.size);
+
+  for (int i=0; i<bytes.size; i++){
+    printf("%i ", bytes.ptr[i]);
+    new_bytes[i] = bytes.ptr[i];
+  }
+  printf("\nPointer: %p\n", bytes.ptr);
+
+  author_t *auth_new = auth_import(new_bytes, bytes.size, "my_password", tsp);
+
+  printf("Made new auth\n");
+  // Fetch Application instance
+  {
+    channel_address_t const *appinst = auth_channel_address(auth_new);
+    // `auth_channel_address` does not allocate, no need to drop `appinst`
+    char const *appinst_str = get_channel_address_str(appinst);
+    printf("With AppInst: %s\n\n", appinst_str);
+    drop_str(appinst_str);
+  }
+
+  return 0;
   // sending announcement
   printf("Sending announcement\n");
   address_t const *ann_link = auth_send_announce(auth);

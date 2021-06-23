@@ -198,13 +198,23 @@ pub extern "C" fn get_seq_link(msg_links: *const MessageLinks) -> *const Address
     }
 }
 
-
-
 #[repr(C)]
 pub struct Buffer {
     ptr: *const uint8_t,
     size: size_t,
     cap: size_t,
+}
+
+impl From<Vec<u8>> for Buffer {
+    fn from(mut vec: Vec<u8>) -> Self {
+        let ptr = vec.as_mut_ptr();
+        core::mem::forget(ptr);
+        Self {
+            ptr,
+            size: vec.len(),
+            cap: vec.capacity(),
+        }
+    }
 }
 
 impl Default for Buffer {
