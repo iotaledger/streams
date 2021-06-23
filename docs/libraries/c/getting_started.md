@@ -1,5 +1,5 @@
 # Getting Started
-The C bindings allow for you to build a Streams API to be pulled into other languages. 
+The C bindings allow for you to build a Streams API which can be pulled into other languages. 
 The streams instance underlying the bindings is built with the `sync-client` flag to 
 ensure a compatible client interface using the `iota.rs iota-client` crate. 
 
@@ -55,5 +55,12 @@ int main()
  char const *ann_address_id_str = get_address_id_str(ann_link);
  // Link used by subscribers to attach to instance
  printf("Link: %s:%s\n", ann_address_inst_str, ann_address_id_str);
+ 
+ // Clean up
+ drop_str(ann_address_inst_str);
+ drop_str(ann_address_id_str);
+ drop_address(ann_link);
+ auth_drop(auth);
+ tsp_drop(tsp);
 }
 ```
