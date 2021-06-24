@@ -97,7 +97,7 @@ Seq. No.          3            3
 
 **_Note:_** *It is recommended that a single branch be used with only a single publisher to avoid out of sync parties from 
 issuing/retrieving messages from an incorrect sequencing combination (i.e. Sub1 sends a message linked to Msg1 and Sub2 
-sends a message linked to that same Msg1 before seeing and registering the message from Sub1,thus forking the stream). 
+sends a message linked to that same Msg1 before seeing and registering the message from Sub1, thus forking the stream). 
 Multiple publishers can be used, but it is important to ensure that they do not try to send messages in parallel to 
 avoid this conflict. In the future this may be an enforced limitation on single branch implementations to remove the 
 possibility altogether.*
