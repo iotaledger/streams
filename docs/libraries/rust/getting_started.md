@@ -20,7 +20,7 @@ iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "maste
 
 **Local**
 
-1. Clone this repository
+1. Clone the streams repository
 
     ```bash
     git clone https://github.com/iotaledger/streams
@@ -35,7 +35,7 @@ iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "maste
 
 ## Basic Usage
 Once installed, users can implement their author and subscribers and start a new channel.
-
+ 
 ### Author Implementation
 ```
 use iota_streams::app_channels::api::tangle::{Author, ChannelType};
@@ -43,7 +43,7 @@ use iota_streams::app::transport::tangle::client::Client;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let node = "http://localhost:14265";
+    let node = "https://chrysalis-nodes.iota.org";
     let client = Client::new_from_url(node);
 
     // Author implementation will set the Channel Type
@@ -64,12 +64,12 @@ use iota_streams::app::transport::tangle::client::Client;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let node = "http://localhost:14265";
+    let node = "https://chrysalis-nodes.iota.org";
     let client = Client::new_from_url(node);
 
     // Subscriber implementation does not need to specify a channel type, it will be 
     // parsed from the announcement message
-    let mut subscriber = Subscriber::new("MYSUBSCRIBERSECRETSTRING", client);
+    let mut subscriber = Subscriber::new("SUBSCRIBER_UNIQUE_SEED", client);
     
     // Create Address object from announcement address string
     let ann_address = Address::from_str("Announcement link address provided by author")?;   
