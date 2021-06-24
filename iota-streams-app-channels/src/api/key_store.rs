@@ -30,7 +30,7 @@ pub trait KeyStore<Info, F: PRP>: Default {
     fn get_psk(&self, id: &Identifier) -> Option<&Psk>;
     fn contains(&self, id: &Identifier) -> bool;
     fn insert_key(&mut self, id: Identifier, info: Info) -> Result<()>;
-    fn get_next_pskid(&mut self) -> Option<&PskId>;
+    fn get_next_pskid(&self) -> Option<&PskId>;
     fn keys(&self) -> Vec<(&Identifier, &Identifier)>;
     fn iter(&self) -> Vec<(&Identifier, &Info)>;
     fn iter_mut(&mut self) -> Vec<(&Identifier, &mut Info)>;
@@ -81,8 +81,8 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
 
     }
 
-    fn get_next_pskid(&mut self) -> Option<&PskId> {
-        let mut iter = self.keys.iter_mut();
+    fn get_next_pskid(&self) -> Option<&PskId> {
+        let mut iter = self.keys.iter();
         loop {
             match iter.next() {
                 Some((id, _store)) => {
