@@ -1,20 +1,37 @@
 use iota_streams_core::{
     err,
-    Errors::IdentifierGenerationFailure,
+    Errors::{
+        IdentifierGenerationFailure,
+        BadIdentifier,
+        BadOneof,
+    },
     prelude::{
         digest::generic_array::GenericArray,
         Vec,
     },
     psk::{
+        self,
         Psk,
         PskId,
         PSKID_SIZE,
-    }
+    },
+    sponge::prp::PRP,
+    Result,
 };
 
 use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,
+};
+
+use iota_streams_ddml::{
+    command::*,
+    io,
+    types::*,
+};
+
+use crate::{
+    message::*,
 };
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
@@ -71,5 +88,83 @@ impl From<&PskId> for Identifier {
 impl From<&Psk> for Identifier {
     fn from(psk: &Psk) -> Self {
         Identifier::Psk((*psk).into())
+    }
+}
+
+impl<F: PRP> ContentSizeof<F> for Identifier {
+    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+        match self {
+            &Identifier::EdPubKey(pk) => {
+                let oneof = Uint8(0);
+                ctx.absorb(&oneof)?
+                    .absorb(&pk.0)?;
+                Ok(ctx)
+            },
+            &Identifier::PskId(pskid) => {
+                let oneof = Uint8(1);
+                ctx.absorb(&oneof)?
+                    .absorb(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
+                Ok(ctx)
+            },
+            _ => {
+                err(BadIdentifier)
+            },
+        }
+    }
+}
+
+impl<F: PRP, Store> ContentWrap<F, Store> for Identifier
+{
+    fn wrap<'c, OS: io::OStream>(
+        &self,
+        _store: &Store,
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
+        match self {
+            &Identifier::EdPubKey(pk) => {
+                let oneof = Uint8(0);
+                ctx.absorb(&oneof)?
+                    .absorb(&pk.0)?;
+                Ok(ctx)
+            },
+            &Identifier::PskId(pskid) => {
+                let oneof = Uint8(1);
+                ctx.absorb(&oneof)?
+                    .absorb(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
+                Ok(ctx)
+            },
+            _ => {
+                err(BadIdentifier)
+            },
+        }
+    }
+}
+
+impl<F: PRP, Store> ContentUnwrap<F, Store> for Identifier
+{
+    fn unwrap<'c, IS: io::IStream>(
+        &mut self,
+        _store: &Store,
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        let mut oneof = Uint8(0);
+        ctx.absorb(&mut oneof)?;
+        match oneof.0 {
+            0 => {
+                let mut pk = ed25519::PublicKey::default();
+                ctx.absorb(&mut pk)?;
+                *self = Identifier::EdPubKey(ed25519::PublicKeyWrap(pk));
+                Ok(ctx)
+            },
+            1 => {
+                let mut pskid = PskId::default();
+                ctx.absorb(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
+                *self = Identifier::PskId(pskid);
+                Ok(ctx)
+            },
+            _ => {
+                err(BadOneof)
+            },
+        }
     }
 }

@@ -22,6 +22,8 @@ pub enum Errors {
     SpongosNotCommitted,
     /// Link not found in store. (Possibly unimplemented)
     GenericLinkNotFound,
+    /// Unexpected/invalid Identifier
+    BadIdentifier,
 
     //////////
     // Cryptographic
@@ -44,6 +46,8 @@ pub enum Errors {
     BadMac,
     /// No default Random Number Generator available for no_std usage
     NoStdRngMissing,
+    /// Oneof value is unexpected
+    BadOneof,
 
     //////////
     // DDML IO
