@@ -269,7 +269,7 @@ Unregister a subscriber instance from a channel.
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 
-#### The following functions require author.clone() to use, as they consume the instance 
+#### The following functions require subscriber.clone() to use, as they consume the instance 
 #### _async -_ send_subscribe(link): [UserResponse](#UserResponse)
 Send a subscription message attached to an announcement message link. 
 
@@ -461,7 +461,7 @@ Streams Address containing the Application Instance and Message Id
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** The Channel Identifier/Application Instance of the Address
 
-#### set_addr_id(msg_id)
+#### set_msg_id(msg_id)
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
 | msg_id    | `string`              | Message Identifier of the message itself     |
@@ -513,14 +513,14 @@ Fetch the public key of the Message sender (default if none is presented)
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** Public key in hex representation of the sender of the message 
 
-#### get_public_payload(): Array<Bytes>
+#### get_public_payload(): Uint8Array
 Fetch the public payload of the Message sender
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** Public payload byte array 
 
-#### get_masked_payload(): Array<Bytes>
+#### get_masked_payload(): Uint8Array
 Fetch the masked payload of the Message sender
 
 | Param     | Type                  | Description                                  |
