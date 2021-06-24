@@ -1,16 +1,22 @@
 //! Pre-shared key is a secret symmetric key shared between two parties and is used for
 //! (session) key exchange.
 
-use crate::prelude::{
-    generic_array::{
-        typenum::{
-            U16,
-            U32,
+use crate::{
+    prelude::{
+        generic_array::{
+            typenum::{
+                U16,
+                U32,
+            },
+            GenericArray,
         },
-        GenericArray,
+        HashMap,
+        Vec,
     },
-    HashMap,
-    Vec,
+    sponge::{
+        prp::PRP,
+        spongos::Spongos
+    },
 };
 
 /// Size of pre-shared key identifier.
@@ -36,6 +42,16 @@ pub type Psks = HashMap<PskId, Psk>;
 
 /// Container (set) of pre-shared key identifiers.
 pub type PskIds = [PskId];
+
+/// Get a Psk's id
+pub fn get_id_from_psk<F: PRP>(psk: &Psk) -> PskId {
+    let mut ctx = Spongos::<F>::init();
+    ctx.absorb(psk);
+    ctx.commit();
+    let mut id: Vec<u8> = vec![0; PSKID_SIZE];
+    ctx.squeeze(&mut id);
+    GenericArray::clone_from_slice(&id)
+}
 
 /// Select only pre-shared keys with given identifiers.
 pub fn filter_psks<'a>(psks: &'a Psks, psk_ids: &'_ PskIds) -> Vec<IPsk<'a>> {

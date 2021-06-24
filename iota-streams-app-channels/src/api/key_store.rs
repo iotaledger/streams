@@ -1,72 +1,36 @@
 use core::fmt;
-use iota_streams_core::Result;
 
+use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
+    errors::{
+        err,
+        error_messages::Errors::SignatureMismatch
+    },
     prelude::{
         HashMap,
         Vec,
     },
     psk::{
+        get_id_from_psk,
         Psk,
         PskId
     },
-    errors::{
-        err,
-        error_messages::Errors::SignatureMismatch
-    }
+    Result,
+    sponge::prp::PRP,
 };
-use iota_streams_core_edsig::{
-    key_exchange::x25519::{
-        self,
-        PublicKeyWrap as XPubKeyWrap,
-    },
-    signature::ed25519::{
-        self,
-        PublicKeyWrap as EPubKeyWrap
-    },
-};
+use iota_streams_core_edsig::key_exchange::x25519;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
-pub enum Identifier {
-    EdPubKey(EPubKeyWrap),
-    XPubKey(XPubKeyWrap),
-    PskId(PskId),
-    Psk(Psk),
-}
-
-impl Identifier {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        match self {
-            Identifier::XPubKey(id) => id.0.as_bytes().to_vec(),
-            Identifier::EdPubKey(id) => id.0.as_bytes().to_vec(),
-            Identifier::PskId(id) => id.to_vec(),
-            Identifier::Psk(id) => id.to_vec()
-        }
-    }
-
-    pub fn get_pk(&self) -> Option<&ed25519::PublicKey> {
-        if let Identifier::EdPubKey(pk) = self { Some(&pk.0) } else { None }
-    }
-
-    pub fn get_xpk(&self) -> Option<&x25519::PublicKey> {
-        if let Identifier::XPubKey(xpk) = self { Some(&xpk.0) } else { None }
-    }
-
-    pub fn get_pskid(&self) -> Option<&PskId> {
-        if let Identifier::PskId(id) = self { Some(id) } else { None }
-    }
-}
-
-
-pub trait KeyStore<Info>: Default {
+pub trait KeyStore<Info, F: PRP>: Default {
     fn filter(&self, pks: &[&Identifier]) -> Vec<(&Identifier, &Identifier)>;
 
     /// Retrieve the sequence state for a given publisher
     fn get(&self, id: &Identifier) -> Option<&Info>;
     fn get_mut(&mut self, id: &Identifier) -> Option<&mut Info>;
     fn get_ke_pk(&self, id: &Identifier) -> Option<&x25519::PublicKey>;
-    fn insert(&mut self, id: Identifier, info: Info) -> Result<()>;
-    //fn pub_keys(&self) -> Vec<(&ed25519::PublicKey, &x25519::PublicKey)>;
+    fn get_psk(&self, id: &Identifier) -> Option<&Psk>;
+    fn contains(&self, id: &Identifier) -> bool;
+    fn insert_key(&mut self, id: Identifier, info: Info) -> Result<()>;
+    fn get_next_pskid(&mut self) -> Option<&PskId>;
     fn keys(&self) -> Vec<(&Identifier, &Identifier)>;
     fn iter(&self) -> Vec<(&Identifier, &Info)>;
     fn iter_mut(&mut self) -> Vec<(&Identifier, &mut Info)>;
@@ -90,7 +54,7 @@ impl<Info> Default for KeyMap<Info> {
     }
 }
 
-impl<Info> KeyStore<Info> for KeyMap<Info> {
+impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
     fn filter(&self, pks: &[&Identifier]) -> Vec<(&Identifier, &Identifier)> {
         pks.iter()
             .filter_map(|id| self.keys.get_key_value(id).map(|(e, (x, _))| (e, x)))
@@ -110,27 +74,54 @@ impl<Info> KeyStore<Info> for KeyMap<Info> {
 
     }
 
-    fn insert(&mut self, id: Identifier, info: Info) -> Result<()> {
-        let store_id = match id.clone() {
-            Identifier::EdPubKey(id) => {
-                Ok(
-                    Identifier::XPubKey(x25519::public_from_ed25519(&id.0)?.into())
-                )
-            },
-            Identifier::PskId(id) => Ok(Identifier::PskId(id)),
-            _ => err(SignatureMismatch),
-        }?;
+    fn get_psk(&self, id: &Identifier) -> Option<&Psk> {
+        self.keys.get(&id)
+            .filter(|(x, _i)| x.get_psk().is_some())
+            .map(|(x, _i)| x.get_psk().unwrap())
 
-        self.keys.insert(id, (store_id, info));
-        Ok(())
     }
-/*    fn pub_keys(&self) -> Result<Vec<(&ed25519::PublicKey, &x25519::PublicKey)>> {
-        let pks = self.keys.iter()
-            .filter(|(k, (x, _i))| if let Identifier::EdPubKey(_pk) = k { true } else { false })
-            .map(|(k, (x, _i))| (&k.get_pk()?, &x.get_xpk()?))
-            .collect();
-        Ok(pks)
-    }*/
+
+    fn get_next_pskid(&mut self) -> Option<&PskId> {
+        let mut iter = self.keys.iter_mut();
+        loop {
+            match iter.next() {
+                Some((id, _store)) => {
+                    if let Identifier::PskId(pskid) = id {
+                        return Some(pskid)
+                    }
+                },
+                None => return None
+            }
+        }
+    }
+
+    fn contains(&self, id: &Identifier) -> bool {
+        self.keys.contains_key(id)
+    }
+
+    fn insert_key(&mut self, id: Identifier, info: Info) -> Result<()> {
+        match &id {
+            Identifier::EdPubKey(pk) => {
+                let store_id = Identifier::XPubKey(x25519::public_from_ed25519(&pk.0)?.into());
+                self.keys.insert(id, (store_id, info));
+                Ok(())
+            },
+            Identifier::PskId(_pskid) => {
+                self.keys.insert(id.clone(), (id, info));
+                Ok(())
+            },
+            Identifier::Psk(psk) => {
+                let pskid = Identifier::PskId(get_id_from_psk::<F>(psk));
+                self.keys.insert(pskid, (id, info));
+                Ok(())
+            }
+            _ => {
+                println!("Signature mismatch in insert pk");
+                err(SignatureMismatch)
+            }
+        }
+    }
+
     fn keys(&self) -> Vec<(&Identifier, &Identifier)> {
         self.keys.iter().map(|(k, (x, _i))| (k, x)).collect()
     }

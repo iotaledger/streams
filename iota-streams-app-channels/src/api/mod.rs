@@ -1,5 +1,4 @@
-pub mod pk_store;
-pub mod psk_store;
+pub mod key_store;
 
 /// We would need an array import in prelude, and using IntoIter with size specifying...
 /// type_complexity to be determined in future issue

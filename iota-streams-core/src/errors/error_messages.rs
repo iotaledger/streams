@@ -110,6 +110,8 @@ pub enum Errors {
     BadMessageInfo(u8),
     /// Failed to make message
     MessageCreationFailure,
+    /// Identifier could not be generated with given bytes. Must be an ed25519 Public Key or a PskId
+    IdentifierGenerationFailure,
 
     //////////
     // Users
@@ -132,6 +134,8 @@ pub enum Errors {
     StateStoreFailure,
     /// Cannot generate new channel, it may already exists. please try using a different seed
     ChannelDuplication,
+    /// Subscriber already has a psk stored, cannot add another
+    SinglePskAllowance,
 
     //////////
     // User Recovery

@@ -1,15 +1,23 @@
-use iota_streams_app::message::{
-    HasLink as _,
-    LinkGenerator,
+use iota_streams_app::{
+    identifier::Identifier,
+    message::{
+        HasLink as _,
+        LinkGenerator,
+    }
 };
 use iota_streams_core::{
     err,
     prelude::Vec,
     prng,
+    psk::{
+        Psk,
+        PskId,
+    },
     try_or,
     Errors::{
         UnknownMsgType,
         UserNotRegistered,
+        ChannelDuplication,
     },
     Result,
     LOCATION_LOG,
@@ -20,17 +28,8 @@ use crate::{
     api,
     message,
 };
-use iota_streams_core::{
-    psk::{
-        Psk,
-        PskId,
-    },
-    Errors::ChannelDuplication,
-};
-use iota_streams_ddml::types::GenericArray;
-use crate::api::pk_store::Identifier;
 
-type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
+type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
 
 const ENCODING: &str = "utf-8";
 const PAYLOAD_LENGTH: usize = 32_000;
@@ -154,17 +153,15 @@ impl<Trans> User<Trans> {
         })
     }
 
-    pub fn store_psk(&mut self, psk: Psk) -> PskId {
-        let id: PskId = GenericArray::clone_from_slice(&psk[0..16]);
-        self.user.store_psk(id, psk);
-        id
+    pub fn store_psk(&mut self, psk: Psk, use_psk: bool) -> Result<PskId> {
+        self.user.store_psk(psk, use_psk)
     }
 
     /// Consume a binary sequence message and return the derived message link
     fn process_sequence(&mut self, msg: BinaryMessage, store: bool) -> Result<Address> {
         let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store)?;
         let msg_link = self.user.link_gen.link_from(
-            &unwrapped.body.pk,
+            &unwrapped.body.id,
             Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
         );
         Ok(msg_link)
@@ -304,7 +301,7 @@ impl<Trans: Transport> User<Trans> {
         if let Some(_addr) = &self.user.appinst {
             let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, true)?.body;
             let msg_id = self.user.link_gen.link_from(
-                &seq_msg.pk,
+                &seq_msg.id,
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
 

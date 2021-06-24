@@ -48,6 +48,7 @@ use crate::message::{
     LinkGenerator,
     LinkedMessage,
 };
+use crate::identifier::Identifier;
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
@@ -277,10 +278,10 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         s.squeeze(new.id.as_mut());
         new
     }
-    fn gen_msgid(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> MsgId {
+    fn gen_msgid(&self, id: &Identifier, cursor: Cursor<&MsgId>) -> MsgId {
         let mut s = Spongos::<F>::init();
         s.absorb(self.addr.appinst.id.as_ref());
-        s.absorb(pk.as_ref());
+        s.absorb(id.to_bytes());
         s.absorb(cursor.link.id.as_ref());
         s.absorb(&cursor.branch_no.to_be_bytes());
         s.absorb(&cursor.seq_no.to_be_bytes());
@@ -295,7 +296,7 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     /// Used by Author to generate a new application instance: channels address and announcement message identifier
     fn gen(&mut self, pk: &ed25519::PublicKey, channel_idx: u64) {
         self.addr.appinst = AppInst::new(pk, channel_idx);
-        self.addr.msgid = self.gen_msgid(pk, Cursor::default().as_ref());
+        self.addr.msgid = self.gen_msgid(&Identifier::EdPubKey((*pk).into()), Cursor::default().as_ref());
     }
 
     /// Used by Author to get announcement message id, it's just stored internally by link generator
@@ -317,10 +318,10 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     }
 
     /// Used by users to pseudo-randomly generate a new message link from a cursor
-    fn link_from(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> TangleAddress {
+    fn link_from(&self, id: &Identifier, cursor: Cursor<&MsgId>) -> TangleAddress {
         TangleAddress {
             appinst: self.addr.appinst.clone(),
-            msgid: self.gen_msgid(pk, cursor),
+            msgid: self.gen_msgid(id, cursor),
         }
     }
 }

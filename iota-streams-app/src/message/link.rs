@@ -8,6 +8,7 @@ use iota_streams_core_edsig::signature::ed25519;
 
 use super::hdf::HDF;
 use iota_streams_ddml::types::Bytes;
+use crate::identifier::Identifier;
 
 /// Type of "absolute" links. For http it's the absolute URL.
 pub trait HasLink: Sized + Default + Clone + Eq {
@@ -122,12 +123,12 @@ pub trait LinkGenerator<Link: HasLink>: Default {
     fn uniform_link_from(&self, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
 
     /// Used by users to pseudo-randomly generate a new message link from a cursor
-    fn link_from(&self, pk: &ed25519::PublicKey, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
+    fn link_from(&self, id: &Identifier, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
 
     /// Derive a new link and construct a header with given content type.
     fn uniform_header_from(
         &self,
-        pk: &ed25519::PublicKey,
+        id: &Identifier,
         cursor: Cursor<&<Link as HasLink>::Rel>,
         content_type: u8,
         payload_length: usize,
@@ -140,14 +141,14 @@ pub trait LinkGenerator<Link: HasLink>: Default {
             content_type,
             payload_length,
             seq_num,
-            pk,
+            id,
         )
     }
 
     /// Derive a new link and construct a header with given content type.
     fn header_from(
         &self,
-        pk: &ed25519::PublicKey,
+        id: &Identifier,
         cursor: Cursor<&<Link as HasLink>::Rel>,
         content_type: u8,
         payload_length: usize,
@@ -155,12 +156,12 @@ pub trait LinkGenerator<Link: HasLink>: Default {
         previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
         HDF::new_with_fields(
-            self.link_from(pk, cursor),
+            self.link_from(id, cursor),
             Bytes(previous_msg_link.to_bytes()),
             content_type,
             payload_length,
             seq_num,
-            pk,
+            id,
         )
     }
 }

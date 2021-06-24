@@ -21,7 +21,7 @@ use iota_streams_core::{
     },
 };
 use iota_streams_core_edsig::signature::ed25519;
-use crate::api::pk_store::Identifier;
+use iota_streams_app::identifier::Identifier;
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
@@ -55,8 +55,8 @@ impl<Trans> Subscriber<Trans> {
     }
 
     /// Store a PSK in the user instance, returns the PskId for identifying purposes in keyloads
-    pub fn store_psk(&mut self, psk: Psk) -> PskId {
-        self.user.store_psk(psk)
+    pub fn store_psk(&mut self, psk: Psk) -> Result<PskId> {
+        self.user.store_psk(psk, true)
     }
 
     /// Fetch the Address (application instance) of the channel.
@@ -447,7 +447,7 @@ impl<T: Transport> fmt::Display for Subscriber<T> {
             f,
             "<{}>\n{}",
             hex::encode(self.user.user.sig_kp.public.as_bytes()),
-            self.user.user.pk_store
+            self.user.user.key_store
         )
     }
 }
