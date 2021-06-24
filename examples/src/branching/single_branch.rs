@@ -15,6 +15,7 @@ use iota_streams::{
         Errors::*,
         Result,
         LOCATION_LOG,
+        psk::Psk,
     },
     ddml::types::*,
 };
@@ -76,6 +77,12 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         )?;
     }
 
+    // Generate a simple PSK for storage by users
+    let psk: Psk = GenericArray::from([2;32]);
+    author.store_psk(psk.clone())?;
+    subscriberC.store_psk(psk.clone())?;
+
+
     println!("\nSubscribe A");
     let subscribeA_link = {
         let msg = subscriberA.send_subscribe(&announcement_link)?;
@@ -104,7 +111,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         print!("  Author     : {}", author);
     }
 
-    println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
+    println!("\nShare keyload for everyone [SubscriberA, SubscriberB, PSK]");
     let previous_msg_link = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
@@ -115,13 +122,12 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nHandle Keyload");
     {
-        let resultC = subscriberC.receive_keyload(&previous_msg_link)?;
-        print!("  SubscriberC: {}", subscriberC);
-        try_or!(!resultC, SubscriberAccessMismatch(String::from("C")))?;
         subscriberA.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
         subscriberB.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberB: {}", subscriberB);
+        subscriberC.receive_keyload(&previous_msg_link)?;
+        print!("  SubscriberC: {}", subscriberC);
     }
 
     println!("\nSigned packet");
@@ -172,9 +178,16 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let resultC = subscriberC.receive_tagged_packet(&previous_msg_link);
+        let  (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
     }
 
     println!("\nTagged packet 2 - SubscriberA");
@@ -220,9 +233,55 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let resultC = subscriberC.receive_tagged_packet(&previous_msg_link);
+        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
+
+    }
+
+    println!("\nSubscriber fetching transactions...");
+    utils::s_fetch_next_messages(&mut subscriberC);
+
+
+    println!("\nTagged packet 5 - SubscriberC");
+    let previous_msg_link = {
+        let (msg, seq) = subscriberC.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)?;
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        panic_if_not(seq.is_none());
+        print!("  SubscriberC: {}", subscriberC);
+        msg
+    };
+
+    println!("\nHandle Tagged packet 5");
+    {
+        let (unwrapped_public, unwrapped_masked) = subscriberA.receive_tagged_packet(&previous_msg_link)?;
+        print!("  SubscriberA: {}", subscriberA);
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
+
+        let (unwrapped_public, unwrapped_masked) = subscriberB.receive_tagged_packet(&previous_msg_link)?;
+        print!("  SubscriberB: {}", subscriberB);
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
     }
 
     println!("\nAuthor fetching transactions...");
