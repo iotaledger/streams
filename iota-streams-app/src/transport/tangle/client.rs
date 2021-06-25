@@ -21,6 +21,10 @@ use iota_streams_core::{
     Result,
     WrappedError,
     LOCATION_LOG,
+    crypto::hashes::{
+        blake2b,
+        Digest,
+    }
 };
 
 use crate::{
@@ -32,11 +36,6 @@ use crate::{
 };
 
 use futures::future::join_all;
-
-use crypto::hashes::{
-    blake2b,
-    Digest,
-};
 
 use iota_streams_core::prelude::String;
 

@@ -66,3 +66,5 @@ pub use errors::{
     error_handler::*,
     error_messages::*,
 };
+
+pub use crypto;
