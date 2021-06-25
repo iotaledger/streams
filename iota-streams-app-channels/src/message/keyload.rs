@@ -64,6 +64,8 @@ use iota_streams_core::{
         spongos,
     },
     Result,
+    err,
+    Errors::BadIdentifier,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -78,7 +80,10 @@ use iota_streams_ddml::{
     },
     types::*,
 };
-use iota_streams_app::identifier::Identifier;
+use iota_streams_app::{
+    message::*,
+    identifier::Identifier,
+};
 
 pub struct ContentWrap<'a, F, Link: HasLink, KePks> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
@@ -101,33 +106,30 @@ where
         let repeated_keys = Size(self.keys.len());
         ctx.join(&store, self.link)?
             .absorb(&self.nonce)?
-            .skip(repeated_keys)?
-            .repeated(self.keys.clone().into_iter(), |ctx, (id, store_id)| {
-                match &id {
-                    Identifier::PskId(pskid) => {
-                        if let Identifier::Psk(psk) = &store_id {
-                            ctx.fork(|ctx| {
-                                ctx.absorb(Uint8(0))?
-                                    .mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
-                                    .absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
-                                    .commit()?
-                                    .mask(&self.key)
-                            })
-                        } else {
-                            Ok(ctx)
-                        }
-                    },
-                    Identifier::EdPubKey(pk) => {
-                        ctx.fork(|ctx| ctx.absorb(Uint8(1))?
-                            .absorb(&pk.0)?
-                            .x25519(store_id.get_xpk().unwrap(), &self.key)
-                        )
-                    }
-                    _ => Ok(ctx)
-                }
+            .fork(|ctx| { // fork into new context in order to hash Identifiers
+                ctx.absorb(repeated_keys)?
+                    .repeated(self.keys.clone().into_iter(), |ctx, (id, store_id)| {
+                        let ctx = id.sizeof(ctx)?;
+                        ctx.fork(|ctx| { // fork in order to skip the actual keyload data which may be unavailable to all recipients
+                            match &id {
+                                // Identifier::PskId(pskid) => {
+                                //     TODO: get psk corresponding to pskid
+                                //     ctx.absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
+                                //         .commit()?
+                                //         .mask(&self.key)
+                                // },
+                                Identifier::EdPubKey(_pk) => {
+                                    ctx.x25519(store_id.get_xpk().unwrap(), &self.key)
+                                },
+                                _ => {
+                                    err(BadIdentifier)
+                                }
+                            }
+                        })
+                    })
             })?
             .absorb(External(&self.key))?
-            .ed25519(self.sig_kp, HashSig)?
+            .fork(|ctx| ctx.ed25519(self.sig_kp, HashSig))?
             .commit()?;
         Ok(ctx)
     }
@@ -146,38 +148,39 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
+        let mut id_hash = External(NBytes::<U64>::default());
         let repeated_keys = Size(self.keys.len());
         ctx.join(store, self.link)?
             .absorb(&self.nonce)?
-            .skip(repeated_keys)?
-            .repeated(self.keys.clone().into_iter(), |ctx, (id, store_id)| {
-                match &id {
-                    Identifier::PskId(pskid) => {
-                        if let Identifier::Psk(psk) = &store_id {
-                            ctx.fork(|ctx| {
-                                ctx.absorb(Uint8(0))?
-                                    .mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
-                                    .absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
-                                    .commit()?
-                                    .mask(&self.key)
-                            })
-                        } else {
-                            Ok(ctx)
-                        }
-                    },
-                    Identifier::EdPubKey(pk) => {
-                        ctx.fork(|ctx| ctx.absorb(Uint8(1))?
-                            .absorb(&pk.0)?
-                            .x25519(store_id.get_xpk().unwrap(), &self.key)
-                        )
-                    },
-                    _ => {
-                        Ok(ctx)
-                    }
-                }
+            .fork(|ctx| { // fork into new context in order to hash Identifiers
+                ctx.absorb(repeated_keys)?
+                    .repeated(self.keys.clone().into_iter(), |ctx, (id, store_id)| {
+                        let ctx = id.wrap(store, ctx)?;
+                        ctx.fork(|ctx| { // fork in order to skip the actual keyload data which may be unavailable to all recipients
+                            match &id {
+                                // Identifier::PskId(pskid) => {
+                                //     TODO: get psk corresponding to pskid
+                                //     ctx.absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
+                                //         .commit()?
+                                //         .mask(&self.key)
+                                // },
+                                Identifier::EdPubKey(_pk) => {
+                                    //TODO: make sure _pk corresponds to store_id.get_xpk()
+                                    ctx.x25519(store_id.get_xpk().unwrap(), &self.key)
+                                },
+                                _ => {
+                                    err(BadIdentifier)
+                                }
+                            }
+                        })
+                    })?
+                    .commit()?
+                    .squeeze(&mut id_hash)
             })?
             .absorb(External(&self.key))?
-            .ed25519(self.sig_kp, HashSig)?
+            .fork(|ctx| {
+                ctx.absorb(&id_hash)?.ed25519(self.sig_kp, HashSig)
+            })?
             .commit()?;
         Ok(ctx)
     }
@@ -248,62 +251,70 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        let mut id_hash = External(NBytes::<U64>::default());
         let mut repeated_keys = Size(0);
-        let mut id_type = Uint8(0);
-        let mut pskid = psk::PskId::default();
 
         ctx
             .join(store, &mut self.link)?
             .absorb(&mut self.nonce)?
-            .skip(&mut repeated_keys)?
-            .repeated(repeated_keys, |ctx| {
-                ctx.fork(|mut ctx| {
-                    ctx = ctx.absorb(&mut id_type)?;
-                    match id_type {
-                        Uint8(0) => {
-                            ctx.mask(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
-                            if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid) {
-                                let mut key = NBytes::<U32>::default();
-                                ctx.absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
-                                    .commit()?
-                                    .mask(&mut key)?;
-                                self.key = Some(key);
-                                self.psk_ids.push(pskid);
-                                Ok(ctx)
-                            } else {
-                                self.psk_ids.push(pskid);
-                                // Just drop the rest of the forked message so not to waste Spongos operations
-                                let n = Size(spongos::KeySize::<F>::USIZE);
-                                ctx.drop(n)
+            .fork(|ctx| { // fork into new context in order to hash Identifiers
+                ctx.absorb(&mut repeated_keys)?
+                    .repeated(repeated_keys, |ctx| {
+                        let (id,ctx) = Identifier::unwrap_new(store, ctx)?;
+                        ctx.fork(|ctx| { // fork in order to skip the actual keyload data which may be unavailable to all recipients
+                            match id {
+                                Identifier::PskId(pskid) => {
+                                    if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &pskid) {
+                                        let mut key = NBytes::<U32>::default();
+                                        ctx.absorb(External(<&NBytes<psk::PskSize>>::from(psk)))?
+                                            .commit()?
+                                            .mask(&mut key)?;
+                                        self.key = Some(key);
+                                        self.psk_ids.push(pskid);
+                                        Ok(ctx)
+                                    } else {
+                                        self.psk_ids.push(pskid);
+                                        // Just drop the rest of the forked message so not to waste Spongos operations
+                                        let n = Size(spongos::KeySize::<F>::USIZE);
+                                        ctx.drop(n)
+                                    }
+                                },
+                                Identifier::EdPubKey(ke_pk) => {
+                                    if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &ke_pk.0) {
+                                        let mut key = NBytes::<U32>::default();
+                                        ctx.x25519(ke_sk, &mut key)?;
+                                        self.key = Some(key);
+                                        // Save the relevant public key
+                                        self.ke_pk = ke_pk.0;
+                                        self.ke_pks.push(ke_pk.0);
+                                        Ok(ctx)
+                                    } else {
+                                        self.ke_pks.push(ke_pk.0);
+                                        // Just drop the rest of the forked message so not to waste Spongos operations
+                                        // TODO: key length
+                                        let n = Size(64);
+                                        ctx.drop(n)
+                                    }
+                                },
+                                _ => {
+                                    err(BadIdentifier)
+                                }
                             }
-                        },
-                        Uint8(1) => {
-                            let mut ke_pk = ed25519::PublicKey::default();
-                            ctx.absorb(&mut ke_pk)?;
-                            if let Some(ke_sk) = (self.lookup_ke_sk)(self.lookup_arg, &ke_pk) {
-                                let mut key = NBytes::<U32>::default();
-                                ctx.x25519(ke_sk, &mut key)?;
-                                self.key = Some(key);
-                                // Save the relevant public key
-                                self.ke_pk = ke_pk;
-                                self.ke_pks.push(ke_pk);
-                                Ok(ctx)
-                            } else {
-                                self.ke_pks.push(ke_pk);
-                                // Just drop the rest of the forked message so not to waste Spongos operations
-                                // TODO: key length
-                                let n = Size(64);
-                                ctx.drop(n)
-                            }
-                        }
-                        _ => Ok(ctx)
-                    }
-                })
-            })?;
+                        })
+                    })?
+                    .commit()?
+                    .squeeze(&mut id_hash)
+                })?;
 
         if let Some(ref key) = self.key {
-            ctx.absorb(External(key))?.ed25519(self.sig_pk, HashSig)?.commit()?;
+            ctx.absorb(External(key))?
+                .fork(|ctx| ctx.absorb(&id_hash)?.ed25519(self.sig_pk, HashSig))?
+                .commit()
+        } else {
+            // Allow key not found, no key situation must be handled outside, there's a use-case for that
+            Ok(ctx)
         }
-        Ok(ctx)
     }
 }
+
+//TODO: add test cases: 0,1,2 pks + 0,1,2 psks + key found/notfound + unwrap modify/fuzz to check sig does work
