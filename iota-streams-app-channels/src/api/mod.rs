@@ -15,3 +15,16 @@ pub enum ChannelType {
     MultiBranch,
     SingleDepth,
 }
+
+use iota_streams_core::psk::*;
+use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
+
+/// Makes a PSK from an arbitrary byte array
+pub fn make_psk(bytes: &[u8]) -> Psk {
+    new_psk::<KeccakF1600>(bytes)
+}
+
+/// Makes a PskId from an arbitrary byte array
+pub fn make_pskid(bytes: &[u8]) -> PskId {
+    new_pskid::<KeccakF1600>(bytes)
+}

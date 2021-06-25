@@ -157,14 +157,6 @@ impl<Trans> User<Trans> {
         self.user.store_psk(psk, pskid, use_psk)
     }
 
-    pub fn make_psk(&mut self, bytes: &[u8]) -> Psk {
-        self.user.make_psk(bytes)
-    }
-
-    pub fn make_pskid(&mut self, bytes: &[u8]) -> PskId {
-        self.user.make_pskid(bytes)
-    }
-
     /// Consume a binary sequence message and return the derived message link
     fn process_sequence(&mut self, msg: BinaryMessage, store: bool) -> Result<Address> {
         let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store)?;

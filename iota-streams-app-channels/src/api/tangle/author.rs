@@ -70,16 +70,6 @@ impl<Trans> Author<Trans> {
         self.user.store_psk(psk, pskid, false)
     }
 
-    /// Makes a PSK from an arbitrary byte array
-    pub fn make_psk(&mut self, bytes: &[u8]) -> Psk {
-        self.user.make_psk(bytes)
-    }
-
-    /// Makes a PskId from an arbitrary byte array
-    pub fn make_pskid(&mut self, bytes: &[u8]) -> PskId {
-        self.user.make_pskid(bytes)
-    }
-
     /// Generate a vector containing the next sequenced message identifier for each publishing
     /// participant in the channel
     ///

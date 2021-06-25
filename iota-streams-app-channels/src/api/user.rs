@@ -31,7 +31,6 @@ use iota_streams_core::{
         self,
         PskId,
         Psk,
-        new_psk,
         new_pskid,
     },
     Result,
@@ -1009,14 +1008,6 @@ where
             state.push((*pk, Cursor::new_at(link, *branch_no, *seq_no)))
         }
         Ok(state)
-    }
-
-    pub fn make_psk(&self, bytes: &[u8]) -> Psk {
-        new_psk::<F>(bytes)
-    }
-
-    pub fn make_pskid(&self, bytes: &[u8]) -> PskId {
-        new_pskid::<F>(bytes)
     }
 }
 
