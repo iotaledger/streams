@@ -87,8 +87,8 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
 
     fn get_psk(&self, id: &Identifier) -> Option<Psk> {
         match id {
-            Identifier::PskId(_id) => match self.psks.get(id).map(|(x, _i)| x) {
-                Some(x) => x.map(|x| x),
+            Identifier::PskId(_id) => match self.psks.get(id).map(|(x, _i)| *x) {
+                Some(psk) => psk,
                 None => None,
             },
             _ => None
