@@ -1,13 +1,24 @@
 use core::{
-    convert::{AsMut, AsRef},
+    convert::{
+        AsMut,
+        AsRef,
+    },
     fmt,
 };
 
 // Reexport some often used types
 pub use iota_streams_core::prelude::{
-    generic_array::{ArrayLength, GenericArray},
+    generic_array::{
+        ArrayLength,
+        GenericArray,
+    },
     hex,
-    typenum::{marker_traits::Unsigned, U16, U32, U64},
+    typenum::{
+        marker_traits::Unsigned,
+        U16,
+        U32,
+        U64,
+    },
 };
 
 /// Fixed-size array of bytes, the size is known at compile time and is not encoded in trinary representation.

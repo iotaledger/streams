@@ -2,15 +2,25 @@
 //! (session) key exchange.
 
 use crate::{
-    crypto::hashes::{blake2b, Digest},
+    crypto::hashes::{
+        blake2b,
+        Digest,
+    },
     prelude::{
         generic_array::{
-            typenum::{U16, U32},
+            typenum::{
+                U16,
+                U32,
+            },
             GenericArray,
         },
-        HashMap, Vec,
+        HashMap,
+        Vec,
     },
-    sponge::{prp::PRP, spongos::Spongos},
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
 };
 
 /// Size of pre-shared key identifier.

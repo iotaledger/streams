@@ -1,19 +1,33 @@
 use iota_streams_app::{
     identifier::Identifier,
-    message::{HasLink as _, LinkGenerator},
+    message::{
+        HasLink as _,
+        LinkGenerator,
+    },
 };
 use iota_streams_core::{
     err,
     prelude::Vec,
     prng,
-    psk::{Psk, PskId},
+    psk::{
+        Psk,
+        PskId,
+    },
     try_or,
-    Errors::{ChannelDuplication, UnknownMsgType, UserNotRegistered},
-    Result, LOCATION_LOG,
+    Errors::{
+        ChannelDuplication,
+        UnknownMsgType,
+        UserNotRegistered,
+    },
+    Result,
+    LOCATION_LOG,
 };
 
 use super::*;
-use crate::{api, message};
+use crate::{
+    api,
+    message,
+};
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
 

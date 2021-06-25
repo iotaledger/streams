@@ -1,10 +1,23 @@
-use core::{cell::RefCell, convert::TryFrom};
+use core::{
+    cell::RefCell,
+    convert::TryFrom,
+};
 use iota_streams::{
-    app::transport::tangle::client::{Client, SendOptions as ApiSendOptions},
-    app_channels::api::tangle::{
-        Address as ApiAddress, ChannelType as ApiChannelType, MessageContent, UnwrappedMessage,
+    app::transport::tangle::client::{
+        Client,
+        SendOptions as ApiSendOptions,
     },
-    core::prelude::{Rc, String, ToString},
+    app_channels::api::tangle::{
+        Address as ApiAddress,
+        ChannelType as ApiChannelType,
+        MessageContent,
+        UnwrappedMessage,
+    },
+    core::prelude::{
+        Rc,
+        String,
+        ToString,
+    },
     ddml::types::hex,
 };
 use wasm_bindgen::prelude::*;

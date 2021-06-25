@@ -1,18 +1,32 @@
-use core::{fmt, ops::Mul};
+use core::{
+    fmt,
+    ops::Mul,
+};
 
-use super::prp::{Inner, PRP};
+use super::prp::{
+    Inner,
+    PRP,
+};
 use crate::{
     prelude::{
         digest::Digest,
         generic_array::{
-            typenum::{Unsigned as _, U2},
-            ArrayLength, GenericArray,
+            typenum::{
+                Unsigned as _,
+                U2,
+            },
+            ArrayLength,
+            GenericArray,
         },
         Vec,
     },
     try_or,
-    Errors::{LengthMismatch, SpongosNotCommitted},
-    Result, LOCATION_LOG,
+    Errors::{
+        LengthMismatch,
+        SpongosNotCommitted,
+    },
+    Result,
+    LOCATION_LOG,
 };
 
 fn xor(s: &mut [u8], x: &[u8]) {

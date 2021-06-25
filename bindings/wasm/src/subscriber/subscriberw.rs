@@ -2,13 +2,25 @@ use core::convert::TryInto as _;
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
-use crate::{types::*, user::userw::*};
+use crate::{
+    types::*,
+    user::userw::*,
+};
 
 use core::cell::RefCell;
 use iota_streams::{
-    app::transport::{tangle::client::Client as ApiClient, TransportOptions},
-    app_channels::api::tangle::{Address as ApiAddress, Subscriber as ApiSubscriber},
-    core::prelude::{Rc, String},
+    app::transport::{
+        tangle::client::Client as ApiClient,
+        TransportOptions,
+    },
+    app_channels::api::tangle::{
+        Address as ApiAddress,
+        Subscriber as ApiSubscriber,
+    },
+    core::prelude::{
+        Rc,
+        String,
+    },
     ddml::types::*,
 };
 

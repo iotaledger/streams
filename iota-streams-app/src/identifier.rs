@@ -1,15 +1,29 @@
 use iota_streams_core::{
     err,
-    prelude::{digest::generic_array::GenericArray, Vec},
-    psk::{self, PskId, PSKID_SIZE},
+    prelude::{
+        digest::generic_array::GenericArray,
+        Vec,
+    },
+    psk::{
+        self,
+        PskId,
+        PSKID_SIZE,
+    },
     sponge::prp::PRP,
-    Errors::{BadOneof, IdentifierGenerationFailure},
+    Errors::{
+        BadOneof,
+        IdentifierGenerationFailure,
+    },
     Result,
 };
 
 use iota_streams_core_edsig::signature::ed25519;
 
-use iota_streams_ddml::{command::*, io, types::*};
+use iota_streams_ddml::{
+    command::*,
+    io,
+    types::*,
+};
 
 use crate::message::*;
 

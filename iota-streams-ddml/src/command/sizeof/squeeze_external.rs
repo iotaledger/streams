@@ -3,7 +3,12 @@ use iota_streams_core::Result;
 use super::Context;
 use crate::{
     command::Squeeze,
-    types::{ArrayLength, External, Mac, NBytes},
+    types::{
+        ArrayLength,
+        External,
+        Mac,
+        NBytes,
+    },
 };
 
 /// External values are not encoded.

@@ -1,7 +1,11 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{command::Join, link_store::LinkStore, types::SkipFallback};
+use crate::{
+    command::Join,
+    link_store::LinkStore,
+    types::SkipFallback,
+};
 
 // It's the size of the link.
 // impl<'a, L: Link, S: LinkStore<L>> Join<&'a L, &'a S> for Context<F> {

@@ -108,7 +108,10 @@ pub unsafe extern "C" fn memcmp(mem1: *const u8, mem2: *const u8, n: usize) -> i
     0
 }
 
-use iota_streams::app_channels::api::tangle::{test::example, BucketTransport};
+use iota_streams::app_channels::api::tangle::{
+    test::example,
+    BucketTransport,
+};
 
 fn minmain() {
     let transport = BucketTransport::new();

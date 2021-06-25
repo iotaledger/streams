@@ -1,7 +1,11 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{command::Repeated, io, types::Size};
+use crate::{
+    command::Repeated,
+    io,
+    types::Size,
+};
 use iota_streams_core::sponge::prp::PRP;
 
 impl<C, F: PRP, IS: io::IStream> Repeated<Size, C> for Context<F, IS>

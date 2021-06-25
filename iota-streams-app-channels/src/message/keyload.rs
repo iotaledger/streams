@@ -52,19 +52,34 @@
 use core::convert::TryFrom;
 use iota_streams_app::{
     identifier::Identifier,
-    message::{self, *},
+    message::{
+        self,
+        *,
+    },
 };
 use iota_streams_core::{
-    prelude::{typenum::Unsigned as _, Vec},
+    prelude::{
+        typenum::Unsigned as _,
+        Vec,
+    },
     psk,
-    sponge::{prp::PRP, spongos},
+    sponge::{
+        prp::PRP,
+        spongos,
+    },
     Result,
 };
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 
@@ -284,4 +299,4 @@ where
     }
 }
 
-//TODO: add test cases: 0,1,2 pks + 0,1,2 psks + key found/notfound + unwrap modify/fuzz to check sig does work
+// TODO: add test cases: 0,1,2 pks + 0,1,2 psks + key found/notfound + unwrap modify/fuzz to check sig does work

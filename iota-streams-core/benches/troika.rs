@@ -1,10 +1,19 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::{Benchmark, Criterion};
+use criterion::{
+    Benchmark,
+    Criterion,
+};
 use iota_streams_core::{
-    sponge::{prp::troika::Troika, spongos::Spongos},
-    tbits::{trinary::Trit, Tbits},
+    sponge::{
+        prp::troika::Troika,
+        spongos::Spongos,
+    },
+    tbits::{
+        trinary::Trit,
+        Tbits,
+    },
 };
 use std::time::Duration;
 

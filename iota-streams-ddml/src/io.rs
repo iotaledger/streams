@@ -2,10 +2,17 @@
 
 use iota_streams_core::{
     panic_if_not,
-    prelude::{hex, String},
+    prelude::{
+        hex,
+        String,
+    },
     try_or,
-    Errors::{StreamAllocationExceededIn, StreamAllocationExceededOut},
-    Result, LOCATION_LOG,
+    Errors::{
+        StreamAllocationExceededIn,
+        StreamAllocationExceededOut,
+    },
+    Result,
+    LOCATION_LOG,
 };
 
 /// Write

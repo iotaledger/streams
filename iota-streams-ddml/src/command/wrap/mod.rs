@@ -1,6 +1,9 @@
 //! Implementation of command traits for wrapping.
 
-use iota_streams_core::sponge::{prp::PRP, spongos::*};
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos::*,
+};
 
 pub struct Context<F, OS> {
     pub spongos: Spongos<F>,

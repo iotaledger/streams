@@ -1,15 +1,26 @@
 #[cfg(not(feature = "std"))]
-use iota_streams_core::{err, Errors::NoStdRngMissing, LOCATION_LOG};
+use iota_streams_core::{
+    err,
+    Errors::NoStdRngMissing,
+    LOCATION_LOG,
+};
 
 use iota_streams_core::Result;
 
 use super::Context;
 #[cfg(feature = "std")]
-use crate::command::{Absorb, Commit, Mask};
+use crate::command::{
+    Absorb,
+    Commit,
+    Mask,
+};
 use crate::{
     command::X25519,
     io,
-    types::{ArrayLength, NBytes},
+    types::{
+        ArrayLength,
+        NBytes,
+    },
 };
 
 use iota_streams_core::sponge::prp::PRP;

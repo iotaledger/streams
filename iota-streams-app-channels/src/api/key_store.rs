@@ -3,7 +3,10 @@ use core::fmt;
 use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
     err,
-    prelude::{HashMap, Vec},
+    prelude::{
+        HashMap,
+        Vec,
+    },
     psk::Psk,
     sponge::prp::PRP,
     Errors::BadIdentifier,

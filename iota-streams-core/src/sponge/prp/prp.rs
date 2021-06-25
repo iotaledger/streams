@@ -1,4 +1,7 @@
-use crate::prelude::generic_array::{ArrayLength, GenericArray};
+use crate::prelude::generic_array::{
+    ArrayLength,
+    GenericArray,
+};
 
 /// Pseudo-random permutation.
 ///

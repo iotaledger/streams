@@ -4,13 +4,23 @@ use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
-use crate::api::tangle::{ChannelType, UnwrappedMessage, User};
+use crate::api::tangle::{
+    ChannelType,
+    UnwrappedMessage,
+    User,
+};
 
 use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
     panic_if_not,
-    prelude::{String, Vec},
-    psk::{Psk, PskId},
+    prelude::{
+        String,
+        Vec,
+    },
+    psk::{
+        Psk,
+        PskId,
+    },
 };
 use iota_streams_core_edsig::signature::ed25519;
 

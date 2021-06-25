@@ -3,19 +3,31 @@ use std::str::FromStr;
 use iota_streams_core::{
     prelude::{
         string::ToString,
-        typenum::{U32, U64},
+        typenum::{
+            U32,
+            U64,
+        },
         Vec,
     },
     prng,
-    sponge::{prp::PRP, spongos::Spongos},
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
     try_or,
     Errors::*,
     Result,
 };
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 
-use crate::{command::*, types::*};
+use crate::{
+    command::*,
+    types::*,
+};
 
 fn absorb_mask_u8<F: PRP>() -> Result<()> {
     let mut buf = vec![0_u8; 2];

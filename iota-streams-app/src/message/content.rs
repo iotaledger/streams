@@ -1,7 +1,11 @@
 use iota_streams_core::Result;
 
 use iota_streams_ddml::{
-    command::{sizeof, unwrap, wrap},
+    command::{
+        sizeof,
+        unwrap,
+        wrap,
+    },
     io,
 };
 

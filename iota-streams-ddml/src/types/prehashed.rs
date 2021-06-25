@@ -2,7 +2,10 @@ use core::convert::AsRef;
 
 use iota_streams_core::prelude::digest::Digest;
 
-use iota_streams_core::prelude::{generic_array::GenericArray, typenum::U64};
+use iota_streams_core::prelude::{
+    generic_array::GenericArray,
+    typenum::U64,
+};
 
 #[derive(Default)]
 pub(crate) struct Prehashed(pub GenericArray<u8, U64>);

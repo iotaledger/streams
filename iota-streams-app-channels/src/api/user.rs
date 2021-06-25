@@ -1,35 +1,64 @@
 use core::{
     cell::RefCell,
-    fmt::{self, Debug},
+    fmt::{
+        self,
+        Debug,
+    },
 };
 
 use iota_streams_app::{
     identifier::Identifier,
     message::{
-        hdf::{FLAG_BRANCHING_MASK, HDF},
+        hdf::{
+            FLAG_BRANCHING_MASK,
+            HDF,
+        },
         *,
     },
 };
 use iota_streams_core::{
     err,
-    prelude::{string::ToString, typenum::U32, vec, Vec},
+    prelude::{
+        string::ToString,
+        typenum::U32,
+        vec,
+        Vec,
+    },
     prng,
-    psk::{self, new_pskid, Psk, PskId},
-    sponge::prp::{Inner, PRP},
+    psk::{
+        self,
+        new_pskid,
+        Psk,
+        PskId,
+    },
+    sponge::prp::{
+        Inner,
+        PRP,
+    },
     try_or,
     Errors::*,
-    Result, LOCATION_LOG,
+    Result,
+    LOCATION_LOG,
 };
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 
 use crate::{
-    api::{key_store::*, ChannelType},
+    api::{
+        key_store::*,
+        ChannelType,
+    },
     message::*,
 };
 

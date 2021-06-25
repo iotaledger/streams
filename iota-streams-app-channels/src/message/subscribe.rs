@@ -39,15 +39,29 @@
 //! Note, the `unsubscribe_key` is masked and verified in the `x25519` operation and
 //! thus is not additionally `absorb`ed in this message.
 
-use iota_streams_app::message::{self, HasLink};
-use iota_streams_core::{
-    sponge::prp::PRP, wrapped_err, Errors::MessageCreationFailure, Result, WrappedError, LOCATION_LOG,
+use iota_streams_app::message::{
+    self,
+    HasLink,
 };
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core::{
+    sponge::prp::PRP,
+    wrapped_err,
+    Errors::MessageCreationFailure,
+    Result,
+    WrappedError,
+    LOCATION_LOG,
+};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 

@@ -7,14 +7,23 @@ use async_trait::async_trait;
 #[cfg(feature = "async")]
 use atomic_refcell::AtomicRefCell;
 #[cfg(feature = "async")]
-use core::marker::{Send, Sync};
+use core::marker::{
+    Send,
+    Sync,
+};
 #[cfg(feature = "async")]
-use iota_streams_core::prelude::{Arc, Box};
+use iota_streams_core::prelude::{
+    Arc,
+    Box,
+};
 
 #[cfg(not(feature = "async"))]
 use iota_streams_core::prelude::ToString;
 
-use iota_streams_core::prelude::{Rc, Vec};
+use iota_streams_core::prelude::{
+    Rc,
+    Vec,
+};
 
 pub trait TransportOptions {
     type SendOptions;
@@ -184,15 +193,24 @@ mod bucket;
 pub use bucket::BucketTransport;
 
 #[cfg(not(feature = "async"))]
-use core::fmt::{Debug, Display};
+use core::fmt::{
+    Debug,
+    Display,
+};
 
 use iota_streams_core::try_or;
 
 #[cfg(not(feature = "async"))]
 use iota_streams_core::{
-    err, wrapped_err,
-    Errors::{MessageLinkNotFound, MessageNotUnique, TransportNotAvailable},
-    WrappedError, LOCATION_LOG,
+    err,
+    wrapped_err,
+    Errors::{
+        MessageLinkNotFound,
+        MessageNotUnique,
+        TransportNotAvailable,
+    },
+    WrappedError,
+    LOCATION_LOG,
 };
 
 #[cfg(feature = "tangle")]

@@ -3,7 +3,17 @@ use iota_streams_core::Result;
 use super::Context;
 use crate::{
     command::Absorb,
-    types::{AbsorbExternalFallback, ArrayLength, External, Fallback, NBytes, Uint16, Uint32, Uint64, Uint8},
+    types::{
+        AbsorbExternalFallback,
+        ArrayLength,
+        External,
+        Fallback,
+        NBytes,
+        Uint16,
+        Uint32,
+        Uint64,
+        Uint8,
+    },
 };
 
 // External values are not encoded in the stream.

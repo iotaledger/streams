@@ -1,11 +1,25 @@
 use core::mem;
 use iota_streams_core::Result;
 
-use super::{unwrap::*, Context};
+use super::{
+    unwrap::*,
+    Context,
+};
 use crate::{
     command::Skip,
     io,
-    types::{ArrayLength, Bytes, Fallback, NBytes, Size, SkipFallback, Uint16, Uint32, Uint64, Uint8},
+    types::{
+        ArrayLength,
+        Bytes,
+        Fallback,
+        NBytes,
+        Size,
+        SkipFallback,
+        Uint16,
+        Uint32,
+        Uint64,
+        Uint8,
+    },
 };
 
 struct SkipContext<F, IS> {

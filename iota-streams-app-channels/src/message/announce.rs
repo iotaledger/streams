@@ -24,8 +24,15 @@ use iota_streams_core::Result;
 
 use iota_streams_app::message;
 use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
-use iota_streams_ddml::{command::*, io, types::*};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
+use iota_streams_ddml::{
+    command::*,
+    io,
+    types::*,
+};
 
 pub struct ContentWrap<'a, F> {
     sig_kp: &'a ed25519::Keypair,
