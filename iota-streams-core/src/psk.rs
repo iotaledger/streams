@@ -49,7 +49,7 @@ pub type PskIds = [PskId];
 
 /// Make a Psk from arbitrary bytes
 pub fn new_psk<F: PRP>(bytes: &[u8]) -> Psk {
-    let hash = blake2b::Blake2b256::digest(&bytes);
+    let hash = blake2b::Blake2b256::digest(bytes);
     let mut ctx = Spongos::<F>::init();
     ctx.absorb(hash);
     ctx.commit();
@@ -60,7 +60,7 @@ pub fn new_psk<F: PRP>(bytes: &[u8]) -> Psk {
 
 /// Make a PskId from arbitrary bytes
 pub fn new_pskid<F: PRP>(bytes: &[u8]) -> PskId {
-    let hash = blake2b::Blake2b256::digest(&bytes);
+    let hash = blake2b::Blake2b256::digest(bytes);
     let mut ctx = Spongos::<F>::init();
     ctx.absorb(hash);
     ctx.commit();
