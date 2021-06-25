@@ -2,7 +2,6 @@ use iota_streams_core::{
     err,
     Errors::{
         IdentifierGenerationFailure,
-        BadIdentifier,
         BadOneof,
     },
     prelude::{
@@ -11,7 +10,6 @@ use iota_streams_core::{
     },
     psk::{
         self,
-        Psk,
         PskId,
         PSKID_SIZE,
     },
@@ -19,10 +17,7 @@ use iota_streams_core::{
     Result,
 };
 
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
+use iota_streams_core_edsig::signature::ed25519;
 
 use iota_streams_ddml::{
     command::*,
@@ -37,18 +32,14 @@ use crate::{
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Identifier {
     EdPubKey(ed25519::PublicKeyWrap),
-    XPubKey(x25519::PublicKeyWrap),
     PskId(PskId),
-    Psk(Psk),
 }
 
 impl Identifier {
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
-            Identifier::XPubKey(id) => id.0.as_bytes().to_vec(),
             Identifier::EdPubKey(id) => id.0.as_bytes().to_vec(),
             Identifier::PskId(id) => id.to_vec(),
-            Identifier::Psk(id) => id.to_vec()
         }
     }
 
@@ -62,14 +53,6 @@ impl Identifier {
 
     pub fn get_pk(&self) -> Option<&ed25519::PublicKey> {
         if let Identifier::EdPubKey(pk) = self { Some(&pk.0) } else { None }
-    }
-
-    pub fn get_xpk(&self) -> Option<&x25519::PublicKey> {
-        if let Identifier::XPubKey(xpk) = self { Some(&xpk.0) } else { None }
-    }
-
-    pub fn get_psk(&self) -> Option<&Psk> {
-        if let Identifier::Psk(psk) = self { Some(psk) } else { None }
     }
 }
 
@@ -85,12 +68,6 @@ impl From<&PskId> for Identifier {
     }
 }
 
-impl From<&Psk> for Identifier {
-    fn from(psk: &Psk) -> Self {
-        Identifier::Psk((*psk).into())
-    }
-}
-
 impl<F: PRP> ContentSizeof<F> for Identifier {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         match self {
@@ -103,11 +80,8 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
             &Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
                 ctx.absorb(&oneof)?
-                    .absorb(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
+                    .mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
-            },
-            _ => {
-                err(BadIdentifier)
             },
         }
     }
@@ -130,12 +104,9 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier
             &Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
                 ctx.absorb(&oneof)?
-                    .absorb(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
+                    .mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
-            },
-            _ => {
-                err(BadIdentifier)
-            },
+            }
         }
     }
 }
@@ -158,7 +129,7 @@ impl<F: PRP, Store> ContentUnwrap<F, Store> for Identifier
             },
             1 => {
                 let mut pskid = PskId::default();
-                ctx.absorb(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
+                ctx.mask(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
                 *self = Identifier::PskId(pskid);
                 Ok(ctx)
             },
@@ -168,3 +139,29 @@ impl<F: PRP, Store> ContentUnwrap<F, Store> for Identifier
         }
     }
 }
+
+pub fn unwrap_new<'c, F: PRP, Store, IS: io::IStream>(
+    _store: &Store,
+    ctx: &'c mut unwrap::Context<F, IS>
+) -> Result<(Identifier, &'c mut unwrap::Context<F, IS>)> {
+    let mut oneof = Uint8(0);
+    ctx.absorb(&mut oneof)?;
+    match oneof.0 {
+        0 => {
+            let mut pk = ed25519::PublicKey::default();
+            ctx.absorb(&mut pk)?;
+            let identifier = Identifier::EdPubKey(ed25519::PublicKeyWrap(pk));
+            Ok((identifier, ctx))
+        },
+        1 => {
+            let mut pskid = PskId::default();
+            ctx.mask(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
+            let identifier = Identifier::PskId(pskid);
+            Ok((identifier, ctx))
+        },
+        _ => {
+            err(BadOneof)
+        },
+    }
+}
+

@@ -24,6 +24,8 @@ pub enum Errors {
     GenericLinkNotFound,
     /// Unexpected/invalid Identifier
     BadIdentifier,
+    /// Psk has already been stored
+    PskAlreadyStored,
 
     //////////
     // Cryptographic

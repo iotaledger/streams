@@ -17,6 +17,10 @@ use crate::{
         prp::PRP,
         spongos::Spongos
     },
+    crypto::hashes::{
+        blake2b,
+        Digest,
+    }
 };
 
 /// Size of pre-shared key identifier.
@@ -43,10 +47,23 @@ pub type Psks = HashMap<PskId, Psk>;
 /// Container (set) of pre-shared key identifiers.
 pub type PskIds = [PskId];
 
-/// Get a Psk's id
-pub fn get_id_from_psk<F: PRP>(psk: &Psk) -> PskId {
+
+/// Make a Psk from arbitrary bytes
+pub fn new_psk<F: PRP>(bytes: &[u8]) -> Psk {
+    let hash = blake2b::Blake2b256::digest(&bytes);
     let mut ctx = Spongos::<F>::init();
-    ctx.absorb(psk);
+    ctx.absorb(hash);
+    ctx.commit();
+    let mut id: Vec<u8> = vec![0; PSK_SIZE];
+    ctx.squeeze(&mut id);
+    GenericArray::clone_from_slice(&id)
+}
+
+/// Make a PskId from arbitrary bytes
+pub fn new_pskid<F: PRP>(bytes: &[u8]) -> PskId {
+    let hash = blake2b::Blake2b256::digest(&bytes);
+    let mut ctx = Spongos::<F>::init();
+    ctx.absorb(hash);
     ctx.commit();
     let mut id: Vec<u8> = vec![0; PSKID_SIZE];
     ctx.squeeze(&mut id);

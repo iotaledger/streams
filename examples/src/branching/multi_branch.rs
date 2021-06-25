@@ -21,7 +21,6 @@ use iota_streams::{
 use core::cell::RefCell;
 
 use super::utils;
-use iota_streams::core::psk::Psk;
 
 pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelType, seed: &str) -> Result<()> {
     let mut author = Author::new(seed, channel_type, transport.clone());
@@ -76,9 +75,9 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
     }
 
     // Generate a simple PSK for storage by users
-    let psk: Psk = GenericArray::from([1;32]);
-    author.store_psk(psk.clone())?;
-    subscriberC.store_psk(psk.clone())?;
+    let psk = author.make_psk("A pre shared key".as_bytes());
+    author.store_psk(psk.clone(), None)?;
+    subscriberC.store_psk(psk.clone(), None)?;
 
     println!("\nSubscribe A");
     let subscribeA_link = {

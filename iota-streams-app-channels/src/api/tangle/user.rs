@@ -153,8 +153,16 @@ impl<Trans> User<Trans> {
         })
     }
 
-    pub fn store_psk(&mut self, psk: Psk, use_psk: bool) -> Result<PskId> {
-        self.user.store_psk(psk, use_psk)
+    pub fn store_psk(&mut self, psk: Psk, pskid: Option<PskId>, use_psk: bool) -> Result<PskId> {
+        self.user.store_psk(psk, pskid, use_psk)
+    }
+
+    pub fn make_psk(&mut self, bytes: &[u8]) -> Psk {
+        self.user.make_psk(bytes)
+    }
+
+    pub fn make_pskid(&mut self, bytes: &[u8]) -> PskId {
+        self.user.make_pskid(bytes)
     }
 
     /// Consume a binary sequence message and return the derived message link

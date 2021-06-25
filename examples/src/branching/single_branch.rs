@@ -15,7 +15,6 @@ use iota_streams::{
         Errors::*,
         Result,
         LOCATION_LOG,
-        psk::Psk,
     },
     ddml::types::*,
 };
@@ -78,9 +77,9 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
     }
 
     // Generate a simple PSK for storage by users
-    let psk: Psk = GenericArray::from([2;32]);
-    author.store_psk(psk.clone())?;
-    subscriberC.store_psk(psk.clone())?;
+    let psk = author.make_psk("A pre shared key".as_bytes());
+    author.store_psk(psk.clone(), None)?;
+    subscriberC.store_psk(psk.clone(), None)?;
 
 
     println!("\nSubscribe A");
@@ -155,6 +154,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nSubscriber A fetching transactions...");
     utils::s_fetch_next_messages(&mut subscriberA);
+    println!("\nSubscriber C fetching transactions...");
+    utils::s_fetch_next_messages(&mut subscriberC);
 
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
@@ -210,6 +211,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nSubscriber B fetching transactions...");
     utils::s_fetch_next_messages(&mut subscriberB);
+    println!("\nSubscriber C fetching transactions...");
+    utils::s_fetch_next_messages(&mut subscriberC);
 
     println!("\nTagged packet 4 - SubscriberB");
     let previous_msg_link = {
@@ -233,6 +236,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
+        println!("Subscriber C unwrapping");
         let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
         try_or!(

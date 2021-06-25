@@ -29,8 +29,10 @@ use iota_streams_core::{
     prng,
     psk::{
         self,
-        get_id_from_psk,
         PskId,
+        Psk,
+        new_psk,
+        new_pskid,
     },
     Result,
     sponge::prp::{
@@ -252,7 +254,7 @@ where
 
         let identifier = self.sig_kp.public.into();
         self.key_store
-            .insert_key(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
+            .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
         self.author_sig_pk = Some(self.sig_kp.public);
         self.appinst = Some(appinst);
         Ok(())
@@ -326,8 +328,8 @@ where
         // At the moment the Author is free to choose any address, not tied to PK.
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
-        self.key_store.insert_key(Identifier::EdPubKey(content.sig_pk.into()), cursor.clone())?;
-        self.key_store.insert_key(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
+        self.key_store.insert_cursor(Identifier::EdPubKey(content.sig_pk.into()), cursor.clone())?;
+        self.key_store.insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.appinst = Some(link);
@@ -400,8 +402,8 @@ where
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let ref_link = self.appinst.as_ref().unwrap().rel().clone();
         self.key_store
-            .insert_key(Identifier::EdPubKey(subscriber_sig_pk.into()),
-                        Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM)
+            .insert_cursor(Identifier::EdPubKey(subscriber_sig_pk.into()),
+                           Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM)
             )?;
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
@@ -414,7 +416,7 @@ where
         ke_pks: KePks,
     ) -> Result<PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, KePks>>>
     where
-        KePks: Clone + ExactSizeIterator<Item = (&'a Identifier, &'a Identifier)>,
+        KePks: Clone + ExactSizeIterator<Item = (&'a Identifier, Vec<u8>)>,
     {
         let nonce = NBytes::from(prng::random_nonce());
         let key = NBytes::from(prng::random_key());
@@ -444,7 +446,7 @@ where
                 'a,
                 F,
                 Link,
-                vec::IntoIter<(&Identifier, &Identifier)>,
+                vec::IntoIter<(&Identifier, Vec<u8>)>,
             >,
         >,
     > {
@@ -459,8 +461,8 @@ where
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
                     .with_identifier(&self.sig_kp.public.into());
-                let ke_pks = self.key_store.filter(pks);
-                self.do_prepare_keyload(header, link_to.rel(),  ke_pks.into_iter())
+                let keys = self.key_store.filter(pks);
+                self.do_prepare_keyload(header, link_to.rel(), keys.into_iter())
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -479,7 +481,7 @@ where
                 'a,
                 F,
                 Link,
-                vec::IntoIter<(&'a Identifier, &'a Identifier)>,
+                vec::IntoIter<(&'a Identifier, Vec<u8>)>,
             >,
         >,
     > {
@@ -518,15 +520,14 @@ where
         self.prepare_keyload_for_everyone(link_to)?.wrap()
     }
 
-    fn lookup_psk<'b>(&'b self, pskid: &psk::PskId) -> Option<&'b psk::Psk> {
-        self.key_store.get_psk(&pskid.into())
+    fn lookup_psk<'b>(&'b self, pskid: &Identifier) -> Option<psk::Psk> {
+        self.key_store.get_psk(pskid)
     }
 
-    fn lookup_ke_sk<'b>(&'b self, ke_pk: &ed25519::PublicKey) -> Option<&'b x25519::StaticSecret> {
-        if self.sig_kp.public == *ke_pk {
-            Some(&self.ke_kp.0)
-        } else {
-            None
+    fn lookup_ke_sk<'b>(&'b self, ke_pk: &Identifier) -> Option<&'b x25519::StaticSecret> {
+        match ke_pk.get_pk() {
+            Some(pk) => if &self.sig_kp.public == pk { Some(&self.ke_kp.0) } else { None },
+            None => None,
         }
     }
 
@@ -542,8 +543,8 @@ where
                 F,
                 Link,
                 Self,
-                for<'c> fn(&'c Self, &psk::PskId) -> Option<&'c psk::Psk>,
-                for<'c> fn(&'c Self, &ed25519::PublicKey) -> Option<&'c x25519::StaticSecret>,
+                for<'c> fn(&'c Self, &Identifier) -> Option<psk::Psk>,
+                for<'c> fn(&'c Self, &Identifier) -> Option<&'c x25519::StaticSecret>,
             >,
         >,
     > {
@@ -554,8 +555,8 @@ where
                 F,
                 Link,
                 Self,
-                for<'c> fn(&'c Self, &psk::PskId) -> Option<&'c psk::Psk>,
-                for<'c> fn(&'c Self, &ed25519::PublicKey) -> Option<&'c x25519::StaticSecret>,
+                for<'c> fn(&'c Self, &Identifier) -> Option<psk::Psk>,
+                for<'c> fn(&'c Self, &Identifier) -> Option<&'c x25519::StaticSecret>,
             >::new(self, Self::lookup_psk, Self::lookup_ke_sk, author_sig_pk);
             let unwrapped = preparsed.unwrap(&*self.link_store.borrow(), content)?;
             Ok(unwrapped)
@@ -585,21 +586,11 @@ where
             // The resulting spongos state is joined into a protected message state.
             // Store any unknown publishers
             if let Some(appinst) = &self.appinst {
-                let psk_ids = content.psk_ids.clone();
-                for ke_pk in content.ke_pks {
-                    let identifier = Identifier::EdPubKey(ke_pk.into());
+                for identifier in content.key_ids {
                     if !self.key_store.contains(&identifier) {
                         // Store at state 2 since 0 and 1 are reserved states
                         self.key_store
-                            .insert_key(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
-                    }
-                }
-                for pskid in psk_ids {
-                    let identifier = Identifier::PskId(pskid);
-                    if !self.key_store.contains(&identifier) {
-                        // Store at state 2 since 0 and 1 are reserved states
-                        self.key_store
-                            .insert_key(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
+                            .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
                     }
                 }
             }
@@ -723,7 +714,7 @@ where
     fn get_identifier(&mut self) -> Result<Identifier> {
         if self.use_psk {
             match self.key_store.get_next_pskid() {
-                Some(pskid) => Ok(pskid.into()),
+                Some(pskid) => Ok(*pskid),
                 None => return err(MessageBuildFailure)
             }
         } else {
@@ -854,7 +845,7 @@ where
                 cursor.link = wrapped.link.rel().clone();
                 cursor.next_seq();
                 wrapped.commit(self.link_store.borrow_mut(), info)?;
-                self.key_store.insert_key(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
+                self.key_store.insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
                 Ok(Some(link))
             }
             None => {
@@ -863,46 +854,6 @@ where
             }
         }
     }
-
-    // pub fn send_sequence(
-    // &mut self,
-    // ref_link: &<Link as HasLink>::Rel,
-    // ) -> Result<Option<WrappedMessage<F, Link>>> {
-    // match self.pk_store.get_mut(&self.sig_kp.public) {
-    // Some(cursor) => {
-    // if (self.flags & FLAG_BRANCHING_MASK) != 0 {
-    // let msg_link = self
-    // .link_gen
-    // .link_from(&self.sig_kp.public, Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
-    // let header = HDF::new(msg_link)
-    // .with_content_type(SEQUENCE)?
-    // .with_payload_length(1)?
-    // .with_seq_num(SEQ_MESSAGE_NUM);
-    //
-    // let content = sequence::ContentWrap::<Link> {
-    // link: &cursor.link,
-    // pk: &self.sig_kp.public,
-    // seq_num: cursor.get_seq_num(),
-    // ref_link,
-    // };
-    //
-    // let wrapped = {
-    // let prepared = PreparedMessage::new(self.link_store.borrow(), header, content);
-    // prepared.wrap()?
-    // };
-    //
-    // cursor.link = wrapped.message.link.rel().clone();
-    // cursor.next_seq();
-    // Ok(Some(wrapped))
-    // } else {
-    // let seq_no = cursor.seq_no;
-    // self.store_state_for_all(ref_link.clone(), seq_no);
-    // Ok(None)
-    // }
-    // }
-    // None => Ok(None),
-    // }
-    // }
 
     pub fn unwrap_sequence(
         &self,
@@ -958,24 +909,24 @@ where
         Ok(())
     }
 
-    pub fn store_psk(&mut self, psk: psk::Psk, use_psk: bool) -> Result<PskId>{
-
+    pub fn store_psk(&mut self, psk: Psk, pskid: Option<PskId>, use_psk: bool) -> Result<PskId>{
         match &self.appinst {
             Some(appinst) => {
                 if use_psk && self.key_store.get_next_pskid() != None {
                     return err(StateStoreFailure)
                 }
 
-                let id = get_id_from_psk::<F>(&psk);
-                if !self.key_store.contains(&Identifier::PskId(id)) {
-                    self.key_store.insert_key(
-                        Identifier::Psk(psk.into()),
+                let id = if pskid.is_some() { pskid.unwrap() } else { new_pskid::<F>(psk.as_ref()) };
+                if !self.key_store.contains(&(&id).into()) {
+                    self.key_store.insert_psk(
+                        (&id).into(),
+                        Some(psk),
                         Cursor::new_at(appinst.rel().clone(), 0, 2_u32)
                     )?;
                     self.use_psk = use_psk;
                     Ok(id)
                 } else {
-                    err(SignatureFailure)
+                    err(PskAlreadyStored)
                 }
             },
             None => err(UserNotRegistered)
@@ -1022,14 +973,14 @@ where
             let mut cursor = cursor.clone();
             cursor.link = link;
             cursor.next_seq();
-            self.key_store.insert_key(id, cursor)?;
+            self.key_store.insert_cursor(id, cursor)?;
         }
         Ok(())
     }
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
-            self.key_store.insert_key(
+            self.key_store.insert_cursor(
                     Identifier::EdPubKey(self.sig_kp.public.into()),
                     Cursor::new_at(link.clone(), 0, seq_no)
             )?;
@@ -1058,6 +1009,14 @@ where
             state.push((*pk, Cursor::new_at(link, *branch_no, *seq_no)))
         }
         Ok(state)
+    }
+
+    pub fn make_psk(&self, bytes: &[u8]) -> Psk {
+        new_psk::<F>(bytes)
+    }
+
+    pub fn make_pskid(&self, bytes: &[u8]) -> PskId {
+        new_pskid::<F>(bytes)
     }
 }
 
@@ -1258,7 +1217,7 @@ where
                     .absorb(&mut link)?
                     .absorb(&mut branch_no)?
                     .absorb(&mut seq_no)?;
-                key_store.insert_key(Identifier::from_bytes(&id.0)?, Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
+                key_store.insert_cursor(Identifier::from_bytes(&id.0)?, Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
                 Ok(ctx)
             })?
             .commit()?
