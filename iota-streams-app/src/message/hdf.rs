@@ -6,7 +6,6 @@ use iota_streams_core::{
     try_or,
     Errors::*,
     LOCATION_LOG,
-    prelude::Vec,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -194,8 +193,10 @@ where
             .skip(&payload_frame_count)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&self.previous_msg_link)?
-            .skip(self.seq_num)?
-            .mask(&Bytes(self.sender_id.to_bytes()))?;
+            .skip(self.seq_num)?;
+
+        self.sender_id.sizeof(ctx)?;
+
         Ok(ctx)
     }
 }
@@ -235,8 +236,10 @@ where
             .skip(&payload_frame_count)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&self.previous_msg_link)?
-            .skip(self.seq_num)?
-            .mask(&Bytes(self.sender_id.to_bytes()))?;
+            .skip(self.seq_num)?;
+
+        self.sender_id.wrap(_store, ctx)?;
+
         Ok(ctx)
     }
 }
@@ -253,7 +256,6 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut content_type_and_payload_length = NBytes::<U2>::default();
         let mut payload_frame_count = NBytes::<U3>::default();
-        let mut identifier = Bytes(Vec::new());
 
         ctx.absorb(&mut self.encoding)?
             .absorb(&mut self.version)?
@@ -285,10 +287,10 @@ where
 
         ctx.absorb(External(Fallback(&self.link)))?
             .absorb(&mut self.previous_msg_link)?
-            .skip(&mut self.seq_num)?
-            .mask(&mut identifier)?;
+            .skip(&mut self.seq_num)?;
 
-        self.sender_id = Identifier::from_bytes(&identifier.0)?;
+        let (id, ctx) = Identifier::unwrap_new(_store, ctx)?;
+        self.sender_id = id;
 
         Ok(ctx)
     }

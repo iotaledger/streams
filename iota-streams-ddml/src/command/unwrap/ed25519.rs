@@ -45,6 +45,6 @@ impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<N
 impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, HashSig> for Context<F, IS> {
     fn ed25519(&mut self, pk: &'a ed25519::PublicKey, _hash: HashSig) -> Result<&mut Self> {
         let mut hash = External(NBytes::<U64>::default());
-        self.squeeze(&mut hash)?.commit()?.ed25519(pk, &hash)
+        self.commit()?.squeeze(&mut hash)?.ed25519(pk, &hash)
     }
 }
