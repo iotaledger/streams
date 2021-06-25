@@ -96,14 +96,14 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
         match self {
             &Identifier::EdPubKey(pk) => {
                 let oneof = Uint8(0);
-                ctx.absorb(&oneof)?
-                    .absorb(&pk.0)?;
+                ctx.mask(&oneof)?
+                    .mask(&pk.0)?;
                 Ok(ctx)
             },
             &Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
-                ctx.absorb(&oneof)?
-                    .absorb(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
+                ctx.mask(&oneof)?
+                    .mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
             },
             _ => {
@@ -123,14 +123,14 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier
         match self {
             &Identifier::EdPubKey(pk) => {
                 let oneof = Uint8(0);
-                ctx.absorb(&oneof)?
-                    .absorb(&pk.0)?;
+                ctx.mask(&oneof)?
+                    .mask(&pk.0)?;
                 Ok(ctx)
             },
             &Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
-                ctx.absorb(&oneof)?
-                    .absorb(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
+                ctx.mask(&oneof)?
+                    .mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
             },
             _ => {
@@ -160,17 +160,17 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<(Self, &'c mut unwrap::Context<F, IS>)> {
         let mut oneof = Uint8(0);
-        ctx.absorb(&mut oneof)?;
+        ctx.mask(&mut oneof)?;
         match oneof.0 {
             0 => {
                 let mut pk = ed25519::PublicKey::default();
-                ctx.absorb(&mut pk)?;
+                ctx.mask(&mut pk)?;
                 let id = Identifier::EdPubKey(ed25519::PublicKeyWrap(pk));
                 Ok((id, ctx))
             },
             1 => {
                 let mut pskid = PskId::default();
-                ctx.absorb(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
+                ctx.mask(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
                 let id = Identifier::PskId(pskid);
                 Ok((id, ctx))
             },
