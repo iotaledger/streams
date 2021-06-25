@@ -1,14 +1,8 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{
-    command::Dump,
-    io,
-};
-use iota_streams_core::{
-    println,
-    sponge::prp::PRP,
-};
+use crate::{command::Dump, io};
+use iota_streams_core::{println, sponge::prp::PRP};
 
 impl<F: PRP, OS: io::OStream> Dump for Context<F, OS> {
     #[allow(unused_variables)]

@@ -1,11 +1,7 @@
 use iota_streams_core::Result;
 
 use iota_streams_ddml::{
-    command::{
-        sizeof,
-        unwrap,
-        wrap,
-    },
+    command::{sizeof, unwrap, wrap},
     io,
 };
 
@@ -29,7 +25,10 @@ pub trait ContentUnwrap<F, Store> {
     ) -> Result<&'c mut unwrap::Context<F, IS>>;
 }
 
-pub trait ContentUnwrapNew<F, Store> where Self: Sized {
+pub trait ContentUnwrapNew<F, Store>
+where
+    Self: Sized,
+{
     fn unwrap_new<'c, IS: io::IStream>(
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,

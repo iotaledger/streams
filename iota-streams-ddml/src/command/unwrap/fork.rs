@@ -1,10 +1,7 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{
-    command::Fork,
-    io,
-};
+use crate::{command::Fork, io};
 use iota_streams_core::sponge::prp::PRP;
 
 impl<C, F: PRP, IS: io::IStream> Fork<C> for Context<F, IS>

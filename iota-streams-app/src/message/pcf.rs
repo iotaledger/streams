@@ -1,19 +1,10 @@
 use iota_streams_core::Result;
 
-use iota_streams_core::{
-    sponge::prp::PRP,
-    try_or,
-    Errors::ValueOutOfRange,
-    LOCATION_LOG,
-};
+use iota_streams_core::{sponge::prp::PRP, try_or, Errors::ValueOutOfRange, LOCATION_LOG};
 use iota_streams_ddml::{
     command::*,
     io,
-    types::{
-        typenum::U3,
-        GenericArray,
-        *,
-    },
+    types::{typenum::U3, GenericArray, *},
 };
 
 use super::*;

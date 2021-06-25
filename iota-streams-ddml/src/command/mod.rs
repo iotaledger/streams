@@ -23,10 +23,7 @@
 
 use iota_streams_core::Result;
 
-use iota_streams_core::{
-    println,
-    Errors,
-};
+use iota_streams_core::{println, Errors};
 
 /// Absorb command. Trinary representation of the field is absorbed into Spongos state.
 /// External fields are not encoded in the trinary stream. Non-trinary field is

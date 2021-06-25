@@ -2,11 +2,7 @@ use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    types::{
-        PskIds as PskIdsW,
-        PublicKeys as PublicKeysW,
-        *,
-    },
+    types::{PskIds as PskIdsW, PublicKeys as PublicKeysW, *},
     user::userw::*,
 };
 use js_sys::Array;
@@ -15,25 +11,11 @@ use core::cell::RefCell;
 
 /// Streams imports
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client as ApiClient,
-        TransportOptions,
-    },
-    app_channels::api::tangle::{
-        Address as ApiAddress,
-        Author as ApiAuthor,
-        PublicKey,
-    },
+    app::transport::{tangle::client::Client as ApiClient, TransportOptions},
+    app_channels::api::tangle::{Address as ApiAddress, Author as ApiAuthor, PublicKey},
     core::{
-        prelude::{
-            Rc,
-            String,
-            ToString,
-        },
-        psk::{
-            PskId,
-            PSKID_SIZE,
-        },
+        prelude::{Rc, String, ToString},
+        psk::{PskId, PSKID_SIZE},
     },
     ddml::types::*,
 };

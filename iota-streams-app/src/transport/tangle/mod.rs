@@ -1,12 +1,8 @@
 //! Tangle-specific transport definitions.
 
 use core::{
-    convert::{
-        AsMut,
-        AsRef,
-    },
-    fmt,
-    hash,
+    convert::{AsMut, AsRef},
+    fmt, hash,
     ptr::null,
     str::FromStr,
 };
@@ -14,41 +10,22 @@ use iota_streams_core::Result;
 
 use iota_streams_core::{
     prelude::{
-        typenum::{
-            U12,
-            U40,
-        },
-        Box,
-        String,
-        ToString,
-        Vec,
+        typenum::{U12, U40},
+        Box, String, ToString, Vec,
     },
-    sponge::{
-        prp::PRP,
-        spongos::Spongos,
-    },
+    sponge::{prp::PRP, spongos::Spongos},
     try_or,
     Errors::InvalidHex,
     LOCATION_LOG,
 };
 use iota_streams_core_edsig::signature::ed25519;
-use iota_streams_ddml::{
-    command::*,
-    io,
-    types::*,
-};
+use iota_streams_ddml::{command::*, io, types::*};
 
 use cstr_core::CStr;
 use cty::c_char;
 
-use crate::message::{
-    BinaryMessage,
-    Cursor,
-    HasLink,
-    LinkGenerator,
-    LinkedMessage,
-};
 use crate::identifier::Identifier;
+use crate::message::{BinaryMessage, Cursor, HasLink, LinkGenerator, LinkedMessage};
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;

@@ -4,24 +4,14 @@ use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
-use crate::api::tangle::{
-    ChannelType::SingleBranch,
-    UnwrappedMessage,
-    User,
-};
+use crate::api::tangle::{ChannelType::SingleBranch, UnwrappedMessage, User};
 
+use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
-    prelude::{
-        String,
-        Vec,
-    },
-    psk::{
-        Psk,
-        PskId,
-    },
+    prelude::{String, Vec},
+    psk::{Psk, PskId},
 };
 use iota_streams_core_edsig::signature::ed25519;
-use iota_streams_app::identifier::Identifier;
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {

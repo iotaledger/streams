@@ -19,22 +19,19 @@
 //!
 //! * `reflink` -- The msgid for the preceding message referenced by the sequenced message
 
-use iota_streams_app::message::{self, HasLink, ContentUnwrapNew};
+use iota_streams_app::message::{self, ContentUnwrapNew, HasLink};
 
 use iota_streams_core::Result;
 
+use iota_streams_app::identifier::Identifier;
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{
-        EmptyLinkStore,
-        LinkStore,
-    },
+    link_store::{EmptyLinkStore, LinkStore},
     types::*,
 };
-use iota_streams_app::identifier::Identifier;
 
 pub struct ContentWrap<'a, Link>
 where

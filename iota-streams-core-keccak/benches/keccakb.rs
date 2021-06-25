@@ -1,10 +1,7 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::{
-    Benchmark,
-    Criterion,
-};
+use criterion::{Benchmark, Criterion};
 use iota_streams_core::sponge::spongos::Spongos;
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use std::time::Duration;

@@ -4,10 +4,7 @@ use core::hash;
 
 use iota_streams_core::{
     err,
-    prelude::{
-        string::ToString,
-        HashMap,
-    },
+    prelude::{string::ToString, HashMap},
     Errors::MessageLinkNotFound,
     LOCATION_LOG,
 };

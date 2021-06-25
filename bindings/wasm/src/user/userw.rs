@@ -4,10 +4,7 @@ use crate::types::*;
 
 use core::cell::RefCell;
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client as ApiClient,
-        TransportOptions,
-    },
+    app::transport::{tangle::client::Client as ApiClient, TransportOptions},
     core::prelude::Rc,
 };
 

@@ -3,14 +3,11 @@ use core::fmt;
 use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
     err,
-    Errors::BadIdentifier,
-    prelude::{
-        HashMap,
-        Vec,
-    },
+    prelude::{HashMap, Vec},
     psk::Psk,
-    Result,
     sponge::prp::PRP,
+    Errors::BadIdentifier,
+    Result,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
 
@@ -57,9 +54,13 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
     fn filter(&self, ids: &[&Identifier]) -> Vec<(&Identifier, Vec<u8>)> {
         ids.iter()
             .filter_map(|id| match &id {
-                Identifier::EdPubKey(_id) => self.ke_pks.get_key_value(id)
+                Identifier::EdPubKey(_id) => self
+                    .ke_pks
+                    .get_key_value(id)
                     .map(|(e, (x, _))| (e, x.as_bytes().to_vec())),
-                Identifier::PskId(_id) => self.psks.get_key_value(id)
+                Identifier::PskId(_id) => self
+                    .psks
+                    .get_key_value(id)
                     .filter(|(_, (x, _))| x.is_some())
                     .map(|(e, (x, _))| (e, x.unwrap().to_vec())),
             })
@@ -91,7 +92,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 Some(psk) => psk,
                 None => None,
             },
-            _ => None
+            _ => None,
         }
     }
 
@@ -100,9 +101,13 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
         loop {
             match iter.next() {
                 Some((e, (x, _i))) => {
-                    if x.is_some() { return Some(e) } else { () }
-                },
-                None => return None
+                    if x.is_some() {
+                        return Some(e);
+                    } else {
+                        ()
+                    }
+                }
+                None => return None,
             }
         }
     }
@@ -117,11 +122,11 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 let store_id = x25519::public_from_ed25519(&pk.0)?;
                 self.ke_pks.insert(id, (store_id, info));
                 Ok(())
-            },
+            }
             Identifier::PskId(_id) => {
                 self.psks.insert(id, (None, info));
                 Ok(())
-            },
+            }
         }
     }
 
@@ -130,42 +135,40 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
             Identifier::PskId(_id) => {
                 self.psks.insert(id, (psk, info));
                 Ok(())
-            },
+            }
             _ => err(BadIdentifier),
         }
     }
 
     fn keys(&self) -> Vec<(&Identifier, Vec<u8>)> {
-        let mut keys: Vec<(&Identifier, Vec<u8>)> = self.ke_pks.iter()
-            .map(|(k, (x, _i))| (k, x.as_bytes().to_vec())).collect();
+        let mut keys: Vec<(&Identifier, Vec<u8>)> = self
+            .ke_pks
+            .iter()
+            .map(|(k, (x, _i))| (k, x.as_bytes().to_vec()))
+            .collect();
 
-        let psks: Vec<(&Identifier, Vec<u8>)> = self.psks.iter()
-            .filter_map(|(k, (x, _i))| x.map(|x| (k, x.to_vec()))).collect();
+        let psks: Vec<(&Identifier, Vec<u8>)> = self
+            .psks
+            .iter()
+            .filter_map(|(k, (x, _i))| x.map(|x| (k, x.to_vec())))
+            .collect();
 
         keys.extend(psks);
         keys
     }
 
     fn iter(&self) -> Vec<(&Identifier, &Info)> {
-        let mut keys: Vec<(&Identifier, &Info)> = self.ke_pks.iter()
-            .map(|(k, (_x, i))| (k, i))
-            .collect();
+        let mut keys: Vec<(&Identifier, &Info)> = self.ke_pks.iter().map(|(k, (_x, i))| (k, i)).collect();
 
-        let psks : Vec<(&Identifier, &Info)> = self.psks.iter()
-            .map(|(k, (_x, i))| (k, i))
-            .collect();
+        let psks: Vec<(&Identifier, &Info)> = self.psks.iter().map(|(k, (_x, i))| (k, i)).collect();
 
         keys.extend(psks);
         keys
     }
     fn iter_mut(&mut self) -> Vec<(&Identifier, &mut Info)> {
-        let mut ke_pks: Vec<(&Identifier, &mut Info)> = self.ke_pks.iter_mut()
-            .map(|(k, (_x, i))| (k, i))
-            .collect();
+        let mut ke_pks: Vec<(&Identifier, &mut Info)> = self.ke_pks.iter_mut().map(|(k, (_x, i))| (k, i)).collect();
 
-        let psks : Vec<(&Identifier, &mut Info)> = self.psks.iter_mut()
-            .map(|(k, (_x, i))| (k, i))
-            .collect();
+        let psks: Vec<(&Identifier, &mut Info)> = self.psks.iter_mut().map(|(k, (_x, i))| (k, i)).collect();
 
         ke_pks.extend(psks);
         ke_pks

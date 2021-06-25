@@ -2,17 +2,9 @@ use core::cell::Ref;
 use iota_streams_core::Result;
 
 use super::*;
-use iota_streams_core::{
-    sponge::prp::PRP,
-    try_or,
-    Errors::OutputStreamNotFullyConsumed,
-    LOCATION_LOG,
-};
+use iota_streams_core::{sponge::prp::PRP, try_or, Errors::OutputStreamNotFullyConsumed, LOCATION_LOG};
 use iota_streams_ddml::{
-    command::{
-        sizeof,
-        wrap,
-    },
+    command::{sizeof, wrap},
     link_store::LinkStore,
     types::*,
 };

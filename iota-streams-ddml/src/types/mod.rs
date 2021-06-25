@@ -1,16 +1,7 @@
 // Reexport some often used types
 pub use iota_streams_core::prelude::{
-    generic_array::{
-        ArrayLength,
-        GenericArray,
-    },
-    typenum::{
-        self,
-        marker_traits::Unsigned,
-        U16,
-        U32,
-        U64,
-    },
+    generic_array::{ArrayLength, GenericArray},
+    typenum::{self, marker_traits::Unsigned, U16, U32, U64},
 };
 
 mod bytes;

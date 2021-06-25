@@ -1,24 +1,11 @@
 #![allow(non_snake_case)]
-use crate::api::tangle::{
-    Address,
-    Author,
-    Subscriber,
-};
+use crate::api::tangle::{Address, Author, Subscriber};
 use iota_streams_app::message::HasLink;
 
 #[cfg(not(feature = "async"))]
-use iota_streams_core::{
-    try_or,
-    Errors::*,
-    LOCATION_LOG,
-};
+use iota_streams_core::{try_or, Errors::*, LOCATION_LOG};
 
-use iota_streams_core::{
-    ensure,
-    prelude::string::ToString,
-    println,
-    Result,
-};
+use iota_streams_core::{ensure, prelude::string::ToString, println, Result};
 
 use super::*;
 

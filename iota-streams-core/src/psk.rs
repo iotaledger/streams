@@ -2,25 +2,15 @@
 //! (session) key exchange.
 
 use crate::{
+    crypto::hashes::{blake2b, Digest},
     prelude::{
         generic_array::{
-            typenum::{
-                U16,
-                U32,
-            },
+            typenum::{U16, U32},
             GenericArray,
         },
-        HashMap,
-        Vec,
+        HashMap, Vec,
     },
-    sponge::{
-        prp::PRP,
-        spongos::Spongos
-    },
-    crypto::hashes::{
-        blake2b,
-        Digest,
-    }
+    sponge::{prp::PRP, spongos::Spongos},
 };
 
 /// Size of pre-shared key identifier.
@@ -46,7 +36,6 @@ pub type Psks = HashMap<PskId, Psk>;
 
 /// Container (set) of pre-shared key identifiers.
 pub type PskIds = [PskId];
-
 
 /// Make a Psk from arbitrary bytes
 pub fn new_psk<F: PRP>(bytes: &[u8]) -> Psk {

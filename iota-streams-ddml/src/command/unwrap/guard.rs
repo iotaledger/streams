@@ -1,15 +1,8 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{
-    command::Guard,
-    io,
-};
-use iota_streams_core::{
-    try_or,
-    Errors,
-    LOCATION_LOG,
-};
+use crate::{command::Guard, io};
+use iota_streams_core::{try_or, Errors, LOCATION_LOG};
 
 impl<F, IS: io::IStream> Guard for Context<F, IS> {
     fn guard(&mut self, cond: bool, err: Errors) -> Result<&mut Self> {

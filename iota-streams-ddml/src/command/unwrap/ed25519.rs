@@ -2,27 +2,11 @@ use iota_streams_core::Result;
 
 use super::Context;
 use crate::{
-    command::{
-        Commit,
-        Ed25519,
-        Squeeze,
-    },
+    command::{Commit, Ed25519, Squeeze},
     io,
-    types::{
-        External,
-        HashSig,
-        NBytes,
-        Prehashed,
-        U64,
-    },
+    types::{External, HashSig, NBytes, Prehashed, U64},
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-    wrapped_err,
-    Errors::SignatureMismatch,
-    WrappedError,
-    LOCATION_LOG,
-};
+use iota_streams_core::{sponge::prp::PRP, wrapped_err, Errors::SignatureMismatch, WrappedError, LOCATION_LOG};
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Recover public key.

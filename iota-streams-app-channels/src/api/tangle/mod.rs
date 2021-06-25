@@ -2,29 +2,17 @@
 
 use super::key_store::KeyMap;
 use iota_streams_app::{
-    message::{
-        self,
-        BinaryBody,
-    },
+    message::{self, BinaryBody},
     transport::{
         self,
-        tangle::{
-            AppInst,
-            DefaultTangleLinkGenerator,
-            MsgId,
-            TangleAddress,
-            TangleMessage,
-        },
+        tangle::{AppInst, DefaultTangleLinkGenerator, MsgId, TangleAddress, TangleMessage},
     },
 };
 
 pub use message::Cursor;
 // Bring trait methods into scope publicly.
 pub use message::LinkGenerator as _;
-pub use transport::{
-    Transport as _,
-    TransportOptions as _,
-};
+pub use transport::{Transport as _, TransportOptions as _};
 
 pub use super::ChannelType;
 use iota_streams_core::psk;

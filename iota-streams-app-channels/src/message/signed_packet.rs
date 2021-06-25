@@ -26,22 +26,13 @@
 //!
 //! * `sig` -- message signature generated with one of channel owner's private key.
 
-use iota_streams_app::message::{
-    self,
-    HasLink,
-};
-use iota_streams_core::{
-    sponge::prp::PRP,
-    Result,
-};
+use iota_streams_app::message::{self, HasLink};
+use iota_streams_core::{sponge::prp::PRP, Result};
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{
-        EmptyLinkStore,
-        LinkStore,
-    },
+    link_store::{EmptyLinkStore, LinkStore},
     types::*,
 };
 

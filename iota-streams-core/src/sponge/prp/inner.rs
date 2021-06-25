@@ -1,9 +1,6 @@
 use core::hash;
 
-use crate::{
-    prelude::generic_array::GenericArray,
-    sponge::prp::PRP,
-};
+use crate::{prelude::generic_array::GenericArray, sponge::prp::PRP};
 
 /// Convenience wrapper for storing Spongos inner state.
 #[derive(Clone)]
