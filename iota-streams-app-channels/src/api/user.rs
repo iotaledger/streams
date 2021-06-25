@@ -1106,8 +1106,8 @@ where
             })?
             .absorb(repeated_keys)?
             .repeated(keys.into_iter(), |ctx, (id, cursor)| {
-                ctx.absorb(&Bytes(id.to_bytes()))?
-                    .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
+                let ctx = id.sizeof(ctx)?;
+                ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
                     .absorb(Uint32(cursor.branch_no))?
                     .absorb(Uint32(cursor.seq_no))?;
                 Ok(ctx)
@@ -1168,8 +1168,8 @@ where
             })?
             .absorb(repeated_keys)?
             .repeated(keys.into_iter(), |ctx, (id, cursor)| {
-                ctx.absorb(&Bytes(id.to_bytes()))?
-                    .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
+                let ctx = id.wrap(_store, ctx)?;
+                ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
                     .absorb(Uint32(cursor.branch_no))?
                     .absorb(Uint32(cursor.seq_no))?;
                 Ok(ctx)
@@ -1250,15 +1250,14 @@ where
         let mut key_store = Keys::default();
         ctx.absorb(&mut repeated_keys)?
             .repeated(repeated_keys, |ctx| {
-                let mut id = Bytes::default();
                 let mut link = Fallback(<Link as HasLink>::Rel::default());
                 let mut branch_no = Uint32(0);
                 let mut seq_no = Uint32(0);
-                ctx.absorb(&mut id)?
-                    .absorb(&mut link)?
+                let (id,ctx) = Identifier::unwrap_new(_store, ctx)?;
+                ctx.absorb(&mut link)?
                     .absorb(&mut branch_no)?
                     .absorb(&mut seq_no)?;
-                key_store.insert_key(Identifier::from_bytes(&id.0)?, Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
+                key_store.insert_key(id, Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
                 Ok(ctx)
             })?
             .commit()?

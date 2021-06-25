@@ -58,8 +58,9 @@ where
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        ctx.join(&store, self.link)?
-            .absorb(Bytes(self.id.to_bytes()))?
+        ctx.join(&store, self.link)?;
+        let ctx = self.id.sizeof(ctx)?;
+        ctx.skip(Uint64(self.seq_num))?
             .skip(Uint64(self.seq_num))?
             .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
@@ -79,9 +80,9 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?
-            .absorb(&Bytes(self.id.to_bytes()))?
-            .skip(Uint64(self.seq_num))?
+        ctx.join(store, self.link)?;
+        let ctx = self.id.wrap(store, ctx)?;
+        ctx.skip(Uint64(self.seq_num))?
             .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
@@ -122,13 +123,11 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mut id = Bytes::new();
-        ctx.join(store, &mut self.link)?
-            .absorb(&mut id)?
-            .skip(&mut self.seq_num)?
+        ctx.join(store, &mut self.link)?;
+        let ctx = self.id.unwrap(store, ctx)?;
+        ctx.skip(&mut self.seq_num)?
             .absorb(<&mut Fallback<<Link as HasLink>::Rel>>::from(&mut self.ref_link))?
             .commit()?;
-        self.id = Identifier::from_bytes(&id.0)?;
         Ok(ctx)
     }
 }

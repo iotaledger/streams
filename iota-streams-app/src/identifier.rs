@@ -147,20 +147,32 @@ impl<F: PRP, Store> ContentUnwrap<F, Store> for Identifier
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        let (id,ctx) = Self::unwrap_new(_store, ctx)?;
+        *self = id;
+        Ok(ctx)
+    }
+}
+
+impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier
+{
+    fn unwrap_new<'c, IS: io::IStream>(
+        _store: &Store,
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<(Self, &'c mut unwrap::Context<F, IS>)> {
         let mut oneof = Uint8(0);
         ctx.absorb(&mut oneof)?;
         match oneof.0 {
             0 => {
                 let mut pk = ed25519::PublicKey::default();
                 ctx.absorb(&mut pk)?;
-                *self = Identifier::EdPubKey(ed25519::PublicKeyWrap(pk));
-                Ok(ctx)
+                let id = Identifier::EdPubKey(ed25519::PublicKeyWrap(pk));
+                Ok((id, ctx))
             },
             1 => {
                 let mut pskid = PskId::default();
                 ctx.absorb(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
-                *self = Identifier::PskId(pskid);
-                Ok(ctx)
+                let id = Identifier::PskId(pskid);
+                Ok((id, ctx))
             },
             _ => {
                 err(BadOneof)
