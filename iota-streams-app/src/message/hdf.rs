@@ -6,7 +6,6 @@ use iota_streams_core::{
     try_or,
     Errors::*,
     LOCATION_LOG,
-    prelude::Vec,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
