@@ -20,7 +20,7 @@ pub enum Identifier {
 }
 
 impl Identifier {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(self) -> Vec<u8> {
         match self {
             Identifier::EdPubKey(id) => id.0.as_bytes().to_vec(),
             Identifier::PskId(id) => id.to_vec(),
@@ -52,19 +52,19 @@ impl From<ed25519::PublicKey> for Identifier {
 
 impl From<&PskId> for Identifier {
     fn from(pskid: &PskId) -> Self {
-        Identifier::PskId((*pskid).into())
+        Identifier::PskId(*pskid)
     }
 }
 
 impl<F: PRP> ContentSizeof<F> for Identifier {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        match self {
-            &Identifier::EdPubKey(pk) => {
+        match *self {
+            Identifier::EdPubKey(pk) => {
                 let oneof = Uint8(0);
                 ctx.mask(&oneof)?.mask(&pk.0)?;
                 Ok(ctx)
             }
-            &Identifier::PskId(pskid) => {
+            Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
                 ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
@@ -79,13 +79,13 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        match self {
-            &Identifier::EdPubKey(pk) => {
+        match *self {
+            Identifier::EdPubKey(pk) => {
                 let oneof = Uint8(0);
                 ctx.mask(&oneof)?.mask(&pk.0)?;
                 Ok(ctx)
             }
-            &Identifier::PskId(pskid) => {
+            Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
                 ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)

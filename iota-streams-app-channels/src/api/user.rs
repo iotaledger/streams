@@ -471,7 +471,7 @@ where
         self.prepare_keyload_for_everyone(link_to)?.wrap()
     }
 
-    fn lookup_psk<'b>(&'b self, pskid: &Identifier) -> Option<psk::Psk> {
+    fn lookup_psk(&self, pskid: &Identifier) -> Option<psk::Psk> {
         self.key_store.get_psk(pskid)
     }
 
@@ -672,7 +672,7 @@ where
         if self.use_psk {
             match self.key_store.get_next_pskid() {
                 Some(pskid) => Ok(*pskid),
-                None => return err(MessageBuildFailure),
+                None => err(MessageBuildFailure),
             }
         } else {
             Ok(self.sig_kp.public.into())
@@ -876,10 +876,9 @@ where
                     return err(StateStoreFailure);
                 }
 
-                let id = if pskid.is_some() {
-                    pskid.unwrap()
-                } else {
-                    new_pskid::<F>(psk.as_ref())
+                let id = match pskid {
+                    Some(pskid) => pskid,
+                    None => new_pskid::<F>(psk.as_ref()),
                 };
                 if !self.key_store.contains(&(&id).into()) {
                     self.key_store.insert_psk(

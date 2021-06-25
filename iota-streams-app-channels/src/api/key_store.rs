@@ -103,8 +103,6 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 Some((e, (x, _i))) => {
                     if x.is_some() {
                         return Some(e);
-                    } else {
-                        ()
                     }
                 }
                 None => return None,
