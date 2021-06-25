@@ -635,7 +635,7 @@ impl<Trans: Transport> User<Trans> {
         if let Some(_addr) = &self.user.appinst {
             let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, true)?.body;
             let msg_id = self.user.link_gen.link_from(
-                &seq_msg.pk,
+                &seq_msg.id,
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
 
