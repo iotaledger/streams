@@ -22,11 +22,11 @@ use iota_streams_core::{
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Subscriber Object. Contains User API.
-pub struct Subscriber<T> {
+pub struct Subscriber<T: Clone> {
     user: User<T>,
 }
 
-impl<Trans> Subscriber<Trans> {
+impl<Trans: Clone> Subscriber<Trans> {
     /// Create a new Subscriber instance, generate new Ed25519 key pair.
     ///
     /// # Arguments
@@ -37,6 +37,11 @@ impl<Trans> Subscriber<Trans> {
     pub fn new(seed: &str, encoding: &str, payload_length: usize, transport: Trans) -> Self {
         let user = User::new(seed, encoding, payload_length, false, transport);
         Self { user }
+    }
+
+    /// Returns a clone of the transport object
+    pub fn get_transport(&self) -> Trans {
+        self.user.get_transport()
     }
 
     /// Returns a boolean representing whether an Announcement message has been processed
@@ -131,7 +136,7 @@ impl<Trans> Subscriber<Trans> {
 }
 
 #[cfg(not(feature = "async"))]
-impl<Trans: Transport> Subscriber<Trans> {
+impl<Trans: Transport + Clone> Subscriber<Trans> {
     /// Generates a new Subscriber implementation from input. It then syncs state of the user from
     /// the given announcement message link
     ///
@@ -416,7 +421,7 @@ impl<Trans: Transport> Subscriber<Trans> {
     }
 }
 
-impl<T: Transport> fmt::Display for Subscriber<T> {
+impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

@@ -33,12 +33,12 @@ use iota_streams_ddml::types::GenericArray;
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
 /// Baseline User api object. Contains the api user implementation as well as the transport object
-pub struct User<Trans> {
+pub struct User<Trans: Clone> {
     pub user: UserImp,
     pub transport: Trans,
 }
 
-impl<Trans> User<Trans> {
+impl<Trans: Clone> User<Trans> {
     /// Create a new User instance.
     ///
     /// # Arguments
@@ -57,6 +57,10 @@ impl<Trans> User<Trans> {
             payload_length,
         );
         Self { user, transport }
+    }
+
+    pub fn get_transport(&self) -> Trans {
+        self.transport.clone()
     }
 
     // Attributes
@@ -156,7 +160,7 @@ impl<Trans> User<Trans> {
 }
 
 #[cfg(not(feature = "async"))]
-impl<Trans: Transport> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     // Send
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
