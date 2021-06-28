@@ -50,8 +50,8 @@ use crate::message::{
 };
 
 use iota_client::{
-    MilestoneResponse,
     bee_rest_api::types::responses::MessageMetadataResponse,
+    MilestoneResponse,
 };
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)

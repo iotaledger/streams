@@ -49,7 +49,7 @@ impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
 
 impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg> {
     type Details = ();
-    fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details>{
+    fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details> {
         Ok(())
     }
 }

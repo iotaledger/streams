@@ -137,10 +137,7 @@ pub async fn async_recv_messages<F>(
     }
 }
 
-pub async fn async_get_link_details(
-    client: &iota_client::Client,
-    link: &TangleAddress,
-) -> Result<Details> {
+pub async fn async_get_link_details(client: &iota_client::Client, link: &TangleAddress) -> Result<Details> {
     let tx_address = link.appinst.as_ref();
     let tx_tag = link.msgid.as_ref();
 
@@ -156,10 +153,7 @@ pub async fn async_get_link_details(
         milestone = Some(handle_client_result(client.get_milestone(ms_index).await).unwrap());
     }
 
-    Ok(Details {
-        metadata,
-        milestone,
-    })
+    Ok(Details { metadata, milestone })
 }
 
 #[cfg(not(feature = "async"))]

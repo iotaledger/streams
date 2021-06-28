@@ -11,10 +11,10 @@ use iota_streams_app::{
         tangle::{
             AppInst,
             DefaultTangleLinkGenerator,
+            Details as TransportDetails,
             MsgId,
             TangleAddress,
             TangleMessage,
-            Details as TransportDetails,
         },
     },
 };
