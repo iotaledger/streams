@@ -49,8 +49,25 @@ use crate::message::{
     LinkedMessage,
 };
 
+use iota_client::{
+    MilestoneResponse,
+    bee_rest_api::types::responses::MessageMetadataResponse,
+};
+
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
+
+#[derive(Clone, Debug)]
+pub struct Details {
+    pub metadata: MessageMetadataResponse,
+    pub milestone: Option<MilestoneResponse>,
+}
+
+impl fmt::Display for Details {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<metadata={:?}, milestone={:?}>", self.metadata, self.milestone)
+    }
+}
 
 #[derive(Clone)]
 pub struct TangleMessage<F> {

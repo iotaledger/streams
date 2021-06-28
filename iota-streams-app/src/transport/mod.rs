@@ -25,6 +25,11 @@ use iota_streams_core::prelude::{
     Vec,
 };
 
+pub trait TransportDetails<Link> {
+    type Details;
+    fn get_link_details(&mut self, link: &Link) -> Result<Self::Details>;
+}
+
 pub trait TransportOptions {
     type SendOptions;
     fn get_send_options(&self) -> Self::SendOptions;
@@ -39,7 +44,7 @@ pub trait TransportOptions {
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[cfg(not(feature = "async"))]
-pub trait Transport<Link: Debug + Display, Msg>: TransportOptions {
+pub trait Transport<Link: Debug + Display, Msg>: TransportOptions + TransportDetails<Link> {
     /// Send a message with default options.
     fn send_message(&mut self, msg: &Msg) -> Result<()>;
 
@@ -60,7 +65,7 @@ pub trait Transport<Link: Debug + Display, Msg>: TransportOptions {
 
 #[cfg(feature = "async")]
 #[async_trait(?Send)]
-pub trait Transport<Link, Msg>: TransportOptions
+pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link>
 where
     Link: Send + Sync,
     Msg: Send + Sync,
@@ -100,6 +105,13 @@ impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
     }
     fn set_recv_options(&mut self, opt: Self::RecvOptions) {
         (&*self).borrow_mut().set_recv_options(opt)
+    }
+}
+
+impl<Tsp: TransportDetails<Link>, Link> TransportDetails<Link> for Rc<RefCell<Tsp>> {
+    type Details = <Tsp as TransportDetails<Link>>::Details;
+    fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
+        (&*self).borrow_mut().get_link_details(link)
     }
 }
 
@@ -154,6 +166,14 @@ impl<Tsp: TransportOptions> TransportOptions for Arc<AtomicRefCell<Tsp>> {
     }
     fn set_recv_options(&mut self, opt: Self::RecvOptions) {
         (&*self).borrow_mut().set_recv_options(opt)
+    }
+}
+
+#[cfg(feature = "async")]
+impl<Tsp: TransportDetails<Link>, Link> TransportDetails<Link> for Arc<AtomicRefCell<Tsp>> {
+    type Details = <Tsp as TransportDetails<Link>>::Details;
+    fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
+        (&*self).borrow_mut().get_link_details(link)
     }
 }
 

@@ -47,6 +47,13 @@ impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 
+impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg> {
+    type Details = ();
+    fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details>{
+        Ok(())
+    }
+}
+
 #[cfg(not(feature = "async"))]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
