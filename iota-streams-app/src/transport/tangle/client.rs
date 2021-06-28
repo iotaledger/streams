@@ -348,14 +348,3 @@ where
         }
     }
 }
-
-#[cfg(feature = "async")]
-#[async_trait(?Send)]
-impl TransportDetails<TangleAddress> for Rc<RefCell<Client>> {
-    async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
-        match (&*self).try_borrow_mut() {
-            Ok(tsp) => async_get_link_details(&tsp.client, link).await,
-            Err(_err) => err!(TransportNotAvailable),
-        }
-    }
-}
