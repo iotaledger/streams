@@ -8,7 +8,10 @@ use iota_streams::{
         client::{
             iota_client::{
                 MilestoneResponse as ApiMilestoneResponse,
-                bee_rest_api::types::responses::MessageMetadataResponse as ApiMessageMetadata,
+                bee_rest_api::types::{
+                    dtos::LedgerInclusionStateDto,
+                    responses::MessageMetadataResponse as ApiMessageMetadata,
+                },
             },
             Client,
             SendOptions as ApiSendOptions,
@@ -401,13 +404,32 @@ impl From<ApiDetails> for Details {
 }
 
 #[wasm_bindgen]
+#[derive(Copy, Clone)]
+pub enum LedgerInclusionState {
+    Conflicting = 0,
+    Included = 1,
+    NoTransaction = 2,
+}
+
+impl From<LedgerInclusionStateDto> for LedgerInclusionState {
+    fn from(state: LedgerInclusionStateDto) -> Self {
+        match state {
+            LedgerInclusionStateDto::Conflicting => LedgerInclusionState::Conflicting,
+            LedgerInclusionStateDto::Included => LedgerInclusionState::Included,
+            LedgerInclusionStateDto::NoTransaction => LedgerInclusionState::NoTransaction,
+        }
+    }
+}
+
+#[wasm_bindgen]
 pub struct MessageMetadata {
     message_id: String,
-    //pub parent_message_ids: Vec<String>,
+    parent_message_ids: Vec<String>,
+
     pub is_solid: bool,
     pub referenced_by_milestone_index: Option<u32>,
     pub milestone_index: Option<u32>,
-    //pub ledger_inclusion_state: Option<LedgerInclusionStateDto>,
+    pub ledger_inclusion_state: Option<LedgerInclusionState>,
     pub conflict_reason: Option<u8>,
     pub should_promote: Option<bool>,
     pub should_reattach: Option<bool>,
@@ -419,15 +441,22 @@ impl MessageMetadata {
     pub fn message_id(&self) -> String {
         self.message_id.clone()
     }
+
+    #[wasm_bindgen(getter)]
+    pub fn get_parent_message_ids(&self) -> Array {
+        self.parent_message_ids.iter().map(JsValue::from).collect()
+    }
 }
 
 impl Clone for MessageMetadata {
     fn clone(&self) -> MessageMetadata {
         MessageMetadata {
             message_id: self.message_id.clone(),
+            parent_message_ids: self.parent_message_ids.clone(),
             is_solid: self.is_solid,
             referenced_by_milestone_index: self.referenced_by_milestone_index,
             milestone_index: self.milestone_index,
+            ledger_inclusion_state: self.ledger_inclusion_state,
             conflict_reason: self.conflict_reason,
             should_promote: self.should_promote,
             should_reattach: self.should_reattach,
@@ -439,9 +468,14 @@ impl From<ApiMessageMetadata> for MessageMetadata {
     fn from(metadata: ApiMessageMetadata) -> Self {
         Self {
             message_id: metadata.message_id,
+            parent_message_ids: metadata.parent_message_ids.clone(),
             is_solid: metadata.is_solid,
             referenced_by_milestone_index: metadata.referenced_by_milestone_index,
             milestone_index: metadata.milestone_index,
+            ledger_inclusion_state: match metadata.ledger_inclusion_state {
+                None => None,
+                Some(inc) => Some(inc.into()),
+            },
             conflict_reason: metadata.conflict_reason,
             should_promote: metadata.should_promote,
             should_reattach: metadata.should_reattach,
