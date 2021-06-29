@@ -7,7 +7,7 @@ The general API is simply an abstraction over the rust library, so the examples 
 
 ### Author Generation
 Create an Author and generate a new channel:
-```
+```javascript
 let node = "https://chrysalis-nodes.iota.org/";
 let options = new streams.SendOptions(node, 3, true, 1);
 let multi_branching = false;
@@ -21,7 +21,7 @@ console.log("Announced at: ", ann_link.to_string());
 
 ### Subscriber Generation
 Create a Subscriber and attach to a channel:
-```
+```javascript
 let node = "https://chrysalis-nodes.iota.org/";
 let options = new streams.SendOptions(node, 3, true, 1);
 let sub = new streams.Subscriber("Unique Seed", options);
@@ -32,28 +32,28 @@ await sub.clone().receive_announcement();
 
 ### Subscription
 Subscriber sends a subscription message:
-```
+```javascript
 let response = sub.clone().send_subscribe(ann_link);
 let sub_link = response.get_link();
 // Link to be provided to the Author for subscription
 console.log("Subscription link: ", sub_link.to_string());
 ```
 Author accepts and processes subscription: 
-```
+```javascript
 let sub_link = streams.Address.from_str("SubLink:Here");
 await author.clone().receive_subscribe(sub_link);
 ```
 
 ### Keyload
 Author sends a keyload for all participants in the channel:
-```
+```javascript
 let response = author.clone().send_keyload_for_everyone(ann_link);
 let keyload_link = response.get_link();
 // Keyload message can now act as starting point for a protected branch
 console.log("Keyload link for everyone: ", keyload_link.to_string());
 ``` 
 Author sends a keyload for just one subscriber in the channel:
-```
+```javascript
 let response = author.clone().send_keyload(ann_link, [], ["SubA_PublicKey"]);
 let sub_A_keyload_link = response.get_link();
 // Keyload message can now act as starting point for a protected branch
@@ -70,7 +70,7 @@ to.
 it is required that each publisher make sure to sync their state before publishing to ensure 
 that the instance stays in sync with the other publishers*
 
-```
+```javascript
 await sub.clone().sync_state();
 let masked_payload = to_bytes("Masked Payload") <- Payloads must be converted to bytes
 let public_payload = to_bytes("Public Payload")
@@ -88,7 +88,7 @@ console.log("New message sent by Sub A at: ", msg_link.to_string());
 #### Forward
 When new messages are available to retrieve from the channel, you can fetch the next 
 message sent by each publisher like so:
-```
+```javascript
 let next_msgs = sub.clone().fetch_next_msgs();
 
 for (var i = 0; i < prev_msgs.length; i++) {
@@ -107,7 +107,7 @@ If no new messages are present, the returned array will be empty.
 You can also fetch all possible next messages 
 
 #### Backwards  
-```
+```javascript
 let num_messages = 10;
 let prev_msgs = sub.clone().fetch_prev_msgs(latest_msg_link, num_messages);
 

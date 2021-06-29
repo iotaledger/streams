@@ -22,7 +22,7 @@ npm run build:web  <- Builds to wasm-web/iota_streams_wasm
 
 ### Starting a Channel 
 Once the package has been built, you can pull it into a script file like so: 
-```
+```javascript
 const streams = require("./wasm-node/iota_streams_wasm");
 
 let node = "https://chrysalis-nodes.iota.org/";
