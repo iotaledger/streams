@@ -317,7 +317,7 @@ impl TransportDetails<TangleAddress> for Rc<RefCell<Client>> {
     type Details = Details;
     async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
         match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => async_get_link_details(&tsp.client, link).await,
+            Ok(tsp) => async_get_link_details(&tsp.client, link).await,
             Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
         }
     }

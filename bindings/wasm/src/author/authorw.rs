@@ -118,6 +118,11 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
+    pub fn get_client(&self) -> Client {
+        self.author.borrow_mut().get_transport().clone().take().into()
+    }
+
+    #[wasm_bindgen(catch)]
     pub fn get_public_key(&self) -> Result<String> {
         Ok(hex::encode(self.author.borrow_mut().get_pk().to_bytes()))
     }
