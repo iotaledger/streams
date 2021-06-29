@@ -91,20 +91,20 @@ message sent by each publisher like so:
 ```javascript
 let next_msgs = sub.clone().fetch_next_msgs();
 
-for (var i = 0; i < prev_msgs.length; i++) {
+for (var i = 0; i < next_msgs.length; i++) {
     console.log("Found a message...");
     console.log(
       "Public: ",
-      from_bytes(prev_msgs[i].get_message().get_public_payload()),
+      from_bytes(next_msgs[i].get_message().get_public_payload()),
       "\tMasked: ",
-      from_bytes(prev_msgs[i].get_message().get_masked_payload())
+      from_bytes(next_msgs[i].get_message().get_masked_payload())
     );
 }
 ```
 
 If no new messages are present, the returned array will be empty.
 
-You can also fetch all possible next messages 
+You can also fetch all previous messages:
 
 #### Backwards  
 ```javascript
