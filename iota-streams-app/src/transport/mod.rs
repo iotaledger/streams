@@ -33,7 +33,10 @@ pub trait TransportDetails<Link> {
 
 #[cfg(feature = "async")]
 #[async_trait(?Send)]
-pub trait TransportDetails<Link> where Link: Send + Sync {
+pub trait TransportDetails<Link>
+where
+    Link: Send + Sync,
+{
     type Details;
     async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details>;
 }
@@ -117,8 +120,7 @@ impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
 }
 
 #[cfg(not(feature = "async"))]
-impl<Tsp: TransportDetails<Link>, Link> TransportDetails<Link> for Rc<RefCell<Tsp>>
-{
+impl<Tsp: TransportDetails<Link>, Link> TransportDetails<Link> for Rc<RefCell<Tsp>> {
     type Details = <Tsp as TransportDetails<Link>>::Details;
     fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
         (&*self).borrow_mut().get_link_details(link)
