@@ -277,7 +277,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
 }
 
 #[cfg(feature = "async")]
-impl<Trans: Transport> Subscriber<Trans> {
+impl<Trans: Transport + Clone> Subscriber<Trans> {
     /// Generates a new Subscriber implementation from input. It then syncs state of the user from
     /// the given announcement message link
     ///

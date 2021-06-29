@@ -25,9 +25,17 @@ use iota_streams_core::prelude::{
     Vec,
 };
 
+#[cfg(not(feature = "async"))]
 pub trait TransportDetails<Link> {
     type Details;
     fn get_link_details(&mut self, link: &Link) -> Result<Self::Details>;
+}
+
+#[cfg(feature = "async")]
+#[async_trait(?Send)]
+pub trait TransportDetails<Link> where Link: Send + Sync {
+    type Details;
+    async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details>;
 }
 
 pub trait TransportOptions {
@@ -108,13 +116,12 @@ impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
     }
 }
 
-impl<Tsp: TransportDetails<Link>, Link> TransportDetails<Link> for Rc<RefCell<Tsp>> {
+#[cfg(not(feature = "async"))]
+impl<Tsp: TransportDetails<Link>, Link> TransportDetails<Link> for Rc<RefCell<Tsp>>
+{
     type Details = <Tsp as TransportDetails<Link>>::Details;
     fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
-        match (&*self).try_borrow_mut() {
-            Ok(mut tsp) => tsp.get_link_details(link),
-            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
-        }
+        (&*self).borrow_mut().get_link_details(link)
     }
 }
 
@@ -169,14 +176,6 @@ impl<Tsp: TransportOptions> TransportOptions for Arc<AtomicRefCell<Tsp>> {
     }
     fn set_recv_options(&mut self, opt: Self::RecvOptions) {
         (&*self).borrow_mut().set_recv_options(opt)
-    }
-}
-
-#[cfg(feature = "async")]
-impl<Tsp: TransportDetails<Link>, Link> TransportDetails<Link> for Arc<AtomicRefCell<Tsp>> {
-    type Details = <Tsp as TransportDetails<Link>>::Details;
-    fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
-        (&*self).borrow_mut().get_link_details(link)
     }
 }
 

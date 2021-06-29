@@ -305,8 +305,21 @@ where
 #[cfg(feature = "async")]
 #[async_trait(?Send)]
 impl TransportDetails<TangleAddress> for Client {
+    type Details = Details;
     async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
-        async_recv_messages(&self.client, link).await
+        async_get_link_details(&self.client, link).await
+    }
+}
+
+#[cfg(feature = "async")]
+#[async_trait(?Send)]
+impl TransportDetails<TangleAddress> for Rc<RefCell<Client>> {
+    type Details = Details;
+    async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
+        match (&*self).try_borrow_mut() {
+            Ok(mut tsp) => async_get_link_details(&tsp.client, link).await,
+            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
+        }
     }
 }
 

@@ -449,7 +449,7 @@ impl<Trans: Transport + Clone> User<Trans> {
 }
 
 #[cfg(feature = "async")]
-impl<Trans: Transport> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     // Send
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
