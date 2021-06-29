@@ -75,7 +75,7 @@ pub fn get_hash(tx_address: &[u8], tx_tag: &[u8]) -> Result<String> {
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `(client.get_message().index`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
-    if let Payload::Indexation(i) = message.payload().as_ref().unwrap() {
+    if let Some(Payload::Indexation(i)) = message.payload().as_ref() {
         let mut bytes = Vec::<u8>::new();
         for b in i.data() {
             bytes.push(*b);
@@ -93,15 +93,20 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
 
 async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &[u8]) -> Result<Vec<Message>> {
     let hash = get_hash(tx_address, tx_tag)?;
-    let msg_ids = handle_client_result(client.get_message().index(&hash.to_string()).await).unwrap();
+    let msg_ids = handle_client_result(client.get_message().index(&hash.to_string()).await)?;
     try_or!(!msg_ids.is_empty(), IndexNotFound)?;
 
     let msgs = join_all(
         msg_ids
             .iter()
-            .map(|msg| async move { handle_client_result(client.get_message().data(msg).await).unwrap() }),
+            .map(|msg| async move {
+                handle_client_result(client.get_message().data(msg).await)
+            }),
     )
-    .await;
+    .await
+    .into_iter()
+    .filter_map(|msg| msg.ok())
+    .collect::<Vec<_>>();
     try_or!(!msgs.is_empty(), MessageContentsNotFound)?;
     Ok(msgs)
 }
@@ -132,7 +137,12 @@ pub async fn async_recv_messages<F>(
     let tx_address = link.appinst.as_ref();
     let tx_tag = link.msgid.as_ref();
     match get_messages(client, tx_address, tx_tag).await {
-        Ok(txs) => Ok(txs.iter().map(|b| msg_from_tangle_message(b, link).unwrap()).collect()),
+        Ok(txs) => Ok(
+            txs
+                .iter()
+                .filter_map(|b| msg_from_tangle_message(b, link).ok()) // Ignore errors
+                .collect()
+        ),
         Err(_) => Ok(Vec::new()), // Just ignore the error?
     }
 }
@@ -143,14 +153,14 @@ pub async fn async_get_link_details(client: &iota_client::Client, link: &TangleA
 
     let hash = get_hash(tx_address, tx_tag)?;
 
-    let msg_ids = handle_client_result(client.get_message().index(&hash.to_string()).await).unwrap();
+    let msg_ids = handle_client_result(client.get_message().index(&hash.to_string()).await)?;
     try_or!(!msg_ids.is_empty(), IndexNotFound)?;
 
-    let metadata = handle_client_result(client.get_message().metadata(&msg_ids[0]).await).unwrap();
+    let metadata = handle_client_result(client.get_message().metadata(&msg_ids[0]).await)?;
 
     let mut milestone = None;
     if let Some(ms_index) = metadata.referenced_by_milestone_index {
-        milestone = Some(handle_client_result(client.get_milestone(ms_index).await).unwrap());
+        milestone = Some(handle_client_result(client.get_milestone(ms_index).await)?);
     }
 
     Ok(Details { metadata, milestone })
@@ -351,7 +361,7 @@ where
             Ok(tsp) => {
                 let mut msgs = async_recv_messages(&tsp.client, link).await?;
                 if let Some(msg) = msgs.pop() {
-                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string())).unwrap();
+                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string()))?;
                     Ok(msg)
                 } else {
                     err!(MessageLinkNotFound(link.msgid.to_string()))
