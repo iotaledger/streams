@@ -23,11 +23,11 @@ use iota_streams_core::{
 use iota_streams_core_edsig::signature::ed25519;
 
 /// Author Object. Contains User API.
-pub struct Author<Trans: Clone> {
+pub struct Author<Trans> {
     user: User<Trans>,
 }
 
-impl<Trans: Clone> Author<Trans> {
+impl<Trans> Author<Trans> {
     /// Create a new Author instance, generate new Ed25519 key pair.
     ///
     /// # Arguments
@@ -44,7 +44,7 @@ impl<Trans: Clone> Author<Trans> {
     }
 
     /// Returns a clone of the transport object
-    pub fn get_transport(&self) -> Trans {
+    pub fn get_transport(&self) -> &Trans {
         self.user.get_transport()
     }
 

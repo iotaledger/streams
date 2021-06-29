@@ -33,12 +33,12 @@ use iota_streams_ddml::types::GenericArray;
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
 /// Baseline User api object. Contains the api user implementation as well as the transport object
-pub struct User<Trans: Clone> {
+pub struct User<Trans> {
     pub user: UserImp,
     pub transport: Trans,
 }
 
-impl<Trans: Clone> User<Trans> {
+impl<Trans> User<Trans> {
     /// Create a new User instance.
     ///
     /// # Arguments
@@ -59,8 +59,8 @@ impl<Trans: Clone> User<Trans> {
         Self { user, transport }
     }
 
-    pub fn get_transport(&self) -> Trans {
-        self.transport.clone()
+    pub fn get_transport(&self) -> &Trans {
+        &self.transport
     }
 
     // Attributes
