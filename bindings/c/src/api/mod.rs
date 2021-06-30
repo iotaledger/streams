@@ -31,7 +31,7 @@ pub(crate) fn safe_into_ptr<T>(value: T) -> *const T {
     Box::into_raw(Box::new(value))    
 }
 
-pub(crate) fn safe_into_ptr_mut<T>(value: T) -> *mut T {
+pub(crate) fn safe_into_mut_ptr<T>(value: T) -> *mut T {
     Box::into_raw(Box::new(value))    
 }
 
@@ -96,7 +96,7 @@ pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const Publi
                 let pk_str = hex::encode(pub_key.as_bytes());
                 for (pk, cursor) in state {
                     if pk == &pk_str {
-                        return Box::into_raw(Box::new(cursor.link.clone()))
+                        return safe_into_ptr(cursor.link.clone())
                     }
                 }
                 return null()
@@ -121,7 +121,7 @@ pub type TransportWrap = Rc<core::cell::RefCell<BucketTransport>>;
 
 #[no_mangle]
 pub extern "C" fn tsp_new() -> *mut TransportWrap {
-    Box::into_raw(Box::new(TransportWrap::default()))
+    safe_into_mut_ptr(TransportWrap::default())
 }
 
 #[no_mangle]
@@ -135,7 +135,7 @@ pub extern "C" fn tsp_client_new_from_url(c_url: *const c_char) -> *mut Transpor
     unsafe {
         let url = CStr::from_ptr(c_url).to_str().unwrap();
 
-        Box::into_raw(Box::new(TransportWrap::new_from_url(url)))
+        safe_into_mut_ptr(TransportWrap::new_from_url(url))
     }
 }
 
@@ -205,7 +205,7 @@ impl Default for MessageMetadata {
 impl From<MessageMetadataResponse> for MessageMetadata {
     fn from(m: MessageMetadataResponse) -> Self {
         let mut r = MessageMetadata::default();
-        let mut field_flags = 0_u32
+        let field_flags = 0_u32
             | {
                 let s = core::cmp::min(r.message_id.len() - 1, m.message_id.as_bytes().len());
                 r.message_id[..s].copy_from_slice(&m.message_id.as_bytes()[..s]);
@@ -292,8 +292,8 @@ pub struct MessageLinks {
 
 impl From<(Address, Option<Address>)> for MessageLinks {
     fn from(links: (Address, Option<Address>)) -> Self {
-        let msg_link = Box::into_raw(Box::new(links.0));
-        let seq_link = links.1.map_or(null(), |s| Box::into_raw(Box::new(s)));
+        let msg_link = safe_into_ptr(links.0);
+        let seq_link = links.1.map_or(null(), |s| safe_into_ptr(s));
         Self { msg_link, seq_link }
     }
 }
@@ -400,7 +400,7 @@ impl Buffer {
         Bytes(Vec::with_capacity(size)).into()
     }
     pub fn drop(self) {
-        let b: Bytes = self.into();
+        let _b: Bytes = self.into();
     }
 }
 

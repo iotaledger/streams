@@ -15,7 +15,7 @@ pub extern "C" fn auth_new(
     let encoding = unsafe { CStr::from_ptr(c_encoding).to_str().unwrap() };
     let tsp = unsafe { (*transport).clone() };
     let user = Author::new(seed, encoding, payload_length, multi_branching != 0, tsp);
-    Box::into_raw(Box::new(user))
+    safe_into_mut_ptr(user)
 }
 
 /// Recover an existing channel from seed and existing announcement message
@@ -32,7 +32,7 @@ pub extern "C" fn auth_recover(
             let tsp = (*transport).clone();
             Author::recover(seed, addr, multi_branching != 0, tsp)
                 .map_or(null_mut(), |auth| {
-                    Box::into_raw(Box::new(auth))
+                    safe_into_mut_ptr(auth)
                 })
         })
     }
@@ -73,7 +73,7 @@ pub extern "C" fn auth_get_public_key(user: *const Author) -> *const PublicKey {
 pub extern "C" fn auth_send_announce(user: *mut Author) -> *const Address {
     unsafe {
         user.as_mut().map_or(null(), |user| {
-            user.send_announce().map_or(null(), |a| Box::into_raw(Box::new(a)))
+            user.send_announce().map_or(null(), |a| safe_into_ptr(a))
         })
     }
 }

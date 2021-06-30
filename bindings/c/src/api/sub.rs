@@ -14,7 +14,7 @@ pub extern "C" fn sub_new(
     let encoding = unsafe { CStr::from_ptr(c_encoding).to_str().unwrap() };
     let tsp = unsafe { (*transport).clone() };
     let subscriber = Subscriber::new(seed, encoding, payload_length, tsp);
-    Box::into_raw(Box::new(subscriber))
+    safe_into_mut_ptr(subscriber)
 }
 
 /// Recover an existing channel from seed and existing announcement message
@@ -30,7 +30,7 @@ pub extern "C" fn sub_recover(
             let tsp = (*transport).clone();
             Subscriber::recover(seed, addr, tsp)
                 .map_or(null_mut(), |sub| {
-                    Box::into_raw(Box::new(sub))
+                    safe_into_mut_ptr(sub)
                 })
         })
     }
@@ -113,7 +113,7 @@ pub extern "C" fn sub_send_subscribe(r: *mut *const Address, user: *mut Subscrib
                     user
                         .send_subscribe(announcement_link)
                         .map_or(Err::OperationFailed, |link| -> Err {
-                            *r = Box::into_raw(Box::new(link));
+                            *r = safe_into_ptr(link);
                             Err::Ok
                         })
                 })
@@ -225,7 +225,7 @@ pub extern "C" fn sub_receive_sequence(r: *mut *const Address, user: *mut Subscr
             user.as_mut().map_or(Err::NullArgument, |user| {
                 link.as_ref().map_or(Err::NullArgument, |link| {
                     user.receive_sequence(link).map_or(Err::OperationFailed, |seq_link| {
-                        *r = Box::into_raw(Box::new(seq_link));
+                        *r = safe_into_ptr(seq_link);
                         Err::Ok
                     })
                 })
@@ -275,7 +275,7 @@ pub extern "C" fn sub_gen_next_msg_ids(user: *mut Subscriber) -> *const NextMsgI
     unsafe {
         user.as_mut().map_or(null(), |user| {
             let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
-            Box::into_raw(Box::new(next_msg_ids))
+            safe_into_ptr(next_msg_ids)
         })
     }
 }
@@ -313,7 +313,7 @@ pub extern "C" fn sub_receive_msg(user: *mut Subscriber, link: *const Address) -
         user.as_mut().map_or(null(), |user| {
             link.as_ref().map_or(null(), |link| {
                 let u = user.receive_msg(link).unwrap(); //TODO: handle Result
-                Box::into_raw(Box::new(u))
+                safe_into_ptr(u)
             })
         })
     }
@@ -357,7 +357,7 @@ pub extern "C" fn sub_fetch_state(user: *mut Subscriber) -> *const UserState {
     unsafe {
         user.as_mut().map_or(null(), |user| {
             user.fetch_state().map_or(null(), |state| {
-                Box::into_raw(Box::new(state))
+                safe_into_ptr(state)
             })
         })
     }
