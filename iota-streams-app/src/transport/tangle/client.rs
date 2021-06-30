@@ -2,10 +2,16 @@ use futures::executor::block_on;
 
 #[cfg(feature = "async")]
 use core::cell::RefCell;
+use core::fmt;
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::Rc;
 
 pub use iota_client;
+
+use iota_client::{
+    bee_rest_api::types::responses::MessageMetadataResponse,
+    MilestoneResponse,
+};
 
 use iota_client::bee_message::{
     payload::Payload,
@@ -33,11 +39,6 @@ use crate::{
 
 use futures::future::join_all;
 
-use crypto::hashes::{
-    blake2b,
-    Digest,
-};
-
 use iota_streams_core::prelude::String;
 
 /// Options for the user Client
@@ -63,23 +64,30 @@ impl Default for SendOptions {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Details {
+    pub metadata: MessageMetadataResponse,
+    pub milestone: Option<MilestoneResponse>,
+}
+
+impl fmt::Display for Details {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<metadata={:?}, milestone={:?}>", self.metadata, self.milestone)
+    }
+}
+
 fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
-/// Generate a hex encoded Tangle index hash from an application instance and msgid
-pub fn get_hash(app_instance: &[u8], msgid: &[u8]) -> Result<String> {
-    let total = [app_instance, msgid].concat();
-    let hash = blake2b::Blake2b256::digest(&total);
-    Ok(hex::encode(&hash))
-}
+use super::get_hash;
 
 /// Reconstruct Streams Message from bundle.
 ///
 /// The input bundle is not checked (for validity of the hash, consistency of indices, etc.).
 /// Checked bundles are returned by `client.get_message().index`.
 pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
-    if let Payload::Indexation(i) = message.payload().as_ref().unwrap() {
+    if let Some(Payload::Indexation(i)) = message.payload().as_ref() {
         let mut bytes = Vec::<u8>::new();
         for b in i.data() {
             bytes.push(*b);
@@ -97,15 +105,18 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
 
 async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &[u8]) -> Result<Vec<Message>> {
     let hash = get_hash(tx_address, tx_tag)?;
-    let msg_ids = handle_client_result(client.get_message().index(&hash.to_string()).await).unwrap();
+    let msg_ids = handle_client_result(client.get_message().index(&hash.to_string()).await)?;
     try_or!(!msg_ids.is_empty(), IndexNotFound)?;
 
     let msgs = join_all(
         msg_ids
             .iter()
-            .map(|msg| async move { handle_client_result(client.get_message().data(msg).await).unwrap() }),
+            .map(|msg| async move { handle_client_result(client.get_message().data(msg).await) }),
     )
-    .await;
+    .await
+    .into_iter()
+    .filter_map(|msg| msg.ok())
+    .collect::<Vec<_>>();
     try_or!(!msgs.is_empty(), MessageContentsNotFound)?;
     Ok(msgs)
 }
@@ -138,9 +149,32 @@ pub async fn async_recv_messages<F>(
     let tx_address = link.appinst.as_ref();
     let tx_tag = link.msgid.as_ref();
     match get_messages(client, tx_address, tx_tag).await {
-        Ok(txs) => Ok(txs.iter().map(|b| msg_from_tangle_message(b, link).unwrap()).collect()),
+        Ok(txs) => Ok(txs
+            .iter()
+            .filter_map(|b| msg_from_tangle_message(b, link).ok()) // Ignore errors
+            .collect()),
         Err(_) => Ok(Vec::new()), // Just ignore the error?
     }
+}
+
+/// Retrieve details of a link from the tangle using a node client
+pub async fn async_get_link_details(client: &iota_client::Client, link: &TangleAddress) -> Result<Details> {
+    let tx_address = link.appinst.as_ref();
+    let tx_tag = link.msgid.as_ref();
+
+    let hash = get_hash(tx_address, tx_tag)?;
+
+    let msg_ids = handle_client_result(client.get_message().index(&hash.to_string()).await)?;
+    try_or!(!msg_ids.is_empty(), IndexNotFound)?;
+
+    let metadata = handle_client_result(client.get_message().metadata(&msg_ids[0]).await)?;
+
+    let mut milestone = None;
+    if let Some(ms_index) = metadata.referenced_by_milestone_index {
+        milestone = Some(handle_client_result(client.get_milestone(ms_index).await)?);
+    }
+
+    Ok(Details { metadata, milestone })
 }
 
 /// Synchronised - Send message to the tangle using a node client
@@ -155,7 +189,13 @@ pub fn sync_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress)
     block_on(async_recv_messages(client, link))
 }
 
-/// Wrapper for iota_client::Client and user send options.
+/// Synchronised - Retrieve details of a link from the tangle using a node client
+#[cfg(not(feature = "async"))]
+pub fn sync_get_link_details(client: &iota_client::Client, link: &TangleAddress) -> Result<Details> {
+    block_on(async_get_link_details(client, link))
+}
+
+/// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
 pub struct Client {
     send_opt: SendOptions,
     client: iota_client::Client,
@@ -239,6 +279,14 @@ impl TransportOptions for Client {
 }
 
 #[cfg(not(feature = "async"))]
+impl TransportDetails<TangleAddress> for Client {
+    type Details = Details;
+    fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
+        sync_get_link_details(&self.client, link)
+    }
+}
+
+#[cfg(not(feature = "async"))]
 impl<F> Transport<TangleAddress, TangleMessage<F>> for Client {
     /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
@@ -278,6 +326,27 @@ where
     }
 }
 
+#[cfg(feature = "async")]
+#[async_trait(?Send)]
+impl TransportDetails<TangleAddress> for Client {
+    type Details = Details;
+    async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
+        async_get_link_details(&self.client, link).await
+    }
+}
+
+#[cfg(feature = "async")]
+#[async_trait(?Send)]
+impl TransportDetails<TangleAddress> for Rc<RefCell<Client>> {
+    type Details = Details;
+    async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
+        match (&*self).try_borrow_mut() {
+            Ok(tsp) => async_get_link_details(&tsp.client, link).await,
+            Err(err) => Err(wrapped_err!(TransportNotAvailable, WrappedError(err))),
+        }
+    }
+}
+
 // It's safe to impl async trait for Rc<RefCell<T>> targeting wasm as it's single-threaded.
 #[cfg(feature = "async")]
 #[async_trait(?Send)]
@@ -306,7 +375,7 @@ where
             Ok(tsp) => {
                 let mut msgs = async_recv_messages(&tsp.client, link).await?;
                 if let Some(msg) = msgs.pop() {
-                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string())).unwrap();
+                    try_or!(msgs.is_empty(), MessageNotUnique(link.msgid.to_string()))?;
                     Ok(msg)
                 } else {
                     err!(MessageLinkNotFound(link.msgid.to_string()))

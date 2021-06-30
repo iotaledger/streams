@@ -59,6 +59,10 @@ impl<Trans> User<Trans> {
         Self { user, transport }
     }
 
+    pub fn get_transport(&self) -> &Trans {
+        &self.transport
+    }
+
     // Attributes
 
     /// Fetch the Address (application instance) of the channel.
@@ -156,7 +160,7 @@ impl<Trans> User<Trans> {
 }
 
 #[cfg(not(feature = "async"))]
-impl<Trans: Transport> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     // Send
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
@@ -445,7 +449,7 @@ impl<Trans: Transport> User<Trans> {
 }
 
 #[cfg(feature = "async")]
-impl<Trans: Transport> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     // Send
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary

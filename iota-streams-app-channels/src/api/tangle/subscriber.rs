@@ -39,6 +39,11 @@ impl<Trans> Subscriber<Trans> {
         Self { user }
     }
 
+    /// Returns a clone of the transport object
+    pub fn get_transport(&self) -> &Trans {
+        self.user.get_transport()
+    }
+
     /// Returns a boolean representing whether an Announcement message has been processed
     pub fn is_registered(&self) -> bool {
         self.user.is_registered()
@@ -131,7 +136,7 @@ impl<Trans> Subscriber<Trans> {
 }
 
 #[cfg(not(feature = "async"))]
-impl<Trans: Transport> Subscriber<Trans> {
+impl<Trans: Transport + Clone> Subscriber<Trans> {
     /// Generates a new Subscriber implementation from input. It then syncs state of the user from
     /// the given announcement message link
     ///
@@ -272,7 +277,7 @@ impl<Trans: Transport> Subscriber<Trans> {
 }
 
 #[cfg(feature = "async")]
-impl<Trans: Transport> Subscriber<Trans> {
+impl<Trans: Transport + Clone> Subscriber<Trans> {
     /// Generates a new Subscriber implementation from input. It then syncs state of the user from
     /// the given announcement message link
     ///
@@ -416,7 +421,7 @@ impl<Trans: Transport> Subscriber<Trans> {
     }
 }
 
-impl<T: Transport> fmt::Display for Subscriber<T> {
+impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

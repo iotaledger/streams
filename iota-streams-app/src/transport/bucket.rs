@@ -48,6 +48,14 @@ impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
 }
 
 #[cfg(not(feature = "async"))]
+impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg> {
+    type Details = ();
+    fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details> {
+        Ok(())
+    }
+}
+
+#[cfg(not(feature = "async"))]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
     Link: Eq + hash::Hash + Clone + core::fmt::Debug + core::fmt::Display,
@@ -105,5 +113,17 @@ where
         } else {
             err!(MessageLinkNotFound(link.to_string()))?
         }
+    }
+}
+
+#[cfg(feature = "async")]
+#[async_trait(?Send)]
+impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg>
+where
+    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
+{
+    type Details = ();
+    async fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details> {
+        Ok(())
     }
 }

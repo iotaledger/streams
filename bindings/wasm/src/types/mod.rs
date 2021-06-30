@@ -4,7 +4,15 @@ use core::{
 };
 use iota_streams::{
     app::transport::tangle::client::{
+        iota_client::{
+            bee_rest_api::types::{
+                dtos::LedgerInclusionStateDto,
+                responses::MessageMetadataResponse as ApiMessageMetadata,
+            },
+            MilestoneResponse as ApiMilestoneResponse,
+        },
         Client,
+        Details as ApiDetails,
         SendOptions as ApiSendOptions,
     },
     app_channels::api::tangle::{
@@ -358,6 +366,154 @@ impl UserResponse {
             }
         } else {
             Message::default()
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Clone)]
+pub struct Details {
+    metadata: MessageMetadata,
+    milestone: Option<MilestoneResponse>,
+}
+
+#[wasm_bindgen]
+impl Details {
+    pub fn get_metadata(&self) -> MessageMetadata {
+        self.metadata.clone()
+    }
+
+    pub fn get_milestone(&self) -> Option<MilestoneResponse> {
+        self.milestone.clone()
+    }
+}
+
+impl From<ApiDetails> for Details {
+    fn from(details: ApiDetails) -> Self {
+        Self {
+            metadata: details.metadata.into(),
+            milestone: match details.milestone {
+                Some(ms) => Some(ms.into()),
+                None => None,
+            },
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Copy, Clone)]
+pub enum LedgerInclusionState {
+    Conflicting = 0,
+    Included = 1,
+    NoTransaction = 2,
+}
+
+impl From<LedgerInclusionStateDto> for LedgerInclusionState {
+    fn from(state: LedgerInclusionStateDto) -> Self {
+        match state {
+            LedgerInclusionStateDto::Conflicting => LedgerInclusionState::Conflicting,
+            LedgerInclusionStateDto::Included => LedgerInclusionState::Included,
+            LedgerInclusionStateDto::NoTransaction => LedgerInclusionState::NoTransaction,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub struct MessageMetadata {
+    message_id: String,
+    parent_message_ids: Vec<String>,
+
+    pub is_solid: bool,
+    pub referenced_by_milestone_index: Option<u32>,
+    pub milestone_index: Option<u32>,
+    pub ledger_inclusion_state: Option<LedgerInclusionState>,
+    pub conflict_reason: Option<u8>,
+    pub should_promote: Option<bool>,
+    pub should_reattach: Option<bool>,
+}
+
+#[wasm_bindgen]
+impl MessageMetadata {
+    #[wasm_bindgen(getter)]
+    pub fn message_id(&self) -> String {
+        self.message_id.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn get_parent_message_ids(&self) -> Array {
+        self.parent_message_ids.iter().map(JsValue::from).collect()
+    }
+}
+
+impl Clone for MessageMetadata {
+    fn clone(&self) -> MessageMetadata {
+        MessageMetadata {
+            message_id: self.message_id.clone(),
+            parent_message_ids: self.parent_message_ids.clone(),
+            is_solid: self.is_solid,
+            referenced_by_milestone_index: self.referenced_by_milestone_index,
+            milestone_index: self.milestone_index,
+            ledger_inclusion_state: self.ledger_inclusion_state,
+            conflict_reason: self.conflict_reason,
+            should_promote: self.should_promote,
+            should_reattach: self.should_reattach,
+        }
+    }
+}
+
+impl From<ApiMessageMetadata> for MessageMetadata {
+    fn from(metadata: ApiMessageMetadata) -> Self {
+        Self {
+            message_id: metadata.message_id,
+            parent_message_ids: metadata.parent_message_ids.clone(),
+            is_solid: metadata.is_solid,
+            referenced_by_milestone_index: metadata.referenced_by_milestone_index,
+            milestone_index: metadata.milestone_index,
+            ledger_inclusion_state: match metadata.ledger_inclusion_state {
+                None => None,
+                Some(inc) => Some(inc.into()),
+            },
+            conflict_reason: metadata.conflict_reason,
+            should_promote: metadata.should_promote,
+            should_reattach: metadata.should_reattach,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub struct MilestoneResponse {
+    /// Milestone index.
+    pub index: u32,
+    /// Milestone message id.
+    message_id: String,
+    /// Milestone timestamp.
+    pub timestamp: u64,
+}
+
+#[wasm_bindgen]
+impl MilestoneResponse {
+    #[wasm_bindgen(getter)]
+    pub fn message_id(&self) -> String {
+        self.message_id.clone()
+    }
+}
+
+impl Clone for MilestoneResponse {
+    fn clone(&self) -> MilestoneResponse {
+        MilestoneResponse {
+            index: self.index,
+            message_id: self.message_id.clone(),
+            timestamp: self.timestamp,
+        }
+    }
+}
+
+impl From<ApiMilestoneResponse> for MilestoneResponse {
+    fn from(milestone: ApiMilestoneResponse) -> Self {
+        Self {
+            index: milestone.index,
+            message_id: milestone.message_id.to_string(),
+            timestamp: milestone.timestamp,
         }
     }
 }
