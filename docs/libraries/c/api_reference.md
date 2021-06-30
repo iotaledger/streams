@@ -253,7 +253,7 @@ Drop a Subscriber instance from memory.
 | user            | `*mut Subscriber`                      | Subscriber instance      |
 
 
-#### sub_import(buffer, bytes, password): Author 
+#### sub_import(buffer, bytes, password): Subscriber 
 Import a Subscriber instance from an encrypted binary array 
 
 | Param           | Type                                   | Description               |
