@@ -7,15 +7,12 @@ use core::cell::RefCell;
 use iota_streams::{
     app::transport::{
         tangle::client::Client as ApiClient,
-        TransportOptions,
         TransportDetails,
+        TransportOptions,
     },
-    app_channels::api::tangle::{
-        Address as ApiAddress,
-    },
+    app_channels::api::tangle::Address as ApiAddress,
     core::prelude::Rc,
 };
-
 
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -34,10 +31,13 @@ impl Client {
 
     #[wasm_bindgen(catch)]
     pub async fn get_link_details(mut self, link: Address) -> Result<Details> {
-        self.0.get_link_details(&link
-            .try_into()
-            .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr)
-        ).await
+        self.0
+            .get_link_details(
+                &link
+                    .try_into()
+                    .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
+            )
+            .await
             .map_or_else(
                 |err| Err(JsValue::from_str(&err.to_string())),
                 |details| Ok(details.into()),

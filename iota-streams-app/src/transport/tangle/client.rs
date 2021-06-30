@@ -1,8 +1,8 @@
 use futures::executor::block_on;
 
-use core::fmt;
 #[cfg(feature = "async")]
 use core::cell::RefCell;
+use core::fmt;
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::Rc;
 
@@ -75,7 +75,6 @@ impl fmt::Display for Details {
     }
 }
 
-
 fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
@@ -109,9 +108,7 @@ async fn get_messages(client: &iota_client::Client, tx_address: &[u8], tx_tag: &
     let msgs = join_all(
         msg_ids
             .iter()
-            .map(|msg| async move {
-                handle_client_result(client.get_message().data(msg).await)
-            }),
+            .map(|msg| async move { handle_client_result(client.get_message().data(msg).await) }),
     )
     .await
     .into_iter()
@@ -147,12 +144,10 @@ pub async fn async_recv_messages<F>(
     let tx_address = link.appinst.as_ref();
     let tx_tag = link.msgid.as_ref();
     match get_messages(client, tx_address, tx_tag).await {
-        Ok(txs) => Ok(
-            txs
-                .iter()
-                .filter_map(|b| msg_from_tangle_message(b, link).ok()) // Ignore errors
-                .collect()
-        ),
+        Ok(txs) => Ok(txs
+            .iter()
+            .filter_map(|b| msg_from_tangle_message(b, link).ok()) // Ignore errors
+            .collect()),
         Err(_) => Ok(Vec::new()), // Just ignore the error?
     }
 }

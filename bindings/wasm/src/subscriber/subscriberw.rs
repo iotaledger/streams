@@ -87,7 +87,7 @@ impl Subscriber {
                 .ok_or("channel not subscribed"),
         )
     }
-    
+
     #[wasm_bindgen(catch)]
     pub fn get_client(&self) -> Client {
         self.subscriber.borrow_mut().get_transport().clone().take().into()

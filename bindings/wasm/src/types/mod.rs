@@ -3,19 +3,17 @@ use core::{
     convert::TryFrom,
 };
 use iota_streams::{
-    app::transport::tangle::{
-        client::{
-            Details as ApiDetails,
-            iota_client::{
-                MilestoneResponse as ApiMilestoneResponse,
-                bee_rest_api::types::{
-                    dtos::LedgerInclusionStateDto,
-                    responses::MessageMetadataResponse as ApiMessageMetadata,
-                },
+    app::transport::tangle::client::{
+        iota_client::{
+            bee_rest_api::types::{
+                dtos::LedgerInclusionStateDto,
+                responses::MessageMetadataResponse as ApiMessageMetadata,
             },
-            Client,
-            SendOptions as ApiSendOptions,
+            MilestoneResponse as ApiMilestoneResponse,
         },
+        Client,
+        Details as ApiDetails,
+        SendOptions as ApiSendOptions,
     },
     app_channels::api::tangle::{
         Address as ApiAddress,
@@ -381,7 +379,6 @@ pub struct Details {
 
 #[wasm_bindgen]
 impl Details {
-
     pub fn get_metadata(&self) -> MessageMetadata {
         self.metadata.clone()
     }
@@ -516,7 +513,7 @@ impl From<ApiMilestoneResponse> for MilestoneResponse {
         Self {
             index: milestone.index,
             message_id: milestone.message_id.to_string(),
-            timestamp: milestone.timestamp
+            timestamp: milestone.timestamp,
         }
     }
 }

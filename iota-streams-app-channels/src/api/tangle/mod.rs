@@ -9,9 +9,9 @@ use iota_streams_app::{
     transport::{
         self,
         tangle::{
+            client::Details as ClientDetails,
             AppInst,
             DefaultTangleLinkGenerator,
-            client::Details as ClientDetails,
             MsgId,
             TangleAddress,
             TangleMessage,
