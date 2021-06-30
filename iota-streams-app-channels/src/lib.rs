@@ -3,7 +3,8 @@
 //! API functions can be found through the [Author](api::tangle::Author) and
 //! [Subscriber](api::tangle::Subscriber)
 //!
-//! User implementations will require a Transport [Client](../iota_streams_app/transport/tangle/client/struct.Client.html)
+//! User implementations will require a Transport
+//! [Client](../iota_streams_app/transport/tangle/client/struct.Client.html)
 //!
 //! ## Starting a new Channel (Multi Branch)
 //! ```compile fail
