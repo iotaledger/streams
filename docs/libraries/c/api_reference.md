@@ -2,27 +2,27 @@
 
 ### Author
 
-#### auth_new(c_seed, c_encoding, payload_length, multi_branching, transport): Author 
+#### auth_new(seed, encoding, payload_length, multi_branching, tsp): author_t 
 Generates an Author instance 
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
-| c_seed          | `*const c_char`                        | Unique user seed         |
-| c_encoding      | `*const c_char`                        | Payload encoding         |
+| seed            | `char const *`                         | Unique user seed         |
+| encoding        | `char const *`                         | Payload encoding         |
 | payload_length  | `size_t`                               | Payload max length       |
 | multi_branching | `uint8_t`                              | Channel Type             | 
-| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper |
+| tsp             | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** An Author instance for administrating a channel.
 
-#### auth_recover(c_seed, c_ann_address, multi_branching, transport): Author 
+#### auth_recover(seed, announcement, multi_branching, tsp): author_t 
 Recover an Author instance using the announcement address link and seed.
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
-| c_seed          | `*const c_char`                        | Unique user seed         |
-| c_ann_address   | [`*const Address`](#Address)           | Announcement link        |
+| seed            | `char const *`                         | Unique user seed         |
+| announcement    | [`address_t const *`](#Address)        | Announcement link        |
 | multi_branching | `uint8_t`                              | Channel Type             | 
-| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper |
+| tsp             | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** A recovered Author instance for administrating a channel.
 
 #### auth_drop(user)
@@ -30,36 +30,36 @@ Drop an Author instance from memory.
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
-| user            | `*mut Author`                          | Author instance          |
+| user            | `author_t *`                           | Author instance          |
 
 
 
-#### auth_import(buffer, password, transport): Author 
+#### auth_import(buffer, password, transport): author_t 
 Import an Author instance from an encrypted binary array
 
 | Param           | Type                                   | Description               |
 | --------------- | -------------------------------------- | ------------------------- |
-| bytes           | `Buffer`                               | Buffer with exported data |
-| password        | `*const c_char`                        | Key to decrypt binary     | 
-| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper  |
+| bytes           | `buffer_t`                             | Buffer with exported data |
+| password        | `char const *`                         | Key to decrypt binary     | 
+| transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper  |
 **Returns:** A recovered Author instance for administrating a channel.
 
-#### auth_export(user, password): Buffer 
+#### auth_export(user, password): buffer_t 
 Export an Author instance as an encrypted array using a given password
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
-| user            | `*mut Author`       | Author instance           |
-| password        | `*const char`       | Key to encrypt            | 
+| user            | `author_t *`        | Author instance           |
+| password        | `char const *`       | Key to encrypt            | 
 **Returns:** Binary array representing an encrypted state of the author.
 
 
-#### auth_channel_address(user): [*const ChannelAddress](#ChannelAddress) 
+#### auth_channel_address(user): [channel_address_t const *](#ChannelAddress) 
 Return the channel address of the channel instance. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
-| user            | `*const Author`     | Author instance           |
+| user            | `author_t const *`  | Author instance           |
 **Returns:** Channel Address for user generated channel.
 
 #### auth_is_multi_branching(user): uint8_t 
@@ -67,182 +67,182 @@ Check if a channel type is single branching or multi branching.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
-| user            | `*const Author`     | Author instance           |
+| user            | `author_t const *`  | Author instance           |
 **Returns:** Uint8_t representing the channel type: 0=single branch, 1=multi branch.
 
-#### auth_get_public_key(user): [*const PublicKey](#PublicKey) 
+#### auth_get_public_key(user): [public_key_t const *](#PublicKey) 
 Retrieve the Author public key.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
-| user            | `*const Author`     | Author instance           |
+| user            | `author_t const *`     | Author instance        |
 **Returns:** The Author public key.
 
 
-#### auth_send_announce(user): [*const Address](#Address)
+#### auth_send_announce(user): [address_t const *](#Address)
 Send an announcement message, initialising the channel 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
-| user            | `*mut Author`       | Author instance           |
+| user            | `author_t *`        | Author instance           |
 **Returns:** The address of the announcement message.
 
-#### auth_send_keyload_for_everyone(links, user, link_to): [Err](#Err)
+#### auth_send_keyload_for_everyone(links, author, link_to): [err_t](#Err)
 Send a keyload message for all subscribed participants in the channel, linked to a previous message 
 (usually the announcement in a multi branch).
 
-| Param           | Type                         | Description                        |
-| --------------- | ---------------------------- | ---------------------------------- |
-| links           | [`*mut MessageLinks`](#MessageLinks) | Resulting Message Links wrapper around the keyload message link and sequence link. |
-| user            | `*mut Author`                | Author instance                    |
-| link_to         | [`*const Address`](#Address) | Address of message being linked to |
+| Param           | Type                                 | Description                        |
+| --------------- | ------------------------------------ | ---------------------------------- |
+| links           | [`message_links_t *`](#MessageLinks) | Resulting Message Links wrapper around the keyload message link and sequence link. |
+| author          | `author_t *`                         | Author instance                    |
+| link_to         | [`address_t const *`](#Address)      | Address of message being linked to |
 **Returns:** Error code.
 
-#### auth_send_keyload(links, user, link_to, psk_ids, ke_pks): [Err](#Err)
+#### auth_send_keyload(links, author, link_to, psk_ids, ke_pks): [err_t](#Err)
 Send a keyload message for specified subscribers and pre shared keys in the channel, linked to a previous 
 message (usually the announcement in a multi branch).
 
-| Param           | Type                          | Description                                   |
-| --------------- | ----------------------------- | --------------------------------------------- |
-| links           | [`*mut MessageLinks`](#MessageLinks) | Resulting Message Links wrapper around the keyload message link and sequence link. |
-| user            | `*mut Author`                 | Author instance                               |
-| link_to         | [`*const Address`](#Address)  | Address of message being linked to            |
-| psk_ids         | [`*const PskIds`](#PskIds)    | Array of PskId's for included subscribers     |
-| ke_pks          | [`*const KePks`](#PublicKeys) | Array of Public Keys for included subscribers |
+| Param           | Type                                 | Description                                   |
+| --------------- | ------------------------------------ | --------------------------------------------- |
+| links           | [`message_links_t *`](#MessageLinks) | Resulting Message Links wrapper around the keyload message link and sequence link. |
+| author          | `author_t *`                         | Author instance                               |
+| link_to         | [`address_t const *`](#Address)      | Address of message being linked to            |
+| psk_ids         | [`psk_ids_t *`](#PskIds)             | Array of PskId's for included subscribers     |
+| ke_pks          | [`ke_pks_t *`](#PublicKeys)          | Array of Public Keys for included subscribers |
 **Returns:** Error code.
 
-#### auth_send_tagged_packet(links, user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [Err](#Err)
+#### auth_receive_subscribe(author, link): [err_t](#Err)
+Process a subscription message by its link.
+
+| Param           | Type                            | Description                         |
+| --------------- | ------------------------------- | ----------------------------------- |
+| author          | `author_t *`                    | Author instance                     |
+| link            | [`address_t const *`](#Address) | Address of subscription message     |
+**Returns:** Error code.
+
+#### auth_send_tagged_packet(links, author, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [err_t](#Err)
 Send a tagged packet message linked to a previous message.
 
-| Param              | Type                              | Description                                   |
-| ------------------ | --------------------------------- | --------------------------------------------- |
-| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the tagged packet link and sequence link. |
-| user               | `*mut Author`                     | Author instance                               |
-| link_to            | [`MessageLinks`](#MessageLinks)   | Address of message being linked to            |
-| public_payload_ptr | `*const_uint8_t`                  | Byte array of public payload pointer          |
-| public_payload_size| `size_t`                          | Length of public payload byte array           |
-| masked_payload_ptr | `*const_uint8_t`                  | Byte array of masked payload pointer          |
-| masked_payload_size| `size_t`                          | Length of masked payload byte array           |
+| Param              | Type                                 | Description                                   |
+| ------------------ | ------------------------------------ | --------------------------------------------- |
+| links              | [`message_links_t *`](#MessageLinks) | Resulting Message Links wrapper around the tagged packet link and sequence link. |
+| author             | `author_t *`                         | Author instance                               |
+| link_to            | [`message_links_t`](#MessageLinks)   | Address of message being linked to            |
+| public_payload_ptr | `uint8_t const *`                    | Byte array of public payload pointer          |
+| public_payload_size| `size_t`                             | Length of public payload byte array           |
+| masked_payload_ptr | `uint8_t const *`                    | Byte array of masked payload pointer          |
+| masked_payload_size| `size_t`                             | Length of masked payload byte array           |
 **Returns:** Error code.
 
-#### auth_send_signed_packet(links, user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [Err](#Err)
+#### auth_send_signed_packet(links, author, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [err_t](#Err)
 Send a signed packet message linked to a previous message.
 
 | Param              | Type                              | Description                                   |
 | ------------------ | --------------------------------- | --------------------------------------------- |
-| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the signed packet link and sequence link. |
-| user               | `*mut Author`                     | Author instance                               |
-| link_to            | [`MessageLinks`](#MessageLinks)   | Address of message being linked to            |
-| public_payload_ptr | `*const_uint8_t`                  | Byte array of public payload pointer          |
+| links              | [`message_links_t *`](#MessageLinks)   | Resulting Message Links wrapper around the signed packet link and sequence link. |
+| author             | `author_t *`                      | Author instance                               |
+| link_to            | [`message_links_t`](#MessageLinks)| Address of message being linked to            |
+| public_payload_ptr | `uint8_t const *`                 | Byte array of public payload pointer          |
 | public_payload_size| `size_t`                          | Length of public payload byte array           |
-| masked_payload_ptr | `*const_uint8_t`                  | Byte array of masked payload pointer          |
+| masked_payload_ptr | `uint8_t const *`                 | Byte array of masked payload pointer          |
 | masked_payload_size| `size_t`                          | Length of masked payload byte array           |
 **Returns:** Error code.
 
-#### auth_receive_subscribe(user, link): [Err](#Err)
-Process a subscription message by its link.
-
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Author`                 | Author instance                     |
-| link            | [`*const Address`](#Address)  | Address of subscription message     |
-**Returns:** Error code.
-
-#### auth_receive_tagged_packet(payloads, user, link): [Err](#Err)
+#### auth_receive_tagged_packet(payloads, author, link): [err_t](#Err)
 Receive a tagged packet by its link.
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| payloads        | [`*mut PacketPayoads`](#PacketPayloads) | Resulting Packet Payloads wrapper around the tagged packet message |
-| user            | `*mut Author`                 | Author instance                     |
-| link            | [`*const Address`](#Address)  | Address of tagged packet message    |
+| Param           | Type                                     | Description                         |
+| --------------- | ---------------------------------------- | ----------------------------------- |
+| payloads        | [`packet_payloads_t *`](#PacketPayloads) | Resulting Packet Payloads wrapper around the tagged packet message |
+| author          | `author_t *`                             | Author instance                     |
+| link            | [`address_t const *`](#Address)          | Address of tagged packet message    |
 **Returns:** Error code.
 
-#### auth_receive_signed_packet(payloads, user, link): [Err](#Err)
+#### auth_receive_signed_packet(payloads, author, link): [err_t](#Err)
 Receive a signed packet by its link.
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| payloads        | [`*mut PacketPayoads`](#PacketPayloads) | Resulting Packet Payloads wrapper around the signed packet message |
-| user            | `*mut Author`                 | Author instance                     |
-| link            | [`*const Address`](#Address)  | Address of signed packet message    |
+| Param           | Type                          | Description                                    |
+| --------------- | ---------------------------------------- | ----------------------------------- |
+| payloads        | [`packet_payloads_t *`](#PacketPayloads) | Resulting Packet Payloads wrapper around the signed packet message |
+| author          | `author_t *`                             | Author instance                     |
+| link            | [`address_t const *`](#Address)          | Address of signed packet message    |
 **Returns:** Error code.
 
-#### auth_receive_sequence(seq, user, link): [Err](#Err)
+#### auth_receive_sequence(seq, author, link): [err_t](#Err)
 Receive a sequence message by its link, and return the address of the sequenced message. 
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| seq             | [`*mut Address`](#Address)    | The address link of the sequenced message. |
-| user            | `*mut Author`                 | Author instance                     |
-| link            | [`*const Address`](#Address)  | Address of sequence message         |
+| Param           | Type                             | Description                         |
+| --------------- | -------------------------------- | ----------------------------------- |
+| seq             | [`address_t const **`](#Address) | The address link of the sequenced message. |
+| author          | `author_t *`                     | Author instance                     |
+| link            | [`address_t const *`](#Address)  | Address of sequence message         |
 **Returns:** Error code.
 
-#### auth_receive_msg(umsg, user, link): [Err](#Err)
+#### auth_receive_msg(umsg, author, link): [err_t](#Err)
 Receive a message generically without knowing its type.
 
-| Param           | Type                          | Description                          |
-| --------------- | ----------------------------- | ------------------------------------ |
-| umsg            | [*mut *const UnwrappedMessage](#UnwrappedMessage) | An Unwrapped Message wrapper around the retrieved message. |
-| user            | `*mut Author`                 | Author instance                     |
-| link            | [`*const Address`](#Address)  | Address of sequence message         |
+| Param           | Type                                             | Description                          |
+| --------------- | ------------------------------------------------ | ------------------------------------ |
+| umsg            | [unwrapped_message_t const *](#UnwrappedMessage) | An Unwrapped Message wrapper around the retrieved message. |
+| author          | `author_t *`                                     | Author instance                     |
+| link            | [`address_t const *`](#Address)                  | Address of sequence message         |
 **Returns:** Error code.
 
-#### auth_sync_state(user): [*const UnwrappedMessage](#UnwrappedMessages)
+#### auth_sync_state(author): [unwrapped_messages_t const *](#UnwrappedMessages)
 Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
 to ensure the user state matches all other publishers.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Author`                 | Author instance                     |
+| author          | `author_t *`                  | Author instance                     |
 **Returns:** An Array of UnwrappedMessage wrappers around the retrieved messages.
 
-#### auth_fetch_next_msgs(user): [*const UnwrappedMessage](#UnwrappedMessages)
+#### auth_fetch_next_msgs(author): [unwrapped_messages_t const *](#UnwrappedMessages)
 Fetch the next message sent by each publisher (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Author`                 | Author instance                     |
+| author          | `author_t *`                  | Author instance                     |
 **Returns:** An array of UnwrappedMessage wrappers around the retrieved messages.
 
-#### auth_gen_next_msg_ids(user): [*const NextMsgIds](#NextMsgIds)
+#### auth_gen_next_msg_ids(author): [next_msg_ids_t const *](#NextMsgIds)
 Fetch the next message sent by each publisher (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Author`                 | Author instance                     |
+| author          | `author_t *`                  | Author instance                     |
 **Returns:** An array of NextMsgId wrappers for each publisher in the channel.
 
-#### auth_fetch_state(user): [*const UserState](#UserState)
+#### auth_fetch_state(author): [user_state_t const *](#UserState)
 Fetch the current user state to see the latest links for each publisher
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Author`                 | Author instance                     |
+| author          | `author_t *`                  | Author instance                     |
 
 
 
 ### Subscriber 
 
-#### sub_new(c_seed, c_encoding, payload_length, transport): Subscriber 
+#### sub_new(seed, encoding, payload_length, transport): Subscriber 
 Generates an Author instance 
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
-| c_seed          | `*const c_char`                        | Unique user seed         |
-| c_encoding      | `*const c_char`                        | Payload encoding         |
+| seed            | `char const *`                         | Unique user seed         |
+| encoding        | `char const *`                         | Payload encoding         |
 | payload_length  | `size_t`                               | Payload max length       |
-| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper |
+| transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** A Subscriber instance for publishing to and reading from a channel.
 
-#### sub_recover(c_seed, c_ann_address, transport): Subscriber 
+#### sub_recover(seed, announcement, transport): Subscriber 
 Recover an Author instance using the announcement address link and seed.
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
-| c_seed          | `*const c_char`                        | Unique user seed         |
-| c_ann_address   | [`*const Address`](#Address)           | Announcement link        |
-| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper |
+| seed            | `char const *`                         | Unique user seed         |
+| announcement    | [`address_t const *`](#Address)        | Announcement link        |
+| transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** A recovered Subscriber instance for publishing to and reading from a channel.
 
 #### sub_drop(user)
@@ -250,209 +250,209 @@ Drop a Subscriber instance from memory.
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
-| user            | `*mut Subscriber`                      | Subscriber instance      |
+| subscriber | `subscriber_t *`                       | Subscriber instance      |
 
 
-#### sub_import(buffer, bytes, password): Subscriber 
+#### sub_import(buffer, password, transport): Subscriber 
 Import a Subscriber instance from an encrypted binary array 
 
 | Param           | Type                                   | Description               |
 | --------------- | -------------------------------------- | ------------------------- |
-| buffer          | `Buffer`                               | Buffer with exported data |
-| password        | `*const c_char`                        | Key to decrypt binary     | 
-| transport       | [`*mut TransportWrap`](#TransportWrap) | Transport Client Wrapper  |
+| buffer          | `buffer_t`                             | Buffer with exported data |
+| password        | `char const *`                         | Key to decrypt binary     | 
+| transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper  |
 **Returns:** A recovered Subscriber instance for publishing to and reading from a channel.
 
-#### sub_export(user, password): Buffer 
+#### sub_export(subscriber, password): Buffer 
 Export an Author instance as an encrypted array using a given password
 
-| Param           | Type                | Description               |
-| --------------- | ------------------- | ------------------------- |
-| user            | `*mut Subscriber`   | Subscriber instance      |
-| password        | `*const c_char`     | Key to encrypt            | 
+| Param           | Type                   | Description               |
+| --------------- | ---------------------- | ------------------------- |
+| subscriber      | `subscriber_t const *` | Subscriber instance       |
+| password        | `char const *`         | Key to encrypt            | 
 **Returns:** Binary array representing an encrypted state of the Subscriber.
 
 
-#### sub_channel_address(user): [*const ChannelAddress](#ChannelAddress) 
+#### sub_channel_address(subscriber): [channel_address_t const *](#ChannelAddress) 
 Return the channel address of the channel instance. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
-| user            | `*const Subscriber` | Subscriber instance      |
-**Returns:** Channel Address for user generated channel.
+| subscriber      | `subscriber_t const *` | Subscriber instance    |
+**Returns:** Channel Address for subscriber generated channel.
 
-#### sub_is_multi_branching(user): uint8_t 
+#### sub_is_multi_branching(subscriber): uint8_t 
 Check if a channel type is single branching or multi branching. 
 
-| Param           | Type                | Description               |
-| --------------- | ------------------- | ------------------------- |
-| user            | `*const Subscriber` | Subscriber instance      |
+| Param           | Type                   | Description               |
+| --------------- | ---------------------- | ------------------------- |
+| subscriber      | `subscriber_t const *` | Subscriber instance       |
 **Returns:** Uint8_t representing the channel type: 0=single branch, 1=multi branch.
 
-#### sub_get_public_key(user): [*const PublicKey](#PublicKey) 
+#### sub_get_public_key(subscriber): [public_key_t const *](#PublicKey) 
 Retrieve the Subscriber public key.
 
-| Param           | Type                | Description               |
-| --------------- | ------------------- | ------------------------- |
-| user            | `*const Subscriber` | Subscriber instance      |
+| Param           | Type                   | Description               |
+| --------------- | ---------------------- | ------------------------- |
+| subscriber      | `subscriber_t const *` | Subscriber instance       |
 **Returns:** The Subscriber public key.
 
-#### sub_is_registered(user): u8 
+#### sub_is_registered(subscriber): uint8_t 
 Check if subscriber has processed an announcement message.
 
-| Param           | Type                | Description               |
-| --------------- | ------------------- | ------------------------- |
-| user            | `*const Subscriber` | Subscriber instance      |
+| Param           | Type                   | Description               |
+| --------------- | ---------------------- | ------------------------- |
+| subscriber      | `subscriber_t const *` | Subscriber instance       |
 **Returns:** Uint8 representing if the Subscriber has processed an announcement. 0=false, 1=true.
 
-#### sub_unregister(user) 
+#### sub_unregister(subscriber) 
 Unregister the subscriber from a channel.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
-| user            | `*mut Subscriber`   | Subscriber instance      |
+| subscriber      | `subscriber_t *`    | Subscriber instance       |
 
-#### sub_receive_announcement(user, link): [Err](#Err)
+#### sub_receive_announcement(subscriber, address): [err_t](#Err)
 Process an announcement message by its link.
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
-| link            | [`*const Address`](#Address)  | Address of announcement message     |
+| Param           | Type                            | Description                         |
+| --------------- | ------------------------------- | ----------------------------------- |
+| subscriber      | `subscriber_t *`                | Subscriber instance                 |
+| address         | [`address_t const *`](#Address) | Address of announcement message     |
 **Returns:** Error code.
 
 
-#### sub_send_subscribe(link, user, announcement_link): [Err](#Err)
+#### sub_send_subscribe(link, subscriber, announcement_link): [err_t](#Err)
 Send a subscription message, initialising the channel 
 
-| Param             | Type                         | Description               |
-| ----------------- | ---------------------------- | ------------------------- |
-| link              | [`*mut *const Address`](#Address) | The address of the subscription message. |
-| user              | `*mut Subscribe`             | Subscriber instance       |
-| announcement_link | [`*const Address`](#Address) | Announcement link         |
+| Param             | Type                             | Description               |
+| ----------------- | -------------------------------- | ------------------------- |
+| link              | [`address_t const **`](#Address) | The address of the subscription message. |
+| subscriber         | `subscriber_t *`                | Subscriber instance       |
+| announcement_link | [`address_t const *`](#Address)  | Announcement link         |
 **Returns:** Error code.
 
-#### sub_send_tagged_packet(links, user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [Err](#Err)
+#### sub_send_tagged_packet(links, subscriber, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [err_t](#Err)
 Send a tagged packet message linked to a previous message.
 
-| Param              | Type                              | Description                                   |
-| ------------------ | --------------------------------- | --------------------------------------------- |
-| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the tagged packet link and sequence link. |
-| user               | `*mut Subscriber`                 | Subscriber instance                           |
-| link_to            | [`MessageLinks`](#MessageLinks)   | Address of message being linked to            |
-| public_payload_ptr | `*const_uint8_t`                  | Byte array of public payload pointer          |
-| public_payload_size| `size_t`                          | Length of public payload byte array           |
-| masked_payload_ptr | `*const_uint8_t`                  | Byte array of masked payload pointer          |
-| masked_payload_size| `size_t`                          | Length of masked payload byte array           |
+| Param              | Type                                 | Description                                   |
+| ------------------ | ------------------------------------ | --------------------------------------------- |
+| links              | [`message_links_t *`](#MessageLinks) | Resulting Message Links wrapper around the tagged packet link and sequence link. |
+| subscriber         | `subscriber_t *`                     | Subscriber instance                           |
+| link_to            | [`message_links_t`](#MessageLinks)   | Address of message being linked to            |
+| public_payload_ptr | `uint8_t const *`                    | Byte array of public payload pointer          |
+| public_payload_size| `size_t`                             | Length of public payload byte array           |
+| masked_payload_ptr | `uint8_t const *`                    | Byte array of masked payload pointer          |
+| masked_payload_size| `size_t`                             | Length of masked payload byte array           |
 **Returns:** Error code.
 
-#### sub_send_signed_packet(links, user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [Err](#Err)
+#### sub_send_signed_packet(links, subscriber, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [err_t](#Err)
 Send a signed packet message linked to a previous message. 
 
-| Param              | Type                              | Description                                   |
-| ------------------ | --------------------------------- | --------------------------------------------- |
-| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the signed packet link and sequence link. |
-| user               | `*mut Subscriber`                 | Subscriber instance                           |
-| link_to            | [`MessageLinks`](#MessageLinks)   | Address of message being linked to            |
-| public_payload_ptr | `*const_uint8_t`                  | Byte array of public payload pointer          |
-| public_payload_size| `size_t`                          | Length of public payload byte array           |
-| masked_payload_ptr | `*const_uint8_t`                  | Byte array of masked payload pointer          |
-| masked_payload_size| `size_t`                          | Length of masked payload byte array           |
+| Param              | Type                                 | Description                                   |
+| ------------------ | ------------------------------------ | --------------------------------------------- |
+| links              | [`message_links_t *`](#MessageLinks) | Resulting Message Links wrapper around the signed packet link and sequence link. |
+| subscriber         | `subscriber_t *`                     | Subscriber instance                           |
+| link_to            | [`message_links_t`](#MessageLinks)   | Address of message being linked to            |
+| public_payload_ptr | `uint8_t const *`                    | Byte array of public payload pointer          |
+| public_payload_size| `size_t`                             | Length of public payload byte array           |
+| masked_payload_ptr | `uint8_t const *`                    | Byte array of masked payload pointer          |
+| masked_payload_size| `size_t`                             | Length of masked payload byte array           |
 **Returns:** Error code.
 
-#### sub_receive_keyload(user, link): [Err](#Err)
+#### sub_receive_keyload(subscriber, address): [err_t](#Err)
 Receive a keyload packet by its link.
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
-| link            | [`*const Address`](#Address)  | Address of tagged packet message    |
+| Param           | Type                            | Description                         |
+| --------------- | ------------------------------- | ----------------------------------- |
+| subscriber      | `subscriber_t *`                | Subscriber instance                 |
+| address         | [`address_t const *`](#Address) | Address of keyload message          |
 **Returns:** Error code.
 
-#### sub_receive_keyload_from_ids(links, user, next_msg_ids): [Err](#Err)
+#### sub_receive_keyload_from_ids(links, subscriber, next_msg_ids): [err_t](#Err)
 Receive a keyload packet by a set of next msg ids.
 
-| Param           | Type                               | Description                         |
-| --------------- | ---------------------------------- | ----------------------------------- |
-| links           | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the keyload message link and sequence link. |
-| user            | `*mut Subscriber`                  | Subscriber instance                 |
-| next_msg_ids    | [`*const NextMsgIds`](#NextMsgIds) | Address of tagged packet message    |
+| Param           | Type                                    | Description                         |
+| --------------- | --------------------------------------- | ----------------------------------- |
+| links           | [`message_links_t *`](#MessageLinks)    | Resulting Message Links wrapper around the keyload message link and sequence link. |
+| subscriber      | `subscriber_t *`                        | Subscriber instance                 |
+| next_msg_ids    | [`next_msg_ids_t const *`](#NextMsgIds) | Address of keyload message          |
 **Returns:** Error code.
 
 
-#### sub_receive_tagged_packet(payloads, user, link): [Err](#Err)
+#### sub_receive_tagged_packet(payloads, subscriber, address): [err_t](#Err)
 Receive a tagged packet by its link.
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| payloads        | [`*mut PacketPayoads`](#PacketPayloads) | Resulting Packet Payloads wrapper around the tagged packet message |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
-| link            | [`*const Address`](#Address)  | Address of tagged packet message    |
+| Param           | Type                                     | Description                         |
+| --------------- | ---------------------------------------- | ----------------------------------- |
+| payloads        | [`packet_payloads_t *`](#PacketPayloads) | Resulting Packet Payloads wrapper around the tagged packet message |
+| subscriber      | `subscriber_t *`                         | Subscriber instance                 |
+| address         | [`address_t const *`](#Address)          | Address of tagged packet message    |
 **Returns:** Error code.
 
-#### sub_receive_signed_packet(payloads, user, link): [Err](#Err)
+#### sub_receive_signed_packet(payloads, subscriber, address): [err_t](#Err)
 Receive a signed packet by its link.
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| payloads        | [`*mut PacketPayoads`](#PacketPayloads) | Resulting Packet Payloads wrapper around the signed packet message |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
-| link            | [`*const Address`](#Address)  | Address of signed packet message    |
+| Param           | Type                                     | Description                         |
+| --------------- | ---------------------------------------- | ----------------------------------- |
+| payloads        | [`packet_payloads_t *`](#PacketPayloads) | Resulting Packet Payloads wrapper around the signed packet message |
+| subscriber      | `subscriber_t *`                         | Subscriber instance                 |
+| address         | [`address_t const *`](#Address)          | Address of signed packet message    |
 **Returns:** Error code.
 
-#### sub_receive_sequence(seq, user, link): [Err](#Err)
+#### sub_receive_sequence(address, subscriber, seq_address): [err_t](#Err)
 Receive a sequence message by its link, and return the address of the sequenced message. 
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| seq             | [`*mut Address`](#Address)    | The address link of the sequenced message. |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
-| link            | [`*const Address`](#Address)  | Address of sequence message         |
+| Param           | Type                             | Description                                |
+| --------------- | -------------------------------- | ------------------------------------------ |
+| address         | [`address_t const **`](#Address) | The address link of the sequenced message. |
+| subscriber      | `subscriber_t *`                 | Subscriber instance                        |
+| seq_address     | [`address_t const *`](#Address)  | Address of sequence message                |
 **Returns:** Error code.
 
-#### sub_receive_msg(umsg, user, link): [Err](#Err)
+#### sub_receive_msg(umsg, subscriber, address): [err_t](#Err)
 Receive a message generically without knowing its type.
 
-| Param           | Type                          | Description                          |
-| --------------- | ----------------------------- | ------------------------------------ |
-| umsg            | [*mut *const UnwrappedMessage](#UnwrappedMessage) | An Unwrapped Message wrapper around the retrieved message. |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
-| link            | [`*const Address`](#Address)  | Address of sequence message         |
+| Param           | Type                                             | Description                          |
+| --------------- | ------------------------------------------------ | ------------------------------------ |
+| umsg            | [unwrapped_message_t const *](#UnwrappedMessage) | An Unwrapped Message wrapper around the retrieved message. |
+| subscriber      | `subscriber_t *`                                 | Subscriber instance                  |
+| address         | [`address_t const *`](#Address)                  | Address of the message               |
 **Returns:** Error code.
 
-#### sub_sync_state(umsgs, user): [Err](#Err)
+#### sub_sync_state(umsgs, subscriber): [err_t](#Err)
 Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
-to ensure the user state matches all other publishers.
+to ensure the subscriber state matches all other publishers.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| umsgs           | [`*mut *const UnwrappedMessages`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
+| umsgs           | [`unwrapped_messages_t const **`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
+| subscriber      | `subscriber_t *`             | Subscriber instance                 |
 **Returns:** Error code.
 
-#### sub_fetch_next_msgs(umsgs, user): [Err](#Err)
+#### sub_fetch_next_msgs(umsgs, subscriber): [err_t](#Err)
 Fetch the next message sent by each publisher (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| umsgs           | [`*mut *const UnwrappedMessages`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
+| umsgs           | [`unwrapped_messages_t const **`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
+| subscriber       | `subscriber_t *`             | Subscriber instance                 |
 **Returns:** Error code.
 
-#### sub_gen_next_msg_ids(user): [*const NextMsgIds](#NextMsgIds)
+#### sub_gen_next_msg_ids(subscriber): [next_msg_ids_t const *](#NextMsgIds)
 Fetch the next message sent by each publisher (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
+| subscriber       | `subscriber_t *`             | Subscriber instance                 |
 **Returns:** An array of NextMsgId wrappers for each publisher in the channel.
 
-#### sub_fetch_state(user): [*const UserState](#UserState)
-Fetch the current user state to see the latest links for each publisher
+#### sub_fetch_state(subscriber): [*const UserState](#UserState)
+Fetch the current subscriber state to see the latest links for each publisher
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| user            | `*mut Subscriber`             | Subscriber instance                 |
+| subscriber       | `subscriber_t *`             | Subscriber instance                 |
 
 
 ## Types
@@ -460,16 +460,17 @@ Fetch the current user state to see the latest links for each publisher
 ### Err
 Error code
 
-| Value           | Description                         |
-| --------------- | ----------------------------------- |
-| Ok              | Success, no errors                  |
-| NullArgument    | Null-pointer argument               |
-| OperationFailed | Transport, wrap/unwrap operation failed |
+| Value                | Description                             |
+| -------------------  | --------------------------------------- |
+| ERR_OK               | Success, no errors                      |
+| ERR_NULL_ARGUMENT    | Null-pointer argument                   |
+| ERR_BAD_ARGUMENT     | An invalid argument was given as input  |                                      
+| ERR_OPERATION_FAILED | Transport, wrap/unwrap operation failed |
 
 ### TransportDetails
 
 ### TransportWrap 
-#### tsp_new(): *mut TransportWrap
+#### transport_new(): transport_t *
 Generate a default transport client object (best for testing purposes)
 
 | Param           | Type                          | Description                         |
@@ -481,59 +482,59 @@ Drop transport client from memory
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| tsp             | `*mut TransportWrap`          | Transport Client                    |
+| tsp             | `transport_t *`               | Transport Client                    |
 
-#### tsp_client_new_from_url(c_url): *mut TransportWrap 
+#### transport_client_new_from_url(url): transport_t * 
 Generate a transport client object with a given node url
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| c_url           | `*const c_char`               | Node Url                            |
+| Param           | Type                          | Description    |
+| --------------- | ----------------------------- | -------------- |
+| url             | `char const *`                | Node Url       |
 **Returns:** A transport client wrapper to communicate with a node
 
-#### tsp_get_link_details(details, tsp, link): [Err](#Err)
+#### tsp_get_link_details(details, transport, link): [err_t](#Err)
 Retrieved message details for a given message link
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| details         | [`*mut TransportDetails`](#TransportDetails)       | Resulting message details           |
-| tsp             | `*mut TransportWrap`          | Transport Client                    |
-| link            | `*const Address`              | Address link of message             |
+| Param           | Type                                   | Description                         |
+| --------------- | -------------------------------------- | ----------------------------------- |
+| details         | [`tsp_details_t *`](#TransportDetails) | Resulting message details           |
+| transport       | `transport_t *`                        | Transport Client                    |
+| link            | `address_t const *`                    | Address link of message             |
 **Returns:** Error code
 
 ### Address
 
-#### address_from_string(c_addr): *const Address 
+#### address_from_string(addr_str): address_t * 
 Create an address object form a string 
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| c_addr          | `*const c_char`               | A string representation of link     |
+| addr_str        | `char const *`                | A string representation of link     |
 **Returns:** An Address link 
 
 
-#### get_address_inst_str(address): *mut c_char
+#### get_address_inst_str(address): char const *
 Get the string representation of the Address Application Instance
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| address         | `*mut Address`                | Address link of message             | 
+| address         | `address_t const *`           | Address link of message             | 
 **Returns:** A string representation of the Address Application Instance
 
-#### get_address_id_str(address): *mut c_char
+#### get_address_id_str(address): char const *
 Get the string representation of the Address Message Identifier
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| address         | `*mut Address`                | Address link of message             | 
+| address         | `address_t const *`           | Address link of message             | 
 **Returns:** A string representation of the Address Message Identifier
 
-#### get_address_index_str(address): *mut c_char
+#### get_address_index_str(address): char const *
 Get the string representation of the streams message Tangle Index
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| address         | `*mut Address`                | Address link of message             | 
+| address         | `address_t const *`           | Address link of message             | 
 **Returns:** A string representation of the message Tangle Index
 
 #### drop_address(address)
@@ -541,86 +542,74 @@ Drop an Address wrapper from memory
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| address         | `*const Address`              | Address link of message             |
+| address         | `address_t const *`           | Address link of message             |
 
 
 ### ChannelAddress
 
-#### get_channel_address_str(appinst): *const c_char 
+#### get_channel_address_str(appinst): char const * 
 Get the string representation of the Channel Address
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| appinst         | `*const ChanelAddress`        | Channel Application Instance        | 
+| appinst         | `channel_address_t const *`   | Channel Application Instance        | 
 **Returns:** A string representation of the Channel Address
 
 
 
 ### MessageLinks
-Wrapper for Message 
-
-#### get_msg_link(msg_links): [*const Address](#Address)
-Fetch the message link from a MessageLinks wrapper
-
+Wrapper for Message containing the message link and the sequence link (if you are using multi branching)
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| msg_links       | `*const MessageLinks`         | Message Links Wrapper               |
-**Returns:** The message link address
-
-#### get_seq_link(msg_links): [*const Address](#Address)
-Fetch the sequence message link from a MessageLinks wrapper
-
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| msg_links       | `*const MessageLinks`         | Message Links Wrapper               |
-**Returns:** The sequence link address
+| msg_link         | `address_t const *`          | Message link address                | 
+| seq_link         | `address_t const *`          | Sequence link address               | 
 
 #### drop_links(msg_links)
 Drop a MessageLinks wrapper from memory
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| msg_links       | `*const MessageLinks`         | Message Links Wrapper               |
+| msg_links       | `message_links_t`             | Message Links Wrapper               |
 
 
 ### UnwrappedMessage
 A wrapper around a retrieved message
 
-#### get_payload(msg): PacketPayloads
+#### get_payload(message): packet_payloads_t
 Fetch the payload from an Unwrapped Message wrapper
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| msg             | `*const UnwrappedMessage`     | Unwrapped Message Wrapper           |
+| message         | `unwrapped_message_t const *` | Unwrapped Message Wrapper           |
 **Returns:** The PacketPayloads wrapper of the message
 
-#### drop_unwrapped_message(ms) 
+#### drop_unwrapped_message(message) 
 Drop an Unwrapped Message wrapper from memory
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| ms              | `*const UnwrappedMessage`     | Unwrapped Message Wrapper           |
+| message         | `unwrapped_message_t const *` | Unwrapped Message Wrapper           |
 
 
 ### UnwrappedMessages
 An array of `UnwrappedMessage`'s
 
-#### get_indexed_payload(msgs, index): PacketPayloads
+#### get_indexed_payload(messages, index): packet_payloads_t
 Fetch the payload of the provided index of the Unwrapped Messages wrapper.
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| msgs            | `*const UnwrappedMessages`    | Unwrapped Message Wrapper           |
-| index           | `size_t`                      | Index of message in array           |
+| Param           | Type                           | Description                         |
+| --------------- | ------------------------------ | ----------------------------------- |
+| messages        | `unwrapped_messages_t const *` | Unwrapped Message Wrapper           |
+| index           | `size_t`                       | Index of message in array           |
 **Returns:** The PacketPayloads wrapper of the indexed message
 
 
-#### drop_unwrapped_messages(ms) 
+#### drop_unwrapped_messages(messages) 
 Drop an Unwrapped Messages wrapper from memory
 
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-| ms              | `*const UnwrappedMessages`    | Unwrapped Messages Wrapper          |
+| Param           | Type                           | Description                         |
+| --------------- | ------------------------------ | ----------------------------------- |
+| messages        | `unwrapped_messages_t const *` | Unwrapped Messages Wrapper          |
 
 ### PacketPayloads
 Contains a `public_payload` byte array and a `masked_payload` byte array for a streams message
@@ -630,18 +619,18 @@ Drop a PacketPayloads wrapper from memory
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| payloads        | `*const PacketPayloads`       | Packet Payloads Wrapper             |
+| payloads        | `packet_payloads_t`       | Packet Payloads Wrapper             |
  
 
 ### PublicKey
 An Ed25519 Public Key
 
-#### public_key_to_string(pubkey): *const c_char
+#### public_key_to_string(pubkey): char const *
 Get a hex string representation of an Ed25519 Public Key
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| pubkey          | `*const PublicKey`            | Ed25519 Public Key                  |
+| pubkey          | `public_key_t *`            | Ed25519 Public Key                  |
 **Returns:** Hex string representation of an Ed25519 Public Key
 
 
@@ -653,19 +642,19 @@ Drop a NextMsgIds wrapper from memory
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| state           | `*const NextMsgIds`           | A NextMsgId wrapper                 |
+| state           | `next_msg_ids_t const *`      | A NextMsgId wrapper                 |
 
 
 ### UserState
 A wrapper for a list mapping Public Key strings and a state cursor.
 
-#### get_link_from_state(state, pub_key): *const Address
+#### get_link_from_state(state, pub_key): address_t const *
 Get the latest link of a specific user by their Ed25519 Public Key
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| state           | `*const UserState`            | User State Wrapper                  |
-| pubkey          | `*const PublicKey`            | Ed25519 Public Key                  |
+| state           | `user_state_t const *`        | User State Wrapper                  |
+| pubkey          | `public_key_t const *`        | Ed25519 Public Key                  |
 **Returns:** Latest address link of the provided user key
 
 #### drop_user_state(state)
@@ -673,7 +662,7 @@ Drop a User State wrapper from memory
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| state           | `*const UserState`            | A User State wrapper                |
+| state           | `user_state_t const *`        | A User State wrapper                |
 
 
 
@@ -683,7 +672,7 @@ Drop a rust allocated string from memory
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| string          | `*const c_char`               | A string object                     |
+| string          | `char const *`                | A string object                     |
 
 
 ### PublicKeys
