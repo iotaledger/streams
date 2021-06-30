@@ -9,6 +9,7 @@ use iota_streams_app::{
     transport::{
         self,
         tangle::{
+            client::Details as ClientDetails,
             AppInst,
             DefaultTangleLinkGenerator,
             MsgId,
@@ -46,6 +47,8 @@ pub type ChannelAddress = AppInst;
 
 /// Binary encoded message type.
 pub type Message = TangleMessage<DefaultF>;
+// Details for a message on our tangle transport
+pub type Details = ClientDetails;
 
 /// Wrapped Message for sending and commit
 pub type WrappedMessage = message::WrappedMessage<DefaultF, Address>;

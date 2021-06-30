@@ -1,3 +1,4 @@
+use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
 
 use crate::types::*;
@@ -6,8 +7,10 @@ use core::cell::RefCell;
 use iota_streams::{
     app::transport::{
         tangle::client::Client as ApiClient,
+        TransportDetails,
         TransportOptions,
     },
+    app_channels::api::tangle::Address as ApiAddress,
     core::prelude::Rc,
 };
 
@@ -25,6 +28,21 @@ impl Client {
 
         Client(transport)
     }
+
+    #[wasm_bindgen(catch)]
+    pub async fn get_link_details(mut self, link: Address) -> Result<Details> {
+        self.0
+            .get_link_details(
+                &link
+                    .try_into()
+                    .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
+            )
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |details| Ok(details.into()),
+            )
+    }
 }
 
 impl Client {
@@ -33,16 +51,10 @@ impl Client {
     }
 }
 
-// impl From<Client> for ClientWrap {
-// fn from(input: Client) -> Self {
-// input.0
-// }
-// }
-//
-// impl Deref for Client {
-// type Target = Rc<RefCell<ApiClient>>;
-//
-// fn deref(&self) -> &Self::Target {
-// &self.0
-// }
-// }
+impl From<ApiClient> for Client {
+    fn from(client: ApiClient) -> Self {
+        let transport = Rc::new(RefCell::new(client));
+
+        Client(transport)
+    }
+}

@@ -12,7 +12,7 @@ use iota_streams::{
         message::Cursor,
         transport::tangle::{
             MsgId,
-            client::get_hash,
+            get_hash,
         },
     },
     app_channels::api::tangle::*,
@@ -26,6 +26,30 @@ use core::ptr::{
     null,
     null_mut,
 };
+
+pub(crate) fn safe_into_ptr<T>(value: T) -> *const T {
+    Box::into_raw(Box::new(value))    
+}
+
+pub(crate) fn safe_into_mut_ptr<T>(value: T) -> *mut T {
+    Box::into_raw(Box::new(value))    
+}
+
+pub(crate) fn safe_drop_ptr<T>(p: *const T) {
+    unsafe { (p as *mut T).as_mut().map(|p| Box::from_raw(p)); }
+}
+
+pub(crate) fn safe_drop_mut_ptr<T>(p: *mut T) {
+    unsafe { p.as_mut().map(|p| Box::from_raw(p)); }
+}
+
+#[repr(C)]
+pub enum Err {
+    Ok,
+    NullArgument,
+    BadArgument,
+    OperationFailed,
+}
 
 #[no_mangle]
 pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
@@ -45,9 +69,7 @@ pub extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_cha
 
 #[no_mangle]
 pub extern "C" fn drop_address(addr: *const Address) {
-    unsafe {
-        Box::from_raw(addr as *mut Address);
-    }
+    safe_drop_ptr(addr)
 }
 
 pub type PskIds = psk::PskIds;
@@ -57,17 +79,13 @@ pub type NextMsgIds = Vec<(PublicKey, Cursor<Address>)>;
 
 #[no_mangle]
 pub extern "C" fn drop_next_msg_ids(m: *const NextMsgIds) {
-    unsafe {
-        Box::from_raw(m as *mut NextMsgIds);
-    }
+    safe_drop_ptr(m)
 }
 
 pub type UserState = Vec<(String, Cursor<Address>)>;
 #[no_mangle]
 pub extern "C" fn drop_user_state(s: *const UserState) {
-    unsafe {
-        Box::from_raw(s as *mut UserState);
-    }
+    safe_drop_ptr(s)
 }
 
 #[no_mangle]
@@ -78,7 +96,7 @@ pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const Publi
                 let pk_str = hex::encode(pub_key.as_bytes());
                 for (pk, cursor) in state {
                     if pk == &pk_str {
-                        return Box::into_raw(Box::new(cursor.link.clone()))
+                        return safe_into_ptr(cursor.link.clone())
                     }
                 }
                 return null()
@@ -90,9 +108,7 @@ pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const Publi
 pub type UnwrappedMessages = Vec<UnwrappedMessage>;
 #[no_mangle]
 pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
-    unsafe {
-        Box::from_raw(ms as *mut UnwrappedMessages);
-    }
+    safe_drop_ptr(ms)
 }
 
 
@@ -105,14 +121,12 @@ pub type TransportWrap = Rc<core::cell::RefCell<BucketTransport>>;
 
 #[no_mangle]
 pub extern "C" fn tsp_new() -> *mut TransportWrap {
-    Box::into_raw(Box::new(TransportWrap::default()))
+    safe_into_mut_ptr(TransportWrap::default())
 }
 
 #[no_mangle]
 pub extern "C" fn tsp_drop(tsp: *mut TransportWrap) {
-    unsafe {
-        Box::from_raw(tsp);
-    }
+    safe_drop_mut_ptr(tsp)
 }
 
 #[cfg(feature = "sync-client")]
@@ -121,9 +135,154 @@ pub extern "C" fn tsp_client_new_from_url(c_url: *const c_char) -> *mut Transpor
     unsafe {
         let url = CStr::from_ptr(c_url).to_str().unwrap();
 
-        Box::into_raw(Box::new(TransportWrap::new_from_url(url)))
+        safe_into_mut_ptr(TransportWrap::new_from_url(url))
     }
 }
+
+#[cfg(feature = "sync-client")]
+mod client_details {
+use super::*;
+use iota_streams::app::transport::tangle::client::iota_client::{
+    bee_rest_api::types::dtos::LedgerInclusionStateDto,
+    bee_rest_api::types::responses::MessageMetadataResponse,
+    MilestoneResponse,
+};
+use iota_streams::app::transport::TransportDetails as _;
+use iota_streams::app::transport::tangle::client::Details as ApiDetails;
+
+#[repr(C)]
+pub struct TransportDetails {
+    metadata: MessageMetadata,
+    milestone: Milestone,
+}
+
+impl From<ApiDetails> for TransportDetails {
+    fn from(d: ApiDetails) -> Self {
+        Self {
+            metadata: d.metadata.into(),
+            milestone: d.milestone.map_or(Milestone::default(), |m| m.into()),
+        }
+    }
+}
+
+#[repr(C)]
+pub enum LedgerInclusionState {
+    Conflicting,
+    Included,
+    NoTransaction,
+}
+
+impl From<LedgerInclusionStateDto> for LedgerInclusionState {
+    fn from(e: LedgerInclusionStateDto) -> Self {
+        match e {
+            LedgerInclusionStateDto::Conflicting => Self::Conflicting,
+            LedgerInclusionStateDto::Included => Self::Included,
+            LedgerInclusionStateDto::NoTransaction => Self::NoTransaction,
+        }
+    }
+}
+
+#[repr(C)]
+pub struct MessageMetadata {
+    pub message_id: [u8; 129],
+    pub parent_message_ids: [[u8; 129]; 2],
+    pub is_solid: bool,
+    pub referenced_by_milestone_index: u32,
+    pub milestone_index: u32,
+    pub ledger_inclusion_state: LedgerInclusionState,
+    pub conflict_reason: u8,
+    pub should_promote: bool,
+    pub should_reattach: bool,
+    pub field_flags: u32,
+}
+
+impl Default for MessageMetadata {
+    fn default() -> Self {
+        unsafe { core::mem::MaybeUninit::zeroed().assume_init() }
+    }
+}
+
+impl From<MessageMetadataResponse> for MessageMetadata {
+    fn from(m: MessageMetadataResponse) -> Self {
+        let mut r = MessageMetadata::default();
+        let field_flags = 0_u32
+            | {
+                let s = core::cmp::min(r.message_id.len() - 1, m.message_id.as_bytes().len());
+                r.message_id[..s].copy_from_slice(&m.message_id.as_bytes()[..s]);
+                1_u32 << 0 }
+            | {
+                if 0 < m.parent_message_ids.len() {
+                    let s = core::cmp::min(r.parent_message_ids[0].len() - 1, m.parent_message_ids[0].as_bytes().len());
+                    r.parent_message_ids[0][..s].copy_from_slice(&m.parent_message_ids[0].as_bytes()[..s]);
+                }
+                if 1 < m.parent_message_ids.len() {
+                    let s = core::cmp::min(r.parent_message_ids[1].len() - 1, m.parent_message_ids[1].as_bytes().len());
+                    r.parent_message_ids[1][..s].copy_from_slice(&m.parent_message_ids[1].as_bytes()[..s]);
+                }
+                //TODO: support more than 2 parents
+                //assert!(!(2 < m.parent_message_ids.len()));
+                1_u32 << 1
+                }
+            | { r.is_solid = m.is_solid; 1_u32 << 2 }
+            | m.referenced_by_milestone_index.map_or(0_u32, |v| { r.referenced_by_milestone_index = v; 1_u32 << 3 })
+            | m.milestone_index.map_or(0_u32, |v| { r.milestone_index = v; 1_u32 << 4 })
+            | m.ledger_inclusion_state.map_or(0_u32, |v| { r.ledger_inclusion_state = v.into(); 1_u32 << 5 })
+            | m.conflict_reason.map_or(0_u32, |v| { r.conflict_reason = v; 1_u32 << 6 })
+            | m.should_promote.map_or(0_u32, |v| { r.should_promote = v; 1_u32 << 7 })
+            | m.should_reattach.map_or(0_u32, |v| { r.should_reattach = v; 1_u32 << 8 })
+            ;
+        r.field_flags = field_flags;
+        r
+    }
+}
+
+#[repr(C)]
+pub struct Milestone {
+    pub milestone_index: u32,
+    pub message_id: [u8; 129],
+    pub timestamp: u64,
+}
+
+impl Default for Milestone {
+    fn default() -> Self {
+        unsafe { core::mem::MaybeUninit::zeroed().assume_init() }
+    }
+}
+
+impl From<MilestoneResponse> for Milestone {
+    fn from(m: MilestoneResponse) -> Self {
+        let mut r = Milestone::default();
+        r.milestone_index = m.index;
+        {
+            let s = core::cmp::min(r.message_id.len() - 1, m.message_id.as_ref().len());
+            r.message_id[..s].copy_from_slice(&m.message_id.as_ref()[..s]);
+        }
+        r.timestamp = m.timestamp;
+        r
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn tsp_get_link_details(r: *mut TransportDetails, tsp: *mut TransportWrap, link: *const Address) -> Err {
+    unsafe {
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            tsp.as_mut().map_or(Err::NullArgument, |tsp| {
+                link.as_ref().map_or(Err::NullArgument, |link| {
+                    tsp.get_link_details(link)
+                        .map_or(Err::OperationFailed, |d| {
+                            *r = d.into();
+                            Err::Ok
+                        })
+                })
+            })
+        })
+    }
+}
+
+}
+
+#[cfg(feature = "sync-client")]
+pub use client_details::*;
 
 #[repr(C)]
 pub struct MessageLinks {
@@ -133,8 +292,8 @@ pub struct MessageLinks {
 
 impl From<(Address, Option<Address>)> for MessageLinks {
     fn from(links: (Address, Option<Address>)) -> Self {
-        let msg_link = Box::into_raw(Box::new(links.0));
-        let seq_link = links.1.map_or(null(), |s| Box::into_raw(Box::new(s)));
+        let msg_link = safe_into_ptr(links.0);
+        let seq_link = links.1.map_or(null(), |s| safe_into_ptr(s));
         Self { msg_link, seq_link }
     }
 }
@@ -151,12 +310,8 @@ impl MessageLinks {
     }
 
     pub fn drop(self) {
-        unsafe {
-            Box::from_raw(self.msg_link as *mut Address);
-            if self.seq_link != null() {
-                Box::from_raw(self.seq_link as *mut Address);
-            }
-        }
+        safe_drop_ptr(self.msg_link);
+        safe_drop_ptr(self.seq_link);
     }
 
 }
@@ -193,13 +348,11 @@ pub extern "C" fn get_seq_link(msg_links: *const MessageLinks) -> *const Address
     }
 }
 
-
-
 #[repr(C)]
 pub struct Buffer {
-    ptr: *const uint8_t,
-    size: size_t,
-    cap: size_t,
+    pub(crate) ptr: *const uint8_t,
+    pub(crate) size: size_t,
+    pub(crate) cap: size_t,
 }
 
 impl Default for Buffer {
@@ -223,6 +376,14 @@ impl From<Bytes> for Buffer {
     }
 }
 
+impl From<Buffer> for Bytes {
+    fn from(b: Buffer) -> Self {
+        unsafe {
+            Self(Vec::from_raw_parts(b.ptr as *mut u8, b.size, b.cap))
+        }
+    }
+}
+
 impl<'a> From<&'a Bytes> for Buffer {
     fn from(b: &Bytes) -> Self {
         let p = &b.0;
@@ -235,10 +396,11 @@ impl<'a> From<&'a Bytes> for Buffer {
 }
 
 impl Buffer {
+    pub fn new(size: usize) -> Self {
+        Bytes(Vec::with_capacity(size)).into()
+    }
     pub fn drop(self) {
-        unsafe {
-            Vec::from_raw_parts(self.ptr as *mut u8, self.size, self.cap);
-        }
+        let _b: Bytes = self.into();
     }
 }
 
@@ -359,6 +521,11 @@ pub extern "C" fn get_address_index_str(address: *mut Address) -> *mut c_char {
 #[no_mangle]
 pub extern "C" fn get_payload(msg: *const UnwrappedMessage) -> PacketPayloads {
     unsafe { msg.as_ref().map_or(PacketPayloads::default(), handle_message_contents) }
+}
+
+#[no_mangle]
+pub extern "C" fn get_payloads_count(msgs: *const UnwrappedMessages) -> usize {
+    unsafe { msgs.as_ref().map_or(0, |msgs| msgs.len()) }
 }
 
 #[no_mangle]

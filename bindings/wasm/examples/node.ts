@@ -36,6 +36,9 @@ async function main() {
     let response = await auth.clone().send_announce();
     let ann_link = response.get_link();
     console.log("announced at: ", ann_link.to_string());
+    
+    let details = await auth.clone().get_client().get_link_details(ann_link);
+    console.log("Announce message id: " + details.get_metadata().message_id)
 
     let seed2 = make_seed(81);
     let sub = new streams.Subscriber(seed2, options.clone());
