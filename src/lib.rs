@@ -3,11 +3,15 @@
 //! This top-level crate contains references to the others that make up
 //! the IOTA Streams framework.
 //!
+//! High-level api can be found in the [iota_streams_app_channels](iota_streams_app_channels) module.
+//!
+//! Message Types can be found in the [iota_streams_app_channels/message](iota_streams_app_channels::message) module.
+//!
 //! # Layout
 //!
 //! This framework is divided into the following crates:
 //! - `iota_streams_app_channels`: An API for using
-//! the built-in Channels application
+//! the built-in Channels Protocol
 //! - `iota_streams_app`: The `message` and `transport` modules
 //! for creating your own Streams applications
 //! - `iota_streams_core`: Modules for the core cryptographic features used by Streamsç

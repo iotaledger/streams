@@ -6,7 +6,7 @@ include(FetchContent)
 option(NO_STD "Enable no_std build, without iota_client" OFF)
 option(SYNC_CLIENT "Enable sync transport via iota_client" ON)
 option(STATIC "Build static library" OFF)
-option(RELEASE "Build release library (defaults to debug)" OFF)
+option(RELEASE "Build release library (defaults to debug)" ON)
 
 set(cargo_features "")
 if(${NO_STD})

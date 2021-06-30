@@ -71,6 +71,14 @@ impl Subscriber {
         )
     }
 
+    #[wasm_bindgen(catch)]
+    pub fn export(&self, password: &str) -> Result<Vec<u8>> {
+        self.subscriber
+            .borrow_mut()
+            .export(password)
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |v| Ok(v))
+    }
+
     pub fn clone(&self) -> Subscriber {
         Subscriber {
             subscriber: self.subscriber.clone(),
@@ -111,14 +119,6 @@ impl Subscriber {
     #[wasm_bindgen(catch)]
     pub fn unregister(&self) -> Result<()> {
         Ok(self.subscriber.borrow_mut().unregister())
-    }
-
-    #[wasm_bindgen(catch)]
-    pub fn export(&self, password: &str) -> Result<Vec<u8>> {
-        self.subscriber
-            .borrow_mut()
-            .export(password)
-            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |v| Ok(v))
     }
 
     #[wasm_bindgen(catch)]

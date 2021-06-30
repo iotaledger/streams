@@ -89,12 +89,12 @@ pub extern "C" fn drop_user_state(s: *const UserState) {
 }
 
 #[no_mangle]
-pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const PublicKey) -> *const Address {
+pub extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
     unsafe {
-        s.as_ref().map_or(null(), |state| {
+        state.as_ref().map_or(null(), |state_ref| {
             pub_key.as_ref().map_or(null(), |pub_key| {
                 let pk_str = hex::encode(pub_key.as_bytes());
-                for (pk, cursor) in state {
+                for (pk, cursor) in state_ref {
                     if pk == &pk_str {
                         return safe_into_ptr(cursor.link.clone())
                     }
@@ -105,13 +105,18 @@ pub extern "C" fn get_link_from_state(s: *const UserState, pub_key: *const Publi
     }
 }
 
+#[no_mangle]
+pub extern "C" fn drop_unwrapped_message(ms: *const UnwrappedMessage) {
+    unsafe {
+        Box::from_raw(ms as *mut UnwrappedMessage);
+    }
+}
+
 pub type UnwrappedMessages = Vec<UnwrappedMessage>;
 #[no_mangle]
 pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
     safe_drop_ptr(ms)
 }
-
-
 
 #[cfg(feature = "sync-client")]
 pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
@@ -355,6 +360,17 @@ pub struct Buffer {
     pub(crate) cap: size_t,
 }
 
+impl From<Vec<u8>> for Buffer {
+    fn from(vec: Vec<u8>) -> Self {
+        let p = core::mem::ManuallyDrop::new(vec);
+        Self {
+            ptr: p.as_ptr(),
+            size: p.len(),
+            cap: p.capacity(),
+        }
+    }
+}
+
 impl Default for Buffer {
     fn default() -> Self {
         Self {
@@ -462,9 +478,9 @@ pub extern "C" fn drop_payloads(payloads: PacketPayloads) {
 }
 
 #[no_mangle]
-pub extern "C" fn drop_str(s: *const c_char) {
+pub extern "C" fn drop_str(string: *const c_char) {
     unsafe {
-        CString::from_raw(s as *mut c_char);
+        CString::from_raw(string as *mut c_char);
     }
 }
 

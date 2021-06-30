@@ -65,7 +65,6 @@ extern transport_t *tsp_new();
 extern void tsp_drop(transport_t *);
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
 extern transport_t *tsp_client_new_from_url(char const *url);
-extern void tsp_client_set_mwm(transport_t *tsp, uint8_t mwm);
 #endif
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
@@ -109,6 +108,9 @@ typedef struct Author author_t;
 
 extern author_t *auth_new(char const *seed, char const *encoding, size_t payload_length, uint8_t multi_branching, transport_t *tsp);
 extern author_t *auth_recover(char const *seed, address_t const *announcement, uint8_t multi_branching, transport_t *tsp);
+extern author_t *auth_import(buffer_t buffer, char const *password, transport_t *transport);
+extern buffer_t auth_export(author_t const *user, char const *password);
+
 extern void auth_drop(author_t *);
 
 extern channel_address_t const *auth_channel_address(author_t const *user);
@@ -146,6 +148,8 @@ extern user_state_t const * auth_fetch_state(author_t *author);
 typedef struct Subscriber subscriber_t;
 extern subscriber_t *sub_new(char const *seed, char const *encoding, size_t payload_length, transport_t *tsp);
 extern subscriber_t *sub_recover(char const *seed, address_t const *announcement, transport_t *tsp);
+extern subscriber_t *sub_import(buffer_t buffer, char const *password, transport_t *transport);
+extern buffer_t sub_export(subscriber_t const *user, char const *password);
 extern void sub_drop(subscriber_t *);
 
 extern channel_address_t const *sub_channel_address(subscriber_t const *user);

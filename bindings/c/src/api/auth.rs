@@ -38,6 +38,41 @@ pub extern "C" fn auth_recover(
     }
 }
 
+/// Import an Author instance from an encrypted binary array
+#[no_mangle]
+pub extern "C" fn auth_import(
+    buffer: Buffer,
+    password: *const c_char,
+    transport: *mut TransportWrap,
+) -> *mut Author {
+    unsafe {
+        let bytes_vec = Vec::from_raw_parts(
+            buffer.ptr as *mut u8,
+            buffer.size,
+            buffer.cap,
+        );
+        let password_str = CStr::from_ptr(password).to_str().unwrap();
+        let tsp = (*transport).clone();
+        Author::import(&bytes_vec, password_str, tsp)
+            .map_or(null_mut(), |auth| {
+                Box::into_raw(Box::new(auth))
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_export(
+    user: *mut Author,
+    password: *const c_char
+) -> Buffer {
+    unsafe {
+        let password_str = CStr::from_ptr(password).to_str().unwrap();
+        user.as_ref().map_or(Buffer::default(), |user| {
+            let bytes = user.export(password_str).unwrap();
+            bytes.into()
+        })
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn auth_drop(user: *mut Author) {
