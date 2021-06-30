@@ -308,12 +308,16 @@ pub extern "C" fn sub_receive_keyload_from_ids(r: *mut MessageLinks, user: *mut 
 }
 
 #[no_mangle]
-pub extern "C" fn sub_receive_msg(user: *mut Subscriber, link: *const Address) -> *const UnwrappedMessage {
+pub extern "C" fn sub_receive_msg(r: *mut *const UnwrappedMessage, user: *mut Subscriber, link: *const Address) -> Err {
     unsafe {
-        user.as_mut().map_or(null(), |user| {
-            link.as_ref().map_or(null(), |link| {
-                let u = user.receive_msg(link).unwrap(); //TODO: handle Result
-                safe_into_ptr(u)
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link.as_ref().map_or(Err::NullArgument, |link| {
+                    user.receive_msg(link).map_or(Err::OperationFailed, |u| {
+                        *r = safe_into_ptr(u);
+                        Err::Ok
+                    })
+                })
             })
         })
     }
