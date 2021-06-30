@@ -40,7 +40,7 @@ pub extern "C" fn sub_recover(
 
 #[no_mangle]
 pub extern "C" fn sub_drop(user: *mut Subscriber) {
-    unsafe { user.as_mut().map(|user| Box::from_raw(user)); }
+    safe_drop_mut_ptr(user)
 }
 
 /// Channel app instance.

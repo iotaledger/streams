@@ -41,7 +41,7 @@ pub extern "C" fn auth_recover(
 
 #[no_mangle]
 pub extern "C" fn auth_drop(user: *mut Author) {
-    unsafe { user.as_mut().map(|user| Box::from_raw(user)); }
+    safe_drop_mut_ptr(user)
 }
 
 /// Channel app instance.

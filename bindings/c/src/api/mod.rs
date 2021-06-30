@@ -39,7 +39,7 @@ pub(crate) fn safe_drop_ptr<T>(p: *const T) {
     unsafe { (p as *mut T).as_mut().map(|p| Box::from_raw(p)); }
 }
 
-pub(crate) fn safe_drop_ptr_mut<T>(p: *mut T) {
+pub(crate) fn safe_drop_mut_ptr<T>(p: *mut T) {
     unsafe { p.as_mut().map(|p| Box::from_raw(p)); }
 }
 
@@ -126,7 +126,7 @@ pub extern "C" fn tsp_new() -> *mut TransportWrap {
 
 #[no_mangle]
 pub extern "C" fn tsp_drop(tsp: *mut TransportWrap) {
-    safe_drop_ptr_mut(tsp)
+    safe_drop_mut_ptr(tsp)
 }
 
 #[cfg(feature = "sync-client")]
