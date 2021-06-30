@@ -41,9 +41,7 @@ pub extern "C" fn auth_recover(
 
 #[no_mangle]
 pub extern "C" fn auth_drop(user: *mut Author) {
-    unsafe {
-        Box::from_raw(user);
-    }
+    unsafe { user.as_mut().map(|user| Box::from_raw(user)); }
 }
 
 /// Channel app instance.
@@ -82,11 +80,11 @@ pub extern "C" fn auth_send_announce(user: *mut Author) -> *const Address {
 
 /// unwrap and add a subscriber to the list of subscribers
 #[no_mangle]
-pub extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const Address) {
+pub extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const Address) -> Err {
     unsafe {
-        user.as_mut().map_or((), |user| {
-            link.as_ref().map_or((), |link| {
-                user.receive_subscribe(link).unwrap(); // TODO: handle Result
+        user.as_mut().map_or(Err::NullArgument, |user| {
+            link.as_ref().map_or(Err::NullArgument, |link| {
+                user.receive_subscribe(link).map_or(Err::OperationFailed, |_| Err::Ok)
             })
         })
     }
@@ -95,18 +93,24 @@ pub extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const Address
 /// Create a new keyload for a list of subscribers.
 #[no_mangle]
 pub extern "C" fn auth_send_keyload(
+    r: *mut MessageLinks,
     user: *mut Author,
     link_to: *const Address,
     psk_ids: *const PskIds,
     ke_pks: *const KePks,
-) -> MessageLinks {
+) -> Err {
     unsafe {
-        user.as_mut().map_or(MessageLinks::default(), |user| {
-            link_to.as_ref().map_or(MessageLinks::default(), |link_to| {
-                psk_ids.as_ref().map_or(MessageLinks::default(), |psk_ids| {
-                    ke_pks.as_ref().map_or(MessageLinks::default(), |ke_pks| {
-                        let response = user.send_keyload(link_to, psk_ids, ke_pks).unwrap();
-                        response.into()
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link_to.as_ref().map_or(Err::NullArgument, |link_to| {
+                    psk_ids.as_ref().map_or(Err::NullArgument, |psk_ids| {
+                        ke_pks.as_ref().map_or(Err::NullArgument, |ke_pks| {
+                            user.send_keyload(link_to, psk_ids, ke_pks)
+                                .map_or(Err::OperationFailed, |response| {
+                                    *r = response.into();
+                                    Err::Ok
+                                })
+                        })
                     })
                 })
             })
@@ -116,59 +120,78 @@ pub extern "C" fn auth_send_keyload(
 
 /// Create keyload for all subscribed subscribers.
 #[no_mangle]
-pub extern "C" fn auth_send_keyload_for_everyone(user: *mut Author, link_to: *const Address) -> MessageLinks {
+pub extern "C" fn auth_send_keyload_for_everyone(r: *mut MessageLinks, user: *mut Author, link_to: *const Address) -> Err {
     unsafe {
-        user.as_mut().map_or(MessageLinks::default(), |user| {
-            link_to.as_ref().map_or(MessageLinks::default(), |link_to| {
-                let response = user.send_keyload_for_everyone(link_to).unwrap();
-                response.into()
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link_to.as_ref().map_or(Err::NullArgument, |link_to| {
+                    user.send_keyload_for_everyone(link_to)
+                        .map_or(Err::OperationFailed, |response| {
+                            *r = response.into();
+                            Err::Ok
+                        })
+                })
             })
         })
     }
 }
 
+/// Process a Tagged packet message
 #[no_mangle]
 pub extern "C" fn auth_send_tagged_packet(
+    r: *mut MessageLinks,
     user: *mut Author,
     link_to: MessageLinks,
     public_payload_ptr: *const uint8_t,
     public_payload_size: size_t,
     masked_payload_ptr: *const uint8_t,
     masked_payload_size: size_t,
-) -> MessageLinks {
+) -> Err {
     unsafe {
-        user.as_mut().map_or(MessageLinks::default(), |user| {
-            link_to
-                .into_seq_link(user.is_multi_branching())
-                .map_or(MessageLinks::default(), |link_to| {
-                    let public_payload = Bytes(Vec::from_raw_parts(
-                        public_payload_ptr as *mut u8,
-                        public_payload_size,
-                        public_payload_size,
-                    ));
-                    let masked_payload = Bytes(Vec::from_raw_parts(
-                        masked_payload_ptr as *mut u8,
-                        masked_payload_size,
-                        masked_payload_size,
-                    ));
-                    let response = user
-                        .send_tagged_packet(link_to, &public_payload, &masked_payload)
-                        .unwrap();
-                    let _ = core::mem::ManuallyDrop::new(public_payload.0);
-                    let _ = core::mem::ManuallyDrop::new(masked_payload.0);
-                    response.into()
-                })
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link_to
+                    .into_seq_link(user.is_multi_branching())
+                    .map_or(Err::NullArgument, |link_to| {
+                        let public_payload = Bytes(Vec::from_raw_parts(
+                            public_payload_ptr as *mut u8,
+                            public_payload_size,
+                            public_payload_size,
+                        ));
+                        let masked_payload = Bytes(Vec::from_raw_parts(
+                            masked_payload_ptr as *mut u8,
+                            masked_payload_size,
+                            masked_payload_size,
+                        ));
+                        let e = user
+                            .send_tagged_packet(link_to, &public_payload, &masked_payload)
+                            .map_or(Err::OperationFailed, |response| {
+                                *r = response.into();
+                                Err::Ok
+                            });
+                        let _ = core::mem::ManuallyDrop::new(public_payload.0);
+                        let _ = core::mem::ManuallyDrop::new(masked_payload.0);
+                        e
+                    })
+            })
         })
     }
 }
 
+/// Process a Tagged packet message
 #[no_mangle]
-pub extern "C" fn auth_receive_tagged_packet(user: *mut Author, link: *const Address) -> PacketPayloads {
+pub extern "C" fn auth_receive_tagged_packet(r: *mut PacketPayloads, user: *mut Author, link: *const Address) -> Err {
     unsafe {
-        user.as_mut().map_or(PacketPayloads::default(), |user| {
-            link.as_ref().map_or(PacketPayloads::default(), |link| {
-                let payloads = user.receive_tagged_packet(link).unwrap(); // TODO: handle Result
-                payloads.into()
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link.as_ref().map_or(Err::NullArgument, |link| {
+                    user
+                        .receive_tagged_packet(link)
+                        .map_or(Err::OperationFailed, |tagged_payloads| {
+                            *r = tagged_payloads.into();
+                            Err::Ok
+                        })
+                })
             })
         })
     }
@@ -176,60 +199,77 @@ pub extern "C" fn auth_receive_tagged_packet(user: *mut Author, link: *const Add
 
 /// Process a Signed packet message
 #[no_mangle]
-pub extern "C" fn auth_receive_signed_packet(user: *mut Author, link: *const Address) -> PacketPayloads {
-    unsafe {
-        user.as_mut().map_or(PacketPayloads::default(), |user| {
-            link.as_ref().map_or(PacketPayloads::default(), |link| {
-                let signed_payloads = user.receive_signed_packet(link).unwrap(); // TODO: handle Result
-                signed_payloads.into()
-            })
-        })
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn author_receive_sequence(user: *mut Author, link: *const Address) -> *const Address {
-    unsafe {
-        user.as_mut().map_or(null(), |user| {
-            link.as_ref().map_or(null(), |link| {
-                let seq_link = user.receive_sequence(link).unwrap(); // TODO: handle Result
-                Box::into_raw(Box::new(seq_link))
-            })
-        })
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn auth_send_signed_packet(
+    r: *mut MessageLinks,
     user: *mut Author,
     link_to: MessageLinks,
     public_payload_ptr: *const uint8_t,
     public_payload_size: size_t,
     masked_payload_ptr: *const uint8_t,
     masked_payload_size: size_t,
-) -> MessageLinks {
+) -> Err {
     unsafe {
-        user.as_mut().map_or(MessageLinks::default(), |user| {
-            link_to
-                .into_seq_link(user.is_multi_branching())
-                .map_or(MessageLinks::default(), |link_to| {
-                    let public_payload = Bytes(Vec::from_raw_parts(
-                        public_payload_ptr as *mut u8,
-                        public_payload_size,
-                        public_payload_size,
-                    ));
-                    let masked_payload = Bytes(Vec::from_raw_parts(
-                        masked_payload_ptr as *mut u8,
-                        masked_payload_size,
-                        masked_payload_size,
-                    ));
-                    let response = user
-                        .send_signed_packet(link_to, &public_payload, &masked_payload)
-                        .unwrap();
-                    let _ = core::mem::ManuallyDrop::new(public_payload.0);
-                    let _ = core::mem::ManuallyDrop::new(masked_payload.0);
-                    response.into()
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link_to
+                    .into_seq_link(user.is_multi_branching())
+                    .map_or(Err::NullArgument, |link_to| {
+                        let public_payload = Bytes(Vec::from_raw_parts(
+                            public_payload_ptr as *mut u8,
+                            public_payload_size,
+                            public_payload_size,
+                        ));
+                        let masked_payload = Bytes(Vec::from_raw_parts(
+                            masked_payload_ptr as *mut u8,
+                            masked_payload_size,
+                            masked_payload_size,
+                        ));
+                        let e = user
+                            .send_signed_packet(link_to, &public_payload, &masked_payload)
+                            .map_or(Err::OperationFailed, |response| {
+                                *r = response.into();
+                                Err::Ok
+                            });
+                        let _ = core::mem::ManuallyDrop::new(public_payload.0);
+                        let _ = core::mem::ManuallyDrop::new(masked_payload.0);
+                        e
+                    })
+            })
+        })
+    }
+}
+
+/// Process a Signed packet message
+#[no_mangle]
+pub extern "C" fn auth_receive_signed_packet(r: *mut PacketPayloads, user: *mut Author, link: *const Address) -> Err {
+    unsafe {
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link.as_ref().map_or(Err::NullArgument, |link| {
+                    user
+                        .receive_signed_packet(link)
+                        .map_or(Err::OperationFailed, |signed_payloads| {
+                            *r = signed_payloads.into();
+                            Err::Ok
+                        })
                 })
+            })
+        })
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn auth_receive_sequence(r: *mut *const Address, user: *mut Author, link: *const Address) -> Err {
+    unsafe {
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link.as_ref().map_or(Err::NullArgument, |link| {
+                    user.receive_sequence(link).map_or(Err::OperationFailed, |seq_link| {
+                        *r = safe_into_ptr(seq_link);
+                        Err::Ok
+                    })
+                })
+            })
         })
     }
 }
@@ -239,18 +279,22 @@ pub extern "C" fn auth_gen_next_msg_ids(user: *mut Author) -> *const NextMsgIds 
     unsafe {
         user.as_mut().map_or(null(), |user| {
             let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
-            Box::into_raw(Box::new(next_msg_ids))
+            safe_into_ptr(next_msg_ids)
         })
     }
 }
 
 #[no_mangle]
-pub extern "C" fn auth_receive_msg(user: *mut Author, link: *const Address) -> *const UnwrappedMessage {
+pub extern "C" fn auth_receive_msg(r: *mut *const UnwrappedMessage, user: *mut Author, link: *const Address) -> Err {
     unsafe {
-        user.as_mut().map_or(null(), |user| {
-            link.as_ref().map_or(null(), |link| {
-                let u = user.receive_msg(link).unwrap(); // TODO: handle Result
-                Box::into_raw(Box::new(u))
+        r.as_mut().map_or(Err::NullArgument, |r| {
+            user.as_mut().map_or(Err::NullArgument, |user| {
+                link.as_ref().map_or(Err::NullArgument, |link| {
+                    user.receive_msg(link).map_or(Err::OperationFailed, |u| {
+                        *r = safe_into_ptr(u);
+                        Err::Ok
+                    })
+                })
             })
         })
     }
@@ -261,7 +305,7 @@ pub extern "C" fn auth_fetch_next_msgs(user: *mut Author) -> *const UnwrappedMes
     unsafe {
         user.as_mut().map_or(null(), |user| {
             let m = user.fetch_next_msgs();
-            Box::into_raw(Box::new(m))
+            safe_into_ptr(m)
         })
     }
 }
@@ -278,7 +322,7 @@ pub extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages
                 }
                 ms.extend(m);
             }
-            Box::into_raw(Box::new(ms))
+            safe_into_ptr(ms)
         })
     }
 }
@@ -288,7 +332,7 @@ pub extern "C" fn auth_fetch_state(user: *mut Author) -> *const UserState {
     unsafe {
         user.as_mut().map_or(null(), |user| {
             user.fetch_state().map_or(null(), |state| {
-                Box::into_raw(Box::new(state))
+                safe_into_ptr(state)
             })
         })
     }
