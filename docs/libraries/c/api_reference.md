@@ -466,6 +466,8 @@ Error code
 | NullArgument    | Null-pointer argument               |
 | OperationFailed | Transport, wrap/unwrap operation failed |
 
+### TransportDetails
+
 ### TransportWrap 
 #### tsp_new(): *mut TransportWrap
 Generate a default transport client object (best for testing purposes)
@@ -494,7 +496,7 @@ Retrieved message details for a given message link
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| details         | `*mut TransportDetails`       | Resulting message details           |
+| details         | [`*mut TransportDetails`](#TransportDetails)       | Resulting message details           |
 | tsp             | `*mut TransportWrap`          | Transport Client                    |
 | link            | `*const Address`              | Address link of message             |
 **Returns:** Error code
