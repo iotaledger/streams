@@ -116,7 +116,7 @@ Send a tagged packet message linked to a previous message.
 
 | Param              | Type                              | Description                                   |
 | ------------------ | --------------------------------- | --------------------------------------------- |
-| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the keyload message link and sequence link. |
+| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the tagged packet link and sequence link. |
 | user               | `*mut Author`                     | Author instance                               |
 | link_to            | [`MessageLinks`](#MessageLinks)   | Address of message being linked to            |
 | public_payload_ptr | `*const_uint8_t`                  | Byte array of public payload pointer          |
@@ -130,7 +130,7 @@ Send a signed packet message linked to a previous message.
 
 | Param              | Type                              | Description                                   |
 | ------------------ | --------------------------------- | --------------------------------------------- |
-| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the keyload message link and sequence link. |
+| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the signed packet link and sequence link. |
 | user               | `*mut Author`                     | Author instance                               |
 | link_to            | [`MessageLinks`](#MessageLinks)   | Address of message being linked to            |
 | public_payload_ptr | `*const_uint8_t`                  | Byte array of public payload pointer          |
@@ -178,7 +178,7 @@ Receive a sequence message by its link, and return the address of the sequenced 
 | link            | [`*const Address`](#Address)  | Address of sequence message         |
 **Returns:** Error code.
 
-#### auth_receive_msg(umsg, user, link): 
+#### auth_receive_msg(umsg, user, link): [Err](#Err)
 Receive a message generically without knowing its type.
 
 | Param           | Type                          | Description                          |
@@ -322,7 +322,7 @@ Process an announcement message by its link.
 **Returns:** Error code.
 
 
-#### sub_send_subscribe(link, user, announcement_link): 
+#### sub_send_subscribe(link, user, announcement_link): [Err](#Err)
 Send a subscription message, initialising the channel 
 
 | Param             | Type                         | Description               |
@@ -332,101 +332,112 @@ Send a subscription message, initialising the channel
 | announcement_link | [`*const Address`](#Address) | Announcement link         |
 **Returns:** Error code.
 
-#### sub_send_tagged_packet(user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
+#### sub_send_tagged_packet(links, user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [Err](#Err)
 Send a tagged packet message linked to a previous message.
 
 | Param              | Type                              | Description                                   |
 | ------------------ | --------------------------------- | --------------------------------------------- |
+| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the tagged packet link and sequence link. |
 | user               | `*mut Subscriber`                 | Subscriber instance                           |
 | link_to            | [`MessageLinks`](#MessageLinks)   | Address of message being linked to            |
 | public_payload_ptr | `*const_uint8_t`                  | Byte array of public payload pointer          |
 | public_payload_size| `size_t`                          | Length of public payload byte array           |
 | masked_payload_ptr | `*const_uint8_t`                  | Byte array of masked payload pointer          |
 | masked_payload_size| `size_t`                          | Length of masked payload byte array           |
-**Returns:** A MessageLinks wrapper around the tagged packet link and sequence link.
+**Returns:** Error code.
 
-#### sub_send_signed_packet(user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [MessageLinks](#MessageLinks)
+#### sub_send_signed_packet(links, user, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [Err](#Err)
 Send a signed packet message linked to a previous message. 
 
 | Param              | Type                              | Description                                   |
 | ------------------ | --------------------------------- | --------------------------------------------- |
+| links              | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the signed packet link and sequence link. |
 | user               | `*mut Subscriber`                 | Subscriber instance                           |
 | link_to            | [`MessageLinks`](#MessageLinks)   | Address of message being linked to            |
 | public_payload_ptr | `*const_uint8_t`                  | Byte array of public payload pointer          |
 | public_payload_size| `size_t`                          | Length of public payload byte array           |
 | masked_payload_ptr | `*const_uint8_t`                  | Byte array of masked payload pointer          |
 | masked_payload_size| `size_t`                          | Length of masked payload byte array           |
-**Returns:** A MessageLinks wrapper around the signed packet link and sequence link.
+**Returns:** Error code.
 
-#### sub_receive_keyload(user, link)
+#### sub_receive_keyload(user, link): [Err](#Err)
 Receive a keyload packet by its link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | user            | `*mut Subscriber`             | Subscriber instance                 |
 | link            | [`*const Address`](#Address)  | Address of tagged packet message    |
+**Returns:** Error code.
 
-#### sub_receive_keyload_from_ids(user, next_msg_ids)
+#### sub_receive_keyload_from_ids(links, user, next_msg_ids): [Err](#Err)
 Receive a keyload packet by a set of next msg ids.
 
 | Param           | Type                               | Description                         |
 | --------------- | ---------------------------------- | ----------------------------------- |
+| links           | [`*mut MessageLinks`](#MessageLinks)   | Resulting Message Links wrapper around the keyload message link and sequence link. |
 | user            | `*mut Subscriber`                  | Subscriber instance                 |
 | next_msg_ids    | [`*const NextMsgIds`](#NextMsgIds) | Address of tagged packet message    |
+**Returns:** Error code.
 
 
-#### sub_receive_tagged_packet(user, link): [PacketPayloads](#PacketPayloads)
+#### sub_receive_tagged_packet(payloads, user, link): [Err](#Err)
 Receive a tagged packet by its link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
+| payloads        | [`*mut PacketPayoads`](#PacketPayloads) | Resulting Packet Payloads wrapper around the tagged packet message |
 | user            | `*mut Subscriber`             | Subscriber instance                 |
 | link            | [`*const Address`](#Address)  | Address of tagged packet message    |
-**Returns:** A Packet Payloads wrapper around the tagged packet message.
+**Returns:** Error code.
 
-#### sub_receive_signed_packet(user, link): [PacketPayloads](#PacketPayloads)
+#### sub_receive_signed_packet(payloads, user, link): [Err](#Err)
 Receive a signed packet by its link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
+| payloads        | [`*mut PacketPayoads`](#PacketPayloads) | Resulting Packet Payloads wrapper around the signed packet message |
 | user            | `*mut Subscriber`             | Subscriber instance                 |
 | link            | [`*const Address`](#Address)  | Address of signed packet message    |
-**Returns:** A Packet Payloads wrapper around the signed packet message.
+**Returns:** Error code.
 
-#### sub_receive_sequence(user, link): [Address](#Address)
+#### sub_receive_sequence(seq, user, link): [Err](#Err)
 Receive a sequence message by its link, and return the address of the sequenced message. 
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
+| seq             | [`*mut Address`](#Address)    | The address link of the sequenced message. |
 | user            | `*mut Subscriber`             | Subscriber instance                 |
 | link            | [`*const Address`](#Address)  | Address of sequence message         |
-**Returns:** The address link of the sequenced message.
+**Returns:** Error code.
 
-#### sub_receive_msg(user, link): [*const UnwrappedMessage](#UnwrappedMessage)
+#### sub_receive_msg(umsg, user, link): [Err](#Err)
 Receive a message generically without knowing its type.
 
 | Param           | Type                          | Description                          |
 | --------------- | ----------------------------- | ------------------------------------ |
+| umsg            | [*mut *const UnwrappedMessage](#UnwrappedMessage) | An Unwrapped Message wrapper around the retrieved message. |
 | user            | `*mut Subscriber`             | Subscriber instance                 |
 | link            | [`*const Address`](#Address)  | Address of sequence message         |
-**Returns:** An Unwrapped Message wrapper around the retrieved message.
+**Returns:** Error code.
 
-#### sub_sync_state(user): [*const UnwrappedMessage](#UnwrappedMessages)
+#### sub_sync_state(umsgs, user): [Err](#Err)
 Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
 to ensure the user state matches all other publishers.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
+| umsgs           | [`*mut *const UnwrappedMessages`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
 | user            | `*mut Subscriber`             | Subscriber instance                 |
-**Returns:** An Array of UnwrappedMessage wrappers around the retrieved messages.
+**Returns:** Error code.
 
-#### sub_fetch_next_msgs(user): [*const UnwrappedMessage](#UnwrappedMessages)
+#### sub_fetch_next_msgs(umsgs, user): [Err](#Err)
 Fetch the next message sent by each publisher (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
+| umsgs           | [`*mut *const UnwrappedMessages`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
 | user            | `*mut Subscriber`             | Subscriber instance                 |
-**Returns:** An array of UnwrappedMessage wrappers around the retrieved messages.
+**Returns:** Error code.
 
 #### sub_gen_next_msg_ids(user): [*const NextMsgIds](#NextMsgIds)
 Fetch the next message sent by each publisher (empty array if none are present).
