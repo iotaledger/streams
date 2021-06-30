@@ -10,6 +10,12 @@ use core::{
     ptr::null,
     str::FromStr,
 };
+
+use crypto::hashes::{
+    blake2b,
+    Digest,
+};
+
 use iota_streams_core::Result;
 
 use iota_streams_core::{
@@ -49,25 +55,8 @@ use crate::message::{
     LinkedMessage,
 };
 
-use iota_client::{
-    bee_rest_api::types::responses::MessageMetadataResponse,
-    MilestoneResponse,
-};
-
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
-
-#[derive(Clone, Debug)]
-pub struct Details {
-    pub metadata: MessageMetadataResponse,
-    pub milestone: Option<MilestoneResponse>,
-}
-
-impl fmt::Display for Details {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<metadata={:?}, milestone={:?}>", self.metadata, self.milestone)
-    }
-}
 
 #[derive(Clone)]
 pub struct TangleMessage<F> {
@@ -190,9 +179,15 @@ impl fmt::Debug for TangleAddress {
     }
 }
 
+pub fn get_hash(tx_address: &[u8], tx_tag: &[u8]) -> Result<String> {
+    let total = [tx_address, tx_tag].concat();
+    let hash = blake2b::Blake2b256::digest(&total);
+    Ok(hex::encode(&hash))
+}
+
 impl fmt::Display for TangleAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let hash = client::get_hash(self.appinst.as_ref(), self.msgid.as_ref()).unwrap_or_default();
+        let hash = get_hash(self.appinst.as_ref(), self.msgid.as_ref()).unwrap_or_default();
         write!(f, "<{}>", hash)
     }
 }

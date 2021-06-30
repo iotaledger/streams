@@ -4,8 +4,8 @@ use core::{
 };
 use iota_streams::{
     app::transport::tangle::{
-        Details as ApiDetails,
         client::{
+            Details as ApiDetails,
             iota_client::{
                 MilestoneResponse as ApiMilestoneResponse,
                 bee_rest_api::types::{

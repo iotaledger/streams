@@ -1,11 +1,17 @@
 use futures::executor::block_on;
 
+use core::fmt;
 #[cfg(feature = "async")]
 use core::cell::RefCell;
 #[cfg(feature = "async")]
 use iota_streams_core::prelude::Rc;
 
 pub use iota_client;
+
+use iota_client::{
+    bee_rest_api::types::responses::MessageMetadataResponse,
+    MilestoneResponse,
+};
 
 use iota_client::bee_message::{
     payload::Payload,
@@ -33,11 +39,6 @@ use crate::{
 
 use futures::future::join_all;
 
-use crypto::hashes::{
-    blake2b,
-    Digest,
-};
-
 use iota_streams_core::prelude::String;
 
 #[derive(Clone)]
@@ -62,15 +63,24 @@ impl Default for SendOptions {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Details {
+    pub metadata: MessageMetadataResponse,
+    pub milestone: Option<MilestoneResponse>,
+}
+
+impl fmt::Display for Details {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<metadata={:?}, milestone={:?}>", self.metadata, self.milestone)
+    }
+}
+
+
 fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
     result.map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
 }
 
-pub fn get_hash(tx_address: &[u8], tx_tag: &[u8]) -> Result<String> {
-    let total = [tx_address, tx_tag].concat();
-    let hash = blake2b::Blake2b256::digest(&total);
-    Ok(hex::encode(&hash))
-}
+use super::get_hash;
 
 /// Reconstruct Streams Message from bundle. The input bundle is not checked (for validity of
 /// the hash, consistency of indices, etc.). Checked bundles are returned by `(client.get_message().index`.
