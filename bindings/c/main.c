@@ -426,6 +426,29 @@ cleanup8:
   printf("\n");
   if(e) goto cleanup;
 
+  {
+    buffer_t bytes = { NULL, 0, 0 };
+    author_t *auth_new = NULL;
+
+    printf("Exporting author state... ");
+    bytes = auth_export(auth, "my_password");
+    printf("  %s\n", bytes.ptr ? "done" : "failed");
+    if(!bytes.ptr) goto cleanup9;
+
+    printf("Importing author state... ");
+    auth_new = auth_import(bytes, "my_password", tsp);
+    printf("  %s\n", auth_new ? "done" : "failed");
+    if(!auth_new) goto cleanup9;
+    //auth_import consumes bytes, need to clear to avoid double-free
+    bytes.ptr = NULL;
+ 
+ cleanup9:
+    auth_drop(auth_new);
+    drop_buffer(bytes);
+  }
+  printf("\n");
+  if(e) goto cleanup;
+
 cleanup:
   drop_links(tagged_packet_links);
   drop_links(signed_packet_links);

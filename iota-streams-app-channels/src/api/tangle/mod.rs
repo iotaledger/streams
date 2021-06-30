@@ -9,7 +9,6 @@ use iota_streams_app::{
     transport::{
         self,
         tangle::{
-            client::Details as ClientDetails,
             AppInst,
             DefaultTangleLinkGenerator,
             MsgId,
@@ -18,6 +17,9 @@ use iota_streams_app::{
         },
     },
 };
+
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+use iota_streams_app::transport::tangle::client::Details as ClientDetails;
 
 pub use message::Cursor;
 // Bring trait methods into scope publicly.
@@ -48,6 +50,7 @@ pub type ChannelAddress = AppInst;
 /// Binary encoded message type.
 pub type Message = TangleMessage<DefaultF>;
 // Details for a message on our tangle transport
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
 pub type Details = ClientDetails;
 
 /// Wrapped Message for sending and commit
