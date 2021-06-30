@@ -57,10 +57,10 @@ int main()
   char const *url = env_url ? env_url : "http://localhost:14265";
 
   printf("Using node: %s\n\n", url);
-  tsp = tsp_client_new_from_url(url);
+  tsp = transport_client_new_from_url(url);
 #else
   printf("Using bucket transport (offline) \n\n");
-  tsp = tsp_new();
+  tsp = transport_new();
 #endif
   printf("Making author with seed '%s'... ", seed);
   auth = auth_new(seed, encoding, size, multi_branching, tsp);
@@ -96,9 +96,9 @@ int main()
       char const *link_index = NULL;
 
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
-      tsp_details_t details;
+      transport_details_t details;
       printf("Getting announcement link details... ");
-      e = tsp_get_link_details(&details, tsp, ann_link);
+      e = transport_get_link_details(&details, tsp, ann_link);
       printf("%s\n", !e ? "done" : "failed");
       if(e) goto cleanup0;
       printf("  message_id: '%s'\n", details.msg_metadata.message_id);
@@ -457,7 +457,7 @@ cleanup:
   sub_drop(subA);
   drop_address(ann_link);
   auth_drop(auth);
-  tsp_drop(tsp);
+  transport_drop(tsp);
 
   return (e == ERR_OK ? 0 : 1);
 }

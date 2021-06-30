@@ -464,7 +464,7 @@ Error code
 | -------------------  | --------------------------------------- |
 | ERR_OK               | Success, no errors                      |
 | ERR_NULL_ARGUMENT    | Null-pointer argument                   |
-| ERR_BAD_ARGUMENT     | An invalid argument was given as input  |                                      
+| ERR_BAD_ARGUMENT     | An invalid argument was given as input  |
 | ERR_OPERATION_FAILED | Transport, wrap/unwrap operation failed |
 
 ### TransportDetails
@@ -477,7 +477,7 @@ Generate a default transport client object (best for testing purposes)
 | --------------- | ----------------------------- | ----------------------------------- |
 **Returns:** A generic transport client wrap
  
-#### tsp_drop(tsp) 
+#### transport_drop(tsp) 
 Drop transport client from memory
 
 | Param           | Type                          | Description                         |
@@ -492,12 +492,12 @@ Generate a transport client object with a given node url
 | url             | `char const *`                | Node Url       |
 **Returns:** A transport client wrapper to communicate with a node
 
-#### tsp_get_link_details(details, transport, link): [err_t](#Err)
+#### transport_get_link_details(details, transport, link): [err_t](#Err)
 Retrieved message details for a given message link
 
 | Param           | Type                                   | Description                         |
 | --------------- | -------------------------------------- | ----------------------------------- |
-| details         | [`tsp_details_t *`](#TransportDetails) | Resulting message details           |
+| details         | [`transport_details_t *`](#TransportDetails) | Resulting message details           |
 | transport       | `transport_t *`                        | Transport Client                    |
 | link            | `address_t const *`                    | Address link of message             |
 **Returns:** Error code

@@ -62,7 +62,7 @@ extern void drop_payloads(packet_payloads_t);
 ////////////
 typedef struct Transport transport_t;
 extern transport_t *transport_new();
-extern void tsp_drop(transport_t *);
+extern void transport_drop(transport_t *);
 #ifdef IOTA_STREAMS_CHANNELS_CLIENT
 extern transport_t *transport_client_new_from_url(char const *url);
 #endif
@@ -96,9 +96,9 @@ typedef struct Milestone {
 typedef struct TransportDetails {
     msg_metadata_t msg_metadata;
     milestone_t milestone;
-} tsp_details_t;
+} transport_details_t;
 
-extern err_t tsp_get_link_details(tsp_details_t *details, transport_t *transport, address_t const *link);
+extern err_t transport_get_link_details(transport_details_t *details, transport_t *transport, address_t const *link);
 #endif
 
 ////////////

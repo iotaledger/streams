@@ -125,18 +125,18 @@ pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
 pub type TransportWrap = Rc<core::cell::RefCell<BucketTransport>>;
 
 #[no_mangle]
-pub extern "C" fn tsp_new() -> *mut TransportWrap {
+pub extern "C" fn transport_new() -> *mut TransportWrap {
     safe_into_mut_ptr(TransportWrap::default())
 }
 
 #[no_mangle]
-pub extern "C" fn tsp_drop(tsp: *mut TransportWrap) {
+pub extern "C" fn transport_drop(tsp: *mut TransportWrap) {
     safe_drop_mut_ptr(tsp)
 }
 
 #[cfg(feature = "sync-client")]
 #[no_mangle]
-pub extern "C" fn tsp_client_new_from_url(c_url: *const c_char) -> *mut TransportWrap {
+pub extern "C" fn transport_client_new_from_url(c_url: *const c_char) -> *mut TransportWrap {
     unsafe {
         let url = CStr::from_ptr(c_url).to_str().unwrap();
 
@@ -268,7 +268,7 @@ impl From<MilestoneResponse> for Milestone {
 }
 
 #[no_mangle]
-pub extern "C" fn tsp_get_link_details(r: *mut TransportDetails, tsp: *mut TransportWrap, link: *const Address) -> Err {
+pub extern "C" fn transport_get_link_details(r: *mut TransportDetails, tsp: *mut TransportWrap, link: *const Address) -> Err {
     unsafe {
         r.as_mut().map_or(Err::NullArgument, |r| {
             tsp.as_mut().map_or(Err::NullArgument, |tsp| {
