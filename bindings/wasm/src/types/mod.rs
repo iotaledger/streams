@@ -237,6 +237,7 @@ pub struct PskIds {
 
 #[wasm_bindgen]
 impl PskIds {
+    #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         PskIds { ids: Vec::new() }
     }
@@ -271,6 +272,7 @@ pub(crate) fn public_key_from_string(hex_str: &str) -> Result<PublicKey> {
 
 #[wasm_bindgen]
 impl PublicKeys {
+    #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         PublicKeys { pks: Vec::new() }
     }
