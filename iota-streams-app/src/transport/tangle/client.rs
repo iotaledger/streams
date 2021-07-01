@@ -176,19 +176,19 @@ pub async fn async_get_link_details(client: &iota_client::Client, link: &TangleA
     Ok(Details { metadata, milestone })
 }
 
-/// Synchronised - Send message to the tangle using a node client
+/// Synchronous - Send message to the tangle using a node client
 #[cfg(not(feature = "async"))]
 pub fn sync_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>) -> Result<()> {
     block_on(async_send_message_with_options(client, msg))
 }
 
-/// Synchronised - Retrieve a message from the tangle using a node client
+/// Synchronous - Retrieve a message from the tangle using a node client
 #[cfg(not(feature = "async"))]
 pub fn sync_recv_messages<F>(client: &iota_client::Client, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
     block_on(async_recv_messages(client, link))
 }
 
-/// Synchronised - Retrieve details of a link from the tangle using a node client
+/// Synchronous - Retrieve details of a link from the tangle using a node client
 #[cfg(not(feature = "async"))]
 pub fn sync_get_link_details(client: &iota_client::Client, link: &TangleAddress) -> Result<Details> {
     block_on(async_get_link_details(client, link))
