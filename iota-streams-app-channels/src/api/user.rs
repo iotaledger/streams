@@ -254,6 +254,11 @@ where
         Ok(())
     }
 
+    /// Channel Author's signature public key
+    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
+        self.author_sig_pk.as_ref()
+    }
+
     /// Save spongos and info associated to the message link
     pub fn commit_wrapped(
         &mut self,

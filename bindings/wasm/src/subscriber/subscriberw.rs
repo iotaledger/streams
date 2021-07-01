@@ -86,6 +86,17 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
+    pub fn author_public_key(&self) -> Result<String> {
+        to_result(
+            self.subscriber
+                .borrow_mut()
+                .author_public_key()
+                .ok_or("channel not registered, author's public key not found")
+                .map(|author_pk| hex::encode(author_pk.to_bytes())),
+        )
+    }
+
+    #[wasm_bindgen(catch)]
     pub fn is_registered(&self) -> Result<bool> {
         Ok(self.subscriber.borrow_mut().is_registered())
     }

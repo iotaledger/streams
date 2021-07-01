@@ -34,6 +34,8 @@ async function main() {
   let sub = new streams.Subscriber(seed2, options.clone());
   let ann_link_copy = ann_link.copy();
   await sub.clone().receive_announcement(ann_link_copy);
+  let author_pk = sub.author_public_key();
+  console.log("Channel registered by subscriber, author's public key: ", author_pk);
 
   console.log("Subscribing...");
   ann_link_copy = ann_link.copy();

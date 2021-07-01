@@ -53,6 +53,11 @@ impl<Trans> Subscriber<Trans> {
         self.user.get_pk()
     }
 
+    /// Channel Author's signature public key
+    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
+        self.user.author_public_key()
+    }
+
     /// Store a PSK in the user instance, returns the PskId for identifying purposes in keyloads
     pub fn store_psk(&mut self, psk: Psk) -> PskId {
         self.user.store_psk(psk)
