@@ -2,7 +2,7 @@
 
 [package]
 name = "iota-streams"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -49,8 +49,8 @@ iota-streams-core = { version = "0.3.0", path = "iota-streams-core", default-fea
 iota-streams-core-keccak = { version = "0.3.0", path = "iota-streams-core-keccak", default-features = false }
 iota-streams-core-edsig = { version = "0.2.0", path = "iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.2.2", path = "iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "1.0.0", path = "iota-streams-app", default-features = false }
-iota-streams-app-channels = { version = "1.0.0", path = "iota-streams-app-channels", default-features = false }
+iota-streams-app = { version = "1.1.0", path = "iota-streams-app", default-features = false }
+iota-streams-app-channels = { version = "1.1.0", path = "iota-streams-app-channels", default-features = false }
 
 #[profile.release-nostd]
 #inherits = "release"

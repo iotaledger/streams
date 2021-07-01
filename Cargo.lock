@@ -1274,7 +1274,7 @@ dependencies = [
 
 [[package]]
 name = "iota-streams"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "iota-streams-app",
  "iota-streams-app-channels",
@@ -1286,7 +1286,7 @@ dependencies = [
 
 [[package]]
 name = "iota-streams-app"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1307,7 +1307,7 @@ dependencies = [
 
 [[package]]
 name = "iota-streams-app-channels"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "hex",
  "iota-streams-app",

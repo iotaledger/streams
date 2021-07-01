@@ -839,7 +839,7 @@ dependencies = [
 
 [[package]]
 name = "iota-streams"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "iota-streams-app",
  "iota-streams-app-channels",
@@ -851,7 +851,7 @@ dependencies = [
 
 [[package]]
 name = "iota-streams-app"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -868,7 +868,7 @@ dependencies = [
 
 [[package]]
 name = "iota-streams-app-channels"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "hex",
  "iota-streams-app",
@@ -1688,7 +1688,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "streams-c-binding"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "hex",
  "iota-streams",

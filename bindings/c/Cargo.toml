@@ -1,6 +1,6 @@
 [package]
 name = "streams-c-binding"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
 edition = "2018"
 
