@@ -24,6 +24,7 @@ async function main() {
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
+  let pks = streams.PublicKeys.new();
 
   let response = await auth.clone().send_announce();
   let ann_link = response.get_link();

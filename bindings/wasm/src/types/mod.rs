@@ -226,6 +226,12 @@ pub struct PublicKeys {
 
 #[wasm_bindgen]
 impl PskIds {
+    pub fn new() -> Self {
+        Self {
+            ids: Vec::new(),
+        }
+    }
+
     pub fn add(&mut self, id: String) {
         self.ids.push(id);
     }
@@ -237,6 +243,12 @@ impl PskIds {
 
 #[wasm_bindgen]
 impl PublicKeys {
+    pub fn new() -> Self {
+        Self {
+            pks: Vec::new(),
+        }
+    }
+
     pub fn add(&mut self, id: String) {
         self.pks.push(id);
     }
