@@ -84,13 +84,18 @@ pub type BucketTransport = transport::BucketTransport<Address, Message>;
 /// Transportation trait for Tangle Client implementation
 // TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
 pub trait Transport: transport::Transport<Address, Message> {}
-impl<T> Transport for T where T: transport::Transport<Address, Message> {}
+// impl<T> Transport for T where T: transport::Transport<Address, Message> {}
+impl Transport for transport::SharedTransport<BucketTransport> {}
+
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+impl Transport for iota_streams_app::transport::tangle::client::Client {}
 
 mod msginfo;
 pub use msginfo::MsgInfo;
 
 /// Message body returned as part of handle message routine.
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub enum MessageContent {
     Announce,
     Keyload,
