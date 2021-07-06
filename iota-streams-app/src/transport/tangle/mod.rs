@@ -121,6 +121,12 @@ impl<F> TangleMessage<F> {
     }
 }
 
+impl<F> fmt::Debug for TangleMessage<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.binary)
+    }
+}
+
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and an explicit timestamp.
     pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: u64) -> Self {
