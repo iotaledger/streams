@@ -30,5 +30,8 @@ anyhow = { version = "1.0.34", default-features = false, optional = false }
 # thiserror = { version = "1.0.22", default-features = false, optional = false }
 displaydoc = { version = "0.2", default-features = false, optional = false }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["console"] }
+
 [dev-dependencies]
 criterion = "0.3"

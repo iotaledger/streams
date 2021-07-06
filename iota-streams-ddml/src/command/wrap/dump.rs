@@ -17,7 +17,7 @@ impl<F: PRP, OS: io::OStream> Dump for Context<F, OS> {
         // println!("dump: {}", args,);
 
         //#[cfg(test)]
-        println!(
+        iota_streams_core::println!(
             "dump: {}: ostream=[{}] spongos=[{:?}]",
             args,
             self.stream.dump(),

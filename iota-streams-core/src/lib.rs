@@ -11,7 +11,7 @@ extern crate std;
 
 // Stub used in tests & examples.
 // Macros are exported at crate root level, that's why it's defined here, not in `prelude` mod.
-#[cfg(not(feature = "std"))]
+#[cfg(not(any(target_arch = "wasm32", feature = "std")))]
 #[macro_export]
 macro_rules! println {
     () => {};
@@ -29,8 +29,21 @@ macro_rules! print {
     };
 }
 
+#[cfg(target_arch = "wasm32")]
+pub use web_sys;
+
+// You need to override `std::println` imported by default with
+// `use iota_streams::core::println;` in your mod.
+#[cfg(target_arch = "wasm32")]
+#[macro_export]
+macro_rules! println {
+    ( $( $arg:tt )* ) => {
+        $crate::web_sys::console::log_1(&$crate::format!( $( $arg )* ).into());
+    }
+}
+
 // Reexport macro at the same level as `no_std`.
-#[cfg(feature = "std")]
+#[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
 pub use std::println;
 
 #[cfg(feature = "std")]
