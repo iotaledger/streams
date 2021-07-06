@@ -62,10 +62,10 @@ pub enum Errors {
     //////////
     /// More than one message found: with link {0}
     MessageNotUnique(String),
-    /// Message at link {0} not found in store
-    MessageLinkNotFound(String),
     /// Message at link {0} not found in tangle
-    MessageLinkNotFoundInTangle(String),
+    MessageLinkNotFound(String),
+    /// Message at link {0} not found in store
+    MessageLinkNotFoundInStore(String),
     /// Transport object is already borrowed
     TransportNotAvailable,
 
