@@ -12,6 +12,7 @@ use iota_streams::{
         ChannelType as ApiChannelType,
         MessageContent,
         UnwrappedMessage,
+        PublicKey,
     },
     core::prelude::{
         Rc,
@@ -219,12 +220,6 @@ pub struct PskIds {
 }
 
 #[wasm_bindgen]
-#[derive(Default)]
-pub struct PublicKeys {
-    pks: Vec<String>,
-}
-
-#[wasm_bindgen]
 impl PskIds {
     pub fn new() -> Self {
         Self {
@@ -242,6 +237,20 @@ impl PskIds {
 }
 
 #[wasm_bindgen]
+pub struct PublicKeys {
+    pub(crate) pks: Vec<PublicKey>,
+}
+
+pub(crate) fn public_key_to_string(pk: &PublicKey) -> String {
+    hex::encode(pk.as_bytes())
+}
+
+pub(crate) fn public_key_from_string(hex_str: &str) -> Result<PublicKey> {
+    let bytes = to_result(hex::decode(hex_str))?;
+    to_result(PublicKey::from_bytes(&bytes))
+}
+
+#[wasm_bindgen]
 impl PublicKeys {
     pub fn new() -> Self {
         Self {
@@ -249,12 +258,13 @@ impl PublicKeys {
         }
     }
 
-    pub fn add(&mut self, id: String) {
-        self.pks.push(id);
+    pub fn add(&mut self, id: String) -> Result<()> {
+        self.pks.push(public_key_from_string(&id)?);
+        Ok(())
     }
 
     pub fn get_pks(&self) -> Array {
-        self.pks.iter().map(JsValue::from).collect()
+        self.pks.iter().map(|pk| JsValue::from(public_key_to_string(pk))).collect()
     }
 }
 
