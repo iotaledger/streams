@@ -802,15 +802,6 @@ dependencies = [
 [[package]]
 name = "iota-crypto"
 version = "0.5.1"
-source = "git+https://github.com/iotaledger/crypto.rs?branch=dev#7b9cac4c0aafddc9022f38320b8127af3c58495c"
-dependencies = [
- "blake2",
- "digest 0.9.0",
-]
-
-[[package]]
-name = "iota-crypto"
-version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccb8160eb8a88434fb3a0a3fc852e625aceab6c0272f0f03cc3f47c125bceab"
 dependencies = [
@@ -823,6 +814,15 @@ dependencies = [
  "serde",
  "sha2 0.9.5",
  "unicode-normalization",
+]
+
+[[package]]
+name = "iota-crypto"
+version = "0.5.1"
+source = "git+https://github.com/iotaledger/crypto.rs?branch=dev#7b9cac4c0aafddc9022f38320b8127af3c58495c"
+dependencies = [
+ "blake2",
+ "digest 0.9.0",
 ]
 
 [[package]]

@@ -16,7 +16,7 @@ use iota_streams::{
 
 #[wasm_bindgen]
 #[derive(Clone)]
-pub struct Client(ClientWrap);
+pub struct Client(pub(crate) ClientWrap);
 
 #[wasm_bindgen]
 impl Client {
