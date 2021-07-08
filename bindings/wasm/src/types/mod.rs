@@ -18,8 +18,8 @@ use iota_streams::{
     app_channels::api::tangle::{
         Address as ApiAddress,
         MessageContent,
-        UnwrappedMessage,
         PublicKey,
+        UnwrappedMessage,
     },
     core::prelude::{
         Rc,
@@ -269,7 +269,10 @@ impl PublicKeys {
     }
 
     pub fn get_pks(&self) -> Array {
-        self.pks.iter().map(|pk| JsValue::from(public_key_to_string(pk))).collect()
+        self.pks
+            .iter()
+            .map(|pk| JsValue::from(public_key_to_string(pk)))
+            .collect()
     }
 }
 
