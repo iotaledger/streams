@@ -144,7 +144,7 @@ extern unwrapped_messages_t const *auth_fetch_next_msgs(author_t *author);
 extern unwrapped_messages_t const *auth_sync_state(author_t *author);
 extern user_state_t const * auth_fetch_state(author_t *author);
 // Store Psk
-extern pskid_t const *auth_store_psk(author_t *author, char const *psk);
+extern psk_id_t const *auth_store_psk(author_t *author, char const *psk);
 
 
 /////////////
@@ -189,7 +189,7 @@ extern err_t sub_fetch_next_msgs(unwrapped_messages_t const **messages, subscrib
 extern err_t sub_sync_state(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern user_state_t const *sub_fetch_state(subscriber_t *subscriber);
 // Store Psk
-extern pskid_t const *sub_store_psk(subscriber_t *subscriber, char const *psk);
+extern psk_id_t const *sub_store_psk(subscriber_t *subscriber, char const *psk);
 
 /////////////
 /// Utility
@@ -212,6 +212,6 @@ extern char const *get_address_index_str(address_t const *address);
 
 extern address_t const *get_link_from_state(user_state_t const *state, public_key_t const *pub_key);
 
-extern char const *pskid_as_str(pskid_t const *pskid);
+extern char const *pskid_as_str(psk_id_t const *pskid);
 
 #endif //IOTA_STREAMS_CHANNELS_H
