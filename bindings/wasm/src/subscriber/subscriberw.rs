@@ -108,7 +108,7 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn get_public_key(&self) -> Result<String> {
-        Ok(hex::encode(self.subscriber.borrow_mut().get_pk().to_bytes().to_vec()))
+        Ok(public_key_to_string(self.subscriber.borrow_mut().get_pk()))
     }
 
     #[wasm_bindgen(catch)]
@@ -183,7 +183,7 @@ impl Subscriber {
                         link,
                         None,
                         Some(Message::new(
-                            Some(hex::encode(pk.as_bytes())),
+                            Some(public_key_to_string(&pk)),
                             pub_bytes.0,
                             masked_bytes.0,
                         )),

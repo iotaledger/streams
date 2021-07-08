@@ -25,7 +25,6 @@ use iota_streams::{
     app_channels::api::tangle::{
         Address as ApiAddress,
         Author as ApiAuthor,
-        PublicKey,
     },
     core::{
         prelude::{
@@ -124,7 +123,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn get_public_key(&self) -> Result<String> {
-        Ok(hex::encode(self.author.borrow_mut().get_pk().to_bytes()))
+        Ok(public_key_to_string(self.author.borrow_mut().get_pk()))
     }
 
     #[wasm_bindgen(catch)]
@@ -177,15 +176,7 @@ impl Author {
             }
         }
 
-        let mut pks = Vec::new();
-
-        let pk_list = sig_pks.get_pks().entries();
-
-        for pk in pk_list {
-            if let Some(pk_str) = pk.unwrap().as_string() {
-                pks.push(PublicKey::from_bytes(pk_str.as_bytes()).unwrap_or_default());
-            }
-        }
+        let pks = sig_pks.pks;
 
         self.author
             .borrow_mut()
@@ -333,7 +324,7 @@ impl Author {
                         link,
                         None,
                         Some(Message::new(
-                            Some(hex::encode(pk.as_bytes())),
+                            Some(public_key_to_string(&pk)),
                             pub_bytes.0,
                             masked_bytes.0,
                         )),
@@ -395,7 +386,7 @@ impl Author {
         let mut ids = Vec::new();
         for (pk, cursor) in self.author.borrow_mut().gen_next_msg_ids(branching).iter() {
             ids.push(NextMsgId::new(
-                hex::encode(pk.as_bytes()),
+                public_key_to_string(pk),
                 Address::from_string(cursor.link.to_string()),
             ));
         }
