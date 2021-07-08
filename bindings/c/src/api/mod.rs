@@ -15,10 +15,16 @@ use iota_streams::{
             get_hash,
         },
     },
-    app_channels::api::tangle::*,
+    app_channels::api::{
+        make_psk,
+        tangle::*
+    },
     core::{
         prelude::*,
-        psk,
+        psk::{
+            PskId,
+            Psk,
+        },
     },
 };
 
@@ -72,8 +78,21 @@ pub extern "C" fn drop_address(addr: *const Address) {
     safe_drop_ptr(addr)
 }
 
-pub type PskIds = psk::PskIds;
+pub type PskIds = Vec<PskId>;
 pub type KePks = Vec<PublicKey>;
+
+#[no_mangle]
+pub extern "C" fn pskid_as_str(pskid: *const PskId) -> *const c_char {
+    unsafe {
+        pskid.as_ref().map_or(null(), |pskid| {
+            CString::new(hex::encode(&pskid)).map_or(null(), |id| id.into_raw())
+        })
+    }
+}
+
+pub(crate) fn psk_from_str(psk: &str) -> *const Psk {
+    hex::decode(psk.to_string()).map_or(null(), |psk| safe_into_ptr(make_psk(&psk)))
+}
 
 pub type NextMsgIds = Vec<(PublicKey, Cursor<Address>)>;
 

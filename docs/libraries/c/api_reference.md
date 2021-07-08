@@ -221,6 +221,15 @@ Fetch the current user state to see the latest links for each publisher
 | author          | `author_t *`                  | Author instance                     |
 
 
+#### auth_store_state(author, psk): pskid_t 
+Stores a given Pre Shared Key (Psk) into the Author instance, returning a Pre Shared Key Id (PskId) 
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| author          | `author_t *`                           | Author instance          |
+| psk             | `char const *`                         | Unique Pre Shared Key    |
+**Returns:** A PskId representing the Psk stored in the instance.
+
 
 ### Subscriber 
 
@@ -455,6 +464,17 @@ Fetch the current subscriber state to see the latest links for each publisher
 | subscriber       | `subscriber_t *`             | Subscriber instance                 |
 
 
+#### sub_store_state(subscriber, psk): pskid_t 
+Stores a given Pre Shared Key (Psk) into the Subscriber instance, returning a Pre Shared Key Id (PskId) 
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| author          | `subscriber_t *`                       | Subscriber instance      |
+| psk             | `char const *`                         | Unique Pre Shared Key    |
+**Returns:** A PskId representing the Psk stored in the instance.
+
+
+
 ## Types
 
 ### Err
@@ -683,6 +703,14 @@ A 32 Byte Pre Shared Key
 
 ### PskId 
 Array of 16 bytes representing the identifier of a 32 byte [`Psk`](#Psk)
+
+#### pskid_as_str(pskid)
+Drop a rust allocated string from memory 
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| pskid           | `pskid_t const *`             | A Pre Shared Key Identifier         |
+**Returns:** String representation of the PskId object
 
 ### PskIds 
 An array of [`PskId`](#PskId)'s

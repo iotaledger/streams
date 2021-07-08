@@ -400,3 +400,17 @@ pub extern "C" fn sub_fetch_state(user: *mut Subscriber) -> *const UserState {
         })
     }
 }
+
+#[no_mangle]
+pub extern "C" fn sub_store_psk(user: *mut Subscriber, psk_str: *const c_char) -> *const PskId {
+    unsafe {
+        let psk = CStr::from_ptr(psk_str).to_str().unwrap();
+        user.as_mut().map_or(null(), |user| {
+            psk_from_str(psk).as_ref().map_or(null(),|psk| {
+                let pskid = user.store_psk(*psk);
+                safe_into_ptr(pskid)
+            })
+        })
+    }
+}
+
