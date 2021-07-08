@@ -31,6 +31,7 @@ use iota_streams::{
 use wasm_bindgen::prelude::*;
 
 use js_sys::Array;
+use iota_streams::core::psk::PskId;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
 pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {
@@ -225,7 +226,7 @@ pub struct Message {
 
 #[wasm_bindgen]
 pub struct PskIds {
-    ids: Vec<String>,
+    pub(crate) ids: Vec<PskId>,
 }
 
 #[wasm_bindgen]
@@ -234,18 +235,28 @@ impl PskIds {
         PskIds { ids: Vec::new() }
     }
 
-    pub fn add(&mut self, id: String) {
-        self.ids.push(id);
+    pub fn add(&mut self, id: String) -> Result<()> {
+        self.ids.push(pskid_from_string(&id)?);
+        Ok(())
     }
 
     pub fn get_ids(&self) -> Array {
-        self.ids.iter().map(JsValue::from).collect()
+        self.ids.iter().map(|pskid| JsValue::from(pskid_to_string(pskid))).collect()
     }
 }
 
 #[wasm_bindgen]
 pub struct PublicKeys {
     pub(crate) pks: Vec<PublicKey>,
+}
+
+pub(crate) fn pskid_to_string(pskid: &PskId) -> String {
+    hex::encode(pskid.as_slice())
+}
+
+pub(crate) fn pskid_from_string(hex_id: &str) -> Result<PskId> {
+    let bytes = to_result(hex::decode(hex_id))?;
+    Ok(PskId::clone_from_slice(&bytes))
 }
 
 pub(crate) fn public_key_to_string(pk: &PublicKey) -> String {
