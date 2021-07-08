@@ -14,3 +14,16 @@ pub mod user;
 /// Tangle-specific Channel API.
 #[cfg(all(feature = "tangle"))]
 pub mod tangle;
+
+use iota_streams_core::psk::*;
+use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
+
+/// Makes a PSK from an arbitrary byte array
+pub fn make_psk(bytes: &[u8]) -> Psk {
+    psk_from_seed::<KeccakF1600>(bytes)
+}
+
+/// Makes a PskId from an arbitrary byte array
+pub fn make_pskid(bytes: &[u8]) -> PskId {
+    pskid_from_seed::<KeccakF1600>(bytes)
+}

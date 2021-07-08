@@ -28,7 +28,6 @@ use iota_streams_core::{
     },
     Errors::ChannelDuplication,
 };
-use iota_streams_ddml::types::GenericArray;
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
@@ -153,9 +152,7 @@ impl<Trans> User<Trans> {
     }
 
     pub fn store_psk(&mut self, psk: Psk) -> PskId {
-        let id: PskId = GenericArray::clone_from_slice(&psk[0..16]);
-        self.user.store_psk(id, psk);
-        id
+        self.user.store_psk(psk)
     }
 }
 

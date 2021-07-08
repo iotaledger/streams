@@ -11,14 +11,13 @@ use core::{
     str::FromStr,
 };
 
-use crypto::hashes::{
-    blake2b,
-    Digest,
-};
-
 use iota_streams_core::Result;
 
 use iota_streams_core::{
+    crypto::hashes::{
+        blake2b,
+        Digest,
+    },
     prelude::{
         typenum::{
             U12,

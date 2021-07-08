@@ -888,8 +888,10 @@ where
         Ok(())
     }
 
-    pub fn store_psk(&mut self, pskid: psk::PskId, psk: psk::Psk) {
-        self.psk_store.insert(pskid, psk)
+    pub fn store_psk(&mut self, psk: psk::Psk) -> psk::PskId {
+        let pskid = psk::pskid_from_psk::<F>(&psk);
+        self.psk_store.insert(pskid, psk);
+        pskid
     }
 
     fn gen_next_msg_id(

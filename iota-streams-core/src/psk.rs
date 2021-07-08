@@ -1,16 +1,26 @@
 //! Pre-shared key is a secret symmetric key shared between two parties and is used for
 //! (session) key exchange.
 
-use crate::prelude::{
-    generic_array::{
-        typenum::{
-            U16,
-            U32,
-        },
-        GenericArray,
+use crate::{
+    crypto::hashes::{
+        blake2b,
+        Digest,
     },
-    HashMap,
-    Vec,
+    prelude::{
+        generic_array::{
+            typenum::{
+                U16,
+                U32,
+            },
+            GenericArray,
+        },
+        HashMap,
+        Vec,
+    },
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    }
 };
 
 /// Size of pre-shared key identifier.
@@ -36,6 +46,33 @@ pub type Psks = HashMap<PskId, Psk>;
 
 /// Container (set) of pre-shared key identifiers.
 pub type PskIds = [PskId];
+
+/// Make a Psk from arbitrary bytes
+pub fn psk_from_seed<F: PRP>(bytes: &[u8]) -> Psk {
+    let hash = blake2b::Blake2b256::digest(bytes);
+    let mut ctx = Spongos::<F>::init();
+    ctx.absorb(hash);
+    ctx.commit();
+    let mut id: Vec<u8> = vec![0; PSK_SIZE];
+    ctx.squeeze(&mut id);
+    GenericArray::clone_from_slice(&id)
+}
+
+/// Make a PskId from arbitrary bytes
+pub fn pskid_from_seed<F: PRP>(bytes: &[u8]) -> PskId {
+    let hash = blake2b::Blake2b256::digest(bytes);
+    let mut ctx = Spongos::<F>::init();
+    ctx.absorb(hash);
+    ctx.commit();
+    let mut id: Vec<u8> = vec![0; PSKID_SIZE];
+    ctx.squeeze(&mut id);
+    GenericArray::clone_from_slice(&id)
+}
+
+/// Derive pskid from existing psk
+pub fn pskid_from_psk<F: PRP>(psk: &Psk) -> PskId {
+    pskid_from_seed::<F>(psk)
+}
 
 /// Select only pre-shared keys with given identifiers.
 pub fn filter_psks<'a>(psks: &'a Psks, psk_ids: &'_ PskIds) -> Vec<IPsk<'a>> {
