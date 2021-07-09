@@ -2,7 +2,6 @@
 use iota_streams_core::{
     err,
     Errors::NoStdRngMissing,
-    LOCATION_LOG,
 };
 
 use iota_streams_core::Result;

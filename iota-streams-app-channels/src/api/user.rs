@@ -20,7 +20,6 @@ use iota_streams_core::{
     },
     try_or,
     Errors::*,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -888,10 +887,8 @@ where
         Ok(())
     }
 
-    pub fn store_psk(&mut self, psk: psk::Psk) -> psk::PskId {
-        let pskid = psk::pskid_from_psk::<F>(&psk);
-        self.psk_store.insert(pskid, psk);
-        pskid
+    pub fn store_psk(&mut self, pskid: psk::PskId, psk: psk::Psk) {
+        self.psk_store.insert(pskid, psk)
     }
 
     fn gen_next_msg_id(

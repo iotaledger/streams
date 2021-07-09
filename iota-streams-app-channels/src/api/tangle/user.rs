@@ -13,7 +13,6 @@ use iota_streams_core::{
         UserNotRegistered,
     },
     Result,
-    LOCATION_LOG,
 };
 
 use super::*;
@@ -151,8 +150,8 @@ impl<Trans> User<Trans> {
         })
     }
 
-    pub fn store_psk(&mut self, psk: Psk) -> PskId {
-        self.user.store_psk(psk)
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) {
+        self.user.store_psk(pskid, psk)
     }
 }
 

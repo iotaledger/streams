@@ -14,19 +14,15 @@ extern crate std;
 #[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! println {
-    () => {};
-    ($($arg:tt)*) => {
-        return ();
-    };
+    () => ({});
+    ($($arg:tt)*) => ({});
 }
 
 #[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! print {
-    () => {};
-    ($($arg:tt)*) => {
-        return ();
-    };
+    () => ({});
+    ($($arg:tt)*) => ({});
 }
 
 // Reexport macro at the same level as `no_std`.

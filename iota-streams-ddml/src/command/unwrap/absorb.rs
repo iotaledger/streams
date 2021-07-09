@@ -25,7 +25,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     Errors::PublicKeyGenerationFailure,
     Result,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,

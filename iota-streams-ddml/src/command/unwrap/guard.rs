@@ -8,7 +8,6 @@ use crate::{
 use iota_streams_core::{
     try_or,
     Errors,
-    LOCATION_LOG,
 };
 
 impl<F, IS: io::IStream> Guard for Context<F, IS> {

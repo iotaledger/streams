@@ -32,9 +32,8 @@ use iota_streams_core::{
         prp::PRP,
         spongos::Spongos,
     },
-    try_or,
-    Errors::InvalidHex,
-    LOCATION_LOG,
+    Errors::BadHexFormat,
+    wrapped_err, WrappedError,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -140,15 +139,15 @@ pub struct TangleAddress {
 
 impl TangleAddress {
     pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self> {
-        let appinst = AppInst::from_str(appinst_str);
-        try_or!(appinst.is_ok(), InvalidHex(appinst_str.into()))?;
+        let appinst = AppInst::from_str(appinst_str)
+            .map_err(|e| wrapped_err!(BadHexFormat(appinst_str.into()), WrappedError(e)))?;
 
-        let msgid = MsgId::from_str(msgid_str);
-        try_or!(msgid.is_ok(), InvalidHex(msgid_str.into()))?;
+        let msgid = MsgId::from_str(msgid_str)
+            .map_err(|e| wrapped_err!(BadHexFormat(appinst_str.into()), WrappedError(e)))?;
 
         Ok(TangleAddress {
-            appinst: appinst.unwrap(),
-            msgid: msgid.unwrap(),
+            appinst: appinst,
+            msgid: msgid,
         })
     }
 
