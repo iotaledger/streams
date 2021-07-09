@@ -22,15 +22,12 @@ pub unsafe extern "C" fn sub_new(
 pub unsafe extern "C" fn sub_recover(
     c_seed: *const c_char,
     c_ann_address: *const Address,
-    transport: *mut TransportWrap
+    transport: *mut TransportWrap,
 ) -> *mut Subscriber {
     c_ann_address.as_ref().map_or(null_mut(), |addr| {
         let seed = CStr::from_ptr(c_seed).to_str().unwrap();
         let tsp = (*transport).clone();
-        Subscriber::recover(seed, addr, tsp)
-            .map_or(null_mut(), |sub| {
-                safe_into_mut_ptr(sub)
-            })
+        Subscriber::recover(seed, addr, tsp).map_or(null_mut(), |sub| safe_into_mut_ptr(sub))
     })
 }
 
@@ -41,24 +38,14 @@ pub unsafe extern "C" fn sub_import(
     password: *const c_char,
     transport: *mut TransportWrap,
 ) -> *mut Subscriber {
-    let bytes_vec = Vec::from_raw_parts(
-        buffer.ptr as *mut u8,
-        buffer.size,
-        buffer.cap,
-    );
+    let bytes_vec = Vec::from_raw_parts(buffer.ptr as *mut u8, buffer.size, buffer.cap);
     let password_str = CStr::from_ptr(password).to_str().unwrap();
     let tsp = (*transport).clone();
-    Subscriber::import(&bytes_vec, password_str, tsp)
-        .map_or(null_mut(), |sub| {
-            Box::into_raw(Box::new(sub))
-    })
+    Subscriber::import(&bytes_vec, password_str, tsp).map_or(null_mut(), |sub| Box::into_raw(Box::new(sub)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_export(
-    user: *mut Subscriber,
-    password: *const c_char
-) -> Buffer {
+pub unsafe extern "C" fn sub_export(user: *mut Subscriber, password: *const c_char) -> Buffer {
     let password_str = CStr::from_ptr(password).to_str().unwrap();
     user.as_ref().map_or(Buffer::default(), |user| {
         let bytes = user.export(password_str).unwrap();
@@ -75,31 +62,25 @@ pub extern "C" fn sub_drop(user: *mut Subscriber) {
 #[no_mangle]
 pub unsafe extern "C" fn sub_channel_address(user: *const Subscriber) -> *const ChannelAddress {
     user.as_ref().map_or(null(), |user| {
-        user.channel_address().map_or(null(), |channel_address| {
-            channel_address as *const ChannelAddress
-        })
+        user.channel_address()
+            .map_or(null(), |channel_address| channel_address as *const ChannelAddress)
     })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn sub_is_multi_branching(user: *const Subscriber) -> uint8_t {
-    user.as_ref().map_or(0, |user| {
-        if user.is_multi_branching() { 1 } else { 0 }
-    })
+    user.as_ref()
+        .map_or(0, |user| if user.is_multi_branching() { 1 } else { 0 })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn sub_get_public_key(user: *const Subscriber) -> *const PublicKey {
-    user.as_ref().map_or(null(), |user| {
-        user.get_pk() as *const PublicKey
-    })
+    user.as_ref().map_or(null(), |user| user.get_pk() as *const PublicKey)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn sub_is_registered(user: *const Subscriber) -> u8 {
-    user.as_ref().map_or(0, |user| {
-        if user.is_registered() { 1 } else { 0 }
-    })
+    user.as_ref().map_or(0, |user| if user.is_registered() { 1 } else { 0 })
 }
 
 #[no_mangle]
@@ -114,24 +95,30 @@ pub unsafe extern "C" fn sub_unregister(user: *mut Subscriber) {
 pub unsafe extern "C" fn sub_receive_announce(user: *mut Subscriber, link: *const Address) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         link.as_ref().map_or(Err::NullArgument, |link| {
-            user.receive_announcement(link).map_or(Err::OperationFailed, |_| Err::Ok)
+            user.receive_announcement(link)
+                .map_or(Err::OperationFailed, |_| Err::Ok)
         })
     })
 }
 
 /// Subscribe to a Channel app instance.
 #[no_mangle]
-pub unsafe extern "C" fn sub_send_subscribe(r: *mut *const Address, user: *mut Subscriber, announcement_link: *const Address) -> Err {
+pub unsafe extern "C" fn sub_send_subscribe(
+    r: *mut *const Address,
+    user: *mut Subscriber,
+    announcement_link: *const Address,
+) -> Err {
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
-            announcement_link.as_ref().map_or(Err::NullArgument, |announcement_link| -> Err {
-                user
-                    .send_subscribe(announcement_link)
-                    .map_or(Err::OperationFailed, |link| -> Err {
-                        *r = safe_into_ptr(link);
-                        Err::Ok
-                    })
-            })
+            announcement_link
+                .as_ref()
+                .map_or(Err::NullArgument, |announcement_link| -> Err {
+                    user.send_subscribe(announcement_link)
+                        .map_or(Err::OperationFailed, |link| -> Err {
+                            *r = safe_into_ptr(link);
+                            Err::Ok
+                        })
+                })
         })
     })
 }
@@ -214,20 +201,22 @@ pub unsafe extern "C" fn sub_send_signed_packet(
     })
 }
 
-
 /// Process a keyload message
 #[no_mangle]
 pub unsafe extern "C" fn sub_receive_keyload(user: *mut Subscriber, link: *const Address) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         link.as_ref().map_or(Err::NullArgument, |link| {
-            user.receive_keyload(link)
-                .map_or(Err::OperationFailed, |_| Err::Ok)
+            user.receive_keyload(link).map_or(Err::OperationFailed, |_| Err::Ok)
         })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_receive_sequence(r: *mut *const Address, user: *mut Subscriber, link: *const Address) -> Err {
+pub unsafe extern "C" fn sub_receive_sequence(
+    r: *mut *const Address,
+    user: *mut Subscriber,
+    link: *const Address,
+) -> Err {
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
@@ -242,7 +231,11 @@ pub unsafe extern "C" fn sub_receive_sequence(r: *mut *const Address, user: *mut
 
 /// Process a Tagged packet message
 #[no_mangle]
-pub unsafe extern "C" fn sub_receive_tagged_packet(r: *mut PacketPayloads, user: *mut Subscriber, link: *const Address) -> Err {
+pub unsafe extern "C" fn sub_receive_tagged_packet(
+    r: *mut PacketPayloads,
+    user: *mut Subscriber,
+    link: *const Address,
+) -> Err {
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
@@ -258,7 +251,11 @@ pub unsafe extern "C" fn sub_receive_tagged_packet(r: *mut PacketPayloads, user:
 
 /// Process a Signed packet message
 #[no_mangle]
-pub unsafe extern "C" fn sub_receive_signed_packet(r: *mut PacketPayloads, user: *mut Subscriber, link: *const Address) -> Err {
+pub unsafe extern "C" fn sub_receive_signed_packet(
+    r: *mut PacketPayloads,
+    user: *mut Subscriber,
+    link: *const Address,
+) -> Err {
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
@@ -281,7 +278,11 @@ pub unsafe extern "C" fn sub_gen_next_msg_ids(user: *mut Subscriber) -> *const N
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_receive_keyload_from_ids(r: *mut MessageLinks, user: *mut Subscriber, next_msg_ids: *const NextMsgIds) -> Err {
+pub unsafe extern "C" fn sub_receive_keyload_from_ids(
+    r: *mut MessageLinks,
+    user: *mut Subscriber,
+    next_msg_ids: *const NextMsgIds,
+) -> Err {
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             next_msg_ids.as_ref().map_or(Err::NullArgument, |ids| {
@@ -293,8 +294,8 @@ pub unsafe extern "C" fn sub_receive_keyload_from_ids(r: *mut MessageLinks, user
                             Ok(true) => {
                                 *r = (cursor.link.clone(), Some(keyload_link)).into();
                                 return Err::Ok;
-                            },
-                            Ok(false) => {},
+                            }
+                            Ok(false) => {}
                             Err(_) => return Err::OperationFailed,
                         }
                     }
@@ -306,7 +307,11 @@ pub unsafe extern "C" fn sub_receive_keyload_from_ids(r: *mut MessageLinks, user
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_receive_msg(r: *mut *const UnwrappedMessage, user: *mut Subscriber, link: *const Address) -> Err {
+pub unsafe extern "C" fn sub_receive_msg(
+    r: *mut *const UnwrappedMessage,
+    user: *mut Subscriber,
+    link: *const Address,
+) -> Err {
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
@@ -351,9 +356,7 @@ pub unsafe extern "C" fn sub_sync_state(r: *mut *const UnwrappedMessages, user: 
 #[no_mangle]
 pub unsafe extern "C" fn sub_fetch_state(user: *mut Subscriber) -> *const UserState {
     user.as_mut().map_or(null(), |user| {
-        user.fetch_state().map_or(null(), |state| {
-            safe_into_ptr(state)
-        })
+        user.fetch_state().map_or(null(), |state| safe_into_ptr(state))
     })
 }
 
@@ -367,4 +370,3 @@ pub unsafe extern "C" fn sub_store_psk(user: *mut Subscriber, psk_seed_str: *con
         safe_into_ptr(pskid)
     })
 }
-
