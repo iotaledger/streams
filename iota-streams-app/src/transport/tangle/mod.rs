@@ -146,10 +146,7 @@ impl TangleAddress {
         let msgid =
             MsgId::from_str(msgid_str).map_err(|e| wrapped_err!(BadHexFormat(appinst_str.into()), WrappedError(e)))?;
 
-        Ok(TangleAddress {
-            appinst,
-            msgid,
-        })
+        Ok(TangleAddress { appinst, msgid })
     }
 
     #[allow(clippy::inherent_to_string_shadow_display)]
