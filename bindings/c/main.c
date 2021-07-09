@@ -62,9 +62,9 @@ int main()
   tsp = transport_new();
 #endif
   printf("Making author with seed '%s'... ", seed);
-  auth = auth_new(seed, encoding, size, multi_branching, tsp);
-  printf("%s\n", auth ? "done" : "failed");
-  if(!auth) { e = ERR_OPERATION_FAILED; goto cleanup; }
+  e = auth_new(&auth, seed, encoding, size, multi_branching, tsp);
+  printf("%s\n", !e ? "done" : "failed");
+  if(e) goto cleanup;
 
   // Fetch Application instance
   {
@@ -149,21 +149,21 @@ cleanup0:
     // Subscriber
     char const subA_seed[] = "SUBSCRIBERA9SEED";
     printf("Making SubA with seed '%s'... ", subA_seed);
-    subA = sub_new(subA_seed, encoding, size, tsp);
-    printf("%s\n", subA ? "done" : "failed");
-    if(!subA) { e = ERR_OPERATION_FAILED; goto cleanup; }
+    e = sub_new(&subA, subA_seed, encoding, size, tsp);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup;
 
     char const subB_seed[] = "SUBSCRIBERB9SEED";
     printf("Making SubB with seed '%s'... ", subB_seed);
-    subB = sub_new(subB_seed, encoding, size, tsp);
-    printf("%s\n", subB ? "done" : "failed");
-    if(!subB) { e = ERR_OPERATION_FAILED; goto cleanup; }
+    e = sub_new(&subB, subB_seed, encoding, size, tsp);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup;
 
     char const subC_seed[] = "SUBSCRIBERC9SEED";
     printf("Making SubC with seed '%s'... ", subC_seed);
-    subC = sub_new(subC_seed, encoding, size, tsp);
-    printf("%s\n", subC ? "done" : "failed");
-    if(!subC) { e = ERR_OPERATION_FAILED; goto cleanup; }
+    e = sub_new(&subC, subC_seed, encoding, size, tsp);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup;
 
     printf("SubA unwrapping announcement... ");
     e = sub_receive_announce(subA, ann_link);
@@ -205,8 +205,10 @@ cleanup0:
     e = auth_receive_subscribe(auth, subB_link);
     printf("%s\n", !e ? "done" : "failed");
     if(e) goto cleanup1;
-    pskidC_auth = auth_store_psk(auth, "SubC_psk_seed");
-    pskidC_subC = sub_store_psk(subC, "SubC_psk_seed");
+    e = auth_store_psk(&pskidC_auth, auth, "SubC_psk_seed");
+    if(e) goto cleanup1;
+    e = sub_store_psk(&pskidC_subC, subC, "SubC_psk_seed");
+    if(e) goto cleanup1;
 cleanup1:
     drop_pskid(pskidC_subC);
     drop_pskid(pskidC_auth);
@@ -461,9 +463,9 @@ cleanup7:
     address_t const *original_state_link = NULL;
 
     printf("Recovering author... ");
-    recovered_auth = auth_recover(seed, ann_link, multi_branching, tsp);
-    printf("  %s\n", recovered_auth ? "done" : "failed");
-    if(!recovered_auth) goto cleanup8;
+    e = auth_recover(&recovered_auth, seed, ann_link, multi_branching, tsp);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup8;
 
     recovered_auth_state = auth_fetch_state(recovered_auth);
     original_auth_state = auth_fetch_state(auth);
@@ -495,14 +497,14 @@ cleanup8:
     author_t *auth_new = NULL;
 
     printf("Exporting author state... ");
-    bytes = auth_export(auth, "my_password");
-    printf("  %s\n", bytes.ptr ? "done" : "failed");
-    if(!bytes.ptr) goto cleanup9;
+    e = auth_export(&bytes, auth, "my_password");
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup9;
 
     printf("Importing author state... ");
-    auth_new = auth_import(bytes, "my_password", tsp);
-    printf("  %s\n", auth_new ? "done" : "failed");
-    if(!auth_new) goto cleanup9;
+    e = auth_import(&auth_new, bytes, "my_password", tsp);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup9;
     //auth_import consumes bytes, need to clear to avoid double-free
     bytes.ptr = NULL;
  

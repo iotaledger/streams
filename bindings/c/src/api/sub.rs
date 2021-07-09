@@ -5,51 +5,98 @@ pub type Subscriber = iota_streams::app_channels::api::tangle::Subscriber<Transp
 /// Create a new subscriber
 #[no_mangle]
 pub unsafe extern "C" fn sub_new(
+    c_sub: *mut *mut Subscriber,
     c_seed: *const c_char,
     c_encoding: *const c_char,
     payload_length: size_t,
     transport: *mut TransportWrap,
-) -> *mut Subscriber {
-    let seed = CStr::from_ptr(c_seed).to_str().unwrap();
-    let encoding = CStr::from_ptr(c_encoding).to_str().unwrap();
-    let tsp = (*transport).clone();
-    let subscriber = Subscriber::new(seed, encoding, payload_length, tsp);
-    safe_into_mut_ptr(subscriber)
+) -> Err {
+    if c_seed == null() {
+        return Err::NullArgument;
+    }
+    if c_encoding == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
+        CStr::from_ptr(c_encoding).to_str().map_or(Err::BadArgument, |encoding| {
+            transport.as_ref().map_or(Err::NullArgument, |tsp| {
+                c_sub.as_mut().map_or(Err::NullArgument, |sub| {
+                    let user = Subscriber::new(seed, encoding, payload_length, tsp.clone());
+                    *sub = safe_into_mut_ptr(user);
+                    Err::Ok
+                })
+            })
+        })
+    })
 }
 
 /// Recover an existing channel from seed and existing announcement message
 #[no_mangle]
 pub unsafe extern "C" fn sub_recover(
+    c_sub: *mut *mut Subscriber,
     c_seed: *const c_char,
     c_ann_address: *const Address,
     transport: *mut TransportWrap,
-) -> *mut Subscriber {
-    c_ann_address.as_ref().map_or(null_mut(), |addr| {
-        let seed = CStr::from_ptr(c_seed).to_str().unwrap();
-        let tsp = (*transport).clone();
-        Subscriber::recover(seed, addr, tsp).map_or(null_mut(), |sub| safe_into_mut_ptr(sub))
+) -> Err {
+    if c_seed == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
+        c_ann_address.as_ref().map_or(Err::NullArgument, |addr| {
+            transport.as_ref().map_or(Err::NullArgument, |tsp| {
+                c_sub.as_mut().map_or(Err::NullArgument, |sub| {
+                    Subscriber::recover(seed, addr, tsp.clone()).map_or(Err::OperationFailed, |user| {
+                        *sub = safe_into_mut_ptr(user);
+                        Err::Ok
+                    })
+                })
+            })
+        })
     })
 }
 
 /// Import an Author instance from an encrypted binary array
 #[no_mangle]
 pub unsafe extern "C" fn sub_import(
+    c_sub: *mut *mut Subscriber,
     buffer: Buffer,
-    password: *const c_char,
+    c_password: *const c_char,
     transport: *mut TransportWrap,
-) -> *mut Subscriber {
-    let bytes_vec = Vec::from_raw_parts(buffer.ptr as *mut u8, buffer.size, buffer.cap);
-    let password_str = CStr::from_ptr(password).to_str().unwrap();
-    let tsp = (*transport).clone();
-    Subscriber::import(&bytes_vec, password_str, tsp).map_or(null_mut(), |sub| Box::into_raw(Box::new(sub)))
+) -> Err {
+    if c_password == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_password).to_str().map_or(Err::BadArgument, |password| {
+        transport.as_ref().map_or(Err::NullArgument, |tsp| {
+            c_sub.as_mut().map_or(Err::NullArgument, |sub| {
+                let bytes_vec: Vec<_> = buffer.into();
+                Subscriber::import(&bytes_vec, password, tsp.clone()).map_or(Err::OperationFailed, |user| {
+                    *sub = safe_into_mut_ptr(user);
+                    Err::Ok
+                })
+            })
+        })
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_export(user: *mut Subscriber, password: *const c_char) -> Buffer {
-    let password_str = CStr::from_ptr(password).to_str().unwrap();
-    user.as_ref().map_or(Buffer::default(), |user| {
-        let bytes = user.export(password_str).unwrap();
-        bytes.into()
+pub unsafe extern "C" fn sub_export(buf: *mut Buffer, c_sub: *mut Subscriber, c_password: *const c_char) -> Err {
+    if c_password == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_password).to_str().map_or(Err::BadArgument, |password| {
+        c_sub.as_ref().map_or(Err::NullArgument, |user| {
+            buf.as_mut().map_or(Err::NullArgument, |buf| {
+                user.export(password).map_or(Err::OperationFailed, |bytes| {
+                    *buf = bytes.into();
+                    Err::Ok
+                })
+            })
+        })
     })
 }
 
@@ -287,9 +334,7 @@ pub unsafe extern "C" fn sub_receive_keyload_from_ids(
         user.as_mut().map_or(Err::NullArgument, |user| {
             next_msg_ids.as_ref().map_or(Err::NullArgument, |ids| {
                 for (_pk, cursor) in ids {
-                    let keyload_link = user.receive_sequence(&cursor.link);
-                    if keyload_link.is_ok() {
-                        let keyload_link = keyload_link.unwrap();
+                    if let Ok(keyload_link) = user.receive_sequence(&cursor.link) {
                         match user.receive_keyload(&keyload_link) {
                             Ok(true) => {
                                 *r = (cursor.link.clone(), Some(keyload_link)).into();
@@ -361,12 +406,20 @@ pub unsafe extern "C" fn sub_fetch_state(user: *mut Subscriber) -> *const UserSt
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_store_psk(user: *mut Subscriber, psk_seed_str: *const c_char) -> *const PskId {
-    let psk_seed = CStr::from_ptr(psk_seed_str).to_str().unwrap();
-    user.as_mut().map_or(null(), |user| {
-        let psk = psk_from_seed(psk_seed.as_ref());
-        let pskid = pskid_from_psk(&psk);
-        user.store_psk(pskid, psk);
-        safe_into_ptr(pskid)
+pub unsafe extern "C" fn sub_store_psk(c_pskid: *mut *const PskId, c_user: *mut Subscriber, c_psk_seed: *const c_char) -> Err {
+    if c_psk_seed == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_psk_seed).to_str().map_or(Err::BadArgument, |psk_seed| {
+        c_user.as_mut().map_or(Err::NullArgument, |user| {
+            c_pskid.as_mut().map_or(Err::NullArgument, |pskid| {
+                let psk = psk_from_seed(psk_seed.as_ref());
+                let id = pskid_from_psk(&psk);
+                user.store_psk(id, psk);
+                *pskid = safe_into_ptr(id);
+                Err::Ok
+            })
+        })
     })
 }
