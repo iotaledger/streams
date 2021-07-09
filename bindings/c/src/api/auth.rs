@@ -5,53 +5,100 @@ pub type Author = iota_streams::app_channels::api::tangle::Author<TransportWrap>
 /// Generate a new Author Instance
 #[no_mangle]
 pub unsafe extern "C" fn auth_new(
+    c_author: *mut *mut Author,
     c_seed: *const c_char,
     c_encoding: *const c_char,
     payload_length: size_t,
     multi_branching: uint8_t,
     transport: *mut TransportWrap,
-) -> *mut Author {
-    let seed = CStr::from_ptr(c_seed).to_str().unwrap();
-    let encoding = CStr::from_ptr(c_encoding).to_str().unwrap();
-    let tsp = (*transport).clone();
-    let user = Author::new(seed, encoding, payload_length, multi_branching != 0, tsp);
-    safe_into_mut_ptr(user)
+) -> Err {
+    if c_seed == null() {
+        return Err::NullArgument;
+    }
+    if c_encoding == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
+        CStr::from_ptr(c_encoding).to_str().map_or(Err::BadArgument, |encoding| {
+            transport.as_ref().map_or(Err::NullArgument, |tsp| {
+                c_author.as_mut().map_or(Err::NullArgument, |author| {
+                    let user = Author::new(seed, encoding, payload_length, multi_branching != 0, tsp.clone());
+                    *author = safe_into_mut_ptr(user);
+                    Err::Ok
+                })
+            })
+        })
+    })
 }
 
 /// Recover an existing channel from seed and existing announcement message
 #[no_mangle]
 pub unsafe extern "C" fn auth_recover(
+    c_author: *mut *mut Author,
     c_seed: *const c_char,
     c_ann_address: *const Address,
     multi_branching: uint8_t,
     transport: *mut TransportWrap,
-) -> *mut Author {
-    c_ann_address.as_ref().map_or(null_mut(), |addr| {
-        let seed = CStr::from_ptr(c_seed).to_str().unwrap();
-        let tsp = (*transport).clone();
-        Author::recover(seed, addr, multi_branching != 0, tsp).map_or(null_mut(), |auth| safe_into_mut_ptr(auth))
+) -> Err {
+    if c_seed == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
+        c_ann_address.as_ref().map_or(Err::NullArgument, |addr| {
+            transport.as_ref().map_or(Err::NullArgument, |tsp| {
+                c_author.as_mut().map_or(Err::NullArgument, |author| {
+                    Author::recover(seed, addr, multi_branching != 0, tsp.clone()).map_or(Err::OperationFailed, |user| {
+                        *author = safe_into_mut_ptr(user);
+                        Err::Ok
+                    })
+                })
+            })
+        })
     })
 }
 
 /// Import an Author instance from an encrypted binary array
 #[no_mangle]
 pub unsafe extern "C" fn auth_import(
+    c_author: *mut *mut Author,
     buffer: Buffer,
-    password: *const c_char,
+    c_password: *const c_char,
     transport: *mut TransportWrap,
-) -> *mut Author {
-    let bytes_vec = Vec::from_raw_parts(buffer.ptr as *mut u8, buffer.size, buffer.cap);
-    let password_str = CStr::from_ptr(password).to_str().unwrap();
-    let tsp = (*transport).clone();
-    Author::import(&bytes_vec, password_str, tsp).map_or(null_mut(), |auth| Box::into_raw(Box::new(auth)))
+) -> Err {
+    if c_password == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_password).to_str().map_or(Err::BadArgument, |password| {
+        transport.as_ref().map_or(Err::NullArgument, |tsp| {
+            c_author.as_mut().map_or(Err::NullArgument, |author| {
+                let bytes_vec: Vec<_> = buffer.into();
+                Author::import(&bytes_vec, password, tsp.clone()).map_or(Err::OperationFailed, |user| {
+                    *author = safe_into_mut_ptr(user);
+                    Err::Ok
+                })
+            })
+        })
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_export(user: *mut Author, password: *const c_char) -> Buffer {
-    let password_str = CStr::from_ptr(password).to_str().unwrap();
-    user.as_ref().map_or(Buffer::default(), |user| {
-        let bytes = user.export(password_str).unwrap();
-        bytes.into()
+pub unsafe extern "C" fn auth_export(buf: *mut Buffer, c_author: *mut Author, c_password: *const c_char) -> Err {
+    if c_password == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_password).to_str().map_or(Err::BadArgument, |password| {
+        c_author.as_ref().map_or(Err::NullArgument, |user| {
+            buf.as_mut().map_or(Err::NullArgument, |buf| {
+                user.export(password).map_or(Err::OperationFailed, |bytes| {
+                    *buf = bytes.into();
+                    Err::Ok
+                })
+            })
+        })
     })
 }
 
@@ -62,29 +109,48 @@ pub extern "C" fn auth_drop(user: *mut Author) {
 
 /// Channel app instance.
 #[no_mangle]
-pub unsafe extern "C" fn auth_channel_address(user: *const Author) -> *const ChannelAddress {
-    user.as_ref().map_or(null(), |user| {
-        user.channel_address()
-            .map_or(null(), |channel_address| channel_address as *const ChannelAddress)
+pub unsafe extern "C" fn auth_channel_address(addr: *mut *const ChannelAddress, user: *const Author) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        addr.as_mut().map_or(Err::NullArgument, |addr| {
+            user.channel_address().map_or(Err::OperationFailed, |channel_address| {
+                *addr = channel_address as *const ChannelAddress;
+                Err::Ok
+            })
+        })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_is_multi_branching(user: *const Author) -> uint8_t {
-    user.as_ref()
-        .map_or(0, |user| if user.is_multi_branching() { 1 } else { 0 })
+pub unsafe extern "C" fn auth_is_multi_branching(flag: *mut uint8_t, user: *const Author) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        flag.as_mut().map_or(Err::NullArgument, |flag| {
+            *flag = if user.is_multi_branching() { 1 } else { 0 };
+            Err::Ok
+        })
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_get_public_key(user: *const Author) -> *const PublicKey {
-    user.as_ref().map_or(null(), |user| user.get_pk() as *const PublicKey)
+pub unsafe extern "C" fn auth_get_public_key(pk: *mut *const PublicKey, user: *const Author) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        pk.as_mut().map_or(Err::NullArgument, |pk| {
+            *pk = user.get_pk() as *const PublicKey;
+            Err::Ok
+        })
+    })
 }
 
 /// Announce creation of a new Channel.
 #[no_mangle]
-pub unsafe extern "C" fn auth_send_announce(user: *mut Author) -> *const Address {
-    user.as_mut()
-        .map_or(null(), |user| user.send_announce().map_or(null(), safe_into_ptr))
+pub unsafe extern "C" fn auth_send_announce(addr: *mut *const Address, user: *mut Author) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        addr.as_mut().map_or(Err::NullArgument, |addr| {
+            user.send_announce().map_or(Err::OperationFailed, |a| {
+                *addr = safe_into_ptr(a);
+                Err::Ok
+            })
+        })
+    })
 }
 
 /// unwrap and add a subscriber to the list of subscribers
@@ -278,10 +344,13 @@ pub unsafe extern "C" fn auth_receive_sequence(r: *mut *const Address, user: *mu
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_gen_next_msg_ids(user: *mut Author) -> *const NextMsgIds {
-    user.as_mut().map_or(null(), |user| {
-        let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
-        safe_into_ptr(next_msg_ids)
+pub unsafe extern "C" fn auth_gen_next_msg_ids(ids: *mut *const NextMsgIds, user: *mut Author) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        ids.as_mut().map_or(Err::NullArgument, |ids| {
+            let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
+            *ids = safe_into_ptr(next_msg_ids);
+            Err::Ok
+        })
     })
 }
 
@@ -304,42 +373,61 @@ pub unsafe extern "C" fn auth_receive_msg(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_fetch_next_msgs(user: *mut Author) -> *const UnwrappedMessages {
-    user.as_mut().map_or(null(), |user| {
-        let m = user.fetch_next_msgs();
-        safe_into_ptr(m)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages {
-    user.as_mut().map_or(null(), |user| {
-        let mut ms = Vec::new();
-        loop {
+pub unsafe extern "C" fn auth_fetch_next_msgs(umsgs: *mut *const UnwrappedMessages, user: *mut Author) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
             let m = user.fetch_next_msgs();
-            if m.is_empty() {
-                break;
+            *umsgs = safe_into_ptr(m);
+            Err::Ok
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_sync_state(umsgs: *mut *const UnwrappedMessages, user: *mut Author) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
+            let mut ms = Vec::new();
+            loop {
+                let m = user.fetch_next_msgs();
+                if m.is_empty() {
+                    break;
+                }
+                ms.extend(m);
             }
-            ms.extend(m);
-        }
-        safe_into_ptr(ms)
+            *umsgs = safe_into_ptr(ms);
+            Err::Ok
+        })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_fetch_state(user: *mut Author) -> *const UserState {
-    user.as_mut().map_or(null(), |user| {
-        user.fetch_state().map_or(null(), |state| safe_into_ptr(state))
+pub unsafe extern "C" fn auth_fetch_state(state: *mut *const UserState, user: *mut Author) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        state.as_mut().map_or(Err::NullArgument, |state| {
+            user.fetch_state().map_or(Err::OperationFailed, |st| {
+                *state = safe_into_ptr(st); 
+                Err::Ok
+            })
+        })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_store_psk(user: *mut Author, psk_seed_str: *const c_char) -> *const PskId {
-    let psk_seed = CStr::from_ptr(psk_seed_str).to_str().unwrap();
-    user.as_mut().map_or(null(), |user| {
-        let psk = psk_from_seed(psk_seed.as_ref());
-        let pskid = pskid_from_psk(&psk);
-        user.store_psk(pskid, psk);
-        safe_into_ptr(pskid)
+pub unsafe extern "C" fn auth_store_psk(c_pskid: *mut *const PskId, c_user: *mut Author, c_psk_seed: *const c_char) -> Err {
+    if c_psk_seed == null() {
+        return Err::NullArgument;
+    }
+
+    CStr::from_ptr(c_psk_seed).to_str().map_or(Err::BadArgument, |psk_seed| {
+        c_user.as_mut().map_or(Err::NullArgument, |user| {
+            c_pskid.as_mut().map_or(Err::NullArgument, |pskid| {
+                let psk = psk_from_seed(psk_seed.as_ref());
+                let id = pskid_from_psk(&psk);
+                user.store_psk(id, psk);
+                *pskid = safe_into_ptr(id);
+                Err::Ok
+            })
+        })
     })
 }

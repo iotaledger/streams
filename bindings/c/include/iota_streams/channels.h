@@ -107,19 +107,19 @@ extern err_t transport_get_link_details(transport_details_t *details, transport_
 ////////////
 typedef struct Author author_t;
 
-extern author_t *auth_new(char const *seed, char const *encoding, size_t payload_length, uint8_t multi_branching, transport_t *transport);
-extern author_t *auth_recover(char const *seed, address_t const *announcement, uint8_t multi_branching, transport_t *transport);
+extern err_t auth_new(author_t **auth, char const *seed, char const *encoding, size_t payload_length, uint8_t multi_branching, transport_t *transport);
+extern err_t auth_recover(author_t **auth, char const *seed, address_t const *announcement, uint8_t multi_branching, transport_t *transport);
 extern void auth_drop(author_t *);
 
-extern author_t *auth_import(buffer_t buffer, char const *password, transport_t *transport);
-extern buffer_t auth_export(author_t const *user, char const *password);
+extern err_t auth_import(author_t **auth, buffer_t buffer, char const *password, transport_t *transport);
+extern err_t auth_export(buffer_t *buf, author_t const *user, char const *password);
 
-extern channel_address_t const *auth_channel_address(author_t const *user);
-extern uint8_t auth_is_multi_branching(author_t const *user);
-extern public_key_t const *auth_get_public_key(author_t const *user);
+extern err_t auth_channel_address(channel_address_t const **addr, author_t const *user);
+extern err_t auth_is_multi_branching(uint8_t *flag, author_t const *user);
+extern err_t auth_get_public_key(public_key_t const **pk, author_t const *user);
 
 // Announce
-extern address_t const *auth_send_announce(author_t *author);
+extern err_t auth_send_announce(address_t const **addr, author_t *author);
 // Keyload
 extern err_t auth_send_keyload_for_everyone(message_links_t *links, author_t *author, address_t const *link_to);
 extern err_t auth_send_keyload(message_links_t *links, author_t *author, address_t const *link_to, psk_ids_t *psk_ids, ke_pks_t ke_pks);
@@ -136,30 +136,30 @@ extern err_t auth_receive_signed_packet(packet_payloads_t *payloads, author_t *a
 // Sequence Message (for multi branch use)
 extern err_t auth_receive_sequence(address_t const **seq, author_t *author, address_t const *address);
 // MsgId generation
-extern next_msg_ids_t const *auth_gen_next_msg_ids(author_t *author);
+extern err_t auth_gen_next_msg_ids(next_msg_ids_t const **ids, author_t *author);
 // Generic Processing
 extern err_t auth_receive_msg(unwrapped_message_t const **msg, author_t *author, address_t const *address);
 // Fetching/Syncing
-extern unwrapped_messages_t const *auth_fetch_next_msgs(author_t *author);
-extern unwrapped_messages_t const *auth_sync_state(author_t *author);
-extern user_state_t const * auth_fetch_state(author_t *author);
+extern err_t auth_fetch_next_msgs(unwrapped_messages_t const **umsgs, author_t *author);
+extern err_t auth_sync_state(unwrapped_messages_t const **umsgs, author_t *author);
+extern err_t auth_fetch_state(user_state_t const **state, author_t *author);
 // Store Psk
-extern psk_id_t const *auth_store_psk(author_t *author, char const *psk);
+extern err_t auth_store_psk(psk_id_t const **pskid, author_t *author, char const *psk);
 
 
 /////////////
 // Subscriber
 /////////////
 typedef struct Subscriber subscriber_t;
-extern subscriber_t *sub_new(char const *seed, char const *encoding, size_t payload_length, transport_t *transport);
-extern subscriber_t *sub_recover(char const *seed, address_t const *announcement, transport_t *transport);
-extern subscriber_t *sub_import(buffer_t buffer, char const *password, transport_t *transport);
-extern buffer_t sub_export(subscriber_t const *subscriber, char const *password);
+extern err_t sub_new(subscriber_t **sub, char const *seed, char const *encoding, size_t payload_length, transport_t *transport);
+extern err_t sub_recover(subscriber_t **sub, char const *seed, address_t const *announcement, transport_t *transport);
+extern err_t sub_import(subscriber_t **sub, buffer_t buffer, char const *password, transport_t *transport);
+extern err_t sub_export(buffer_t *buf, subscriber_t const *subscriber, char const *password);
 extern void sub_drop(subscriber_t *);
 
-extern channel_address_t const *sub_channel_address(subscriber_t const *subscriber);
-extern uint8_t sub_is_multi_branching(subscriber_t const *subscriber);
-extern public_key_t const *sub_get_public_key(subscriber_t const *subscriber);
+extern err_t sub_channel_address(channel_address_t const **addr, subscriber_t const *subscriber);
+extern err_t sub_is_multi_branching(uint8_t *flag, subscriber_t const *subscriber);
+extern err_t sub_get_public_key(public_key_t const **pk, subscriber_t const *subscriber);
 
 // Registration state
 extern uint8_t sub_is_registered(subscriber_t const *subscriber);
@@ -181,15 +181,15 @@ extern err_t sub_receive_signed_packet(packet_payloads_t *payloads, subscriber_t
 // Sequence Message (for multi branch use)
 extern err_t sub_receive_sequence(address_t const **address, subscriber_t *subscriber, address_t const *seq_address);
 // MsgId Generation
-extern next_msg_ids_t const *sub_gen_next_msg_ids(subscriber_t *subscriber);
+extern err_t sub_gen_next_msg_ids(next_msg_ids_t const **ids, subscriber_t *subscriber);
 // Generic Message Processing
 extern err_t sub_receive_msg(unwrapped_message_t const *umsg, subscriber_t *subscriber, address_t const *address);
 // Fetching/Syncing
 extern err_t sub_fetch_next_msgs(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern err_t sub_sync_state(unwrapped_messages_t const **messages, subscriber_t *subscriber);
-extern user_state_t const *sub_fetch_state(subscriber_t *subscriber);
+extern err_t sub_fetch_state(user_state_t const **state, subscriber_t *subscriber);
 // Store Psk
-extern psk_id_t const *sub_store_psk(subscriber_t *subscriber, char const *psk);
+extern err_t sub_store_psk(psk_id_t const **pskid, subscriber_t *subscriber, char const *psk);
 
 /////////////
 /// Utility

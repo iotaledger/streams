@@ -429,6 +429,12 @@ impl From<Buffer> for Bytes {
     }
 }
 
+impl From<Buffer> for Vec<u8> {
+    fn from(b: Buffer) -> Self {
+        unsafe { Vec::from_raw_parts(b.ptr as *mut u8, b.size, b.cap) }
+    }
+}
+
 impl<'a> From<&'a Bytes> for Buffer {
     fn from(b: &Bytes) -> Self {
         let p = &b.0;
