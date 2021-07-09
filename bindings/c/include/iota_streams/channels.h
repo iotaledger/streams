@@ -213,5 +213,6 @@ extern char const *get_address_index_str(address_t const *address);
 extern address_t const *get_link_from_state(user_state_t const *state, public_key_t const *pub_key);
 
 extern char const *pskid_as_str(psk_id_t const *pskid);
+extern void drop_pskid(psk_id_t const *pskid);
 
 #endif //IOTA_STREAMS_CHANNELS_H

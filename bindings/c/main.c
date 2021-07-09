@@ -26,12 +26,11 @@ int main()
   address_t const *ann_link = NULL;
   subscriber_t *subA = NULL;
   subscriber_t *subB = NULL;
+  subscriber_t *subC = NULL;
 
   message_links_t keyload_links = { NULL, NULL };
   message_links_t signed_packet_links = { NULL, NULL };
   message_links_t tagged_packet_links = { NULL, NULL };
-
-
 
   author_t *recovered_auth = NULL;
   address_t const *recovered_state_link = NULL;
@@ -160,12 +159,22 @@ cleanup0:
     printf("%s\n", subB ? "done" : "failed");
     if(!subB) { e = ERR_OPERATION_FAILED; goto cleanup; }
 
+    char const subC_seed[] = "SUBSCRIBERC9SEED";
+    printf("Making SubC with seed '%s'... ", subC_seed);
+    subC = sub_new(subC_seed, encoding, size, tsp);
+    printf("%s\n", subC ? "done" : "failed");
+    if(!subC) { e = ERR_OPERATION_FAILED; goto cleanup; }
+
     printf("SubA unwrapping announcement... ");
     e = sub_receive_announce(subA, ann_link);
     printf("%s\n", !e ? "done" : "failed");
     if(e) goto cleanup;
     printf("SubB unwrapping announcement... ");
     e = sub_receive_announce(subB, ann_link);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup;
+    printf("SubC unwrapping announcement... ");
+    e = sub_receive_announce(subC, ann_link);
     printf("%s\n", !e ? "done" : "failed");
     if(e) goto cleanup;
   }
@@ -176,6 +185,8 @@ cleanup0:
   {
     address_t const *subA_link = NULL;
     address_t const *subB_link = NULL;
+    psk_id_t const *pskidC_auth = NULL;
+    psk_id_t const *pskidC_subC = NULL;
 
     printf("SubA sending subscribe... ");
     e = sub_send_subscribe(&subA_link, subA, ann_link);
@@ -194,7 +205,11 @@ cleanup0:
     e = auth_receive_subscribe(auth, subB_link);
     printf("%s\n", !e ? "done" : "failed");
     if(e) goto cleanup1;
+    pskidC_auth = auth_store_psk(auth, "SubC_psk_seed");
+    pskidC_subC = sub_store_psk(subC, "SubC_psk_seed");
 cleanup1:
+    drop_pskid(pskidC_subC);
+    drop_pskid(pskidC_auth);
     drop_address(subB_link);
     drop_address(subA_link);
   }
@@ -249,14 +264,33 @@ cleanup3:
   printf("\n");
   if(e) goto cleanup;
 
+  // Fetch next message ids and process keyload - Sub C
+  {
+    next_msg_ids_t const *msg_ids = NULL;
+    message_links_t subC_received_links = { NULL, NULL };
+
+    printf("SubC generating next message ids... ");
+    msg_ids = sub_gen_next_msg_ids(subC);
+    printf("%s\n", msg_ids ? "done" : "failed");
+    if(!msg_ids) goto cleanup31;
+
+    printf("SubC receiving keyload from ids... ");
+    e = sub_receive_keyload_from_ids(&subC_received_links, subC, msg_ids);
+    printf("%s\n", msg_ids ? "done" : "failed");
+    if(msg_ids) goto cleanup31;
+
+cleanup31:
+    drop_links(subC_received_links);
+    drop_next_msg_ids(msg_ids);
+  }
+  printf("\n");
+  if(e) goto cleanup;
+
   char const public_payload[] = "A public payload woopeee";
   char const masked_payload[] = "A masked payload uhu";
 
   // Signed packet
   {
-    address_t const *signed_packet_address = NULL;
-    packet_payloads_t signed_packet_response = { { NULL, 0, 0 }, { NULL, 0, 0 } };
-
     printf("Author sending signed packet... ");
     e = auth_send_signed_packet(
       &signed_packet_links,
@@ -264,7 +298,12 @@ cleanup3:
       (uint8_t const *)public_payload, sizeof(public_payload),
       (uint8_t const *)masked_payload, sizeof(masked_payload));
     printf("%s\n", !e ? "done" : "failed");
-    if(e) goto cleanup4;
+    if(e) goto cleanup;
+  }
+
+  {
+    address_t const *signed_packet_address = NULL;
+    packet_payloads_t signed_packet_response = { { NULL, 0, 0 }, { NULL, 0, 0 } };
 
     printf("SubA receiving seq... ");
     address_t const *signed_packet_sequence_link = signed_packet_links.seq_link;
@@ -281,6 +320,31 @@ cleanup3:
     printf("  masked: '%s'\n", signed_packet_response.masked_payload.ptr);
 
 cleanup4:
+    drop_payloads(signed_packet_response);
+    drop_address(signed_packet_address);
+  }
+  printf("\n");
+  if(e) goto cleanup;
+
+  {
+    address_t const *signed_packet_address = NULL;
+    packet_payloads_t signed_packet_response = { { NULL, 0, 0 }, { NULL, 0, 0 } };
+
+    printf("SubC receiving seq... ");
+    address_t const *signed_packet_sequence_link = signed_packet_links.seq_link;
+    e = sub_receive_sequence(&signed_packet_address, subC, signed_packet_sequence_link);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup41;
+
+    printf("SubC receiving signed packet... ");
+    // memset(&signed_packet_response, 0, sizeof(signed_packet_response));
+    e = sub_receive_signed_packet(&signed_packet_response, subC, signed_packet_address);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup41;
+    printf("  public: '%s'\n", signed_packet_response.public_payload.ptr);
+    printf("  masked: '%s'\n", signed_packet_response.masked_payload.ptr);
+
+cleanup41:
     drop_payloads(signed_packet_response);
     drop_address(signed_packet_address);
   }
@@ -453,6 +517,7 @@ cleanup:
   drop_links(tagged_packet_links);
   drop_links(signed_packet_links);
   drop_links(keyload_links);
+  sub_drop(subC);
   sub_drop(subB);
   sub_drop(subA);
   drop_address(ann_link);
