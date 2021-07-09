@@ -15,8 +15,15 @@ use crate::{
         Vec,
     },
     prng,
-    sponge::{prp::PRP, spongos::Spongos},
-    Errors, try_or, Result, wrapped_err,WrappedError,
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
+    try_or,
+    wrapped_err,
+    Errors,
+    Result,
+    WrappedError,
 };
 
 /// Size of pre-shared key identifier.
@@ -62,8 +69,7 @@ pub fn pskid_from_seed<F: PRP>(seed_bytes: &[u8]) -> PskId {
 pub fn pskid_from_str<F: PRP>(id: &str) -> PskId {
     if id.as_bytes().len() < PSKID_SIZE {
         let mut pskid = PskId::default();
-        pskid.as_mut_slice()[..id.as_bytes().len()]
-            .copy_from_slice(id.as_bytes());
+        pskid.as_mut_slice()[..id.as_bytes().len()].copy_from_slice(id.as_bytes());
         pskid
     } else {
         let mut s = Spongos::<F>::init();
@@ -81,9 +87,12 @@ pub fn pskid_to_hex_string(pskid: &PskId) -> String {
 
 /// Create a PskId from hex string.
 pub fn pskid_from_hex_str(hex_str: &str) -> Result<PskId> {
-    let pskid_bytes = hex::decode(hex_str)
-        .map_err(|e| wrapped_err!(Errors::BadHexFormat(hex_str.into()), WrappedError(e)))?;
-    try_or!(PSKID_SIZE == pskid_bytes.len(), Errors::LengthMismatch(PSKID_SIZE, pskid_bytes.len()))?;
+    let pskid_bytes =
+        hex::decode(hex_str).map_err(|e| wrapped_err!(Errors::BadHexFormat(hex_str.into()), WrappedError(e)))?;
+    try_or!(
+        PSKID_SIZE == pskid_bytes.len(),
+        Errors::LengthMismatch(PSKID_SIZE, pskid_bytes.len())
+    )?;
     Ok(PskId::clone_from_slice(&pskid_bytes))
 }
 

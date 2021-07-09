@@ -59,14 +59,14 @@ pub enum Err {
 }
 
 #[no_mangle]
-pub extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
+pub unsafe extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
     unsafe {
         Address::from_c_str(c_addr)
     }
 }
 
 #[no_mangle]
-pub extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_char {
+pub unsafe extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_char {
     unsafe {
         pubkey.as_ref().map_or(null(), |pk| {
             CString::new(hex::encode(pk.as_bytes())).map_or(null(), |pk| pk.into_raw())
@@ -75,7 +75,7 @@ pub extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_cha
 }
 
 #[no_mangle]
-pub extern "C" fn drop_address(addr: *const Address) {
+pub unsafe extern "C" fn drop_address(addr: *const Address) {
     safe_drop_ptr(addr)
 }
 
@@ -83,7 +83,7 @@ pub type PskIds = Vec<PskId>;
 pub type KePks = Vec<PublicKey>;
 
 #[no_mangle]
-pub extern "C" fn pskid_as_str(pskid: *const PskId) -> *const c_char {
+pub unsafe extern "C" fn pskid_as_str(pskid: *const PskId) -> *const c_char {
     unsafe {
         pskid.as_ref().map_or(null(), |pskid| {
             CString::new(hex::encode(&pskid)).map_or(null(), |id| id.into_raw())
@@ -105,7 +105,7 @@ pub extern "C" fn drop_user_state(s: *const UserState) {
 }
 
 #[no_mangle]
-pub extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
+pub unsafe extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
     unsafe {
         state.as_ref().map_or(null(), |state_ref| {
             pub_key.as_ref().map_or(null(), |pub_key| {
@@ -122,7 +122,7 @@ pub extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const P
 }
 
 #[no_mangle]
-pub extern "C" fn drop_unwrapped_message(ms: *const UnwrappedMessage) {
+pub unsafe extern "C" fn drop_unwrapped_message(ms: *const UnwrappedMessage) {
     unsafe {
         Box::from_raw(ms as *mut UnwrappedMessage);
     }
@@ -152,7 +152,7 @@ pub extern "C" fn transport_drop(tsp: *mut TransportWrap) {
 
 #[cfg(feature = "sync-client")]
 #[no_mangle]
-pub extern "C" fn transport_client_new_from_url(c_url: *const c_char) -> *mut TransportWrap {
+pub unsafe extern "C" fn transport_client_new_from_url(c_url: *const c_char) -> *mut TransportWrap {
     unsafe {
         let url = CStr::from_ptr(c_url).to_str().unwrap();
 
@@ -284,7 +284,7 @@ impl From<MilestoneResponse> for Milestone {
 }
 
 #[no_mangle]
-pub extern "C" fn transport_get_link_details(r: *mut TransportDetails, tsp: *mut TransportWrap, link: *const Address) -> Err {
+pub unsafe extern "C" fn transport_get_link_details(r: *mut TransportDetails, tsp: *mut TransportWrap, link: *const Address) -> Err {
     unsafe {
         r.as_mut().map_or(Err::NullArgument, |r| {
             tsp.as_mut().map_or(Err::NullArgument, |tsp| {
@@ -352,7 +352,7 @@ pub extern "C" fn drop_links(links: MessageLinks) {
 }
 
 #[no_mangle]
-pub extern "C" fn get_msg_link(msg_links: *const MessageLinks) -> *const Address {
+pub unsafe extern "C" fn get_msg_link(msg_links: *const MessageLinks) -> *const Address {
     unsafe {
         msg_links.as_ref().map_or(null(), |links| {
             links.msg_link
@@ -361,7 +361,7 @@ pub extern "C" fn get_msg_link(msg_links: *const MessageLinks) -> *const Address
 }
 
 #[no_mangle]
-pub extern "C" fn get_seq_link(msg_links: *const MessageLinks) -> *const Address {
+pub unsafe extern "C" fn get_seq_link(msg_links: *const MessageLinks) -> *const Address {
     unsafe {
         msg_links.as_ref().map_or(null(), |links| {
             links.seq_link
@@ -494,14 +494,14 @@ pub extern "C" fn drop_payloads(payloads: PacketPayloads) {
 }
 
 #[no_mangle]
-pub extern "C" fn drop_str(string: *const c_char) {
+pub unsafe extern "C" fn drop_str(string: *const c_char) {
     unsafe {
         CString::from_raw(string as *mut c_char);
     }
 }
 
 #[no_mangle]
-pub extern "C" fn get_channel_address_str(appinst: *const ChannelAddress) -> *const c_char {
+pub unsafe extern "C" fn get_channel_address_str(appinst: *const ChannelAddress) -> *const c_char {
     unsafe {
         appinst.as_ref().map_or(null(), |inst| {
             CString::new(hex::encode(inst)).map_or(null(), |inst_str| inst_str.into_raw())
@@ -510,7 +510,7 @@ pub extern "C" fn get_channel_address_str(appinst: *const ChannelAddress) -> *co
 }
 
 #[no_mangle]
-pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *const c_char {
+pub unsafe extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *const c_char {
     unsafe {
         msgid.as_ref().map_or(null(), |id| {
             CString::new(hex::encode(id)).map_or(null(), |id_str| id_str.into_raw())
@@ -519,7 +519,7 @@ pub extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *const c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
+pub unsafe extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
     unsafe {
         address.as_ref().map_or(null_mut(), |addr| {
             CString::new(hex::encode(addr.appinst.as_ref())).map_or(null_mut(), |inst| inst.into_raw())
@@ -528,7 +528,7 @@ pub extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
+pub unsafe extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
     unsafe {
         address.as_ref().map_or(null_mut(), |addr| {
             CString::new(hex::encode(addr.msgid.as_ref())).map_or(null_mut(), |id| id.into_raw())
@@ -537,7 +537,7 @@ pub extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn get_address_index_str(address: *mut Address) -> *mut c_char {
+pub unsafe extern "C" fn get_address_index_str(address: *mut Address) -> *mut c_char {
     unsafe {
         address.as_ref().map_or(null_mut(), |addr| {
             get_hash(addr.appinst.as_ref(), addr.msgid.as_ref())
@@ -551,17 +551,17 @@ pub extern "C" fn get_address_index_str(address: *mut Address) -> *mut c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn get_payload(msg: *const UnwrappedMessage) -> PacketPayloads {
+pub unsafe extern "C" fn get_payload(msg: *const UnwrappedMessage) -> PacketPayloads {
     unsafe { msg.as_ref().map_or(PacketPayloads::default(), handle_message_contents) }
 }
 
 #[no_mangle]
-pub extern "C" fn get_payloads_count(msgs: *const UnwrappedMessages) -> usize {
+pub unsafe extern "C" fn get_payloads_count(msgs: *const UnwrappedMessages) -> usize {
     unsafe { msgs.as_ref().map_or(0, |msgs| msgs.len()) }
 }
 
 #[no_mangle]
-pub extern "C" fn get_indexed_payload(msgs: *const UnwrappedMessages, index: size_t) -> PacketPayloads {
+pub unsafe extern "C" fn get_indexed_payload(msgs: *const UnwrappedMessages, index: size_t) -> PacketPayloads {
     unsafe {
         msgs.as_ref()
             .map_or(PacketPayloads::default(), |msgs| handle_message_contents(&msgs[index]))

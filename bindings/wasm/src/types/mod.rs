@@ -21,14 +21,16 @@ use iota_streams::{
         PublicKey,
         UnwrappedMessage,
     },
-    core::prelude::{
-        Rc,
-        String,
-        ToString,
-    },
-    core::psk::{
-        pskid_from_hex_str,
-        pskid_to_hex_string,
+    core::{
+        prelude::{
+            Rc,
+            String,
+            ToString,
+        },
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
     },
     ddml::types::hex,
 };

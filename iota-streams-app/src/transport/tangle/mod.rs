@@ -32,8 +32,9 @@ use iota_streams_core::{
         prp::PRP,
         spongos::Spongos,
     },
+    wrapped_err,
     Errors::BadHexFormat,
-    wrapped_err, WrappedError,
+    WrappedError,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -142,12 +143,12 @@ impl TangleAddress {
         let appinst = AppInst::from_str(appinst_str)
             .map_err(|e| wrapped_err!(BadHexFormat(appinst_str.into()), WrappedError(e)))?;
 
-        let msgid = MsgId::from_str(msgid_str)
-            .map_err(|e| wrapped_err!(BadHexFormat(appinst_str.into()), WrappedError(e)))?;
+        let msgid =
+            MsgId::from_str(msgid_str).map_err(|e| wrapped_err!(BadHexFormat(appinst_str.into()), WrappedError(e)))?;
 
         Ok(TangleAddress {
-            appinst: appinst,
-            msgid: msgid,
+            appinst,
+            msgid,
         })
     }
 

@@ -4,7 +4,7 @@ pub type Author = iota_streams::app_channels::api::tangle::Author<TransportWrap>
 
 /// Generate a new Author Instance
 #[no_mangle]
-pub extern "C" fn auth_new(
+pub unsafe extern "C" fn auth_new(
     c_seed: *const c_char,
     c_encoding: *const c_char,
     payload_length: size_t,
@@ -20,7 +20,7 @@ pub extern "C" fn auth_new(
 
 /// Recover an existing channel from seed and existing announcement message
 #[no_mangle]
-pub extern "C" fn auth_recover(
+pub unsafe extern "C" fn auth_recover(
     c_seed: *const c_char,
     c_ann_address: *const Address,
     multi_branching: uint8_t,
@@ -40,7 +40,7 @@ pub extern "C" fn auth_recover(
 
 /// Import an Author instance from an encrypted binary array
 #[no_mangle]
-pub extern "C" fn auth_import(
+pub unsafe extern "C" fn auth_import(
     buffer: Buffer,
     password: *const c_char,
     transport: *mut TransportWrap,
@@ -61,7 +61,7 @@ pub extern "C" fn auth_import(
 }
 
 #[no_mangle]
-pub extern "C" fn auth_export(
+pub unsafe extern "C" fn auth_export(
     user: *mut Author,
     password: *const c_char
 ) -> Buffer {
@@ -81,7 +81,7 @@ pub extern "C" fn auth_drop(user: *mut Author) {
 
 /// Channel app instance.
 #[no_mangle]
-pub extern "C" fn auth_channel_address(user: *const Author) -> *const ChannelAddress {
+pub unsafe extern "C" fn auth_channel_address(user: *const Author) -> *const ChannelAddress {
     unsafe {
         user.as_ref().map_or(null(), |user| {
             user.channel_address()
@@ -91,7 +91,7 @@ pub extern "C" fn auth_channel_address(user: *const Author) -> *const ChannelAdd
 }
 
 #[no_mangle]
-pub extern "C" fn auth_is_multi_branching(user: *const Author) -> uint8_t {
+pub unsafe extern "C" fn auth_is_multi_branching(user: *const Author) -> uint8_t {
     unsafe {
         user.as_ref()
             .map_or(0, |user| if user.is_multi_branching() { 1 } else { 0 })
@@ -99,13 +99,13 @@ pub extern "C" fn auth_is_multi_branching(user: *const Author) -> uint8_t {
 }
 
 #[no_mangle]
-pub extern "C" fn auth_get_public_key(user: *const Author) -> *const PublicKey {
+pub unsafe extern "C" fn auth_get_public_key(user: *const Author) -> *const PublicKey {
     unsafe { user.as_ref().map_or(null(), |user| user.get_pk() as *const PublicKey) }
 }
 
 /// Announce creation of a new Channel.
 #[no_mangle]
-pub extern "C" fn auth_send_announce(user: *mut Author) -> *const Address {
+pub unsafe extern "C" fn auth_send_announce(user: *mut Author) -> *const Address {
     unsafe {
         user.as_mut().map_or(null(), |user| {
             user.send_announce().map_or(null(), |a| safe_into_ptr(a))
@@ -115,7 +115,7 @@ pub extern "C" fn auth_send_announce(user: *mut Author) -> *const Address {
 
 /// unwrap and add a subscriber to the list of subscribers
 #[no_mangle]
-pub extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const Address) -> Err {
+pub unsafe extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const Address) -> Err {
     unsafe {
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
@@ -127,7 +127,7 @@ pub extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const Address
 
 /// Create a new keyload for a list of subscribers.
 #[no_mangle]
-pub extern "C" fn auth_send_keyload(
+pub unsafe extern "C" fn auth_send_keyload(
     r: *mut MessageLinks,
     user: *mut Author,
     link_to: *const Address,
@@ -155,7 +155,7 @@ pub extern "C" fn auth_send_keyload(
 
 /// Create keyload for all subscribed subscribers.
 #[no_mangle]
-pub extern "C" fn auth_send_keyload_for_everyone(r: *mut MessageLinks, user: *mut Author, link_to: *const Address) -> Err {
+pub unsafe extern "C" fn auth_send_keyload_for_everyone(r: *mut MessageLinks, user: *mut Author, link_to: *const Address) -> Err {
     unsafe {
         r.as_mut().map_or(Err::NullArgument, |r| {
             user.as_mut().map_or(Err::NullArgument, |user| {
@@ -173,7 +173,7 @@ pub extern "C" fn auth_send_keyload_for_everyone(r: *mut MessageLinks, user: *mu
 
 /// Process a Tagged packet message
 #[no_mangle]
-pub extern "C" fn auth_send_tagged_packet(
+pub unsafe extern "C" fn auth_send_tagged_packet(
     r: *mut MessageLinks,
     user: *mut Author,
     link_to: MessageLinks,
@@ -215,7 +215,7 @@ pub extern "C" fn auth_send_tagged_packet(
 
 /// Process a Tagged packet message
 #[no_mangle]
-pub extern "C" fn auth_receive_tagged_packet(r: *mut PacketPayloads, user: *mut Author, link: *const Address) -> Err {
+pub unsafe extern "C" fn auth_receive_tagged_packet(r: *mut PacketPayloads, user: *mut Author, link: *const Address) -> Err {
     unsafe {
         r.as_mut().map_or(Err::NullArgument, |r| {
             user.as_mut().map_or(Err::NullArgument, |user| {
@@ -234,7 +234,7 @@ pub extern "C" fn auth_receive_tagged_packet(r: *mut PacketPayloads, user: *mut 
 
 /// Process a Signed packet message
 #[no_mangle]
-pub extern "C" fn auth_send_signed_packet(
+pub unsafe extern "C" fn auth_send_signed_packet(
     r: *mut MessageLinks,
     user: *mut Author,
     link_to: MessageLinks,
@@ -276,7 +276,7 @@ pub extern "C" fn auth_send_signed_packet(
 
 /// Process a Signed packet message
 #[no_mangle]
-pub extern "C" fn auth_receive_signed_packet(r: *mut PacketPayloads, user: *mut Author, link: *const Address) -> Err {
+pub unsafe extern "C" fn auth_receive_signed_packet(r: *mut PacketPayloads, user: *mut Author, link: *const Address) -> Err {
     unsafe {
         r.as_mut().map_or(Err::NullArgument, |r| {
             user.as_mut().map_or(Err::NullArgument, |user| {
@@ -294,7 +294,7 @@ pub extern "C" fn auth_receive_signed_packet(r: *mut PacketPayloads, user: *mut 
 }
 
 #[no_mangle]
-pub extern "C" fn auth_receive_sequence(r: *mut *const Address, user: *mut Author, link: *const Address) -> Err {
+pub unsafe extern "C" fn auth_receive_sequence(r: *mut *const Address, user: *mut Author, link: *const Address) -> Err {
     unsafe {
         r.as_mut().map_or(Err::NullArgument, |r| {
             user.as_mut().map_or(Err::NullArgument, |user| {
@@ -310,7 +310,7 @@ pub extern "C" fn auth_receive_sequence(r: *mut *const Address, user: *mut Autho
 }
 
 #[no_mangle]
-pub extern "C" fn auth_gen_next_msg_ids(user: *mut Author) -> *const NextMsgIds {
+pub unsafe extern "C" fn auth_gen_next_msg_ids(user: *mut Author) -> *const NextMsgIds {
     unsafe {
         user.as_mut().map_or(null(), |user| {
             let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
@@ -320,7 +320,7 @@ pub extern "C" fn auth_gen_next_msg_ids(user: *mut Author) -> *const NextMsgIds 
 }
 
 #[no_mangle]
-pub extern "C" fn auth_receive_msg(r: *mut *const UnwrappedMessage, user: *mut Author, link: *const Address) -> Err {
+pub unsafe extern "C" fn auth_receive_msg(r: *mut *const UnwrappedMessage, user: *mut Author, link: *const Address) -> Err {
     unsafe {
         r.as_mut().map_or(Err::NullArgument, |r| {
             user.as_mut().map_or(Err::NullArgument, |user| {
@@ -336,7 +336,7 @@ pub extern "C" fn auth_receive_msg(r: *mut *const UnwrappedMessage, user: *mut A
 }
 
 #[no_mangle]
-pub extern "C" fn auth_fetch_next_msgs(user: *mut Author) -> *const UnwrappedMessages {
+pub unsafe extern "C" fn auth_fetch_next_msgs(user: *mut Author) -> *const UnwrappedMessages {
     unsafe {
         user.as_mut().map_or(null(), |user| {
             let m = user.fetch_next_msgs();
@@ -346,7 +346,7 @@ pub extern "C" fn auth_fetch_next_msgs(user: *mut Author) -> *const UnwrappedMes
 }
 
 #[no_mangle]
-pub extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages {
+pub unsafe extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages {
     unsafe {
         user.as_mut().map_or(null(), |user| {
             let mut ms = Vec::new();
@@ -363,7 +363,7 @@ pub extern "C" fn auth_sync_state(user: *mut Author) -> *const UnwrappedMessages
 }
 
 #[no_mangle]
-pub extern "C" fn auth_fetch_state(user: *mut Author) -> *const UserState {
+pub unsafe extern "C" fn auth_fetch_state(user: *mut Author) -> *const UserState {
     unsafe {
         user.as_mut().map_or(null(), |user| {
             user.fetch_state().map_or(null(), |state| {
@@ -374,7 +374,7 @@ pub extern "C" fn auth_fetch_state(user: *mut Author) -> *const UserState {
 }
 
 #[no_mangle]
-pub extern "C" fn auth_store_psk(user: *mut Author, psk_seed_str: *const c_char) -> *const PskId {
+pub unsafe extern "C" fn auth_store_psk(user: *mut Author, psk_seed_str: *const c_char) -> *const PskId {
     unsafe {
         let psk_seed = CStr::from_ptr(psk_seed_str).to_str().unwrap();
         user.as_mut().map_or(null(), |user| {
