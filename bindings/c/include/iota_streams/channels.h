@@ -157,9 +157,9 @@ extern err_t sub_import(subscriber_t **sub, buffer_t buffer, char const *passwor
 extern err_t sub_export(buffer_t *buf, subscriber_t const *subscriber, char const *password);
 extern void sub_drop(subscriber_t *);
 
-extern channel_address_t const *sub_channel_address(subscriber_t const *subscriber);
-extern uint8_t sub_is_multi_branching(subscriber_t const *subscriber);
-extern public_key_t const *sub_get_public_key(subscriber_t const *subscriber);
+extern err_t sub_channel_address(channel_address_t const **addr, subscriber_t const *subscriber);
+extern err_t sub_is_multi_branching(uint8_t *flag, subscriber_t const *subscriber);
+extern err_t sub_get_public_key(public_key_t const **pk, subscriber_t const *subscriber);
 
 // Registration state
 extern uint8_t sub_is_registered(subscriber_t const *subscriber);
@@ -181,13 +181,13 @@ extern err_t sub_receive_signed_packet(packet_payloads_t *payloads, subscriber_t
 // Sequence Message (for multi branch use)
 extern err_t sub_receive_sequence(address_t const **address, subscriber_t *subscriber, address_t const *seq_address);
 // MsgId Generation
-extern next_msg_ids_t const *sub_gen_next_msg_ids(subscriber_t *subscriber);
+extern err_t sub_gen_next_msg_ids(next_msg_ids_t const **ids, subscriber_t *subscriber);
 // Generic Message Processing
 extern err_t sub_receive_msg(unwrapped_message_t const *umsg, subscriber_t *subscriber, address_t const *address);
 // Fetching/Syncing
 extern err_t sub_fetch_next_msgs(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern err_t sub_sync_state(unwrapped_messages_t const **messages, subscriber_t *subscriber);
-extern user_state_t const *sub_fetch_state(subscriber_t *subscriber);
+extern err_t sub_fetch_state(user_state_t const **state, subscriber_t *subscriber);
 // Store Psk
 extern err_t sub_store_psk(psk_id_t const **pskid, subscriber_t *subscriber, char const *psk);
 

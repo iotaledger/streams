@@ -68,13 +68,19 @@ int main()
 
   // Fetch Application instance
   {
-    channel_address_t const *appinst = auth_channel_address(auth);
+    channel_address_t const *appinst = NULL;
+    public_key_t const *auth_pk = NULL;
+    e = auth_channel_address(&appinst, auth);
+    if(e) goto cleanup;
     // `auth_channel_address` does not allocate, no need to drop `appinst`
     char const *appinst_str = get_channel_address_str(appinst);
     printf("Channel address '%s'\n", appinst_str);
     drop_str(appinst_str);
-    auth_is_multi_branching(auth);
-    auth_get_public_key(auth);
+    uint8_t flag = 0;
+    e = auth_is_multi_branching(&flag, auth);
+    if(e) goto cleanup;
+    e = auth_get_public_key(&auth_pk, auth);
+    if(e) goto cleanup;
   }
   printf("\n");
   if(e) goto cleanup;
@@ -82,9 +88,9 @@ int main()
   // Announcement
   {
     printf("Sending announcement... ");
-    ann_link = auth_send_announce(auth);
-    printf("%s\n", ann_link ? "done" : "failed");
-    if(!ann_link) { e = ERR_OPERATION_FAILED; goto cleanup; }
+    e = auth_send_announce(&ann_link, auth);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup;
 
     {
       char const *ann_address_inst_str = NULL;
@@ -250,9 +256,9 @@ cleanup2:
     message_links_t subB_received_links = { NULL, NULL };
 
     printf("SubB generating next message ids... ");
-    msg_ids = sub_gen_next_msg_ids(subB);
-    printf("%s\n", msg_ids ? "done" : "failed");
-    if(!msg_ids) goto cleanup3;
+    e = sub_gen_next_msg_ids(&msg_ids, subB);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup3;
 
     printf("SubB receiving keyload from ids... ");
     e = sub_receive_keyload_from_ids(&subB_received_links, subB, msg_ids);
@@ -272,9 +278,9 @@ cleanup3:
     message_links_t subC_received_links = { NULL, NULL };
 
     printf("SubC generating next message ids... ");
-    msg_ids = sub_gen_next_msg_ids(subC);
-    printf("%s\n", msg_ids ? "done" : "failed");
-    if(!msg_ids) goto cleanup31;
+    e = sub_gen_next_msg_ids(&msg_ids, subC);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup31;
 
     printf("SubC receiving keyload from ids... ");
     e = sub_receive_keyload_from_ids(&subC_received_links, subC, msg_ids);
@@ -467,11 +473,17 @@ cleanup7:
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
 
-    recovered_auth_state = auth_fetch_state(recovered_auth);
-    original_auth_state = auth_fetch_state(auth);
+    e = auth_fetch_state(&recovered_auth_state, recovered_auth);
+    if(e) goto cleanup8;
+    e = auth_fetch_state(&original_auth_state, auth);
+    if(e) goto cleanup8;
 
-    public_key_t const *recovered_auth_pk = auth_get_public_key(recovered_auth);
-    public_key_t const *original_auth_pk = auth_get_public_key(auth);
+    public_key_t const *recovered_auth_pk = NULL;
+    e = auth_get_public_key(&recovered_auth_pk, recovered_auth);
+    if(e) goto cleanup8;
+    public_key_t const *original_auth_pk = NULL;
+    e = auth_get_public_key(&original_auth_pk, auth);
+    if(e) goto cleanup8;
 
     recovered_state_link = get_link_from_state(recovered_auth_state, recovered_auth_pk);
     original_state_link = get_link_from_state(original_auth_state, original_auth_pk);

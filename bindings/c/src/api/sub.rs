@@ -107,22 +107,35 @@ pub extern "C" fn sub_drop(user: *mut Subscriber) {
 
 /// Channel app instance.
 #[no_mangle]
-pub unsafe extern "C" fn sub_channel_address(user: *const Subscriber) -> *const ChannelAddress {
-    user.as_ref().map_or(null(), |user| {
-        user.channel_address()
-            .map_or(null(), |channel_address| channel_address as *const ChannelAddress)
+pub unsafe extern "C" fn sub_channel_address(addr: *mut *const ChannelAddress, user: *const Subscriber) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        addr.as_mut().map_or(Err::NullArgument, |addr| {
+            user.channel_address().map_or(Err::OperationFailed, |channel_address| {
+                *addr = channel_address as *const ChannelAddress;
+                Err::Ok
+            })
+        })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_is_multi_branching(user: *const Subscriber) -> uint8_t {
-    user.as_ref()
-        .map_or(0, |user| if user.is_multi_branching() { 1 } else { 0 })
+pub unsafe extern "C" fn sub_is_multi_branching(flag: *mut uint8_t, user: *const Subscriber) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        flag.as_mut().map_or(Err::NullArgument, |flag| {
+            *flag = if user.is_multi_branching() { 1 } else { 0 };
+            Err::Ok
+        })
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_get_public_key(user: *const Subscriber) -> *const PublicKey {
-    user.as_ref().map_or(null(), |user| user.get_pk() as *const PublicKey)
+pub unsafe extern "C" fn sub_get_public_key(pk: *mut *const PublicKey, user: *const Subscriber) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        pk.as_mut().map_or(Err::NullArgument, |pk| {
+            *pk = user.get_pk() as *const PublicKey;
+            Err::Ok
+        })
+    })
 }
 
 #[no_mangle]
@@ -317,10 +330,13 @@ pub unsafe extern "C" fn sub_receive_signed_packet(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_gen_next_msg_ids(user: *mut Subscriber) -> *const NextMsgIds {
-    user.as_mut().map_or(null(), |user| {
-        let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
-        safe_into_ptr(next_msg_ids)
+pub unsafe extern "C" fn sub_gen_next_msg_ids(ids: *mut *const NextMsgIds, user: *mut Subscriber) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        ids.as_mut().map_or(Err::NullArgument, |ids| {
+            let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
+            *ids = safe_into_ptr(next_msg_ids);
+            Err::Ok
+        })
     })
 }
 
@@ -399,9 +415,14 @@ pub unsafe extern "C" fn sub_sync_state(r: *mut *const UnwrappedMessages, user: 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_fetch_state(user: *mut Subscriber) -> *const UserState {
-    user.as_mut().map_or(null(), |user| {
-        user.fetch_state().map_or(null(), |state| safe_into_ptr(state))
+pub unsafe extern "C" fn sub_fetch_state(state: *mut *const UserState, user: *mut Subscriber) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        state.as_mut().map_or(Err::NullArgument, |state| {
+            user.fetch_state().map_or(Err::OperationFailed, |st| {
+                *state = safe_into_ptr(st); 
+                Err::Ok
+            })
+        })
     })
 }
 
