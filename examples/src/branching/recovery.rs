@@ -10,7 +10,6 @@ use iota_streams::{
         prelude::Rc,
         println,
         Result,
-        LOCATION_LOG,
     },
     ddml::types::*,
 };

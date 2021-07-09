@@ -15,7 +15,6 @@ use iota_streams::{
         try_or,
         Errors::*,
         Result,
-        LOCATION_LOG,
     },
     ddml::types::*,
 };
