@@ -132,7 +132,9 @@ impl MessageContent {
         }
     }
 
-    pub fn unreadable() -> Self { Self::Unreadable }
+    pub fn unreadable() -> Self {
+        Self::Unreadable
+    }
 }
 
 /// Generic unwrapped message type containing possible message contents
