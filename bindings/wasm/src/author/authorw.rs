@@ -23,11 +23,12 @@ use iota_streams::{
         TransportOptions,
     },
     app_channels::api::{
-        make_psk,
+        psk_from_seed,
+        pskid_from_psk,
         tangle::{
             Address as ApiAddress,
             Author as ApiAuthor,
-        }
+        },
     },
     core::{
         prelude::{
@@ -35,10 +36,7 @@ use iota_streams::{
             String,
             ToString,
         },
-        psk::{
-            PskId,
-            PSKID_SIZE,
-        },
+        psk::pskid_to_hex_string,
     },
     ddml::types::*,
 };
@@ -125,9 +123,12 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
-    pub fn store_psk(&self, psk_str: String) -> String {
-        let psk = make_psk(psk_str.as_bytes());
-        pskid_to_string(&self.author.borrow_mut().store_psk(psk))
+    pub fn store_psk(&self, psk_seed_str: String) -> String {
+        let psk = psk_from_seed(psk_seed_str.as_bytes());
+        let pskid = pskid_from_psk(&psk);
+        let pskid_str = pskid_to_hex_string(&pskid);
+        self.author.borrow_mut().store_psk(pskid, psk);
+        pskid_str
     }
 
     #[wasm_bindgen(catch)]

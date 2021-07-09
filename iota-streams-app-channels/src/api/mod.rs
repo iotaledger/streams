@@ -15,15 +15,32 @@ pub mod user;
 #[cfg(all(feature = "tangle"))]
 pub mod tangle;
 
-use iota_streams_core::psk::*;
+use iota_streams_core::psk;
+pub use iota_streams_core::psk::{
+    Psk,
+    PskId,
+};
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 
-/// Makes a PSK from an arbitrary byte array
-pub fn make_psk(bytes: &[u8]) -> Psk {
-    psk_from_seed::<KeccakF1600>(bytes)
+/// Default spongos PRP.
+pub type DefaultF = KeccakF1600;
+
+/// Derive a Psk from a secret seed
+pub fn psk_from_seed(seed_bytes: &[u8]) -> Psk {
+    psk::psk_from_seed::<DefaultF>(seed_bytes)
 }
 
-/// Makes a PskId from an arbitrary byte array
-pub fn make_pskid(bytes: &[u8]) -> PskId {
-    pskid_from_seed::<KeccakF1600>(bytes)
+/// Derive a PskId from a secret seed
+pub fn pskid_from_psk(psk: &Psk) -> PskId {
+    psk::pskid_from_psk::<DefaultF>(psk)
+}
+
+/// Derive a PskId from a secret seed
+pub fn pskid_from_seed(seed_bytes: &[u8]) -> PskId {
+    psk::pskid_from_seed::<DefaultF>(seed_bytes)
+}
+
+/// Create a PskId from a string or it's hash if the string is too long
+pub fn pskid_from_str(id: &str) -> PskId {
+    psk::pskid_from_str::<DefaultF>(id)
 }

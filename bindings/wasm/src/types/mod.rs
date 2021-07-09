@@ -18,20 +18,24 @@ use iota_streams::{
     app_channels::api::tangle::{
         Address as ApiAddress,
         MessageContent,
-        UnwrappedMessage,
         PublicKey,
+        UnwrappedMessage,
     },
     core::prelude::{
         Rc,
         String,
         ToString,
     },
+    core::psk::{
+        pskid_from_hex_str,
+        pskid_to_hex_string,
+    },
     ddml::types::hex,
 };
 use wasm_bindgen::prelude::*;
 
-use js_sys::Array;
 use iota_streams::core::psk::PskId;
+use js_sys::Array;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
 pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {
@@ -236,27 +240,22 @@ impl PskIds {
     }
 
     pub fn add(&mut self, id: String) -> Result<()> {
-        self.ids.push(pskid_from_string(&id)?);
+        let pskid = to_result(pskid_from_hex_str(&id))?;
+        self.ids.push(pskid);
         Ok(())
     }
 
     pub fn get_ids(&self) -> Array {
-        self.ids.iter().map(|pskid| JsValue::from(pskid_to_string(pskid))).collect()
+        self.ids
+            .iter()
+            .map(|pskid| JsValue::from(pskid_to_hex_string(pskid)))
+            .collect()
     }
 }
 
 #[wasm_bindgen]
 pub struct PublicKeys {
     pub(crate) pks: Vec<PublicKey>,
-}
-
-pub(crate) fn pskid_to_string(pskid: &PskId) -> String {
-    hex::encode(pskid.as_slice())
-}
-
-pub(crate) fn pskid_from_string(hex_id: &str) -> Result<PskId> {
-    let bytes = to_result(hex::decode(hex_id))?;
-    Ok(PskId::clone_from_slice(&bytes))
 }
 
 pub(crate) fn public_key_to_string(pk: &PublicKey) -> String {
@@ -280,7 +279,10 @@ impl PublicKeys {
     }
 
     pub fn get_pks(&self) -> Array {
-        self.pks.iter().map(|pk| JsValue::from(public_key_to_string(pk))).collect()
+        self.pks
+            .iter()
+            .map(|pk| JsValue::from(public_key_to_string(pk)))
+            .collect()
     }
 }
 

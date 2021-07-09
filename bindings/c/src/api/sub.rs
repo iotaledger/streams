@@ -402,14 +402,14 @@ pub extern "C" fn sub_fetch_state(user: *mut Subscriber) -> *const UserState {
 }
 
 #[no_mangle]
-pub extern "C" fn sub_store_psk(user: *mut Subscriber, psk_str: *const c_char) -> *const PskId {
+pub extern "C" fn sub_store_psk(user: *mut Subscriber, psk_seed_str: *const c_char) -> *const PskId {
     unsafe {
-        let psk = CStr::from_ptr(psk_str).to_str().unwrap();
+        let psk_seed = CStr::from_ptr(psk_seed_str).to_str().unwrap();
         user.as_mut().map_or(null(), |user| {
-            psk_from_str(psk).as_ref().map_or(null(),|psk| {
-                let pskid = user.store_psk(*psk);
-                safe_into_ptr(pskid)
-            })
+            let psk = psk_from_seed(psk_seed.as_ref());
+            let pskid = pskid_from_psk(&psk);
+            user.store_psk(pskid.clone(), psk);
+            safe_into_ptr(pskid)
         })
     }
 }

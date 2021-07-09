@@ -60,8 +60,8 @@ impl<Trans> Subscriber<Trans> {
     }
 
     /// Store a PSK in the user instance, returns the PskId for identifying purposes in keyloads
-    pub fn store_psk(&mut self, psk: Psk) -> PskId {
-        self.user.store_psk(psk)
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) {
+        self.user.store_psk(pskid, psk)
     }
 
     /// Fetch the Address (application instance) of the channel.

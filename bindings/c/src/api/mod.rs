@@ -16,7 +16,8 @@ use iota_streams::{
         },
     },
     app_channels::api::{
-        make_psk,
+        psk_from_seed,
+        pskid_from_psk,
         tangle::*
     },
     core::{
@@ -88,10 +89,6 @@ pub extern "C" fn pskid_as_str(pskid: *const PskId) -> *const c_char {
             CString::new(hex::encode(&pskid)).map_or(null(), |id| id.into_raw())
         })
     }
-}
-
-pub(crate) fn psk_from_str(psk: &str) -> *const Psk {
-    hex::decode(psk.to_string()).map_or(null(), |psk| safe_into_ptr(make_psk(&psk)))
 }
 
 pub type NextMsgIds = Vec<(PublicKey, Cursor<Address>)>;
