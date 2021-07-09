@@ -26,7 +26,6 @@ use crate::{
         SpongosNotCommitted,
     },
     Result,
-    LOCATION_LOG,
 };
 
 fn xor(s: &mut [u8], x: &[u8]) {

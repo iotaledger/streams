@@ -16,13 +16,20 @@ use iota_streams::{
         },
         TransportOptions,
     },
-    app_channels::api::tangle::{
-        Address as ApiAddress,
-        Subscriber as ApiSubscriber,
+    app_channels::api::{
+        psk_from_seed,
+        pskid_from_psk,
+        tangle::{
+            Address as ApiAddress,
+            Subscriber as ApiSubscriber,
+        },
     },
-    core::prelude::{
-        Rc,
-        String,
+    core::{
+        prelude::{
+            Rc,
+            String,
+        },
+        psk::pskid_to_hex_string,
     },
     ddml::types::*,
 };
@@ -104,6 +111,15 @@ impl Subscriber {
     #[wasm_bindgen(catch)]
     pub fn is_multi_branching(&self) -> Result<bool> {
         Ok(self.subscriber.borrow_mut().is_multi_branching())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn store_psk(&self, psk_seed_str: String) -> String {
+        let psk = psk_from_seed(psk_seed_str.as_bytes());
+        let pskid = pskid_from_psk(&psk);
+        let pskid_str = pskid_to_hex_string(&pskid);
+        self.subscriber.borrow_mut().store_psk(pskid, psk);
+        pskid_str
     }
 
     #[wasm_bindgen(catch)]

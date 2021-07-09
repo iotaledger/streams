@@ -9,7 +9,6 @@ use iota_streams_core::{
         HashMap,
     },
     Errors::MessageLinkNotFound,
-    LOCATION_LOG,
 };
 
 #[cfg(feature = "async")]

@@ -8,7 +8,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     Errors::BadMessageInfo,
     Result,
-    LOCATION_LOG,
 };
 use iota_streams_ddml::{
     command::*,

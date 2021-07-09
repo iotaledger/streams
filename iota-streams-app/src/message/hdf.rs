@@ -5,7 +5,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     try_or,
     Errors::*,
-    LOCATION_LOG,
 };
 use iota_streams_ddml::{
     command::*,

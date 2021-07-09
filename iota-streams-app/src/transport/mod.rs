@@ -234,7 +234,6 @@ use iota_streams_core::{
         TransportNotAvailable,
     },
     WrappedError,
-    LOCATION_LOG,
 };
 
 #[cfg(feature = "tangle")]

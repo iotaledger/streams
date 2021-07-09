@@ -64,8 +64,12 @@ impl<Trans> Author<Trans> {
     }
 
     /// Store a PSK in the user instance, returns the PskId for identifying purposes in keyloads
-    pub fn store_psk(&mut self, psk: Psk) -> PskId {
-        self.user.store_psk(psk)
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    ///   * `psk` - A pre shared key
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) {
+        self.user.store_psk(pskid, psk)
     }
 
     /// Generate a vector containing the next sequenced message identifier for each publishing

@@ -12,7 +12,6 @@ use iota_streams_core::{
         StreamAllocationExceededOut,
     },
     Result,
-    LOCATION_LOG,
 };
 
 /// Write

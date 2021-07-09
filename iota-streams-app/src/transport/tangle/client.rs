@@ -26,7 +26,6 @@ use iota_streams_core::{
     Errors::*,
     Result,
     WrappedError,
-    LOCATION_LOG,
 };
 
 use crate::{

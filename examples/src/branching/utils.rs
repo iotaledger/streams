@@ -7,7 +7,7 @@ use iota_streams::{
     },
 };
 
-pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>) {
+pub fn s_fetch_next_messages<T: Transport + Clone>(subscriber: &mut Subscriber<T>) {
     let mut exists = true;
 
     while exists {
@@ -25,7 +25,7 @@ pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>) {
     }
 }
 
-pub fn a_fetch_next_messages<T: Transport>(author: &mut Author<T>) {
+pub fn a_fetch_next_messages<T: Transport + Clone>(author: &mut Author<T>) {
     let mut exists = true;
 
     while exists {

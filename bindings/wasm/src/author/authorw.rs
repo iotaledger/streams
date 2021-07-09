@@ -22,9 +22,13 @@ use iota_streams::{
         },
         TransportOptions,
     },
-    app_channels::api::tangle::{
-        Address as ApiAddress,
-        Author as ApiAuthor,
+    app_channels::api::{
+        psk_from_seed,
+        pskid_from_psk,
+        tangle::{
+            Address as ApiAddress,
+            Author as ApiAuthor,
+        },
     },
     core::{
         prelude::{
@@ -32,10 +36,7 @@ use iota_streams::{
             String,
             ToString,
         },
-        psk::{
-            PskId,
-            PSKID_SIZE,
-        },
+        psk::pskid_to_hex_string,
     },
     ddml::types::*,
 };
@@ -122,6 +123,15 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
+    pub fn store_psk(&self, psk_seed_str: String) -> String {
+        let psk = psk_from_seed(psk_seed_str.as_bytes());
+        let pskid = pskid_from_psk(&psk);
+        let pskid_str = pskid_to_hex_string(&pskid);
+        self.author.borrow_mut().store_psk(pskid, psk);
+        pskid_str
+    }
+
+    #[wasm_bindgen(catch)]
     pub fn get_public_key(&self) -> Result<String> {
         Ok(public_key_to_string(self.author.borrow_mut().get_pk()))
     }
@@ -162,30 +172,14 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub async fn send_keyload(self, link: Address, psk_ids: PskIdsW, sig_pks: PublicKeysW) -> Result<UserResponse> {
-        let mut preshared: Vec<PskId> = vec![];
-
-        let ids = psk_ids.get_ids().entries();
-
-        for id in ids {
-            if let Some(id_str) = id.unwrap().as_string() {
-                if id_str.as_bytes().len() != PSKID_SIZE {
-                    return Err(JsValue::from_str("PskId is wrong size"));
-                }
-                let gen_arr = GenericArray::clone_from_slice(id_str.as_bytes());
-                preshared.push(gen_arr);
-            }
-        }
-
-        let pks = sig_pks.pks;
-
         self.author
             .borrow_mut()
             .send_keyload(
                 &link
                     .try_into()
                     .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
-                &preshared,
-                &pks,
+                &psk_ids.ids,
+                &sig_pks.pks,
             )
             .await
             .map_or_else(

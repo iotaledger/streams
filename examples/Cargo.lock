@@ -848,7 +848,6 @@ dependencies = [
  "futures",
  "hex",
  "iota-client",
- "iota-crypto 0.5.1 (git+https://github.com/iotaledger/crypto.rs?branch=dev)",
  "iota-streams-core",
  "iota-streams-core-edsig",
  "iota-streams-ddml",
@@ -887,6 +886,7 @@ dependencies = [
  "displaydoc",
  "hashbrown 0.8.2",
  "hex",
+ "iota-crypto 0.5.1 (git+https://github.com/iotaledger/crypto.rs?branch=dev)",
  "rand 0.7.3",
 ]
 

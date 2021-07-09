@@ -186,6 +186,13 @@ Fetch the next message sent by each publisher (empty array if none are present).
 | --------------- | ----------------------------- | ----------------------------------- |
 **Returns:** An array of NextMsgId wrappers for each publisher in the channel.
 
+#### store_psk(psk): String 
+Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use in keyload messages 
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| psk             | String                        | Pre shared key in string format     |
+
+**Returns:** A PskId String representing the Psk in store.
 
 
 ### Subscriber
@@ -360,6 +367,13 @@ Fetch the next message sent by each publisher (empty array if none are present).
 | --------------- | ----------------------------- | ----------------------------------- |
 **Returns:** An array of User Response wrappers around the retrieved messages.
 
+#### store_psk(psk): String 
+Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use in keyload messages 
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| psk             | String                        | Pre shared key in string format     |
+
+**Returns:** A PskId String representing the Psk in store.
 
 ## Types
 Generic Types and Primitives used in Wasm API:

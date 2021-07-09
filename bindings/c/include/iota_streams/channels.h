@@ -20,6 +20,7 @@ extern address_t *address_from_string(char const *addr_str);
 typedef struct ChannelAddress channel_address_t;
 typedef struct MsgId msgid_t;
 typedef struct PublicKey public_key_t;
+typedef struct PskId psk_id_t;
 typedef struct PskIds psk_ids_t;
 typedef struct KePks ke_pks_t;
 
@@ -142,6 +143,9 @@ extern err_t auth_receive_msg(unwrapped_message_t const **msg, author_t *author,
 extern unwrapped_messages_t const *auth_fetch_next_msgs(author_t *author);
 extern unwrapped_messages_t const *auth_sync_state(author_t *author);
 extern user_state_t const * auth_fetch_state(author_t *author);
+// Store Psk
+extern psk_id_t const *auth_store_psk(author_t *author, char const *psk);
+
 
 /////////////
 // Subscriber
@@ -172,7 +176,7 @@ extern err_t sub_receive_keyload_from_ids(message_links_t *links, subscriber_t *
 extern err_t sub_send_tagged_packet(message_links_t *links, subscriber_t *subscriber, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);
 extern err_t sub_receive_tagged_packet(packet_payloads_t *payloads, subscriber_t *subscriber, address_t const *address);
 // Signed Packets
-//extern message_links_t *sub_send_signed_packet(subscriber_t *subscriber, message_links_t *link_to, char *public_payload, char *private_payload);
+extern err_t *sub_send_signed_packet(message_links_t *links, subscriber_t *subscriber, message_links_t *link_to, char *public_payload, char *private_payload);
 extern err_t sub_receive_signed_packet(packet_payloads_t *payloads, subscriber_t *subscriber, address_t const *address);
 // Sequence Message (for multi branch use)
 extern err_t sub_receive_sequence(address_t const **address, subscriber_t *subscriber, address_t const *seq_address);
@@ -184,6 +188,8 @@ extern err_t sub_receive_msg(unwrapped_message_t const *umsg, subscriber_t *subs
 extern err_t sub_fetch_next_msgs(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern err_t sub_sync_state(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern user_state_t const *sub_fetch_state(subscriber_t *subscriber);
+// Store Psk
+extern psk_id_t const *sub_store_psk(subscriber_t *subscriber, char const *psk);
 
 /////////////
 /// Utility
@@ -205,5 +211,8 @@ extern packet_payloads_t get_indexed_payload(unwrapped_messages_t const *message
 extern char const *get_address_index_str(address_t const *address);
 
 extern address_t const *get_link_from_state(user_state_t const *state, public_key_t const *pub_key);
+
+extern char const *pskid_as_str(psk_id_t const *pskid);
+extern void drop_pskid(psk_id_t const *pskid);
 
 #endif //IOTA_STREAMS_CHANNELS_H

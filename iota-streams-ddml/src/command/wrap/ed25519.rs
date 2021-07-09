@@ -21,7 +21,6 @@ use iota_streams_core::{
     wrapped_err,
     Errors::SignatureFailure,
     WrappedError,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::signature::ed25519;
 

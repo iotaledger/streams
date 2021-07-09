@@ -21,15 +21,22 @@ use iota_streams::{
         PublicKey,
         UnwrappedMessage,
     },
-    core::prelude::{
-        Rc,
-        String,
-        ToString,
+    core::{
+        prelude::{
+            Rc,
+            String,
+            ToString,
+        },
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
     },
     ddml::types::hex,
 };
 use wasm_bindgen::prelude::*;
 
+use iota_streams::core::psk::PskId;
 use js_sys::Array;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
@@ -225,7 +232,7 @@ pub struct Message {
 
 #[wasm_bindgen]
 pub struct PskIds {
-    ids: Vec<String>,
+    pub(crate) ids: Vec<PskId>,
 }
 
 #[wasm_bindgen]
@@ -234,12 +241,17 @@ impl PskIds {
         PskIds { ids: Vec::new() }
     }
 
-    pub fn add(&mut self, id: String) {
-        self.ids.push(id);
+    pub fn add(&mut self, id: String) -> Result<()> {
+        let pskid = to_result(pskid_from_hex_str(&id))?;
+        self.ids.push(pskid);
+        Ok(())
     }
 
     pub fn get_ids(&self) -> Array {
-        self.ids.iter().map(JsValue::from).collect()
+        self.ids
+            .iter()
+            .map(|pskid| JsValue::from(pskid_to_hex_string(pskid)))
+            .collect()
     }
 }
 
