@@ -12,7 +12,6 @@ use iota_streams_core::{
         UserNotRegistered,
     },
     Result,
-    LOCATION_LOG,
 };
 
 use super::*;
@@ -27,7 +26,6 @@ use iota_streams_core::{
     },
     Errors::ChannelDuplication,
 };
-use iota_streams_ddml::types::GenericArray;
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
@@ -57,6 +55,10 @@ impl<Trans> User<Trans> {
             PAYLOAD_LENGTH,
         );
         Self { user, transport }
+    }
+
+    pub fn get_transport(&self) -> &Trans {
+        &self.transport
     }
 
     // Attributes
@@ -153,10 +155,8 @@ impl<Trans> User<Trans> {
         })
     }
 
-    pub fn store_psk(&mut self, psk: Psk) -> PskId {
-        let id: PskId = GenericArray::clone_from_slice(&psk[0..16]);
-        self.user.store_psk(id, psk);
-        id
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) {
+        self.user.store_psk(pskid, psk)
     }
 
     /// Consume a binary sequence message and return the derived message link
@@ -171,7 +171,7 @@ impl<Trans> User<Trans> {
 }
 
 #[cfg(not(feature = "async"))]
-impl<Trans: Transport> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     // Send
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
@@ -457,22 +457,29 @@ impl<Trans: Transport> User<Trans> {
             let link = preparsed.header.link.clone();
             let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
-                    Ok(m) => {
-                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                message::SIGNED_PACKET => {
+                    match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                        Ok(m) =>
+                            return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked))),
+                        Err(e) => {
+                            match sequenced {
+                                true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                                false => return Err(e)
+                            }
+                        }
                     }
-                    Err(e) => match sequenced {
-                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
-                        false => return Err(e),
-                    },
-                },
-                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
-                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
-                    Err(e) => match sequenced {
-                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
-                        false => return Err(e),
-                    },
-                },
+                }
+                message::TAGGED_PACKET => {
+                    match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                        Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                        Err(e) => {
+                            match sequenced {
+                                true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                                false => return Err(e)
+                            }
+                        }
+                    }
+                }
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of
@@ -503,7 +510,7 @@ impl<Trans: Transport> User<Trans> {
 }
 
 #[cfg(feature = "async")]
-impl<Trans: Transport> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     // Send
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
@@ -789,22 +796,29 @@ impl<Trans: Transport> User<Trans> {
             let link = preparsed.header.link.clone();
             let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
-                    Ok(m) => {
-                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                message::SIGNED_PACKET => {
+                    match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                        Ok(m) =>
+                            return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked))),
+                        Err(e) => {
+                            match sequenced {
+                                true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                                false => return Err(e)
+                            }
+                        }
                     }
-                    Err(e) => match sequenced {
-                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
-                        false => return Err(e),
-                    },
-                },
-                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
-                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
-                    Err(e) => match sequenced {
-                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
-                        false => return Err(e),
-                    },
-                },
+                }
+                message::TAGGED_PACKET => {
+                    match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                        Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                        Err(e) => {
+                            match sequenced {
+                                true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                                false => return Err(e)
+                            }
+                        }
+                    }
+                }
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of

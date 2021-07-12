@@ -5,7 +5,7 @@
 //! message Unsubscribe {
 //!     join link msgid;
 //!     commit;
-//!     squeeze tryte mac[27];
+//!     squeeze tryte mac[32];
 //! }
 //! ```
 //!
