@@ -6,11 +6,9 @@ This is the documentation for the official IOTA Streams software. You can read m
 
 ## Warning
 
-This library is in active development. The library targets the Chrysalis testnet and does not work with current IOTA mainnet.
+This library is in active development. The library targets the Chrysalis network and does not work with the IOTA legacy network.
 
-## Testnet
-
-To join the Chrysalis public testnet checkout [this link](https://blog.iota.org/chrysalis-phase-2-testnet-out-now/). More information about Chrysalis components is available at [documentation portal](https://chrysalis.docs.iota.org/).
+More information about Chrysalis components is available at [documentation portal](https://chrysalis.docs.iota.org/).
 
 ## Joining the discussion
 

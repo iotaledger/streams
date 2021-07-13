@@ -9,9 +9,7 @@ use iota_streams_core::{
         HashSet,
         Vec,
     },
-    println,
     Errors::KeyConversionFailure,
-    LOCATION_LOG,
 };
 pub use x25519_dalek::{
     EphemeralSecret,

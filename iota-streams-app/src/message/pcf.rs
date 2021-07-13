@@ -4,7 +4,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     try_or,
     Errors::ValueOutOfRange,
-    LOCATION_LOG,
 };
 use iota_streams_ddml::{
     command::*,

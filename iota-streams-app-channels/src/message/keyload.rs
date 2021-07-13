@@ -1,4 +1,5 @@
 //! `Keyload` message content. This message contains key information for the set of recipients.
+//!
 //! Recipients are identified either by pre-shared keys or by Ed/X25519 public key identifiers.
 //!
 //! ```ddml

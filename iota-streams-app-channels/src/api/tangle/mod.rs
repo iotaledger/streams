@@ -18,6 +18,9 @@ use iota_streams_app::{
     },
 };
 
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+use iota_streams_app::transport::tangle::client::Details as ClientDetails;
+
 pub use message::Cursor;
 // Bring trait methods into scope publicly.
 pub use message::LinkGenerator as _;
@@ -26,16 +29,13 @@ pub use transport::{
     TransportOptions as _,
 };
 
+use super::DefaultF;
 pub use super::ChannelType;
 use iota_streams_core::psk;
-use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
 
 use iota_streams_core_edsig::signature::ed25519;
-
-/// Default spongos PRP.
-pub type DefaultF = KeccakF1600;
 
 /// Identifiers for Pre-Shared Keys
 pub type PskIds = psk::PskIds;
@@ -47,6 +47,9 @@ pub type ChannelAddress = AppInst;
 
 /// Binary encoded message type.
 pub type Message = TangleMessage<DefaultF>;
+// Details for a message on our tangle transport
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+pub type Details = ClientDetails;
 
 /// Wrapped Message for sending and commit
 pub type WrappedMessage = message::WrappedMessage<DefaultF, Address>;
@@ -128,9 +131,7 @@ impl MessageContent {
         }
     }
 
-    pub fn unreadable() -> Self {
-        Self::Unreadable
-    }
+    pub fn unreadable() -> Self { Self::Unreadable }
 }
 
 /// Generic unwrapped message type containing possible message contents

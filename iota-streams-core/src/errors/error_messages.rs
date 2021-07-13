@@ -26,6 +26,8 @@ pub enum Errors {
     BadIdentifier,
     /// Psk has already been stored
     PskAlreadyStored,
+    /// Input string {0} is not in hex format
+    BadHexFormat(String),
 
     //////////
     // Cryptographic
@@ -178,8 +180,6 @@ pub enum Errors {
     //////////
     /// Bytes are invalid. Values don't match (expected {0}, found {1}
     InvalidBytes(String, String),
-    /// Cannot process hex from {0}
-    InvalidHex(String),
     /// Squeezed tag is invalid. Unwrapped tag doesn't match (expected {0}, found {1}
     InvalidTagSqueeze(String, String),
     /// Squeezed hash is invalid. Unwrapped hash doesn't match (expected {0}, found {1}

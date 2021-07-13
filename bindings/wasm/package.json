@@ -45,7 +45,6 @@
   },
   "dependencies": {
     "node-fetch": "^2.6.0",
-    "wabt": "^1.0.20",
-    "wasm2wat": "^1.1.0"
+    "wabt": "^1.0.20"
   }
 }

@@ -1,7 +1,8 @@
 use iota_streams::{
     app::message::HasLink,
     app_channels::api::{
-        make_psk,
+        psk_from_seed,
+        pskid_from_psk,
         tangle::{
             Author,
             ChannelType,
@@ -16,7 +17,6 @@ use iota_streams::{
         try_or,
         Errors::*,
         Result,
-        LOCATION_LOG,
     },
     ddml::types::*,
 };
@@ -78,9 +78,10 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
     }
 
     // Generate a simple PSK for storage by users
-    let psk = make_psk("A pre shared key".as_bytes());
-    author.store_psk(psk.clone(), None)?;
-    subscriberC.store_psk(psk.clone(), None)?;
+    let psk = psk_from_seed("A pre shared key".as_bytes());
+    let pskid = pskid_from_psk(&psk);
+    author.store_psk(pskid.clone(), psk.clone())?;
+    subscriberC.store_psk(pskid, psk)?;
 
     println!("\nSubscribe A");
     let subscribeA_link = {

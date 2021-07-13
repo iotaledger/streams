@@ -1,4 +1,6 @@
 #![no_std]
+// TODO: Remove this after clippy fixes their false positive bug [https://github.com/rust-lang/rust-clippy/issues/7434]
+#![allow(clippy::nonstandard_macro_braces)]
 //#![feature(generic_associated_types)]
 
 #[cfg(not(feature = "std"))]
@@ -14,19 +16,15 @@ extern crate std;
 #[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! println {
-    () => {};
-    ($($arg:tt)*) => {
-        return ();
-    };
+    () => {{}};
+    ($($arg:tt)*) => {{}};
 }
 
 #[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! print {
-    () => {};
-    ($($arg:tt)*) => {
-        return ();
-    };
+    () => {{}};
+    ($($arg:tt)*) => {{}};
 }
 
 // Reexport macro at the same level as `no_std`.

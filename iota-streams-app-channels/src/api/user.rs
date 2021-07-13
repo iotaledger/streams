@@ -27,7 +27,6 @@ use iota_streams_core::{
     prng,
     psk::{
         self,
-        new_pskid,
         Psk,
         PskId,
     },
@@ -38,7 +37,6 @@ use iota_streams_core::{
     try_or,
     Errors::*,
     Result,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -898,25 +896,21 @@ where
         Ok(())
     }
 
-    pub fn store_psk(&mut self, psk: Psk, pskid: Option<PskId>, use_psk: bool) -> Result<PskId> {
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk, use_psk: bool) -> Result<()> {
         match &self.appinst {
             Some(appinst) => {
                 if use_psk && self.key_store.get_next_pskid() != None {
                     return err(StateStoreFailure);
                 }
 
-                let id = match pskid {
-                    Some(pskid) => pskid,
-                    None => new_pskid::<F>(psk.as_ref()),
-                };
-                if !self.key_store.contains(&(&id).into()) {
+                if !self.key_store.contains(&Identifier::from(&pskid)) {
                     self.key_store.insert_psk(
-                        (&id).into(),
+                        (&pskid).into(),
                         Some(psk),
                         Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
                     )?;
                     self.use_psk = use_psk;
-                    Ok(id)
+                    Ok(())
                 } else {
                     err(PskAlreadyStored)
                 }
