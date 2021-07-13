@@ -458,29 +458,22 @@ impl<Trans: Transport + Clone> User<Trans> {
             let link = preparsed.header.link.clone();
             let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => {
-                    match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
-                        Ok(m) =>
-                            return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked))),
-                        Err(e) => {
-                            match sequenced {
-                                true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
-                                false => return Err(e)
-                            }
-                        }
+                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                    Ok(m) => {
+                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
                     }
-                }
-                message::TAGGED_PACKET => {
-                    match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
-                        Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
-                        Err(e) => {
-                            match sequenced {
-                                true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
-                                false => return Err(e)
-                            }
-                        }
-                    }
-                }
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
+                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of
@@ -797,29 +790,22 @@ impl<Trans: Transport + Clone> User<Trans> {
             let link = preparsed.header.link.clone();
             let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => {
-                    match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
-                        Ok(m) =>
-                            return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked))),
-                        Err(e) => {
-                            match sequenced {
-                                true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
-                                false => return Err(e)
-                            }
-                        }
+                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                    Ok(m) => {
+                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
                     }
-                }
-                message::TAGGED_PACKET => {
-                    match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
-                        Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
-                        Err(e) => {
-                            match sequenced {
-                                true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
-                                false => return Err(e)
-                            }
-                        }
-                    }
-                }
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
+                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of
