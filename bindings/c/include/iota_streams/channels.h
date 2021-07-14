@@ -107,8 +107,8 @@ extern err_t transport_get_link_details(transport_details_t *details, transport_
 ////////////
 typedef struct Author author_t;
 
-extern err_t auth_new(author_t **auth, char const *seed, char const *encoding, size_t payload_length, uint8_t multi_branching, transport_t *transport);
-extern err_t auth_recover(author_t **auth, char const *seed, address_t const *announcement, uint8_t multi_branching, transport_t *transport);
+extern err_t auth_new(author_t **auth, char const *seed, uint8_t implementation, transport_t *transport);
+extern err_t auth_recover(author_t **auth, char const *seed, address_t const *announcement, uint8_t implementation, transport_t *transport);
 extern void auth_drop(author_t *);
 
 extern err_t auth_import(author_t **auth, buffer_t buffer, char const *password, transport_t *transport);
@@ -188,6 +188,7 @@ extern err_t sub_receive_msg(unwrapped_message_t const *umsg, subscriber_t *subs
 extern err_t sub_fetch_next_msgs(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern err_t sub_sync_state(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern err_t sub_fetch_state(user_state_t const **state, subscriber_t *subscriber);
+extern err_t sub_reset_state(subscriber_t *subscriber);
 // Store Psk
 extern err_t sub_store_psk(psk_id_t const **pskid, subscriber_t *subscriber, char const *psk);
 

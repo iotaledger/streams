@@ -42,11 +42,16 @@ int main()
   author_t *recovered_auth = NULL;
   address_t const *recovered_state_link = NULL;
   address_t const *original_state_link = NULL;
+  address_t const *original_sub_state_link = NULL;
+  address_t const *reset_sub_state_link = NULL;
   user_state_t const *recovered_auth_state = NULL;
   user_state_t const *original_auth_state = NULL;
+  user_state_t const *original_sub_state = NULL;
+  user_state_t const *reset_sub_state = NULL;
 
   public_key_t const *recovered_auth_pk = NULL;
   public_key_t const *original_auth_pk = NULL;
+  public_key_t const *sub_a_pk = NULL;
   char const *recovered_link_id = NULL;
   char const *original_link_id = NULL;
 
@@ -187,6 +192,13 @@ cleanup0:
     e = sub_receive_announce(subC, ann_link);
     printf("%s\n", !e ? "done" : "failed");
     if(e) goto cleanup;
+
+    // Collect Subscriber A state for comparison later
+    printf("Retrieving link from subscriber A state for later comparison");
+    e = sub_fetch_state(&original_sub_state, subA);
+    if(e) goto cleanup;
+    e = sub_get_public_key(&sub_a_pk, subA);
+    original_sub_state_link = get_link_from_state(original_sub_state, sub_a_pk);
   }
   printf("\n");
   if(e) goto cleanup;
@@ -540,6 +552,28 @@ cleanup8:
   printf("\n");
   if(e) goto cleanup;
 
+  {
+    printf("Resetting subscriber state... ");
+    e = sub_reset_state(subA);
+    if(e) goto cleanup;
+    printf("Fetching subscriber state... ");
+    e = sub_fetch_state(&reset_sub_state, subA);
+    if(e) goto cleanup10;
+    reset_sub_state_link = get_link_from_state(reset_sub_state, sub_a_pk);
+
+    char const *reset_state_link_id = get_address_id_str(reset_sub_state_link);
+    char const *original_state_link_id = get_address_id_str(original_sub_state_link);
+
+    printf("  reset sub state link: '%s'\n", reset_state_link_id);
+    printf("  original  state link: '%s'\n", original_state_link_id);
+  }
+  printf("\n");
+  if(e) goto cleanup;
+
+cleanup10:
+  drop_user_state(reset_sub_state);
+  drop_address(reset_sub_state_link);
+
 cleanup:
   drop_links(tagged_packet_links);
   drop_links(signed_packet_links);
@@ -549,8 +583,10 @@ cleanup:
   sub_drop(subA);
 
   drop_address(ann_link);
-    auth_drop(auth);
+  auth_drop(auth);
   transport_drop(tsp);
+  drop_user_state(original_sub_state);
+  drop_address(original_sub_state_link);
 
   return (e == ERR_OK ? 0 : 1);
 }

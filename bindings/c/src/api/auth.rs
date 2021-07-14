@@ -111,7 +111,7 @@ pub unsafe extern "C" fn auth_channel_address(addr: *mut *const ChannelAddress, 
                 Err::Ok
             })
         })
-    }
+    })
 }
 
 #[no_mangle]
