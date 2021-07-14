@@ -125,6 +125,13 @@ impl<Trans> User<Trans> {
         self.user.fetch_state()
     }
 
+    /// Resets the cursor state storage to allow a Subscriber to retrieve all messages in a channel
+    /// from scratch
+    /// [Subscriber]
+    pub fn reset_state(&mut self) -> Result<()> {
+        self.user.reset_state()
+    }
+
     /// Generate a vector containing the next sequenced message identifier for each publishing
     /// participant in the channel
     /// [Author, Subscriber]

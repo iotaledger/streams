@@ -253,6 +253,23 @@ where
         Ok(())
     }
 
+    /// Reset link store and key store to original state
+    pub fn reset_state(&mut self) -> Result<()> {
+        match &self.appinst {
+            Some(appinst) => {
+                let mut pk_store = PKS::default();
+                for (pk, _cursor) in self.pk_store.iter() {
+                    pk_store.insert(*pk, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
+                }
+                self.pk_store = pk_store;
+
+                self.link_gen.reset(appinst.clone());
+                Ok(())
+            },
+            None => err(UserNotRegistered),
+        }
+    }
+
     /// Save spongos and info associated to the message link
     pub fn commit_wrapped(
         &mut self,
