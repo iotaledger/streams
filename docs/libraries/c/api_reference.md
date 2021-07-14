@@ -2,20 +2,18 @@
 
 ### Author
 
-#### auth_new(auth, seed, encoding, payload_length, multi_branching, tsp): [err_t](#Err) 
+#### auth_new(auth, seed, implementation, tsp): [err_t](#Err) 
 Generates an Author instance 
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
 | auth            | `author_t *`                           | Placeholder for resulting Author instance |
 | seed            | `char const *`                         | Unique user seed         |
-| encoding        | `char const *`                         | Payload encoding         |
-| payload_length  | `size_t`                               | Payload max length       |
-| multi_branching | `uint8_t`                              | Channel Type             | 
+| implementation  | `uint8_t`                              | Channel Type             | 
 | tsp             | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** Error code.
 
-#### auth_recover(auth, seed, announcement, multi_branching, tsp): [err_t](#Err) 
+#### auth_recover(auth, seed, announcement, implementation, tsp): [err_t](#Err) 
 Recover an Author instance using the announcement address link and seed.
 
 | Param           | Type                                   | Description              |
@@ -23,7 +21,7 @@ Recover an Author instance using the announcement address link and seed.
 | auth            | `author_t *`                           | Placeholder for resulting Author instance |
 | seed            | `char const *`                         | Unique user seed         |
 | announcement    | [`address_t const *`](#Address)        | Announcement link        |
-| multi_branching | `uint8_t`                              | Channel Type             | 
+| implementation | `uint8_t`                              | Channel Type             | 
 | tsp             | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** A recovered Author instance for administrating a channel.
 
@@ -215,6 +213,28 @@ Fetch the next message sent by each publisher (empty array if none are present).
 | author          | `author_t *`                  | Author instance                     |
 **Returns:** Error code.
 
+#### auth_fetch_prev_msg(msg, author, address): [err_t](#Err)
+Fetch the previous message sent before the defined message link.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| msg             | `unwrapped_message_t const *` | Placeholder for resulting UnwrappedMessage wrapper for retrieved message |
+| author          | `author_t *`                  | Author instance                     |
+| address         | `address_t const *`           | Link of message to start retrieval from |
+**Returns:** Error code.
+
+#### auth_fetch_prev_msgs(msgs, author, address, max): [err_t](#Err)
+Fetch a defined number of previous messages in a channel.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| msgs            | `unwrapped_messages_t const *` | Placeholder for resulting UnwrappedMessages wrapper for retrieved messages |
+| author          | `author_t *`                  | Author instance                     |
+| address         | `address_t const *`           | Link of message to start retrieval from |
+| max             | `size_t`                      | Maximum number of previous messages to retrieve |
+**Returns:** Error code.
+
+
 #### auth_gen_next_msg_ids(ids, author): [err_t](#Err) 
 Fetch the next message sent by each publisher (empty array if none are present).
 
@@ -246,15 +266,13 @@ Stores a given Pre Shared Key (Psk) into the Author instance, returning a Pre Sh
 
 ### Subscriber 
 
-#### sub_new(sub, seed, encoding, payload_length, transport): [err_t](#Err) 
+#### sub_new(sub, seed, transport): [err_t](#Err) 
 Generates a new Subscriber instance 
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
 | sub             | `subscriber_t *`                       | Placeholder for resulting Subscriber instance |
 | seed            | `char const *`                         | Unique user seed         |
-| encoding        | `char const *`                         | Payload encoding         |
-| payload_length  | `size_t`                               | Payload max length       |
 | transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** Error code.
 
@@ -466,6 +484,27 @@ Fetch the next message sent by each publisher (empty array if none are present).
 | --------------- | ----------------------------- | ----------------------------------- |
 | umsgs           | [`unwrapped_messages_t const **`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
 | subscriber       | `subscriber_t *`             | Subscriber instance                 |
+**Returns:** Error code.
+
+#### sub_fetch_prev_msg(msg, subscriber, address): [err_t](#Err)
+Fetch the previous message sent before the defined message link.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| msg             | `unwrapped_message_t const *` | Placeholder for resulting UnwrappedMessage wrapper for retrieved message |
+| subscriber      | `subscriber_t *`              | Subscriber instance                 |
+| address         | `address_t const *`           | Link of message to start retrieval from |
+**Returns:** Error code.
+
+#### sub_fetch_prev_msgs(msgs, subscriber, address, max): [err_t](#Err)
+Fetch a defined number of previous messages in a channel.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| msgs            | `unwrapped_messages_t const *` | Placeholder for resulting UnwrappedMessages wrapper for retrieved messages |
+| subscriber      | `subscriber_t *`              | Subscriber instance                 |
+| address         | `address_t const *`           | Link of message to start retrieval from |
+| max             | `size_t`                      | Maximum number of previous messages to retrieve |
 **Returns:** Error code.
 
 #### sub_gen_next_msg_ids(ids, subscriber): [err_t](#Err)

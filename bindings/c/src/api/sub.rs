@@ -394,9 +394,9 @@ pub unsafe extern "C" fn sub_fetch_prev_msg(m: *mut *const UnwrappedMessage, use
     m.as_mut().map_or(Err::NullArgument, |m| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             address.as_ref().map_or(Err::NullArgument, |addr| {
-                user.fetch_prev_msg(addr).map_or(Err::OperationFailed, |m| {
-                    *m = safe_into_ptr(m);
-                    Err::OK
+                user.fetch_prev_msg(addr).map_or(Err::OperationFailed, |msg| {
+                    *m = safe_into_ptr(msg);
+                    Err::Ok
                 })
             })
         })
@@ -408,8 +408,8 @@ pub unsafe extern "C" fn sub_fetch_prev_msgs(umsgs: *mut *const UnwrappedMessage
     umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             address.as_ref().map_or(Err::NullArgument, |addr| {
-                user.fetch_prev_msgs(addr, num_msgs).map_or(Err::OperationFailed, |umsgs| {
-                    *umsgs = safe_into_ptr(umsgs);
+                user.fetch_prev_msgs(addr, num_msgs).map_or(Err::OperationFailed, |msgs| {
+                    *umsgs = safe_into_ptr(msgs);
                     Err::Ok
                 })
             })
@@ -459,9 +459,10 @@ pub unsafe extern "C" fn sub_store_psk(c_pskid: *mut *const PskId, c_user: *mut 
             c_pskid.as_mut().map_or(Err::NullArgument, |pskid| {
                 let psk = psk_from_seed(psk_seed.as_ref());
                 let id = pskid_from_psk(&psk);
-                user.store_psk(id, psk);
-                *pskid = safe_into_ptr(id);
-                Err::Ok
+                user.store_psk(id, psk).map_or(Err::OperationFailed, |_| {
+                    *pskid = safe_into_ptr(id);
+                    Err::Ok
+                })
             })
         })
     })
