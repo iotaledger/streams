@@ -32,8 +32,8 @@ pub use transport::{
     TransportOptions as _,
 };
 
-use super::DefaultF;
 pub use super::ChannelType;
+use super::DefaultF;
 use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
@@ -136,7 +136,9 @@ impl MessageContent {
         }
     }
 
-    pub fn unreadable() -> Self { Self::Unreadable }
+    pub fn unreadable() -> Self {
+        Self::Unreadable
+    }
 }
 
 /// Generic unwrapped message type containing possible message contents
