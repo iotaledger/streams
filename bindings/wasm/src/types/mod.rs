@@ -3,17 +3,20 @@ use core::{
     convert::TryFrom,
 };
 use iota_streams::{
-    app::transport::tangle::client::{
-        iota_client::{
-            bee_rest_api::types::{
-                dtos::LedgerInclusionStateDto,
-                responses::MessageMetadataResponse as ApiMessageMetadata,
+    app::{
+        message::Cursor as ApiCursor,
+        transport::tangle::client::{
+            iota_client::{
+                bee_rest_api::types::{
+                    dtos::LedgerInclusionStateDto,
+                    responses::MessageMetadataResponse as ApiMessageMetadata,
+                },
+                MilestoneResponse as ApiMilestoneResponse,
             },
-            MilestoneResponse as ApiMilestoneResponse,
-        },
-        Client,
-        Details as ApiDetails,
-        SendOptions as ApiSendOptions,
+            Client,
+            Details as ApiDetails,
+            SendOptions as ApiSendOptions,
+        }
     },
     app_channels::api::tangle::{
         Address as ApiAddress,
@@ -218,6 +221,52 @@ pub struct UserResponse {
 pub struct NextMsgId {
     pk: String,
     msgid: Address,
+}
+
+#[wasm_bindgen]
+pub struct UserState {
+    pk: String,
+    cursor: Cursor,
+}
+
+#[wasm_bindgen]
+pub struct Cursor {
+    link: Address,
+    seq_no: u32,
+    branch_no: u32,
+}
+
+impl From<ApiCursor<ApiAddress>> for Cursor {
+    fn from(cursor: ApiCursor<ApiAddress>) -> Self {
+        Cursor {
+            link: Address::from_string(cursor.link.to_string()),
+            seq_no: cursor.seq_no,
+            branch_no: cursor.branch_no
+        }
+    }
+}
+
+#[wasm_bindgen]
+impl UserState {
+    pub fn new(pk: String, cursor: Cursor) -> Self {
+        UserState { pk, cursor }
+    }
+
+    pub fn get_pk(&self) -> String {
+        self.pk.clone()
+    }
+
+    pub fn get_link(&self) -> Address {
+        self.cursor.link.copy()
+    }
+
+    pub fn get_seq_no(&self) -> u32 {
+        self.cursor.seq_no
+    }
+
+    pub fn get_branch_no(&self) -> u32 {
+        self.cursor.branch_no
+    }
 }
 
 #[wasm_bindgen]

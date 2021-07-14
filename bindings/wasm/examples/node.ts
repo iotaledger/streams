@@ -45,6 +45,9 @@ async function main() {
     let ann_link_copy = ann_link.copy();
     await sub.clone().receive_announcement(ann_link_copy);
 
+    // copy state for comparison after reset later
+    let start_state = sub.fetch_state();
+
     console.log("Subscribing...");
     ann_link_copy = ann_link.copy();
     response = await sub.clone().send_subscribe(ann_link_copy);
@@ -101,6 +104,21 @@ async function main() {
             );
         }
     }
+
+    console.log("\nSubscriber resetting state");
+    sub.clone().reset_state();
+    let reset_state = sub.fetch_state();
+
+    var matches = true;
+    for (var i = 0; i < reset_state.length; i++) {
+        if (start_state[i].get_link().to_string() != reset_state[i].get_link().to_string() ||
+            start_state[i].get_seq_no() != reset_state[i].get_seq_no() ||
+            start_state[i].get_branch_no() != reset_state[i].get_branch_no()) {
+            matches = false;
+        }
+    }
+
+    if (matches) { console.log("States match"); } else { console.log("States do not match"); }
 
     console.log("\nAuthor fetching prev messages");
     let prev_msgs = await auth.clone().fetch_prev_msgs(last_link, 3);
