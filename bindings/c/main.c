@@ -176,7 +176,7 @@ cleanup0:
 
     char const subC_seed[] = "SUBSCRIBERC9SEED";
     printf("Making SubC with seed '%s'... ", subC_seed);
-    e = sub_new(&subC, subC_seed, encoding, size, tsp);
+    e = sub_new(&subC, subC_seed, tsp);
     printf("%s\n", !e ? "done" : "failed");
     if(e) goto cleanup;
 
@@ -486,8 +486,7 @@ cleanup7:
     unwrapped_messages_t const *message_returns = NULL;
 
 
-
-      printf("Recovering author... ");
+    printf("Recovering author... ");
     e = auth_recover(&recovered_auth, seed, ann_link, implementation_type, tsp);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
@@ -514,7 +513,7 @@ cleanup7:
     printf("  original  state link: '%s'\n", original_link_id);
 
     printf("Author fetching previous messages... ");
-    e = auth_fetch_prev_msgs(auth, &message_returns, 3);
+    e = auth_fetch_prev_msgs(&message_returns, auth, recovered_state_link, 3);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup;
 
