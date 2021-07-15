@@ -21,7 +21,7 @@ Recover an Author instance using the announcement address link and seed.
 | auth            | `author_t *`                           | Placeholder for resulting Author instance |
 | seed            | `char const *`                         | Unique user seed         |
 | announcement    | [`address_t const *`](#Address)        | Announcement link        |
-| implementation | `uint8_t`                              | Channel Type             | 
+| implementation  | `uint8_t`                              | Channel Type             | 
 | tsp             | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** A recovered Author instance for administrating a channel.
 
@@ -228,7 +228,7 @@ Fetch a defined number of previous messages in a channel.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| msgs            | `unwrapped_messages_t const *` | Placeholder for resulting UnwrappedMessages wrapper for retrieved messages |
+| msgs            | `unwrapped_messages_t const *`| Placeholder for resulting UnwrappedMessages wrapper for retrieved messages |
 | author          | `author_t *`                  | Author instance                     |
 | address         | `address_t const *`           | Link of message to start retrieval from |
 | max             | `size_t`                      | Maximum number of previous messages to retrieve |
