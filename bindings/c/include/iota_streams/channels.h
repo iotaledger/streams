@@ -107,8 +107,8 @@ extern err_t transport_get_link_details(transport_details_t *details, transport_
 ////////////
 typedef struct Author author_t;
 
-extern err_t auth_new(author_t **auth, char const *seed, char const *encoding, size_t payload_length, uint8_t multi_branching, transport_t *transport);
-extern err_t auth_recover(author_t **auth, char const *seed, address_t const *announcement, uint8_t multi_branching, transport_t *transport);
+extern err_t auth_new(author_t **auth, char const *seed, uint8_t implementation, transport_t *transport);
+extern err_t auth_recover(author_t **auth, char const *seed, address_t const *announcement, uint8_t implementation, transport_t *transport);
 extern void auth_drop(author_t *);
 
 extern err_t auth_import(author_t **auth, buffer_t buffer, char const *password, transport_t *transport);
@@ -141,6 +141,8 @@ extern err_t auth_gen_next_msg_ids(next_msg_ids_t const **ids, author_t *author)
 extern err_t auth_receive_msg(unwrapped_message_t const **msg, author_t *author, address_t const *address);
 // Fetching/Syncing
 extern err_t auth_fetch_next_msgs(unwrapped_messages_t const **umsgs, author_t *author);
+extern err_t auth_fetch_prev_msg(unwrapped_message_t const **umsg, author_t *author, address_t const *address);
+extern err_t auth_fetch_prev_msgs(unwrapped_messages_t const **umsgs, author_t *author, address_t const *address, size_t num_msgs);
 extern err_t auth_sync_state(unwrapped_messages_t const **umsgs, author_t *author);
 extern err_t auth_fetch_state(user_state_t const **state, author_t *author);
 // Store Psk
@@ -151,7 +153,7 @@ extern err_t auth_store_psk(psk_id_t const **pskid, author_t *author, char const
 // Subscriber
 /////////////
 typedef struct Subscriber subscriber_t;
-extern err_t sub_new(subscriber_t **sub, char const *seed, char const *encoding, size_t payload_length, transport_t *transport);
+extern err_t sub_new(subscriber_t **sub, char const *seed, transport_t *transport);
 extern err_t sub_recover(subscriber_t **sub, char const *seed, address_t const *announcement, transport_t *transport);
 extern err_t sub_import(subscriber_t **sub, buffer_t buffer, char const *password, transport_t *transport);
 extern err_t sub_export(buffer_t *buf, subscriber_t const *subscriber, char const *password);
@@ -176,7 +178,7 @@ extern err_t sub_receive_keyload_from_ids(message_links_t *links, subscriber_t *
 extern err_t sub_send_tagged_packet(message_links_t *links, subscriber_t *subscriber, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);
 extern err_t sub_receive_tagged_packet(packet_payloads_t *payloads, subscriber_t *subscriber, address_t const *address);
 // Signed Packets
-extern err_t *sub_send_signed_packet(message_links_t *links, subscriber_t *subscriber, message_links_t *link_to, char *public_payload, char *private_payload);
+extern err_t sub_send_signed_packet(message_links_t *links, subscriber_t *subscriber, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);
 extern err_t sub_receive_signed_packet(packet_payloads_t *payloads, subscriber_t *subscriber, address_t const *address);
 // Sequence Message (for multi branch use)
 extern err_t sub_receive_sequence(address_t const **address, subscriber_t *subscriber, address_t const *seq_address);
@@ -186,6 +188,8 @@ extern err_t sub_gen_next_msg_ids(next_msg_ids_t const **ids, subscriber_t *subs
 extern err_t sub_receive_msg(unwrapped_message_t const *umsg, subscriber_t *subscriber, address_t const *address);
 // Fetching/Syncing
 extern err_t sub_fetch_next_msgs(unwrapped_messages_t const **messages, subscriber_t *subscriber);
+extern err_t sub_fetch_prev_msg(unwrapped_message_t const **umsg, subscriber_t *subscriber, address_t const *address);
+extern err_t sub_fetch_prev_msgs(unwrapped_messages_t const **umsgs, subscriber_t *subscriber, address_t const *address, size_t num_msgs);
 extern err_t sub_sync_state(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern err_t sub_fetch_state(user_state_t const **state, subscriber_t *subscriber);
 // Store Psk
