@@ -15,7 +15,7 @@
     <a href="https://iota.stackexchange.com/" style="text-decoration:none;"><img src="https://img.shields.io/badge/StackExchange-9cf.svg?logo=stackexchange" alt="StackExchange"></a>
     <a href="https://raw.githubusercontent.com/iotaledger/streams/master/LICENSE" style="text-decoration:none;"><img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="Apache 2.0 license"></a>
 </p>
-      
+
 <p align="center">
   <a href="#about">About</a> ◈
   <a href="#prerequisites">Prerequisites</a> ◈
@@ -60,7 +60,7 @@ rustup update stable
 
 ## Installation
 
-To use the library in your crate you need to add it as a dependancy in the `Cargo.toml` file.
+To use the library in your crate you need to add it as a dependency in the `Cargo.toml` file.
 
 Because the library is not on [crates.io](https://crates.io/), you need to use the Git repository either remotely or locally.
 

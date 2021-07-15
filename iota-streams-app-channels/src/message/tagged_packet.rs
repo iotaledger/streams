@@ -1,6 +1,8 @@
-//! `TaggedPacket` message content. The message may be linked to any other message
-//! in the channel. It contains both plain and masked payloads. The message is
-//! authenticated with MAC and can be published by channel owner or by a recipient.
+//! `TaggedPacket` message content. The message has a plain and masked payload and is authenticated
+//! with MAC.
+//!
+//! The message may be linked to any other message in the channel and can be published by any
+//! participant in a channel.
 //!
 //! ```ddml
 //! message TaggedPacket {
@@ -8,7 +10,7 @@
 //!     absorb bytes public_payload;
 //!     mask bytes masked_payload;
 //!     commit;
-//!     squeeze byte mac[81];
+//!     squeeze byte mac[32];
 //! }
 //! ```
 //!

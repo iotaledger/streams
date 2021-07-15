@@ -1,4 +1,4 @@
-import * as streams from '../wasm-node/iota_streams_wasm';
+import * as streams from '../node/streams_wasm';
 
 import * as fetch from 'node-fetch';
 
@@ -24,6 +24,7 @@ main()
     });
 
 async function main() {
+    // Default is a load balancer, if you have your own node it's recommended to use that instead
     let node = "https://chrysalis-nodes.iota.org/";
     let options = new streams.SendOptions(node, true);
     let seed = make_seed(81);
@@ -35,6 +36,9 @@ async function main() {
     let response = await auth.clone().send_announce();
     let ann_link = response.get_link();
     console.log("announced at: ", ann_link.to_string());
+
+    let details = await auth.clone().get_client().get_link_details(ann_link.copy());
+    console.log("Announce message id: " + details.get_metadata().message_id)
 
     let seed2 = make_seed(81);
     let sub = new streams.Subscriber(seed2, options.clone());

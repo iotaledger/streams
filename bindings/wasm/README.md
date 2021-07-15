@@ -3,10 +3,8 @@
 ## Setup for development
 
 ```bash
-git clone https://github.com/iota-community/streams
-cd streams
-git checkout feat/wasm-binding
-cd bindings/wasm
+git clone https://github.com/iotaledger/streams
+cd streams/bindings/wasm
 npm install
 ```
 

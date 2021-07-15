@@ -13,13 +13,20 @@ use iota_streams::{
         tangle::client::Client as ApiClient,
         TransportOptions,
     },
-    app_channels::api::tangle::{
-        Address as ApiAddress,
-        Subscriber as ApiSubscriber,
+    app_channels::api::{
+        psk_from_seed,
+        pskid_from_psk,
+        tangle::{
+            Address as ApiAddress,
+            Subscriber as ApiSubscriber,
+        },
     },
-    core::prelude::{
-        Rc,
-        String,
+    core::{
+        prelude::{
+            Rc,
+            String,
+        },
+        psk::pskid_to_hex_string,
     },
     ddml::types::*,
 };
@@ -76,13 +83,27 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
+    pub fn get_client(&self) -> Client {
+        Client(self.subscriber.borrow_mut().get_transport().clone())
+    }
+
+    #[wasm_bindgen(catch)]
     pub fn is_multi_branching(&self) -> Result<bool> {
         Ok(self.subscriber.borrow_mut().is_multi_branching())
     }
 
     #[wasm_bindgen(catch)]
+    pub fn store_psk(&self, psk_seed_str: String) -> String {
+        let psk = psk_from_seed(psk_seed_str.as_bytes());
+        let pskid = pskid_from_psk(&psk);
+        let pskid_str = pskid_to_hex_string(&pskid);
+        self.subscriber.borrow_mut().store_psk(pskid, psk);
+        pskid_str
+    }
+
+    #[wasm_bindgen(catch)]
     pub fn get_public_key(&self) -> Result<String> {
-        Ok(hex::encode(self.subscriber.borrow_mut().get_pk().to_bytes().to_vec()))
+        Ok(public_key_to_string(self.subscriber.borrow_mut().get_pk()))
     }
 
     #[wasm_bindgen(catch)]
@@ -174,7 +195,7 @@ impl Subscriber {
                         link,
                         None,
                         Some(Message::new(
-                            Some(hex::encode(pk.as_bytes())),
+                            Some(public_key_to_string(&pk)),
                             pub_bytes.0,
                             masked_bytes.0,
                         )),

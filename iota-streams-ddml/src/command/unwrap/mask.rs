@@ -24,7 +24,6 @@ use iota_streams_core::{
     wrapped_err,
     Errors::PublicKeyGenerationFailure,
     WrappedError,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,

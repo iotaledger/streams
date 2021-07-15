@@ -10,7 +10,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     try_or,
     Errors::BadMac,
-    LOCATION_LOG,
 };
 
 /// External values are not encoded. Squeeze and compare tag trits.

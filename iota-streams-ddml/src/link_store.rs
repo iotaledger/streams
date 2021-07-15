@@ -21,7 +21,6 @@ use iota_streams_core::{
         GenericLinkNotFound,
         MessageLinkNotFoundInTangle,
     },
-    LOCATION_LOG,
 };
 
 /// The `link` type is generic and transport-specific. Links can be address+tag pair

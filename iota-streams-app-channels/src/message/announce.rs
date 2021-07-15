@@ -1,4 +1,5 @@
 //! `Announce` message content. This is the initial message of the Channel application instance.
+//!
 //! It announces channel owner's public keys: Ed25519 signature key and corresponding X25519 key
 //! exchange key (derived from Ed25519 public key). The `Announce` message is similar to
 //! self-signed certificate in a conventional PKI.
