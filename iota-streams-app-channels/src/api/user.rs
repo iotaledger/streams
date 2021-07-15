@@ -265,7 +265,7 @@ where
 
                 self.link_gen.reset(appinst.clone());
                 Ok(())
-            },
+            }
             None => err(UserNotRegistered),
         }
     }

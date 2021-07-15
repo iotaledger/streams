@@ -16,7 +16,7 @@ use iota_streams::{
             Client,
             Details as ApiDetails,
             SendOptions as ApiSendOptions,
-        }
+        },
     },
     app_channels::api::tangle::{
         Address as ApiAddress,
@@ -241,7 +241,7 @@ impl From<ApiCursor<ApiAddress>> for Cursor {
         Cursor {
             link: Address::from_string(cursor.link.to_string()),
             seq_no: cursor.seq_no,
-            branch_no: cursor.branch_no
+            branch_no: cursor.branch_no,
         }
     }
 }
