@@ -1,6 +1,6 @@
 /target
 
 node_modules
-wasm-web
-wasm-node
+web
+node
 pkg

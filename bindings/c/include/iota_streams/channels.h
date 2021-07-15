@@ -178,7 +178,7 @@ extern err_t sub_receive_keyload_from_ids(message_links_t *links, subscriber_t *
 extern err_t sub_send_tagged_packet(message_links_t *links, subscriber_t *subscriber, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);
 extern err_t sub_receive_tagged_packet(packet_payloads_t *payloads, subscriber_t *subscriber, address_t const *address);
 // Signed Packets
-extern err_t sub_send_signed_packet(message_links_t *links, subscriber_t *subscriber, message_links_t *link_to, char *public_payload, char *private_payload);
+extern err_t sub_send_signed_packet(message_links_t *links, subscriber_t *subscriber, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);
 extern err_t sub_receive_signed_packet(packet_payloads_t *payloads, subscriber_t *subscriber, address_t const *address);
 // Sequence Message (for multi branch use)
 extern err_t sub_receive_sequence(address_t const **address, subscriber_t *subscriber, address_t const *seq_address);
