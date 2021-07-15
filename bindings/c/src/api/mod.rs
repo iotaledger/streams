@@ -9,6 +9,7 @@ use iota_streams::{
             size_t,
             uint8_t,
         },
+        identifier::Identifier,
         message::Cursor,
         transport::tangle::{
             get_hash,
@@ -604,4 +605,3 @@ pub use auth::*;
 
 mod sub;
 pub use sub::*;
-use iota_streams::app::identifier::Identifier;
