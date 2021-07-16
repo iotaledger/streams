@@ -194,5 +194,5 @@ jobs:
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
           cmakeAppendedArgs: '-DCMAKE_BUILD_TYPE=Release'
-          buildWithCMakeArgs: '-- -v'
+          buildWithCMakeArgs: '-- -v normal'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
