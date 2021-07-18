@@ -188,11 +188,21 @@ jobs:
             ${{ github.workspace }}/bindings/c/./cargo/build/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: configure build
+      - name: configure build Mac/Linux
+        if: "!contains( matrix.os, 'windows')"
         uses: lukka/run-cmake@v3
         with:
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
           cmakeAppendedArgs: '-DCMAKE_BUILD_TYPE=Release'
-          buildWithCMakeArgs: '-- -v normal'
+          buildWithCMakeArgs: '-- -v'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
+
+      - name: configure build Windows
+        if: "contains( matrix.os, 'windows')"
+        uses: lukka/run-cmake@v3
+        with:
+          cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
+          cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
+          buildDirectory: '${{ github.workspace }}/bindings/c/build/'
+          cmakeAppendedArgs: '-G"Visual Studio 16 2019" -Ax64'
