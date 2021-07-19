@@ -187,3 +187,7 @@ jobs:
           cmakeAppendedArgs: '-DCMAKE_BUILD_TYPE=Release'
           buildWithCMakeArgs: '-- -v'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
+      - name: Run bucket test
+        if: "!contains( matrix.os, 'windows')"
+        run: ./iota_streams_c_static
+        working-directory: bindings/c/build
