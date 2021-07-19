@@ -189,7 +189,7 @@ jobs:
         working-directory: bindings/c
         run: |
           cmake -G "NMake Makefiles" CMakeLists.txt
-          nmake /NODEFAULTLIB:library
+          nmake . /NODEFAULTLIB:library
 
       - name: configure build Mac/Linux
         if: "!contains( matrix.os, 'windows')"
