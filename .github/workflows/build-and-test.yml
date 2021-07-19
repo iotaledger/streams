@@ -189,5 +189,5 @@ jobs:
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
       - name: Run bucket test
         if: "!contains( matrix.os, 'windows')"
-        run: ./build/iota_streams_c_static
+        run: ${{ github.workspace }}/bindings/c/build/iota_streams_c_static
         working-directory: bindings/c/build
