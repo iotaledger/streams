@@ -186,7 +186,7 @@ jobs:
 
       - name: Build something requiring CL.EXE
         run: |
-          cmake -G "NMake Makefiles" .
+          cmake -G "NMake Makefiles" ${{ github.workspace }}/bindings/c/CMakeLists.txt
           nmake
 
       - name: configure build Mac/Linux
