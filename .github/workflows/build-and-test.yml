@@ -186,9 +186,10 @@ jobs:
 
       - name: Build something requiring CL.EXE
         if: "contains( matrix.os, 'windows')"
+        working-directory: bindings/c
         run: |
-          cmake -G "NMake Makefiles" ${{ github.workspace }}/bindings/c/CMakeLists.txt
-          nmake /F ${{ github.workspace }}\bindings\c
+          cmake -G "NMake Makefiles" CMakeLists.txt
+          nmake
 
       - name: configure build Mac/Linux
         if: "!contains( matrix.os, 'windows')"
