@@ -151,12 +151,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
     
     steps:
       - uses: actions/checkout@v2
-
-      - uses: lukka/get-cmake@latest
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
@@ -180,19 +178,13 @@ jobs:
 
       - name: configure build Mac/Linux
         uses: lukka/run-cmake@v3
-        if: "!contains( matrix.os, 'windows')"
         with:
           cmakeBuildType: "Release"
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
           buildWithCMakeArgs: '-- -v'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
-          buildWithCMake: true
-      - name: Printing build
-        if: "!contains( matrix.os, 'windows')"
-        run: ls
+          buildWithCMake: false
+      - name: Running make
+        run: make
         working-directory: '${{ github.workspace }}/bindings/c/build'
-      - name: Run bucket test
-        if: "!contains( matrix.os, 'windows')"
-        run: ./iota_streams_c_static
-        working-directory: bindings/c/build
