@@ -66,10 +66,11 @@ jobs:
       - name: Run example (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
         uses: actions-rs/cargo@v1
-        working-directory: '${{ github.workspace }}/examples'
         with:
           command: run
           args: --release
+          directory: '${{ github.workspace }}/examples'
+          
   nodejs-bindings:
     runs-on: ${{ matrix.os }}
     strategy:
