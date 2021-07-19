@@ -190,7 +190,7 @@ jobs:
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
       - name: Printing build
         run: ls
-        working-directory: '${{ github.workspace }}/bindings/c/build/'
+        working-directory: '${{ github.workspace }}/bindings/c/'
       - name: Run bucket test
         if: "!contains( matrix.os, 'windows')"
         run: ${{ github.workspace }}/bindings/c/iota_streams_c_static
