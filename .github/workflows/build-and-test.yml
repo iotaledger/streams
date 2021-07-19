@@ -185,13 +185,16 @@ jobs:
           cmakeBuildType: "Release"
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
-          cmakeAppendedArgs: '-DCMAKE_BUILD_TYPE=Release'
           buildWithCMakeArgs: '-- -v'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
+          buildWithCMake: false
+      - name: Running make
+        run: make
+        working-directory: '${{ github.workspace }}/bindings/c/build'
       - name: Printing build
         run: ls
-        working-directory: '${{ github.workspace }}/bindings/c/'
+        working-directory: '${{ github.workspace }}/bindings/c/build'
       - name: Run bucket test
         if: "!contains( matrix.os, 'windows')"
-        run: ${{ github.workspace }}/bindings/c/iota_streams_c_static
+        run: ./iota_streams_c_static
         working-directory: bindings/c/build
