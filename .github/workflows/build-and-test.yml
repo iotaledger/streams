@@ -179,15 +179,16 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: ilammy/msvc-dev-cmd@v1
-        if: matrix.os == 'windows-latest'
+        if: "contains( matrix.os, 'windows')"
         with:
           version: "11.0"
           directory: ${{ runner.temp }}/llvm
 
       - name: Build something requiring CL.EXE
+        if: "contains( matrix.os, 'windows')"
         run: |
           cmake -G "NMake Makefiles" ${{ github.workspace }}/bindings/c/CMakeLists.txt
-          nmake
+          nmake /F ${{ github.workspace }}/bindings/c
 
       - name: configure build Mac/Linux
         if: "!contains( matrix.os, 'windows')"
