@@ -178,6 +178,17 @@ jobs:
             ${{ github.workspace }}/bindings/c/./cargo/build/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.os == 'windows-latest'
+        with:
+          version: "11.0"
+          directory: ${{ runner.temp }}/llvm
+
+      - name: Build something requiring CL.EXE
+        run: |
+          cmake -G "NMake Makefiles" .
+          nmake
+
       - name: configure build Mac/Linux
         if: "!contains( matrix.os, 'windows')"
         uses: lukka/run-cmake@v3
@@ -187,13 +198,3 @@ jobs:
           cmakeAppendedArgs: '-DCMAKE_BUILD_TYPE=Release'
           buildWithCMakeArgs: '-- -v'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
-
-      - name: configure build Windows
-        if: "contains( matrix.os, 'windows')"
-        uses: lukka/run-cmake@v3
-        with:
-          cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
-          cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
-          buildDirectory: '${{ github.workspace }}/bindings/c/build/'
-          buildWithCMakeArgs: '--'
-          cmakeAppendedArgs: '-G"Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Release'
