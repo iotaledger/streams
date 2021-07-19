@@ -206,4 +206,4 @@ jobs:
           cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
           buildWithCMakeArgs: '--'
-          cmakeAppendedArgs: '-G"Ninja" -DCMAKE_BUILD_TYPE=Release'
+          cmakeAppendedArgs: '-G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release'
