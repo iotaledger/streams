@@ -205,5 +205,5 @@ jobs:
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
-          buildWithCMakeArgs: '-- -v'
-          cmakeAppendedArgs: '-G"Visual Studio 16 2019" -Ax64 -DCMAKE_BUILD_TYPE=Release'
+          buildWithCMakeArgs: '--'
+          cmakeAppendedArgs: '-G"Ninja" -DCMAKE_BUILD_TYPE=Release'
