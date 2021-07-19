@@ -169,10 +169,6 @@ jobs:
         with:
           version: "11.0"
           directory: ${{ runner.temp }}/llvm
-        
-      - name: Set LIBCLANG_PATH (Windows)
-        run: echo "LIBCLANG_PATH=$((gcm clang).source -replace "clang.exe")" >> $env:GITHUB_ENV
-        if: matrix.os == 'windows-latest'
 
       - name: Cache cargo
         uses: actions/cache@v2
