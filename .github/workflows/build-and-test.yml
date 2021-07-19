@@ -178,19 +178,6 @@ jobs:
             ${{ github.workspace }}/bindings/c/./cargo/build/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: "contains( matrix.os, 'windows')"
-        with:
-          version: "11.0"
-          directory: ${{ runner.temp }}/llvm
-
-      - name: Build something requiring CL.EXE
-        if: "contains( matrix.os, 'windows')"
-        working-directory: bindings/c
-        run: |
-          cmake -G "NMake Makefiles" CMakeLists.txt
-          nmake . /NODEFAULTLIB:library
-
       - name: configure build Mac/Linux
         if: "!contains( matrix.os, 'windows')"
         uses: lukka/run-cmake@v3
