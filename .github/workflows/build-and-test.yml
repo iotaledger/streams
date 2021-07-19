@@ -163,12 +163,6 @@ jobs:
         with:
           toolchain: stable
           override: true
-      
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: matrix.os == 'windows-latest'
-        with:
-          version: "11.0"
-          directory: ${{ runner.temp }}/llvm
 
       - name: Cache cargo
         uses: actions/cache@v2
