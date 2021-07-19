@@ -179,19 +179,17 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: configure build Mac/Linux
-        if: "!contains( matrix.os, 'windows')"
         uses: lukka/run-cmake@v3
+        if: "!contains( matrix.os, 'windows')"
         with:
           cmakeBuildType: "Release"
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeListsTxtPath: '${{ github.workspace }}/bindings/c/CMakeLists.txt'
           buildWithCMakeArgs: '-- -v'
           buildDirectory: '${{ github.workspace }}/bindings/c/build/'
-          buildWithCMake: false
-      - name: Running make
-        run: make
-        working-directory: '${{ github.workspace }}/bindings/c/build'
+          buildWithCMake: true
       - name: Printing build
+        if: "!contains( matrix.os, 'windows')"
         run: ls
         working-directory: '${{ github.workspace }}/bindings/c/build'
       - name: Run bucket test
