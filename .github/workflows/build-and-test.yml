@@ -68,7 +68,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --release --manifest-path '${{ github.workspace }}/examples/cargo.toml'
+          args: --release --manifest-path '${{ github.workspace }}/examples/Cargo.toml'
 
   nodejs-bindings:
     runs-on: ${{ matrix.os }}
