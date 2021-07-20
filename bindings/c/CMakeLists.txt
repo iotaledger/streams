@@ -4,7 +4,7 @@ project(iota_streams_c LANGUAGES C)
 include(FetchContent)
 
 option(NO_STD "Enable no_std build, without iota_client" OFF)
-option(SYNC_CLIENT "Enable sync transport via iota_client" ON)
+option(SYNC_CLIENT "Enable sync transport via iota_client" OFF)
 option(STATIC "Build static library" ON)
 option(RELEASE "Build release library (defaults to release)" ON)
 

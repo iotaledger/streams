@@ -194,3 +194,6 @@ jobs:
       - name: Running make
         run: make
         working-directory: '${{ github.workspace }}/bindings/c/build'
+      - name: Running binary
+        run: ./iota_streams_c_static
+        working-directory: '${{ github.workspace }}/bindings/c/build'
