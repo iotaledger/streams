@@ -121,6 +121,6 @@ fn main_client() {
 
 #[tokio::main]
 async fn main() {
-    // main_pure();
-    main_client();
+    main_pure();
+    // main_client();
 }
