@@ -10,7 +10,6 @@ use iota_streams_app::message::HasLink;
 use iota_streams_core::{
     try_or,
     Errors::*,
-    LOCATION_LOG,
 };
 
 use iota_streams_core::{

@@ -21,6 +21,9 @@ use iota_streams_app::{
     },
 };
 
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+use iota_streams_app::transport::tangle::client::Details as ClientDetails;
+
 pub use message::Cursor;
 // Bring trait methods into scope publicly.
 pub use message::LinkGenerator as _;
@@ -30,15 +33,12 @@ pub use transport::{
 };
 
 pub use super::ChannelType;
+use super::DefaultF;
 use iota_streams_core::psk;
-use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
 
 use iota_streams_core_edsig::signature::ed25519;
-
-/// Default spongos PRP.
-pub type DefaultF = KeccakF1600;
 
 /// Identifiers for Pre-Shared Keys
 pub type PskIds = psk::PskIds;
@@ -50,6 +50,9 @@ pub type ChannelAddress = AppInst;
 
 /// Binary encoded message type.
 pub type Message = TangleMessage<DefaultF>;
+// Details for a message on our tangle transport
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+pub type Details = ClientDetails;
 
 /// Wrapped Message for sending and commit
 pub type WrappedMessage = message::WrappedMessage<DefaultF, Address>;
@@ -83,8 +86,8 @@ pub type BucketTransport = transport::BucketTransport<Address, Message>;
 
 /// Transportation trait for Tangle Client implementation
 // TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
-pub trait Transport: transport::Transport<Address, Message> {}
-impl<T> Transport for T where T: transport::Transport<Address, Message> {}
+pub trait Transport: transport::Transport<Address, Message> + Clone {}
+impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone {}
 
 mod msginfo;
 pub use msginfo::MsgInfo;
@@ -106,6 +109,7 @@ pub enum MessageContent {
     Sequence,
     Subscribe,
     Unsubscribe,
+    Unreadable,
 }
 
 impl MessageContent {
@@ -130,6 +134,10 @@ impl MessageContent {
             public_payload,
             masked_payload,
         }
+    }
+
+    pub fn unreadable() -> Self {
+        Self::Unreadable
     }
 }
 

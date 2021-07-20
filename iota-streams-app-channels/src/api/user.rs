@@ -20,7 +20,6 @@ use iota_streams_core::{
     },
     try_or,
     Errors::*,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,

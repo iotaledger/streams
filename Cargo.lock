@@ -9,6 +9,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8fd72866655d1904d6b0997d0b07ba561047d070fbe29de039031c641b61217"
 
 [[package]]
+name = "ahash"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43bb833f0bf979d8475d38fbf09ed3b8a55e1885fe93ad3f93239fc6a4f17b98"
+dependencies = [
+ "getrandom 0.2.3",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1021,7 +1032,7 @@ version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e91b62f79061a0bc2e046024cb7ba44b08419ed238ecbd9adbd787434b9e8c25"
 dependencies = [
- "ahash",
+ "ahash 0.3.8",
  "autocfg",
 ]
 
@@ -1032,10 +1043,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
 
 [[package]]
-name = "heck"
-version = "0.3.2"
+name = "hashbrown"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cbf45460356b7deeb5e3415b5563308c0a9b057c85e12b06ad551f98d0a6ac"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+dependencies = [
+ "ahash 0.7.4",
+]
+
+[[package]]
+name = "heck"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
 dependencies = [
  "unicode-segmentation",
 ]
@@ -1192,7 +1212,7 @@ dependencies = [
 [[package]]
 name = "iota-client"
 version = "0.5.0-alpha.3"
-source = "git+https://github.com/iotaledger/iota.rs?branch=dev#736d87debe453798c53862ca6a41c26eb2fed6c9"
+source = "git+https://github.com/iotaledger/iota.rs?branch=dev#283af58b6f9a20b3698e5128e3e651b2a4dce861"
 dependencies = [
  "async-trait",
  "bee-common",
@@ -1201,7 +1221,7 @@ dependencies = [
  "bee-rest-api",
  "futures",
  "hex",
- "iota-crypto 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "iota-crypto 0.5.1",
  "log",
  "num_cpus",
  "regex",
@@ -1229,15 +1249,6 @@ dependencies = [
 [[package]]
 name = "iota-crypto"
 version = "0.5.1"
-source = "git+https://github.com/iotaledger/crypto.rs?branch=dev#7b9cac4c0aafddc9022f38320b8127af3c58495c"
-dependencies = [
- "blake2",
- "digest 0.9.0",
-]
-
-[[package]]
-name = "iota-crypto"
-version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccb8160eb8a88434fb3a0a3fc852e625aceab6c0272f0f03cc3f47c125bceab"
 dependencies = [
@@ -1250,6 +1261,15 @@ dependencies = [
  "serde",
  "sha2 0.9.5",
  "unicode-normalization",
+]
+
+[[package]]
+name = "iota-crypto"
+version = "0.6.0"
+source = "git+https://github.com/iotaledger/crypto.rs?branch=dev#e42be4d028edc520a3d71b5f37bf37f5a128dc32"
+dependencies = [
+ "blake2",
+ "digest 0.9.0",
 ]
 
 [[package]]
@@ -1277,7 +1297,6 @@ dependencies = [
  "futures",
  "hex",
  "iota-client",
- "iota-crypto 0.5.1 (git+https://github.com/iotaledger/crypto.rs?branch=dev)",
  "iota-streams-core",
  "iota-streams-core-edsig",
  "iota-streams-ddml",
@@ -1316,8 +1335,9 @@ dependencies = [
  "criterion",
  "digest 0.9.0",
  "displaydoc",
- "hashbrown 0.8.2",
+ "hashbrown 0.11.2",
  "hex",
+ "iota-crypto 0.6.0",
  "rand 0.7.3",
 ]
 
@@ -2128,12 +2148,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae1ded71d66a4a97f5e961fd0cb25a5f366a42a41570d16a763a69c092c26ae4"
-dependencies = [
- "byteorder",
-]
+checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
 
 [[package]]
 name = "regex-syntax"
@@ -2363,9 +2380,9 @@ dependencies = [
 
 [[package]]
 name = "signal-hook"
-version = "0.3.8"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef33d6d0cd06e0840fba9985aab098c147e67e05cee14d412d3345ed14ff30ac"
+checksum = "470c5a6397076fae0094aaf06a08e6ba6f37acb77d3b1b91ea92b4d6c8650c39"
 dependencies = [
  "libc",
  "signal-hook-registry",
@@ -2373,9 +2390,9 @@ dependencies = [
 
 [[package]]
 name = "signal-hook-registry"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16f1d0fef1604ba8f7a073c7e701f213e056707210e9020af4528e0101ce11a6"
+checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
 dependencies = [
  "libc",
 ]
@@ -2676,9 +2693,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33717dca7ac877f497014e10d73f3acf948c342bee31b5ca7892faf94ccc6b49"
+checksum = "d54590932941a9e9266f0832deed84ebe1bf2e4c9e4a3554d393d18f5e854bf9"
 dependencies = [
  "tinyvec",
 ]

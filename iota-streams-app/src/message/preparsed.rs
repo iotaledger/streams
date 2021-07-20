@@ -31,7 +31,7 @@ impl<'a, F, Link: Default + Clone> PreparsedMessage<'a, F, Link> {
         F: PRP,
     {
         let mut pcf = pcf::PCF::default_with_content(content);
-        pcf.unwrap(&store, &mut self.ctx)?;
+        pcf.unwrap(store, &mut self.ctx)?;
         // Discard what's left of `self.ctx.stream`
         Ok(UnwrappedMessage {
             link: self.header.link,

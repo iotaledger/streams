@@ -12,7 +12,6 @@ use iota_streams_core::{
         UserNotRegistered,
     },
     Result,
-    LOCATION_LOG,
 };
 
 use super::*;
@@ -27,7 +26,6 @@ use iota_streams_core::{
     },
     Errors::ChannelDuplication,
 };
-use iota_streams_ddml::types::GenericArray;
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, PkStore, PskStore>;
 
@@ -57,6 +55,10 @@ impl<Trans> User<Trans> {
             PAYLOAD_LENGTH,
         );
         Self { user, transport }
+    }
+
+    pub fn get_transport(&self) -> &Trans {
+        &self.transport
     }
 
     // Attributes
@@ -153,10 +155,8 @@ impl<Trans> User<Trans> {
         })
     }
 
-    pub fn store_psk(&mut self, psk: Psk) -> PskId {
-        let id: PskId = GenericArray::clone_from_slice(&psk[0..16]);
-        self.user.store_psk(id, psk);
-        id
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) {
+        self.user.store_psk(pskid, psk)
     }
 
     /// Consume a binary sequence message and return the derived message link
@@ -171,7 +171,7 @@ impl<Trans> User<Trans> {
 }
 
 #[cfg(not(feature = "async"))]
-impl<Trans: Transport> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     // Send
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
@@ -238,7 +238,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.sign_packet(&link_to, public_payload, masked_payload)?;
+        let msg = self.user.sign_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
     }
 
@@ -254,7 +254,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.tag_packet(&link_to, public_payload, masked_payload)?;
+        let msg = self.user.tag_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
     }
 
@@ -270,7 +270,7 @@ impl<Trans: Transport> User<Trans> {
         psk_ids: &PskIds,
         ke_pks: &Vec<PublicKey>,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(&link_to, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(link_to, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -279,7 +279,7 @@ impl<Trans: Transport> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload_for_everyone(&link_to)?;
+        let msg = self.user.share_keyload_for_everyone(link_to)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -288,7 +288,7 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
     pub fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
-        let msg = self.user.subscribe(&link_to)?;
+        let msg = self.user.subscribe(link_to)?;
         self.send_message(msg, MsgInfo::Subscribe)
     }
 
@@ -449,21 +449,30 @@ impl<Trans: Transport> User<Trans> {
     /// * `msg` - Binary message of unknown type
     /// * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     pub fn handle_message(&mut self, mut msg0: Message, store: bool) -> Result<UnwrappedMessage> {
+        let mut sequenced = false;
         loop {
             // Forget TangleMessage and timestamp
             let msg = msg0.binary;
             let preparsed = msg.parse_header()?;
+            let link = preparsed.header.link.clone();
+            let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => {
-                    let m = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
-                    let u = m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked));
-                    return Ok(u);
-                }
-                message::TAGGED_PACKET => {
-                    let m = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)?;
-                    let u = m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked));
-                    return Ok(u);
-                }
+                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                    Ok(m) => {
+                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                    }
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
+                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of
@@ -476,6 +485,7 @@ impl<Trans: Transport> User<Trans> {
                 message::SEQUENCE => {
                     let msg_link = self.process_sequence(msg, store)?;
                     let msg = self.transport.recv_message(&msg_link)?;
+                    sequenced = true;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
@@ -493,7 +503,7 @@ impl<Trans: Transport> User<Trans> {
 }
 
 #[cfg(feature = "async")]
-impl<Trans: Transport> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     // Send
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
@@ -560,7 +570,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.sign_packet(&link_to, public_payload, masked_payload)?;
+        let msg = self.user.sign_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
             .await
     }
@@ -577,7 +587,7 @@ impl<Trans: Transport> User<Trans> {
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.tag_packet(&link_to, public_payload, masked_payload)?;
+        let msg = self.user.tag_packet(link_to, public_payload, masked_payload)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
             .await
     }
@@ -594,7 +604,7 @@ impl<Trans: Transport> User<Trans> {
         psk_ids: &PskIds,
         ke_pks: &Vec<PublicKey>,
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(&link_to, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(link_to, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
@@ -603,7 +613,7 @@ impl<Trans: Transport> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub async fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload_for_everyone(&link_to)?;
+        let msg = self.user.share_keyload_for_everyone(link_to)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
@@ -612,7 +622,7 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
     pub async fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
-        let msg = self.user.subscribe(&link_to)?;
+        let msg = self.user.subscribe(link_to)?;
         self.send_message(msg, MsgInfo::Subscribe).await
     }
 
@@ -771,21 +781,30 @@ impl<Trans: Transport> User<Trans> {
     /// # Arguments
     /// * `msg` - Binary message of unknown type
     pub async fn handle_message(&mut self, mut msg0: Message, store: bool) -> Result<UnwrappedMessage> {
+        let mut sequenced = false;
         loop {
             // Forget TangleMessage and timestamp
             let msg = msg0.binary;
             let preparsed = msg.parse_header()?;
+            let link = preparsed.header.link.clone();
+            let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => {
-                    let m = self.user.handle_signed_packet(msg, MsgInfo::SignedPacket)?;
-                    let u = m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked));
-                    return Ok(u);
-                }
-                message::TAGGED_PACKET => {
-                    let m = self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket)?;
-                    let u = m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked));
-                    return Ok(u);
-                }
+                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
+                    Ok(m) => {
+                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                    }
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
+                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket) {
+                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+                    Err(e) => match sequenced {
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        false => return Err(e),
+                    },
+                },
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
                     // inform the user that a message was present, even if the use wasn't part of
@@ -798,6 +817,7 @@ impl<Trans: Transport> User<Trans> {
                 message::SEQUENCE => {
                     let msg_link = self.process_sequence(msg, store)?;
                     let msg = self.transport.recv_message(&msg_link).await?;
+                    sequenced = true;
                     msg0 = msg;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),

@@ -84,6 +84,20 @@ impl<G: PRP> Prng<G> {
         }
     }
 
+    fn key_from_seed(seed: impl AsRef<[u8]>) -> KeyType<G> {
+        let mut s = Spongos::<G>::init();
+        s.absorb(seed);
+        s.commit();
+        let mut secret_key = KeyType::<G>::default();
+        s.squeeze(&mut secret_key);
+        secret_key
+    }
+
+    /// Derive secret key from seed and init PRNG with it.
+    pub fn init_with_seed(seed: impl AsRef<[u8]>) -> Self {
+        Self::init(Self::key_from_seed(seed))
+    }
+
     // TODO: PRNG randomness hierarchy via nonce: domain (seed, ed/x25519, session key, etc.), secret, counter.
     fn gen_with_spongos<'a>(&self, s: &mut Spongos<G>, nonces: &[&'a [u8]], rnds: &mut [&'a mut [u8]]) {
         // TODO: `dst` byte?
