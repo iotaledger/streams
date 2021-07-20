@@ -540,6 +540,7 @@ cleanup8:
   if(e) goto cleanup;
 
 cleanup:
+  printf("Error code: %d\n", e);
   drop_links(tagged_packet_links);
   drop_links(signed_packet_links);
   drop_links(keyload_links);
