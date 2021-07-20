@@ -6,7 +6,6 @@ on:
       - master
       - develop
       - chrysalis-2
-      - feat/gh-actions-java-c
   pull_request:
     branches:
       - master
