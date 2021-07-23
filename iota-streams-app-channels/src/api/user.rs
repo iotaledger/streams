@@ -745,7 +745,7 @@ where
         preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, tagged_packet::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = tagged_packet::ContentUnwrap::new();
+        let content = tagged_packet::ContentUnwrap::default();
         preparsed.unwrap(&*self.link_store.borrow(), content)
     }
 
