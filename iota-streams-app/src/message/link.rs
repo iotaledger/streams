@@ -4,7 +4,7 @@ use iota_streams_core::{
     prelude::Vec,
     Result,
 };
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core::signature::ed25519;
 
 use super::hdf::HDF;
 use crate::identifier::Identifier;

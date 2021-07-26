@@ -29,10 +29,9 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
-    prelude::typenum::Unsigned as _,
     sponge::{
         prp::PRP,
-        spongos,
+        TAG_SIZE,
     },
     Result,
 };
@@ -65,7 +64,7 @@ where
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        let mac = Mac(spongos::MacSize::<F>::USIZE);
+        let mac = Mac(TAG_SIZE);
         ctx.join(&store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
@@ -88,7 +87,7 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        let mac = Mac(spongos::MacSize::<F>::USIZE);
+        let mac = Mac(TAG_SIZE);
         ctx.join(store, self.link)?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
@@ -134,7 +133,7 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mac = Mac(spongos::MacSize::<F>::USIZE);
+        let mac = Mac(TAG_SIZE);
         ctx.join(store, &mut self.link)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?

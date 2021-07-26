@@ -36,7 +36,7 @@ use iota_streams_core::{
     Errors::BadHexFormat,
     WrappedError,
 };
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -66,8 +66,7 @@ pub struct TangleMessage<F> {
     /// Encapsulated binary encoded message.
     pub binary: BinaryMessage<F, TangleAddress>,
 
-    /// Timestamp is not an intrinsic part of Streams message; it's a part of the bundle.
-    /// Timestamp is checked with Kerl as part of bundle essense trits.
+    /// Timestamp is not an intrinsic part of Streams message.
     pub timestamp: u64,
 }
 
@@ -288,7 +287,7 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         s.absorb(&cursor.seq_no.to_be_bytes());
         s.commit();
         let mut new = MsgId::default();
-        s.squeeze(new.id.as_mut());
+        s.squeeze(new.id.as_mut()).unwrap();
         new
     }
     fn gen_msgid(&self, id: &Identifier, cursor: Cursor<&MsgId>) -> MsgId {
@@ -300,7 +299,7 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         s.absorb(&cursor.seq_no.to_be_bytes());
         s.commit();
         let mut new = MsgId::default();
-        s.squeeze(new.id.as_mut());
+        s.squeeze(new.id.as_mut()).unwrap();
         new
     }
 }

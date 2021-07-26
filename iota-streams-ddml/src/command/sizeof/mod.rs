@@ -3,7 +3,7 @@
 /// Message size counting context.
 #[derive(Debug)]
 pub struct Context<F> {
-    /// The current message size in trits.
+    /// The current message size in bytes.
     size: usize,
     _phantom: core::marker::PhantomData<F>,
 }
@@ -21,6 +21,13 @@ impl<F> Context<F> {
         self.size
     }
 }
+
+impl<F> Default for Context<F> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 
 mod absorb;
 mod absorb_external;

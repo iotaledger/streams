@@ -50,7 +50,7 @@ use iota_streams_core::{
     Result,
     WrappedError,
 };
-use iota_streams_core_edsig::{
+use iota_streams_core::{
     key_exchange::x25519,
     signature::ed25519,
 };
@@ -67,7 +67,7 @@ use iota_streams_ddml::{
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
-    pub(crate) subscriber_sig_kp: &'a ed25519::Keypair,
+    pub(crate) subscriber_sig_sk: &'a ed25519::SecretKey,
     pub(crate) author_ke_pk: &'a x25519::PublicKey,
     pub(crate) _phantom: core::marker::PhantomData<(Link, F)>,
 }
@@ -82,8 +82,8 @@ where
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?
-            .mask(&self.subscriber_sig_kp.public)?
-            .ed25519(self.subscriber_sig_kp, HashSig)?;
+            .mask(&self.subscriber_sig_sk.public_key())?
+            .ed25519(self.subscriber_sig_sk, HashSig)?;
         Ok(ctx)
     }
 }
@@ -102,8 +102,8 @@ where
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?
-            .mask(&self.subscriber_sig_kp.public)?
-            .ed25519(self.subscriber_sig_kp, HashSig)?;
+            .mask(&self.subscriber_sig_sk.public_key())?
+            .ed25519(self.subscriber_sig_sk, HashSig)?;
         Ok(ctx)
     }
 }
@@ -112,7 +112,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
     pub subscriber_sig_pk: ed25519::PublicKey,
-    author_ke_sk: &'a x25519::StaticSecret,
+    author_ke_sk: &'a x25519::SecretKey,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -122,8 +122,8 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Result<Self> {
-        match ed25519::PublicKey::from_bytes(&[0_u8; ed25519::PUBLIC_KEY_LENGTH]) {
+    pub fn new(author_ke_sk: &'a x25519::SecretKey) -> Result<Self> {
+        match ed25519::PublicKey::try_from_bytes([0_u8; ed25519::PUBLIC_KEY_LENGTH]) {
             Ok(pk) => Ok(Self {
                 link: <<Link as HasLink>::Rel as Default>::default(),
                 unsubscribe_key: NBytes::<U32>::default(),

@@ -20,14 +20,12 @@ use crate::{
     },
 };
 use iota_streams_core::{
+    key_exchange::x25519,
+    signature::ed25519,
     sponge::prp::PRP,
     wrapped_err,
     Errors::PublicKeyGenerationFailure,
     WrappedError,
-};
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
 };
 
 struct MaskContext<F, IS> {
@@ -152,9 +150,9 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut x25519::PublicKey> for Context<F,
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F, IS> {
     fn mask(&mut self, pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
-        let mut bytes = [0_u8; 32];
+        let mut bytes = [0_u8; ed25519::PUBLIC_KEY_LENGTH];
         unwrap_mask_bytes(self.as_mut(), &mut bytes)?;
-        match ed25519::PublicKey::from_bytes(&bytes[..]) {
+        match ed25519::PublicKey::try_from_bytes(bytes) {
             Ok(apk) => {
                 *pk = apk;
                 Ok(self)

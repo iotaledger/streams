@@ -30,15 +30,18 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
-    sponge::prp::{
-        Inner,
-        PRP,
+    sponge::{
+        Nonce,
+        prp::{
+            Inner,
+            PRP,
+        },
     },
     try_or,
     Errors::*,
     Result,
 };
-use iota_streams_core_edsig::{
+use iota_streams_core::{
     key_exchange::x25519,
     signature::ed25519,
 };
@@ -131,10 +134,11 @@ where
     _phantom: core::marker::PhantomData<F>,
 
     /// Own Ed25519 private key.
-    pub(crate) sig_kp: ed25519::Keypair,
+    pub(crate) sig_sk: ed25519::SecretKey,
+    pub(crate) sig_pk: ed25519::PublicKey,
 
     /// Own x25519 key pair corresponding to Ed25519 keypair.
-    pub(crate) ke_kp: (x25519::StaticSecret, x25519::PublicKey),
+    pub(crate) ke_kp: (x25519::SecretKey, x25519::PublicKey),
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     pub(crate) key_store: Keys,
@@ -171,16 +175,16 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     fn default() -> Self {
-        let sig_kp = ed25519::Keypair {
-            secret: ed25519::SecretKey::from_bytes(&[0; ed25519::SECRET_KEY_LENGTH]).unwrap(),
-            public: ed25519::PublicKey::default(),
-        };
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+        let sig_sk = ed25519::SecretKey::from_bytes([0; ed25519::SECRET_KEY_LENGTH]);
+        let sig_pk = sig_sk.public_key();
+        let ke_sk: x25519::SecretKey = (&sig_sk).into();
+        let ke_pk: x25519::PublicKey = ke_sk.public_key();
 
         Self {
             _phantom: core::marker::PhantomData,
-            sig_kp,
-            ke_kp,
+            sig_sk,
+            sig_pk,
+            ke_kp: (ke_sk, ke_pk),
 
             key_store: Keys::default(),
             author_sig_pk: None,
@@ -208,13 +212,15 @@ where
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
     pub fn gen(
         prng: prng::Prng<F>,
-        nonce: Vec<u8>,
+        nonce: Nonce,
         channel_type: ChannelType,
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
     ) -> Self {
-        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+        let sig_sk = ed25519::SecretKey::generate_with(&mut prng::Rng::new(prng, nonce));
+        let sig_pk = sig_sk.public_key();
+        let ke_sk: x25519::SecretKey = (&sig_sk).into();
+        let ke_pk: x25519::PublicKey = ke_sk.public_key();
 
         let flags: u8 = match channel_type {
             ChannelType::SingleBranch => 0,
@@ -224,8 +230,9 @@ where
 
         Self {
             _phantom: core::marker::PhantomData,
-            sig_kp,
-            ke_kp,
+            sig_sk,
+            sig_pk,
+            ke_kp: (ke_sk, ke_pk),
 
             key_store: Keys::default(),
             author_sig_pk: None,
@@ -246,7 +253,7 @@ where
                 self.appinst.as_ref().unwrap().base().to_string()
             ));
         }
-        self.link_gen.gen(&self.sig_kp.public, channel_idx);
+        self.link_gen.gen(&self.sig_pk, channel_idx);
         let appinst = self.link_gen.get();
 
         let identifier = self.sig_kp.public.into();
@@ -381,7 +388,7 @@ where
                 let content = subscribe::ContentWrap {
                     link: link_to.rel(),
                     unsubscribe_key,
-                    subscriber_sig_kp: &self.sig_kp,
+                    subscriber_sig_sk: &self.sig_sk,
                     author_ke_pk,
                     _phantom: core::marker::PhantomData,
                 };
@@ -636,7 +643,7 @@ where
                     link: link_to.rel(),
                     public_payload,
                     masked_payload,
-                    sig_kp: &self.sig_kp,
+                    sig_sk: &self.sig_sk,
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -1032,7 +1039,7 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(self.sig_sk.as_bytes()))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1094,7 +1101,7 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(self.sig_sk.as_bytes()))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1161,7 +1168,7 @@ where
         let mut message_encoding = Bytes::new();
         let mut uniform_payload_length = Uint64(0);
         ctx
-            //.absorb(&self.sig_kp.public)
+            //.absorb(&self.sig_pk)
             .mask(&mut sig_sk_bytes)?
             .absorb(&mut flags)?
             .absorb(&mut message_encoding)?
@@ -1186,7 +1193,7 @@ where
         )?;
 
         let author_sig_pk = if oneof_author_sig_pk.0 == 1 {
-            let mut author_sig_pk = ed25519::PublicKey::default();
+            let mut author_sig_pk = ed25519::PublicKey::try_from_bytes([0; 32]).unwrap();
             ctx.absorb(&mut author_sig_pk)?;
             Some(author_sig_pk)
         } else {
@@ -1199,9 +1206,9 @@ where
             let mut link = Fallback(<Link as HasLink>::Rel::default());
             let mut s = NBytes::<F::CapacitySize>::default();
             let mut info = Fallback(<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info::default());
-            ctx.absorb(&mut link)?.mask(&mut s)?.absorb(&mut info)?;
-            let a: GenericArray<u8, F::CapacitySize> = s.into();
-            link_store.insert(&link.0, Inner::<F>::from(a), info.0)?;
+            let mut flags = Uint8(0);
+            ctx.absorb(&mut link)?.mask(&mut s)?.mask(&mut flags)?.absorb(&mut info)?;
+            link_store.insert(&link.0, Inner::<F>::new(s.into(), flags.0), info.0)?;
             Ok(ctx)
         })?;
 
@@ -1220,13 +1227,11 @@ where
             .commit()?
             .squeeze(Mac(32))?;
 
-        let sig_sk = ed25519::SecretKey::from_bytes(sig_sk_bytes.as_ref()).unwrap();
-        let sig_pk = ed25519::PublicKey::from(&sig_sk);
-        self.sig_kp = ed25519::Keypair {
-            secret: sig_sk,
-            public: sig_pk,
-        };
-        self.ke_kp = x25519::keypair_from_ed25519(&self.sig_kp);
+        let sig_sk = ed25519::SecretKey::from_bytes(*sig_sk_bytes.0.as_ref());
+        let ke_sk: x25519::SecretKey = (&sig_sk).into();
+        let ke_pk: x25519::PublicKey = ke_sk.public_key();
+        self.sig_sk = sig_sk;
+        self.ke_kp = (ke_sk, ke_pk);
         self.link_store = RefCell::new(link_store);
         self.key_store = key_store;
         self.author_sig_pk = author_sig_pk;

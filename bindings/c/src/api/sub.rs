@@ -416,12 +416,12 @@ pub unsafe extern "C" fn sub_fetch_prev_msg(m: *mut *const UnwrappedMessage, use
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_fetch_prev_msgs(umsgs: *mut *const UnwrappedMessages, user: *mut Subscriber, address: *const Address, num_msgs: size_t) -> Err {
-    umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
+pub unsafe extern "C" fn sub_fetch_prev_msgs(m: *mut *const UnwrappedMessages, user: *mut Subscriber, address: *const Address, num_msgs: size_t) -> Err {
+    m.as_mut().map_or(Err::NullArgument, |m| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             address.as_ref().map_or(Err::NullArgument, |addr| {
                 user.fetch_prev_msgs(addr, num_msgs).map_or(Err::OperationFailed, |msgs| {
-                    *umsgs = safe_into_ptr(msgs);
+                    *m = safe_into_ptr(msgs);
                     Err::Ok
                 })
             })

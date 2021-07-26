@@ -35,7 +35,7 @@ use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
 
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core::signature::ed25519;
 
 /// Identifiers for Pre-Shared Keys
 pub type PskIds = psk::PskIds;

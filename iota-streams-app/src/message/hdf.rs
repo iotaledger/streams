@@ -6,7 +6,7 @@ use iota_streams_core::{
     try_or,
     Errors::*,
 };
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -203,7 +203,7 @@ where
 impl<F, Link, Store> ContentWrap<F, Store> for HDF<Link>
 where
     F: PRP,
-    Link: AbsorbExternalFallback<F> + std::fmt::Debug,
+    Link: AbsorbExternalFallback<F> + fmt::Debug,
 {
     fn wrap<'c, OS: io::OStream>(
         &self,
@@ -246,7 +246,7 @@ where
 impl<F, Link, Store> ContentUnwrap<F, Store> for HDF<Link>
 where
     F: PRP,
-    Link: AbsorbExternalFallback<F> + std::fmt::Debug + Clone,
+    Link: AbsorbExternalFallback<F> + fmt::Debug + Clone,
 {
     fn unwrap<'c, IS: io::IStream>(
         &mut self,

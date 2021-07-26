@@ -15,7 +15,7 @@ use crate::{
         Uint8,
     },
 };
-use iota_streams_core_edsig::{
+use iota_streams_core::{
     key_exchange::x25519,
     signature::ed25519,
 };

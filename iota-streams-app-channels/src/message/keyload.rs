@@ -59,18 +59,15 @@ use iota_streams_app::{
     },
 };
 use iota_streams_core::{
-    prelude::{
-        typenum::Unsigned as _,
-        Vec,
-    },
+    prelude::Vec,
     psk,
     sponge::{
+        KEY_SIZE,
         prp::PRP,
-        spongos,
     },
     Result,
 };
-use iota_streams_core_edsig::{
+use iota_streams_core::{
     key_exchange::x25519,
     signature::ed25519,
 };
@@ -185,8 +182,6 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub nonce: NBytes<U16>, // TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
     pub(crate) lookup_arg: &'a LookupArg,
     pub(crate) lookup_psk: LookupPsk,
-
-    #[allow(dead_code)]
     pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub(crate) key_ids: Vec<Identifier>,
@@ -202,7 +197,7 @@ where
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
     LookupArg: 'a,
     LookupPsk: for<'b> Fn(&'b LookupArg, &Identifier) -> Option<psk::Psk>,
-    LookupKeSk: for<'b> Fn(&'b LookupArg, &Identifier) -> Option<&'b x25519::StaticSecret>,
+    LookupKeSk: for<'b> Fn(&'b LookupArg, &Identifier) -> Option<&'b x25519::SecretKey>,
 {
     pub fn new(
         lookup_arg: &'a LookupArg,
@@ -215,7 +210,7 @@ where
             nonce: NBytes::default(),
             lookup_arg,
             lookup_psk,
-            ke_pk: ed25519::PublicKey::default(),
+            ke_pk: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap(),
             lookup_ke_sk,
             key_ids: Vec::new(),
             key: None,
@@ -234,7 +229,7 @@ where
     Store: LinkStore<F, <Link as HasLink>::Rel>,
     LookupArg: 'a,
     LookupPsk: for<'b> Fn(&'b LookupArg, &Identifier) -> Option<psk::Psk>,
-    LookupKeSk: for<'b> Fn(&'b LookupArg, &Identifier) -> Option<&'b x25519::StaticSecret>,
+    LookupKeSk: for<'b> Fn(&'b LookupArg, &Identifier) -> Option<&'b x25519::SecretKey>,
 {
     fn unwrap<'c, IS: io::IStream>(
         &mut self,

@@ -22,7 +22,7 @@ use iota_streams_core::{
         PskId,
     },
 };
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core::signature::ed25519;
 
 /// Author Object. Contains User API.
 pub struct Author<Trans> {

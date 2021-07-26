@@ -9,6 +9,7 @@ use iota_streams_core::{
     err,
     prelude::Vec,
     prng,
+    sponge::Nonce,
     psk::{
         Psk,
         PskId,
@@ -47,7 +48,8 @@ impl<Trans> User<Trans> {
     /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
     pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
+        let mut nonce = Nonce::default();
+        nonce.as_mut_slice()[..15].copy_from_slice("TANGLEUSERNONCE".as_bytes());
         let user = UserImp::gen(
             prng::from_seed("IOTA Streams Channels user sig keypair", seed),
             nonce,
