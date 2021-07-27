@@ -350,7 +350,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
-        ke_pks: &Vec<&Identifier>,
+        ke_pks: &[&Identifier],
     ) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, psk_ids, ke_pks).await
     }

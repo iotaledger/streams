@@ -636,7 +636,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
-        ke_pks: &Vec<&Identifier>,
+        ke_pks: &[&Identifier],
     ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload(link_to, psk_ids, ke_pks)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await

@@ -433,7 +433,7 @@ where
         &'a mut self,
         link_to: &'a Link,
         _psk_ids: &psk::PskIds,
-        pks: &'a Vec<&Identifier>,
+        pks: &'a [&Identifier],
     ) -> Result<
         PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, vec::IntoIter<(&Identifier, Vec<u8>)>>>,
     > {
@@ -485,7 +485,7 @@ where
         &mut self,
         link_to: &Link,
         psk_ids: &psk::PskIds,
-        ke_pks: &Vec<&Identifier>,
+        ke_pks: &[&Identifier],
     ) -> Result<WrappedMessage<F, Link>> {
         self.prepare_keyload(link_to, psk_ids, ke_pks)?.wrap()
     }

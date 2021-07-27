@@ -144,12 +144,10 @@ pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
 /// Generic binary message type for sequence handling
 pub type BinaryMessage = message::GenericMessage<Address, BinaryBody<DefaultF>>;
 
-#[allow(clippy::ptr_arg)]
 mod user;
 /// User object storing the Auth/Sub implementation as well as the transport instance
 pub use user::User;
 
-#[allow(clippy::ptr_arg)]
 mod author;
 /// Tangle-specific Channel Author type.
 pub use author::Author;
