@@ -66,6 +66,7 @@ where
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         let mac = Mac(TAG_SIZE);
         ctx.join(&store, self.link)?
+            .commit()?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
@@ -89,6 +90,7 @@ where
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         let mac = Mac(TAG_SIZE);
         ctx.join(store, self.link)?
+            .commit()?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
             .commit()?
@@ -135,6 +137,7 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mac = Mac(TAG_SIZE);
         ctx.join(store, &mut self.link)?
+            .commit()?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
             .commit()?

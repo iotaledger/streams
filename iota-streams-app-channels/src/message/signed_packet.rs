@@ -68,6 +68,7 @@ where
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
+            .commit()?
             .absorb(&self.sig_sk.public_key())?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
@@ -90,6 +91,7 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
+            .commit()?
             .absorb(&self.sig_sk.public_key())?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
@@ -135,6 +137,7 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
+            .commit()?
             .absorb(&mut self.sig_pk)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
