@@ -32,7 +32,7 @@ keccak = { version = "0.1", optional = true }
 displaydoc = { version = "0.2", default-features = false, optional = false }
 
 #iota-crypto = { git = "https://github.com/iotaledger/crypto.rs", branch = "dev", features = ["blake2b", "ed25519", "x25519", "random", "rand"] }
-iota-crypto = { path = "../../crypto.rs", features = ["blake2b", "ed25519", "x25519", "random", "rand", "sha"] }
+iota-crypto = { git = "https://github.com/semenov-vladyslav/crypto.rs", branch = "pk-traits", features = ["blake2b", "ed25519", "x25519", "random", "rand", "sha"] }
 
 [dev-dependencies]
 criterion = "0.3"
