@@ -189,18 +189,24 @@ impl<Trans: Transport + Clone> User<Trans> {
 
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
     /// sequence message is sent and None is returned for the address.
-    ///
-    /// # Arguments
-    /// * `wrapped` - A wrapped sequence object containing the sequence message and state
-    fn send_sequence(&mut self, wrapped: WrappedSequence) -> Result<Option<Address>> {
-        if let Some(seq_msg) = wrapped.0 {
-            self.transport.send_message(&Message::new(seq_msg))?;
-        }
+    fn send_sequence(&mut self, wrapped_sequence: WrappedSequence) -> Result<Option<Address>> {
+        match wrapped_sequence {
+            WrappedSequence::MultiBranch(
+                cursor,
+                WrappedMessage {
+                    wrapped: wrapped_state,
+                    message,
+                },
+            ) => {
+                self.transport.send_message(&Message::new(message))?;
+                self.user.commit_sequence(cursor, wrapped_state, MsgInfo::Sequence)
+            }
+            WrappedSequence::SingleBranch(cursor) => {
+                self.user.commit_sequence_to_all(cursor)?;
+                Ok(None)
+            }
 
-        if let Some(wrap_state) = wrapped.1 {
-            self.user.commit_sequence(wrap_state, MsgInfo::Sequence)
-        } else {
-            Ok(None)
+            WrappedSequence::None => Ok(None),
         }
     }
 
@@ -222,10 +228,13 @@ impl<Trans: Transport + Clone> User<Trans> {
         ref_link: &MsgId,
         info: MsgInfo,
     ) -> Result<(Address, Option<Address>)> {
-        let seq = self.user.wrap_sequence(ref_link)?;
+        // Send & commit original message
         self.transport.send_message(&Message::new(msg.message))?;
-        let seq_link = self.send_sequence(seq)?;
         let msg_link = self.commit_wrapped(msg.wrapped, info)?;
+
+        // Send & commit associated sequence message
+        let seq = self.user.wrap_sequence(ref_link)?;
+        let seq_link = self.send_sequence(seq)?;
         Ok((msg_link, seq_link))
     }
 
@@ -524,15 +533,24 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     /// # Arguments
     /// * `wrapped` - A wrapped sequence object containing the sequence message and state
-    async fn send_sequence(&mut self, wrapped: WrappedSequence) -> Result<Option<Address>> {
-        if let Some(seq_msg) = wrapped.0 {
-            self.transport.send_message(&Message::new(seq_msg)).await?;
-        }
+    async fn send_sequence(&mut self, wrapped_sequence: WrappedSequence) -> Result<Option<Address>> {
+        match wrapped_sequence {
+            WrappedSequence::MultiBranch(
+                cursor,
+                WrappedMessage {
+                    message,
+                    wrapped: wrapped_state,
+                },
+            ) => {
+                self.transport.send_message(&Message::new(message)).await?;
+                self.user.commit_sequence(cursor, wrapped_state, MsgInfo::Sequence)
+            }
+            WrappedSequence::SingleBranch(cursor) => {
+                self.user.commit_sequence_to_all(cursor)?;
+                Ok(None)
+            }
 
-        if let Some(wrap_state) = wrapped.1 {
-            self.user.commit_sequence(wrap_state, MsgInfo::Sequence)
-        } else {
-            Ok(None)
+            WrappedSequence::None => Ok(None),
         }
     }
 
@@ -554,10 +572,13 @@ impl<Trans: Transport + Clone> User<Trans> {
         ref_link: &MsgId,
         info: MsgInfo,
     ) -> Result<(Address, Option<Address>)> {
-        let seq = self.user.wrap_sequence(ref_link)?;
+        // Send & commit original message
         self.transport.send_message(&Message::new(msg.message)).await?;
-        let seq_link = self.send_sequence(seq).await?;
         let msg_link = self.commit_wrapped(msg.wrapped, info)?;
+
+        // Send & commit associated sequence message
+        let seq = self.user.wrap_sequence(ref_link)?;
+        let seq_link = self.send_sequence(seq).await?;
         Ok((msg_link, seq_link))
     }
 

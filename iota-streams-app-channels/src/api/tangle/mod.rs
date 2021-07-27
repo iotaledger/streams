@@ -57,8 +57,6 @@ pub type WrappedMessage = message::WrappedMessage<DefaultF, Address>;
 pub type WrapState = message::WrapState<DefaultF, Address>;
 /// Wrapper for optional sequence message and state
 pub type WrappedSequence = super::user::WrappedSequence<DefaultF, Address>;
-/// Wrapped sequencing information with optional WrapState
-pub type WrapStateSequence = super::user::WrapStateSequence<DefaultF, Address>;
 /// Ed25519 Public Key
 pub type PublicKey = ed25519::PublicKey;
 

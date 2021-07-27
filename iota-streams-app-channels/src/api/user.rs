@@ -64,60 +64,36 @@ const ANN_MESSAGE_NUM: u32 = 0;
 const SUB_MESSAGE_NUM: u32 = 0;
 const SEQ_MESSAGE_NUM: u32 = 1;
 
-/// Wrapped sequencing information with optional WrapState
-pub struct WrapStateSequence<F, Link: HasLink>(
-    pub(crate) Cursor<<Link as HasLink>::Rel>,
-    pub(crate) Option<WrapState<F, Link>>,
-);
-
-impl<F, Link: HasLink> WrapStateSequence<F, Link> {
-    pub fn new(cursor: Cursor<<Link as HasLink>::Rel>) -> Self {
-        Self(cursor, None)
-    }
-
-    pub fn with_state(mut self, state: WrapState<F, Link>) -> Self {
-        self.1 = Some(state);
-        self
-    }
-
-    pub fn set_state(&mut self, state: WrapState<F, Link>) {
-        self.1 = Some(state);
-    }
-}
-
-impl<F: PRP, Link: HasLink + fmt::Debug> fmt::Debug for WrapStateSequence<F, Link>
+/// Sequence wrapping object
+///
+/// When using multibranch mode, this wrapping object contains the (wrapped) sequence message ([`WrappedMessage`]) to be
+/// sent and the [`Cursor`] of the user sending it.
+///
+/// When using single-branch mode, only the [`Cursor`] is needed, and no sequence message is sent.
+pub enum WrappedSequence<F, Link>
 where
-    <Link as HasLink>::Rel: fmt::Debug,
+    Link: HasLink,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:?},{:?})", self.0, self.1)
-    }
+    MultiBranch(Cursor<Link::Rel>, WrappedMessage<F, Link>),
+    SingleBranch(Cursor<Link::Rel>),
+    // Consider removing this option and returning Err instead
+    None,
 }
 
-/// Wrapped object containing an optional message and associated sequence state
-pub struct WrappedSequence<F, Link: HasLink>(
-    pub(crate) Option<BinaryMessage<F, Link>>,
-    pub(crate) Option<WrapStateSequence<F, Link>>,
-);
-
-impl<F, Link: HasLink> WrappedSequence<F, Link> {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self(None, None)
+impl<F, Link> WrappedSequence<F, Link>
+where
+    Link: HasLink,
+{
+    pub fn single_branch(cursor: Cursor<Link::Rel>) -> Self {
+        Self::SingleBranch(cursor)
     }
 
-    pub fn with_cursor(mut self, cursor: Cursor<<Link as HasLink>::Rel>) -> Self {
-        self.1 = Some(WrapStateSequence::new(cursor));
-        self
+    pub fn multi_branch(cursor: Cursor<Link::Rel>, wrapped_message: WrappedMessage<F, Link>) -> Self {
+        Self::MultiBranch(cursor, wrapped_message)
     }
 
-    pub fn with_wrapped(mut self, m: WrappedMessage<F, Link>) -> Self {
-        self.0 = Some(m.message);
-        let wrapped = m.wrapped;
-        if let Some(w) = self.1.as_mut() {
-            w.set_state(wrapped)
-        }
-        self
+    pub fn none() -> Self {
+        Self::None
     }
 }
 
@@ -825,7 +801,7 @@ where
                         prepared.wrap()?
                     };
 
-                    Ok(WrappedSequence::new().with_cursor(cursor).with_wrapped(wrapped))
+                    Ok(WrappedSequence::multi_branch(cursor, wrapped))
                 } else {
                     let msg_link = self.link_gen.link_from(
                         &self.sig_kp.public.into(),
@@ -833,34 +809,31 @@ where
                     );
 
                     cursor.link = msg_link.rel().clone();
-                    Ok(WrappedSequence::new().with_cursor(cursor))
+                    Ok(WrappedSequence::single_branch(cursor))
                 }
             }
-            None => Ok(WrappedSequence::new()),
+            None => Ok(WrappedSequence::none()),
         }
     }
 
     pub fn commit_sequence(
         &mut self,
-        wrapped: WrapStateSequence<F, Link>,
-        info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
+        mut cursor: Cursor<Link::Rel>,
+        wrapped_state: WrapState<F, Link>,
+        info: LS::Info,
     ) -> Result<Option<Link>> {
-        let mut cursor = wrapped.0;
-        match wrapped.1 {
-            Some(wrapped) => {
-                let link = wrapped.link.clone();
-                cursor.link = wrapped.link.rel().clone();
-                cursor.next_seq();
-                wrapped.commit(self.link_store.borrow_mut(), info)?;
-                self.key_store
-                    .insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
-                Ok(Some(link))
-            }
-            None => {
-                self.store_state_for_all(cursor.link, cursor.seq_no + 1)?;
-                Ok(None)
-            }
-        }
+        cursor.link = wrapped_state.link.rel().clone();
+        cursor.next_seq();
+        self.key_store
+            .insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
+        let link = wrapped_state.link.clone();
+        wrapped_state.commit(self.link_store.borrow_mut(), info)?;
+        Ok(Some(link))
+    }
+
+    pub fn commit_sequence_to_all(&mut self, cursor: Cursor<Link::Rel>) -> Result<()> {
+        self.store_state_for_all(cursor.link, cursor.seq_no + 1)?;
+        Ok(())
     }
 
     pub fn unwrap_sequence(
