@@ -59,7 +59,7 @@ impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<F, IS> {
     fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
         let y = self.ctx.stream.try_advance(bytes.len())?;
         // See corresponding comment in command::wrap::mask.
-        if 0 < bytes.len() {
+        if !bytes.is_empty() {
             self.ctx.spongos.decrypt(y, bytes)?;
         }
         Ok(self)

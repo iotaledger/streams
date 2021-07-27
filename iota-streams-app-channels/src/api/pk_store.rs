@@ -47,23 +47,23 @@ impl<Info> Default for PublicKeyMap<Info> {
 impl<Info> PublicKeyStore<Info> for PublicKeyMap<Info> {
     fn filter<'a>(&'a self, pks: &'a [ed25519::PublicKey]) -> Vec<(&'a ed25519::PublicKey, &'a x25519::PublicKey)> {
         pks.iter()
-            .filter_map(|pk| self.pks.get_key_value(pk.into()).map(|(e, (x, _))| (e, x)))
+            .filter_map(|pk| self.pks.get_key_value(pk).map(|(e, (x, _))| (e, x)))
             .collect()
     }
 
     fn get(&self, pk: &ed25519::PublicKey) -> Option<&Info> {
-        self.pks.get(pk.into()).map(|(_x, i)| i)
+        self.pks.get(pk).map(|(_x, i)| i)
     }
     fn get_mut(&mut self, pk: &ed25519::PublicKey) -> Option<&mut Info> {
-        self.pks.get_mut(pk.into()).map(|(_x, i)| i)
+        self.pks.get_mut(pk).map(|(_x, i)| i)
     }
     fn get_ke_pk(&self, pk: &ed25519::PublicKey) -> Option<&x25519::PublicKey> {
-        self.pks.get(pk.into()).map(|(x, _i)| x)
+        self.pks.get(pk).map(|(x, _i)| x)
     }
     fn insert(&mut self, pk: ed25519::PublicKey, info: Info) -> Result<()> {
         use core::convert::TryInto;
         let xpk = (&pk).try_into().map_err(|e| wrapped_err!(KeyConversionFailure, WrappedError(e)))?;
-        self.pks.insert(pk.into(), (xpk, info));
+        self.pks.insert(pk, (xpk, info));
         Ok(())
     }
     fn keys(&self) -> Vec<(&ed25519::PublicKey, &x25519::PublicKey)> {

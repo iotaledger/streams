@@ -59,7 +59,7 @@ impl<F: PRP, OS: io::OStream> Wrap for MaskContext<F, OS> {
         // which should be OK. Having non-empty payload masked is NOT OK.
         // Without this hack there's a check that will always fail.
         // TODO: Should this check be within spongos::encrypt?
-        if 0 < bytes.len() {
+        if !bytes.is_empty() {
             self.ctx.spongos.encrypt(bytes, &mut slice)?;
         }
         Ok(self)
