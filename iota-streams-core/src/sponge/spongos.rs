@@ -119,6 +119,10 @@ impl<F: PRP> Spongos<F> {
         s
     }
 
+    pub fn flags(&self) -> u8 {
+        self.flags
+    }
+
     /// Create a Spongos object with an explicit state.
     pub fn init_with_state(s: F) -> Self {
         Self { s, flags: 0, pos: 0 }
@@ -304,6 +308,21 @@ impl<F: PRP> Spongos<F> {
         Ok(y)
     }
 
+    /// Try to encrypt 1 byte, it's allowed to encrypt a zero byte without key.
+    pub fn encrypt1z(&mut self, x: u8) -> Result<u8> {
+        let has_key_committed = 0 != self.flags & KEY_COMMITTED;
+        try_or!(0 == x || has_key_committed, SpongosKeyNotCommitted)?;
+        self.flags |= PROCESSING_INPUT | PRODUCING_OUTPUT;
+
+        let mut xy = [x];
+        let s = self.outer_min_mut(1);
+        encrypt_xor_mut(s, &mut xy);
+        self.update(1);
+        let y = xy[0];
+
+        Ok(y)
+    }
+
     /// Decrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
     fn decrypt_unchecked(&mut self, yr: impl AsRef<[u8]>, mut xr: impl AsMut<[u8]>) -> Result<()> {
@@ -362,6 +381,21 @@ impl<F: PRP> Spongos<F> {
     pub fn decrypt_n(&mut self, y: impl AsRef<[u8]>) -> Result<Vec<u8>> {
         let mut x = vec![0; y.as_ref().len()];
         self.decrypt(y, &mut x)?;
+        Ok(x)
+    }
+
+    /// Try to decrypt 1 byte, it's allowed to decrypt a zero byte without key.
+    pub fn decrypt1z(&mut self, y: u8) -> Result<u8> {
+        let had_key_committed = 0 != self.flags & KEY_COMMITTED;
+        self.flags |= PROCESSING_INPUT | PRODUCING_OUTPUT;
+
+        let mut yx = [y];
+        let s = self.outer_min_mut(1);
+        decrypt_xor_mut(s, &mut yx);
+        self.update(1);
+        let x = yx[0];
+
+        try_or!(0 == x || had_key_committed, SpongosKeyNotCommitted)?;
         Ok(x)
     }
 

@@ -12,6 +12,7 @@ use crate::{
     types::{
         ArrayLength,
         NBytes,
+        Key,
     },
 };
 use iota_streams_core::{
@@ -31,6 +32,19 @@ impl<'a, F: PRP, N: ArrayLength<u8>, IS: io::IStream> X25519<&'a x25519::SecretK
     for Context<F, IS>
 {
     fn x25519(&mut self, sk: &x25519::SecretKey, key: &mut NBytes<N>) -> Result<&mut Self> {
+        let mut ephemeral_ke_pk = x25519::PublicKey::from([0_u8; 32]);
+        (*self)
+            .absorb(&mut ephemeral_ke_pk)?
+            .x25519(sk, &ephemeral_ke_pk)?
+            .commit()?
+            .mask(key)
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> X25519<&'a x25519::SecretKey, &'a mut Key>
+    for Context<F, IS>
+{
+    fn x25519(&mut self, sk: &x25519::SecretKey, key: &mut Key) -> Result<&mut Self> {
         let mut ephemeral_ke_pk = x25519::PublicKey::from([0_u8; 32]);
         (*self)
             .absorb(&mut ephemeral_ke_pk)?

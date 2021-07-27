@@ -84,9 +84,9 @@ use iota_streams_ddml::{
 pub struct ContentWrap<'a, F, Link: HasLink, Keys> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub nonce: NBytes<U16>,
-    pub key: NBytes<U32>,
+    pub key: Key,
     pub(crate) keys: Keys,
-    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) sig_sk: &'a ed25519::SecretKey,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -122,7 +122,7 @@ where
                         })
                     })
             })?
-            .absorb(External(&self.key))?
+            .absorb_key(External(&self.key))?
             .fork(|ctx| ctx.ed25519(self.sig_kp, HashSig))?
             .commit()?;
         Ok(ctx)
@@ -168,7 +168,7 @@ where
                     .commit()?
                     .squeeze(&mut id_hash)
             })?
-            .absorb(External(&self.key))?
+            .absorb_key(External(&self.key))?
             .fork(|ctx| ctx.absorb(&id_hash)?.ed25519(self.sig_kp, HashSig))?
             .commit()?;
         Ok(ctx)
@@ -185,7 +185,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink, LookupArg: 'a, LookupPsk, LookupK
     pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) lookup_ke_sk: LookupKeSk,
     pub(crate) key_ids: Vec<Identifier>,
-    pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
+    pub key: Option<Key>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
     pub(crate) sig_pk: &'a ed25519::PublicKey,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }

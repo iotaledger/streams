@@ -116,7 +116,7 @@ impl<Trans> Subscriber<Trans> {
         let state_list = self.user.fetch_state()?;
         let mut state = Vec::new();
         for (pk, cursor) in state_list {
-            state.push((hex::encode(pk.to_bytes()), cursor))
+            state.push((hex::encode(pk.as_slice()), cursor))
         }
         Ok(state)
     }
@@ -466,7 +466,7 @@ impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.user.user.sig_kp.public.as_bytes()),
+            hex::encode(self.user.user.sig_kp.public.as_slice()),
             self.user.user.key_store
         )
     }

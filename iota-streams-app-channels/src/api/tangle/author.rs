@@ -114,7 +114,7 @@ impl<Trans> Author<Trans> {
         let state_list = self.user.fetch_state()?;
         let mut state = Vec::new();
         for (pk, cursor) in state_list {
-            state.push((hex::encode(pk.to_bytes()), cursor))
+            state.push((hex::encode(pk.as_slice()), cursor))
         }
         Ok(state)
     }
@@ -489,8 +489,8 @@ impl<Trans: Clone> fmt::Display for Author<Trans> {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.user.user.sig_kp.public.as_bytes()),
-            self.user.user.key_store
+            hex::encode(self.user.user.sig_sk.public_key().as_slice()),
+            self.user.user.pk_store
         )
     }
 }

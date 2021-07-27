@@ -80,7 +80,7 @@ impl<Info> PublicKeyStore<Info> for PublicKeyMap<Info> {
 impl<Info: fmt::Display> fmt::Display for PublicKeyMap<Info> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (k, (_x, i)) in self.pks.iter() {
-            writeln!(f, "    <{}> => {}", hex::encode(k.as_bytes()), i)?;
+            writeln!(f, "    <{}> => {}", hex::encode(k.as_slice()), i)?;
         }
         Ok(())
     }

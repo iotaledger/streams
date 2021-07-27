@@ -175,13 +175,13 @@ impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> Absorb<External<&'a NBytes
 
 impl<'a, F: PRP, OS: io::OStream> Absorb<External<&'a ed25519::PublicKey>> for Context<F, OS> {
     fn absorb(&mut self, pk: External<&'a ed25519::PublicKey>) -> Result<&mut Self> {
-        Ok(wrap_absorb_external_bytes(self.as_mut(), pk.0.as_bytes())?.as_mut())
+        Ok(wrap_absorb_external_bytes(self.as_mut(), pk.0.as_slice())?.as_mut())
     }
 }
 
 impl<'a, F: PRP, OS: io::OStream> Absorb<External<&'a x25519::PublicKey>> for Context<F, OS> {
     fn absorb(&mut self, pk: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
-        Ok(wrap_absorb_external_bytes(self.as_mut(), pk.0.as_bytes())?.as_mut())
+        Ok(wrap_absorb_external_bytes(self.as_mut(), pk.0.as_slice())?.as_mut())
     }
 }
 

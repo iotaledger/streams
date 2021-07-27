@@ -8,6 +8,7 @@ use crate::{
         ArrayLength,
         Bytes,
         NBytes,
+        Key,
         Size,
         Uint16,
         Uint32,
@@ -18,6 +19,7 @@ use crate::{
 use iota_streams_core::{
     key_exchange::x25519,
     signature::ed25519,
+    sponge::KEY_SIZE,
 };
 
 /// Mask Uint8.
@@ -99,6 +101,14 @@ impl<F> Mask<Size> for Context<F> {
 impl<F, N: ArrayLength<u8>> Mask<&NBytes<N>> for Context<F> {
     fn mask(&mut self, _val: &NBytes<N>) -> Result<&mut Self> {
         self.size += N::USIZE;
+        Ok(self)
+    }
+}
+
+/// Mask key.
+impl<F> Mask<&Key> for Context<F> {
+    fn mask(&mut self, _val: &Key) -> Result<&mut Self> {
+        self.size += KEY_SIZE;
         Ok(self)
     }
 }

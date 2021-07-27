@@ -448,7 +448,7 @@ where
         KePks: Clone + ExactSizeIterator<Item = (&'a Identifier, Vec<u8>)>,
     {
         let nonce = NBytes::from(prng::random_nonce());
-        let key = NBytes::from(prng::random_key());
+        let key = Key(prng::random_key());
         let content = keyload::ContentWrap {
             link: link_to,
             nonce,
@@ -1039,7 +1039,7 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.mask(<&NBytes<U32>>::from(self.sig_sk.as_bytes()))?
+        ctx.mask(<&NBytes<U32>>::from(self.sig_sk.as_slice()))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1065,6 +1065,7 @@ where
             .repeated(links.into_iter(), |ctx, (link, (s, info))| {
                 ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
                     .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
+                    .mask(Uint8(s.flags()))?
                     .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
                         info,
                     ))?;
@@ -1101,7 +1102,7 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.mask(<&NBytes<U32>>::from(self.sig_sk.as_bytes()))?
+        ctx.mask(<&NBytes<U32>>::from(self.sig_sk.as_slice()))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1127,6 +1128,7 @@ where
             .repeated(links.into_iter(), |ctx, (link, (s, info))| {
                 ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
                     .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
+                    .mask(&Uint8(s.flags()))?
                     .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
                         info,
                     ))?;
@@ -1207,7 +1209,10 @@ where
             let mut s = NBytes::<F::CapacitySize>::default();
             let mut info = Fallback(<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info::default());
             let mut flags = Uint8(0);
-            ctx.absorb(&mut link)?.mask(&mut s)?.mask(&mut flags)?.absorb(&mut info)?;
+            ctx.absorb(&mut link)?
+                .mask(&mut s)?
+                .mask(&mut flags)?
+                .absorb(&mut info)?;
             link_store.insert(&link.0, Inner::<F>::new(s.into(), flags.0), info.0)?;
             Ok(ctx)
         })?;
@@ -1261,7 +1266,11 @@ where
         const VERSION: u8 = 0;
         let buf_size = {
             let mut ctx = sizeof::Context::<F>::new();
-            ctx.absorb(Uint8(VERSION))?.absorb(Uint8(flag))?;
+            ctx.absorb(Uint8(VERSION))?
+                .absorb(Uint8(flag))?
+                //.absorb_key(External(&key))?
+                //.commit()?
+                ;
             self.sizeof(&mut ctx)?;
             ctx.get_size()
         };
@@ -1271,10 +1280,11 @@ where
         {
             let mut ctx = wrap::Context::new(&mut buf[..]);
             let prng = prng::from_seed::<F>("IOTA Streams Channels app", pwd);
-            let key = NBytes::<U32>(prng.gen_arr("user export key"));
+            let key = Key(prng.gen_arr("user export key"));
             ctx.absorb(Uint8(VERSION))?
                 .absorb(Uint8(flag))?
-                .absorb(External(&key))?;
+                .absorb_key(External(&key))?
+                .commit()?;
             let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
             self.wrap(&store, &mut ctx)?;
             try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
@@ -1300,14 +1310,15 @@ where
 
         let mut ctx = unwrap::Context::new(bytes);
         let prng = prng::from_seed::<F>("IOTA Streams Channels app", pwd);
-        let key = NBytes::<U32>(prng.gen_arr("user export key"));
+        let key = Key(prng.gen_arr("user export key"));
         let mut version = Uint8(0);
         let mut flag2 = Uint8(0);
         ctx.absorb(&mut version)?
             .guard(version.0 == VERSION, UserVersionRecoveryFailure(VERSION, version.0))?
             .absorb(&mut flag2)?
             .guard(flag2.0 == flag, UserFlagRecoveryFailure(flag, flag2.0))?
-            .absorb(External(&key))?;
+            .absorb_key(External(&key))?
+            .commit()?;
 
         let mut user = User::default();
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();

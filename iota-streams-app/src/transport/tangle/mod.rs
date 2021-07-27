@@ -351,7 +351,7 @@ pub struct AppInst {
 impl AppInst {
     pub fn new(pk: &ed25519::PublicKey, channel_idx: u64) -> Self {
         let mut id = [0_u8; APPINST_SIZE];
-        id[..32].copy_from_slice(pk.as_bytes());
+        id[..32].copy_from_slice(pk.as_slice());
         id[32..].copy_from_slice(&channel_idx.to_be_bytes());
         Self {
             id: unsafe { core::mem::transmute(id) },

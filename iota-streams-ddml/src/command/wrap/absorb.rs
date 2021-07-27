@@ -173,7 +173,7 @@ impl<'a, F: PRP, OS: io::OStream> Absorb<&'a ed25519::PublicKey> for Context<F, 
 
 impl<'a, F: PRP, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<F, OS> {
     fn absorb(&mut self, pk: &'a x25519::PublicKey) -> Result<&mut Self> {
-        Ok(wrap_absorb_bytes(self.as_mut(), pk.as_bytes())?.as_mut())
+        Ok(wrap_absorb_bytes(self.as_mut(), pk.as_slice())?.as_mut())
     }
 }
 

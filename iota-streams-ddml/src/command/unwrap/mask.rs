@@ -12,6 +12,7 @@ use crate::{
         ArrayLength,
         Bytes,
         NBytes,
+        Key,
         Size,
         Uint16,
         Uint32,
@@ -50,9 +51,17 @@ impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<F, IS> {
         *u = x[0];
         Ok(self)
     }
+    fn unwrap_u8_unchecked_zero(&mut self, u: &mut u8) -> Result<&mut Self> {
+        let y = self.ctx.stream.try_advance(1)?;
+        *u = self.ctx.spongos.decrypt1z(y[0])?;
+        Ok(self)
+    }
     fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
         let y = self.ctx.stream.try_advance(bytes.len())?;
-        self.ctx.spongos.decrypt(y, bytes)?;
+        // See corresponding comment in command::wrap::mask.
+        if 0 < bytes.len() {
+            self.ctx.spongos.decrypt(y, bytes)?;
+        }
         Ok(self)
     }
 }
@@ -130,10 +139,17 @@ impl<'a, F: PRP, N: ArrayLength<u8>, IS: io::IStream> Mask<&'a mut NBytes<N>> fo
     }
 }
 
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Key> for Context<F, IS> {
+    fn mask(&mut self, key: &'a mut Key) -> Result<&mut Self> {
+        Ok(unwrap_mask_bytes(self.as_mut(), key.as_mut())?.as_mut())
+    }
+}
+
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes> for Context<F, IS> {
     fn mask(&mut self, bytes: &'a mut Bytes) -> Result<&mut Self> {
         let mut size = Size(0);
         self.mask(&mut size)?;
+        // TODO: Should there be a max size check? Otherwise resize on the next line might eat all memory.
         (bytes.0).resize(size.0, 0);
         Ok(unwrap_mask_bytes(self.as_mut(), &mut (bytes.0)[..])?.as_mut())
     }

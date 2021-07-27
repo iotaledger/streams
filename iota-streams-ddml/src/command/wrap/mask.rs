@@ -12,6 +12,7 @@ use crate::{
         ArrayLength,
         Bytes,
         NBytes,
+        Key,
         Size,
         Uint16,
         Uint32,
@@ -46,9 +47,21 @@ impl<F: PRP, OS: io::OStream> Wrap for MaskContext<F, OS> {
         self.ctx.spongos.encrypt_mut(slice)?;
         Ok(self)
     }
+    fn wrap_u8_unchecked_zero(&mut self, u: u8) -> Result<&mut Self> {
+        let slice = self.ctx.stream.try_advance(1)?;
+        slice[0] = self.ctx.spongos.encrypt1z(u)?;
+        Ok(self)
+    }
     fn wrapn(&mut self, bytes: &[u8]) -> Result<&mut Self> {
         let mut slice = self.ctx.stream.try_advance(bytes.len())?;
-        self.ctx.spongos.encrypt(bytes, &mut slice)?;
+        // This is a dirty hack. Only do actual encryption of non-empty slices.
+        // It allows to have `mask bytes payload` for empty payload with no key
+        // which should be OK. Having non-empty payload masked is NOT OK.
+        // Without this hack there's a check that will always fail.
+        // TODO: Should this check be within spongos::encrypt?
+        if 0 < bytes.len() {
+            self.ctx.spongos.encrypt(bytes, &mut slice)?;
+        }
         Ok(self)
     }
 }
@@ -126,6 +139,12 @@ impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> Mask<&'a NBytes<N>> for Co
     }
 }
 
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a Key> for Context<F, OS> {
+    fn mask(&mut self, key: &'a Key) -> Result<&mut Self> {
+        Ok(wrap_mask_bytes(self.as_mut(), key.as_ref())?.as_mut())
+    }
+}
+
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a Bytes> for Context<F, OS> {
     fn mask(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
         let size = Size((bytes.0).len());
@@ -136,12 +155,12 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a Bytes> for Context<F, OS> {
 
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<F, OS> {
     fn mask(&mut self, pk: &'a x25519::PublicKey) -> Result<&mut Self> {
-        Ok(wrap_mask_bytes(self.as_mut(), pk.as_bytes())?.as_mut())
+        Ok(wrap_mask_bytes(self.as_mut(), pk.as_slice())?.as_mut())
     }
 }
 
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS> {
     fn mask(&mut self, pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
-        Ok(wrap_mask_bytes(self.as_mut(), pk.as_bytes())?.as_mut())
+        Ok(wrap_mask_bytes(self.as_mut(), pk.as_slice())?.as_mut())
     }
 }
