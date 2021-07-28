@@ -368,7 +368,6 @@ impl MessageLinks {
         safe_drop_ptr(self.msg_link);
         safe_drop_ptr(self.seq_link);
     }
-
 }
 
 impl Default for MessageLinks {
@@ -394,8 +393,6 @@ pub unsafe extern "C" fn get_msg_link(msg_links: *const MessageLinks) -> *const 
 pub unsafe extern "C" fn get_seq_link(msg_links: *const MessageLinks) -> *const Address {
     msg_links.as_ref().map_or(null(), |links| links.seq_link)
 }
-
-
 
 #[repr(C)]
 pub struct Buffer {

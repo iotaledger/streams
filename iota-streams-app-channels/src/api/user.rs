@@ -21,7 +21,6 @@ use iota_streams_core::{
     prelude::{
         string::ToString,
         typenum::U32,
-        vec,
         Vec,
     },
     prng,
@@ -58,6 +57,7 @@ use crate::{
         ChannelType,
     },
     message::*,
+    Lookup,
 };
 
 const ANN_MESSAGE_NUM: u32 = 0;
@@ -170,6 +170,9 @@ where
         }
     }
 }
+
+// Alias needed to reduce complexity of `unwrap_keyload` return value
+type KeyloadContentUnwrap<'a, F, Link, User> = keyload::ContentUnwrap<'a, F, Link, &'a User, &'a User>;
 
 impl<F, Link, LG, LS, Keys> User<F, Link, LG, LS, Keys>
 where
@@ -407,36 +410,33 @@ where
         Ok(())
     }
 
-    fn do_prepare_keyload<'a, KePks>(
+    fn do_prepare_keyload<'a>(
         &'a self,
         header: HDF<Link>,
-        link_to: &'a <Link as HasLink>::Rel,
-        ke_pks: KePks,
-    ) -> Result<PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, KePks>>>
-    where
-        KePks: Clone + ExactSizeIterator<Item = (&'a Identifier, Vec<u8>)>,
-    {
+        link_to: &'a Link::Rel,
+        keys: Vec<(&'a Identifier, Vec<u8>)>,
+    ) -> Result<PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link>>> {
         let nonce = NBytes::from(prng::random_nonce());
         let key = NBytes::from(prng::random_key());
         let content = keyload::ContentWrap {
             link: link_to,
             nonce,
             key,
-            keys: ke_pks,
+            keys,
             sig_kp: &self.sig_kp,
             _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
     }
 
-    pub fn prepare_keyload<'a>(
+    pub fn prepare_keyload<'a, 'b, I>(
         &'a mut self,
         link_to: &'a Link,
-        _psk_ids: &psk::PskIds,
-        pks: &'a [&Identifier],
-    ) -> Result<
-        PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, vec::IntoIter<(&Identifier, Vec<u8>)>>>,
-    > {
+        keys: I,
+    ) -> Result<PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link>>>
+    where
+        I: IntoIterator<Item = &'b Identifier>,
+    {
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
@@ -448,8 +448,8 @@ where
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
                     .with_identifier(&self.sig_kp.public.into());
-                let keys = self.key_store.filter(pks);
-                self.do_prepare_keyload(header, link_to.rel(), keys.into_iter())
+                let filtered_keys = self.key_store.filter(keys);
+                self.do_prepare_keyload(header, link_to.rel(), filtered_keys)
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -458,9 +458,7 @@ where
     pub fn prepare_keyload_for_everyone<'a>(
         &'a mut self,
         link_to: &'a Link,
-    ) -> Result<
-        PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, vec::IntoIter<(&'a Identifier, Vec<u8>)>>>,
-    > {
+    ) -> Result<PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link>>> {
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
@@ -472,8 +470,8 @@ where
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
                     .with_identifier(&self.sig_kp.public.into());
-                let ike_pks = self.key_store.keys();
-                self.do_prepare_keyload(header, link_to.rel(), ike_pks.into_iter())
+                let keys = self.key_store.keys();
+                self.do_prepare_keyload(header, link_to.rel(), keys)
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -481,13 +479,11 @@ where
 
     /// Create keyload message with a new session key shared with recipients
     /// identified by pre-shared key IDs and by Ed25519 public keys.
-    pub fn share_keyload(
-        &mut self,
-        link_to: &Link,
-        psk_ids: &psk::PskIds,
-        ke_pks: &[&Identifier],
-    ) -> Result<WrappedMessage<F, Link>> {
-        self.prepare_keyload(link_to, psk_ids, ke_pks)?.wrap()
+    pub fn share_keyload<'a, I>(&mut self, link_to: &Link, keys: I) -> Result<WrappedMessage<F, Link>>
+    where
+        I: IntoIterator<Item = &'a Identifier>,
+    {
+        self.prepare_keyload(link_to, keys)?.wrap()
     }
 
     /// Create keyload message with a new session key shared with all Subscribers
@@ -496,50 +492,13 @@ where
         self.prepare_keyload_for_everyone(link_to)?.wrap()
     }
 
-    fn lookup_psk(&self, pskid: &Identifier) -> Option<psk::Psk> {
-        self.key_store.get_psk(pskid)
-    }
-
-    fn lookup_ke_sk<'b>(&'b self, ke_pk: &Identifier) -> Option<&'b x25519::StaticSecret> {
-        match ke_pk.get_pk() {
-            Some(pk) => {
-                if &self.sig_kp.public == pk {
-                    Some(&self.ke_kp.0)
-                } else {
-                    None
-                }
-            }
-            None => None,
-        }
-    }
-
     pub fn unwrap_keyload<'a, 'b>(
         &'b self,
         preparsed: PreparsedMessage<'a, F, Link>,
-    ) -> Result<
-        UnwrappedMessage<
-            F,
-            Link,
-            keyload::ContentUnwrap<
-                'b,
-                F,
-                Link,
-                Self,
-                for<'c> fn(&'c Self, &Identifier) -> Option<psk::Psk>,
-                for<'c> fn(&'c Self, &Identifier) -> Option<&'c x25519::StaticSecret>,
-            >,
-        >,
-    > {
+    ) -> Result<UnwrappedMessage<F, Link, KeyloadContentUnwrap<'b, F, Link, Self>>> {
         self.ensure_appinst(&preparsed)?;
         if let Some(ref author_sig_pk) = self.author_sig_pk {
-            let content = keyload::ContentUnwrap::<
-                'b,
-                F,
-                Link,
-                Self,
-                for<'c> fn(&'c Self, &Identifier) -> Option<psk::Psk>,
-                for<'c> fn(&'c Self, &Identifier) -> Option<&'c x25519::StaticSecret>,
-            >::new(self, Self::lookup_psk, Self::lookup_ke_sk, author_sig_pk);
+            let content = keyload::ContentUnwrap::new(self, self, author_sig_pk);
             let unwrapped = preparsed.unwrap(&*self.link_store.borrow(), content)?;
             Ok(unwrapped)
         } else {
@@ -898,9 +857,9 @@ where
                     return err(StateStoreFailure);
                 }
 
-                if !self.key_store.contains(&Identifier::from(&pskid)) {
+                if !self.key_store.contains(&pskid.into()) {
                     self.key_store.insert_psk(
-                        (&pskid).into(),
+                        pskid.into(),
                         Some(psk),
                         Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
                     )?;
@@ -1282,5 +1241,36 @@ where
         user.unwrap(&store, &mut ctx)?;
         try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
         Ok(user)
+    }
+}
+
+impl<'a, F, Link, LG, LS, Keys> Lookup<&Identifier, psk::Psk> for &'a User<F, Link, LG, LS, Keys>
+where
+    F: PRP,
+    Link: HasLink,
+    Keys: KeyStore<Cursor<Link::Rel>, F>,
+{
+    fn lookup(&self, psk_id: &Identifier) -> Option<psk::Psk> {
+        self.key_store.get_psk(psk_id)
+    }
+}
+
+impl<'a, F, Link, LG, LS, Keys> Lookup<&Identifier, &'a x25519::StaticSecret> for &'a User<F, Link, LG, LS, Keys>
+where
+    F: PRP,
+    Link: HasLink,
+    Keys: KeyStore<Cursor<Link::Rel>, F>,
+{
+    fn lookup(&self, ke_pk: &Identifier) -> Option<&'a x25519::StaticSecret> {
+        match ke_pk.get_pk() {
+            Some(pk) => {
+                if &self.sig_kp.public == pk {
+                    Some(&self.ke_kp.0)
+                } else {
+                    None
+                }
+            }
+            None => None,
+        }
     }
 }
