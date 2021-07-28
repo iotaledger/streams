@@ -86,9 +86,10 @@ mod msginfo;
 pub use msginfo::MsgInfo;
 
 // SignedPacket is 240 bytes in stack (192 + 24 + 24), which means 5 times more than
-// the next biggest variant, TaggedPacket (48), and the impossibility of inlining.
-// Boxing PublicKey is most probably a net performance improvement. However,
-// a profile must validate it's hot enough to justify the ergonomic drawback.
+// the next biggest variant (TaggedPacket, 48 bytes), and the impossibility of inlining.
+// Boxing PublicKey would usually be a net performance improvement if SignedPacket wasn't frequent.
+// However, chances are it is the most frequent variant, therefore a profile must confirm there's
+// enough performance improvement to justify the ergonomic drawback of re-enabling this lint
 #[allow(clippy::large_enum_variant)]
 /// Message body returned as part of handle message routine.
 pub enum MessageContent {
