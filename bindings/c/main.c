@@ -573,6 +573,7 @@ cleanup10:
   drop_address(reset_sub_state_link);
 
 cleanup:
+  printf("Error code: %d\n", e);
   drop_links(tagged_packet_links);
   drop_links(signed_packet_links);
   drop_links(keyload_links);
