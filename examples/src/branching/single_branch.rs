@@ -8,7 +8,7 @@ use iota_streams::{
     },
     core::{
         panic_if_not,
-        prelude::Rc,
+        prelude::{HashMap, Rc},
         print,
         println,
         try_or,
@@ -74,6 +74,9 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
             BranchingFlagMismatch(String::from("A"))
         )?;
     }
+
+    // Fetch state of subscriber for comparison after reset
+    let sub_a_start_state: HashMap<_,_> = subscriberA.fetch_state()?.into_iter().collect();
 
     println!("\nSubscribe A");
     let subscribeA_link = {
@@ -281,6 +284,19 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         println!("Found {} messages", msgs.len());
         println!("  SubscriberB: {}", subscriberB);
     }
+
+    subscriberA.reset_state()?;
+    let new_state: HashMap<_,_>  = subscriberA.fetch_state()?.into_iter().collect();
+
+    println!("\nSubscriber A resetting state");
+    let mut matches = false;
+    for (old_pk, old_cursor) in sub_a_start_state.iter() {
+        if new_state.contains_key(old_pk) && new_state[old_pk].link == old_cursor.link {
+            matches = true
+        }
+        try_or!(matches, StateMismatch)?;
+    }
+    println!("Subscriber states matched");
 
     Ok(())
 }

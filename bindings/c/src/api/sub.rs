@@ -449,6 +449,13 @@ pub unsafe extern "C" fn sub_fetch_state(state: *mut *const UserState, user: *mu
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn sub_reset_state(user: *mut Subscriber) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        user.reset_state().map_or(Err::OperationFailed, |_| Err::Ok)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn sub_store_psk(c_pskid: *mut *const PskId, c_user: *mut Subscriber, c_psk_seed: *const c_char) -> Err {
     if c_psk_seed == null() {
         return Err::NullArgument;
