@@ -472,7 +472,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             match preparsed.header.content_type {
                 message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket) {
                     Ok(m) => {
-                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                        return Ok(m.map(|(id, public, masked)| MessageContent::new_signed_packet(id, public, masked)))
                     }
                     Err(e) => match sequenced {
                         true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),

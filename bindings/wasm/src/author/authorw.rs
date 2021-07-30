@@ -418,7 +418,7 @@ impl Author {
             |state_list| {
                 Ok(state_list
                     .into_iter()
-                    .map(|(pk, cursor)| JsValue::from(UserState::new(pk, cursor.into())))
+                    .map(|(id, cursor)| JsValue::from(UserState::new(id, cursor.into())))
                     .collect())
             },
         )
