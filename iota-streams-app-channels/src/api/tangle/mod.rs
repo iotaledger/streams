@@ -155,6 +155,5 @@ pub use author::Author;
 mod subscriber;
 /// Tangle-specific Channel Subscriber type.
 pub use subscriber::Subscriber;
-use iota_streams_app::identifier::Identifier;
 
 pub mod test;
