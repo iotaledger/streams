@@ -707,7 +707,7 @@ Get the sequence state number from the internal cursor object
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** The latest sequence state number of the publisher 
 
-#### get_seq_no()
+#### get_branch_no()
 Get the branch state number from the internal cursor object
 
 | Param     | Type                  | Description                                  |
