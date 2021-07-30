@@ -84,7 +84,7 @@ impl<Trans> User<Trans> {
     }
 
     /// Fetch the user ed25519 public key
-    pub fn get_pk(&self) -> &PublicKey {
+    pub fn get_public_key(&self) -> &PublicKey {
         &self.user.sig_kp.public
     }
 

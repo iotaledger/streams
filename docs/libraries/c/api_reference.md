@@ -344,6 +344,15 @@ Retrieve the Subscriber public key.
 | subscriber      | `subscriber_t const *` | Subscriber instance       |
 **Returns:** Error code.
 
+#### sub_author_public_key(pk, subscriber): [err_t](#Err)
+Retrieve the Author public key. Errors if no channel is registered.
+
+| Param           | Type                   | Description               |
+| --------------- | ---------------------- | ------------------------- |
+| pk              | `public_key_t const *` | Placeholder for resulting Author Public Key |
+| subscriber      | `subscriber_t const *` | Subscriber instance       |
+**Returns:** Error code.
+
 #### sub_is_registered(subscriber): uint8_t 
 Check if subscriber has processed an announcement message.
 

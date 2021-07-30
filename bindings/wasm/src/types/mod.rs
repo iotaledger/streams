@@ -300,7 +300,7 @@ impl Message {
         }
     }
 
-    pub fn get_pk(&self) -> String {
+    pub fn get_public_key(&self) -> String {
         self.pk.clone().unwrap_or_default()
     }
 
@@ -319,7 +319,7 @@ impl NextMsgId {
         NextMsgId { pk, msgid }
     }
 
-    pub fn get_pk(&self) -> String {
+    pub fn get_public_key(&self) -> String {
         self.pk.clone()
     }
 
