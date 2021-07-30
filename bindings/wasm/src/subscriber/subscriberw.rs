@@ -93,12 +93,12 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
-    pub fn store_psk(&self, psk_seed_str: String) -> String {
+    pub fn store_psk(&self, psk_seed_str: String) -> Result<String> {
         let psk = psk_from_seed(psk_seed_str.as_bytes());
         let pskid = pskid_from_psk(&psk);
         let pskid_str = pskid_to_hex_string(&pskid);
-        self.subscriber.borrow_mut().store_psk(pskid, psk);
-        pskid_str
+        to_result(self.subscriber.borrow_mut().store_psk(pskid, psk))?;
+        Ok(pskid_str)
     }
 
     #[wasm_bindgen(catch)]
