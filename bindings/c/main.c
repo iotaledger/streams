@@ -485,7 +485,6 @@ cleanup7:
     address_t const *original_state_link = NULL;
     unwrapped_messages_t const *message_returns = NULL;
 
-
     printf("Recovering author... ");
     e = auth_recover(&recovered_auth, seed, ann_link, implementation_type, tsp);
     printf("  %s\n", !e ? "done" : "failed");

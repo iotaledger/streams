@@ -478,9 +478,10 @@ pub unsafe extern "C" fn sub_store_psk(c_pskid: *mut *const PskId, c_user: *mut 
             c_pskid.as_mut().map_or(Err::NullArgument, |pskid| {
                 let psk = psk_from_seed(psk_seed.as_ref());
                 let id = pskid_from_psk(&psk);
-                user.store_psk(id, psk);
-                *pskid = safe_into_ptr(id);
-                Err::Ok
+                user.store_psk(id, psk).map_or(Err::OperationFailed, |_| {
+                    *pskid = safe_into_ptr(id);
+                    Err::Ok
+                })
             })
         })
     })

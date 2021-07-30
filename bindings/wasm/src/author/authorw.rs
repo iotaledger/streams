@@ -13,6 +13,7 @@ use js_sys::Array;
 
 use core::cell::RefCell;
 
+use iota_streams::app::identifier::Identifier;
 /// Streams imports
 use iota_streams::{
     app::transport::{
@@ -112,12 +113,12 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
-    pub fn store_psk(&self, psk_seed_str: String) -> String {
+    pub fn store_psk(&self, psk_seed_str: String) -> Result<String> {
         let psk = psk_from_seed(psk_seed_str.as_bytes());
         let pskid = pskid_from_psk(&psk);
         let pskid_str = pskid_to_hex_string(&pskid);
-        self.author.borrow_mut().store_psk(pskid, psk);
-        pskid_str
+        to_result(self.author.borrow_mut().store_psk(pskid, psk))?;
+        Ok(pskid_str)
     }
 
     #[wasm_bindgen(catch)]
@@ -161,6 +162,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub async fn send_keyload(self, link: Address, psk_ids: PskIdsW, sig_pks: PublicKeysW) -> Result<UserResponse> {
+        let pks: Vec<Identifier> = sig_pks.pks.iter().map(|pk| (*pk).into()).collect();
         self.author
             .borrow_mut()
             .send_keyload(
@@ -168,7 +170,7 @@ impl Author {
                     .try_into()
                     .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
                 &psk_ids.ids,
-                &sig_pks.pks,
+                &pks.iter().collect(),
             )
             .await
             .map_or_else(
@@ -400,9 +402,9 @@ impl Author {
     pub async fn gen_next_msg_ids(self) -> Result<Array> {
         let branching = self.author.borrow_mut().is_multi_branching();
         let mut ids = Vec::new();
-        for (pk, cursor) in self.author.borrow_mut().gen_next_msg_ids(branching).iter() {
+        for (id, cursor) in self.author.borrow_mut().gen_next_msg_ids(branching).iter() {
             ids.push(NextMsgId::new(
-                public_key_to_string(pk),
+                identifier_to_string(id),
                 Address::from_string(cursor.link.to_string()),
             ));
         }
@@ -416,7 +418,7 @@ impl Author {
             |state_list| {
                 Ok(state_list
                     .into_iter()
-                    .map(|(pk, cursor)| JsValue::from(UserState::new(pk, cursor.into())))
+                    .map(|(id, cursor)| JsValue::from(UserState::new(id, cursor.into())))
                     .collect())
             },
         )

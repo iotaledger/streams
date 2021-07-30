@@ -40,7 +40,10 @@ use iota_streams::{
 };
 use wasm_bindgen::prelude::*;
 
-use iota_streams::core::psk::PskId;
+use iota_streams::{
+    app::identifier::Identifier,
+    core::psk::PskId,
+};
 use js_sys::Array;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
@@ -219,13 +222,13 @@ pub struct UserResponse {
 
 #[wasm_bindgen]
 pub struct NextMsgId {
-    pk: String,
+    identifier: String,
     msgid: Address,
 }
 
 #[wasm_bindgen]
 pub struct UserState {
-    pk: String,
+    identifier: String,
     cursor: Cursor,
 }
 
@@ -248,12 +251,12 @@ impl From<ApiCursor<ApiAddress>> for Cursor {
 
 #[wasm_bindgen]
 impl UserState {
-    pub fn new(pk: String, cursor: Cursor) -> Self {
-        UserState { pk, cursor }
+    pub fn new(identifier: String, cursor: Cursor) -> Self {
+        UserState { identifier, cursor }
     }
 
-    pub fn get_pk(&self) -> String {
-        self.pk.clone()
+    pub fn get_identifier(&self) -> String {
+        self.identifier.clone()
     }
 
     pub fn get_link(&self) -> Address {
@@ -271,7 +274,7 @@ impl UserState {
 
 #[wasm_bindgen]
 pub struct Message {
-    pk: Option<String>,
+    identifier: Option<String>,
     public_payload: Vec<u8>,
     masked_payload: Vec<u8>,
 }
@@ -305,6 +308,10 @@ impl PskIds {
 #[wasm_bindgen]
 pub struct PublicKeys {
     pub(crate) pks: Vec<PublicKey>,
+}
+
+pub(crate) fn identifier_to_string(id: &Identifier) -> String {
+    hex::encode(&id.to_bytes())
 }
 
 pub(crate) fn public_key_to_string(pk: &PublicKey) -> String {
@@ -341,16 +348,16 @@ impl Message {
         Self::new(None, Vec::new(), Vec::new())
     }
 
-    pub fn new(pk: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Message {
+    pub fn new(identifier: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Message {
         Message {
-            pk,
+            identifier,
             public_payload,
             masked_payload,
         }
     }
 
-    pub fn get_public_key(&self) -> String {
-        self.pk.clone().unwrap_or_default()
+    pub fn get_identifier(&self) -> String {
+        self.identifier.clone().unwrap_or_default()
     }
 
     pub fn get_public_payload(&self) -> Array {
@@ -364,12 +371,12 @@ impl Message {
 
 #[wasm_bindgen]
 impl NextMsgId {
-    pub fn new(pk: String, msgid: Address) -> Self {
-        NextMsgId { pk, msgid }
+    pub fn new(identifier: String, msgid: Address) -> Self {
+        NextMsgId { identifier, msgid }
     }
 
-    pub fn get_public_key(&self) -> String {
-        self.pk.clone()
+    pub fn get_identifier(&self) -> String {
+        self.identifier.clone()
     }
 
     pub fn get_link(&self) -> Address {
@@ -433,7 +440,7 @@ impl UserResponse {
         if self.message.is_some() {
             let message = self.message.as_ref().unwrap();
             Message {
-                pk: message.pk.clone(),
+                identifier: message.identifier.clone(),
                 public_payload: message.public_payload.clone(),
                 masked_payload: message.masked_payload.clone(),
             }

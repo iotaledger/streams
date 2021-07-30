@@ -607,21 +607,21 @@ Fetch the masked payload of the Message sender
 ### NextMsgId 
 A wrapper for a Rust NextMsgId structure
 
-#### new(pk, msgid): NextMsgId
-Make a NextMsgId object from the public key and expected next message identifier
+#### new(identifier, msgid): NextMsgId
+Make a NextMsgId object from the identifier and expected next message address
  
 | Param          | Type                  | Description                          |
 | -------------- | --------------------- | ------------------------------------ |
-| pk             | `string`              | Public key for expected message      |
+| identifier     | `string`              | Identifier for expected message      |
 | msgid          | [`Address`](#Address) | Address of expected next message     |
 **Returns:** A NextMsgId wrapper object
 
-#### get_public_key(): string
-Fetch the public key of the Message sender
+#### get_identifier(): string
+Fetch the identifier of the Message sender
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
-**Returns:** Public key in hex representation of the sender of the message 
+**Returns:** Identifier in hex representation of the sender of the message 
 
 #### get_link(): Address
 Fetch the link of the expected next message for that sender
@@ -691,14 +691,14 @@ The publishing state of a particular publisher (The latest sequenced message kno
 - A branch number for that latest posted message 
 
 ### UserState
-A wrapper around a publisher state. Includes the public key and [cursor](#Cursor) of the publisher
+A wrapper around a publisher state. Includes the identifier and [cursor](#Cursor) of the publisher
 
-#### get_pk()
+#### get_identifier()
 Get the public key of the user from the state
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
-**Returns:** Public Key of publisher in hex formatting
+**Returns:** Identifier of publisher in hex formatting
 
 #### get_link() 
 Get the link from the internal cursor object 

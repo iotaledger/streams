@@ -9,6 +9,7 @@ use iota_streams::{
             size_t,
             uint8_t,
         },
+        identifier::Identifier,
         message::Cursor,
         transport::tangle::{
             get_hash,
@@ -100,7 +101,7 @@ pub unsafe extern "C" fn drop_pskid(pskid: *const PskId) {
     safe_drop_ptr(pskid)
 }
 
-pub type NextMsgIds = Vec<(PublicKey, Cursor<Address>)>;
+pub type NextMsgIds = Vec<(Identifier, Cursor<Address>)>;
 
 #[no_mangle]
 pub extern "C" fn drop_next_msg_ids(m: *const NextMsgIds) {

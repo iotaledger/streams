@@ -22,6 +22,10 @@ pub enum Errors {
     SpongosNotCommitted,
     /// Link not found in store. (Possibly unimplemented)
     GenericLinkNotFound,
+    /// Unexpected/invalid Identifier
+    BadIdentifier,
+    /// Psk has already been stored
+    PskAlreadyStored,
     /// Input string {0} is not in hex format
     BadHexFormat(String),
 
@@ -46,6 +50,8 @@ pub enum Errors {
     BadMac,
     /// No default Random Number Generator available for no_std usage
     NoStdRngMissing,
+    /// Oneof value is unexpected
+    BadOneof,
 
     //////////
     // DDML IO
@@ -112,6 +118,8 @@ pub enum Errors {
     BadMessageInfo(u8),
     /// Failed to make message
     MessageCreationFailure,
+    /// Identifier could not be generated with given bytes. Must be an ed25519 Public Key or a PskId
+    IdentifierGenerationFailure,
 
     //////////
     // Users
@@ -134,6 +142,8 @@ pub enum Errors {
     StateStoreFailure,
     /// Cannot generate new channel, it may already exists. please try using a different seed
     ChannelDuplication,
+    /// Subscriber already has a psk stored, cannot add another
+    SinglePskAllowance,
 
     //////////
     // User Recovery
