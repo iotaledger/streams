@@ -408,4 +408,17 @@ impl Author {
         }
         Ok(ids.into_iter().map(JsValue::from).collect())
     }
+
+    #[wasm_bindgen(catch)]
+    pub fn fetch_state(&self) -> Result<Array> {
+        self.author.borrow_mut().fetch_state().map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |state_list| {
+                Ok(state_list
+                    .into_iter()
+                    .map(|(pk, cursor)| JsValue::from(UserState::new(pk, cursor.into())))
+                    .collect())
+            },
+        )
+    }
 }

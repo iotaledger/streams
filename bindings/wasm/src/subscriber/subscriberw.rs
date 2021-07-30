@@ -365,4 +365,25 @@ impl Subscriber {
                 },
             )
     }
+
+    #[wasm_bindgen(catch)]
+    pub fn fetch_state(&self) -> Result<Array> {
+        self.subscriber.borrow_mut().fetch_state().map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |state_list| {
+                Ok(state_list
+                    .into_iter()
+                    .map(|(pk, cursor)| JsValue::from(UserState::new(pk, cursor.into())))
+                    .collect())
+            },
+        )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn reset_state(self) -> Result<()> {
+        self.subscriber
+            .borrow_mut()
+            .reset_state()
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
+    }
 }
