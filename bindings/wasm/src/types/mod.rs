@@ -285,7 +285,7 @@ pub struct PskIds {
 #[wasm_bindgen]
 impl PskIds {
     pub fn new() -> Self {
-        PskIds { ids: Vec::new() }
+        Self { ids: Vec::new() }
     }
 
     pub fn add(&mut self, id: String) -> Result<()> {
@@ -319,7 +319,7 @@ pub(crate) fn public_key_from_string(hex_str: &str) -> Result<PublicKey> {
 #[wasm_bindgen]
 impl PublicKeys {
     pub fn new() -> Self {
-        PublicKeys { pks: Vec::new() }
+        Self { pks: Vec::new() }
     }
 
     pub fn add(&mut self, id: String) -> Result<()> {
@@ -349,7 +349,7 @@ impl Message {
         }
     }
 
-    pub fn get_pk(&self) -> String {
+    pub fn get_public_key(&self) -> String {
         self.pk.clone().unwrap_or_default()
     }
 
@@ -368,7 +368,7 @@ impl NextMsgId {
         NextMsgId { pk, msgid }
     }
 
-    pub fn get_pk(&self) -> String {
+    pub fn get_public_key(&self) -> String {
         self.pk.clone()
     }
 

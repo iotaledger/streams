@@ -162,6 +162,7 @@ extern void sub_drop(subscriber_t *);
 extern err_t sub_channel_address(channel_address_t const **addr, subscriber_t const *subscriber);
 extern err_t sub_is_multi_branching(uint8_t *flag, subscriber_t const *subscriber);
 extern err_t sub_get_public_key(public_key_t const **pk, subscriber_t const *subscriber);
+extern err_t sub_author_public_key(public_key_t const **pk, subscriber_t const *subscriber);
 
 // Registration state
 extern uint8_t sub_is_registered(subscriber_t const *subscriber);

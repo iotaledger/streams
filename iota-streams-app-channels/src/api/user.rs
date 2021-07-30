@@ -253,6 +253,11 @@ where
         Ok(())
     }
 
+    /// Channel Author's signature public key
+    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
+        self.author_sig_pk.as_ref()
+    }
+
     /// Reset link store and key store to original state
     pub fn reset_state(&mut self) -> Result<()> {
         match &self.appinst {

@@ -122,7 +122,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn get_public_key(&self) -> Result<String> {
-        Ok(public_key_to_string(self.author.borrow_mut().get_pk()))
+        Ok(public_key_to_string(self.author.borrow_mut().get_public_key()))
     }
 
     #[wasm_bindgen(catch)]
