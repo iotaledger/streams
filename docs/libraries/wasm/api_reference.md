@@ -286,6 +286,13 @@ Retrieve the Subscriber public key.
 | --------------- | ------------------- | ------------------------- |
 **Returns:** The Subscriber public key in hex representation.
 
+#### author_public_key(): string 
+Retrieve the Author public key. Errors if no channel is registered.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+**Returns:** The Subscriber public key in hex representation.
+
 #### is_registered(): bool 
 Check if the subscriber instance has processed a channel announcement. 
 
@@ -576,7 +583,7 @@ Make a Message object from the optional pk and the public and masked payloads
 | masked_payload | `Uint8Array`         | Masked payload bytes                 |
 **Returns:** A Message wrapper object
 
-#### get_pk(): string
+#### get_public_key(): string
 Fetch the public key of the Message sender (default if none is presented)
 
 | Param     | Type                  | Description                                  |
@@ -609,7 +616,7 @@ Make a NextMsgId object from the public key and expected next message identifier
 | msgid          | [`Address`](#Address) | Address of expected next message     |
 **Returns:** A NextMsgId wrapper object
 
-#### get_pk(): string
+#### get_public_key(): string
 Fetch the public key of the Message sender
 
 | Param     | Type                  | Description                                  |

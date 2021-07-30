@@ -69,6 +69,11 @@ impl<Trans> User<Trans> {
         self.user.appinst.as_ref().map(|x| &x.appinst)
     }
 
+    /// Channel Author's signature public key
+    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
+        self.user.author_public_key()
+    }
+
     /// Return boolean representing the sequencing nature of the channel
     pub fn is_multi_branching(&self) -> bool {
         self.user.is_multi_branching()
@@ -80,7 +85,7 @@ impl<Trans> User<Trans> {
     }
 
     /// Fetch the user ed25519 public key
-    pub fn get_pk(&self) -> &PublicKey {
+    pub fn get_public_key(&self) -> &PublicKey {
         &self.user.sig_kp.public
     }
 
