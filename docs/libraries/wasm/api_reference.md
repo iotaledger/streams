@@ -76,6 +76,12 @@ Retrieve the Author public key.
 | --------------- | ------------------- | ------------------------- |
 **Returns:** The Author public key in hex representation.
 
+#### fetch_state(): Array<[UserState](#UserState)>
+Retrieve the currently known publisher states for the channel.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+**Returns:** An array of user state objects representing the currently known state of all publishers in the channel.
 
 
 #### The following functions require author.clone() to use, as they consume the instance 
@@ -293,6 +299,13 @@ Unregister a subscriber instance from a channel.
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 
+#### fetch_state(): Array<[UserState](#UserState)>
+Retrieve the currently known publisher states for the channel.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+**Returns:** An array of user state objects representing the currently known state of all publishers in the channel.
+
 #### The following functions require subscriber.clone() to use, as they consume the instance 
 #### _async -_ send_subscribe(link): [UserResponse](#UserResponse)
 Send a subscription message attached to an announcement message link. 
@@ -410,6 +423,12 @@ Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use 
 
 **Returns:** A PskId String representing the Psk in store.
 
+#### reset_state()
+Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+
 ## Types
 Generic Types and Primitives used in Wasm API:
 - [Client](#Client)
@@ -418,6 +437,8 @@ Generic Types and Primitives used in Wasm API:
 - [Address](#Address)
 - [Message](#Message)
 - [NextMsgId](#NextMsgId)
+- [Cursor](#Cursor)
+- [UserState](#UserState)
 
 ### Client 
 Transport client for interacting with an Iota node.
@@ -655,3 +676,40 @@ Fetch Public Keys in string formatting
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** Array of Public Keys in string formatting
+
+### Cursor
+The publishing state of a particular publisher (The latest sequenced message known for that publisher). This includes:
+- The latest published message link
+- The sequence state number of the publisher
+- A branch number for that latest posted message 
+
+### UserState
+A wrapper around a publisher state. Includes the public key and [cursor](#Cursor) of the publisher
+
+#### get_pk()
+Get the public key of the user from the state
+
+| Param     | Type                  | Description                                  |
+| --------- | --------------------- | -------------------------------------------- |
+**Returns:** Public Key of publisher in hex formatting
+
+#### get_link() 
+Get the link from the internal cursor object 
+
+| Param     | Type                  | Description                                  |
+| --------- | --------------------- | -------------------------------------------- |
+**Returns:** The latest published message link 
+
+#### get_seq_no()
+Get the sequence state number from the internal cursor object 
+
+| Param     | Type                  | Description                                  |
+| --------- | --------------------- | -------------------------------------------- |
+**Returns:** The latest sequence state number of the publisher 
+
+#### get_branch_no()
+Get the branch state number from the internal cursor object
+
+| Param     | Type                  | Description                                  |
+| --------- | --------------------- | -------------------------------------------- |
+**Returns:** The latest branch state number of the publisher 

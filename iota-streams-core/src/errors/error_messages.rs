@@ -174,6 +174,8 @@ pub enum Errors {
     SubscriberAccessMismatch(String),
     /// Expected Link does not match (expected: {0}, found {1})
     LinkMismatch(String, String),
+    /// States do not match
+    StateMismatch,
 
     //////////
     // Tests

@@ -81,8 +81,8 @@ pub type BucketTransport = transport::BucketTransport<Address, Message>;
 
 /// Transportation trait for Tangle Client implementation
 // TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
-pub trait Transport: transport::Transport<Address, Message> {}
-impl<T> Transport for T where T: transport::Transport<Address, Message> {}
+pub trait Transport: transport::Transport<Address, Message> + Clone {}
+impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone {}
 
 mod msginfo;
 pub use msginfo::MsgInfo;
