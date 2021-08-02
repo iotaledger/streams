@@ -12,7 +12,6 @@ use iota_streams::{
         identifier::Identifier,
         message::Cursor,
         transport::tangle::{
-            get_hash,
             MsgId,
         },
     },
@@ -29,7 +28,6 @@ use iota_streams::{
 
 use core::ptr::{
     null,
-    null_mut,
 };
 
 pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
@@ -523,44 +521,44 @@ pub extern "C" fn drop_payloads(payloads: PacketPayloads) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn drop_str(string: *const c_char) {
+pub unsafe extern "C" fn drop_str(string: *mut c_char) {
     CString::from_raw(string as *mut c_char);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn get_channel_address_str(appinst: *const ChannelAddress) -> *const c_char {
     appinst.as_ref().map_or(null(), |inst| {
-        CString::new(hex::encode(inst)).map_or(null(), |inst_str| inst_str.into_raw())
+        CString::new(inst.to_string()).map_or(null(), |inst_str| inst_str.into_raw())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_msgid_str(msgid: *mut MsgId) -> *const c_char {
+pub unsafe extern "C" fn get_msgid_str(msgid: *const MsgId) -> *const c_char {
     msgid.as_ref().map_or(null(), |id| {
-        CString::new(hex::encode(id)).map_or(null(), |id_str| id_str.into_raw())
+        CString::new(id.to_string()).map_or(null(), |id_str| id_str.into_raw())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_address_inst_str(address: *mut Address) -> *mut c_char {
-    address.as_ref().map_or(null_mut(), |addr| {
-        CString::new(hex::encode(addr.appinst.as_ref())).map_or(null_mut(), |inst| inst.into_raw())
+pub unsafe extern "C" fn get_address_inst_str(address: *const Address) -> *const c_char {
+    address.as_ref().map_or(null(), |addr| {
+        get_channel_address_str(&addr.appinst)
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_address_id_str(address: *mut Address) -> *mut c_char {
-    address.as_ref().map_or(null_mut(), |addr| {
-        CString::new(hex::encode(addr.msgid.as_ref())).map_or(null_mut(), |id| id.into_raw())
+pub unsafe extern "C" fn get_address_id_str(address: *const Address) -> *const c_char {
+    address.as_ref().map_or(null(), |addr| {
+        get_msgid_str(&addr.msgid)
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_address_index_str(address: *mut Address) -> *mut c_char {
-    address.as_ref().map_or(null_mut(), |addr| {
-        get_hash(addr.appinst.as_ref(), addr.msgid.as_ref()).map_or(null_mut(), |index| {
-            CString::new(index).map_or(null_mut(), |index| index.into_raw())
-        })
+pub unsafe extern "C" fn get_address_index_str(address: *const Address) -> *const c_char {
+    address.as_ref().map_or(null(), |addr| {
+        let index = addr.to_msg_index();
+        let index_hex = format!("{:x}", index);
+        CString::new(index_hex).map_or(null(), |index| index.into_raw())
     })
 }
 
