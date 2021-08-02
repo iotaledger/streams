@@ -19,7 +19,7 @@ if(${SYNC_CLIENT})
   set(cargo_features "${cargo_features}sync-client")
 endif(${SYNC_CLIENT})
 
-message("NO_STD=${NO_STD} SYNC_CLIENT=${SYNC_CLIENT} STATIC=${STATIC}")
+message("NO_STD=${NO_STD} SYNC_CLIENT=${SYNC_CLIENT} STATIC=${STATIC} RELEASE=${RELEASE}")
 
 include_directories(include/)
 
