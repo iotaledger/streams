@@ -133,11 +133,10 @@ where
     // pub(crate) prng: prng::Prng<F>,
     _phantom: core::marker::PhantomData<F>,
 
-    /// Own Ed25519 private key.
-    pub(crate) sig_sk: ed25519::SecretKey,
-    pub(crate) sig_pk: ed25519::PublicKey,
+    /// Own Ed25519 key pair.
+    pub(crate) sig_kp: (ed25519::SecretKey, ed25519::PublicKey),
 
-    /// Own x25519 key pair corresponding to Ed25519 keypair.
+    /// Own x25519 key pair corresponding to Ed25519 key pair.
     pub(crate) ke_kp: (x25519::SecretKey, x25519::PublicKey),
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
@@ -182,8 +181,7 @@ where
 
         Self {
             _phantom: core::marker::PhantomData,
-            sig_sk,
-            sig_pk,
+            sig_kp: (sig_sk, sig_pk),
             ke_kp: (ke_sk, ke_pk),
 
             key_store: Keys::default(),
@@ -230,8 +228,7 @@ where
 
         Self {
             _phantom: core::marker::PhantomData,
-            sig_sk,
-            sig_pk,
+            sig_kp: (sig_sk, sig_pk),
             ke_kp: (ke_sk, ke_pk),
 
             key_store: Keys::default(),
@@ -253,7 +250,7 @@ where
                 self.appinst.as_ref().unwrap().base().to_string()
             ));
         }
-        self.link_gen.gen(&self.sig_pk, channel_idx);
+        self.link_gen.gen(&self.sig_kp.1, channel_idx);
         let appinst = self.link_gen.get();
 
         let identifier = self.sig_kp.public.into();
@@ -388,7 +385,7 @@ where
                 let content = subscribe::ContentWrap {
                     link: link_to.rel(),
                     unsubscribe_key,
-                    subscriber_sig_sk: &self.sig_sk,
+                    subscriber_sig_sk: &self.sig_kp.0,
                     author_ke_pk,
                     _phantom: core::marker::PhantomData,
                 };
@@ -643,7 +640,7 @@ where
                     link: link_to.rel(),
                     public_payload,
                     masked_payload,
-                    sig_sk: &self.sig_sk,
+                    sig_sk: &self.sig_kp.0,
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -1039,7 +1036,7 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.mask(<&NBytes<U32>>::from(self.sig_sk.as_slice()))?
+        ctx.mask(<&NBytes<U32>>::from(self.sig_kp.0.as_slice()))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1102,7 +1099,7 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.mask(<&NBytes<U32>>::from(self.sig_sk.as_slice()))?
+        ctx.mask(<&NBytes<U32>>::from(self.sig_kp.0.as_slice()))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1170,7 +1167,7 @@ where
         let mut message_encoding = Bytes::new();
         let mut uniform_payload_length = Uint64(0);
         ctx
-            //.absorb(&self.sig_pk)
+            //.absorb(&self.sig_kp.1)
             .mask(&mut sig_sk_bytes)?
             .absorb(&mut flags)?
             .absorb(&mut message_encoding)?
@@ -1235,7 +1232,7 @@ where
         let sig_sk = ed25519::SecretKey::from_bytes(*sig_sk_bytes.0.as_ref());
         let ke_sk: x25519::SecretKey = (&sig_sk).into();
         let ke_pk: x25519::PublicKey = ke_sk.public_key();
-        self.sig_sk = sig_sk;
+        self.sig_kp.0 = sig_sk;
         self.ke_kp = (ke_sk, ke_pk);
         self.link_store = RefCell::new(link_store);
         self.key_store = key_store;

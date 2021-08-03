@@ -489,7 +489,7 @@ impl<Trans: Clone> fmt::Display for Author<Trans> {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.user.user.sig_sk.public_key().as_slice()),
+            hex::encode(self.user.user.sig_kp.1.as_slice()),
             self.user.user.pk_store
         )
     }

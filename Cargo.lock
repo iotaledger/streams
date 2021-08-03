@@ -1355,6 +1355,18 @@ dependencies = [
 [[package]]
 name = "iota-crypto"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a563712b1857f24cd194eb799ddee2c9f5fdb9f8cadc8cae333da5c7d2a9213"
+dependencies = [
+ "blake2",
+ "digest",
+ "ed25519-zebra",
+]
+
+[[package]]
+name = "iota-crypto"
+version = "0.6.0"
+source = "git+https://github.com/semenov-vladyslav/crypto.rs?branch=pk-traits#b52caec7a8890049407ce4ce02488a31578d155a"
 dependencies = [
  "blake2",
  "curve25519-dalek",
@@ -1364,17 +1376,6 @@ dependencies = [
  "rand 0.8.4",
  "sha2",
  "x25519-dalek",
-]
-
-[[package]]
-name = "iota-crypto"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a563712b1857f24cd194eb799ddee2c9f5fdb9f8cadc8cae333da5c7d2a9213"
-dependencies = [
- "blake2",
- "digest",
- "ed25519-zebra",
 ]
 
 [[package]]
@@ -1453,7 +1454,7 @@ dependencies = [
  "displaydoc",
  "hashbrown 0.11.2",
  "hex",
- "iota-crypto 0.6.0",
+ "iota-crypto 0.6.0 (git+https://github.com/semenov-vladyslav/crypto.rs?branch=pk-traits)",
  "keccak",
  "rand 0.8.4",
 ]
