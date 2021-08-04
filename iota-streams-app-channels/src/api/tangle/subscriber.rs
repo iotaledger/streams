@@ -144,8 +144,8 @@ impl<Trans> Subscriber<Trans> {
     ///
     ///   # Arguments
     ///   * `pwd` - Encryption password
-    pub fn export(&self, pwd: &str) -> Result<Vec<u8>> {
-        self.user.export(1, pwd)
+    pub async fn export(&self, pwd: &str) -> Result<Vec<u8>> {
+        self.user.export(1, pwd).await
     }
 
     /// Deserialize user state and decrypt it with password.
@@ -154,11 +154,12 @@ impl<Trans> Subscriber<Trans> {
     ///   * `bytes` - Encrypted serialized user state
     ///   * `pwd` - Encryption password
     ///   * `tsp` - Transport object
-    pub fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
-        User::<Trans>::import(bytes, 1, pwd, tsp).map(|user| Self { user })
+    pub async fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
+        User::<Trans>::import(bytes, 1, pwd, tsp).await.map(|user| Self { user })
     }
 }
 
+/*
 #[cfg(not(feature = "async"))]
 impl<Trans: Transport + Clone> Subscriber<Trans> {
     /// Generates a new Subscriber implementation from input. It then syncs state of the user from
@@ -326,7 +327,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
     }
 }
 
-#[cfg(feature = "async")]
+#[cfg(feature = "async")]*/
 impl<Trans: Transport + Clone> Subscriber<Trans> {
     /// Generates a new Subscriber implementation from input. It then syncs state of the user from
     /// the given announcement message link

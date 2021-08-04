@@ -14,7 +14,7 @@ use iota_streams_core::{
 };
 use iota_streams_core_edsig::key_exchange::x25519;
 
-pub trait KeyStore<Info, F: PRP>: Default {
+pub trait KeyStore<Info, F: PRP>: Default + Send + Sync {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
     where
         I: IntoIterator<Item = &'a Identifier>;
@@ -55,7 +55,7 @@ impl<Info> Default for KeyMap<Info> {
     }
 }
 
-impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
+impl<Info: Send + Sync, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
     where
         I: IntoIterator<Item = &'a Identifier>,

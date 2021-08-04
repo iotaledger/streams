@@ -19,7 +19,7 @@ use iota_streams_core::{
 };
 
 use super::*;
-
+/*
 #[cfg(not(feature = "async"))]
 pub fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     let mut author = Author::new("AUTHOR9SEED", ChannelType::SingleBranch, transport.clone());
@@ -133,7 +133,7 @@ pub fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     Ok(())
 }
 
-#[cfg(feature = "async")]
+#[cfg(feature = "async")]*/
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> where
 {
     let mut author = Author::new("AUTHOR9SEED", ChannelType::SingleBranch, transport.clone());

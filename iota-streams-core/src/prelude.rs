@@ -24,6 +24,12 @@ pub use alloc::{
     },
 };
 
+#[cfg(not(feature = "std"))]
+pub use spin::{
+    Mutex,
+    MutexGuard,
+};
+
 #[cfg(feature = "std")]
 pub use std::{
     boxed::{
@@ -43,6 +49,8 @@ pub use std::{
     sync::{
         self,
         Arc,
+        Mutex,
+        MutexGuard,
     },
     vec::{
         self,
