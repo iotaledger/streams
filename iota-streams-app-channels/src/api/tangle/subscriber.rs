@@ -10,6 +10,7 @@ use crate::api::tangle::{
     User,
 };
 
+use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
     prelude::{
         String,
@@ -54,17 +55,22 @@ impl<Trans> Subscriber<Trans> {
     }
 
     /// Fetch the user ed25519 public key
-    pub fn get_pk(&self) -> &ed25519::PublicKey {
-        self.user.get_pk()
+    pub fn get_public_key(&self) -> &ed25519::PublicKey {
+        self.user.get_public_key()
     }
 
-    /// Store a PSK in the user instance, returns the PskId for identifying purposes in keyloads
+    /// Channel Author's signature public key
+    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
+        self.user.author_public_key()
+    }
+
+    /// Store a PSK in the user instance
     ///
     ///   # Arguments
     ///   * `pskid` - An identifier representing a pre shared key
     ///   * `psk` - A pre shared key
-    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) {
-        self.user.store_psk(pskid, psk)
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
+        self.user.store_psk(pskid, psk, true)
     }
 
     /// Fetch the Address (application instance) of the channel.
@@ -88,9 +94,9 @@ impl<Trans> Subscriber<Trans> {
     ///   # Arguments
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()> {
+    pub fn store_state(&mut self, id: Identifier, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(pk, link)
+        self.user.store_state(id, link)
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -110,9 +116,15 @@ impl<Trans> Subscriber<Trans> {
         let state_list = self.user.fetch_state()?;
         let mut state = Vec::new();
         for (pk, cursor) in state_list {
-            state.push((hex::encode(pk.as_bytes()), cursor))
+            state.push((hex::encode(pk.to_bytes()), cursor))
         }
         Ok(state)
+    }
+
+    /// Resets the cursor state storage to allow a Subscriber to retrieve all messages in a channel
+    /// from scratch
+    pub fn reset_state(&mut self) -> Result<()> {
+        self.user.reset_state()
     }
 
     /// Generate a vector containing the next sequenced message identifier for each publishing
@@ -120,7 +132,7 @@ impl<Trans> Subscriber<Trans> {
     ///
     ///   # Arguments
     ///   * `branching` - Boolean representing the sequencing nature of the channel
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(Identifier, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
     }
 
@@ -455,7 +467,7 @@ impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
             f,
             "<{}>\n{}",
             hex::encode(self.user.user.sig_kp.public.as_bytes()),
-            self.user.user.pk_store
+            self.user.user.key_store
         )
     }
 }

@@ -128,7 +128,7 @@ pub unsafe extern "C" fn auth_is_multi_branching(flag: *mut uint8_t, user: *cons
 pub unsafe extern "C" fn auth_get_public_key(pk: *mut *const PublicKey, user: *const Author) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {
         pk.as_mut().map_or(Err::NullArgument, |pk| {
-            *pk = user.get_pk() as *const PublicKey;
+            *pk = user.get_public_key() as *const PublicKey;
             Err::Ok
         })
     })
@@ -171,7 +171,8 @@ pub unsafe extern "C" fn auth_send_keyload(
             link_to.as_ref().map_or(Err::NullArgument, |link_to| {
                 psk_ids.as_ref().map_or(Err::NullArgument, |psk_ids| {
                     ke_pks.as_ref().map_or(Err::NullArgument, |ke_pks| {
-                        user.send_keyload(link_to, psk_ids, ke_pks)
+                        let identifiers: Vec<Identifier> = ke_pks.into_iter().map(|pk| (*pk).into()).collect();
+                        user.send_keyload(link_to, psk_ids, &identifiers.iter().collect())
                             .map_or(Err::OperationFailed, |response| {
                                 *r = response.into();
                                 Err::Ok
@@ -446,9 +447,10 @@ pub unsafe extern "C" fn auth_store_psk(c_pskid: *mut *const PskId, c_user: *mut
             c_pskid.as_mut().map_or(Err::NullArgument, |pskid| {
                 let psk = psk_from_seed(psk_seed.as_ref());
                 let id = pskid_from_psk(&psk);
-                user.store_psk(id, psk);
-                *pskid = safe_into_ptr(id);
-                Err::Ok
+                user.store_psk(id, psk).map_or(Err::OperationFailed, |_| {
+                    *pskid = safe_into_ptr(id);
+                    Err::Ok
+                })
             })
         })
     })

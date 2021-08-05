@@ -10,6 +10,7 @@ use crate::api::tangle::{
     User,
 };
 
+use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
     panic_if_not,
     prelude::{
@@ -65,17 +66,17 @@ impl<Trans> Author<Trans> {
     }
 
     /// Fetch the user ed25519 public key
-    pub fn get_pk(&self) -> &ed25519::PublicKey {
-        self.user.get_pk()
+    pub fn get_public_key(&self) -> &ed25519::PublicKey {
+        self.user.get_public_key()
     }
 
-    /// Store a PSK in the user instance, returns the PskId for identifying purposes in keyloads
+    /// Store a PSK in the user instance
     ///
     ///   # Arguments
     ///   * `pskid` - An identifier representing a pre shared key
     ///   * `psk` - A pre shared key
-    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) {
-        self.user.store_psk(pskid, psk)
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
+        self.user.store_psk(pskid, psk, false)
     }
 
     /// Generate a vector containing the next sequenced message identifier for each publishing
@@ -83,7 +84,7 @@ impl<Trans> Author<Trans> {
     ///
     ///   # Arguments
     ///   * `branching` - Boolean representing the sequencing nature of the channel
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(ed25519::PublicKey, Cursor<Address>)> {
+    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(Identifier, Cursor<Address>)> {
         self.user.gen_next_msg_ids(branching)
     }
 
@@ -93,7 +94,7 @@ impl<Trans> Author<Trans> {
     ///   # Arguments
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
-    pub fn store_state(&mut self, pk: ed25519::PublicKey, link: &Address) -> Result<()> {
+    pub fn store_state(&mut self, pk: Identifier, link: &Address) -> Result<()> {
         self.user.store_state(pk, link)
     }
 
@@ -113,7 +114,7 @@ impl<Trans> Author<Trans> {
         let state_list = self.user.fetch_state()?;
         let mut state = Vec::new();
         for (pk, cursor) in state_list {
-            state.push((hex::encode(pk.as_bytes()), cursor))
+            state.push((hex::encode(pk.to_bytes()), cursor))
         }
         Ok(state)
     }
@@ -176,7 +177,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
-        ke_pks: &Vec<ed25519::PublicKey>,
+        ke_pks: &Vec<&Identifier>,
     ) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, psk_ids, ke_pks)
     }
@@ -349,7 +350,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
         &mut self,
         link_to: &Address,
         psk_ids: &PskIds,
-        ke_pks: &Vec<ed25519::PublicKey>,
+        ke_pks: &Vec<&Identifier>,
     ) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, psk_ids, ke_pks).await
     }
@@ -489,7 +490,7 @@ impl<Trans: Clone> fmt::Display for Author<Trans> {
             f,
             "<{}>\n{}",
             hex::encode(self.user.user.sig_kp.public.as_bytes()),
-            self.user.user.pk_store
+            self.user.user.key_store
         )
     }
 }

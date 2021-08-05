@@ -1,8 +1,5 @@
-/// Public Key storage. Used for keeping track of channel state
-pub mod pk_store;
-
-/// Pre Shared Key storage. Used for storing a map of Pre Shared Keys and Identifiers
-pub mod psk_store;
+/// Identifier Key storage. Used for keeping track of channel state
+pub mod key_store;
 
 /// We would need an array import in prelude, and using IntoIter with size specifying...
 /// type_complexity to be determined in future issue

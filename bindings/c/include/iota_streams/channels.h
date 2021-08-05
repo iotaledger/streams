@@ -162,6 +162,7 @@ extern void sub_drop(subscriber_t *);
 extern err_t sub_channel_address(channel_address_t const **addr, subscriber_t const *subscriber);
 extern err_t sub_is_multi_branching(uint8_t *flag, subscriber_t const *subscriber);
 extern err_t sub_get_public_key(public_key_t const **pk, subscriber_t const *subscriber);
+extern err_t sub_author_public_key(public_key_t const **pk, subscriber_t const *subscriber);
 
 // Registration state
 extern uint8_t sub_is_registered(subscriber_t const *subscriber);
@@ -192,6 +193,7 @@ extern err_t sub_fetch_prev_msg(unwrapped_message_t const **umsg, subscriber_t *
 extern err_t sub_fetch_prev_msgs(unwrapped_messages_t const **umsgs, subscriber_t *subscriber, address_t const *address, size_t num_msgs);
 extern err_t sub_sync_state(unwrapped_messages_t const **messages, subscriber_t *subscriber);
 extern err_t sub_fetch_state(user_state_t const **state, subscriber_t *subscriber);
+extern err_t sub_reset_state(subscriber_t *subscriber);
 // Store Psk
 extern err_t sub_store_psk(psk_id_t const **pskid, subscriber_t *subscriber, char const *psk);
 

@@ -125,8 +125,20 @@ pub unsafe extern "C" fn sub_is_multi_branching(flag: *mut uint8_t, user: *const
 pub unsafe extern "C" fn sub_get_public_key(pk: *mut *const PublicKey, user: *const Subscriber) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {
         pk.as_mut().map_or(Err::NullArgument, |pk| {
-            *pk = user.get_pk() as *const PublicKey;
+            *pk = user.get_public_key() as *const PublicKey;
             Err::Ok
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sub_author_public_key(pk: *mut *const PublicKey, user: *const Subscriber) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        pk.as_mut().map_or(Err::NullArgument, |pk| {
+            user.author_public_key().map_or(Err::OperationFailed, |public_key| {
+                *pk = public_key as *const PublicKey;
+                Err::Ok
+            })
         })
     })
 }
@@ -449,6 +461,13 @@ pub unsafe extern "C" fn sub_fetch_state(state: *mut *const UserState, user: *mu
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn sub_reset_state(user: *mut Subscriber) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        user.reset_state().map_or(Err::OperationFailed, |_| Err::Ok)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn sub_store_psk(c_pskid: *mut *const PskId, c_user: *mut Subscriber, c_psk_seed: *const c_char) -> Err {
     if c_psk_seed == null() {
         return Err::NullArgument;
@@ -459,9 +478,10 @@ pub unsafe extern "C" fn sub_store_psk(c_pskid: *mut *const PskId, c_user: *mut 
             c_pskid.as_mut().map_or(Err::NullArgument, |pskid| {
                 let psk = psk_from_seed(psk_seed.as_ref());
                 let id = pskid_from_psk(&psk);
-                user.store_psk(id, psk);
-                *pskid = safe_into_ptr(id);
-                Err::Ok
+                user.store_psk(id, psk).map_or(Err::OperationFailed, |_| {
+                    *pskid = safe_into_ptr(id);
+                    Err::Ok
+                })
             })
         })
     })
