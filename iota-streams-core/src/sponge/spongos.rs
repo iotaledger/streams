@@ -23,7 +23,6 @@ use crate::{
     try_or,
     Errors::{
         LengthMismatch,
-        SpongosNotCommitted,
         SpongosInputNotCommitted,
         SpongosKeyNotCommitted,
     },
@@ -477,9 +476,9 @@ impl<F: PRP> Spongos<F> {
 
     /// Only `inner` part of the state may be serialized.
     /// State should be committed.
-    pub fn to_inner(&self) -> Result<Inner<F>> {
-        try_or!(self.is_committed(), SpongosNotCommitted)?;
-        Ok(Inner::new(self.s.inner().clone(), self.flags))
+    pub fn to_inner(mut self) -> Inner<F> {
+        self.commit();
+        Inner::new(self.s.inner().clone(), self.flags)
     }
 }
 
@@ -512,13 +511,7 @@ impl<F: PRP> From<&Inner<F>> for Spongos<F> {
 
 impl<F: PRP> From<Spongos<F>> for Inner<F> {
     fn from(inner: Spongos<F>) -> Self {
-        inner.to_inner().unwrap()
-    }
-}
-
-impl<F: PRP> From<&Spongos<F>> for Inner<F> {
-    fn from(inner: &Spongos<F>) -> Self {
-        inner.to_inner().unwrap()
+        inner.to_inner()
     }
 }
 

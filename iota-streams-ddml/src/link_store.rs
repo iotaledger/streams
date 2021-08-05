@@ -172,7 +172,7 @@ where
 
     /// Try to retrieve info for the link.
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Info) -> Result<()> {
-        let inner = spongos.to_inner()?;
+        let inner = spongos.to_inner();
         self.map.insert(link.clone(), (inner, info));
         Ok(())
     }
