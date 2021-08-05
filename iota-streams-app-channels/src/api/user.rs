@@ -350,9 +350,9 @@ where
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
         self.key_store
-            .insert_cursor(Identifier::EdPubKey(content.sig_pk.into()), cursor.clone())?;
+            .insert_cursor(content.sig_pk.into(), cursor.clone())?;
         self.key_store
-            .insert_cursor(Identifier::EdPubKey(self.sig_kp.1.into()), cursor)?;
+            .insert_cursor(self.sig_kp.1.into(), cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.appinst = Some(link);
@@ -425,7 +425,7 @@ where
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let ref_link = self.appinst.as_ref().unwrap().rel().clone();
         self.key_store.insert_cursor(
-            Identifier::EdPubKey(subscriber_sig_pk.into()),
+            subscriber_sig_pk.into(),
             Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM),
         )?;
         // Unwrapped unsubscribe_key is not used explicitly.
@@ -846,7 +846,7 @@ where
                 cursor.next_seq();
                 wrapped.commit(self.link_store.borrow_mut(), info)?;
                 self.key_store
-                    .insert_cursor(Identifier::EdPubKey(self.sig_kp.1.into()), cursor)?;
+                    .insert_cursor(self.sig_kp.1.into(), cursor)?;
                 Ok(Some(link))
             }
             None => {
@@ -895,7 +895,7 @@ where
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn get_seq_no(&self) -> Option<u32> {
         self.key_store
-            .get(&Identifier::EdPubKey(self.sig_kp.1.into()))
+            .get(&self.sig_kp.1.into())
             .map(|cursor| cursor.seq_no)
     }
 
@@ -978,7 +978,7 @@ where
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
             self.key_store.insert_cursor(
-                Identifier::EdPubKey(self.sig_kp.1.into()),
+                self.sig_kp.1.into(),
                 Cursor::new_at(link.clone(), 0, seq_no),
             )?;
             for mut i in self.key_store.iter_mut() {

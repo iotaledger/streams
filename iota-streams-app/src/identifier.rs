@@ -61,7 +61,7 @@ impl Identifier {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> iota_streams_core::Result<Self> {
-        if bytes.len() == 0 {
+        if bytes.is_empty() {
             return err!(IdentifierGenerationFailure);
         }
         match bytes[0] {
@@ -89,7 +89,7 @@ impl Identifier {
 
     pub fn get_pk(&self) -> Option<&ed25519::PublicKey> {
         if let Identifier::EdPubKey(pk) = self {
-            Some(&pk)
+            Some(pk)
         } else {
             None
         }
@@ -104,7 +104,7 @@ impl ToString for Identifier {
 
 impl From<ed25519::PublicKey> for Identifier {
     fn from(pk: ed25519::PublicKey) -> Self {
-        Identifier::EdPubKey(pk.into())
+        Identifier::EdPubKey(pk)
     }
 }
 
