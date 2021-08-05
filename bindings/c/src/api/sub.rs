@@ -40,7 +40,7 @@ pub unsafe extern "C" fn sub_recover(
         c_ann_address.as_ref().map_or(Err::NullArgument, |addr| {
             transport.as_ref().map_or(Err::NullArgument, |tsp| {
                 c_sub.as_mut().map_or(Err::NullArgument, |sub| {
-                    Subscriber::recover(seed, addr, tsp.clone()).map_or(Err::OperationFailed, |user| {
+                    Subscriber::recover(seed, addr, tsp.clone()).map_or_else(operation_failed, |user| {
                         *sub = safe_into_mut_ptr(user);
                         Err::Ok
                     })
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn sub_import(
         transport.as_ref().map_or(Err::NullArgument, |tsp| {
             c_sub.as_mut().map_or(Err::NullArgument, |sub| {
                 let bytes_vec: Vec<_> = buffer.into();
-                Subscriber::import(&bytes_vec, password, tsp.clone()).map_or(Err::OperationFailed, |user| {
+                Subscriber::import(&bytes_vec, password, tsp.clone()).map_or_else(operation_failed, |user| {
                     *sub = safe_into_mut_ptr(user);
                     Err::Ok
                 })
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn sub_export(buf: *mut Buffer, c_sub: *mut Subscriber, c_
     CStr::from_ptr(c_password).to_str().map_or(Err::BadArgument, |password| {
         c_sub.as_ref().map_or(Err::NullArgument, |user| {
             buf.as_mut().map_or(Err::NullArgument, |buf| {
-                user.export(password).map_or(Err::OperationFailed, |bytes| {
+                user.export(password).map_or_else(operation_failed, |bytes| {
                     *buf = bytes.into();
                     Err::Ok
                 })
@@ -161,7 +161,7 @@ pub unsafe extern "C" fn sub_receive_announce(user: *mut Subscriber, link: *cons
     user.as_mut().map_or(Err::NullArgument, |user| {
         link.as_ref().map_or(Err::NullArgument, |link| {
             user.receive_announcement(link)
-                .map_or(Err::OperationFailed, |_| Err::Ok)
+                .map_or_else(operation_failed, |_| Err::Ok)
         })
     })
 }
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn sub_send_subscribe(
                 .as_ref()
                 .map_or(Err::NullArgument, |announcement_link| -> Err {
                     user.send_subscribe(announcement_link)
-                        .map_or(Err::OperationFailed, |link| -> Err {
+                        .map_or_else(operation_failed, |link| -> Err {
                             *r = safe_into_ptr(link);
                             Err::Ok
                         })
@@ -215,7 +215,7 @@ pub unsafe extern "C" fn sub_send_tagged_packet(
                     ));
                     let e = user
                         .send_tagged_packet(link_to, &public_payload, &masked_payload)
-                        .map_or(Err::OperationFailed, |response| {
+                        .map_or_else(operation_failed, |response| {
                             *r = response.into();
                             Err::Ok
                         });
@@ -254,7 +254,7 @@ pub unsafe extern "C" fn sub_send_signed_packet(
                     ));
                     let e = user
                         .send_signed_packet(link_to, &public_payload, &masked_payload)
-                        .map_or(Err::OperationFailed, |response| {
+                        .map_or_else(operation_failed, |response| {
                             *r = response.into();
                             Err::Ok
                         });
@@ -271,7 +271,7 @@ pub unsafe extern "C" fn sub_send_signed_packet(
 pub unsafe extern "C" fn sub_receive_keyload(user: *mut Subscriber, link: *const Address) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         link.as_ref().map_or(Err::NullArgument, |link| {
-            user.receive_keyload(link).map_or(Err::OperationFailed, |_| Err::Ok)
+            user.receive_keyload(link).map_or_else(operation_failed, |_| Err::Ok)
         })
     })
 }
@@ -285,7 +285,7 @@ pub unsafe extern "C" fn sub_receive_sequence(
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
-                user.receive_sequence(link).map_or(Err::OperationFailed, |seq_link| {
+                user.receive_sequence(link).map_or_else(operation_failed, |seq_link| {
                     *r = safe_into_ptr(seq_link);
                     Err::Ok
                 })
@@ -305,7 +305,7 @@ pub unsafe extern "C" fn sub_receive_tagged_packet(
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
                 user.receive_tagged_packet(link)
-                    .map_or(Err::OperationFailed, |tagged_payloads| {
+                    .map_or_else(operation_failed, |tagged_payloads| {
                         *r = tagged_payloads.into();
                         Err::Ok
                     })
@@ -325,7 +325,7 @@ pub unsafe extern "C" fn sub_receive_signed_packet(
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
                 user.receive_signed_packet(link)
-                    .map_or(Err::OperationFailed, |signed_payloads| {
+                    .map_or_else(operation_failed, |signed_payloads| {
                         *r = signed_payloads.into();
                         Err::Ok
                     })
@@ -381,7 +381,7 @@ pub unsafe extern "C" fn sub_receive_msg(
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
-                user.receive_msg(link).map_or(Err::OperationFailed, |u| {
+                user.receive_msg(link).map_or_else(operation_failed, |u| {
                     *r = safe_into_ptr(u);
                     Err::Ok
                 })
@@ -406,7 +406,7 @@ pub unsafe extern "C" fn sub_fetch_prev_msg(m: *mut *const UnwrappedMessage, use
     m.as_mut().map_or(Err::NullArgument, |m| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             address.as_ref().map_or(Err::NullArgument, |addr| {
-                user.fetch_prev_msg(addr).map_or(Err::OperationFailed, |msg| {
+                user.fetch_prev_msg(addr).map_or_else(operation_failed, |msg| {
                     *m = safe_into_ptr(msg);
                     Err::Ok
                 })
@@ -420,7 +420,7 @@ pub unsafe extern "C" fn sub_fetch_prev_msgs(m: *mut *const UnwrappedMessages, u
     m.as_mut().map_or(Err::NullArgument, |m| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             address.as_ref().map_or(Err::NullArgument, |addr| {
-                user.fetch_prev_msgs(addr, num_msgs).map_or(Err::OperationFailed, |msgs| {
+                user.fetch_prev_msgs(addr, num_msgs).map_or_else(operation_failed, |msgs| {
                     *m = safe_into_ptr(msgs);
                     Err::Ok
                 })
@@ -452,7 +452,7 @@ pub unsafe extern "C" fn sub_sync_state(r: *mut *const UnwrappedMessages, user: 
 pub unsafe extern "C" fn sub_fetch_state(state: *mut *const UserState, user: *mut Subscriber) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         state.as_mut().map_or(Err::NullArgument, |state| {
-            user.fetch_state().map_or(Err::OperationFailed, |st| {
+            user.fetch_state().map_or_else(operation_failed, |st| {
                 *state = safe_into_ptr(st);
                 Err::Ok
             })
@@ -463,7 +463,7 @@ pub unsafe extern "C" fn sub_fetch_state(state: *mut *const UserState, user: *mu
 #[no_mangle]
 pub unsafe extern "C" fn sub_reset_state(user: *mut Subscriber) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
-        user.reset_state().map_or(Err::OperationFailed, |_| Err::Ok)
+        user.reset_state().map_or_else(operation_failed, |_| Err::Ok)
     })
 }
 
@@ -478,7 +478,7 @@ pub unsafe extern "C" fn sub_store_psk(c_pskid: *mut *const PskId, c_user: *mut 
             c_pskid.as_mut().map_or(Err::NullArgument, |pskid| {
                 let psk = psk_from_seed(psk_seed.as_ref());
                 let id = pskid_from_psk(&psk);
-                user.store_psk(id, psk).map_or(Err::OperationFailed, |_| {
+                user.store_psk(id, psk).map_or_else(operation_failed, |_| {
                     *pskid = safe_into_ptr(id);
                     Err::Ok
                 })

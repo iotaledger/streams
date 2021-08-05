@@ -32,6 +32,13 @@ use core::ptr::{
     null_mut,
 };
 
+static mut LAST_ERROR: String = String::new();
+
+#[no_mangle]
+pub unsafe extern "C" fn get_last_error() -> *const c_char {
+    CString::new(LAST_ERROR.clone()).map_or(null(), |e| e.into_raw())
+}
+
 pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
     match channel_type {
         0 => ChannelType::SingleBranch,
@@ -69,6 +76,11 @@ pub enum Err {
     OperationFailed,
 }
 
+fn operation_failed<E: ToString>(e: E) -> Err {
+    unsafe { LAST_ERROR = e.to_string(); }
+    Err::OperationFailed
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn address_from_string(c_addr: *const c_char) -> *const Address {
     Address::from_c_str(c_addr)
@@ -77,7 +89,7 @@ pub unsafe extern "C" fn address_from_string(c_addr: *const c_char) -> *const Ad
 #[no_mangle]
 pub unsafe extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_char {
     pubkey.as_ref().map_or(null(), |pk| {
-        CString::new(hex::encode(pk.as_bytes())).map_or(null(), |pk| pk.into_raw())
+        CString::new(hex::encode(pk.as_slice())).map_or(null(), |pk| pk.into_raw())
     })
 }
 
@@ -108,7 +120,7 @@ pub extern "C" fn drop_next_msg_ids(m: *const NextMsgIds) {
     safe_drop_ptr(m)
 }
 
-pub type UserState = Vec<(String, Cursor<Address>)>;
+pub type UserState = Vec<(Identifier, Cursor<Address>)>;
 #[no_mangle]
 pub extern "C" fn drop_user_state(s: *const UserState) {
     safe_drop_ptr(s)
@@ -118,9 +130,9 @@ pub extern "C" fn drop_user_state(s: *const UserState) {
 pub unsafe extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
     state.as_ref().map_or(null(), |state_ref| {
         pub_key.as_ref().map_or(null(), |pub_key| {
-            let pk_str = hex::encode(pub_key.as_bytes());
+            let pk_id = (*pub_key).into();
             for (pk, cursor) in state_ref {
-                if pk == &pk_str {
+                if pk == &pk_id {
                     return safe_into_ptr(cursor.link.clone());
                 }
             }
@@ -328,7 +340,7 @@ mod client_details {
         r.as_mut().map_or(Err::NullArgument, |r| {
             tsp.as_mut().map_or(Err::NullArgument, |tsp| {
                 link.as_ref().map_or(Err::NullArgument, |link| {
-                    tsp.get_link_details(link).map_or(Err::OperationFailed, |d| {
+                    tsp.get_link_details(link).map_or_else(operation_failed, |d| {
                         *r = d.into();
                         Err::Ok
                     })
@@ -357,7 +369,7 @@ impl From<(Address, Option<Address>)> for MessageLinks {
 
 impl MessageLinks {
     pub unsafe fn into_seq_link<'a>(self, branching: bool) -> Option<&'a Address> {
-        if !branching {
+        if branching {
             self.msg_link.as_ref()
         } else {
             self.seq_link.as_ref()
