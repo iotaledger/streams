@@ -480,6 +480,10 @@ impl<F: PRP> Spongos<F> {
         self.commit();
         Inner::new(self.s.inner().clone(), self.flags)
     }
+
+    pub fn get_inner(&self) -> Inner<F> {
+        self.clone().to_inner()
+    }
 }
 
 impl<F: PRP> Default for Spongos<F> {
@@ -510,8 +514,8 @@ impl<F: PRP> From<&Inner<F>> for Spongos<F> {
 }
 
 impl<F: PRP> From<Spongos<F>> for Inner<F> {
-    fn from(inner: Spongos<F>) -> Self {
-        inner.to_inner()
+    fn from(s: Spongos<F>) -> Self {
+        s.to_inner()
     }
 }
 

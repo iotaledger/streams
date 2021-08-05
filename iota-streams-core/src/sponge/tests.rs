@@ -334,17 +334,17 @@ pub fn inner<F: PRP>() {
 
     let mut s0 = s.clone();
     s0.commit();
-    let inner0 = s0.to_inner().unwrap();
+    let inner0 = s0.get_inner();
 
     let mut s1 = s.clone();
     s1.absorb(&[0]);
     s1.commit();
-    let inner1 = s1.to_inner().unwrap();
+    let inner1 = s1.get_inner();
 
     let mut s2 = s.clone();
     s2.absorb(&[0, 0]);
     s2.commit();
-    let inner2 = s2.to_inner().unwrap();
+    let inner2 = s2.get_inner();
 
     assert!(inner0 != inner1);
     // NB: Two different inputs [0] and [0, 0] absorbed result
@@ -459,22 +459,23 @@ mod test_keccak {
     use crate::sponge::prp::keccak::KeccakF1600;
 
     #[test]
-    fn bytes_with_size_boundary_cases_keccak_byte() {
-        bytes_with_size_boundary_cases::<KeccakF1600>();
+    fn bytes_with_size_boundary_cases_keccak_byte() -> crate::Result<()> {
+        bytes_with_size_boundary_cases::<KeccakF1600>()
     }
 
     #[test]
-    fn slices_with_size_boundary_cases_keccak_byte() {
-        slices_with_size_boundary_cases::<KeccakF1600>();
+    fn slices_with_size_boundary_cases_keccak_byte() -> crate::Result<()> {
+        slices_with_size_boundary_cases::<KeccakF1600>()
     }
 
     #[test]
-    fn encrypt_decrypt_keccak_byte() {
+    fn encrypt_decrypt_keccak_byte() -> crate::Result<()> {
         let rate = <KeccakF1600 as PRP>::RateSize::USIZE;
-        encrypt_decrypt_n::<KeccakF1600>(27);
-        encrypt_decrypt_n::<KeccakF1600>(rate);
-        encrypt_decrypt_n::<KeccakF1600>(rate - 28);
-        encrypt_decrypt_n::<KeccakF1600>(rate + 28);
-        encrypt_decrypt_n::<KeccakF1600>(2 * rate);
+        encrypt_decrypt_n::<KeccakF1600>(27)?;
+        encrypt_decrypt_n::<KeccakF1600>(rate)?;
+        encrypt_decrypt_n::<KeccakF1600>(rate - 28)?;
+        encrypt_decrypt_n::<KeccakF1600>(rate + 28)?;
+        encrypt_decrypt_n::<KeccakF1600>(2 * rate)?;
+        Ok(())
     }
 }

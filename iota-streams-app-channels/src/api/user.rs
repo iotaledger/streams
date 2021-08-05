@@ -349,10 +349,8 @@ where
         // At the moment the Author is free to choose any address, not tied to PK.
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
-        self.key_store
-            .insert_cursor(content.sig_pk.into(), cursor.clone())?;
-        self.key_store
-            .insert_cursor(self.sig_kp.1.into(), cursor)?;
+        self.key_store.insert_cursor(content.sig_pk.into(), cursor.clone())?;
+        self.key_store.insert_cursor(self.sig_kp.1.into(), cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.appinst = Some(link);
@@ -424,10 +422,8 @@ where
         // TODO: trust content.subscriber_sig_pk
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let ref_link = self.appinst.as_ref().unwrap().rel().clone();
-        self.key_store.insert_cursor(
-            subscriber_sig_pk.into(),
-            Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM),
-        )?;
+        self.key_store
+            .insert_cursor(subscriber_sig_pk.into(), Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM))?;
         // Unwrapped unsubscribe_key is not used explicitly.
         Ok(())
     }
@@ -845,8 +841,7 @@ where
                 cursor.link = wrapped.link.rel().clone();
                 cursor.next_seq();
                 wrapped.commit(self.link_store.borrow_mut(), info)?;
-                self.key_store
-                    .insert_cursor(self.sig_kp.1.into(), cursor)?;
+                self.key_store.insert_cursor(self.sig_kp.1.into(), cursor)?;
                 Ok(Some(link))
             }
             None => {
@@ -894,9 +889,7 @@ where
 
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn get_seq_no(&self) -> Option<u32> {
-        self.key_store
-            .get(&self.sig_kp.1.into())
-            .map(|cursor| cursor.seq_no)
+        self.key_store.get(&self.sig_kp.1.into()).map(|cursor| cursor.seq_no)
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -977,10 +970,8 @@ where
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
-            self.key_store.insert_cursor(
-                self.sig_kp.1.into(),
-                Cursor::new_at(link.clone(), 0, seq_no),
-            )?;
+            self.key_store
+                .insert_cursor(self.sig_kp.1.into(), Cursor::new_at(link.clone(), 0, seq_no))?;
             for mut i in self.key_store.iter_mut() {
                 let cursor = i.as_mut();
                 cursor.link = link.clone();

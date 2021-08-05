@@ -425,7 +425,7 @@ fn tagged_packet<F: PRP>() -> Result<()> {
         let mut s = Spongos::<F>::init();
         s.absorb_key([0; 32]);
         s.commit();
-        s.to_inner().unwrap()
+        s.to_inner()
     };
     let store = SingleLinkStore::<F, Link, ()>::new(link, (inner, ()));
 
@@ -488,10 +488,10 @@ fn tagged_packet2<F: PRP>() -> Result<()> {
     let link = Link;
     let (inner0, inner1) = {
         let mut s = Spongos::<F>::init();
-        let inner0 = s.to_inner().unwrap();
+        let inner0 = s.get_inner();
         s.absorb(&[0]);
         s.commit();
-        let inner1 = s.to_inner().unwrap();
+        let inner1 = s.to_inner();
         (inner0, inner1)
     };
     // inner0 is all-zeros
