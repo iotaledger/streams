@@ -7,7 +7,10 @@ use iota_streams_app::transport::tangle::client::{
 };
 
 #[cfg(not(any(feature = "async-client", feature = "sync-client", feature = "wasm-client")))]
-use iota_streams_app::transport::{new_shared_transport, BucketTransport,};
+use iota_streams_app::transport::{
+    new_shared_transport,
+    BucketTransport,
+};
 
 #[cfg(feature = "tangle")]
 fn main() {

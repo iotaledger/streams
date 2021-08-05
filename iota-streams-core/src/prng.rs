@@ -9,17 +9,16 @@ use crate::{
         Vec,
     },
     sponge::{
-        Key,
-        Nonce,
         prp::PRP,
         spongos::Spongos,
+        Key,
+        Nonce,
     },
 };
 
 /// Generate cryptographically secure bytes.
 /// Suitable for generating session and ephemeral keys.
-pub fn random_bytes<N: ArrayLength<u8>>() -> GenericArray<u8, N>
-{
+pub fn random_bytes<N: ArrayLength<u8>>() -> GenericArray<u8, N> {
     let mut rnd = GenericArray::default();
     crypto::utils::rand::fill(rnd.as_mut_slice()).unwrap();
     rnd

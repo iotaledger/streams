@@ -1,18 +1,18 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::command::{
-    Absorb,
-    Commit,
-    Mask,
-};
 use crate::{
-    command::X25519,
+    command::{
+        Absorb,
+        Commit,
+        Mask,
+        X25519,
+    },
     io,
     types::{
         ArrayLength,
-        NBytes,
         Key,
+        NBytes,
     },
 };
 
@@ -37,9 +37,7 @@ impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::PublicKey, ()> for Context<
         let ephemeral_ke_sk =
             x25519::SecretKey::generate().map_err(|e| wrapped_err(XPublicKeyGenerationFailure, WrappedError(e)))?;
         let ephemeral_ke_pk = ephemeral_ke_sk.public_key();
-        self.absorb(&ephemeral_ke_pk)?
-            .x25519(&ephemeral_ke_sk, pk)?
-            .commit()
+        self.absorb(&ephemeral_ke_pk)?.x25519(&ephemeral_ke_sk, pk)?.commit()
     }
 }
 

@@ -9,11 +9,11 @@ use iota_streams_core::{
     err,
     prelude::Vec,
     prng,
-    sponge::Nonce,
     psk::{
         Psk,
         PskId,
     },
+    sponge::Nonce,
     try_or,
     Errors::{
         ChannelDuplication,
@@ -279,11 +279,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `psk_ids` - Vector of Pre-shared key ids to be included in message
     ///  * `ke_pks`  - Vector of Public Keys to be included in message
-    pub fn send_keyload(
-        &mut self,
-        link_to: &Address,
-        ids: &[Identifier],
-    ) -> Result<(Address, Option<Address>)> {
+    pub fn send_keyload(&mut self, link_to: &Address, ids: &[Identifier]) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload(link_to, ids)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
@@ -612,11 +608,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `psk_ids` - Vector of Pre-shared key ids to be included in message
     ///  * `ke_pks`  - Vector of Public Keys to be included in message
-    pub async fn send_keyload(
-        &mut self,
-        link_to: &Address,
-        ids: &[Identifier],
-    ) -> Result<(Address, Option<Address>)> {
+    pub async fn send_keyload(&mut self, link_to: &Address, ids: &[Identifier]) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload(link_to, ids)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }

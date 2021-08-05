@@ -26,13 +26,13 @@ use core::convert::TryInto as _;
 use iota_streams_core::Result;
 
 use iota_streams_app::message;
-use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core::{
     key_exchange::x25519,
     signature::ed25519,
+    sponge::prp::PRP,
     wrapped_err,
-    WrappedError,
     Errors::KeyConversionFailure,
+    WrappedError,
 };
 use iota_streams_ddml::{
     command::*,

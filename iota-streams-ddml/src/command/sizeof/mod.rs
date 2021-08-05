@@ -28,7 +28,6 @@ impl<F> Default for Context<F> {
     }
 }
 
-
 mod absorb;
 mod absorb_external;
 mod commit;

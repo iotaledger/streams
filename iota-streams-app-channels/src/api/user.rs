@@ -18,6 +18,7 @@ use iota_streams_app::{
 };
 use iota_streams_core::{
     err,
+    key_exchange::x25519,
     prelude::{
         string::ToString,
         typenum::U32,
@@ -30,20 +31,17 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
+    signature::ed25519,
     sponge::{
-        Nonce,
         prp::{
             Inner,
             PRP,
         },
+        Nonce,
     },
     try_or,
     Errors::*,
     Result,
-};
-use iota_streams_core::{
-    key_exchange::x25519,
-    signature::ed25519,
 };
 use iota_streams_ddml::{
     command::*,
@@ -371,10 +369,9 @@ where
         if let Some(author_sig_pk) = &self.author_sig_pk {
             let identifier = Identifier::EdPubKey(*author_sig_pk);
             if let Some(author_ke_pk) = self.key_store.get_ke_pk(&identifier) {
-                let msg_link = self.link_gen.link_from(
-                    &self.sig_kp.1.into(),
-                    Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM),
-                );
+                let msg_link = self
+                    .link_gen
+                    .link_from(&self.sig_kp.1.into(), Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SUBSCRIBE)?
@@ -461,9 +458,8 @@ where
         &'a mut self,
         link_to: &'a Link,
         pks: &'a [Identifier],
-    ) -> Result<
-        PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, vec::IntoIter<IdentifierKeyRef<'a>>>>,
-    > {
+    ) -> Result<PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, vec::IntoIter<IdentifierKeyRef<'a>>>>>
+    {
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
@@ -485,9 +481,8 @@ where
     pub fn prepare_keyload_for_everyone<'a>(
         &'a mut self,
         link_to: &'a Link,
-    ) -> Result<
-        PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, vec::IntoIter<IdentifierKeyRef<'a>>>>,
-    > {
+    ) -> Result<PreparedMessage<'a, F, Link, LS, keyload::ContentWrap<'a, F, Link, vec::IntoIter<IdentifierKeyRef<'a>>>>>
+    {
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
@@ -508,11 +503,7 @@ where
 
     /// Create keyload message with a new session key shared with recipients
     /// identified by pre-shared key IDs and by Ed25519 public keys.
-    pub fn share_keyload(
-        &mut self,
-        link_to: &Link,
-        ids: &[Identifier],
-    ) -> Result<WrappedMessage<F, Link>> {
+    pub fn share_keyload(&mut self, link_to: &Link, ids: &[Identifier]) -> Result<WrappedMessage<F, Link>> {
         self.prepare_keyload(link_to, ids)?.wrap()
     }
 
@@ -929,11 +920,8 @@ where
 
                 let id: Identifier = pskid.into();
                 if !self.key_store.contains(&id) {
-                    self.key_store.insert_psk(
-                        id,
-                        Some(psk),
-                        Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
-                    )?;
+                    self.key_store
+                        .insert_psk(id, Some(psk), Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
                     self.use_psk = use_psk;
                     Ok(())
                 } else {
@@ -951,7 +939,11 @@ where
         cursor: &Cursor<<Link as HasLink>::Rel>,
         branching: bool,
     ) {
-        let Cursor { link: seq_link, branch_no: _, seq_no, } = cursor;
+        let Cursor {
+            link: seq_link,
+            branch_no: _,
+            seq_no,
+        } = cursor;
 
         if branching {
             let msg_id = link_gen.link_from(id, Cursor::new_at(&*seq_link, 0, 1));
@@ -1002,9 +994,12 @@ where
         let mut state = Vec::new();
         try_or!(self.appinst.is_some(), UserNotRegistered)?;
 
-        for i in self.key_store.iter()
-        {
-            let Cursor { link, branch_no, seq_no, } = i.as_ref();
+        for i in self.key_store.iter() {
+            let Cursor {
+                link,
+                branch_no,
+                seq_no,
+            } = i.as_ref();
             let link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), link);
             state.push((i.get_identifier(), Cursor::new_at(link, *branch_no, *seq_no)))
         }

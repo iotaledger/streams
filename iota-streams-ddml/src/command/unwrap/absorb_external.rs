@@ -4,7 +4,8 @@ use super::Context;
 use crate::{
     command::{
         wrap::Wrap,
-        Absorb, AbsorbKey,
+        Absorb,
+        AbsorbKey,
     },
     io,
     types::{
@@ -194,12 +195,12 @@ impl<'a, F, T: 'a + AbsorbExternalFallback<F>, IS: io::IStream> Absorb<External<
 
 impl<'a, F: PRP, OS: io::IStream> AbsorbKey<External<&'a Key>> for Context<F, OS> {
     fn absorb_key(&mut self, external_key: External<&'a Key>) -> Result<&mut Self> {
-        wrap_absorb_external_key(self, &external_key.0.0)
+        wrap_absorb_external_key(self, &external_key.0 .0)
     }
 }
 
 impl<'a, F: PRP, OS: io::IStream> AbsorbKey<&'a External<Key>> for Context<F, OS> {
     fn absorb_key(&mut self, external_key: &'a External<Key>) -> Result<&mut Self> {
-        wrap_absorb_external_key(self, &external_key.0.0)
+        wrap_absorb_external_key(self, &external_key.0 .0)
     }
 }

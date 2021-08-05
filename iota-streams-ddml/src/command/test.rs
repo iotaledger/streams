@@ -15,14 +15,16 @@ use iota_streams_core::{
     prng,
     signature::ed25519,
     sponge::{
-        prp::PRP,
+        prp::{
+            keccak::KeccakF1600,
+            PRP,
+        },
         spongos::Spongos,
     },
     try_or,
     Errors::*,
     Result,
 };
-use iota_streams_core::sponge::prp::keccak::KeccakF1600;
 
 use crate::{
     command::*,
@@ -46,7 +48,11 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
 
     for t in 0_u8..10_u8 {
         let t = Uint8(t);
-        let buf_size = sizeof::Context::<F>::new().absorb_key(External(&key))?.absorb(t)?.mask(t)?.get_size();
+        let buf_size = sizeof::Context::<F>::new()
+            .absorb_key(External(&key))?
+            .absorb(t)?
+            .mask(t)?
+            .get_size();
         let buf_size2 = sizeof::Context::<F>::new().absorb(&t)?.mask(&t)?.get_size();
         try_or!(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
         try_or!(buf_size == 2, ValueMismatch(2, buf_size))?;
@@ -58,8 +64,7 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
                 .absorb(&t)?
                 .mask(&t)?
                 .commit()?
-                .squeeze(&mut tag_wrap)?
-                ;
+                .squeeze(&mut tag_wrap)?;
             try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
@@ -72,8 +77,7 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
                 .absorb(&mut t2)?
                 .mask(&mut t3)?
                 .commit()?
-                .squeeze(&mut tag_unwrap)?
-                ;
+                .squeeze(&mut tag_unwrap)?;
             try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
@@ -109,8 +113,7 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
 
         {
             let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-            ctx
-                .absorb_key(External(&key))?
+            ctx.absorb_key(External(&key))?
                 .commit()?
                 .absorb(&s)?
                 .mask(&s)?
@@ -123,8 +126,7 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
         let mut s3 = Size::default();
         {
             let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-            ctx
-                .absorb_key(External(&key))?
+            ctx.absorb_key(External(&key))?
                 .commit()?
                 .absorb(&mut s2)?
                 .mask(&mut s3)?

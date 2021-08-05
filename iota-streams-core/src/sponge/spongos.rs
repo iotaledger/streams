@@ -111,7 +111,7 @@ impl<F: PRP> Spongos<F> {
     /// Domain can include application name and/or
     /// description of the spongos operations to follow.
     pub fn init_with_domain(domain: &[u8]) -> Self {
-        //TODO: implement Spongos::init_with_domain more efficiently.
+        // TODO: implement Spongos::init_with_domain more efficiently.
         let mut s = Self::init();
         s.absorb(domain);
         s.commit();

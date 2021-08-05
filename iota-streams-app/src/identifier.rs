@@ -1,27 +1,27 @@
 use iota_streams_core::{
     err,
-    wrapped_err,
-    WrappedError,
+    key_exchange::x25519,
     prelude::{
         digest::generic_array::GenericArray,
-        Vec,
         String,
         ToString,
+        Vec,
     },
     psk::{
         self,
-        PskId,
         Psk,
+        PskId,
     },
-    sponge::prp::PRP,
     signature::ed25519,
-    key_exchange::x25519,
+    sponge::prp::PRP,
+    wrapped_err,
     Errors::{
-        PskNotFound,
         BadOneof,
         IdentifierGenerationFailure,
+        PskNotFound,
     },
     Result,
+    WrappedError,
 };
 
 use iota_streams_ddml::{
@@ -48,7 +48,7 @@ impl Identifier {
                 v[0] = 0_u8;
                 v[1..].copy_from_slice(id.as_slice());
                 v
-            },
+            }
             Identifier::PskId(id) => {
                 let mut v = Vec::with_capacity(1 + psk::PSKID_SIZE);
                 v.resize(v.capacity(), 0);
@@ -56,25 +56,33 @@ impl Identifier {
                 v[0] = 1_u8;
                 v[1..].copy_from_slice(id.as_slice());
                 v
-            },
+            }
         }
     }
 
     pub fn from_bytes(bytes: &[u8]) -> iota_streams_core::Result<Self> {
-        if bytes.len() == 0 { return err!(IdentifierGenerationFailure); }
+        if bytes.len() == 0 {
+            return err!(IdentifierGenerationFailure);
+        }
         match bytes[0] {
             0_u8 => {
-                if bytes.len() != 1 + ed25519::PUBLIC_KEY_LENGTH { return err!(IdentifierGenerationFailure); }
+                if bytes.len() != 1 + ed25519::PUBLIC_KEY_LENGTH {
+                    return err!(IdentifierGenerationFailure);
+                }
                 let mut id = [0_u8; ed25519::PUBLIC_KEY_LENGTH];
                 id.copy_from_slice(&bytes[1..]);
-                Ok(Identifier::EdPubKey(ed25519::PublicKey::try_from_bytes(id).map_err(|e| wrapped_err!(IdentifierGenerationFailure, WrappedError(e)))?))
-            },
+                Ok(Identifier::EdPubKey(ed25519::PublicKey::try_from_bytes(id).map_err(
+                    |e| wrapped_err!(IdentifierGenerationFailure, WrappedError(e)),
+                )?))
+            }
             1_u8 => {
-                if bytes.len() != 1 + psk::PSKID_SIZE { return err!(IdentifierGenerationFailure); }
+                if bytes.len() != 1 + psk::PSKID_SIZE {
+                    return err!(IdentifierGenerationFailure);
+                }
                 let mut id = [0_u8; psk::PSKID_SIZE];
                 id.copy_from_slice(&bytes[1..]);
                 Ok(Identifier::PskId(GenericArray::clone_from_slice(&id)))
-            },
+            }
             _ => err(IdentifierGenerationFailure),
         }
     }
@@ -266,15 +274,11 @@ impl<'a, F: PRP> ContentSizeof<F> for IdentifierKeyRef<'a> {
         match *self {
             IdentifierKeyRef::EdPubKey(pk, xpk) => {
                 let oneof = Uint8(0);
-                ctx
-                    .mask(&oneof)?
-                    .mask(pk)?
-                    .fork(|ctx| ctx.x25519(xpk, ()))
+                ctx.mask(&oneof)?.mask(pk)?.fork(|ctx| ctx.x25519(xpk, ()))
             }
             IdentifierKeyRef::PskId(pskid, Some(psk)) => {
                 let oneof = Uint8(1);
-                ctx
-                    .mask(&oneof)?
+                ctx.mask(&oneof)?
                     .mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
                     .fork(|ctx| ctx.absorb_key(External(psk.into()))?.commit())
             }
@@ -294,15 +298,11 @@ impl<'a, F: PRP, Store> ContentWrap<F, Store> for IdentifierKeyRef<'a> {
         match *self {
             IdentifierKeyRef::EdPubKey(pk, xpk) => {
                 let oneof = Uint8(0);
-                ctx
-                    .mask(&oneof)?
-                    .mask(pk)?
-                    .fork(|ctx| ctx.x25519(xpk, ()))
+                ctx.mask(&oneof)?.mask(pk)?.fork(|ctx| ctx.x25519(xpk, ()))
             }
             IdentifierKeyRef::PskId(pskid, Some(psk)) => {
                 let oneof = Uint8(1);
-                ctx
-                    .mask(&oneof)?
+                ctx.mask(&oneof)?
                     .mask(<&NBytes<psk::PskIdSize>>::from(pskid))?
                     .fork(|ctx| ctx.absorb_key(External(psk.into()))?.commit())
             }

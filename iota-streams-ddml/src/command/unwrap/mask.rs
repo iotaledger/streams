@@ -11,8 +11,8 @@ use crate::{
     types::{
         ArrayLength,
         Bytes,
-        NBytes,
         Key,
+        NBytes,
         Size,
         Uint16,
         Uint32,

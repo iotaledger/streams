@@ -59,19 +59,17 @@ use iota_streams_app::{
 };
 use iota_streams_core::{
     err,
+    key_exchange::x25519,
     prelude::Vec,
     psk,
-    sponge::{
-        KEY_SIZE,
-        NonceSize,
-        prp::PRP,
-    },
-    Result,
-    Errors::PskNotFound,
-};
-use iota_streams_core::{
-    key_exchange::x25519,
     signature::ed25519,
+    sponge::{
+        prp::PRP,
+        NonceSize,
+        KEY_SIZE,
+    },
+    Errors::PskNotFound,
+    Result,
 };
 use iota_streams_ddml::{
     command::*,
@@ -107,29 +105,19 @@ where
             .fork(|ctx| {
                 // fork into new context in order to hash Identifiers
                 ctx.absorb(repeated_keys_count)?
-                    .repeated(self.keys.clone().into_iter(), |ctx, id_value_ref| {
-                        match id_value_ref {
-                            IdentifierKeyRef::EdPubKey(pk, xpk) => {
-                                let oneof = Uint8(0);
-                                ctx
-                                    .absorb(&oneof)?
-                                    .absorb(pk)?
-                                    .fork(|ctx| ctx.x25519(xpk, &self.key))
-                            }
-                            IdentifierKeyRef::PskId(pskid, Some(psk)) => {
-                                let oneof = Uint8(1);
-                                ctx
-                                    .absorb(&oneof)?
-                                    .absorb(<&NBytes<psk::PskIdSize>>::from(pskid))?
-                                    .fork(|ctx| ctx
-                                        .absorb_key(External(psk.into()))?
-                                        .commit()?
-                                        .mask(&self.key)
-                                    )
-                            }
-                            IdentifierKeyRef::PskId(_pskid, None) => {
-                                err!(PskNotFound)
-                            }
+                    .repeated(self.keys.clone().into_iter(), |ctx, id_value_ref| match id_value_ref {
+                        IdentifierKeyRef::EdPubKey(pk, xpk) => {
+                            let oneof = Uint8(0);
+                            ctx.absorb(&oneof)?.absorb(pk)?.fork(|ctx| ctx.x25519(xpk, &self.key))
+                        }
+                        IdentifierKeyRef::PskId(pskid, Some(psk)) => {
+                            let oneof = Uint8(1);
+                            ctx.absorb(&oneof)?
+                                .absorb(<&NBytes<psk::PskIdSize>>::from(pskid))?
+                                .fork(|ctx| ctx.absorb_key(External(psk.into()))?.commit()?.mask(&self.key))
+                        }
+                        IdentifierKeyRef::PskId(_pskid, None) => {
+                            err!(PskNotFound)
                         }
                     })
             })?
@@ -160,29 +148,19 @@ where
             .fork(|ctx| {
                 // fork into new context in order to hash Identifiers
                 ctx.absorb(repeated_keys_count)?
-                    .repeated(self.keys.clone().into_iter(), |ctx, id_value_ref| {
-                        match id_value_ref {
-                            IdentifierKeyRef::EdPubKey(pk, xpk) => {
-                                let oneof = Uint8(0);
-                                ctx
-                                    .absorb(&oneof)?
-                                    .absorb(pk)?
-                                    .fork(|ctx| ctx.x25519(xpk, &self.key))
-                            }
-                            IdentifierKeyRef::PskId(pskid, Some(psk)) => {
-                                let oneof = Uint8(1);
-                                ctx
-                                    .absorb(&oneof)?
-                                    .absorb(<&NBytes<psk::PskIdSize>>::from(pskid))?
-                                    .fork(|ctx| ctx
-                                        .absorb_key(External(psk.into()))?
-                                        .commit()?
-                                        .mask(&self.key)
-                                    )
-                            }
-                            IdentifierKeyRef::PskId(_pskid, None) => {
-                                err!(PskNotFound)
-                            }
+                    .repeated(self.keys.clone().into_iter(), |ctx, id_value_ref| match id_value_ref {
+                        IdentifierKeyRef::EdPubKey(pk, xpk) => {
+                            let oneof = Uint8(0);
+                            ctx.absorb(&oneof)?.absorb(pk)?.fork(|ctx| ctx.x25519(xpk, &self.key))
+                        }
+                        IdentifierKeyRef::PskId(pskid, Some(psk)) => {
+                            let oneof = Uint8(1);
+                            ctx.absorb(&oneof)?
+                                .absorb(<&NBytes<psk::PskIdSize>>::from(pskid))?
+                                .fork(|ctx| ctx.absorb_key(External(psk.into()))?.commit()?.mask(&self.key))
+                        }
+                        IdentifierKeyRef::PskId(_pskid, None) => {
+                            err!(PskNotFound)
                         }
                     })?
                     .commit()?
@@ -258,24 +236,16 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut id_hash = External(NBytes::<U64>::default());
         let mut repeated_keys = Size(0);
-        ctx
-            .join(store, &mut self.link)?
-            .absorb(&mut self.nonce)?
-            .fork(|ctx| { ctx
-                .absorb(&mut repeated_keys)?
+        ctx.join(store, &mut self.link)?.absorb(&mut self.nonce)?.fork(|ctx| {
+            ctx.absorb(&mut repeated_keys)?
                 .repeated(repeated_keys, |ctx| {
                     let (id, ctx) = Identifier::unwrap_new(store, ctx)?;
-                    ctx
-                        .fork(|ctx| {
+                    ctx.fork(|ctx| {
                         match &id {
                             Identifier::PskId(_id) => {
                                 if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &id) {
                                     let mut key = Key::default();
-                                    ctx
-                                        .absorb_key(External((&psk).into()))?
-                                        .commit()?
-                                        .mask(&mut key)?
-                                        ;
+                                    ctx.absorb_key(External((&psk).into()))?.commit()?.mask(&mut key)?;
                                     self.key = Some(key);
                                     self.key_ids.push(id);
                                     Ok(ctx)
@@ -283,8 +253,7 @@ where
                                     self.key_ids.push(id);
                                     // Just drop the rest of the forked message so not to waste Spongos operations
                                     let n = Size(KEY_SIZE);
-                                    ctx
-                                        .drop(n)
+                                    ctx.drop(n)
                                 }
                             }
                             Identifier::EdPubKey(ke_pk) => {

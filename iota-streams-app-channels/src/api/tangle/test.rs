@@ -14,7 +14,10 @@ use iota_streams_core::{
 
 use iota_streams_core::{
     ensure,
-    prelude::{Vec, string::ToString,},
+    prelude::{
+        string::ToString,
+        Vec,
+    },
     println,
     Result,
 };

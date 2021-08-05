@@ -17,8 +17,8 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
+    signature::ed25519,
 };
-use iota_streams_core::signature::ed25519;
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {

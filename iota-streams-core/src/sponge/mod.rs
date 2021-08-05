@@ -1,13 +1,9 @@
-use crate::{
-    prelude::{
-        generic_array::{
-            typenum::{
-                U16,
-                U32,
-            },
-            GenericArray,
-        },
+use crate::prelude::generic_array::{
+    typenum::{
+        U16,
+        U32,
     },
+    GenericArray,
 };
 
 pub mod prp;

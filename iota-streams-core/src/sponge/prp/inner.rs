@@ -1,5 +1,7 @@
-use core::hash;
-use core::marker::PhantomData;
+use core::{
+    hash,
+    marker::PhantomData,
+};
 
 use crate::{
     prelude::generic_array::GenericArray,
@@ -20,7 +22,9 @@ pub struct Inner<F: PRP> {
 impl<F: PRP> Inner<F> {
     pub fn new(inner: GenericArray<u8, F::CapacitySize>, flags: u8) -> Self {
         Self {
-            inner, flags, _phantom: PhantomData,
+            inner,
+            flags,
+            _phantom: PhantomData,
         }
     }
 

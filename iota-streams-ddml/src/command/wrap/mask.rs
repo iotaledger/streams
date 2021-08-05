@@ -11,8 +11,8 @@ use crate::{
     types::{
         ArrayLength,
         Bytes,
-        NBytes,
         Key,
+        NBytes,
         Size,
         Uint16,
         Uint32,
@@ -66,28 +66,16 @@ impl<F: PRP, OS: io::OStream> Wrap for MaskContext<F, OS> {
     }
 }
 
-fn wrap_mask_u8<F: PRP, OS: io::OStream>(
-    ctx: &mut MaskContext<F, OS>,
-    u: Uint8,
-) -> Result<&mut MaskContext<F, OS>> {
+fn wrap_mask_u8<F: PRP, OS: io::OStream>(ctx: &mut MaskContext<F, OS>, u: Uint8) -> Result<&mut MaskContext<F, OS>> {
     ctx.wrap_u8(u.0)
 }
-fn wrap_mask_u16<F: PRP, OS: io::OStream>(
-    ctx: &mut MaskContext<F, OS>,
-    u: Uint16,
-) -> Result<&mut MaskContext<F, OS>> {
+fn wrap_mask_u16<F: PRP, OS: io::OStream>(ctx: &mut MaskContext<F, OS>, u: Uint16) -> Result<&mut MaskContext<F, OS>> {
     ctx.wrap_u16(u.0)
 }
-fn wrap_mask_u32<F: PRP, OS: io::OStream>(
-    ctx: &mut MaskContext<F, OS>,
-    u: Uint32,
-) -> Result<&mut MaskContext<F, OS>> {
+fn wrap_mask_u32<F: PRP, OS: io::OStream>(ctx: &mut MaskContext<F, OS>, u: Uint32) -> Result<&mut MaskContext<F, OS>> {
     ctx.wrap_u32(u.0)
 }
-fn wrap_mask_u64<F: PRP, OS: io::OStream>(
-    ctx: &mut MaskContext<F, OS>,
-    u: Uint64,
-) -> Result<&mut MaskContext<F, OS>> {
+fn wrap_mask_u64<F: PRP, OS: io::OStream>(ctx: &mut MaskContext<F, OS>, u: Uint64) -> Result<&mut MaskContext<F, OS>> {
     ctx.wrap_u64(u.0)
 }
 fn wrap_mask_size<F: PRP, OS: io::OStream>(

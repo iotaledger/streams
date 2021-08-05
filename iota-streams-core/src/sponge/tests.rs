@@ -3,15 +3,17 @@ use super::{
     prp::PRP,
     spongos::*,
 };
-use crate::prelude::{
-    Vec,
-    generic_array::GenericArray,
-    typenum::{
-        self,
-        Unsigned as _,
+use crate::{
+    err,
+    prelude::{
+        generic_array::GenericArray,
+        typenum::{
+            self,
+            Unsigned as _,
+        },
+        Vec,
     },
 };
-use crate::err;
 
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub struct TestF10x5(pub [u8; 15]);
@@ -453,26 +455,26 @@ fn test_squeeze_tag_eq_no_key() -> crate::Result<()> {
 
 #[cfg(feature = "keccak")]
 mod test_keccak {
-use super::*;
-use crate::sponge::prp::keccak::KeccakF1600;
+    use super::*;
+    use crate::sponge::prp::keccak::KeccakF1600;
 
-#[test]
-fn bytes_with_size_boundary_cases_keccak_byte() {
-    bytes_with_size_boundary_cases::<KeccakF1600>();
-}
+    #[test]
+    fn bytes_with_size_boundary_cases_keccak_byte() {
+        bytes_with_size_boundary_cases::<KeccakF1600>();
+    }
 
-#[test]
-fn slices_with_size_boundary_cases_keccak_byte() {
-    slices_with_size_boundary_cases::<KeccakF1600>();
-}
+    #[test]
+    fn slices_with_size_boundary_cases_keccak_byte() {
+        slices_with_size_boundary_cases::<KeccakF1600>();
+    }
 
-#[test]
-fn encrypt_decrypt_keccak_byte() {
-    let rate = <KeccakF1600 as PRP>::RateSize::USIZE;
-    encrypt_decrypt_n::<KeccakF1600>(27);
-    encrypt_decrypt_n::<KeccakF1600>(rate);
-    encrypt_decrypt_n::<KeccakF1600>(rate - 28);
-    encrypt_decrypt_n::<KeccakF1600>(rate + 28);
-    encrypt_decrypt_n::<KeccakF1600>(2 * rate);
-}
+    #[test]
+    fn encrypt_decrypt_keccak_byte() {
+        let rate = <KeccakF1600 as PRP>::RateSize::USIZE;
+        encrypt_decrypt_n::<KeccakF1600>(27);
+        encrypt_decrypt_n::<KeccakF1600>(rate);
+        encrypt_decrypt_n::<KeccakF1600>(rate - 28);
+        encrypt_decrypt_n::<KeccakF1600>(rate + 28);
+        encrypt_decrypt_n::<KeccakF1600>(2 * rate);
+    }
 }

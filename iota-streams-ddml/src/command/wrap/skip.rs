@@ -48,34 +48,19 @@ impl<F, OS: io::OStream> Wrap for SkipContext<F, OS> {
     }
 }
 
-fn wrap_skip_u8<F, OS: io::OStream>(
-    ctx: &mut SkipContext<F, OS>,
-    u: Uint8,
-) -> Result<&mut SkipContext<F, OS>> {
+fn wrap_skip_u8<F, OS: io::OStream>(ctx: &mut SkipContext<F, OS>, u: Uint8) -> Result<&mut SkipContext<F, OS>> {
     ctx.wrap_u8(u.0)
 }
-fn wrap_skip_u16<F, OS: io::OStream>(
-    ctx: &mut SkipContext<F, OS>,
-    u: Uint16,
-) -> Result<&mut SkipContext<F, OS>> {
+fn wrap_skip_u16<F, OS: io::OStream>(ctx: &mut SkipContext<F, OS>, u: Uint16) -> Result<&mut SkipContext<F, OS>> {
     ctx.wrap_u16(u.0)
 }
-fn wrap_skip_u32<F, OS: io::OStream>(
-    ctx: &mut SkipContext<F, OS>,
-    u: Uint32,
-) -> Result<&mut SkipContext<F, OS>> {
+fn wrap_skip_u32<F, OS: io::OStream>(ctx: &mut SkipContext<F, OS>, u: Uint32) -> Result<&mut SkipContext<F, OS>> {
     ctx.wrap_u32(u.0)
 }
-fn wrap_skip_u64<F, OS: io::OStream>(
-    ctx: &mut SkipContext<F, OS>,
-    u: Uint64,
-) -> Result<&mut SkipContext<F, OS>> {
+fn wrap_skip_u64<F, OS: io::OStream>(ctx: &mut SkipContext<F, OS>, u: Uint64) -> Result<&mut SkipContext<F, OS>> {
     ctx.wrap_u64(u.0)
 }
-fn wrap_skip_size<F, OS: io::OStream>(
-    ctx: &mut SkipContext<F, OS>,
-    size: Size,
-) -> Result<&mut SkipContext<F, OS>> {
+fn wrap_skip_size<F, OS: io::OStream>(ctx: &mut SkipContext<F, OS>, size: Size) -> Result<&mut SkipContext<F, OS>> {
     ctx.wrap_size(size)
 }
 fn wrap_skip_bytes<'a, F, OS: io::OStream>(

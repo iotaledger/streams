@@ -44,15 +44,13 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
+    key_exchange::x25519,
+    signature::ed25519,
     sponge::prp::PRP,
     wrapped_err,
     Errors::MessageCreationFailure,
     Result,
     WrappedError,
-};
-use iota_streams_core::{
-    key_exchange::x25519,
-    signature::ed25519,
 };
 use iota_streams_ddml::{
     command::*,

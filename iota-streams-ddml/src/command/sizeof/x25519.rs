@@ -5,11 +5,14 @@ use crate::{
     command::X25519,
     types::{
         ArrayLength,
-        NBytes,
         Key,
+        NBytes,
     },
 };
-use iota_streams_core::{sponge::KEY_SIZE, key_exchange::x25519,};
+use iota_streams_core::{
+    key_exchange::x25519,
+    sponge::KEY_SIZE,
+};
 
 impl<'a, F> X25519<&'a x25519::SecretKey, &'a x25519::PublicKey> for Context<F> {
     fn x25519(&mut self, _sk: &x25519::SecretKey, _pk: &x25519::PublicKey) -> Result<&mut Self> {

@@ -28,6 +28,7 @@ use iota_streams_core::{
         ToString,
         Vec,
     },
+    signature::ed25519,
     sponge::{
         prp::PRP,
         spongos::Spongos,
@@ -36,7 +37,6 @@ use iota_streams_core::{
     Errors::BadHexFormat,
     WrappedError,
 };
-use iota_streams_core::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,

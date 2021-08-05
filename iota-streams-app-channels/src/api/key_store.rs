@@ -1,29 +1,37 @@
-use core::fmt;
-use core::convert::TryFrom as _;
+use core::{
+    convert::TryFrom as _,
+    fmt,
+};
 
 use iota_streams_app::identifier::*;
 use iota_streams_core::{
     err,
-    wrapped_err,
-    WrappedError,
+    key_exchange::x25519,
     prelude::{
         HashMap,
         Vec,
     },
-    psk::{PskId, Psk,},
-    sponge::prp::PRP,
-    Errors::BadIdentifier,
-    Errors::KeyConversionFailure,
-    Result,
+    psk::{
+        Psk,
+        PskId,
+    },
     signature::ed25519,
-    key_exchange::x25519,
+    sponge::prp::PRP,
+    wrapped_err,
+    Errors::{
+        BadIdentifier,
+        KeyConversionFailure,
+    },
+    Result,
+    WrappedError,
 };
 
 pub trait KeyStore<Info, F: PRP>: Default {
-    fn filter<'a, Ids>(&'a self, ids: Ids) -> Vec<IdentifierKeyRef<'a>> where
+    fn filter<'a, Ids>(&'a self, ids: Ids) -> Vec<IdentifierKeyRef<'a>>
+    where
         Ids: Iterator<Item = &'a Identifier>;
-        // Ids: Iterator,
-        // Ids::Item: AsRef<Identifier>;
+    // Ids: Iterator,
+    // Ids::Item: AsRef<Identifier>;
     fn keys(&self) -> Vec<IdentifierKeyRef>;
     fn iter(&self) -> Vec<IdentifierInfoRef<Info>>;
     fn iter_mut(&mut self) -> Vec<IdentifierInfoMut<Info>>;
@@ -62,23 +70,23 @@ impl<Info> Default for KeyMap<Info> {
 }
 
 impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
-    fn filter<'a, Ids>(&'a self, ids: Ids) -> Vec<IdentifierKeyRef<'a>> where
+    fn filter<'a, Ids>(&'a self, ids: Ids) -> Vec<IdentifierKeyRef<'a>>
+    where
         Ids: Iterator<Item = &'a Identifier>,
         // Ids::Item: AsRef<Identifier>,
     {
-        ids
-            .filter_map(|id| match id {
-                Identifier::EdPubKey(pk) => self
-                    .ke_pks
-                    .get_key_value(pk)
-                    .map(|(e, (x, _))| IdentifierKeyRef::EdPubKey(e, x)),
-                Identifier::PskId(pskid) => self
-                    .psks
-                    .get_key_value(pskid)
-                    .filter(|(_, (x, _))| x.is_some())
-                    .map(|(e, (x, _))| IdentifierKeyRef::PskId(e, x)),
-            })
-            .collect()
+        ids.filter_map(|id| match id {
+            Identifier::EdPubKey(pk) => self
+                .ke_pks
+                .get_key_value(pk)
+                .map(|(e, (x, _))| IdentifierKeyRef::EdPubKey(e, x)),
+            Identifier::PskId(pskid) => self
+                .psks
+                .get_key_value(pskid)
+                .filter(|(_, (x, _))| x.is_some())
+                .map(|(e, (x, _))| IdentifierKeyRef::PskId(e, x)),
+        })
+        .collect()
     }
 
     fn get(&self, id: &Identifier) -> Option<&Info> {
@@ -134,7 +142,8 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
     fn insert_cursor(&mut self, id: Identifier, info: Info) -> Result<()> {
         match id {
             Identifier::EdPubKey(pk) => {
-                let xpk = x25519::PublicKey::try_from(&pk).map_err(|e| wrapped_err(KeyConversionFailure, WrappedError(e)))?;
+                let xpk =
+                    x25519::PublicKey::try_from(&pk).map_err(|e| wrapped_err(KeyConversionFailure, WrappedError(e)))?;
                 self.ke_pks.insert(pk, (xpk, info));
                 Ok(())
             }
@@ -165,9 +174,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
         let psks: Vec<IdentifierKeyRef> = self
             .psks
             .iter()
-            .filter_map(|(k, (x, _i))| x.map(|_psk| {
-                IdentifierKeyRef::PskId(k, x)
-            }))
+            .filter_map(|(k, (x, _i))| x.map(|_psk| IdentifierKeyRef::PskId(k, x)))
             .collect();
 
         keys.extend(psks);

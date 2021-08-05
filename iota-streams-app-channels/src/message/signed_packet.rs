@@ -33,10 +33,10 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
+    signature::ed25519,
     sponge::prp::PRP,
     Result,
 };
-use iota_streams_core::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,

@@ -18,8 +18,8 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
+    signature::ed25519,
 };
-use iota_streams_core::signature::ed25519;
 
 /// Author Object. Contains User API.
 pub struct Author<Trans> {
@@ -165,11 +165,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `psk_ids` - Vector of Pre-shared key ids to be included in message
     ///  * `ke_pks`  - Vector of Public Keys to be included in message
-    pub fn send_keyload(
-        &mut self,
-        link_to: &Address,
-        ids: &[Identifier],
-    ) -> Result<(Address, Option<Address>)> {
+    pub fn send_keyload(&mut self, link_to: &Address, ids: &[Identifier]) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, ids)
     }
 
@@ -337,11 +333,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `psk_ids` - Vector of Pre-shared key ids to be included in message
     ///  * `ke_pks`  - Vector of Public Keys to be included in message
-    pub async fn send_keyload(
-        &mut self,
-        link_to: &Address,
-        ids: &[Identifier],
-    ) -> Result<(Address, Option<Address>)> {
+    pub async fn send_keyload(&mut self, link_to: &Address, ids: &[Identifier]) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, ids).await
     }
 

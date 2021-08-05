@@ -2,7 +2,10 @@ use iota_streams_core::Result;
 
 use super::Context;
 use crate::{
-    command::{Absorb, AbsorbKey,},
+    command::{
+        Absorb,
+        AbsorbKey,
+    },
     types::{
         AbsorbExternalFallback,
         ArrayLength,
