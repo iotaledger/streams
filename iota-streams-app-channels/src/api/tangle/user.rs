@@ -88,7 +88,7 @@ impl<Trans> User<Trans> {
 
     /// Fetch the user ed25519 public key
     pub fn get_public_key(&self) -> &PublicKey {
-        &self.user.sig_kp.public
+        &self.user.sig_kp.1
     }
 
     pub fn is_registered(&self) -> bool {
@@ -282,10 +282,9 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub fn send_keyload(
         &mut self,
         link_to: &Address,
-        psk_ids: &PskIds,
-        ke_pks: &Vec<&Identifier>,
+        ids: &[Identifier],
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(link_to, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(link_to, ids)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload)
     }
 
@@ -616,10 +615,9 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub async fn send_keyload(
         &mut self,
         link_to: &Address,
-        psk_ids: &PskIds,
-        ke_pks: &Vec<&Identifier>,
+        ids: &[Identifier],
     ) -> Result<(Address, Option<Address>)> {
-        let msg = self.user.share_keyload(link_to, psk_ids, ke_pks)?;
+        let msg = self.user.share_keyload(link_to, ids)?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 

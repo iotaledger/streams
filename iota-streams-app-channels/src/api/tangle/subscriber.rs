@@ -12,10 +12,7 @@ use crate::api::tangle::{
 
 use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
-    prelude::{
-        String,
-        Vec,
-    },
+    prelude::Vec,
     psk::{
         Psk,
         PskId,
@@ -112,13 +109,8 @@ impl<Trans> Subscriber<Trans> {
 
     /// Fetches the latest PublicKey -> Cursor state mapping from the implementation, allowing the
     /// user to see the latest messages present from each publisher
-    pub fn fetch_state(&self) -> Result<Vec<(String, Cursor<Address>)>> {
-        let state_list = self.user.fetch_state()?;
-        let mut state = Vec::new();
-        for (pk, cursor) in state_list {
-            state.push((hex::encode(pk.as_slice()), cursor))
-        }
-        Ok(state)
+    pub fn fetch_state(&self) -> Result<Vec<(Identifier, Cursor<Address>)>> {
+        self.user.fetch_state()
     }
 
     /// Resets the cursor state storage to allow a Subscriber to retrieve all messages in a channel
@@ -466,7 +458,7 @@ impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.user.user.sig_kp.public.as_slice()),
+            hex::encode(self.user.user.sig_kp.1.as_slice()),
             self.user.user.key_store
         )
     }
