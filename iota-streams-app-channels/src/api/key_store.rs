@@ -218,7 +218,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
 impl<Info: fmt::Display> fmt::Display for KeyMap<Info> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (k, (_x, i)) in self.ke_pks.iter() {
-            writeln!(f, "    <{}> => {}", hex::encode(&k.to_bytes()), i)?;
+            writeln!(f, "    <{}> => {}", hex::encode(&k.as_slice()), i)?;
         }
         for (k, (_x, i)) in self.psks.iter() {
             writeln!(f, "    <{}> => {}", hex::encode(&k.as_slice()), i)?;

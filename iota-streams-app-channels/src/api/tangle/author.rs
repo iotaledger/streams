@@ -163,8 +163,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
-    ///  * `psk_ids` - Vector of Pre-shared key ids to be included in message
-    ///  * `ke_pks`  - Vector of Public Keys to be included in message
+    ///  * `ids` - Array of identifiers to be included in message
     pub fn send_keyload(&mut self, link_to: &Address, ids: &[Identifier]) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, ids)
     }
@@ -331,8 +330,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
-    ///  * `psk_ids` - Vector of Pre-shared key ids to be included in message
-    ///  * `ke_pks`  - Vector of Public Keys to be included in message
+    ///  * `ids` - Array of identifiers to be included in message
     pub async fn send_keyload(&mut self, link_to: &Address, ids: &[Identifier]) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload(link_to, ids).await
     }
