@@ -32,26 +32,25 @@ impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::SecretKey, &'a x25519::Publ
     }
 }
 
-impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F, OS> {
-    fn x25519(&mut self, pk: &x25519::PublicKey, key: &NBytes<N>) -> Result<&mut Self> {
+impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::PublicKey, ()> for Context<F, OS> {
+    fn x25519(&mut self, pk: &x25519::PublicKey, _: ()) -> Result<&mut Self> {
         let ephemeral_ke_sk =
             x25519::SecretKey::generate().map_err(|e| wrapped_err(XPublicKeyGenerationFailure, WrappedError(e)))?;
         let ephemeral_ke_pk = ephemeral_ke_sk.public_key();
         self.absorb(&ephemeral_ke_pk)?
             .x25519(&ephemeral_ke_sk, pk)?
-            .commit()?
-            .mask(key)
+            .commit()
+    }
+}
+
+impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F, OS> {
+    fn x25519(&mut self, pk: &x25519::PublicKey, key: &NBytes<N>) -> Result<&mut Self> {
+        self.x25519(pk, ())?.mask(key)
     }
 }
 
 impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a Key> for Context<F, OS> {
     fn x25519(&mut self, pk: &x25519::PublicKey, key: &Key) -> Result<&mut Self> {
-        let ephemeral_ke_sk =
-            x25519::SecretKey::generate().map_err(|e| wrapped_err(XPublicKeyGenerationFailure, WrappedError(e)))?;
-        let ephemeral_ke_pk = ephemeral_ke_sk.public_key();
-        self.absorb(&ephemeral_ke_pk)?
-            .x25519(&ephemeral_ke_sk, pk)?
-            .commit()?
-            .mask(key)
+        self.x25519(pk, ())?.mask(key)
     }
 }
