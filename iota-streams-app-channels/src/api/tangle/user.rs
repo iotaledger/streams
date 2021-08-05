@@ -155,8 +155,8 @@ impl<Trans> User<Trans> {
     ///  # Arguments
     ///  * `wrapped` - A wrapped message intended to be committed to the link store
     ///  * `info` - The type of wrapped message being committed to the link store
-    pub fn commit_wrapped(&mut self, wrapped: WrapState, info: MsgInfo) -> Result<Address> {
-        self.user.commit_wrapped(wrapped, info)
+    pub async fn commit_wrapped(&mut self, wrapped: WrapState, info: MsgInfo) -> Result<Address> {
+        self.user.commit_wrapped(wrapped, info).await
     }
 
     pub async fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
@@ -583,7 +583,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// Send a message without using sequencing logic. Reserved for Announce and Subscribe messages
     async fn send_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<Address> {
         self.transport.send_message(&Message::new(msg.message))?;
-        self.commit_wrapped(msg.wrapped, info)
+        self.commit_wrapped(msg.wrapped, info).await
     }
 
     /// Send a message using sequencing logic.
