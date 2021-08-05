@@ -22,6 +22,6 @@ impl AsMut<[u8]> for Key {
 
 impl<'a> From<&'a iota_streams_core::sponge::Key> for &'a Key {
     fn from(key: &'a iota_streams_core::sponge::Key) -> Self {
-        unsafe { *(key.as_ptr() as *const Self) }
+        unsafe { &*(key.as_ptr() as *const Key) }
     }
 }
