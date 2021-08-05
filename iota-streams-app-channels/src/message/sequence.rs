@@ -104,7 +104,7 @@ where
     fn default() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            id: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap(),
+            id: Identifier::EdPubKey(ed25519::PublicKey::try_from_bytes([0; 32]).unwrap()),
             seq_num: Uint64(0),
             ref_link: <<Link as HasLink>::Rel as Default>::default(),
         }
