@@ -28,6 +28,8 @@ pub enum Errors {
     PskAlreadyStored,
     /// Input string {0} is not in hex format
     BadHexFormat(String),
+    /// No pre-shared key found associated to a PSK identifier
+    PskNotFound,
 
     //////////
     // Cryptographic
