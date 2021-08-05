@@ -926,20 +926,6 @@ dependencies = [
 [[package]]
 name = "iota-crypto"
 version = "0.6.0"
-dependencies = [
- "blake2",
- "curve25519-dalek",
- "digest",
- "ed25519-zebra",
- "getrandom 0.2.3",
- "rand 0.8.4",
- "sha2",
- "x25519-dalek",
-]
-
-[[package]]
-name = "iota-crypto"
-version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a563712b1857f24cd194eb799ddee2c9f5fdb9f8cadc8cae333da5c7d2a9213"
 dependencies = [
@@ -962,6 +948,21 @@ dependencies = [
  "serde",
  "sha2",
  "unicode-normalization",
+]
+
+[[package]]
+name = "iota-crypto"
+version = "0.7.0"
+source = "git+https://github.com/iotaledger/crypto.rs?branch=dev#1f501cb8c7d82e11cc16eadce91a3024b7b0c09d"
+dependencies = [
+ "blake2",
+ "curve25519-dalek",
+ "digest",
+ "ed25519-zebra",
+ "getrandom 0.2.3",
+ "rand 0.8.4",
+ "sha2",
+ "x25519-dalek",
 ]
 
 [[package]]
@@ -1009,7 +1010,7 @@ dependencies = [
  "displaydoc",
  "hashbrown 0.11.2",
  "hex",
- "iota-crypto 0.6.0",
+ "iota-crypto 0.7.0",
  "keccak",
  "rand 0.8.4",
 ]
