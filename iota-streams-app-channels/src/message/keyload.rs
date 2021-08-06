@@ -64,8 +64,8 @@ use iota_streams_app::{
 use iota_streams_core::{
     async_trait,
     prelude::{
-        Box,
         typenum::Unsigned as _,
+        Box,
         Vec,
     },
     psk,
@@ -112,8 +112,7 @@ where
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         let repeated_keys = Size(self.keys.len());
-        ctx.join(&store, self.link)?
-            .absorb(&self.nonce)?;
+        ctx.join(&store, self.link)?.absorb(&self.nonce)?;
 
         // fork into new context in order to hash Identifiers
         {
@@ -284,7 +283,7 @@ where
                                     .mask(&mut key)?;
                                 self.key = Some(key);
                                 self.key_ids.push(id);
-                                //Ok(ctx)
+                                // Ok(ctx)
                             } else {
                                 self.key_ids.push(id);
                                 // Just drop the rest of the forked message so not to waste Spongos operations
@@ -315,7 +314,6 @@ where
             ctx.commit()?.squeeze(&mut id_hash)?;
             ctx.spongos = saved_fork;
         }
-
 
         if let Some(ref key) = self.key {
             ctx.absorb(External(key))?;

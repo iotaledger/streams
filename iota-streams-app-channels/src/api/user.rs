@@ -1,9 +1,9 @@
 use core::{
+    borrow::Borrow,
     fmt::{
         self,
         Debug,
     },
-    borrow::Borrow,
 };
 
 use iota_streams_app::{
@@ -20,10 +20,11 @@ use iota_streams_core::{
     async_trait,
     err,
     prelude::{
-        Box,
-        Mutex,
         string::ToString,
         typenum::U32,
+        vec,
+        Box,
+        Mutex,
         Vec,
     },
     prng,
@@ -62,8 +63,8 @@ use crate::{
     message::*,
     Lookup,
 };
-use iota_streams_core::prelude::Arc;
 use core::borrow::BorrowMut;
+use iota_streams_core::prelude::Arc;
 
 const ANN_MESSAGE_NUM: u32 = 0;
 const SUB_MESSAGE_NUM: u32 = 0;
@@ -414,7 +415,8 @@ where
         // TODO: check content type
 
         let content = self
-            .unwrap_subscribe(preparsed).await?
+            .unwrap_subscribe(preparsed)
+            .await?
             .commit(self.link_store.lock().await.borrow_mut(), info)?;
         // TODO: trust content.subscriber_sig_pk
         let subscriber_sig_pk = content.subscriber_sig_pk;
@@ -516,7 +518,7 @@ where
         self.ensure_appinst(&preparsed)?;
         if let Some(ref author_sig_pk) = self.author_sig_pk {
             let content = keyload::ContentUnwrap::new(self, self, author_sig_pk);
-            let unwrapped = preparsed.unwrap(&*self.link_store.lock().unwrap().borrow(), content).await?;
+            let unwrapped = preparsed.unwrap(&*self.link_store.lock().await.borrow(), content).await?;
             Ok(unwrapped)
         } else {
             err!(AuthorSigKeyNotFound)
@@ -607,7 +609,9 @@ where
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<WrappedMessage<F, Link>> {
-        self.prepare_signed_packet(link_to, public_payload, masked_payload)?.wrap().await
+        self.prepare_signed_packet(link_to, public_payload, masked_payload)?
+            .wrap()
+            .await
     }
 
     pub async fn unwrap_signed_packet<'a>(
@@ -630,7 +634,8 @@ where
         let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
         let seq_no = preparsed.header.seq_num;
         let content = self
-            .unwrap_signed_packet(preparsed).await?
+            .unwrap_signed_packet(preparsed)
+            .await?
             .commit(self.link_store.lock().await.borrow_mut(), info)?;
         if !self.is_multi_branching() {
             let link = if self.is_single_depth() {
@@ -695,7 +700,9 @@ where
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<WrappedMessage<F, Link>> {
-        self.prepare_tagged_packet(link_to, public_payload, masked_payload)?.wrap().await
+        self.prepare_tagged_packet(link_to, public_payload, masked_payload)?
+            .wrap()
+            .await
     }
 
     pub async fn unwrap_tagged_packet(
@@ -717,7 +724,8 @@ where
         let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
         let seq_no = preparsed.header.seq_num;
         let content = self
-            .unwrap_tagged_packet(preparsed).await?
+            .unwrap_tagged_packet(preparsed)
+            .await?
             .commit(self.link_store.lock().await.borrow_mut(), info)?;
         if !self.is_multi_branching() {
             let link = if self.is_single_depth() {
@@ -843,7 +851,8 @@ where
         let sender_id = preparsed.header.sender_id;
         let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
         let content = self
-            .unwrap_sequence(preparsed).await?
+            .unwrap_sequence(preparsed)
+            .await?
             .commit(self.link_store.lock().await.borrow_mut(), info)?;
         if store {
             self.store_state(sender_id, msg.link.rel().clone())?;
@@ -1110,7 +1119,6 @@ where
         Ok(ctx)
     }
 }
-
 
 #[async_trait]
 impl<F, Link, Store, LG, LS, Keys> ContentUnwrap<F, Store> for User<F, Link, LG, LS, Keys>
