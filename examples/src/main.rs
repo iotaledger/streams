@@ -25,7 +25,7 @@ use core::cell::RefCell;
 
 mod branching;
 
-async fn run_recovery_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
+async fn run_recovery_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Recovery Test, seed: {}", seed);
     match branching::recovery::example(transport, ChannelType::SingleBranch, seed).await {
         Err(err) => println!("Error in recovery test: {:?}", err),
@@ -34,7 +34,7 @@ async fn run_recovery_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) 
     println!("#######################################");
 }
 
-async fn run_single_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
+async fn run_single_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Single Branch Test, seed: {}", seed);
     match branching::single_branch::example(transport, ChannelType::SingleBranch, seed).await {
         Err(err) => println!("Error in Single Branch test: {:?}", err),
@@ -67,7 +67,6 @@ async fn run_main<T: Transport>(transport: T) -> Result<()> {
     let seed3: &str = "SEEDMULTI9";
     let seed4: &str = "SEEDRECOVERY";
 
-    let transport = Rc::new(RefCell::new(transport));
     run_single_branch_test(transport.clone(), seed1).await;
     run_single_depth_test(transport.clone(), seed2).await;
     run_multi_branch_test(transport.clone(), seed3).await;
