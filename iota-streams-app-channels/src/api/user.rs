@@ -7,7 +7,10 @@ use core::{
 };
 
 use iota_streams_app::{
-    identifier::*,
+    identifier::{
+        Identifier,
+        IdentifierKeyRef,
+    },
     message::{
         hdf::{
             FLAG_BRANCHING_MASK,

@@ -51,7 +51,10 @@
 //!     via `SignedPacket`.
 
 use iota_streams_app::{
-    identifier::*,
+    identifier::{
+        Identifier,
+        IdentifierKeyRef,
+    },
     message::{
         self,
         *,

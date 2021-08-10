@@ -3,7 +3,12 @@ use core::{
     fmt,
 };
 
-use iota_streams_app::identifier::*;
+use iota_streams_app::identifier::{
+    Identifier,
+    IdentifierInfoMut,
+    IdentifierInfoRef,
+    IdentifierKeyRef,
+};
 use iota_streams_core::{
     err,
     key_exchange::x25519,
