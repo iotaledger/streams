@@ -34,9 +34,7 @@ use iota_streams_core::{
 pub trait KeyStore<Info, F: PRP>: Default {
     fn filter<'a, Ids>(&'a self, ids: Ids) -> Vec<IdentifierKeyRef<'a>>
     where
-        Ids: Iterator<Item = &'a Identifier>;
-    // Ids: Iterator,
-    // Ids::Item: AsRef<Identifier>;
+        Ids: IntoIterator<Item = &'a Identifier>;
     fn keys(&self) -> Vec<IdentifierKeyRef>;
     fn iter(&self) -> Vec<IdentifierInfoRef<Info>>;
     fn iter_mut(&mut self) -> Vec<IdentifierInfoMut<Info>>;
@@ -77,10 +75,9 @@ impl<Info> Default for KeyMap<Info> {
 impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
     fn filter<'a, Ids>(&'a self, ids: Ids) -> Vec<IdentifierKeyRef<'a>>
     where
-        Ids: Iterator<Item = &'a Identifier>,
-        // Ids::Item: AsRef<Identifier>,
+        Ids: IntoIterator<Item = &'a Identifier>,
     {
-        ids.filter_map(|id| match id {
+        ids.into_iter().filter_map(|id| match id {
             Identifier::EdPubKey(pk) => self
                 .ke_pks
                 .get_key_value(pk)
