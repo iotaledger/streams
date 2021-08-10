@@ -142,14 +142,14 @@ pub unsafe extern "C" fn get_link_from_state(state: *const UserState, pub_key: *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn drop_unwrapped_message(ms: *const UnwrappedMessage) {
-    Box::from_raw(ms as *mut UnwrappedMessage);
+pub unsafe extern "C" fn drop_unwrapped_message(umsg: *const UnwrappedMessage) {
+    safe_drop_ptr(umsg)
 }
 
 pub type UnwrappedMessages = Vec<UnwrappedMessage>;
 #[no_mangle]
-pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
-    safe_drop_ptr(ms)
+pub extern "C" fn drop_unwrapped_messages(umsgs: *const UnwrappedMessages) {
+    safe_drop_ptr(umsgs)
 }
 
 #[cfg(feature = "sync-client")]
@@ -580,23 +580,23 @@ pub unsafe extern "C" fn get_address_index_str(address: *mut Address) -> *mut c_
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_payload(msg: *const UnwrappedMessage) -> PacketPayloads {
-    msg.as_ref().map_or(PacketPayloads::default(), handle_message_contents)
+pub unsafe extern "C" fn get_payload(umsg: *const UnwrappedMessage) -> PacketPayloads {
+    umsg.as_ref().map_or(PacketPayloads::default(), handle_message_contents)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_payloads_count(msgs: *const UnwrappedMessages) -> usize {
-    msgs.as_ref().map_or(0, |msgs| msgs.len())
+pub unsafe extern "C" fn get_payloads_count(umsgs: *const UnwrappedMessages) -> usize {
+    umsgs.as_ref().map_or(0, |msgs| msgs.len())
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_indexed_payload(msgs: *const UnwrappedMessages, index: size_t) -> PacketPayloads {
-    msgs.as_ref()
+pub unsafe extern "C" fn get_indexed_payload(umsgs: *const UnwrappedMessages, index: size_t) -> PacketPayloads {
+    umsgs.as_ref()
         .map_or(PacketPayloads::default(), |msgs| handle_message_contents(&msgs[index]))
 }
 
-fn handle_message_contents(m: &UnwrappedMessage) -> PacketPayloads {
-    match &m.body {
+fn handle_message_contents(umsg: &UnwrappedMessage) -> PacketPayloads {
+    match &umsg.body {
         MessageContent::TaggedPacket {
             public_payload: p,
             masked_payload: m,

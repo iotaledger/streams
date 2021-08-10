@@ -370,22 +370,22 @@ pub unsafe extern "C" fn auth_receive_msg(
 
 #[no_mangle]
 pub unsafe extern "C" fn auth_fetch_next_msgs(umsgs: *mut *const UnwrappedMessages, user: *mut Author) -> Err {
-    user.as_mut().map_or(Err::NullArgument, |user| {
-        umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
-            let m = user.fetch_next_msgs();
-            *umsgs = safe_into_ptr(m);
+    umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
+        user.as_mut().map_or(Err::NullArgument, |user| {
+            let msgs = user.fetch_next_msgs();
+            *umsgs = safe_into_ptr(msgs);
             Err::Ok
         })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_fetch_prev_msg(m: *mut *const UnwrappedMessage, user: *mut Author, address: *const Address) -> Err {
-    m.as_mut().map_or(Err::NullArgument, |m| {
+pub unsafe extern "C" fn auth_fetch_prev_msg(umsg: *mut *const UnwrappedMessage, user: *mut Author, address: *const Address) -> Err {
+    umsg.as_mut().map_or(Err::NullArgument, |umsg| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             address.as_ref().map_or(Err::NullArgument, |addr| {
                 user.fetch_prev_msg(addr).map_or_else(operation_failed, |msg| {
-                    *m = safe_into_ptr(msg);
+                    *umsg = safe_into_ptr(msg);
                     Err::Ok
                 })
             })
@@ -409,17 +409,17 @@ pub unsafe extern "C" fn auth_fetch_prev_msgs(umsgs: *mut *const UnwrappedMessag
 
 #[no_mangle]
 pub unsafe extern "C" fn auth_sync_state(umsgs: *mut *const UnwrappedMessages, user: *mut Author) -> Err {
-    user.as_mut().map_or(Err::NullArgument, |user| {
-        umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
-            let mut ms = Vec::new();
+    umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
+        user.as_mut().map_or(Err::NullArgument, |user| {
+            let mut msgs = Vec::new();
             loop {
                 let m = user.fetch_next_msgs();
                 if m.is_empty() {
                     break;
                 }
-                ms.extend(m);
+                msgs.extend(m);
             }
-            *umsgs = safe_into_ptr(ms);
+            *umsgs = safe_into_ptr(msgs);
             Err::Ok
         })
     })

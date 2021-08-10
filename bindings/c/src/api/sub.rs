@@ -374,15 +374,15 @@ pub unsafe extern "C" fn sub_receive_keyload_from_ids(
 
 #[no_mangle]
 pub unsafe extern "C" fn sub_receive_msg(
-    r: *mut *const UnwrappedMessage,
+    umsg: *mut *const UnwrappedMessage,
     user: *mut Subscriber,
     link: *const Address,
 ) -> Err {
-    r.as_mut().map_or(Err::NullArgument, |r| {
+    umsg.as_mut().map_or(Err::NullArgument, |umsg| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             link.as_ref().map_or(Err::NullArgument, |link| {
-                user.receive_msg(link).map_or_else(operation_failed, |u| {
-                    *r = safe_into_ptr(u);
+                user.receive_msg(link).map_or_else(operation_failed, |msg| {
+                    *umsg = safe_into_ptr(msg);
                     Err::Ok
                 })
             })
@@ -391,23 +391,23 @@ pub unsafe extern "C" fn sub_receive_msg(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_fetch_next_msgs(r: *mut *const UnwrappedMessages, user: *mut Subscriber) -> Err {
-    r.as_mut().map_or(Err::NullArgument, |r| {
+pub unsafe extern "C" fn sub_fetch_next_msgs(umsgs: *mut *const UnwrappedMessages, user: *mut Subscriber) -> Err {
+    umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
         user.as_mut().map_or(Err::NullArgument, |user| {
-            let m = user.fetch_next_msgs();
-            *r = safe_into_ptr(m);
+            let msgs = user.fetch_next_msgs();
+            *umsgs = safe_into_ptr(msgs);
             Err::Ok
         })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_fetch_prev_msg(m: *mut *const UnwrappedMessage, user: *mut Subscriber, address: *const Address) -> Err {
-    m.as_mut().map_or(Err::NullArgument, |m| {
+pub unsafe extern "C" fn sub_fetch_prev_msg(umsg: *mut *const UnwrappedMessage, user: *mut Subscriber, address: *const Address) -> Err {
+    umsg.as_mut().map_or(Err::NullArgument, |umsg| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             address.as_ref().map_or(Err::NullArgument, |addr| {
                 user.fetch_prev_msg(addr).map_or_else(operation_failed, |msg| {
-                    *m = safe_into_ptr(msg);
+                    *umsg = safe_into_ptr(msg);
                     Err::Ok
                 })
             })
@@ -416,12 +416,12 @@ pub unsafe extern "C" fn sub_fetch_prev_msg(m: *mut *const UnwrappedMessage, use
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_fetch_prev_msgs(m: *mut *const UnwrappedMessages, user: *mut Subscriber, address: *const Address, num_msgs: size_t) -> Err {
-    m.as_mut().map_or(Err::NullArgument, |m| {
+pub unsafe extern "C" fn sub_fetch_prev_msgs(umsgs: *mut *const UnwrappedMessages, user: *mut Subscriber, address: *const Address, num_msgs: size_t) -> Err {
+    umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             address.as_ref().map_or(Err::NullArgument, |addr| {
                 user.fetch_prev_msgs(addr, num_msgs).map_or_else(operation_failed, |msgs| {
-                    *m = safe_into_ptr(msgs);
+                    *umsgs = safe_into_ptr(msgs);
                     Err::Ok
                 })
             })
@@ -431,18 +431,18 @@ pub unsafe extern "C" fn sub_fetch_prev_msgs(m: *mut *const UnwrappedMessages, u
 
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_sync_state(r: *mut *const UnwrappedMessages, user: *mut Subscriber) -> Err {
-    r.as_mut().map_or(Err::NullArgument, |r| {
+pub unsafe extern "C" fn sub_sync_state(umsgs: *mut *const UnwrappedMessages, user: *mut Subscriber) -> Err {
+    umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
         user.as_mut().map_or(Err::NullArgument, |user| {
-            let mut ms = Vec::new();
+            let mut msgs = Vec::new();
             loop {
                 let m = user.fetch_next_msgs();
                 if m.is_empty() {
                     break;
                 }
-                ms.extend(m);
+                msgs.extend(m);
             }
-            *r = safe_into_ptr(ms);
+            *umsgs = safe_into_ptr(msgs);
             Err::Ok
         })
     })
