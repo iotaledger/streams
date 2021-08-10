@@ -32,11 +32,37 @@ use core::ptr::{
     null_mut,
 };
 
+#[cfg(not(feature = "std"))]
 static mut LAST_ERROR: String = String::new();
 
+#[cfg(feature = "std")]
+use core::cell::RefCell;
+
+#[cfg(feature = "std")]
+thread_local! {
+    static LAST_ERROR: RefCell<String> = RefCell::new(String::new());
+}
+
+#[cfg(not(feature = "std"))]
+fn set_last_error(e: String) {
+    unsafe { LAST_ERROR = e.to_string(); }
+}
+
+#[cfg(feature = "std")]
+fn set_last_error(e: String) {
+    LAST_ERROR.with(|last_error| *last_error.borrow_mut() = e);
+}
+
+#[cfg(not(feature = "std"))]
 #[no_mangle]
 pub unsafe extern "C" fn get_last_error() -> *const c_char {
     CString::new(LAST_ERROR.clone()).map_or(null(), |e| e.into_raw())
+}
+
+#[cfg(feature = "std")]
+#[no_mangle]
+pub unsafe extern "C" fn get_last_error() -> *const c_char {
+    LAST_ERROR.with(|last_error| CString::new(last_error.borrow().clone()).map_or(null(), |e| e.into_raw()))
 }
 
 pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
@@ -77,7 +103,7 @@ pub enum Err {
 }
 
 fn operation_failed<E: ToString>(e: E) -> Err {
-    unsafe { LAST_ERROR = e.to_string(); }
+    set_last_error(e.to_string());
     Err::OperationFailed
 }
 
