@@ -107,7 +107,7 @@ impl<Link: Default> HDF<Link> {
         self
     }
 
-    pub fn get_identifier(&self) -> &Identifier {
+    pub fn to_identifier(&self) -> &Identifier {
         &self.sender_id
     }
 

@@ -682,7 +682,7 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<'a, F, Link, LS, tagged_packet::ContentWrap<'a, F, Link>>> {
-        let identifier = self.get_identifier()?;
+        let identifier = self.to_identifier()?;
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
@@ -706,7 +706,7 @@ where
         }
     }
 
-    fn get_identifier(&mut self) -> Result<Identifier> {
+    fn to_identifier(&mut self) -> Result<Identifier> {
         if self.use_psk {
             match self.key_store.get_next_pskid() {
                 Some(id) => Ok(id),
@@ -764,7 +764,7 @@ where
         seq_no: u64,
         ref_link: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<'a, F, Link, LS, sequence::ContentWrap<'a, Link>>> {
-        let identifier = self.get_identifier()?;
+        let identifier = self.to_identifier()?;
         let msg_link = self
             .link_gen
             .link_from(&identifier, Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
@@ -786,7 +786,7 @@ where
     }
 
     pub fn wrap_sequence(&mut self, ref_link: &<Link as HasLink>::Rel) -> Result<WrappedSequence<F, Link>> {
-        let identifier = self.get_identifier()?;
+        let identifier = self.to_identifier()?;
         match self.key_store.get(&identifier) {
             Some(cursor) => {
                 let mut cursor = cursor.clone();
@@ -953,7 +953,7 @@ where
 
         // TODO: Do the same for self.sig_kp.1
         for i in self.key_store.iter() {
-            Self::gen_next_msg_id(&mut ids, &self.link_gen, &i.get_identifier(), i.as_ref(), branching);
+            Self::gen_next_msg_id(&mut ids, &self.link_gen, &i.to_identifier(), i.as_ref(), branching);
         }
         ids
     }
@@ -992,7 +992,7 @@ where
                 seq_no,
             } = i.as_ref();
             let link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), link);
-            state.push((i.get_identifier(), Cursor::new_at(link, *branch_no, *seq_no)))
+            state.push((i.to_identifier(), Cursor::new_at(link, *branch_no, *seq_no)))
         }
         Ok(state)
     }
@@ -1044,7 +1044,7 @@ where
             })?
             .absorb(repeated_keys)?
             .repeated(keys.into_iter(), |ctx, i| {
-                let id = i.get_identifier();
+                let id = i.to_identifier();
                 let cursor = i.as_ref();
                 let ctx = id.sizeof(ctx)?;
                 ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
@@ -1109,7 +1109,7 @@ where
             })?
             .absorb(repeated_keys)?
             .repeated(keys.into_iter(), |ctx, i| {
-                let id = i.get_identifier();
+                let id = i.to_identifier();
                 let cursor = i.as_ref();
                 let ctx = id.wrap(_store, ctx)?;
                 ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?

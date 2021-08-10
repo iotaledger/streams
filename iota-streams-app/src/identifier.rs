@@ -196,7 +196,7 @@ pub enum IdentifierInfoRef<'a, Info> {
 }
 
 impl<'a, Info> IdentifierInfoRef<'a, Info> {
-    pub fn get_identifier(&self) -> Identifier {
+    pub fn to_identifier(&self) -> Identifier {
         match *self {
             IdentifierInfoRef::EdPubKey(pk, _) => Identifier::EdPubKey(*pk),
             IdentifierInfoRef::PskId(pskid, _) => Identifier::PskId(*pskid),
@@ -215,7 +215,7 @@ impl<'a, Info> AsRef<Info> for IdentifierInfoRef<'a, Info> {
 
 impl<'a, Info> From<IdentifierInfoRef<'a, Info>> for Identifier {
     fn from(r: IdentifierInfoRef<'a, Info>) -> Self {
-        r.get_identifier()
+        r.to_identifier()
     }
 }
 
@@ -225,7 +225,7 @@ pub enum IdentifierInfoMut<'a, Info> {
 }
 
 impl<'a, Info> IdentifierInfoMut<'a, Info> {
-    pub fn get_identifier(&self) -> Identifier {
+    pub fn to_identifier(&self) -> Identifier {
         match *self {
             IdentifierInfoMut::EdPubKey(pk, _) => Identifier::EdPubKey(*pk),
             IdentifierInfoMut::PskId(pskid, _) => Identifier::PskId(*pskid),
@@ -244,7 +244,7 @@ impl<'a, Info> AsMut<Info> for IdentifierInfoMut<'a, Info> {
 
 impl<'a, Info> From<IdentifierInfoMut<'a, Info>> for Identifier {
     fn from(r: IdentifierInfoMut<'a, Info>) -> Self {
-        r.get_identifier()
+        r.to_identifier()
     }
 }
 
@@ -255,7 +255,7 @@ pub enum IdentifierKeyRef<'a> {
 }
 
 impl<'a> IdentifierKeyRef<'a> {
-    pub fn get_identifier(&self) -> Identifier {
+    pub fn to_identifier(&self) -> Identifier {
         match *self {
             IdentifierKeyRef::EdPubKey(pk, _) => Identifier::EdPubKey(*pk),
             IdentifierKeyRef::PskId(pskid, _) => Identifier::PskId(*pskid),
@@ -265,7 +265,7 @@ impl<'a> IdentifierKeyRef<'a> {
 
 impl<'a> From<IdentifierKeyRef<'a>> for Identifier {
     fn from(r: IdentifierKeyRef<'a>) -> Self {
-        r.get_identifier()
+        r.to_identifier()
     }
 }
 
