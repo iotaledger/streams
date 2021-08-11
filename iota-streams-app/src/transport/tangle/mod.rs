@@ -61,7 +61,7 @@ use crate::{
 pub const PAYLOAD_BYTES: usize = 1090;
 
 /// Wrapper for a tangle formatted message
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TangleMessage<F> {
     /// Encapsulated binary encoded message.
     pub binary: BinaryMessage<F, TangleAddress>,
