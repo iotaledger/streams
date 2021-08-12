@@ -128,5 +128,5 @@ fn new_seed() -> String {
 #[tokio::main]
 async fn main() {
     main_pure().await;
-    main_client().await;
+    //main_client().await;
 }
