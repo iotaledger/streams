@@ -14,10 +14,10 @@ else(${NO_STD})
   set(cargo_features "std,")
 endif(${NO_STD})
 
-if(${SYNC_CLIENT})
+if(${IOTA_CLIENT})
   add_definitions(-DIOTA_STREAMS_CHANNELS_CLIENT)
-  set(cargo_features "${cargo_features}sync-client")
-endif(${SYNC_CLIENT})
+  set(cargo_features "${cargo_features}client")
+endif(${IOTA_CLIENT})
 
 message("NO_STD=${NO_STD} SYNC_CLIENT=${SYNC_CLIENT} STATIC=${STATIC} RELEASE=${RELEASE}")
 
@@ -71,6 +71,6 @@ else(${STATIC})
 endif()
 
 unset(NO_STD CACHE)
-unset(SYNC_CLIENT CACHE)
+unset(IOTA_CLIENT CACHE)
 unset(STATIC CACHE)
 unset(RELEASE CACHE)
