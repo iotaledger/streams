@@ -253,7 +253,7 @@ where
 {
     async fn unwrap<'c, IS: Send + Sync + io::IStream>(
         &mut self,
-        store: &LStore,
+        store: &'c LStore,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>>
     where
