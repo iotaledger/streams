@@ -47,7 +47,7 @@ pub fn random_key() -> Key {
 }
 
 #[cfg(all(feature = "std", not(target_os = "espidf")))]
-fn rng() -> rand::rngs::ThreadRng {
+pub fn rng() -> rand::rngs::ThreadRng {
     rand::thread_rng()
 }
 
@@ -58,12 +58,12 @@ fn rng() -> rand::rngs::ThreadRng {
 // function (at least in streams-channels) in practice this approach has a
 // similar security and performance as ThreadRng.
 #[cfg(all(feature = "std", target_os = "espidf"))]
-fn rng() -> rand::rngs::StdRng {
+pub fn rng() -> rand::rngs::StdRng {
     <rand::rngs::StdRng as rand::SeedableRng>::from_entropy()
 }
 
 #[cfg(not(feature = "std"))]
-fn rng() -> rand::rngs::StdRng {
+pub fn rng() -> rand::rngs::StdRng {
     unimplemented!("No default global RNG present.");
 }
 

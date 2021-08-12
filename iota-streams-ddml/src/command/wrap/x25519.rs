@@ -4,7 +4,10 @@ use iota_streams_core::{
     Errors::NoStdRngMissing,
 };
 
-use iota_streams_core::Result;
+use iota_streams_core::{
+    prng::rng,
+    Result,
+};
 
 use super::Context;
 #[cfg(feature = "std")]
@@ -44,7 +47,7 @@ impl<'a, F: PRP, OS: io::OStream> X25519<x25519::EphemeralSecret, &'a x25519::Pu
 #[cfg(feature = "std")]
 impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F, OS> {
     fn x25519(&mut self, pk: &x25519::PublicKey, key: &NBytes<N>) -> Result<&mut Self> {
-        let ephemeral_ke_sk = x25519::EphemeralSecret::new(&mut rand::thread_rng());
+        let ephemeral_ke_sk = x25519::EphemeralSecret::new(&mut rng());
         let ephemeral_ke_pk = x25519::PublicKey::from(&ephemeral_ke_sk);
         self.absorb(&ephemeral_ke_pk)?
             .x25519(ephemeral_ke_sk, pk)?
