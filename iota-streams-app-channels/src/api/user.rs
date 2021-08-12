@@ -282,7 +282,7 @@ where
         wrapped: WrapState<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<Link> {
-        wrapped.commit(self.link_store.lock().await.borrow_mut(), info)
+        wrapped.commit(self.link_store.lock().borrow_mut(), info)
     }
 
     /// Prepare Announcement message.
@@ -315,7 +315,7 @@ where
         }
 
         let content = announce::ContentUnwrap::<F>::default();
-        let r = preparsed.unwrap(&*self.link_store.lock().await.borrow(), content).await;
+        let r = preparsed.unwrap(&*self.link_store.lock().borrow(), content).await;
         r
     }
 
@@ -334,7 +334,7 @@ where
 
         let unwrapped = self.unwrap_announcement(preparsed).await?;
         let link = unwrapped.link.clone();
-        let content = unwrapped.commit(self.link_store.lock().await.borrow_mut(), info)?;
+        let content = unwrapped.commit(self.link_store.lock().borrow_mut(), info)?;
         // TODO: check commit after message is done / before joined
 
         // TODO: Verify trust to Author's public key?
@@ -402,7 +402,7 @@ where
     ) -> Result<UnwrappedMessage<F, Link, subscribe::ContentUnwrap<'_, F, Link>>> {
         self.ensure_appinst(&preparsed)?;
         let content = subscribe::ContentUnwrap::new(&self.ke_kp.0)?;
-        preparsed.unwrap(&*self.link_store.lock().await.borrow(), content).await
+        preparsed.unwrap(&*self.link_store.lock().borrow(), content).await
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
@@ -417,7 +417,7 @@ where
         let content = self
             .unwrap_subscribe(preparsed)
             .await?
-            .commit(self.link_store.lock().await.borrow_mut(), info)?;
+            .commit(self.link_store.lock().borrow_mut(), info)?;
         // TODO: trust content.subscriber_sig_pk
         let subscriber_sig_pk = content.subscriber_sig_pk;
         let ref_link = self.appinst.as_ref().unwrap().rel().clone();
@@ -518,7 +518,7 @@ where
         self.ensure_appinst(&preparsed)?;
         if let Some(ref author_sig_pk) = self.author_sig_pk {
             let content = keyload::ContentUnwrap::new(self, self, author_sig_pk);
-            let unwrapped = preparsed.unwrap(&*self.link_store.lock().await.borrow(), content).await?;
+            let unwrapped = preparsed.unwrap(&*self.link_store.lock().borrow(), content).await?;
             Ok(unwrapped)
         } else {
             err!(AuthorSigKeyNotFound)
@@ -539,7 +539,7 @@ where
 
         if unwrapped.pcf.content.key.is_some() {
             // Do not commit if key not found hence spongos state is invalid
-            let content = unwrapped.commit(self.link_store.lock().await.borrow_mut(), info)?;
+            let content = unwrapped.commit(self.link_store.lock().borrow_mut(), info)?;
 
             // Presence of the key indicates the user is allowed
             // Unwrapped nonce and key in content are not used explicitly.
@@ -620,7 +620,7 @@ where
     ) -> Result<UnwrappedMessage<F, Link, signed_packet::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
         let content = signed_packet::ContentUnwrap::default();
-        preparsed.unwrap(&*self.link_store.lock().await.borrow(), content).await
+        preparsed.unwrap(&*self.link_store.lock().borrow(), content).await
     }
 
     /// Verify new Author's MSS public key and update Author's MSS public key.
@@ -636,7 +636,7 @@ where
         let content = self
             .unwrap_signed_packet(preparsed)
             .await?
-            .commit(self.link_store.lock().await.borrow_mut(), info)?;
+            .commit(self.link_store.lock().borrow_mut(), info)?;
         if !self.is_multi_branching() {
             let link = if self.is_single_depth() {
                 self.fetch_anchor()?.link.rel().clone()
@@ -711,7 +711,7 @@ where
     ) -> Result<UnwrappedMessage<F, Link, tagged_packet::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
         let content = tagged_packet::ContentUnwrap::default();
-        preparsed.unwrap(&*self.link_store.lock().await.borrow(), content).await
+        preparsed.unwrap(&*self.link_store.lock().borrow(), content).await
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
@@ -726,7 +726,7 @@ where
         let content = self
             .unwrap_tagged_packet(preparsed)
             .await?
-            .commit(self.link_store.lock().await.borrow_mut(), info)?;
+            .commit(self.link_store.lock().borrow_mut(), info)?;
         if !self.is_multi_branching() {
             let link = if self.is_single_depth() {
                 self.fetch_anchor()?.link.rel().clone()
@@ -837,7 +837,7 @@ where
     ) -> Result<UnwrappedMessage<F, Link, sequence::ContentUnwrap<Link>>> {
         self.ensure_appinst(&preparsed)?;
         let content = sequence::ContentUnwrap::default();
-        preparsed.unwrap(&*self.link_store.lock().await.borrow(), content).await
+        preparsed.unwrap(&*self.link_store.lock().borrow(), content).await
     }
 
     // Fetch unwrapped sequence message to fetch referenced message
@@ -853,7 +853,7 @@ where
         let content = self
             .unwrap_sequence(preparsed)
             .await?
-            .commit(self.link_store.lock().await.borrow_mut(), info)?;
+            .commit(self.link_store.lock().borrow_mut(), info)?;
         if store {
             self.store_state(sender_id, msg.link.rel().clone())?;
         }
@@ -1027,7 +1027,7 @@ where
             ctx.absorb(author_sig_pk)?;
         }
 
-        let link_store = self.link_store.lock().await;
+        let link_store = self.link_store.lock();
         let links = link_store.iter();
         let repeated_links = Size(links.len());
         let keys = self.key_store.iter();
@@ -1091,7 +1091,7 @@ where
             ctx.absorb(author_sig_pk)?;
         }
 
-        let link_store = self.link_store.lock().await;
+        let link_store = self.link_store.lock();
         let links = link_store.iter();
         let repeated_links = Size(links.len());
         let keys = self.key_store.iter();

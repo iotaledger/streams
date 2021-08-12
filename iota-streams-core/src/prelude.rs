@@ -50,7 +50,7 @@ pub use std::{
     },
 };
 
-pub use futures::lock::{
+pub use spin::{
     Mutex,
     MutexGuard,
 };
