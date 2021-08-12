@@ -18,9 +18,9 @@ async = ["async-trait", "atomic_refcell"]
 tangle = []
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-sync-client = ["num_cpus", "iota-client/sync", "tangle", "std"]
-async-client = ["num_cpus", "iota-client/default", "tangle", "async", "std"]
-wasm-client = ["iota-client/wasm", "tangle", "async", "std", "rand/wasm-bindgen"]
+sync-client = ["num_cpus", "iota-client/sync", "tangle", "std", "futures"]
+async-client = ["num_cpus", "iota-client/default", "tangle", "async", "std", "futures"]
+wasm-client = ["iota-client/wasm", "tangle", "async", "std", "rand/wasm-bindgen", "futures"]
 
 [lib]
 name = "iota_streams_app"
@@ -46,6 +46,6 @@ iota-client = { git = "https://github.com/iotaledger/iota.rs", branch = "dev", d
 
 num_cpus = { version = "1.10", optional = true }
 
-futures = { version = "0.3.8", default-features = false  }
+futures = { version = "0.3.8", default-features = false, optional = true }
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 cty = { version = "0.2.1" }
