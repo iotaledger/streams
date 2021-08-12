@@ -14,14 +14,13 @@ use iota_streams::{
     },
     core::{
         prelude::{
-            Rc,
+            Arc,
+            Mutex,
             String,
         },
         Result,
     },
 };
-
-use core::cell::RefCell;
 
 mod branching;
 
@@ -84,7 +83,7 @@ async fn main_pure() {
     println!("#######################################");
     println!("\n");
 
-    let transport = Rc::new(RefCell::new(transport));
+    let transport = Arc::new(Mutex::new(transport));
     run_single_branch_test(transport.clone(), "PURESEEDA").await;
     run_single_depth_test(transport.clone(), "PURESEEDB").await;
     run_multi_branch_test(transport.clone(), "PURESEEDC").await;
@@ -129,5 +128,5 @@ fn new_seed() -> String {
 #[tokio::main]
 async fn main() {
     main_pure().await;
-    // main_client().await;
+    main_client().await;
 }
