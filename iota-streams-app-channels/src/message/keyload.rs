@@ -59,7 +59,6 @@ use iota_streams_app::{
     },
 };
 use iota_streams_core::{
-    Error,
     prelude::{
         typenum::Unsigned as _,
         Vec,
@@ -69,6 +68,7 @@ use iota_streams_core::{
         prp::PRP,
         spongos,
     },
+    Error,
     Result,
 };
 use iota_streams_core_edsig::{
@@ -119,7 +119,9 @@ where
                                     .commit()?
                                     .mask(&self.key),
                                 Identifier::EdPubKey(_pk) => ctx.x25519(
-                                    &x25519::PublicKey::from(<[u8; 32]>::try_from(store_id.as_ref()).map_err(Error::msg)?),
+                                    &x25519::PublicKey::from(
+                                        <[u8; 32]>::try_from(store_id.as_ref()).map_err(Error::msg)?,
+                                    ),
                                     &self.key,
                                 ),
                             }
@@ -163,7 +165,9 @@ where
                                     .commit()?
                                     .mask(&self.key),
                                 Identifier::EdPubKey(_pk) => ctx.x25519(
-                                    &x25519::PublicKey::from(<[u8; 32]>::try_from(store_id.as_ref()).map_err(Error::msg)?),
+                                    &x25519::PublicKey::from(
+                                        <[u8; 32]>::try_from(store_id.as_ref()).map_err(Error::msg)?,
+                                    ),
                                     &self.key,
                                 ),
                             }

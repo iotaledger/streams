@@ -1,6 +1,5 @@
 use iota_streams_core::{
     err,
-    Error,
     prelude::{
         digest::generic_array::GenericArray,
         Vec,
@@ -11,6 +10,7 @@ use iota_streams_core::{
         PSKID_SIZE,
     },
     sponge::prp::PRP,
+    Error,
     Errors::{
         BadOneof,
         IdentifierGenerationFailure,
@@ -44,7 +44,9 @@ impl Identifier {
 
     pub fn from_bytes(bytes: &[u8]) -> iota_streams_core::Result<Self> {
         match bytes.len() {
-            ed25519::PUBLIC_KEY_LENGTH => Ok(Identifier::EdPubKey(ed25519::PublicKey::from_bytes(bytes).map_err(Error::msg)?.into())),
+            ed25519::PUBLIC_KEY_LENGTH => Ok(Identifier::EdPubKey(
+                ed25519::PublicKey::from_bytes(bytes).map_err(Error::msg)?.into(),
+            )),
             PSKID_SIZE => Ok(Identifier::PskId(GenericArray::clone_from_slice(bytes))),
             _ => err(IdentifierGenerationFailure),
         }
