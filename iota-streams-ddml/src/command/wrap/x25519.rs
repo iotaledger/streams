@@ -4,10 +4,9 @@ use iota_streams_core::{
     Errors::NoStdRngMissing,
 };
 
-use iota_streams_core::{
-    prng::rng,
-    Result,
-};
+#[cfg(feature = "std")]
+use iota_streams_core::prng::rng;
+use iota_streams_core::Result;
 
 use super::Context;
 #[cfg(feature = "std")]
