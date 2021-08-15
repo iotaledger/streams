@@ -521,7 +521,7 @@ pub extern "C" fn drop_payloads(payloads: PacketPayloads) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn drop_str(string: *mut c_char) {
+pub unsafe extern "C" fn drop_str(string: *const c_char) {
     CString::from_raw(string as *mut c_char);
 }
 
