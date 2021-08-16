@@ -11,9 +11,7 @@ use iota_streams::{
         },
         identifier::Identifier,
         message::Cursor,
-        transport::tangle::{
-            MsgId,
-        },
+        transport::tangle::MsgId,
     },
     app_channels::api::{
         psk_from_seed,
@@ -28,6 +26,7 @@ use iota_streams::{
 
 use core::ptr::{
     null,
+    null_mut,
 };
 
 pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
@@ -59,6 +58,24 @@ pub(crate) fn safe_drop_mut_ptr<T>(p: *mut T) {
     }
 }
 
+/// Convert an String-like collection of bytes into a raw pointer to the first byte
+///
+/// The pointer might be [`null`] if the String contains a null byte (which is invalid)
+///
+/// [`null`]: https://doc.rust-lang.org/std/ptr/fn.null.html
+fn _string_into_raw(string: impl Into<Vec<u8>>) -> *const c_char {
+    CString::new(string).map_or_else(|_e| null_mut(), CString::into_raw)
+}
+
+/// Convert an String-like collection of bytes into a raw pointer to the first byte
+///
+/// This function is unsafe because it does not check that the String does not contain a null byte.
+/// Use this function instead of [`string_into_raw`] in those cases where it's certain there won't be
+/// a null byte and don't want to incur the performance penalty of the validation.
+unsafe fn string_into_raw_unchecked(string: impl Into<Vec<u8>>) -> *const c_char {
+    CString::from_vec_unchecked(string.into()).into_raw()
+}
+
 #[repr(C)]
 pub enum Err {
     Ok,
@@ -74,9 +91,9 @@ pub unsafe extern "C" fn address_from_string(c_addr: *const c_char) -> *const Ad
 
 #[no_mangle]
 pub unsafe extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_char {
-    pubkey.as_ref().map_or(null(), |pk| {
-        CString::new(hex::encode(pk.as_bytes())).map_or(null(), |pk| pk.into_raw())
-    })
+    pubkey
+        .as_ref()
+        .map_or(null(), |pk| string_into_raw_unchecked(hex::encode(pk.as_bytes())))
 }
 
 #[no_mangle]
@@ -89,9 +106,9 @@ pub type KePks = Vec<PublicKey>;
 
 #[no_mangle]
 pub unsafe extern "C" fn pskid_as_str(pskid: *const PskId) -> *const c_char {
-    pskid.as_ref().map_or(null(), |pskid| {
-        CString::new(hex::encode(&pskid)).map_or(null(), |id| id.into_raw())
-    })
+    pskid
+        .as_ref()
+        .map_or(null(), |pskid| string_into_raw_unchecked(hex::encode(&pskid)))
 }
 
 #[no_mangle]
@@ -528,29 +545,29 @@ pub unsafe extern "C" fn drop_str(string: *const c_char) {
 #[no_mangle]
 pub unsafe extern "C" fn get_channel_address_str(appinst: *const ChannelAddress) -> *const c_char {
     appinst.as_ref().map_or(null(), |inst| {
-        CString::new(inst.to_string()).map_or(null(), |inst_str| inst_str.into_raw())
+        // Calling `to_hex_string()` instead of `to_string()` certifies that the String won't contain
+        // a null byte, so that we can call `string_into_raw_unchecked()`
+        string_into_raw_unchecked(inst.to_hex_string())
     })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn get_msgid_str(msgid: *const MsgId) -> *const c_char {
-    msgid.as_ref().map_or(null(), |id| {
-        CString::new(id.to_string()).map_or(null(), |id_str| id_str.into_raw())
-    })
+    msgid
+        .as_ref()
+        .map_or(null(), |id| string_into_raw_unchecked(id.to_hex_string()))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn get_address_inst_str(address: *const Address) -> *const c_char {
-    address.as_ref().map_or(null(), |addr| {
-        get_channel_address_str(&addr.appinst)
-    })
+    address
+        .as_ref()
+        .map_or(null(), |addr| get_channel_address_str(&addr.appinst))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn get_address_id_str(address: *const Address) -> *const c_char {
-    address.as_ref().map_or(null(), |addr| {
-        get_msgid_str(&addr.msgid)
-    })
+    address.as_ref().map_or(null(), |addr| get_msgid_str(&addr.msgid))
 }
 
 #[no_mangle]
@@ -558,7 +575,7 @@ pub unsafe extern "C" fn get_address_index_str(address: *const Address) -> *cons
     address.as_ref().map_or(null(), |addr| {
         let index = addr.to_msg_index();
         let index_hex = format!("{:x}", index);
-        CString::new(index_hex).map_or(null(), |index| index.into_raw())
+        string_into_raw_unchecked(index_hex)
     })
 }
 

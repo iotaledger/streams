@@ -24,6 +24,7 @@ use iota_streams_core::{
             U40,
         },
         Box,
+        String,
         ToString,
         Vec,
     },
@@ -414,6 +415,13 @@ impl AppInst {
     }
 }
 
+impl AppInst {
+    /// Get the hexadecimal representation of the AppInst
+    pub fn to_hex_string(&self) -> String {
+        format!("{:x}", self.id)
+    }
+}
+
 impl<'a> From<&'a [u8]> for AppInst {
     fn from(v: &[u8]) -> AppInst {
         AppInst {
@@ -509,6 +517,13 @@ pub const MSGID_SIZE: usize = 12;
 #[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
 pub struct MsgId {
     pub(crate) id: NBytes<MsgIdSize>,
+}
+
+impl MsgId {
+    /// Get the hexadecimal representation of the MsgId
+    pub fn to_hex_string(&self) -> String {
+        format!("{:x}", self.id)
+    }
 }
 
 impl<'a> From<&'a [u8]> for MsgId {
