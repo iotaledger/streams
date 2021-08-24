@@ -1,3 +1,6 @@
+---
+slug: /specs
+---
 # Specifications document
 
 The specs doc can be found separate from docs here:

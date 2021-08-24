@@ -59,7 +59,7 @@ module.exports = {
             },
             {
               label: 'Specification',
-              to: '/docs/specification',
+              to: '/docs/specs',
             },
             {
               label: 'Contribute',
