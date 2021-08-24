@@ -1,3 +1,6 @@
+---
+slug: /overview/
+---
 # Overview
 The IOTA Streams framework is intended to be a secure message verification and protection protocol 
 for sending data over a given transport layer. 
