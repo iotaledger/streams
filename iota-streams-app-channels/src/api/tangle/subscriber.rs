@@ -73,6 +73,14 @@ impl<Trans> Subscriber<Trans> {
         self.user.store_psk(pskid, psk, true)
     }
 
+    /// Remove a PSK from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        self.user.remove_psk(pskid)
+    }
+
     /// Fetch the Address (application instance) of the channel.
     pub fn channel_address(&self) -> Option<&ChannelAddress> {
         self.user.channel_address()

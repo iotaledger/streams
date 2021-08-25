@@ -79,6 +79,11 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         )?;
     }
 
+    // Predefine Subscriber A
+    println!("\nAuthor Predefines Subscriber A");
+    author.store_new_subscriber(*subscriberA.get_public_key())?;
+
+
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
@@ -87,20 +92,6 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     // Fetch state of subscriber for comparison after reset
     let sub_a_start_state: HashMap<_,_> = subscriberA.fetch_state()?.into_iter().collect();
-
-    println!("\nSubscribe A");
-    let subscribeA_link = {
-        let msg = subscriberA.send_subscribe(&announcement_link)?;
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
-        print!("  SubscriberA: {}", subscriberA);
-        msg
-    };
-
-    println!("\nHandle Subscribe A");
-    {
-        author.receive_subscribe(&subscribeA_link)?;
-        print!("  Author     : {}", author);
-    }
 
     println!("\nSubscribe B");
     let subscribeB_link = {
@@ -364,6 +355,9 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         try_or!(matches, StateMismatch)?;
     }
     println!("Subscriber states matched");
+
+    println!("\nAuthor unsubscribes Subscriber A");
+    author.remove_subscriber(*subscriberA.get_public_key())?;
 
     Ok(())
 }

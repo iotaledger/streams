@@ -13,6 +13,7 @@ use iota_streams_core::{
     Result,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
+use core::borrow::BorrowMut;
 
 pub trait KeyStore<Info, F: PRP>: Default {
     fn filter(&self, pks: &[&Identifier]) -> Vec<(&Identifier, Vec<u8>)>;
@@ -29,6 +30,7 @@ pub trait KeyStore<Info, F: PRP>: Default {
     fn keys(&self) -> Vec<(&Identifier, Vec<u8>)>;
     fn iter(&self) -> Vec<(&Identifier, &Info)>;
     fn iter_mut(&mut self) -> Vec<(&Identifier, &mut Info)>;
+    fn remove(&mut self, id: &Identifier) -> Result<()>;
 }
 
 pub struct KeyMap<Info> {
@@ -173,6 +175,12 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
 
         ke_pks.extend(psks);
         ke_pks
+    }
+
+    fn remove(&mut self, id: &Identifier) -> Result<()> {
+        self.ke_pks.borrow_mut().remove(id);
+        self.psks.borrow_mut().remove(id);
+        Ok(())
     }
 }
 

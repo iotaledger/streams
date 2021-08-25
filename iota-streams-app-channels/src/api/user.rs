@@ -421,14 +421,29 @@ where
             .unwrap_subscribe(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
         // TODO: trust content.subscriber_sig_pk
+        // Unwrapped unsubscribe_key is not used explicitly.
         let subscriber_sig_pk = content.subscriber_sig_pk;
+        self.insert_subscriber(subscriber_sig_pk)
+    }
+
+    pub fn insert_subscriber(&mut self, pk: ed25519::PublicKey) -> Result<()> {
         let ref_link = self.appinst.as_ref().unwrap().rel().clone();
         self.key_store.insert_cursor(
-            Identifier::EdPubKey(subscriber_sig_pk.into()),
+            pk.into(),
             Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM),
-        )?;
-        // Unwrapped unsubscribe_key is not used explicitly.
-        Ok(())
+        )
+    }
+
+
+    pub fn unsubscribe(&mut self, pk: &ed25519::PublicKey) -> Result<()> {
+        let id = (*pk).into();
+        match self.key_store.contains(&id) {
+            true => {
+                self.key_store.remove(&id)?;
+                Ok(())
+            }
+            false => err(UserNotRegistered)
+        }
     }
 
     fn do_prepare_keyload<'a, KePks>(
@@ -939,6 +954,10 @@ where
             }
             None => err(UserNotRegistered),
         }
+    }
+
+    pub fn remove_psk(&mut self, pskid: &PskId) -> Result<()> {
+        self.key_store.remove(&pskid.into())
     }
 
     fn gen_next_msg_id(

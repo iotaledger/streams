@@ -168,8 +168,37 @@ impl<Trans> User<Trans> {
         })
     }
 
+    /// Store a PSK in the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    ///   * `psk` - A pre shared key
     pub fn store_psk(&mut self, pskid: PskId, psk: Psk, use_psk: bool) -> Result<()> {
         self.user.store_psk(pskid, psk, use_psk)
+    }
+
+    /// Remove a PSK from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        self.user.remove_psk(&pskid)
+    }
+
+    /// Store a predefined Subscriber by their public key
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn store_new_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.insert_subscriber(pk)
+    }
+
+    /// Remove a Subscriber from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.unsubscribe(&pk)
     }
 
     /// Consume a binary sequence message and return the derived message link

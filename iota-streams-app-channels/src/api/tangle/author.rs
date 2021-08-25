@@ -79,6 +79,30 @@ impl<Trans> Author<Trans> {
         self.user.store_psk(pskid, psk, false)
     }
 
+    /// Remove a PSK from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        self.user.remove_psk(pskid)
+    }
+
+    /// Store a predefined Subscriber by their public key
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn store_new_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.store_new_subscriber(pk)
+    }
+
+    /// Remove a Subscriber from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.remove_subscriber(pk)
+    }
+
     /// Generate a vector containing the next sequenced message identifier for each publishing
     /// participant in the channel
     ///
