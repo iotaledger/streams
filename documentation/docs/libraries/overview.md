@@ -1,7 +1,3 @@
----
-slug: overview
----
-
 # IOTA Streams libraries
 
 There are currently available the following official bindings to `streams`:
