@@ -9,7 +9,7 @@ use crate::{
         generic_array::GenericArray,
         typenum::{
             self,
-            Unsigned as _,
+            Unsigned,
         },
         Vec,
     },

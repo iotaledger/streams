@@ -21,7 +21,7 @@
 //!
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
 
-use core::convert::TryInto as _;
+use core::convert::TryInto;
 
 use iota_streams_core::Result;
 
@@ -110,7 +110,6 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.sig_pk)?;
-        use core::convert::TryInto;
         self.ke_pk = (&self.sig_pk)
             .try_into()
             .map_err(|e| wrapped_err!(KeyConversionFailure, WrappedError(e)))?;

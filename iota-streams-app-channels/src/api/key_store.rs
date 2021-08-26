@@ -1,5 +1,5 @@
 use core::{
-    convert::TryFrom as _,
+    convert::TryFrom,
     fmt,
 };
 

@@ -1,7 +1,7 @@
 use iota_streams_app::{
     identifier::Identifier,
     message::{
-        HasLink as _,
+        HasLink,
         LinkGenerator,
     },
 };

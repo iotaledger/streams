@@ -12,7 +12,7 @@ use crate::{
         digest::Digest,
         generic_array::{
             typenum::{
-                Unsigned as _,
+                Unsigned,
                 U2,
             },
             ArrayLength,
