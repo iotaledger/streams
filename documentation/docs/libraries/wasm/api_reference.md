@@ -649,7 +649,7 @@ Add a pskid
 | pskid     | `string`              | PskId string representation [must be 32 bytes] |
 
 
-#### get_ids(): Array<string>
+#### get_ids(): Array&lt;string>
 Fetch PskIds in string formatting
 
 | Param     | Type                  | Description                                  |
@@ -677,7 +677,7 @@ Add a public key string
 | pk        | `string`              | Public Key string representation               |
 
 
-#### get_pks(): Array<string>
+#### get_pks(): Array&lt;string>
 Fetch Public Keys in string formatting
 
 | Param     | Type                  | Description                                  |

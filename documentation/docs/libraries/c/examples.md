@@ -1,5 +1,5 @@
 # Examples
-An overview example of the available api tools can be found [here](../../../bindings/c/main.c).
+An overview example of the available api tools can be found [here](../../../../bindings/c/main.c).
 The general API is simply an abstraction over the rust library, so the examples found 
 [here](../rust/examples.md) still apply (with some minor modifications, see: [api_reference](api_reference.md))
 
