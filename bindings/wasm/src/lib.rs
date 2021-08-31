@@ -10,8 +10,8 @@ pub mod user;
 use wasm_bindgen::prelude::*;
 
 // Used for sleep()
-use wasm_bindgen_futures::JsFuture;
 use js_sys::Promise;
+use wasm_bindgen_futures::JsFuture;
 use web_sys::window;
 
 #[wasm_bindgen]
