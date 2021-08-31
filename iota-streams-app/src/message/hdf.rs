@@ -5,7 +5,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     try_or,
     Errors::*,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -21,6 +20,7 @@ use iota_streams_ddml::{
 };
 
 use super::*;
+use crate::identifier::Identifier;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
@@ -39,7 +39,7 @@ pub struct HDF<Link> {
     pub payload_frame_count: u32,
     pub previous_msg_link: Bytes,
     pub seq_num: Uint64,
-    pub sender_key_pk: ed25519::PublicKey,
+    pub sender_id: Identifier,
 }
 
 impl<Link: Default> HDF<Link> {
@@ -54,7 +54,7 @@ impl<Link: Default> HDF<Link> {
             payload_frame_count: 0,
             previous_msg_link: Bytes::default(),
             seq_num: Uint64(0),
-            sender_key_pk: ed25519::PublicKey::default(),
+            sender_id: Identifier::EdPubKey(ed25519::PublicKey::default().into()),
         }
     }
 
@@ -100,13 +100,13 @@ impl<Link: Default> HDF<Link> {
         self.seq_num.0
     }
 
-    pub fn with_public_key(mut self, pub_key: &ed25519::PublicKey) -> Self {
-        self.sender_key_pk = *pub_key;
+    pub fn with_identifier(mut self, id: &Identifier) -> Self {
+        self.sender_id = *id;
         self
     }
 
-    pub fn get_public_key(&self) -> &ed25519::PublicKey {
-        &self.sender_key_pk
+    pub fn get_identifier(&self) -> &Identifier {
+        &self.sender_id
     }
 
     pub fn with_previous_msg_link(mut self, previous_msg_link: Bytes) -> Self {
@@ -124,7 +124,7 @@ impl<Link: Default> HDF<Link> {
         content_type: u8,
         payload_length: usize,
         seq_num: u64,
-        pub_key: &ed25519::PublicKey,
+        identifier: &Identifier,
     ) -> Result<Self> {
         try_or!(content_type < 0x10, ValueOutOfRange(0x10_usize, content_type as usize))?;
         try_or!(payload_length < 0x0400, MaxSizeExceeded(0x0400_usize, payload_length))?;
@@ -138,7 +138,7 @@ impl<Link: Default> HDF<Link> {
             previous_msg_link,
             link,
             seq_num: Uint64(seq_num),
-            sender_key_pk: *pub_key,
+            sender_id: *identifier,
         })
     }
 }
@@ -155,7 +155,7 @@ impl<Link: Default> Default for HDF<Link> {
             previous_msg_link: Bytes::default(),
             link: Link::default(),
             seq_num: Uint64(0),
-            sender_key_pk: ed25519::PublicKey::default(),
+            sender_id: Identifier::EdPubKey(ed25519::PublicKey::default().into()),
         }
     }
 }
@@ -192,8 +192,10 @@ where
             .skip(&payload_frame_count)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&self.previous_msg_link)?
-            .skip(self.seq_num)?
-            .mask(&self.sender_key_pk)?;
+            .skip(self.seq_num)?;
+
+        self.sender_id.sizeof(ctx)?;
+
         Ok(ctx)
     }
 }
@@ -233,8 +235,10 @@ where
             .skip(&payload_frame_count)?
             .absorb(External(Fallback(&self.link)))?
             .absorb(&self.previous_msg_link)?
-            .skip(self.seq_num)?
-            .mask(&self.sender_key_pk)?;
+            .skip(self.seq_num)?;
+
+        self.sender_id.wrap(_store, ctx)?;
+
         Ok(ctx)
     }
 }
@@ -282,8 +286,10 @@ where
 
         ctx.absorb(External(Fallback(&self.link)))?
             .absorb(&mut self.previous_msg_link)?
-            .skip(&mut self.seq_num)?
-            .mask(&mut self.sender_key_pk)?;
+            .skip(&mut self.seq_num)?;
+
+        let (id, ctx) = Identifier::unwrap_new(_store, ctx)?;
+        self.sender_id = id;
 
         Ok(ctx)
     }

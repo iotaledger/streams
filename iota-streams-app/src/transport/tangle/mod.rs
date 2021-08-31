@@ -10,9 +10,14 @@ use core::{
     ptr::null,
     str::FromStr,
 };
+
 use iota_streams_core::Result;
 
 use iota_streams_core::{
+    crypto::hashes::{
+        blake2b,
+        Digest,
+    },
     prelude::{
         typenum::{
             U12,
@@ -27,9 +32,9 @@ use iota_streams_core::{
         prp::PRP,
         spongos::Spongos,
     },
-    try_or,
-    Errors::InvalidHex,
-    LOCATION_LOG,
+    wrapped_err,
+    Errors::BadHexFormat,
+    WrappedError,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -41,17 +46,21 @@ use iota_streams_ddml::{
 use cstr_core::CStr;
 use cty::c_char;
 
-use crate::message::{
-    BinaryMessage,
-    Cursor,
-    HasLink,
-    LinkGenerator,
-    LinkedMessage,
+use crate::{
+    identifier::Identifier,
+    message::{
+        BinaryMessage,
+        Cursor,
+        HasLink,
+        LinkGenerator,
+        LinkedMessage,
+    },
 };
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
 
+/// Wrapper for a tangle formatted message
 #[derive(Clone)]
 pub struct TangleMessage<F> {
     /// Encapsulated binary encoded message.
@@ -128,6 +137,7 @@ impl<F> TangleMessage<F> {
     }
 }
 
+/// Tangle representation of a Message Link
 #[derive(Clone)]
 pub struct TangleAddress {
     pub appinst: AppInst,
@@ -136,16 +146,13 @@ pub struct TangleAddress {
 
 impl TangleAddress {
     pub fn from_str(appinst_str: &str, msgid_str: &str) -> Result<Self> {
-        let appinst = AppInst::from_str(appinst_str);
-        try_or!(appinst.is_ok(), InvalidHex(appinst_str.into()))?;
+        let appinst = AppInst::from_str(appinst_str)
+            .map_err(|e| wrapped_err!(BadHexFormat(appinst_str.into()), WrappedError(e)))?;
 
-        let msgid = MsgId::from_str(msgid_str);
-        try_or!(msgid.is_ok(), InvalidHex(msgid_str.into()))?;
+        let msgid =
+            MsgId::from_str(msgid_str).map_err(|e| wrapped_err!(BadHexFormat(appinst_str.into()), WrappedError(e)))?;
 
-        Ok(TangleAddress {
-            appinst: appinst.unwrap(),
-            msgid: msgid.unwrap(),
-        })
+        Ok(TangleAddress { appinst, msgid })
     }
 
     #[allow(clippy::inherent_to_string_shadow_display)]
@@ -176,9 +183,15 @@ impl fmt::Debug for TangleAddress {
     }
 }
 
+pub fn get_hash(tx_address: &[u8], tx_tag: &[u8]) -> Result<String> {
+    let total = [tx_address, tx_tag].concat();
+    let hash = blake2b::Blake2b256::digest(&total);
+    Ok(hex::encode(&hash))
+}
+
 impl fmt::Display for TangleAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let hash = client::get_hash(self.appinst.as_ref(), self.msgid.as_ref()).unwrap_or_default();
+        let hash = get_hash(self.appinst.as_ref(), self.msgid.as_ref()).unwrap_or_default();
         write!(f, "<{}>", hash)
     }
 }
@@ -244,6 +257,7 @@ impl HasLink for TangleAddress {
     }
 }
 
+/// Default Message Identifer Generator. Used for deriving MsgId's for sequencing
 #[derive(Clone)]
 pub struct DefaultTangleLinkGenerator<F> {
     addr: TangleAddress,
@@ -277,10 +291,10 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         s.squeeze(new.id.as_mut());
         new
     }
-    fn gen_msgid(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> MsgId {
+    fn gen_msgid(&self, id: &Identifier, cursor: Cursor<&MsgId>) -> MsgId {
         let mut s = Spongos::<F>::init();
         s.absorb(self.addr.appinst.id.as_ref());
-        s.absorb(pk.as_ref());
+        s.absorb(id.to_bytes());
         s.absorb(cursor.link.id.as_ref());
         s.absorb(&cursor.branch_no.to_be_bytes());
         s.absorb(&cursor.seq_no.to_be_bytes());
@@ -295,7 +309,7 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     /// Used by Author to generate a new application instance: channels address and announcement message identifier
     fn gen(&mut self, pk: &ed25519::PublicKey, channel_idx: u64) {
         self.addr.appinst = AppInst::new(pk, channel_idx);
-        self.addr.msgid = self.gen_msgid(pk, Cursor::default().as_ref());
+        self.addr.msgid = self.gen_msgid(&Identifier::EdPubKey((*pk).into()), Cursor::default().as_ref());
     }
 
     /// Used by Author to get announcement message id, it's just stored internally by link generator
@@ -317,20 +331,19 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     }
 
     /// Used by users to pseudo-randomly generate a new message link from a cursor
-    fn link_from(&self, pk: &ed25519::PublicKey, cursor: Cursor<&MsgId>) -> TangleAddress {
+    fn link_from(&self, id: &Identifier, cursor: Cursor<&MsgId>) -> TangleAddress {
         TangleAddress {
             appinst: self.addr.appinst.clone(),
-            msgid: self.gen_msgid(pk, cursor),
+            msgid: self.gen_msgid(id, cursor),
         }
     }
 }
 
-// ed25519 public key size in bytes + 64-bit additional index
 pub type AppInstSize = U40;
+/// ed25519 public key [32] + 64-bit additional index
 pub const APPINST_SIZE: usize = 40;
 
-/// Application instance identifier.
-/// Currently, 81-byte string stored in `address` transaction field.
+/// 40 byte Application Instance identifier.
 #[derive(Clone, Default)]
 pub struct AppInst {
     pub(crate) id: NBytes<AppInstSize>,
@@ -441,10 +454,10 @@ impl<F: PRP> AbsorbFallback<F> for TangleAddress {
 }
 
 pub type MsgIdSize = U12;
+/// Unique 12 byte identifier
 pub const MSGID_SIZE: usize = 12;
 
-/// Message identifier unique within application instance.
-/// Currently, 27-byte string stored in `tag` transaction field.
+/// 12 byte Message Identifier unique within application instance.
 #[derive(Clone, Default)]
 pub struct MsgId {
     pub(crate) id: NBytes<MsgIdSize>,
@@ -545,5 +558,7 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
     }
 }
 
+/// Tangle-specific Transport Client. Uses [iota_client](https://github.com/iotaledger/iota.rs/tree/dev/iota-client)
+/// crate for node interfacing
 #[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
 pub mod client;

@@ -1,20 +1,23 @@
 use iota_streams::{
     app::message::HasLink,
-    app_channels::api::tangle::{
-        Author,
-        ChannelType,
-        Subscriber,
-        Transport,
+    app_channels::api::{
+        psk_from_seed,
+        pskid_from_psk,
+        tangle::{
+            Author,
+            ChannelType,
+            Subscriber,
+            Transport,
+        }
     },
     core::{
         panic_if_not,
-        prelude::Rc,
+        prelude::{HashMap, Rc},
         print,
         println,
         try_or,
         Errors::*,
         Result,
-        LOCATION_LOG,
     },
     ddml::types::*,
 };
@@ -76,6 +79,15 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         )?;
     }
 
+    // Generate a simple PSK for storage by users
+    let psk = psk_from_seed("A pre shared key".as_bytes());
+    let pskid = pskid_from_psk(&psk);
+    author.store_psk(pskid.clone(), psk.clone())?;
+    subscriberC.store_psk(pskid, psk)?;
+
+    // Fetch state of subscriber for comparison after reset
+    let sub_a_start_state: HashMap<_,_> = subscriberA.fetch_state()?.into_iter().collect();
+
     println!("\nSubscribe A");
     let subscribeA_link = {
         let msg = subscriberA.send_subscribe(&announcement_link)?;
@@ -104,7 +116,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         print!("  Author     : {}", author);
     }
 
-    println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
+    println!("\nShare keyload for everyone [SubscriberA, SubscriberB, PSK]");
     let previous_msg_link = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
         println!("  msg => <{}> {:?}", msg.msgid, msg);
@@ -115,13 +127,12 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nHandle Keyload");
     {
-        let resultC = subscriberC.receive_keyload(&previous_msg_link)?;
-        print!("  SubscriberC: {}", subscriberC);
-        try_or!(!resultC, SubscriberAccessMismatch(String::from("C")))?;
         subscriberA.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberA: {}", subscriberA);
         subscriberB.receive_keyload(&previous_msg_link)?;
         print!("  SubscriberB: {}", subscriberB);
+        subscriberC.receive_keyload(&previous_msg_link)?;
+        print!("  SubscriberC: {}", subscriberC);
     }
 
     println!("\nSigned packet");
@@ -149,6 +160,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nSubscriber A fetching transactions...");
     utils::s_fetch_next_messages(&mut subscriberA);
+    println!("\nSubscriber C fetching transactions...");
+    utils::s_fetch_next_messages(&mut subscriberC);
 
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
@@ -172,9 +185,16 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let resultC = subscriberC.receive_tagged_packet(&previous_msg_link);
+        let  (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
     }
 
     println!("\nTagged packet 2 - SubscriberA");
@@ -197,6 +217,8 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nSubscriber B fetching transactions...");
     utils::s_fetch_next_messages(&mut subscriberB);
+    println!("\nSubscriber C fetching transactions...");
+    utils::s_fetch_next_messages(&mut subscriberC);
 
     println!("\nTagged packet 4 - SubscriberB");
     let previous_msg_link = {
@@ -220,9 +242,56 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let resultC = subscriberC.receive_tagged_packet(&previous_msg_link);
+        println!("Subscriber C unwrapping");
+        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&previous_msg_link)?;
         print!("  SubscriberC: {}", subscriberC);
-        try_or!(resultC.is_err(), SubscriberAccessMismatch(String::from("C")))?;
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
+
+    }
+
+    println!("\nSubscriber fetching transactions...");
+    utils::s_fetch_next_messages(&mut subscriberC);
+
+
+    println!("\nTagged packet 5 - SubscriberC");
+    let previous_msg_link = {
+        let (msg, seq) = subscriberC.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)?;
+        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        panic_if_not(seq.is_none());
+        print!("  SubscriberC: {}", subscriberC);
+        msg
+    };
+
+    println!("\nHandle Tagged packet 5");
+    {
+        let (unwrapped_public, unwrapped_masked) = subscriberA.receive_tagged_packet(&previous_msg_link)?;
+        print!("  SubscriberA: {}", subscriberA);
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
+
+        let (unwrapped_public, unwrapped_masked) = subscriberB.receive_tagged_packet(&previous_msg_link)?;
+        print!("  SubscriberB: {}", subscriberB);
+        try_or!(
+            public_payload == unwrapped_public,
+            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
+        )?;
+        try_or!(
+            masked_payload == unwrapped_masked,
+            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
+        )?;
     }
 
     println!("\nAuthor fetching transactions...");
@@ -282,6 +351,19 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         println!("Found {} messages", msgs.len());
         println!("  SubscriberB: {}", subscriberB);
     }
+
+    subscriberA.reset_state()?;
+    let new_state: HashMap<_,_>  = subscriberA.fetch_state()?.into_iter().collect();
+
+    println!("\nSubscriber A resetting state");
+    let mut matches = false;
+    for (old_pk, old_cursor) in sub_a_start_state.iter() {
+        if new_state.contains_key(old_pk) && new_state[old_pk].link == old_cursor.link {
+            matches = true
+        }
+        try_or!(matches, StateMismatch)?;
+    }
+    println!("Subscriber states matched");
 
     Ok(())
 }

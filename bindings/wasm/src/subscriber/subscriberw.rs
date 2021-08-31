@@ -14,13 +14,20 @@ use iota_streams::{
         tangle::client::Client as ApiClient,
         TransportOptions,
     },
-    app_channels::api::tangle::{
-        Address as ApiAddress,
-        Subscriber as ApiSubscriber,
+    app_channels::api::{
+        psk_from_seed,
+        pskid_from_psk,
+        tangle::{
+            Address as ApiAddress,
+            Subscriber as ApiSubscriber,
+        },
     },
-    core::prelude::{
-        Rc,
-        String,
+    core::{
+        prelude::{
+            Rc,
+            String,
+        },
+        psk::pskid_to_hex_string,
     },
     ddml::types::*,
 };
@@ -101,13 +108,38 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
+    pub fn get_client(&self) -> Client {
+        Client(self.subscriber.borrow_mut().get_transport().clone())
+    }
+
+    #[wasm_bindgen(catch)]
     pub fn is_multi_branching(&self) -> Result<bool> {
         Ok(self.subscriber.borrow_mut().is_multi_branching())
     }
 
     #[wasm_bindgen(catch)]
+    pub fn store_psk(&self, psk_seed_str: String) -> Result<String> {
+        let psk = psk_from_seed(psk_seed_str.as_bytes());
+        let pskid = pskid_from_psk(&psk);
+        let pskid_str = pskid_to_hex_string(&pskid);
+        to_result(self.subscriber.borrow_mut().store_psk(pskid, psk))?;
+        Ok(pskid_str)
+    }
+
+    #[wasm_bindgen(catch)]
     pub fn get_public_key(&self) -> Result<String> {
-        Ok(hex::encode(self.subscriber.borrow_mut().get_pk().to_bytes().to_vec()))
+        Ok(public_key_to_string(self.subscriber.borrow_mut().get_public_key()))
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn author_public_key(&self) -> Result<String> {
+        to_result(
+            self.subscriber
+                .borrow_mut()
+                .author_public_key()
+                .ok_or("channel not registered, author's public key not found")
+                .map(|author_pk| hex::encode(author_pk.to_bytes())),
+        )
     }
 
     #[wasm_bindgen(catch)]
@@ -188,7 +220,7 @@ impl Subscriber {
                         link,
                         None,
                         Some(Message::new(
-                            Some(hex::encode(pk.as_bytes())),
+                            Some(public_key_to_string(&pk)),
                             pub_bytes.0,
                             masked_bytes.0,
                         )),
@@ -360,14 +392,23 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
-    pub async fn listen(self) -> Result<Array> {
-        loop {
-            let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
-            if !msgs.is_empty() {
-                let payloads = get_message_contents(msgs);
-                return Ok(payloads.into_iter().map(JsValue::from).collect());
-            }
-            wait(TIMEOUT).await?;
-        }
+    pub fn fetch_state(&self) -> Result<Array> {
+        self.subscriber.borrow_mut().fetch_state().map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |state_list| {
+                Ok(state_list
+                    .into_iter()
+                    .map(|(id, cursor)| JsValue::from(UserState::new(id, cursor.into())))
+                    .collect())
+            },
+        )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn reset_state(self) -> Result<()> {
+        self.subscriber
+            .borrow_mut()
+            .reset_state()
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
     }
 }

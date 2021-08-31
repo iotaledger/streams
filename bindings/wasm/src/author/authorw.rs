@@ -14,16 +14,20 @@ use js_sys::Array;
 
 use core::cell::RefCell;
 
+use iota_streams::app::identifier::Identifier;
 /// Streams imports
 use iota_streams::{
     app::transport::{
         tangle::client::Client as ApiClient,
         TransportOptions,
     },
-    app_channels::api::tangle::{
-        Address as ApiAddress,
-        Author as ApiAuthor,
-        PublicKey,
+    app_channels::api::{
+        psk_from_seed,
+        pskid_from_psk,
+        tangle::{
+            Address as ApiAddress,
+            Author as ApiAuthor,
+        },
     },
     core::{
         prelude::{
@@ -31,10 +35,7 @@ use iota_streams::{
             String,
             ToString,
         },
-        psk::{
-            PskId,
-            PSKID_SIZE,
-        },
+        psk::pskid_to_hex_string,
     },
     ddml::types::*,
 };
@@ -138,8 +139,22 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
+    pub fn get_client(&self) -> Client {
+        Client(self.author.borrow_mut().get_transport().clone())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn store_psk(&self, psk_seed_str: String) -> Result<String> {
+        let psk = psk_from_seed(psk_seed_str.as_bytes());
+        let pskid = pskid_from_psk(&psk);
+        let pskid_str = pskid_to_hex_string(&pskid);
+        to_result(self.author.borrow_mut().store_psk(pskid, psk))?;
+        Ok(pskid_str)
+    }
+
+    #[wasm_bindgen(catch)]
     pub fn get_public_key(&self) -> Result<String> {
-        Ok(hex::encode(self.author.borrow_mut().get_pk().to_bytes()))
+        Ok(public_key_to_string(self.author.borrow_mut().get_public_key()))
     }
 
     #[wasm_bindgen(catch)]
@@ -178,38 +193,15 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub async fn send_keyload(self, link: Address, psk_ids: PskIdsW, sig_pks: PublicKeysW) -> Result<UserResponse> {
-        let mut preshared: Vec<PskId> = vec![];
-
-        let ids = psk_ids.get_ids().entries();
-
-        for id in ids {
-            if let Some(id_str) = id.unwrap().as_string() {
-                if id_str.as_bytes().len() != PSKID_SIZE {
-                    return Err(JsValue::from_str("PskId is wrong size"));
-                }
-                let gen_arr = GenericArray::clone_from_slice(id_str.as_bytes());
-                preshared.push(gen_arr);
-            }
-        }
-
-        let mut pks = Vec::new();
-
-        let pk_list = sig_pks.get_pks().entries();
-
-        for pk in pk_list {
-            if let Some(pk_str) = pk.unwrap().as_string() {
-                pks.push(PublicKey::from_bytes(pk_str.as_bytes()).unwrap_or_default());
-            }
-        }
-
+        let pks: Vec<Identifier> = sig_pks.pks.iter().map(|pk| (*pk).into()).collect();
         self.author
             .borrow_mut()
             .send_keyload(
                 &link
                     .try_into()
                     .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
-                &preshared,
-                &pks,
+                &psk_ids.ids,
+                &pks.iter().collect(),
             )
             .await
             .map_or_else(
@@ -348,7 +340,7 @@ impl Author {
                         link,
                         None,
                         Some(Message::new(
-                            Some(hex::encode(pk.as_bytes())),
+                            Some(public_key_to_string(&pk)),
                             pub_bytes.0,
                             masked_bytes.0,
                         )),
@@ -441,9 +433,9 @@ impl Author {
     pub async fn gen_next_msg_ids(self) -> Result<Array> {
         let branching = self.author.borrow_mut().is_multi_branching();
         let mut ids = Vec::new();
-        for (pk, cursor) in self.author.borrow_mut().gen_next_msg_ids(branching).iter() {
+        for (id, cursor) in self.author.borrow_mut().gen_next_msg_ids(branching).iter() {
             ids.push(NextMsgId::new(
-                hex::encode(pk.as_bytes()),
+                identifier_to_string(id),
                 Address::from_string(cursor.link.to_string()),
             ));
         }
@@ -451,14 +443,15 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
-    pub async fn listen(self) -> Result<Array> {
-        loop {
-            let msgs = self.author.borrow_mut().fetch_next_msgs().await;
-            if !msgs.is_empty() {
-                let payloads = get_message_contents(msgs);
-                return Ok(payloads.into_iter().map(JsValue::from).collect());
-            }
-            wait(TIMEOUT).await?;
-        }
+    pub fn fetch_state(&self) -> Result<Array> {
+        self.author.borrow_mut().fetch_state().map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |state_list| {
+                Ok(state_list
+                    .into_iter()
+                    .map(|(id, cursor)| JsValue::from(UserState::new(id, cursor.into())))
+                    .collect())
+            },
+        )
     }
 }

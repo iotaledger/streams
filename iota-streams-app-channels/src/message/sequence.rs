@@ -21,11 +21,13 @@
 
 use iota_streams_app::message::{
     self,
+    ContentUnwrapNew,
     HasLink,
 };
 
 use iota_streams_core::Result;
 
+use iota_streams_app::identifier::Identifier;
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -44,7 +46,7 @@ where
     <Link as HasLink>::Rel: 'a,
 {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) pk: &'a ed25519::PublicKey,
+    pub(crate) id: Identifier,
     pub seq_num: u64,
     pub(crate) ref_link: &'a <Link as HasLink>::Rel,
 }
@@ -57,9 +59,9 @@ where
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        ctx.join(&store, self.link)?
-            .absorb(self.pk)?
-            .skip(Uint64(self.seq_num))?
+        ctx.join(&store, self.link)?;
+        let ctx = self.id.sizeof(ctx)?;
+        ctx.skip(Uint64(self.seq_num))?
             .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
@@ -78,9 +80,9 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?
-            .absorb(self.pk)?
-            .skip(Uint64(self.seq_num))?
+        ctx.join(store, self.link)?;
+        let ctx = self.id.wrap(store, ctx)?;
+        ctx.skip(Uint64(self.seq_num))?
             .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
             .commit()?;
         Ok(ctx)
@@ -89,7 +91,7 @@ where
 
 pub struct ContentUnwrap<Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) pk: ed25519::PublicKey,
+    pub(crate) id: Identifier,
     pub(crate) seq_num: Uint64,
     pub(crate) ref_link: <Link as HasLink>::Rel,
 }
@@ -102,7 +104,7 @@ where
     fn default() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            pk: ed25519::PublicKey::default(),
+            id: ed25519::PublicKey::default().into(),
             seq_num: Uint64(0),
             ref_link: <<Link as HasLink>::Rel as Default>::default(),
         }
@@ -121,9 +123,10 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.join(store, &mut self.link)?
-            .absorb(&mut self.pk)?
-            .skip(&mut self.seq_num)?
+        ctx.join(store, &mut self.link)?;
+        let (id, ctx) = Identifier::unwrap_new(store, ctx)?;
+        self.id = id;
+        ctx.skip(&mut self.seq_num)?
             .absorb(<&mut Fallback<<Link as HasLink>::Rel>>::from(&mut self.ref_link))?
             .commit()?;
         Ok(ctx)

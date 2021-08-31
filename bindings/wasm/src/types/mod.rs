@@ -3,25 +3,47 @@ use core::{
     convert::TryFrom,
 };
 use iota_streams::{
-    app::transport::tangle::client::{
-        Client,
-        SendOptions as ApiSendOptions,
+    app::{
+        message::Cursor as ApiCursor,
+        transport::tangle::client::{
+            iota_client::{
+                bee_rest_api::types::{
+                    dtos::LedgerInclusionStateDto,
+                    responses::MessageMetadataResponse as ApiMessageMetadata,
+                },
+                MilestoneResponse as ApiMilestoneResponse,
+            },
+            Client,
+            Details as ApiDetails,
+            SendOptions as ApiSendOptions,
+        },
     },
     app_channels::api::tangle::{
         Address as ApiAddress,
         ChannelType as ApiChannelType,
         MessageContent,
+        PublicKey,
         UnwrappedMessage,
     },
-    core::prelude::{
-        Rc,
-        String,
-        ToString,
+    core::{
+        prelude::{
+            Rc,
+            String,
+            ToString,
+        },
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
     },
     ddml::types::hex,
 };
 use wasm_bindgen::prelude::*;
 
+use iota_streams::{
+    app::identifier::Identifier,
+    core::psk::PskId,
+};
 use js_sys::Array;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
@@ -119,7 +141,6 @@ impl Address {
     }
 
     #[wasm_bindgen]
-    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         let mut link = String::new();
         link.push_str(&self.addr_id);
@@ -203,13 +224,59 @@ pub struct UserResponse {
 
 #[wasm_bindgen]
 pub struct NextMsgId {
-    pk: String,
+    identifier: String,
     msgid: Address,
 }
 
 #[wasm_bindgen]
+pub struct UserState {
+    identifier: String,
+    cursor: Cursor,
+}
+
+#[wasm_bindgen]
+pub struct Cursor {
+    link: Address,
+    seq_no: u32,
+    branch_no: u32,
+}
+
+impl From<ApiCursor<ApiAddress>> for Cursor {
+    fn from(cursor: ApiCursor<ApiAddress>) -> Self {
+        Cursor {
+            link: Address::from_string(cursor.link.to_string()),
+            seq_no: cursor.seq_no,
+            branch_no: cursor.branch_no,
+        }
+    }
+}
+
+#[wasm_bindgen]
+impl UserState {
+    pub fn new(identifier: String, cursor: Cursor) -> Self {
+        UserState { identifier, cursor }
+    }
+
+    pub fn get_identifier(&self) -> String {
+        self.identifier.clone()
+    }
+
+    pub fn get_link(&self) -> Address {
+        self.cursor.link.copy()
+    }
+
+    pub fn get_seq_no(&self) -> u32 {
+        self.cursor.seq_no
+    }
+
+    pub fn get_branch_no(&self) -> u32 {
+        self.cursor.branch_no
+    }
+}
+
+#[wasm_bindgen]
 pub struct Message {
-    pk: Option<String>,
+    identifier: Option<String>,
     public_payload: Vec<u8>,
     masked_payload: Vec<u8>,
 }
@@ -217,34 +284,63 @@ pub struct Message {
 #[wasm_bindgen]
 #[derive(Default)]
 pub struct PskIds {
-    ids: Vec<String>,
-}
-
-#[wasm_bindgen]
-#[derive(Default)]
-pub struct PublicKeys {
-    pks: Vec<String>,
+    pub(crate) ids: Vec<PskId>,
 }
 
 #[wasm_bindgen]
 impl PskIds {
-    pub fn add(&mut self, id: String) {
-        self.ids.push(id);
+    pub fn new() -> Self {
+        Self { ids: Vec::new() }
+    }
+
+    pub fn add(&mut self, id: String) -> Result<()> {
+        let pskid = to_result(pskid_from_hex_str(&id))?;
+        self.ids.push(pskid);
+        Ok(())
     }
 
     pub fn get_ids(&self) -> Array {
-        self.ids.iter().map(JsValue::from).collect()
+        self.ids
+            .iter()
+            .map(|pskid| JsValue::from(pskid_to_hex_string(pskid)))
+            .collect()
     }
 }
 
 #[wasm_bindgen]
+pub struct PublicKeys {
+    pub(crate) pks: Vec<PublicKey>,
+}
+
+pub(crate) fn identifier_to_string(id: &Identifier) -> String {
+    hex::encode(&id.to_bytes())
+}
+
+pub(crate) fn public_key_to_string(pk: &PublicKey) -> String {
+    hex::encode(pk.as_bytes())
+}
+
+pub(crate) fn public_key_from_string(hex_str: &str) -> Result<PublicKey> {
+    let bytes = to_result(hex::decode(hex_str))?;
+    to_result(PublicKey::from_bytes(&bytes))
+}
+
+#[wasm_bindgen]
 impl PublicKeys {
-    pub fn add(&mut self, id: String) {
-        self.pks.push(id);
+    pub fn new() -> Self {
+        Self { pks: Vec::new() }
+    }
+
+    pub fn add(&mut self, id: String) -> Result<()> {
+        self.pks.push(public_key_from_string(&id)?);
+        Ok(())
     }
 
     pub fn get_pks(&self) -> Array {
-        self.pks.iter().map(JsValue::from).collect()
+        self.pks
+            .iter()
+            .map(|pk| JsValue::from(public_key_to_string(pk)))
+            .collect()
     }
 }
 
@@ -254,16 +350,16 @@ impl Message {
         Self::new(None, Vec::new(), Vec::new())
     }
 
-    pub fn new(pk: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Message {
+    pub fn new(identifier: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Message {
         Message {
-            pk,
+            identifier,
             public_payload,
             masked_payload,
         }
     }
 
-    pub fn get_pk(&self) -> String {
-        self.pk.clone().unwrap_or_default()
+    pub fn get_identifier(&self) -> String {
+        self.identifier.clone().unwrap_or_default()
     }
 
     pub fn get_public_payload(&self) -> Array {
@@ -277,12 +373,12 @@ impl Message {
 
 #[wasm_bindgen]
 impl NextMsgId {
-    pub fn new(pk: String, msgid: Address) -> Self {
-        NextMsgId { pk, msgid }
+    pub fn new(identifier: String, msgid: Address) -> Self {
+        NextMsgId { identifier, msgid }
     }
 
-    pub fn get_pk(&self) -> String {
-        self.pk.clone()
+    pub fn get_identifier(&self) -> String {
+        self.identifier.clone()
     }
 
     pub fn get_link(&self) -> Address {
@@ -346,12 +442,160 @@ impl UserResponse {
         if self.message.is_some() {
             let message = self.message.as_ref().unwrap();
             Message {
-                pk: message.pk.clone(),
+                identifier: message.identifier.clone(),
                 public_payload: message.public_payload.clone(),
                 masked_payload: message.masked_payload.clone(),
             }
         } else {
             Message::default()
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Clone)]
+pub struct Details {
+    metadata: MessageMetadata,
+    milestone: Option<MilestoneResponse>,
+}
+
+#[wasm_bindgen]
+impl Details {
+    pub fn get_metadata(&self) -> MessageMetadata {
+        self.metadata.clone()
+    }
+
+    pub fn get_milestone(&self) -> Option<MilestoneResponse> {
+        self.milestone.clone()
+    }
+}
+
+impl From<ApiDetails> for Details {
+    fn from(details: ApiDetails) -> Self {
+        Self {
+            metadata: details.metadata.into(),
+            milestone: match details.milestone {
+                Some(ms) => Some(ms.into()),
+                None => None,
+            },
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Copy, Clone)]
+pub enum LedgerInclusionState {
+    Conflicting = 0,
+    Included = 1,
+    NoTransaction = 2,
+}
+
+impl From<LedgerInclusionStateDto> for LedgerInclusionState {
+    fn from(state: LedgerInclusionStateDto) -> Self {
+        match state {
+            LedgerInclusionStateDto::Conflicting => LedgerInclusionState::Conflicting,
+            LedgerInclusionStateDto::Included => LedgerInclusionState::Included,
+            LedgerInclusionStateDto::NoTransaction => LedgerInclusionState::NoTransaction,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub struct MessageMetadata {
+    message_id: String,
+    parent_message_ids: Vec<String>,
+
+    pub is_solid: bool,
+    pub referenced_by_milestone_index: Option<u32>,
+    pub milestone_index: Option<u32>,
+    pub ledger_inclusion_state: Option<LedgerInclusionState>,
+    pub conflict_reason: Option<u8>,
+    pub should_promote: Option<bool>,
+    pub should_reattach: Option<bool>,
+}
+
+#[wasm_bindgen]
+impl MessageMetadata {
+    #[wasm_bindgen(getter)]
+    pub fn message_id(&self) -> String {
+        self.message_id.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn get_parent_message_ids(&self) -> Array {
+        self.parent_message_ids.iter().map(JsValue::from).collect()
+    }
+}
+
+impl Clone for MessageMetadata {
+    fn clone(&self) -> MessageMetadata {
+        MessageMetadata {
+            message_id: self.message_id.clone(),
+            parent_message_ids: self.parent_message_ids.clone(),
+            is_solid: self.is_solid,
+            referenced_by_milestone_index: self.referenced_by_milestone_index,
+            milestone_index: self.milestone_index,
+            ledger_inclusion_state: self.ledger_inclusion_state,
+            conflict_reason: self.conflict_reason,
+            should_promote: self.should_promote,
+            should_reattach: self.should_reattach,
+        }
+    }
+}
+
+impl From<ApiMessageMetadata> for MessageMetadata {
+    fn from(metadata: ApiMessageMetadata) -> Self {
+        Self {
+            message_id: metadata.message_id,
+            parent_message_ids: metadata.parent_message_ids.clone(),
+            is_solid: metadata.is_solid,
+            referenced_by_milestone_index: metadata.referenced_by_milestone_index,
+            milestone_index: metadata.milestone_index,
+            ledger_inclusion_state: match metadata.ledger_inclusion_state {
+                None => None,
+                Some(inc) => Some(inc.into()),
+            },
+            conflict_reason: metadata.conflict_reason,
+            should_promote: metadata.should_promote,
+            should_reattach: metadata.should_reattach,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub struct MilestoneResponse {
+    /// Milestone index.
+    pub index: u32,
+    /// Milestone message id.
+    message_id: String,
+    /// Milestone timestamp.
+    pub timestamp: u64,
+}
+
+#[wasm_bindgen]
+impl MilestoneResponse {
+    #[wasm_bindgen(getter)]
+    pub fn message_id(&self) -> String {
+        self.message_id.clone()
+    }
+}
+
+impl Clone for MilestoneResponse {
+    fn clone(&self) -> MilestoneResponse {
+        MilestoneResponse {
+            index: self.index,
+            message_id: self.message_id.clone(),
+            timestamp: self.timestamp,
+        }
+    }
+}
+
+impl From<ApiMilestoneResponse> for MilestoneResponse {
+    fn from(milestone: ApiMilestoneResponse) -> Self {
+        Self {
+            index: milestone.index,
+            message_id: milestone.message_id.to_string(),
+            timestamp: milestone.timestamp,
         }
     }
 }
