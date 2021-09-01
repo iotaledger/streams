@@ -178,20 +178,6 @@ impl ClientBuilder {
         self
     }
 
-    /*
-    #[wasm_bindgen(catch)]
-    pub fn brokerOptions(mut self, node: &str) -> ClientBuilder {
-        let options = cx.argument::<JsString>(0)?.value();
-        let options: BrokerOptions = serde_json::from_str(&options).expect("invalid broker options JSON");
-        {
-            let mut this = cx.this();
-            let guard = cx.lock();
-            let broker_options = &mut this.borrow_mut(&guard).broker_options;
-            broker_options.replace(options);
-        }
-        Ok(cx.this().upcast())
-    }*/
-
     /// Set the node sync interval in seconds
     #[wasm_bindgen(catch, js_name = "nodeSyncInterval")]
     pub fn with_node_sync_interval(mut self, node_sync_interval_sec: u64) -> ClientBuilder {
