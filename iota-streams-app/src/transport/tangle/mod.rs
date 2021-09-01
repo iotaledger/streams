@@ -24,6 +24,7 @@ use iota_streams_core::{
         },
         Box,
         String,
+        ToString,
         Vec,
     },
     sponge::{
@@ -55,9 +56,6 @@ use crate::message::{
     LinkGenerator,
     LinkedMessage,
 };
-
-#[cfg(feature = "client")]
-use iota_streams_core::prelude::ToString;
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
