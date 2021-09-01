@@ -24,8 +24,8 @@ use iota_streams::{
     },
 };
 
-#[cfg(not(feature = "client"))]
-use iota_streams::core::futures::executor::block_on;
+use tokio::runtime::Runtime;
+use once_cell::sync::OnceCell;
 
 use core::ptr::{
     null,
@@ -164,12 +164,11 @@ pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
 #[cfg(not(feature = "client"))]
 pub type TransportWrap = Arc<Mutex<BucketTransport>>;
 
-pub fn run_async<R>(fut: impl Future<Output=R>) -> R {
-    #[cfg(feature = "client")]
-    let ret = tokio::runtime::Runtime::new().unwrap().block_on(fut);
-    #[cfg(not(feature = "client"))]
-    let ret = block_on(fut);
-    ret
+static INSTANCE: OnceCell<Mutex<Runtime>> = OnceCell::new();
+
+pub fn run_async<C: Future>(cb: C) -> C::Output {
+    let runtime = INSTANCE.get_or_init(|| Mutex::new(Runtime::new().unwrap()));
+    runtime.lock().block_on(cb)
 }
 
 #[no_mangle]
