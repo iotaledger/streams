@@ -277,7 +277,7 @@ where
                     let internal_fork = ctx.spongos.fork();
                     match &id {
                         Identifier::PskId(_id) => {
-                            if let Some(psk) = self.psk_store.lookup( &id) {
+                            if let Some(psk) = self.psk_store.lookup(&id) {
                                 let mut key = NBytes::<U32>::default();
                                 ctx.absorb(External(<&NBytes<psk::PskSize>>::from(&psk)))?
                                     .commit()?

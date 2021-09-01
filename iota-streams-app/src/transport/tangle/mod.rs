@@ -24,7 +24,6 @@ use iota_streams_core::{
         },
         Box,
         String,
-        ToString,
         Vec,
     },
     sponge::{
@@ -57,6 +56,9 @@ use crate::message::{
     LinkedMessage,
 };
 
+#[cfg(feature = "client")]
+use iota_streams_core::prelude::ToString;
+
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;
 
@@ -81,8 +83,7 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
 }
 
 // TODO: Use better feature to detect `chrono::Utc::new()`.
-#[cfg(all(feature = "std"))] //, not(feature = "wasmbind")
-                             //#[cfg(all(feature = "std"))]
+#[cfg(all(feature = "std"))]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
     pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
@@ -93,32 +94,6 @@ impl<F> TangleMessage<F> {
     }
 }
 
-// #[cfg(feature = "wasmbind")]
-// impl<F> TangleMessage<F> {
-// Create TangleMessage from BinaryMessage and add the current timestamp.
-// pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
-// let timestamp = js_sys::Date::new_0().value_of() as u64;
-// Self {
-// binary: msg,
-// timestamp,
-// }
-// }
-// }
-// #[cfg(feature = "wasmbind")]
-// impl<F> TangleMessage<F> {
-// Create TangleMessage from BinaryMessage and add the current timestamp.
-// pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
-// Self {
-// binary: msg,
-// timestamp: wasm_timer::SystemTime::now()
-// .duration_since(wasm_timer::SystemTime::UNIX_EPOCH)
-// .unwrap()
-// .as_millis() as u64,
-// }
-// }
-// }
-
-//#[cfg(all(not(feature = "std"), not(feature = "wasmbind")))]
 #[cfg(not(feature = "std"))]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
