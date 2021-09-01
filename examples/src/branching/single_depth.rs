@@ -109,12 +109,12 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
     }
 
     println!("\n Sending messages for subscribers");
-    for i in 1..11 {
+    for i in 0..10 {
         let mut message = String::from("Message ");
         message.push_str(&i.to_string());
         let masked_payload = Bytes(message.as_bytes().to_vec());
         let (msg, seq) = author.send_signed_packet(&anchor_msg_link, &empty_payload, &masked_payload)?;
-        println!("  msg => <{}> {}", msg.msgid, msg);
+        println!("  msg => <{}> {}", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
     }
     print!("  Author     : {}", author);
@@ -130,7 +130,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
     assert_eq!(unwrapped.len(), 10);
     for msg in unwrapped {
         if let MessageContent::SignedPacket {pk: _, public_payload: _, masked_payload } = &msg.body {
-            println!("  Msg => <{}>: {}", msg.link, String::from_utf8(masked_payload.0.to_vec())?);
+            println!("  Msg => <{}>: {}", msg.link.msgid, String::from_utf8(masked_payload.0.to_vec())?);
         } else {
             panic!("Packet found was not a signed packet from author")
         }
@@ -139,17 +139,17 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
     print!(" SubscriberA     : {}", subscriberA);
 
 
-    println!("\nSubscriber B fetching message 5");
-    let msg = subscriberB.receive_msg_by_sequence(&anchor_msg_link, 5)?;
+    println!("\nSubscriber B fetching 4th message");
+    let msg = subscriberB.receive_msg_by_sequence_number(&anchor_msg_link, 4)?;
     if let MessageContent::SignedPacket {pk: _, public_payload: _, masked_payload } = &msg.body {
-        println!("  Msg => <{}>: {}", msg.link, String::from_utf8(masked_payload.0.to_vec())?);
-        assert_eq!(masked_payload.0, "Message 5".as_bytes().to_vec());
+        println!("  Msg => <{}>: {}", msg.link.msgid, String::from_utf8(masked_payload.0.to_vec())?);
+        assert_eq!(masked_payload.0, "Message 4".as_bytes().to_vec());
     } else {
         panic!("Packet found was not a signed packet from author")
     }
 
-    println!("\nSubscriber C trying to fetch message 5");
-    let msg = subscriberC.receive_msg_by_sequence(&anchor_msg_link, 5);
+    println!("\nSubscriber C trying to fetch 4th message");
+    let msg = subscriberC.receive_msg_by_sequence_number(&anchor_msg_link, 4);
     try_or!(msg.is_err(), SubscriberAccessMismatch("C".to_string()))?;
     println!("Subscriber C failed to read message, as intended\n");
     Ok(())
