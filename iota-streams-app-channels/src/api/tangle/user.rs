@@ -897,7 +897,11 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///   # Arguments
     ///   * `anchor_link` - Address of the anchor message for the channel
     ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
-    pub async fn receive_msg_by_sequence_number(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
+    pub async fn receive_msg_by_sequence_number(
+        &mut self,
+        anchor_link: &Address,
+        msg_num: u32,
+    ) -> Result<UnwrappedMessage> {
         if !self.is_single_depth() {
             return err(ChannelNotSingleDepth);
         }

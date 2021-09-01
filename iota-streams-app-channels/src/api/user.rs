@@ -93,7 +93,9 @@ where
         Self::MultiBranch(cursor, wrapped_message)
     }
 
-    pub fn single_depth(cursor: Cursor<Link::Rel>) -> Self { Self::SingleDepth(cursor) }
+    pub fn single_depth(cursor: Cursor<Link::Rel>) -> Self {
+        Self::SingleDepth(cursor)
+    }
 
     pub fn none() -> Self {
         Self::None
@@ -356,10 +358,9 @@ where
         if let Some(author_sig_pk) = &self.author_sig_pk {
             let identifier = Identifier::EdPubKey(ed25519::PublicKeyWrap(*author_sig_pk));
             if let Some(author_ke_pk) = self.key_store.get_ke_pk(&identifier) {
-                let msg_link = self.link_gen.link_from(
-                    self.sig_kp.public,
-                    Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM),
-                );
+                let msg_link = self
+                    .link_gen
+                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SUBSCRIBE)?
@@ -786,10 +787,9 @@ where
                     Ok(WrappedSequence::multi_branch(cursor, wrapped))
                 } else {
                     if !self.is_single_depth() {
-                        let msg_link = self.link_gen.link_from(
-                            self.sig_kp.public,
-                            Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no),
-                        );
+                        let msg_link = self
+                            .link_gen
+                            .link_from(self.sig_kp.public, Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no));
                         cursor.link = msg_link.rel().clone();
                         Ok(WrappedSequence::single_branch(cursor))
                     } else {
