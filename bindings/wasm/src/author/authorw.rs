@@ -56,6 +56,7 @@ impl Author {
         Author { author }
     }
 
+    #[wasm_bindgen(catch, js_name = "fromClient")]
     pub fn from_client(client: Client, seed: String, implementation: ChannelType) -> Author {
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,

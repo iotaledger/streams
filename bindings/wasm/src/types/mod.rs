@@ -2,11 +2,13 @@ use core::{
     cell::RefCell,
     convert::TryFrom,
 };
+
 use iota_streams::{
     app::{
         message::Cursor as ApiCursor,
         transport::tangle::client::{
             iota_client::{
+                Api as ApiRust,
                 bee_rest_api::types::{
                     dtos::LedgerInclusionStateDto,
                     responses::MessageMetadataResponse as ApiMessageMetadata,
@@ -209,6 +211,47 @@ impl From<ChannelType> for ApiChannelType {
             ChannelType::SingleBranch => ApiChannelType::SingleBranch,
             ChannelType::MultiBranch => ApiChannelType::MultiBranch,
             ChannelType::SingleDepth => ApiChannelType::SingleDepth,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub enum Api {
+    /// `get_health` API
+    GetHealth,
+    /// `get_info`API
+    GetInfo,
+    /// `get_peers`API
+    GetPeers,
+    /// `get_tips` API
+    GetTips,
+    /// `post_message` API
+    PostMessage,
+    /// `post_message` API with remote pow
+    PostMessageWithRemotePow,
+    /// `get_output` API
+    GetOutput,
+    /// `get_milestone` API
+    GetMilestone,
+    /// `get_message` API
+    GetMessage,
+    /// `get_balance` API
+    GetBalance,
+}
+
+impl From<Api> for ApiRust {
+    fn from(api: Api) -> Self {
+        match api {
+            Api::GetHealth => ApiRust::GetHealth,
+            Api::GetInfo => ApiRust::GetInfo,
+            Api::GetPeers => ApiRust::GetPeers,
+            Api::GetTips => ApiRust::GetTips,
+            Api::PostMessage => ApiRust::PostMessage,
+            Api::PostMessageWithRemotePow => ApiRust::PostMessageWithRemotePow,
+            Api::GetOutput => ApiRust::GetOutput,
+            Api::GetMilestone => ApiRust::GetMilestone,
+            Api::GetMessage => ApiRust::GetMessage,
+            Api::GetBalance => ApiRust::GetBalance,
         }
     }
 }

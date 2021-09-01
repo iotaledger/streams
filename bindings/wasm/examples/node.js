@@ -1,4 +1,4 @@
-const streams = require("../node/streams_wasm");
+const streams = require("../node/iota_streams_wasm");
 const fetch = require("node-fetch");
 
 global.fetch = fetch;
@@ -17,6 +17,16 @@ main()
   });
 
 async function main() {
+  let options = new streams.SendOptions("https://chrysalis-nodes.iota.org/", true);
+  let builder = new streams.ClientBuilder();
+  let client = await builder.node("https://chrysalis-nodes.iota.org/").finish(options);
+  console.log("client", client);
+
+  let seed = make_seed(81);
+  let author = new streams.author(client, seed, streams.ChannelType.SingleBranch);
+  console.log("author", author);
+
+  /*
   // Default is a load balancer, if you have your own node it's recommended to use that instead
   let node = "https://chrysalis-nodes.iota.org/";
   let options = new streams.SendOptions(node, true);
@@ -149,7 +159,7 @@ async function main() {
       str += String.fromCharCode(bytes[i]);
     }
     return str;
-  }
+  }*/
 
   function make_seed(size) {
     const alphabet = "abcdefghijklmnopqrstuvwxyz";

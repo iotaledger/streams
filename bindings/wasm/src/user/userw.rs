@@ -1,12 +1,17 @@
 use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
 
-use crate::types::*;
+use crate::{
+    types::*,
+};
 
 use core::cell::RefCell;
 use iota_streams::{
     app::transport::{
-        tangle::client::Client as ApiClient,
+        tangle::client::{
+            Client as ApiClient,
+            iota_client::Client as RustClient,
+        },
         TransportDetails,
         TransportOptions,
     },
@@ -18,6 +23,13 @@ use iota_streams::{
 #[derive(Clone)]
 pub struct Client(pub(crate) ClientWrap);
 
+pub fn new_with_client(iota_client: RustClient, options: SendOptions) -> Client {
+    let client = ApiClient::new(options.into(), iota_client);
+    let transport = Rc::new(RefCell::new(client));
+
+    Client(transport)
+}
+
 #[wasm_bindgen]
 impl Client {
     #[wasm_bindgen(constructor)]
@@ -28,6 +40,8 @@ impl Client {
 
         Client(transport)
     }
+
+    
 
     #[wasm_bindgen(catch)]
     pub async fn get_link_details(mut self, link: Address) -> Result<Details> {
