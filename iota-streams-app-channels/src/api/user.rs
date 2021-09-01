@@ -549,7 +549,6 @@ where
         if !self.is_multi_branching() {
             self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
             if self.is_single_depth() {
-                println!("Adding seq no {}", seq_no.0);
                 self.anchor = Some(Cursor::new_at(msg.link.clone(), 0, seq_no.0 as u32 + 1));
             }
         }
