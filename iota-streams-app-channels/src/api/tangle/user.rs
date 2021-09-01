@@ -177,7 +177,7 @@ impl<Trans> User<Trans> {
     fn process_sequence(&mut self, msg: BinaryMessage, store: bool) -> Result<Address> {
         let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store)?;
         let msg_link = self.user.link_gen.link_from(
-            &unwrapped.body.id,
+            unwrapped.body.id.to_bytes(),
             Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
         );
         Ok(msg_link)
@@ -206,7 +206,10 @@ impl<Trans: Transport + Clone> User<Trans> {
                 self.user.commit_sequence_to_all(cursor)?;
                 Ok(None)
             }
-
+            WrappedSequence::SingleDepth(cursor) => {
+                self.user.commit_sequence_to_all(cursor)?;
+                Ok(None)
+            }
             WrappedSequence::None => Ok(None),
         }
     }
@@ -323,7 +326,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         if let Some(_addr) = &self.user.appinst {
             let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, true)?.body;
             let msg_id = self.user.link_gen.link_from(
-                &seq_msg.id,
+                seq_msg.id.to_bytes(),
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
 
@@ -527,16 +530,15 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///   # Arguments
     ///   * `anchor_link` - Address of the anchor message for the channel
     ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
-    pub fn receive_msg_by_sequence(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
+    pub fn receive_msg_by_sequence_number(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
         if !self.is_single_depth() {
             return err(ChannelNotSingleDepth);
         }
         match self.author_public_key() {
             Some(pk) => {
-                // Subtract 1 from the sequence number so users can start from 1 instead of 0
-                let seq_no = self.user.fetch_anchor()?.seq_no - 1;
+                let seq_no = self.user.fetch_anchor()?.seq_no;
                 let cursor = Cursor::new_at(anchor_link.rel(), 0, msg_num + seq_no);
-                let link = self.user.link_gen.link_from(&(*pk).into(), cursor);
+                let link = self.user.link_gen.link_from(pk.as_ref(), cursor);
                 let msg = self.transport.recv_message(&link)?;
                 self.handle_message(msg, false)
             }
@@ -570,7 +572,10 @@ impl<Trans: Transport + Clone> User<Trans> {
                 self.user.commit_sequence_to_all(cursor)?;
                 Ok(None)
             }
-
+            WrappedSequence::SingleDepth(cursor) => {
+                self.user.commit_sequence_to_all(cursor)?;
+                Ok(None)
+            }
             WrappedSequence::None => Ok(None),
         }
     }
@@ -689,7 +694,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         if let Some(_addr) = &self.user.appinst {
             let seq_msg = self.user.handle_sequence(msg.binary, MsgInfo::Sequence, true)?.body;
             let msg_id = self.user.link_gen.link_from(
-                &seq_msg.id,
+                seq_msg.id.to_bytes(),
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
 
@@ -892,16 +897,15 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///   # Arguments
     ///   * `anchor_link` - Address of the anchor message for the channel
     ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
-    pub async fn receive_msg_by_sequence(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
+    pub async fn receive_msg_by_sequence_number(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
         if !self.is_single_depth() {
             return err(ChannelNotSingleDepth);
         }
         match self.author_public_key() {
             Some(pk) => {
-                // Subtract 1 from the sequence number so users can start from 1 instead of 0
-                let seq_no = self.user.fetch_anchor()?.seq_no - 1;
+                let seq_no = self.user.fetch_anchor()?.seq_no;
                 let cursor = Cursor::new_at(anchor_link.rel(), 0, msg_num + seq_no);
-                let link = self.user.link_gen.link_from(&(*pk).into(), cursor);
+                let link = self.user.link_gen.link_from(pk.as_ref(), cursor);
                 let msg = self.transport.recv_message(&link).await?;
                 self.handle_message(msg, false).await
             }

@@ -308,8 +308,8 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///   # Arguments
     ///   * `anchor_link` - Address of the anchor message for the channel
     ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
-    pub fn receive_msg_by_sequence(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
-        self.user.receive_msg_by_sequence(anchor_link, msg_num)
+    pub fn receive_msg_by_sequence_number(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
+        self.user.receive_msg_by_sequence_number(anchor_link, msg_num)
     }
 }
 
@@ -493,8 +493,8 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///   # Arguments
     ///   * `anchor_link` - Address of the anchor message for the channel
     ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
-    pub async fn receive_msg_by_sequence(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
-        self.user.receive_msg_by_sequence(anchor_link, msg_num).await
+    pub async fn receive_msg_by_sequence_number(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
+        self.user.receive_msg_by_sequence_number(anchor_link, msg_num).await
     }
 }
 

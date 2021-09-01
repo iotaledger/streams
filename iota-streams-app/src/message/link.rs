@@ -123,7 +123,7 @@ pub trait LinkGenerator<Link: HasLink>: Default {
     fn uniform_link_from(&self, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
 
     /// Used by users to pseudo-randomly generate a new message link from a cursor
-    fn link_from(&self, id: &Identifier, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
+    fn link_from<T: AsRef<[u8]>>(&self, id: T, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
 
     /// Derive a new link and construct a header with given content type.
     fn uniform_header_from(
@@ -156,7 +156,7 @@ pub trait LinkGenerator<Link: HasLink>: Default {
         previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
         HDF::new_with_fields(
-            self.link_from(id, cursor),
+            self.link_from(id.to_bytes(), cursor),
             Bytes(previous_msg_link.to_bytes()),
             content_type,
             payload_length,
