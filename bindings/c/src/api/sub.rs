@@ -391,7 +391,7 @@ pub unsafe extern "C" fn sub_receive_msg(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_receive_msg_by_sequence(
+pub unsafe extern "C" fn sub_receive_msg_by_sequence_number(
     r: *mut *const UnwrappedMessage,
     user: *mut Subscriber,
     anchor_link: *const Address,
@@ -400,7 +400,7 @@ pub unsafe extern "C" fn sub_receive_msg_by_sequence(
     r.as_mut().map_or(Err::NullArgument, |r| {
         user.as_mut().map_or(Err::NullArgument, |user| {
             anchor_link.as_ref().map_or(Err::NullArgument, |link| {
-                user.receive_msg_by_sequence(link, msg_num as u32).map_or(Err::OperationFailed, |u| {
+                user.receive_msg_by_sequence_number(link, msg_num as u32).map_or(Err::OperationFailed, |u| {
                     *r = safe_into_ptr(u);
                     Err::Ok
                 })

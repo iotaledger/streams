@@ -171,7 +171,7 @@ Receive a message generically without knowing its type.
 | link            | [`address`](#Address)         | Address of the message to be fetched |
 **Returns:** A User Response wrapper around the retrieved message.
 
-#### _async -_ receive_msg_by_sequence(anchor_link, msg_num): [UserResponse](#UserResponse)
+#### _async -_ receive_msg_by_sequence_number(anchor_link, msg_num): [UserResponse](#UserResponse)
 Receive a message by its msg number in an anchored single depth channel.
 
 | Param           | Type                          | Description                          |
@@ -399,7 +399,7 @@ Receive a message generically without knowing its type.
 | link            | [`address`](#Address)         | Address of the message to be fetched |
 **Returns:** A User Response wrapper around the retrieved message.
 
-#### _async -_ receive_msg_by_sequence(anchor_link, msg_num): [UserResponse](#UserResponse)
+#### _async -_ receive_msg_by_sequence_number(anchor_link, msg_num): [UserResponse](#UserResponse)
 Receive a message by its msg number in an anchored single depth channel.
 
 | Param           | Type                          | Description                          |

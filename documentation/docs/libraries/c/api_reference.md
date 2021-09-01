@@ -194,7 +194,7 @@ Receive a message generically without knowing its type.
 | link            | [`address_t const *`](#Address)                  | Address of sequence message         |
 **Returns:** Error code.
 
-#### auth_receive_msg_by_sequence(umsg, author, anchor_link, msg_num): [err_t](#Err)
+#### auth_receive_msg_by_sequence_number(umsg, author, anchor_link, msg_num): [err_t](#Err)
 Receive a message by its msg number in an anchored single depth channel.
 
 | Param           | Type                                             | Description                          |
@@ -487,7 +487,7 @@ Receive a message generically without knowing its type.
 | address         | [`address_t const *`](#Address)                  | Address of the message               |
 **Returns:** Error code.
 
-#### sub_receive_msg_by_sequence(umsg, subscriber, anchor_link, msg_num): [err_t](#Err)
+#### sub_receive_msg_by_sequence_number(umsg, subscriber, anchor_link, msg_num): [err_t](#Err)
 Receive a message by its msg number in an anchored single depth channel.
 
 | Param           | Type                                             | Description                          |

@@ -348,10 +348,10 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
-    pub async fn receive_msg_by_sequence(self, anchor_link: Address, msg_num: u32) -> Result<UserResponse> {
+    pub async fn receive_msg_by_sequence_number(self, anchor_link: Address, msg_num: u32) -> Result<UserResponse> {
         self.author
             .borrow_mut()
-            .receive_msg_by_sequence(
+            .receive_msg_by_sequence_number(
                 &anchor_link
                     .try_into()
                     .map_or_else(|_err| ApiAddress::default(), |addr| addr),
