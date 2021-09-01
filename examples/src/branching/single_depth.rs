@@ -74,7 +74,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
-    author.store_psk(pskid.clone(), psk.clone())?;
+    author.store_psk(pskid, psk)?;
     subscriberB.store_psk(pskid, psk)?;
 
     println!("\nSubscribe A");

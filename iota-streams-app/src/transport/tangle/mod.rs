@@ -388,7 +388,7 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     fn link_from<T: AsRef<[u8]>>(&self, id: T, cursor: Cursor<&MsgId>) -> TangleAddress {
         TangleAddress {
             appinst: self.addr.appinst.clone(),
-            msgid: self.gen_msgid(&id.as_ref(), cursor),
+            msgid: self.gen_msgid(id.as_ref(), cursor),
         }
     }
 }

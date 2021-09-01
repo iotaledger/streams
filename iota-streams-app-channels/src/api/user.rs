@@ -785,16 +785,14 @@ where
                     };
 
                     Ok(WrappedSequence::multi_branch(cursor, wrapped))
+                } else if self.is_single_depth() {
+                    Ok(WrappedSequence::SingleDepth(cursor))
                 } else {
-                    if !self.is_single_depth() {
-                        let msg_link = self
-                            .link_gen
-                            .link_from(self.sig_kp.public, Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no));
-                        cursor.link = msg_link.rel().clone();
-                        Ok(WrappedSequence::single_branch(cursor))
-                    } else {
-                        Ok(WrappedSequence::single_depth(cursor))
-                    }
+                    let msg_link = self
+                        .link_gen
+                        .link_from(self.sig_kp.public, Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no));
+                    cursor.link = msg_link.rel().clone();
+                    Ok(WrappedSequence::single_branch(cursor))
                 }
             }
             None => Ok(WrappedSequence::none()),
