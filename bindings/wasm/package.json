@@ -16,7 +16,7 @@
     "pretest": "npm run build:nodejs",
     "prepublishOnly": "npm run build",
     "test": "mocha",
-    "serve": "webpack-dev-server",
+    "serve": "webpack serve",
     "example:node": "node examples/node.js"
   },
   "contributors": [
