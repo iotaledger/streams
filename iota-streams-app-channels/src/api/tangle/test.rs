@@ -30,7 +30,7 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
 
     println!("announce");
-    let msg = &author.send_announce()?;
+    let msg = &author.send_announce().await?;
     let announcement_str = msg.to_string();
     println!("  {}", announcement_str);
     let announcement_link = announcement_str.parse().unwrap();

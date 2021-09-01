@@ -37,7 +37,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nAnnounce Channel");
     let announcement_link = {
         let msg = author.send_announce().await?;
-        println!("  msg => <{}> {:?}", msg.msgid, msg.to_msg_index());
+        println!("  msg => <{}> {:x}", msg.msgid, msg.to_msg_index());
         print!("  Author     : {}", author);
         msg
     };
@@ -108,7 +108,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         (msg, seq)
     };
 
-    println!("\nHandle Share keyload for everyone [SubscriberA, PSK]: {:?}", &keyload_link);
+    println!("\nHandle Share keyload for everyone [SubscriberA, PSK]: {}", &keyload_link);
     {
         let msg_tag = subscriberA.receive_sequence(&keyload_seq).await?;
         let resultB = subscriberB.receive_keyload(&msg_tag).await?;

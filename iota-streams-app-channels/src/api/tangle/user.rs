@@ -232,9 +232,12 @@ impl<Trans: Transport + Clone> User<Trans> {
         ref_link: &MsgId,
         info: MsgInfo,
     ) -> Result<(Address, Option<Address>)> {
-
-        let seq = self.user.wrap_sequence(ref_link).await?;
+        // Send & commit original message
         self.transport.send_message(&Message::new(msg.message)).await?;
+        let msg_link = self.commit_wrapped(msg.wrapped, info).await?;
+
+        // Send & commit associated sequence message
+        let seq = self.user.wrap_sequence(ref_link).await?;
         let seq_link = self.send_sequence(seq).await?;
         Ok((msg_link, seq_link))
     }

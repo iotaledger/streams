@@ -105,12 +105,11 @@ where
 }
 
 #[async_trait]
-impl<'a, F, Link, Keys> message::ContentSizeof<F> for ContentWrap<'a, F, Link, Keys>
+impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Keys: Clone + ExactSizeIterator<Item = (&'a Identifier, Vec<u8>)> + Send + Sync,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -151,13 +150,12 @@ where
 }
 
 #[async_trait]
-impl<'a, F, Link, Store, Keys> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link, Keys>
+impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
-    Keys: Clone + ExactSizeIterator<Item = (&'a Identifier, Vec<u8>)> + Send + Sync,
 {
     async fn wrap<'c, OS: io::OStream>(
         &self,
@@ -223,7 +221,7 @@ where
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, F, Link, PskStore, KeSkStore> ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
+impl<'a, 'b, F, Link, PskStore, KeSkStore> ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
 where
     F: PRP,
     Link: HasLink,
@@ -251,8 +249,8 @@ where
     Link: HasLink,
     Link::Rel: Eq + Default + SkipFallback<F>,
     LStore: LinkStore<F, Link::Rel>,
-    PskStore: for<'c> Lookup<&'c Identifier, psk::Psk>,
-    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b,
+    PskStore: for<'c> Lookup<&'c Identifier, psk::Psk> + Send + Sync,
+    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b + Send + Sync,
 {
     async fn unwrap<'c, IS: Send + Sync + io::IStream>(
         &mut self,
@@ -279,7 +277,7 @@ where
                     let internal_fork = ctx.spongos.fork();
                     match &id {
                         Identifier::PskId(_id) => {
-                            if let Some(psk) = (self.lookup_psk)(self.lookup_arg, &id) {
+                            if let Some(psk) = self.psk_store.lookup( &id) {
                                 let mut key = NBytes::<U32>::default();
                                 ctx.absorb(External(<&NBytes<psk::PskSize>>::from(&psk)))?
                                     .commit()?
@@ -293,21 +291,20 @@ where
                                 let n = Size(spongos::KeySize::<F>::USIZE);
                                 ctx.drop(n)?;
                             }
-                            Identifier::EdPubKey(_ke_pk) => {
-                                if let Some(ke_sk) = self.ke_sk_store.lookup(&id) {
-                                    let mut key = NBytes::<U32>::default();
-                                    ctx.x25519(ke_sk, &mut key)?;
-                                    self.key = Some(key);
-                                    // Save the relevant public key
-                                    self.key_ids.push(id);
-                                    Ok(ctx)
-                                } else {
-                                    self.key_ids.push(id);
-                                    // Just drop the rest of the forked message so not to waste Spongos operations
-                                    // TODO: key length
-                                    let n = Size(64);
-                                    ctx.drop(n)
-                                }
+                        }
+                        Identifier::EdPubKey(_ke_pk) => {
+                            if let Some(ke_sk) = self.ke_sk_store.lookup(&id) {
+                                let mut key = NBytes::<U32>::default();
+                                ctx.x25519(ke_sk, &mut key)?;
+                                self.key = Some(key);
+                                // Save the relevant public key
+                                self.key_ids.push(id);
+                            } else {
+                                self.key_ids.push(id);
+                                // Just drop the rest of the forked message so not to waste Spongos operations
+                                // TODO: key length
+                                let n = Size(64);
+                                ctx.drop(n)?;
                             }
                         }
                     }

@@ -1,4 +1,7 @@
-use core::convert::TryFrom;
+use core::{
+    convert::TryFrom,
+    str::FromStr,
+};
 use iota_streams::{
     app::{
         message::Cursor as ApiCursor,

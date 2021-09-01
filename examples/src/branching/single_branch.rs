@@ -261,7 +261,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     println!("\nTagged packet 5 - SubscriberC");
     let previous_msg_link = {
         let (msg, seq) = subscriberC.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        println!("  msg => <{}> {:x}", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
         print!("  SubscriberC: {}", subscriberC);
         msg

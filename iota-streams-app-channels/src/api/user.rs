@@ -22,7 +22,6 @@ use iota_streams_core::{
     prelude::{
         string::ToString,
         typenum::U32,
-        vec,
         Box,
         Mutex,
         Vec,
@@ -811,7 +810,7 @@ where
         }
     }
 
-    pub async fn commit_sequence(
+    pub fn commit_sequence(
         &mut self,
         mut cursor: Cursor<Link::Rel>,
         wrapped_state: WrapState<F, Link>,
@@ -822,7 +821,7 @@ where
         self.key_store
             .insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
         let link = wrapped_state.link.clone();
-        wrapped_state.commit(self.link_store.borrow_mut(), info)?;
+        wrapped_state.commit(self.link_store.lock().borrow_mut(), info)?;
         Ok(Some(link))
     }
 
@@ -1298,6 +1297,7 @@ impl<'a, F, Link, LG, LS, Keys> Lookup<&Identifier, psk::Psk> for &'a User<F, Li
 where
     F: PRP,
     Link: HasLink,
+    LS: Send + Sync,
     Keys: KeyStore<Cursor<Link::Rel>, F>,
 {
     fn lookup(&self, psk_id: &Identifier) -> Option<psk::Psk> {
@@ -1309,6 +1309,7 @@ impl<'a, F, Link, LG, LS, Keys> Lookup<&Identifier, &'a x25519::StaticSecret> fo
 where
     F: PRP,
     Link: HasLink,
+    LS: Send + Sync,
     Keys: KeyStore<Cursor<Link::Rel>, F>,
 {
     fn lookup(&self, ke_pk: &Identifier) -> Option<&'a x25519::StaticSecret> {
