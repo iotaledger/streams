@@ -42,7 +42,7 @@ async fn run_single_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("#######################################");
 }
 
-async fn run_single_depth_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
+async fn run_single_depth_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Single Branch Test, seed: {}", seed);
     match branching::single_depth::example(transport, ChannelType::SingleDepth, seed).await {
         Err(err) => println!("Error in Single Depth test: {:?}", err),
@@ -51,7 +51,7 @@ async fn run_single_depth_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &s
     println!("#######################################");
 }
 
-async fn run_multi_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
+async fn run_multi_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Multi Branch Test, seed: {}", seed);
     match branching::multi_branch::example(transport, ChannelType::MultiBranch, seed).await {
         Err(err) => println!("Error in Multi Branch test: {:?}", err),
@@ -102,9 +102,7 @@ async fn main_client() {
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
 
-    let client = Client::new_from_url(&node_url);
-
-    let transport = Rc::new(RefCell::new(client));
+    let transport = Client::new_from_url(&node_url);
 
     println!("#######################################");
     println!("Running tests accessing Tangle via node {}", &node_url);
