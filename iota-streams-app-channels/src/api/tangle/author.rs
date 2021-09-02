@@ -171,15 +171,12 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
-    ///  * `psk_ids` - Vector of Pre-shared key ids to be included in message
-    ///  * `ke_pks`  - Vector of Public Keys to be included in message
-    pub fn send_keyload(
-        &mut self,
-        link_to: &Address,
-        psk_ids: &PskIds,
-        ke_pks: &Vec<&Identifier>,
-    ) -> Result<(Address, Option<Address>)> {
-        self.user.send_keyload(link_to, psk_ids, ke_pks)
+    ///  * `keys`  - Iterable of [`Identifier`] to be included in message
+    pub fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
+    where
+        I: IntoIterator<Item = &'a Identifier>,
+    {
+        self.user.send_keyload(link_to, keys)
     }
 
     /// Create and send keyload for all subscribed subscribers.
@@ -304,6 +301,16 @@ impl<Trans: Transport + Clone> Author<Trans> {
     // pub pub fn receive_unsubscribe(&mut self, link: Address) -> Result<()> {
     // self.user.handle_unsubscribe(link, MsgInfo::Unsubscribe)
     // }
+
+    /// Receive and process a message with a known anchor link and message number. This can only
+    /// be used if the channel is a single depth channel.
+    ///
+    ///   # Arguments
+    ///   * `anchor_link` - Address of the anchor message for the channel
+    ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
+    pub fn receive_msg_by_sequence_number(&mut self, anchor_link: &Address, msg_num: u32) -> Result<UnwrappedMessage> {
+        self.user.receive_msg_by_sequence_number(anchor_link, msg_num)
+    }
 }
 
 #[cfg(feature = "async")]
@@ -344,15 +351,12 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
-    ///  * `psk_ids` - Vector of Pre-shared key ids to be included in message
-    ///  * `ke_pks`  - Vector of Public Keys to be included in message
-    pub async fn send_keyload(
-        &mut self,
-        link_to: &Address,
-        psk_ids: &PskIds,
-        ke_pks: &Vec<&Identifier>,
-    ) -> Result<(Address, Option<Address>)> {
-        self.user.send_keyload(link_to, psk_ids, ke_pks).await
+    ///  * `keys`  - Iterable of [`Identifier`] to be included in message
+    pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
+    where
+        I: IntoIterator<Item = &'a Identifier>,
+    {
+        self.user.send_keyload(link_to, keys).await
     }
 
     /// Create and send keyload for all subscribed subscribers.
@@ -482,6 +486,20 @@ impl<Trans: Transport + Clone> Author<Trans> {
     // pub async fn receive_unsubscribe(&mut self, link: Address) -> Result<()> {
     // self.user.handle_unsubscribe(link, MsgInfo::Unsubscribe).await
     // }
+
+    /// Receive and process a message with a known anchor link and message number. This can only
+    /// be used if the channel is a single depth channel.
+    ///
+    ///   # Arguments
+    ///   * `anchor_link` - Address of the anchor message for the channel
+    ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
+    pub async fn receive_msg_by_sequence_number(
+        &mut self,
+        anchor_link: &Address,
+        msg_num: u32,
+    ) -> Result<UnwrappedMessage> {
+        self.user.receive_msg_by_sequence_number(anchor_link, msg_num).await
+    }
 }
 
 impl<Trans: Clone> fmt::Display for Author<Trans> {

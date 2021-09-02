@@ -78,6 +78,12 @@ pub enum Errors {
     TransportNotAvailable,
 
     //////////
+    // Iota Transport
+    //////////
+    /// Malformed address string: missing colon (':') separator between appinst and msgid
+    MalformedAddressString,
+
+    //////////
     // Iota Client
     //////////
     /// Iota Message Address failed to generate. // UNUSED
@@ -144,6 +150,10 @@ pub enum Errors {
     ChannelDuplication,
     /// Subscriber already has a psk stored, cannot add another
     SinglePskAllowance,
+    /// Subscriber send operations are not allowed in Single Depth mode
+    SingleDepthOperationFailure,
+    /// Operation only available on single depth channels
+    ChannelNotSingleDepth,
 
     //////////
     // User Recovery

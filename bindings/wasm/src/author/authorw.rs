@@ -193,15 +193,16 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub async fn send_keyload(self, link: Address, psk_ids: PskIdsW, sig_pks: PublicKeysW) -> Result<UserResponse> {
-        let pks: Vec<Identifier> = sig_pks.pks.iter().map(|pk| (*pk).into()).collect();
+        let pks = sig_pks.pks.into_iter().map(Into::<Identifier>::into);
+        let psks = psk_ids.ids.into_iter().map(Into::<Identifier>::into);
+        let identifiers: Vec<Identifier> = pks.chain(psks).collect();
         self.author
             .borrow_mut()
             .send_keyload(
                 &link
                     .try_into()
                     .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
-                &psk_ids.ids,
-                &pks.iter().collect(),
+                &identifiers,
             )
             .await
             .map_or_else(
@@ -373,6 +374,27 @@ impl Author {
                     let msgs = vec![msg];
                     let responses = get_message_contents(msgs);
                     Ok(responses[0].copy())
+                },
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_msg_by_sequence_number(self, anchor_link: Address, msg_num: u32) -> Result<UserResponse> {
+        self.author
+            .borrow_mut()
+            .receive_msg_by_sequence_number(
+                &anchor_link
+                    .try_into()
+                    .map_or_else(|_err| ApiAddress::default(), |addr| addr),
+                msg_num,
+            )
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msg| {
+                    let msgs = vec![msg];
+                    let response = get_message_contents(msgs);
+                    Ok(response[0].copy())
                 },
             )
     }
