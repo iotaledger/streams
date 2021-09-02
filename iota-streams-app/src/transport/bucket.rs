@@ -41,7 +41,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<Link: Send + Sync, Msg: Send + Sync> TransportOptions for BucketTransport<Link, Msg> {
+impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
     type SendOptions = ();
     async fn get_send_options(&self) {}
     async fn set_send_options(&mut self, _opt: ()) {}

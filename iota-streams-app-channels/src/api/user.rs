@@ -111,7 +111,6 @@ pub struct User<F, Link, LG, LS, Keys>
 where
     F: PRP,
     Link: HasLink,
-    LS: Send + Sync,
 {
     // PRNG object used for Ed25519, X25519, Spongos key generation, etc.
     // pub(crate) prng: prng::Prng<F>,
@@ -1297,7 +1296,6 @@ impl<'a, F, Link, LG, LS, Keys> Lookup<&Identifier, psk::Psk> for &'a User<F, Li
 where
     F: PRP,
     Link: HasLink,
-    LS: Send + Sync,
     Keys: KeyStore<Cursor<Link::Rel>, F>,
 {
     fn lookup(&self, psk_id: &Identifier) -> Option<psk::Psk> {
@@ -1309,7 +1307,6 @@ impl<'a, F, Link, LG, LS, Keys> Lookup<&Identifier, &'a x25519::StaticSecret> fo
 where
     F: PRP,
     Link: HasLink,
-    LS: Send + Sync,
     Keys: KeyStore<Cursor<Link::Rel>, F>,
 {
     fn lookup(&self, ke_pk: &Identifier) -> Option<&'a x25519::StaticSecret> {

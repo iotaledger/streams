@@ -252,7 +252,7 @@ where
     PskStore: for<'c> Lookup<&'c Identifier, psk::Psk> + Send + Sync,
     KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b + Send + Sync,
 {
-    async fn unwrap<'c, IS: Send + Sync + io::IStream>(
+    async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &'c LStore,
         ctx: &'c mut unwrap::Context<F, IS>,

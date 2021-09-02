@@ -19,10 +19,7 @@ use core::{
 };
 
 #[async_trait(?Send)]
-pub trait TransportDetails<Link>
-where
-    Link: Send + Sync,
-{
+pub trait TransportDetails<Link> {
     type Details;
     async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details>;
 }
@@ -42,11 +39,7 @@ pub trait TransportOptions {
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[async_trait(?Send)]
-pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link>
-where
-    Link: Send + Sync,
-    Msg: Send + Sync,
-{
+pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link> {
     /// Send a message with default options.
     async fn send_message(&mut self, msg: &Msg) -> Result<()>;
 
@@ -64,11 +57,7 @@ pub fn new_shared_transport<T>(tsp: T) -> Rc<RefCell<T>> {
 }
 
 #[async_trait(?Send)]
-impl<Tsp: TransportOptions + Send + Sync> TransportOptions for Arc<Mutex<Tsp>>
-where
-    <Tsp as TransportOptions>::SendOptions: Send + Sync,
-    <Tsp as TransportOptions>::RecvOptions: Send + Sync,
-{
+impl<Tsp: TransportOptions> TransportOptions for Arc<Mutex<Tsp>> {
     type SendOptions = <Tsp as TransportOptions>::SendOptions;
     async fn get_send_options(&self) -> Self::SendOptions {
         (&*self).lock().get_send_options().await
@@ -87,10 +76,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<Link, Tsp: TransportDetails<Link> + Send + Sync> TransportDetails<Link> for Arc<Mutex<Tsp>>
-where
-    Link: 'static + core::marker::Send + core::marker::Sync,
-{
+impl<Link, Tsp: TransportDetails<Link>> TransportDetails<Link> for Arc<Mutex<Tsp>> {
     type Details = <Tsp as TransportDetails<Link>>::Details;
     async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
         (&*self).lock().get_link_details(link).await
@@ -98,14 +84,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<Link, Msg, Tsp: Transport<Link, Msg> + Send + Sync> Transport<Link, Msg> for Arc<Mutex<Tsp>>
-where
-    Link: 'static + core::marker::Send + core::marker::Sync,
-    Msg: 'static + core::marker::Send + core::marker::Sync,
-    Tsp: core::marker::Send + core::marker::Sync,
-    <Tsp as TransportOptions>::SendOptions: Send + Sync,
-    <Tsp as TransportOptions>::RecvOptions: Send + Sync,
-{
+impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Arc<Mutex<Tsp>> {
     // Send a message.
     async fn send_message(&mut self, msg: &Msg) -> Result<()> {
         (&*self).lock().send_message(msg).await
