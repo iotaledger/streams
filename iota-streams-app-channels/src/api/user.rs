@@ -76,6 +76,7 @@ where
 {
     MultiBranch(Cursor<Link::Rel>, WrappedMessage<F, Link>),
     SingleBranch(Cursor<Link::Rel>),
+    SingleDepth(Cursor<Link::Rel>),
     // Consider removing this option and returning Err instead
     None,
 }
@@ -90,6 +91,10 @@ where
 
     pub fn multi_branch(cursor: Cursor<Link::Rel>, wrapped_message: WrappedMessage<F, Link>) -> Self {
         Self::MultiBranch(cursor, wrapped_message)
+    }
+
+    pub fn single_depth(cursor: Cursor<Link::Rel>) -> Self {
+        Self::SingleDepth(cursor)
     }
 
     pub fn none() -> Self {
@@ -136,6 +141,9 @@ where
     pub message_encoding: Vec<u8>,
 
     pub uniform_payload_length: usize,
+
+    /// Anchor message for the channel (can either be an announcement or keyload) - For single depth
+    pub anchor: Option<Cursor<Link>>,
 }
 
 impl<F, Link, LG, LS, Keys> Default for User<F, Link, LG, LS, Keys>
@@ -167,6 +175,7 @@ where
             message_encoding: Vec::new(),
             uniform_payload_length: 0,
             use_psk: false,
+            anchor: None,
         }
     }
 }
@@ -215,6 +224,7 @@ where
             message_encoding,
             uniform_payload_length,
             use_psk: false,
+            anchor: None,
         }
     }
 
@@ -232,6 +242,7 @@ where
         self.key_store
             .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
         self.author_sig_pk = Some(self.sig_kp.public);
+        self.anchor = Some(Cursor::new_at(appinst.clone(), 0, 2_u32));
         self.appinst = Some(appinst);
         Ok(())
     }
@@ -332,6 +343,7 @@ where
             .insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
+        self.anchor = Some(Cursor::new_at(link.clone(), 0, 2_u32));
         self.appinst = Some(link);
         self.author_sig_pk = Some(content.sig_pk);
         self.flags = content.flags.0;
@@ -346,10 +358,9 @@ where
         if let Some(author_sig_pk) = &self.author_sig_pk {
             let identifier = Identifier::EdPubKey(ed25519::PublicKeyWrap(*author_sig_pk));
             if let Some(author_ke_pk) = self.key_store.get_ke_pk(&identifier) {
-                let msg_link = self.link_gen.link_from(
-                    &self.sig_kp.public.into(),
-                    Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM),
-                );
+                let msg_link = self
+                    .link_gen
+                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SUBSCRIBE)?
@@ -441,7 +452,7 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
@@ -463,7 +474,7 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = hdf::HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
@@ -541,6 +552,9 @@ where
         }
         if !self.is_multi_branching() {
             self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
+            if self.is_single_depth() {
+                self.anchor = Some(Cursor::new_at(msg.link.clone(), 0, seq_no.0 as u32 + 1));
+            }
         }
 
         Ok(processed)
@@ -560,7 +574,7 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SIGNED_PACKET)?
@@ -614,7 +628,12 @@ where
             .unwrap_signed_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
         if !self.is_multi_branching() {
-            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
+            let link = if self.is_single_depth() {
+                self.fetch_anchor()?.link.rel().clone()
+            } else {
+                msg.link.rel().clone()
+            };
+            self.store_state_for_all(link, seq_no.0 as u32 + 1)?;
         }
 
         let body = (content.sig_pk, content.public_payload, content.masked_payload);
@@ -633,7 +652,7 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&identifier, Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(identifier.to_bytes(), Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(TAGGED_PACKET)?
@@ -697,7 +716,12 @@ where
             .unwrap_tagged_packet(preparsed)?
             .commit(self.link_store.borrow_mut(), info)?;
         if !self.is_multi_branching() {
-            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
+            let link = if self.is_single_depth() {
+                self.fetch_anchor()?.link.rel().clone()
+            } else {
+                msg.link.rel().clone()
+            };
+            self.store_state_for_all(link, seq_no.0 as u32 + 1)?;
         }
 
         let body = (content.public_payload, content.masked_payload);
@@ -713,7 +737,7 @@ where
         let identifier = self.get_identifier()?;
         let msg_link = self
             .link_gen
-            .link_from(&identifier, Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
+            .link_from(identifier.to_bytes(), Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
         let header = HDF::new(msg_link)
             .with_previous_msg_link(Bytes(link_to.to_bytes()))
             .with_content_type(SEQUENCE)?
@@ -739,7 +763,7 @@ where
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
                     let msg_link = self
                         .link_gen
-                        .link_from(&identifier, Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
+                        .link_from(identifier.to_bytes(), Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
                     let previous_msg_link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), &cursor.link);
                     let header = HDF::new(msg_link)
                         .with_previous_msg_link(Bytes(previous_msg_link.to_bytes()))
@@ -761,12 +785,12 @@ where
                     };
 
                     Ok(WrappedSequence::multi_branch(cursor, wrapped))
+                } else if self.is_single_depth() {
+                    Ok(WrappedSequence::SingleDepth(cursor))
                 } else {
-                    let msg_link = self.link_gen.link_from(
-                        &self.sig_kp.public.into(),
-                        Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no),
-                    );
-
+                    let msg_link = self
+                        .link_gen
+                        .link_from(self.sig_kp.public, Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no));
                     cursor.link = msg_link.rel().clone();
                     Ok(WrappedSequence::single_branch(cursor))
                 }
@@ -889,10 +913,10 @@ where
         ) = pk_info;
 
         if branching {
-            let msg_id = link_gen.link_from(id, Cursor::new_at(&*seq_link, 0, 1));
+            let msg_id = link_gen.link_from(id.to_bytes(), Cursor::new_at(&*seq_link, 0, 1));
             ids.push((*id, Cursor::new_at(msg_id, 0, 1)));
         } else {
-            let msg_id = link_gen.link_from(id, Cursor::new_at(&*seq_link, 0, *seq_no));
+            let msg_id = link_gen.link_from(id.to_bytes(), Cursor::new_at(&*seq_link, 0, *seq_no));
             ids.push((*id, Cursor::new_at(msg_id, 0, *seq_no)));
         }
     }
@@ -949,6 +973,14 @@ where
             state.push((*pk, Cursor::new_at(link, *branch_no, *seq_no)))
         }
         Ok(state)
+    }
+
+    /// Fetch the anchor message from the user instance (if it exists). - For use in single depth.
+    pub fn fetch_anchor(&self) -> Result<&Cursor<Link>> {
+        match &self.anchor {
+            Some(anchor) => Ok(anchor),
+            None => err(UserNotRegistered),
+        }
     }
 }
 
