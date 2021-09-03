@@ -155,7 +155,7 @@ where
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
-        store: &'c Store,
+        store: &Store,
         mut ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.frame_type)?.skip(&mut self.payload_frame_num)?;

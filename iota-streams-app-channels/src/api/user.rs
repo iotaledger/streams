@@ -1128,7 +1128,7 @@ where
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
-        _store: &'c Store,
+        _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut sig_sk_bytes = NBytes::<U32>::default();
