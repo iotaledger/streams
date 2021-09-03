@@ -15,6 +15,7 @@ use iota_streams_ddml::{
 
 #[async_trait]
 pub trait ContentSizeof<F>: Send + Sync {
+    // Necessary to be asynchronous for managing async functions from DID in the near future
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>>;
 }
 
