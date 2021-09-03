@@ -10,14 +10,12 @@ use iota_streams::{
             tangle::client::Client as ApiClient,
             TransportDetails,
             TransportOptions,
-        }
+        },
     },
     app_channels::api::tangle::Address as ApiAddress,
-    core::{
-        prelude::{
-            Arc,
-            Mutex,
-        },
+    core::prelude::{
+        Arc,
+        Mutex,
     },
 };
 

@@ -3,7 +3,10 @@ use iota_streams_core::Result;
 
 use super::*;
 use iota_streams_core::{
-    prelude::{Arc, sync::RwLock},
+    prelude::{
+        sync::RwLock,
+        Arc,
+    },
     sponge::{
         prp::PRP,
         spongos::Spongos,

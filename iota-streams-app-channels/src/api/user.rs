@@ -21,11 +21,11 @@ use iota_streams_core::{
     err,
     prelude::{
         string::ToString,
+        sync::RwLock,
         typenum::U32,
+        Arc,
         Box,
         Vec,
-        Arc,
-        sync::RwLock,
     },
     prng,
     psk::{

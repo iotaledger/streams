@@ -90,7 +90,9 @@ impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
         Vec::new()
     }
 
-    fn len(&self) -> usize { 0 }
+    fn len(&self) -> usize {
+        0
+    }
 }
 
 /// Link store that contains a single link.
@@ -196,5 +198,7 @@ where
         self.map.iter().collect()
     }
 
-    fn len(&self) -> usize { self.map.len() }
+    fn len(&self) -> usize {
+        self.map.len()
+    }
 }

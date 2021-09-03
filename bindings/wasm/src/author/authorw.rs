@@ -21,7 +21,7 @@ use iota_streams::{
         transport::{
             tangle::client::Client as ApiClient,
             TransportOptions,
-        }
+        },
     },
     app_channels::api::{
         psk_from_seed,

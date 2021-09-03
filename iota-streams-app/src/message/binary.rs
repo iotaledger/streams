@@ -2,6 +2,7 @@ use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
+use core::fmt::Debug;
 use iota_streams_core::{
     prelude::Vec,
     sponge::prp::PRP,
@@ -11,7 +12,6 @@ use iota_streams_ddml::{
     link_store::EmptyLinkStore,
     types::*,
 };
-use core::fmt::Debug;
 
 /// Binary Message body with information of how to parse it.
 pub struct BinaryBody<F> {
