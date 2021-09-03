@@ -11,6 +11,7 @@ use iota_streams_ddml::{
     link_store::EmptyLinkStore,
     types::*,
 };
+use core::fmt::Debug;
 
 /// Binary Message body with information of how to parse it.
 pub struct BinaryBody<F> {
@@ -62,7 +63,7 @@ impl<F> From<Vec<u8>> for BinaryBody<F> {
 impl<F, Link> BinaryMessage<F, Link>
 where
     F: PRP,
-    Link: Clone + AbsorbExternalFallback<F> + HasLink,
+    Link: Clone + AbsorbExternalFallback<F> + HasLink + Debug,
 {
     pub async fn parse_header(&self) -> Result<PreparsedMessage<'_, F, Link>> {
         let mut ctx = unwrap::Context::new(&self.body.bytes[..]);

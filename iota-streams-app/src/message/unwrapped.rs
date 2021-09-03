@@ -2,7 +2,7 @@ use iota_streams_core::Result;
 
 use super::*;
 use iota_streams_core::{
-    prelude::MutexGuard,
+    prelude::{Arc, sync::RwLock},
     sponge::{
         prp::PRP,
         spongos::Spongos,
@@ -25,14 +25,14 @@ where
     /// Save link for the current unwrapped message and associated info into the store.
     pub fn commit<Store>(
         mut self,
-        store: &mut MutexGuard<Store>,
+        store: Arc<RwLock<Store>>,
         info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<Content>
     where
         Store: LinkStore<F, <Link as HasLink>::Rel>,
     {
         self.spongos.commit();
-        store.update(self.link.rel(), self.spongos, info)?;
+        store.write().unwrap().update(self.link.rel(), self.spongos, info)?;
         Ok(self.pcf.content)
     }
 }
