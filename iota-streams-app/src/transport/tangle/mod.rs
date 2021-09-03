@@ -50,15 +50,12 @@ use iota_streams_ddml::{
 use cstr_core::CStr;
 use cty::c_char;
 
-use crate::{
-    identifier::Identifier,
-    message::{
-        BinaryMessage,
-        Cursor,
-        HasLink,
-        LinkGenerator,
-        LinkedMessage,
-    },
+use crate::message::{
+    BinaryMessage,
+    Cursor,
+    HasLink,
+    LinkGenerator,
+    LinkedMessage,
 };
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
@@ -348,10 +345,10 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
         s.squeeze(new.id.as_mut());
         new
     }
-    fn gen_msgid(&self, id: &Identifier, cursor: Cursor<&MsgId>) -> MsgId {
+    fn gen_msgid(&self, id_bytes: &[u8], cursor: Cursor<&MsgId>) -> MsgId {
         let mut s = Spongos::<F>::init();
         s.absorb(self.addr.appinst.id.as_ref());
-        s.absorb(id.to_bytes());
+        s.absorb(id_bytes);
         s.absorb(cursor.link.id.as_ref());
         s.absorb(&cursor.branch_no.to_be_bytes());
         s.absorb(&cursor.seq_no.to_be_bytes());
@@ -366,7 +363,7 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     /// Used by Author to generate a new application instance: channels address and announcement message identifier
     fn gen(&mut self, pk: &ed25519::PublicKey, channel_idx: u64) {
         self.addr.appinst = AppInst::new(pk, channel_idx);
-        self.addr.msgid = self.gen_msgid(&Identifier::EdPubKey((*pk).into()), Cursor::default().as_ref());
+        self.addr.msgid = self.gen_msgid(pk.as_ref(), Cursor::default().as_ref());
     }
 
     /// Used by Author to get announcement message id, it's just stored internally by link generator
@@ -388,10 +385,10 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     }
 
     /// Used by users to pseudo-randomly generate a new message link from a cursor
-    fn link_from(&self, id: &Identifier, cursor: Cursor<&MsgId>) -> TangleAddress {
+    fn link_from<T: AsRef<[u8]>>(&self, id: T, cursor: Cursor<&MsgId>) -> TangleAddress {
         TangleAddress {
             appinst: self.addr.appinst.clone(),
-            msgid: self.gen_msgid(id, cursor),
+            msgid: self.gen_msgid(id.as_ref(), cursor),
         }
     }
 }

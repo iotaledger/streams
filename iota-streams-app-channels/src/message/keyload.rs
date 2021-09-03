@@ -189,7 +189,6 @@ where
     pub nonce: NBytes<U16>, // TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
     pub(crate) psk_store: PskStore,
     pub(crate) ke_sk_store: KeSkStore,
-    pub(crate) ke_pk: ed25519::PublicKey,
     pub(crate) key_ids: Vec<Identifier>,
     pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
     pub(crate) sig_pk: &'a ed25519::PublicKey,
@@ -208,7 +207,6 @@ where
             nonce: NBytes::default(),
             psk_store,
             ke_sk_store,
-            ke_pk: ed25519::PublicKey::default(),
             key_ids: Vec::new(),
             key: None,
             sig_pk,
@@ -259,13 +257,12 @@ where
                                     ctx.drop(n)
                                 }
                             }
-                            Identifier::EdPubKey(ke_pk) => {
+                            Identifier::EdPubKey(_ke_pk) => {
                                 if let Some(ke_sk) = self.ke_sk_store.lookup(&id) {
                                     let mut key = NBytes::<U32>::default();
                                     ctx.x25519(ke_sk, &mut key)?;
                                     self.key = Some(key);
                                     // Save the relevant public key
-                                    self.ke_pk = ke_pk.0;
                                     self.key_ids.push(id);
                                     Ok(ctx)
                                 } else {
