@@ -13,7 +13,7 @@ where
 {
     fn fork(&mut self, mut cont: C) -> Result<&mut Self> {
         let saved_fork = self.spongos.fork();
-        cont(&mut *self)?;
+        cont(self)?;
         self.spongos = saved_fork;
         Ok(self)
     }
