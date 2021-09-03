@@ -50,7 +50,7 @@ pub use std::{
     },
 };
 
-#[cfg(feature = "no-std")]
+#[cfg(all(feature = "no-std", not(feature = "std")))]
 pub use spin::{
     Mutex,
     MutexGuard,
