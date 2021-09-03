@@ -4,13 +4,10 @@ use wasm_bindgen::prelude::*;
 use crate::types::*;
 
 use iota_streams::{
-    app::{
-        futures::executor::block_on,
-        transport::{
-            tangle::client::Client as ApiClient,
-            TransportDetails,
-            TransportOptions,
-        },
+    app::transport::{
+        tangle::client::Client as ApiClient,
+        TransportDetails,
+        TransportOptions,
     },
     app_channels::api::tangle::Address as ApiAddress,
     core::prelude::{
@@ -28,7 +25,7 @@ impl Client {
     #[wasm_bindgen(constructor)]
     pub fn new(node: String, options: SendOptions) -> Self {
         let mut client = ApiClient::new_from_url(&node);
-        block_on(client.set_send_options(options.into()));
+        client.set_send_options(options.into());
         let transport = Arc::new(Mutex::new(client));
 
         Client(transport)

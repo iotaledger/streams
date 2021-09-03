@@ -46,7 +46,7 @@ impl Subscriber {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: String, options: SendOptions) -> Subscriber {
         let mut client = ApiClient::new_from_url(&options.url());
-        block_on(client.set_send_options(options.into()));
+        client.set_send_options(options.into());
         let transport = Arc::new(Mutex::new(client));
 
         let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, transport)));
