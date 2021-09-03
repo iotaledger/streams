@@ -31,7 +31,7 @@ pub trait ContentWrap<F, Store>: ContentSizeof<F> {
 pub trait ContentUnwrap<F, Store> {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
-        store: &'c Store,
+        store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>>;
 }

@@ -1025,14 +1025,12 @@ where
             ctx.absorb(author_sig_pk)?;
         }
 
-        let link_store = self.link_store.lock();
-        let links = link_store.iter();
-        let repeated_links = Size(links.len());
+        let repeated_links = Size(self.link_store.lock().len());
         let keys = self.key_store.iter();
         let repeated_keys = Size(keys.len());
 
         ctx.absorb(repeated_links)?;
-        for link in links {
+        for link in self.link_store.lock().iter() {
             let (link, (s, info)) = link;
             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
                 .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
@@ -1042,9 +1040,8 @@ where
         }
 
         ctx.absorb(repeated_keys)?;
-        for key in keys {
-            let (id, cursor) = key;
-            let ctx = id.sizeof(ctx).await?;
+        for (id, cursor) in keys {
+            let ctx = (*id).sizeof(ctx).await?;
             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
@@ -1089,14 +1086,12 @@ where
             ctx.absorb(author_sig_pk)?;
         }
 
-        let link_store = self.link_store.lock();
-        let links = link_store.iter();
-        let repeated_links = Size(links.len());
+        let repeated_links = Size(self.link_store.lock().len());
         let keys = self.key_store.iter();
         let repeated_keys = Size(keys.len());
 
         ctx.absorb(repeated_links)?;
-        for link in links.into_iter() {
+        for link in self.link_store.lock().iter().into_iter() {
             let (link, (s, info)) = link;
             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
                 .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
@@ -1133,7 +1128,7 @@ where
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
-        _store: &'c Store,
+        _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut sig_sk_bytes = NBytes::<U32>::default();
