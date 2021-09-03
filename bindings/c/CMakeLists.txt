@@ -10,6 +10,7 @@ option(RELEASE "Build release library (defaults to release)" ON)
 
 set(cargo_features "")
 if(${NO_STD})
+  set(cargo_features "no-std,")
 else(${NO_STD})
   set(cargo_features "std,")
 endif(${NO_STD})
