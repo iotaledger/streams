@@ -14,7 +14,7 @@ default = ["std", "client"]
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "chrono/std", "chrono/clock", "hex/std"]
 # rust doesn't support async traits, `async-trait` crate emulates `async` keyword
 # `async` implies `std` for now
-tangle = ["chrono", "num_cpus"]
+tangle = ["chrono", "num_cpus", "futures"]
 client = ["iota-client/default", "tangle", "std"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
@@ -35,6 +35,7 @@ wasm-timer = { version = "0.2.5", optional = true }
 js-sys = { version = "0.3.46", optional = true }
 chrono = { version = "0.4.11", default-features = false, optional = true }
 hex = { version = "0.4", default-features = false, optional = false }
+futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
 # Dependencies for "client" feature
 iota-client = { git = "https://github.com/iotaledger/iota.rs", rev  = "283af58b6f9a20b3698e5128e3e651b2a4dce861", default-features = false, optional = true }

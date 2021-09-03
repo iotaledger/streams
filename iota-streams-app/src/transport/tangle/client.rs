@@ -18,10 +18,6 @@ use iota_client::bee_message::{
 
 use iota_streams_core::{
     err,
-    futures::{
-        executor::block_on,
-        future::join_all,
-    },
     prelude::Vec,
     try_or,
     wrapped_err,
@@ -31,6 +27,10 @@ use iota_streams_core::{
 };
 
 use crate::{
+    futures::{
+        executor::block_on,
+        future::join_all,
+    },
     message::BinaryMessage,
     transport::{
         tangle::*,

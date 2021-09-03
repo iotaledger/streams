@@ -4,14 +4,16 @@ use wasm_bindgen::prelude::*;
 use crate::types::*;
 
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client as ApiClient,
-        TransportDetails,
-        TransportOptions,
+    app::{
+        futures::executor::block_on,
+        transport::{
+            tangle::client::Client as ApiClient,
+            TransportDetails,
+            TransportOptions,
+        }
     },
     app_channels::api::tangle::Address as ApiAddress,
     core::{
-        futures::executor::block_on,
         prelude::{
             Arc,
             Mutex,

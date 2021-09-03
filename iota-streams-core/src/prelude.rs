@@ -50,7 +50,14 @@ pub use std::{
     },
 };
 
+#[cfg(not(feature = "std"))]
 pub use spin::{
+    Mutex,
+    MutexGuard,
+};
+
+#[cfg(feature = "std")]
+pub use parking_lot::{
     Mutex,
     MutexGuard,
 };

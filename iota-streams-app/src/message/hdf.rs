@@ -254,7 +254,7 @@ where
 impl<F, Link, Store> ContentUnwrap<F, Store> for HDF<Link>
 where
     F: PRP,
-    Link: AbsorbExternalFallback<F> + std::fmt::Debug + Clone,
+    Link: AbsorbExternalFallback<F> + Clone,
     Store: Send + Sync,
 {
     async fn unwrap<'c, IS: io::IStream>(

@@ -58,6 +58,8 @@ pub trait LinkStore<F, Link>: Send + Sync {
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))>
     where
         F: PRP;
+
+    fn len(&self) -> usize;
 }
 
 /// Empty "dummy" link store that stores no links.
@@ -92,6 +94,8 @@ where
     {
         Vec::new()
     }
+
+    fn len(&self) -> usize { 0 }
 }
 
 /// Link store that contains a single link.
@@ -137,6 +141,10 @@ where
     }
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> {
         vec![(&self.0, &self.1)]
+    }
+
+    fn len(&self) -> usize {
+        1
     }
 }
 
@@ -193,4 +201,6 @@ where
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> {
         self.map.iter().collect()
     }
+
+    fn len(&self) -> usize { self.map.len() }
 }

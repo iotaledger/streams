@@ -16,9 +16,12 @@ use core::cell::RefCell;
 use iota_streams::app::identifier::Identifier;
 /// Streams imports
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client as ApiClient,
-        TransportOptions,
+    app::{
+        futures::executor::block_on,
+        transport::{
+            tangle::client::Client as ApiClient,
+            TransportOptions,
+        }
     },
     app_channels::api::{
         psk_from_seed,
@@ -29,7 +32,6 @@ use iota_streams::{
         },
     },
     core::{
-        futures::executor::block_on,
         prelude::{
             Arc,
             Mutex,
