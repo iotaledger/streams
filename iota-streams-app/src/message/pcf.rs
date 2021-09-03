@@ -115,7 +115,7 @@ impl<Content> PCF<Content> {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Content> ContentSizeof<F> for PCF<Content>
 where
     F: PRP,
@@ -128,12 +128,11 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Content, Store> ContentWrap<F, Store> for PCF<Content>
 where
     F: PRP,
     Content: ContentWrap<F, Store>,
-    Store: Send + Sync,
 {
     async fn wrap<'c, OS: io::OStream>(
         &self,
@@ -146,12 +145,11 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Content, Store> ContentUnwrap<F, Store> for PCF<Content>
 where
     F: PRP,
     Content: ContentUnwrap<F, Store>,
-    Store: Send + Sync,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,

@@ -42,7 +42,7 @@ impl<T> AsMut<T> for Fallback<T> {
 }
 
 /// Trait allows for custom (non-standard DDML) types to be Absorb.
-pub trait AbsorbFallback<F>: Send + Sync {
+pub trait AbsorbFallback<F> {
     fn sizeof_absorb(&self, ctx: &mut sizeof::Context<F>) -> Result<()>;
     fn wrap_absorb<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()>;
     fn unwrap_absorb<IS: io::IStream>(&mut self, ctx: &mut unwrap::Context<F, IS>) -> Result<()>;
@@ -53,7 +53,7 @@ pub trait AbsorbFallback<F>: Send + Sync {
 /// in DDML and domain specific.
 ///
 /// Note, that "absolute" links are absorbed in the message header.
-pub trait AbsorbExternalFallback<F>: Send + Sync {
+pub trait AbsorbExternalFallback<F> {
     fn sizeof_absorb_external(&self, ctx: &mut sizeof::Context<F>) -> Result<()>;
     fn wrap_absorb_external<OS: io::OStream>(&self, ctx: &mut wrap::Context<F, OS>) -> Result<()>;
     fn unwrap_absorb_external<IS: io::IStream>(&self, ctx: &mut unwrap::Context<F, IS>) -> Result<()>;

@@ -104,7 +104,7 @@ where
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
@@ -149,7 +149,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
@@ -241,7 +241,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<'a, 'b, F, Link, LStore, PskStore, KeSkStore> message::ContentUnwrap<F, LStore>
     for ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
 where
@@ -249,8 +249,8 @@ where
     Link: HasLink,
     Link::Rel: Eq + Default + SkipFallback<F>,
     LStore: LinkStore<F, Link::Rel>,
-    PskStore: for<'c> Lookup<&'c Identifier, psk::Psk> + Send + Sync,
-    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b + Send + Sync,
+    PskStore: for<'c> Lookup<&'c Identifier, psk::Psk>,
+    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,

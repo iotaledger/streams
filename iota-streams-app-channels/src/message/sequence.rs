@@ -55,7 +55,7 @@ where
     pub(crate) ref_link: &'a <Link as HasLink>::Rel,
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, Link>
 where
     F: PRP,
@@ -73,7 +73,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link>
 where
     F: PRP,
@@ -117,7 +117,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<Link>
 where
     F: PRP,

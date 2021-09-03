@@ -55,7 +55,7 @@ impl<'a, F> ContentWrap<'a, F> {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.sig_kp.public)?;
@@ -65,8 +65,8 @@ impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     }
 }
 
-#[async_trait]
-impl<'a, F: PRP, Store: Send + Sync> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
+#[async_trait(?Send)]
+impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
     async fn wrap<'c, OS: io::OStream>(
         &self,
         _store: &Store,
@@ -103,11 +103,10 @@ impl<F> Default for ContentUnwrap<F> {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F>
 where
     F: PRP,
-    Store: Send + Sync,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,

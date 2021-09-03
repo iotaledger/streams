@@ -10,13 +10,7 @@ use iota_streams_core::{
     Result,
 };
 
-use core::{
-    cell::RefCell,
-    marker::{
-        Send,
-        Sync,
-    },
-};
+use core::cell::RefCell;
 
 #[async_trait(?Send)]
 pub trait TransportDetails<Link> {
