@@ -995,7 +995,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Link, LG, LS, Keys> ContentSizeof<F> for User<F, Link, LG, LS, Keys>
 where
     F: PRP,
@@ -1051,7 +1051,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Link, Store, LG, LS, Keys> ContentWrap<F, Store> for User<F, Link, LG, LS, Keys>
 where
     F: PRP,
@@ -1113,7 +1113,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Link, Store, LG, LS, Keys> ContentUnwrap<F, Store> for User<F, Link, LG, LS, Keys>
 where
     F: PRP,

@@ -9,11 +9,6 @@ use iota_streams_core::{
     Result,
 };
 
-use core::marker::{
-    Send,
-    Sync,
-};
-
 #[async_trait(?Send)]
 pub trait TransportDetails<Link> {
     type Details;

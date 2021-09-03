@@ -78,7 +78,7 @@ impl From<PskId> for Identifier {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F: PRP> ContentSizeof<F> for Identifier {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         match *self {
@@ -96,8 +96,8 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
     }
 }
 
-#[async_trait]
-impl<F: PRP, Store: Send + Sync> ContentWrap<F, Store> for Identifier {
+#[async_trait(?Send)]
+impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
     async fn wrap<'c, OS: io::OStream>(
         &self,
         _store: &Store,
@@ -118,8 +118,8 @@ impl<F: PRP, Store: Send + Sync> ContentWrap<F, Store> for Identifier {
     }
 }
 
-#[async_trait]
-impl<F: PRP, Store: Send + Sync> ContentUnwrap<F, Store> for Identifier {
+#[async_trait(?Send)]
+impl<F: PRP, Store> ContentUnwrap<F, Store> for Identifier {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         _store: &Store,
@@ -131,8 +131,8 @@ impl<F: PRP, Store: Send + Sync> ContentUnwrap<F, Store> for Identifier {
     }
 }
 
-#[async_trait]
-impl<F: PRP, Store: Send + Sync> ContentUnwrapNew<F, Store> for Identifier {
+#[async_trait(?Send)]
+impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
     async fn unwrap_new<'c, IS: io::IStream>(
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,

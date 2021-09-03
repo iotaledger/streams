@@ -13,13 +13,12 @@ use iota_streams_ddml::{
     io,
 };
 
-#[async_trait]
-pub trait ContentSizeof<F>: Send + Sync {
-    // Necessary to be asynchronous for managing async functions from DID in the near future
+#[async_trait(?Send)]
+pub trait ContentSizeof<F> {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>>;
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait ContentWrap<F, Store>: ContentSizeof<F> {
     async fn wrap<'c, OS: io::OStream>(
         &self,
@@ -28,8 +27,8 @@ pub trait ContentWrap<F, Store>: ContentSizeof<F> {
     ) -> Result<&'c mut wrap::Context<F, OS>>;
 }
 
-#[async_trait]
-pub trait ContentUnwrap<F, Store>: Send + Sync {
+#[async_trait(?Send)]
+pub trait ContentUnwrap<F, Store> {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
@@ -37,8 +36,8 @@ pub trait ContentUnwrap<F, Store>: Send + Sync {
     ) -> Result<&'c mut unwrap::Context<F, IS>>;
 }
 
-#[async_trait]
-pub trait ContentUnwrapNew<F, Store>: Send + Sync
+#[async_trait(?Send)]
+pub trait ContentUnwrapNew<F, Store>
 where
     Self: Sized,
 {

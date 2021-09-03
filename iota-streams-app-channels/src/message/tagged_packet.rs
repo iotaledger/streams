@@ -61,7 +61,7 @@ where
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: PRP,
@@ -81,7 +81,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
     F: PRP,
@@ -126,7 +126,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
 where
     F: PRP,

@@ -89,7 +89,6 @@ where
 impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg>
 where
     Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
-    Msg: Send + Sync,
 {
     type Details = ();
     async fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details> {
