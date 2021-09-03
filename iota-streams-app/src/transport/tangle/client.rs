@@ -155,12 +155,6 @@ pub async fn async_get_link_details(client: &iota_client::Client, link: &TangleA
     Ok(Details { metadata, milestone })
 }
 
-/// Synchronised - Send message to the tangle using a node client
-
-/// Synchronised - Retrieve a message from the tangle using a node client
-
-/// Synchronised - Retrieve details of a link from the tangle using a node client
-
 /// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
 pub struct Client {
     send_opt: SendOptions,

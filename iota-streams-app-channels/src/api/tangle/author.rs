@@ -159,9 +159,6 @@ impl<Trans: Transport + Clone> Author<Trans> {
         let mut author = Author::new(seed, channel_type, transport);
 
         let ann = author.user.user.announce().await?;
-        #[cfg(feature = "sync-client")]
-        let retrieved: Message = author.user.transport.recv_message(announcement)?;
-        #[cfg(not(feature = "sync-client"))]
         let retrieved: Message = author.user.transport.recv_message(announcement).await?;
         panic_if_not(retrieved.binary == ann.message);
 

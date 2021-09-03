@@ -1030,8 +1030,7 @@ where
         let repeated_keys = Size(keys.len());
 
         ctx.absorb(repeated_links)?;
-        for link in self.link_store.read().unwrap().iter() {
-            let (link, (s, info)) = link;
+        for (link, (s, info)) in self.link_store.read().unwrap().iter() {
             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
                 .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
                 .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
@@ -1066,7 +1065,7 @@ where
 {
     async fn wrap<'c, OS: io::OStream>(
         &self,
-        _store: &Store,
+        store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
@@ -1091,8 +1090,7 @@ where
         let repeated_keys = Size(keys.len());
 
         ctx.absorb(repeated_links)?;
-        for link in self.link_store.read().unwrap().iter().into_iter() {
-            let (link, (s, info)) = link;
+        for (link, (s, info)) in self.link_store.read().unwrap().iter().into_iter() {
             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
                 .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
                 .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
@@ -1101,9 +1099,8 @@ where
         }
 
         ctx.absorb(repeated_keys)?;
-        for key in keys {
-            let (id, cursor) = key;
-            let ctx = id.clone().wrap(_store.borrow(), ctx.borrow_mut()).await?;
+        for (id, cursor) in keys {
+            let ctx = id.clone().wrap(store.borrow(), ctx.borrow_mut()).await?;
             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.borrow().link))?
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
@@ -1128,7 +1125,7 @@ where
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
-        _store: &Store,
+        store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut sig_sk_bytes = NBytes::<U32>::default();
@@ -1188,7 +1185,7 @@ where
             let mut link = Fallback(<Link as HasLink>::Rel::default());
             let mut branch_no = Uint32(0);
             let mut seq_no = Uint32(0);
-            let (id, ctx) = Identifier::unwrap_new(_store, ctx).await?;
+            let (id, ctx) = Identifier::unwrap_new(store, ctx).await?;
             ctx.absorb(&mut link)?.absorb(&mut branch_no)?.absorb(&mut seq_no)?;
             key_store.insert_cursor(id, Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
         }

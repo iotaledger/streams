@@ -141,9 +141,7 @@ where
 
         ctx.absorb(External(&self.key))?;
         // Fork for signing
-        {
-            ctx.ed25519(self.sig_kp, HashSig)?;
-        }
+        ctx.ed25519(self.sig_kp, HashSig)?;
         ctx.commit()?;
         Ok(ctx)
     }
@@ -198,9 +196,7 @@ where
         ctx.absorb(External(&self.key))?;
         // Fork the context to sign
         let signature_fork = ctx.spongos.fork();
-        {
-            ctx.absorb(&id_hash)?.ed25519(self.sig_kp, HashSig)?;
-        }
+        ctx.absorb(&id_hash)?.ed25519(self.sig_kp, HashSig)?;
         ctx.spongos = signature_fork;
         ctx.commit()?;
         Ok(ctx)
@@ -319,11 +315,9 @@ where
             ctx.absorb(External(key))?;
 
             // Fork for signature verification
-            {
-                let signature_fork = ctx.spongos.fork();
-                ctx.absorb(&id_hash)?.ed25519(self.sig_pk, HashSig)?;
-                ctx.spongos = signature_fork;
-            }
+            let signature_fork = ctx.spongos.fork();
+            ctx.absorb(&id_hash)?.ed25519(self.sig_pk, HashSig)?;
+            ctx.spongos = signature_fork;
             ctx.commit()
         } else {
             // Allow key not found, no key situation must be handled outside, there's a use-case for that
