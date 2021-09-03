@@ -284,7 +284,7 @@ where
     }
 
     /// Prepare Announcement message.
-    pub fn prepare_announcement<'a>(&'a self) -> Result<PreparedMessage<F, Link, LS, announce::ContentWrap<F>>> {
+    pub fn prepare_announcement(&'_ self) -> Result<PreparedMessage<F, Link, LS, announce::ContentWrap<F>>> {
         // Create HDF for the first message in the channel.
         let msg_link = self.link_gen.get();
         let header = HDF::new(msg_link)
