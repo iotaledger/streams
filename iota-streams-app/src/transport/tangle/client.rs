@@ -227,14 +227,12 @@ impl Clone for Client {
     }
 }
 
-// Async Clients
-#[async_trait(?Send)]
 impl TransportOptions for Client {
     type SendOptions = SendOptions;
-    async fn get_send_options(&self) -> SendOptions {
+    fn get_send_options(&self) -> SendOptions {
         self.send_opt.clone()
     }
-    async fn set_send_options(&mut self, opt: SendOptions) {
+    fn set_send_options(&mut self, opt: SendOptions) {
         self.send_opt = opt;
 
         // TODO
@@ -242,8 +240,8 @@ impl TransportOptions for Client {
     }
 
     type RecvOptions = ();
-    async fn get_recv_options(&self) {}
-    async fn set_recv_options(&mut self, _opt: ()) {}
+    fn get_recv_options(&self) {}
+    fn set_recv_options(&mut self, _opt: ()) {}
 }
 
 #[async_trait(?Send)]

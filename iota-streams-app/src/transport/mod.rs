@@ -4,18 +4,14 @@ use iota_streams_core::{
         Arc,
         Box,
         Mutex,
-        Rc,
         Vec,
     },
     Result,
 };
 
-use core::{
-    cell::RefCell,
-    marker::{
-        Send,
-        Sync,
-    },
+use core::marker::{
+    Send,
+    Sync,
 };
 
 #[async_trait(?Send)]
@@ -24,15 +20,14 @@ pub trait TransportDetails<Link> {
     async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details>;
 }
 
-#[async_trait(?Send)]
 pub trait TransportOptions {
     type SendOptions;
-    async fn get_send_options(&self) -> Self::SendOptions;
-    async fn set_send_options(&mut self, opt: Self::SendOptions);
+    fn get_send_options(&self) -> Self::SendOptions;
+    fn set_send_options(&mut self, opt: Self::SendOptions);
 
     type RecvOptions;
-    async fn get_recv_options(&self) -> Self::RecvOptions;
-    async fn set_recv_options(&mut self, opt: Self::RecvOptions);
+    fn get_recv_options(&self) -> Self::RecvOptions;
+    fn set_recv_options(&mut self, opt: Self::RecvOptions);
 }
 
 /// Network transport abstraction.
@@ -50,28 +45,21 @@ pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link> {
     async fn recv_message(&mut self, link: &Link) -> Result<Msg>;
 }
 
-pub type SharedTransport<T> = Rc<RefCell<T>>;
-
-pub fn new_shared_transport<T>(tsp: T) -> Rc<RefCell<T>> {
-    Rc::new(RefCell::new(tsp))
-}
-
-#[async_trait(?Send)]
 impl<Tsp: TransportOptions> TransportOptions for Arc<Mutex<Tsp>> {
     type SendOptions = <Tsp as TransportOptions>::SendOptions;
-    async fn get_send_options(&self) -> Self::SendOptions {
-        (&*self).lock().get_send_options().await
+    fn get_send_options(&self) -> Self::SendOptions {
+        (&*self).lock().get_send_options()
     }
-    async fn set_send_options(&mut self, opt: Self::SendOptions) {
-        (&*self).lock().set_send_options(opt).await
+    fn set_send_options(&mut self, opt: Self::SendOptions) {
+        (&*self).lock().set_send_options(opt)
     }
 
     type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
-    async fn get_recv_options(&self) -> Self::RecvOptions {
-        (&*self).lock().get_recv_options().await
+    fn get_recv_options(&self) -> Self::RecvOptions {
+        (&*self).lock().get_recv_options()
     }
-    async fn set_recv_options(&mut self, opt: Self::RecvOptions) {
-        (&*self).lock().set_recv_options(opt).await
+    fn set_recv_options(&mut self, opt: Self::RecvOptions) {
+        (&*self).lock().set_recv_options(opt)
     }
 }
 
@@ -99,12 +87,6 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Arc<Mutex<Ts
     async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
         (&*self).lock().recv_message(link).await
     }
-}
-
-pub type MultiThreadTransport<T> = Arc<Mutex<T>>;
-
-pub fn new_multi_thread_transport<T>(tsp: T) -> Arc<Mutex<T>> {
-    Arc::new(Mutex::new(tsp))
 }
 
 mod bucket;
