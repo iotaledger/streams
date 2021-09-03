@@ -22,15 +22,48 @@ use crate::{
 };
 
 #[wasm_bindgen]
-pub struct ClientBuilder(ClientBuilderRust);
-
-#[wasm_bindgen]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NodeAuthOptions {
     jwt: Option<String>,
     basic_auth_name: Option<String>,
     basic_auth_password: Option<String>,
 }
+
+#[wasm_bindgen]
+impl NodeAuthOptions {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self { jwt: None, basic_auth_name: None, basic_auth_password: None }
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_jwt(&mut self, jwt: String) {
+        self.jwt = Some(jwt)
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_auth_name(&mut self, name: String) {
+        self.basic_auth_name = Some(name)
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_auth_password(&mut self, password: String) {
+        self.basic_auth_password = Some(password)
+    }
+
+    #[wasm_bindgen]
+    #[allow(clippy::should_implement_trait)]
+    pub fn clone(&self) -> Self {
+        NodeAuthOptions {
+            jwt: self.jwt.clone(),
+            basic_auth_name: self.basic_auth_name.clone(),
+            basic_auth_password: self.basic_auth_password.clone(),
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub struct ClientBuilder(ClientBuilderRust);
 
 /// Builder to construct client instance with sensible default values
 #[wasm_bindgen]

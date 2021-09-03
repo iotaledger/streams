@@ -18,12 +18,15 @@ main()
 
 async function main() {
   let options = new streams.SendOptions("https://chrysalis-nodes.iota.org/", true);
+  let auth = new streams.NodeAuthOptions();
+  auth.jwt = "testjwt";
+
   let builder = new streams.ClientBuilder();
   let client = await builder.node("https://chrysalis-nodes.iota.org/").finish(options);
   console.log("client", client);
 
   let seed = make_seed(81);
-  let author = new streams.author(client, seed, streams.ChannelType.SingleBranch);
+  let author = streams.Author.fromClient(client, seed, streams.ChannelType.SingleBranch);
   console.log("author", author);
 
   /*
