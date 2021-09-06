@@ -2,15 +2,9 @@ use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
-use iota_streams_core::{
-    prelude::{
-        sync::RwLock,
-        Arc,
-    },
-    sponge::{
-        prp::PRP,
-        spongos::Spongos,
-    },
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos::Spongos,
 };
 use iota_streams_ddml::link_store::LinkStore;
 
@@ -20,19 +14,18 @@ pub struct WrapState<F, Link> {
     pub(crate) spongos: Spongos<F>,
 }
 
-impl<F: PRP, Link: HasLink> WrapState<F, Link> {
+impl<F, Link> WrapState<F, Link>
+where
+    F: PRP,
+    Link: HasLink,
+{
     /// Save link for the current wrapped message and associated info into the store.
-    pub fn commit<Store>(
-        mut self,
-        store: Arc<RwLock<Store>>,
-        info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<Link>
+    pub fn commit<Store>(mut self, store: &mut Store, info: Store::Info) -> Result<Link>
     where
-        Link: HasLink,
-        Store: LinkStore<F, <Link as HasLink>::Rel>,
+        Store: LinkStore<F, Link::Rel>,
     {
         self.spongos.commit();
-        store.write().unwrap().update(self.link.rel(), self.spongos, info)?;
+        store.update(self.link.rel(), self.spongos, info)?;
         Ok(self.link)
     }
 }
