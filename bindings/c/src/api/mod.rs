@@ -159,33 +159,33 @@ pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
 }
 
 #[cfg(feature = "client")]
-pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
+pub type Transport = iota_streams::app::transport::tangle::client::Client;
 
 #[cfg(not(feature = "client"))]
-pub type TransportWrap = Arc<Mutex<BucketTransport>>;
+pub type Transport = Rc<RefCell<BucketTransport>>;
 
-static INSTANCE: OnceCell<Mutex<Runtime>> = OnceCell::new();
+static INSTANCE: OnceCell<Runtime> = OnceCell::new();
 
 pub fn run_async<C: Future>(cb: C) -> C::Output {
-    let runtime = INSTANCE.get_or_init(|| Mutex::new(Runtime::new().unwrap()));
-    runtime.lock().block_on(cb)
+    let runtime = INSTANCE.get_or_init(|| Runtime::new().unwrap());
+    runtime.block_on(cb)
 }
 
 #[no_mangle]
-pub extern "C" fn transport_new() -> *mut TransportWrap {
-    safe_into_mut_ptr(TransportWrap::default())
+pub extern "C" fn transport_new() -> *mut Transport {
+    safe_into_mut_ptr(Transport::default())
 }
 
 #[no_mangle]
-pub extern "C" fn transport_drop(tsp: *mut TransportWrap) {
+pub extern "C" fn transport_drop(tsp: *mut Transport) {
     safe_drop_mut_ptr(tsp)
 }
 
 #[cfg(feature = "client")]
 #[no_mangle]
-pub unsafe extern "C" fn transport_client_new_from_url(c_url: *const c_char) -> *mut TransportWrap {
+pub unsafe extern "C" fn transport_client_new_from_url(c_url: *const c_char) -> *mut Transport {
     let url = CStr::from_ptr(c_url).to_str().unwrap();
-    safe_into_mut_ptr(TransportWrap::new_from_url(url))
+    safe_into_mut_ptr(Transport::new_from_url(url))
 }
 
 #[cfg(feature = "client")]
@@ -347,7 +347,7 @@ mod client_details {
     #[no_mangle]
     pub unsafe extern "C" fn transport_get_link_details(
         r: *mut TransportDetails,
-        tsp: *mut TransportWrap,
+        tsp: *mut Transport,
         link: *const Address,
     ) -> Err {
         r.as_mut().map_or(Err::NullArgument, |r| {

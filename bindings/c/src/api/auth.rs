@@ -1,6 +1,6 @@
 use super::*;
 
-pub type Author = iota_streams::app_channels::api::tangle::Author<TransportWrap>;
+pub type Author = iota_streams::app_channels::api::tangle::Author<Transport>;
 
 /// Generate a new Author Instance
 #[no_mangle]
@@ -8,7 +8,7 @@ pub unsafe extern "C" fn auth_new(
     c_author: *mut *mut Author,
     c_seed: *const c_char,
     channel_type: uint8_t,
-    transport: *mut TransportWrap,
+    transport: *mut Transport,
 ) -> Err {
     if c_seed == null() {
         return Err::NullArgument;
@@ -33,7 +33,7 @@ pub unsafe extern "C" fn auth_recover(
     c_seed: *const c_char,
     c_ann_address: *const Address,
     channel_type: uint8_t,
-    transport: *mut TransportWrap,
+    transport: *mut Transport,
 ) -> Err {
     if c_seed == null() {
         return Err::NullArgument;
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn auth_import(
     c_author: *mut *mut Author,
     buffer: Buffer,
     c_password: *const c_char,
-    transport: *mut TransportWrap,
+    transport: *mut Transport,
 ) -> Err {
     if c_password == null() {
         return Err::NullArgument;

@@ -1,13 +1,13 @@
 use super::*;
 
-pub type Subscriber = iota_streams::app_channels::api::tangle::Subscriber<TransportWrap>;
+pub type Subscriber = iota_streams::app_channels::api::tangle::Subscriber<Transport>;
 
 /// Create a new subscriber
 #[no_mangle]
 pub unsafe extern "C" fn sub_new(
     c_sub: *mut *mut Subscriber,
     c_seed: *const c_char,
-    transport: *mut TransportWrap,
+    transport: *mut Transport,
 ) -> Err {
     if c_seed == null() {
         return Err::NullArgument;
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn sub_recover(
     c_sub: *mut *mut Subscriber,
     c_seed: *const c_char,
     c_ann_address: *const Address,
-    transport: *mut TransportWrap,
+    transport: *mut Transport,
 ) -> Err {
     if c_seed == null() {
         return Err::NullArgument;
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn sub_import(
     c_sub: *mut *mut Subscriber,
     buffer: Buffer,
     c_password: *const c_char,
-    transport: *mut TransportWrap,
+    transport: *mut Transport,
 ) -> Err {
     if c_password == null() {
         return Err::NullArgument;
