@@ -4,7 +4,7 @@ project(iota_streams_c LANGUAGES C)
 include(FetchContent)
 
 option(NO_STD "Enable no_std build, without iota_client" OFF)
-option(SYNC_CLIENT "Enable sync transport via iota_client" ON)
+option(IOTA_CLIENT "Enable transport via iota_client" ON)
 option(STATIC "Build static library" OFF)
 option(RELEASE "Build release library (defaults to release)" ON)
 
@@ -20,7 +20,7 @@ if(${IOTA_CLIENT})
   set(cargo_features "${cargo_features}client")
 endif(${IOTA_CLIENT})
 
-message("NO_STD=${NO_STD} SYNC_CLIENT=${SYNC_CLIENT} STATIC=${STATIC} RELEASE=${RELEASE}")
+message("NO_STD=${NO_STD} IOTA_CLIENT=${IOTA_CLIENT} STATIC=${STATIC} RELEASE=${RELEASE}")
 
 include_directories(include/)
 
