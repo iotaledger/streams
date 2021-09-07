@@ -62,7 +62,7 @@ impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
 impl<Link, Tsp: TransportDetails<Link>> TransportDetails<Link> for Rc<RefCell<Tsp>> {
     type Details = <Tsp as TransportDetails<Link>>::Details;
     async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
-        self.get_link_details(link).await
+        self.borrow_mut().get_link_details(link).await
     }
 }
 
