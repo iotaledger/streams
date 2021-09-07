@@ -58,6 +58,8 @@ pub trait LinkStore<F, Link> {
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))>
     where
         F: PRP;
+
+    fn len(&self) -> usize;
 }
 
 /// Empty "dummy" link store that stores no links.
@@ -86,6 +88,10 @@ impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
         F: PRP,
     {
         Vec::new()
+    }
+
+    fn len(&self) -> usize {
+        0
     }
 }
 
@@ -132,6 +138,10 @@ where
     }
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> {
         vec![(&self.0, &self.1)]
+    }
+
+    fn len(&self) -> usize {
+        1
     }
 }
 
@@ -186,5 +196,9 @@ where
 
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> {
         self.map.iter().collect()
+    }
+
+    fn len(&self) -> usize {
+        self.map.len()
     }
 }

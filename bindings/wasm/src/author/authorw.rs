@@ -16,9 +16,12 @@ use core::cell::RefCell;
 use iota_streams::app::identifier::Identifier;
 /// Streams imports
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client as ApiClient,
-        TransportOptions,
+    app::{
+        futures::executor::block_on,
+        transport::{
+            tangle::client::Client as ApiClient,
+            TransportOptions,
+        },
     },
     app_channels::api::{
         psk_from_seed,
@@ -41,7 +44,8 @@ use iota_streams::{
 
 #[wasm_bindgen]
 pub struct Author {
-    author: Rc<RefCell<ApiAuthor<ClientWrap>>>,
+    // Don't alias away the ugliness, so we don't forget
+    author: Rc<RefCell<ApiAuthor<Rc<RefCell<ApiClient>>>>>,
 }
 
 #[wasm_bindgen]
@@ -51,7 +55,6 @@ impl Author {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-
         let author = Rc::new(RefCell::new(ApiAuthor::new(&seed, implementation.into(), transport)));
         Author { author }
     }
@@ -67,7 +70,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Author> {
-        ApiAuthor::import(&bytes, password, client.to_inner()).map_or_else(
+        block_on(ApiAuthor::import(&bytes, password, client.to_inner())).map_or_else(
             |err| Err(JsValue::from_str(&err.to_string())),
             |v| {
                 Ok(Author {
@@ -79,9 +82,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn export(&self, password: &str) -> Result<Vec<u8>> {
-        self.author
-            .borrow_mut()
-            .export(password)
+        block_on(self.author.borrow_mut().export(password))
             .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
     }
 

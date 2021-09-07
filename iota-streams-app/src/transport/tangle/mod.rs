@@ -1,5 +1,4 @@
 //! Tangle-specific transport definitions.
-
 use core::{
     convert::{
         AsMut,
@@ -82,8 +81,7 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
 }
 
 // TODO: Use better feature to detect `chrono::Utc::new()`.
-#[cfg(all(feature = "std"))] //, not(feature = "wasmbind")
-                             //#[cfg(all(feature = "std"))]
+#[cfg(feature = "std")]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
     pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
@@ -94,32 +92,6 @@ impl<F> TangleMessage<F> {
     }
 }
 
-// #[cfg(feature = "wasmbind")]
-// impl<F> TangleMessage<F> {
-// Create TangleMessage from BinaryMessage and add the current timestamp.
-// pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
-// let timestamp = js_sys::Date::new_0().value_of() as u64;
-// Self {
-// binary: msg,
-// timestamp,
-// }
-// }
-// }
-// #[cfg(feature = "wasmbind")]
-// impl<F> TangleMessage<F> {
-// Create TangleMessage from BinaryMessage and add the current timestamp.
-// pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
-// Self {
-// binary: msg,
-// timestamp: wasm_timer::SystemTime::now()
-// .duration_since(wasm_timer::SystemTime::UNIX_EPOCH)
-// .unwrap()
-// .as_millis() as u64,
-// }
-// }
-// }
-
-//#[cfg(all(not(feature = "std"), not(feature = "wasmbind")))]
 #[cfg(not(feature = "std"))]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
@@ -616,5 +588,5 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
 
 /// Tangle-specific Transport Client. Uses [iota_client](https://github.com/iotaledger/iota.rs/tree/dev/iota-client)
 /// crate for node interfacing
-#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+#[cfg(any(feature = "client", feature = "wasm-client"))]
 pub mod client;
