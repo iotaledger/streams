@@ -19,6 +19,8 @@ client = ["iota-client/default", "tangle", "std"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
 wasm-client = ["iota-client/wasm", "chrono/wasmbind", "tangle", "std"]
+sync-parking-lot = ["iota-streams-core/sync-parking-lot"]
+sync-spin = ["iota-streams-core/sync-spin"]
 
 [lib]
 name = "iota_streams_app"
@@ -31,8 +33,6 @@ iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-
 
 # anyhow and chrono are kept in sync with versions used in iota-client
 anyhow = { version = "1.0.26", default-features = false }
-wasm-timer = { version = "0.2.5", optional = true }
-js-sys = { version = "0.3.46", optional = true }
 chrono = { version = "0.4.11", default-features = false, optional = true }
 hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }

@@ -26,8 +26,6 @@ use iota_streams::{
     },
     core::{
         prelude::{
-            Arc,
-            Mutex,
             Rc,
             String,
         },
@@ -38,7 +36,8 @@ use iota_streams::{
 
 #[wasm_bindgen]
 pub struct Subscriber {
-    subscriber: Rc<RefCell<ApiSubscriber<ClientWrap>>>,
+    // Don't alias away the ugliness, so we don't forget
+    subscriber: Rc<RefCell<ApiSubscriber<Rc<RefCell<ApiClient>>>>>,
 }
 
 #[wasm_bindgen]
@@ -47,8 +46,7 @@ impl Subscriber {
     pub fn new(seed: String, options: SendOptions) -> Subscriber {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
-        let transport = Arc::new(Mutex::new(client));
-
+        let transport = Rc::new(RefCell::new(client));
         let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, transport)));
         Subscriber { subscriber }
     }

@@ -1,18 +1,9 @@
 use iota_streams_core::Result;
 
-use core::{
-    borrow::Borrow,
-    fmt,
-};
+use core::fmt;
 
 use super::*;
-use iota_streams_core::{
-    prelude::{
-        sync::RwLock,
-        Arc,
-    },
-    sponge::prp::PRP,
-};
+use iota_streams_core::sponge::prp::PRP;
 use iota_streams_ddml::command::unwrap;
 
 /// Message context preparsed for unwrapping.
@@ -32,7 +23,7 @@ impl<'a, F, Link: Default + Clone> PreparsedMessage<'a, F, Link> {
 
     pub async fn unwrap<Store, Content>(
         mut self,
-        store: Arc<RwLock<Store>>,
+        store: &Store,
         content: Content,
     ) -> Result<UnwrappedMessage<F, Link, Content>>
     where
@@ -40,7 +31,7 @@ impl<'a, F, Link: Default + Clone> PreparsedMessage<'a, F, Link> {
         F: PRP,
     {
         let mut pcf = pcf::PCF::default_with_content(content);
-        pcf.unwrap(store.write().unwrap().borrow(), &mut self.ctx).await?;
+        pcf.unwrap(store, &mut self.ctx).await?;
         // Discard what's left of `self.ctx.stream`
         Ok(UnwrappedMessage {
             link: self.header.link,

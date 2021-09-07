@@ -162,13 +162,13 @@ pub extern "C" fn drop_unwrapped_messages(ms: *const UnwrappedMessages) {
 pub type TransportWrap = iota_streams::app::transport::tangle::client::Client;
 
 #[cfg(not(feature = "client"))]
-pub type TransportWrap = Arc<Mutex<BucketTransport>>;
+pub type TransportWrap = Rc<RefCell<BucketTransport>>;
 
-static INSTANCE: OnceCell<Mutex<Runtime>> = OnceCell::new();
+static INSTANCE: OnceCell<Runtime> = OnceCell::new();
 
 pub fn run_async<C: Future>(cb: C) -> C::Output {
-    let runtime = INSTANCE.get_or_init(|| Mutex::new(Runtime::new().unwrap()));
-    runtime.lock().block_on(cb)
+    let runtime = INSTANCE.get_or_init(|| Runtime::new().unwrap());
+    runtime.block_on(cb)
 }
 
 #[no_mangle]

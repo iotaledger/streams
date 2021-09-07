@@ -33,8 +33,6 @@ use iota_streams::{
     },
     core::{
         prelude::{
-            Arc,
-            Mutex,
             Rc,
             String,
             ToString,
@@ -46,7 +44,8 @@ use iota_streams::{
 
 #[wasm_bindgen]
 pub struct Author {
-    author: Rc<RefCell<ApiAuthor<ClientWrap>>>,
+    // Don't alias away the ugliness, so we don't forget
+    author: Rc<RefCell<ApiAuthor<Rc<RefCell<ApiClient>>>>>,
 }
 
 #[wasm_bindgen]
@@ -55,8 +54,7 @@ impl Author {
     pub fn new(seed: String, options: SendOptions, implementation: ChannelType) -> Author {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
-        let transport = Arc::new(Mutex::new(client));
-
+        let transport = Rc::new(RefCell::new(client));
         let author = Rc::new(RefCell::new(ApiAuthor::new(&seed, implementation.into(), transport)));
         Author { author }
     }

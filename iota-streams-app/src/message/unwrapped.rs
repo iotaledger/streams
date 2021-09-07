@@ -1,15 +1,9 @@
 use iota_streams_core::Result;
 
 use super::*;
-use iota_streams_core::{
-    prelude::{
-        sync::RwLock,
-        Arc,
-    },
-    sponge::{
-        prp::PRP,
-        spongos::Spongos,
-    },
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos::Spongos,
 };
 use iota_streams_ddml::link_store::LinkStore;
 
@@ -26,16 +20,12 @@ where
     Link: HasLink,
 {
     /// Save link for the current unwrapped message and associated info into the store.
-    pub fn commit<Store>(
-        mut self,
-        store: Arc<RwLock<Store>>,
-        info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<Content>
+    pub fn commit<Store>(mut self, store: &mut Store, info: Store::Info) -> Result<Content>
     where
-        Store: LinkStore<F, <Link as HasLink>::Rel>,
+        Store: LinkStore<F, Link::Rel>,
     {
         self.spongos.commit();
-        store.write().unwrap().update(self.link.rel(), self.spongos, info)?;
+        store.update(self.link.rel(), self.spongos, info)?;
         Ok(self.pcf.content)
     }
 }

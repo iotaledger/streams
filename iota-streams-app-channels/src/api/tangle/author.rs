@@ -162,7 +162,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
         let retrieved: Message = author.user.transport.recv_message(announcement).await?;
         panic_if_not(retrieved.binary == ann.message);
 
-        author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce).await?;
+        author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
         author.sync_state().await;
 
         Ok(author)
