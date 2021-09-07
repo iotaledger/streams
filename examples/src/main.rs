@@ -14,8 +14,8 @@ use iota_streams::{
     },
     core::{
         prelude::{
-            Arc,
-            Mutex,
+            Rc,
+            RefCell,
             String,
         },
         Result,
@@ -83,7 +83,10 @@ async fn main_pure() {
     println!("#######################################");
     println!("\n");
 
-    let transport = Arc::new(Mutex::new(transport));
+    // BucketTransport is an in-memory storage that needs to be shared between all the users,
+    // hence the Rc<RefCell<BucketTransport>>
+    let transport = Rc::new(RefCell::new(transport));
+
     run_single_branch_test(transport.clone(), "PURESEEDA").await;
     run_single_depth_test(transport.clone(), "PURESEEDB").await;
     run_multi_branch_test(transport.clone(), "PURESEEDC").await;
