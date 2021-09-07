@@ -10,15 +10,11 @@ use iota_streams::{
         TransportOptions,
     },
     app_channels::api::tangle::Address as ApiAddress,
-    core::prelude::{
-        Arc,
-        Mutex,
-    },
 };
 
 #[wasm_bindgen]
 #[derive(Clone)]
-pub struct Client(pub(crate) ClientWrap);
+pub struct Client(pub(crate) ApiClient);
 
 #[wasm_bindgen]
 impl Client {
@@ -26,9 +22,7 @@ impl Client {
     pub fn new(node: String, options: SendOptions) -> Self {
         let mut client = ApiClient::new_from_url(&node);
         client.set_send_options(options.into());
-        let transport = Arc::new(Mutex::new(client));
-
-        Client(transport)
+        Client(client)
     }
 
     #[wasm_bindgen(catch)]
@@ -49,15 +43,13 @@ impl Client {
 
 impl Client {
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_inner(self) -> ClientWrap {
+    pub fn to_inner(self) -> ApiClient {
         self.0
     }
 }
 
 impl From<ApiClient> for Client {
     fn from(client: ApiClient) -> Self {
-        let transport = Arc::new(Mutex::new(client));
-
-        Client(transport)
+        Client(client)
     }
 }

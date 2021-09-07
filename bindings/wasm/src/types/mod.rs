@@ -13,7 +13,6 @@ use iota_streams::{
                 },
                 MilestoneResponse as ApiMilestoneResponse,
             },
-            Client,
             Details as ApiDetails,
             SendOptions as ApiSendOptions,
         },
@@ -27,8 +26,6 @@ use iota_streams::{
     },
     core::{
         prelude::{
-            Arc,
-            Mutex,
             String,
             ToString,
         },
@@ -155,8 +152,6 @@ impl Address {
         }
     }
 }
-
-pub type ClientWrap = Arc<Mutex<Client>>;
 
 impl TryFrom<Address> for ApiAddress {
     type Error = JsValue;
