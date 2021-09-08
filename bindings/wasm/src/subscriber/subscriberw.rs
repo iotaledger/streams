@@ -8,9 +8,12 @@ use crate::{
 
 use core::cell::RefCell;
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client as ApiClient,
-        TransportOptions,
+    app::{
+        futures::executor::block_on,
+        transport::{
+            tangle::client::Client as ApiClient,
+            TransportOptions,
+        },
     },
     app_channels::api::{
         psk_from_seed,
@@ -29,7 +32,8 @@ use iota_streams::{
 
 #[wasm_bindgen]
 pub struct Subscriber {
-    subscriber: Rc<RefCell<ApiSubscriber<ClientWrap>>>,
+    // Don't alias away the ugliness, so we don't forget
+    subscriber: Rc<RefCell<ApiSubscriber<Rc<RefCell<ApiClient>>>>>,
 }
 
 #[wasm_bindgen]
@@ -39,7 +43,6 @@ impl Subscriber {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-
         let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, transport)));
         Subscriber { subscriber }
     }
@@ -51,7 +54,7 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Subscriber> {
-        ApiSubscriber::import(&bytes, password, client.to_inner())
+        block_on(ApiSubscriber::import(&bytes, password, client.to_inner()))
             .map(|v| Subscriber {
                 subscriber: Rc::new(RefCell::new(v)),
             })
@@ -121,7 +124,7 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn export(&self, password: &str) -> Result<Vec<u8>> {
-        self.subscriber.borrow_mut().export(password).into_js_result()
+        block_on(self.subscriber.borrow_mut().export(password)).into_js_result()
     }
 
     #[wasm_bindgen(catch)]

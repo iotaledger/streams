@@ -1,7 +1,4 @@
-use core::{
-    cell::RefCell,
-    str::FromStr,
-};
+use core::str::FromStr;
 use iota_streams::{
     app::{
         message::Cursor as ApiCursor,
@@ -13,7 +10,6 @@ use iota_streams::{
                 },
                 MilestoneResponse as ApiMilestoneResponse,
             },
-            Client,
             Details as ApiDetails,
             SendOptions as ApiSendOptions,
         },
@@ -29,7 +25,6 @@ use iota_streams::{
     },
     core::{
         prelude::{
-            Rc,
             String,
             ToString,
         },
@@ -219,8 +214,6 @@ impl FromStr for Address {
         Ok(Self(string.parse()?))
     }
 }
-
-pub type ClientWrap = Rc<RefCell<Client>>;
 
 /// Channel application instance identifier (40 Byte)
 #[wasm_bindgen]
