@@ -3,7 +3,6 @@ use wasm_bindgen::prelude::*;
 
 use crate::types::*;
 
-use core::cell::RefCell;
 use iota_streams::{
     app::transport::{
         tangle::client::Client as ApiClient,
@@ -11,12 +10,15 @@ use iota_streams::{
         TransportOptions,
     },
     app_channels::api::tangle::Address as ApiAddress,
-    core::prelude::Rc,
+    core::prelude::{
+        Rc,
+        RefCell,
+    },
 };
 
 #[wasm_bindgen]
 #[derive(Clone)]
-pub struct Client(pub(crate) ClientWrap);
+pub struct Client(pub(crate) Rc<RefCell<ApiClient>>);
 
 #[wasm_bindgen]
 impl Client {
@@ -25,7 +27,6 @@ impl Client {
         let mut client = ApiClient::new_from_url(&node);
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-
         Client(transport)
     }
 
@@ -47,7 +48,7 @@ impl Client {
 
 impl Client {
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_inner(self) -> ClientWrap {
+    pub fn to_inner(self) -> Rc<RefCell<ApiClient>> {
         self.0
     }
 }
@@ -55,7 +56,6 @@ impl Client {
 impl From<ApiClient> for Client {
     fn from(client: ApiClient) -> Self {
         let transport = Rc::new(RefCell::new(client));
-
         Client(transport)
     }
 }

@@ -16,9 +16,12 @@ use core::cell::RefCell;
 use iota_streams::app::identifier::Identifier;
 /// Streams imports
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client as ApiClient,
-        TransportOptions,
+    app::{
+        futures::executor::block_on,
+        transport::{
+            tangle::client::Client as ApiClient,
+            TransportOptions,
+        },
     },
     app_channels::api::{
         psk_from_seed,
@@ -41,7 +44,8 @@ use iota_streams::{
 
 #[wasm_bindgen]
 pub struct Author {
-    author: Rc<RefCell<ApiAuthor<ClientWrap>>>,
+    // Don't alias away the ugliness, so we don't forget
+    author: Rc<RefCell<ApiAuthor<Rc<RefCell<ApiClient>>>>>,
 }
 
 #[wasm_bindgen]
@@ -51,7 +55,6 @@ impl Author {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-
         let author = Rc::new(RefCell::new(ApiAuthor::new(&seed, implementation.into(), transport)));
         Author { author }
     }
@@ -67,7 +70,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Author> {
-        ApiAuthor::import(&bytes, password, client.to_inner()).map_or_else(
+        block_on(ApiAuthor::import(&bytes, password, client.to_inner())).map_or_else(
             |err| Err(JsValue::from_str(&err.to_string())),
             |v| {
                 Ok(Author {
@@ -79,9 +82,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn export(&self, password: &str) -> Result<Vec<u8>> {
-        self.author
-            .borrow_mut()
-            .export(password)
+        block_on(self.author.borrow_mut().export(password))
             .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
     }
 
@@ -162,15 +163,16 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub async fn send_keyload(self, link: Address, psk_ids: PskIdsW, sig_pks: PublicKeysW) -> Result<UserResponse> {
-        let pks: Vec<Identifier> = sig_pks.pks.iter().map(|pk| (*pk).into()).collect();
+        let pks = sig_pks.pks.into_iter().map(Into::<Identifier>::into);
+        let psks = psk_ids.ids.into_iter().map(Into::<Identifier>::into);
+        let identifiers: Vec<Identifier> = pks.chain(psks).collect();
         self.author
             .borrow_mut()
             .send_keyload(
                 &link
                     .try_into()
                     .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
-                &psk_ids.ids,
-                &pks.iter().collect(),
+                &identifiers,
             )
             .await
             .map_or_else(
@@ -342,6 +344,27 @@ impl Author {
                     let msgs = vec![msg];
                     let responses = get_message_contents(msgs);
                     Ok(responses[0].copy())
+                },
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_msg_by_sequence_number(self, anchor_link: Address, msg_num: u32) -> Result<UserResponse> {
+        self.author
+            .borrow_mut()
+            .receive_msg_by_sequence_number(
+                &anchor_link
+                    .try_into()
+                    .map_or_else(|_err| ApiAddress::default(), |addr| addr),
+                msg_num,
+            )
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |msg| {
+                    let msgs = vec![msg];
+                    let response = get_message_contents(msgs);
+                    Ok(response[0].copy())
                 },
             )
     }

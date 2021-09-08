@@ -1,6 +1,6 @@
 use core::{
-    cell::RefCell,
     convert::TryFrom,
+    str::FromStr,
 };
 use iota_streams::{
     app::{
@@ -13,7 +13,6 @@ use iota_streams::{
                 },
                 MilestoneResponse as ApiMilestoneResponse,
             },
-            Client,
             Details as ApiDetails,
             SendOptions as ApiSendOptions,
         },
@@ -27,7 +26,6 @@ use iota_streams::{
     },
     core::{
         prelude::{
-            Rc,
             String,
             ToString,
         },
@@ -155,12 +153,10 @@ impl Address {
     }
 }
 
-pub type ClientWrap = Rc<RefCell<Client>>;
-
 impl TryFrom<Address> for ApiAddress {
     type Error = JsValue;
     fn try_from(addr: Address) -> Result<Self> {
-        ApiAddress::from_str(&addr.addr_id, &addr.msg_id).map_err(|_err| JsValue::from_str("bad address"))
+        ApiAddress::from_str(&addr.to_string()).map_err(|_err| JsValue::from_str("bad address"))
     }
 }
 

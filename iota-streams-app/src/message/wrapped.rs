@@ -1,7 +1,4 @@
-use core::{
-    cell::RefMut,
-    fmt,
-};
+use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
@@ -17,16 +14,15 @@ pub struct WrapState<F, Link> {
     pub(crate) spongos: Spongos<F>,
 }
 
-impl<F: PRP, Link: HasLink> WrapState<F, Link> {
-    /// Save link for the current wrapped message and accociated info into the store.
-    pub fn commit<Store>(
-        mut self,
-        mut store: RefMut<Store>,
-        info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<Link>
+impl<F, Link> WrapState<F, Link>
+where
+    F: PRP,
+    Link: HasLink,
+{
+    /// Save link for the current wrapped message and associated info into the store.
+    pub fn commit<Store>(mut self, store: &mut Store, info: Store::Info) -> Result<Link>
     where
-        Link: HasLink,
-        Store: LinkStore<F, <Link as HasLink>::Rel>,
+        Store: LinkStore<F, Link::Rel>,
     {
         self.spongos.commit();
         store.update(self.link.rel(), self.spongos, info)?;
