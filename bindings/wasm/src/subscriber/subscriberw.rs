@@ -33,6 +33,7 @@ use iota_streams::{
     },
     ddml::types::*,
 };
+use iota_streams::core::psk::pskid_from_hex_str;
 
 #[wasm_bindgen]
 pub struct Subscriber {
@@ -271,6 +272,22 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
+    pub async fn send_unsubscribe(self, link: Address) -> Result<UserResponse> {
+        self.subscriber
+            .borrow_mut()
+            .send_unsubscribe(
+                &link
+                    .try_into()
+                    .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
+            )
+            .await
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |link| Ok(UserResponse::new(Address::from_string(link.to_string()), None, None)),
+            )
+    }
+
+    #[wasm_bindgen(catch)]
     pub async fn send_tagged_packet(
         self,
         link: Address,
@@ -407,5 +424,17 @@ impl Subscriber {
             .borrow_mut()
             .reset_state()
             .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn remove_psk(self, pskid_str: String) -> Result<()> {
+        pskid_from_hex_str(&pskid_str)
+            .map_or_else(
+            |err| Err(JsValue::from_str(&err.to_string())),
+            |pskid| self.subscriber
+                .borrow_mut()
+                .remove_psk(pskid)
+                .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
+            )
     }
 }

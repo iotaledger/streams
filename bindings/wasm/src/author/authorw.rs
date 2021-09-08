@@ -41,6 +41,7 @@ use iota_streams::{
     },
     ddml::types::*,
 };
+use iota_streams::core::psk::pskid_from_hex_str;
 
 #[wasm_bindgen]
 pub struct Author {
@@ -271,6 +272,19 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
+    pub async fn receive_unsubscribe(self, link_to: Address) -> Result<()> {
+        self.author
+            .borrow_mut()
+            .receive_unsubscribe(
+                &link_to
+                    .try_into()
+                    .map_or_else(|_err| ApiAddress::default(), |addr| addr),
+            )
+            .await
+            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |_| Ok(()))
+    }
+
+    #[wasm_bindgen(catch)]
     pub async fn receive_tagged_packet(self, link: Address) -> Result<UserResponse> {
         self.author
             .borrow_mut()
@@ -445,5 +459,41 @@ impl Author {
                     .collect())
             },
         )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn store_new_subscriber(&self, pk_str: String) -> Result<()> {
+        public_key_from_string(&pk_str)
+            .map_or_else(
+                |err| Err(err),
+                |pk| self.author
+                    .borrow_mut()
+                    .store_new_subscriber(pk)
+                    .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn remove_subscriber(&self, pk_str: String) -> Result<()> {
+        public_key_from_string(&pk_str)
+            .map_or_else(
+                |err| Err(err),
+                |pk| self.author
+                    .borrow_mut()
+                    .remove_subscriber(pk)
+                    .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
+            )
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
+        pskid_from_hex_str(&pskid_str)
+            .map_or_else(
+                |err| Err(JsValue::from_str(&err.to_string())),
+                |pskid| self.author
+                    .borrow_mut()
+                    .remove_psk(pskid)
+                    .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
+            )
     }
 }

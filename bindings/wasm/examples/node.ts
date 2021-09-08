@@ -44,7 +44,8 @@ async function main() {
     let sub = new streams.Subscriber(seed2, options.clone());
     let ann_link_copy = ann_link.copy();
     await sub.clone().receive_announcement(ann_link_copy);
-
+    let author_pk = sub.author_public_key();
+    console.log("Channel registered by subscriber, author's public key: ", author_pk);
     // copy state for comparison after reset later
     let start_state = sub.fetch_state();
 
@@ -53,11 +54,12 @@ async function main() {
     response = await sub.clone().send_subscribe(ann_link_copy);
     let sub_link = response.get_link();
     console.log("Subscription message at: ", sub_link.to_string());
-    await auth.clone().receive_subscribe(sub_link);
+    await auth.clone().receive_subscribe(sub_link.copy());
     console.log("Subscription processed");
 
     console.log("Sending Keyload");
-    response = await auth.clone().send_keyload_for_everyone(ann_link);
+    ann_link_copy = ann_link.copy();
+    response = await auth.clone().send_keyload_for_everyone(ann_link_copy);
     let keyload_link = response.get_link();
     console.log("Keyload message at: ", keyload_link.to_string());
 
@@ -140,6 +142,24 @@ async function main() {
     } else {
         console.log("import succesfull")
     }
+
+    console.log("\nSub sending unsubscribe message");
+    response = await sub.clone().send_unsubscribe(sub_link);
+    let unsubscribe = response.get_link();
+    await auth.clone().receive_unsubscribe(unsubscribe);
+    console.log("Author received unsubscribe and processed it");
+
+    let seed3 = make_seed(81);
+    let sub2 = new streams.Subscriber(seed3, options.clone());
+    ann_link_copy = ann_link.copy();
+    await sub2.clone().receive_announcement(ann_link_copy);
+
+    let sub2_pk = sub2.get_public_key();
+    auth.clone().store_new_subscriber(sub2_pk);
+    console.log("\nAuthor manually subscribed sub 2");
+
+    auth.clone().remove_subscriber(sub2_pk);
+    console.log("Author manually unsubscribed sub 2");
 
     function to_bytes(str) {
         var bytes = new Uint8Array(str.length);
