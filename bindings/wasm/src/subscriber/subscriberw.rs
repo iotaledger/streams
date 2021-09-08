@@ -5,7 +5,6 @@ use wasm_bindgen::prelude::*;
 use crate::{
     types::*,
     user::userw::*,
-    wait,
 };
 
 use core::cell::RefCell;

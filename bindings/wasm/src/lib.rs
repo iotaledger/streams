@@ -27,17 +27,6 @@ extern "C" {
     pub fn error(s: &str);
 }
 
-pub async fn wait(ms: i32) -> Result<(), JsValue> {
-    let promise = Promise::new(&mut |yes, _| {
-        let win = window().unwrap();
-        win.set_timeout_with_callback_and_timeout_and_arguments_0(&yes, ms)
-            .unwrap();
-    });
-    let js_fut = JsFuture::from(promise);
-    js_fut.await?;
-    Ok(())
-}
-
 // Unused currently
 // macro_rules! console_log {
 // Note that this is using the `log` function imported above during

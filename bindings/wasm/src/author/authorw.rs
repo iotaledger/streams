@@ -8,7 +8,6 @@ use crate::{
         *,
     },
     user::userw::*,
-    wait,
 };
 use js_sys::Array;
 
