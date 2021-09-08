@@ -9,11 +9,6 @@ pub mod user;
 
 use wasm_bindgen::prelude::*;
 
-// Used for sleep()
-use js_sys::Promise;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::window;
-
 #[wasm_bindgen]
 pub fn set_panic_hook() {
     console_error_panic_hook::set_once();
