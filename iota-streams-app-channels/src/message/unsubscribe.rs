@@ -4,8 +4,10 @@
 //! ```ddml
 //! message Unsubscribe {
 //!     join link msgid;
+//!     absorb u8 ed25519pk[32];
 //!     commit;
-//!     squeeze tryte mac[32];
+//!     squeeze external byte hash[32];
+//!     mssig(hash) sig;
 //! }
 //! ```
 //!
@@ -13,93 +15,111 @@
 //!
 //! * `msgid` -- link to the `Subscribe` message published by the subscriber.
 //!
-//! * `mac` -- authentication tag proving knowledge of the `unsubscribe_key` from the `Subscribe` message.
+//! * `ed25519pk` -- subscriber's Ed25519 public key.
+//!
+//! * `hash` -- hash value to be signed.
+//!
+//! * `sig` -- message signature generated with the senders private key.
 
-use iota_streams_core::Result;
 use iota_streams_app::message::{
     self,
     HasLink,
 };
 use iota_streams_core::{
-    sponge::{
-        prp::PRP,
-        spongos,
-    },
-    tbits::{
-        trinary,
-        word::SpongosTbitWord,
-    },
+    Result,
+    async_trait,
+    prelude::Box,
+    sponge::prp::PRP,
 };
 use iota_streams_ddml::{
     command::*,
     io,
+    link_store::{LinkStore, EmptyLinkStore},
     types::*,
 };
+use iota_streams_core_edsig::signature::ed25519;
 
-pub struct ContentWrap<'a, TW, F, Link: HasLink> {
+pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) _phantom: std::marker::PhantomData<(TW, F, Link)>,
+    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, TW, F, Link, Store> message::ContentWrap<TW, F, Store> for ContentWrap<'a, TW, F, Link>
+#[async_trait(?Send)]
+impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<TW, F>,
-    Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<TW, F>) -> Result<&'c mut sizeof::Context<TW, F>> {
-        let store = EmptyLinkStore::<TW, F, <Link as HasLink>::Rel, ()>::default();
-        let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
-        ctx.join(&store, self.link)?.commit()?.squeeze(&mac)?;
+    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
+        ctx.join(&store, self.link)?
+            .absorb(&self.sig_kp.public)?
+            .commit()?
+            .ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
+}
 
-    fn wrap<'c, OS: io::OStream<TW>>(
+#[async_trait(?Send)]
+impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+where
+     F: PRP,
+     Link: HasLink,
+     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+     Store: LinkStore<F, <Link as HasLink>::Rel>,
+{
+    async fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
-        ctx: &'c mut wrap::Context<TW, F, OS>,
-    ) -> Result<&'c mut wrap::Context<TW, F, OS>> {
-        let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
-        ctx.join(store, self.link)?.commit()?.squeeze(&mac)?;
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
+        ctx.join(store, self.link)?
+            .absorb(&self.sig_kp.public)?
+            .commit()?
+            .ed25519(self.sig_kp, HashSig)?;
         Ok(ctx)
     }
 }
 
-pub struct ContentUnwrap<TW, F, Link: HasLink> {
-    pub link: <Link as HasLink>::Rel,
-    _phantom: std::marker::PhantomData<(TW, F, Link)>,
+pub struct ContentUnwrap<F, Link: HasLink> {
+    pub(crate) link: <Link as HasLink>::Rel,
+    pub(crate) sig_pk: ed25519::PublicKey,
+    _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
-impl<TW, F, Link> ContentUnwrap<TW, F, Link>
+impl<'a, F, Link> ContentUnwrap<F, Link>
 where
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<TW, F>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
     pub fn new() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
+            sig_pk: ed25519::PublicKey::default(),
             _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<TW, F, Link, Store> message::ContentUnwrap<TW, F, Store> for ContentUnwrap<TW, F, Link>
+#[async_trait(?Send)]
+impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
 where
-    TW: SpongosTbitWord + trinary::TritWord,
-    F: PRP<TW>,
+    F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<TW, F>,
-    Store: LinkStore<TW, F, <Link as HasLink>::Rel>,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn unwrap<'c, IS: io::IStream<TW>>(
+    async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
-        ctx: &'c mut unwrap::Context<TW, F, IS>,
-    ) -> Result<&'c mut unwrap::Context<TW, F, IS>> {
-        let mac = Mac(spongos::Spongos::<TW, F>::MAC_SIZE);
-        ctx.join(store, &mut self.link)?.commit()?.squeeze(&mac)?;
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        ctx.join(store, &mut self.link)?
+            .absorb(&mut self.sig_pk)?
+            .commit()?
+            .ed25519(&self.sig_pk, HashSig)?;
         Ok(ctx)
     }
 }

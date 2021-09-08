@@ -18,6 +18,9 @@ pub mod subscribe;
 /// Sequence message.
 pub mod sequence;
 
+/// Unsubscribe message.
+pub mod unsubscribe;
+
 /// Announcement Message Type
 pub const ANNOUNCE: u8 = 0;
 /// Keyload Message Type
@@ -33,5 +36,3 @@ pub const SUBSCRIBE: u8 = 5;
 /// Unsubscribe Message Type
 pub const UNSUBSCRIBE: u8 = 6;
 
-// Unsubscribe message.
-// pub mod unsubscribe;

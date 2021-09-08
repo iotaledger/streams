@@ -259,6 +259,14 @@ impl<Trans: Transport + Clone> Author<Trans> {
         self.user.receive_subscribe(link).await
     }
 
+    /// Receive and process an unsubscribe message.
+    ///
+    ///  # Arguments
+    ///  * `link` - Address of the message to be processed
+    pub async fn receive_unsubscribe(&mut self, link: &Address) -> Result<()> {
+        self.user.receive_unsubscribe(link).await
+    }
+
     /// Receive and process a signed packet message.
     ///
     ///  # Arguments
