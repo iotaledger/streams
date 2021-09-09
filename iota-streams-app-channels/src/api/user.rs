@@ -313,7 +313,7 @@ where
     /// in the message.
     pub async fn handle_announcement(
         &mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
         let preparsed = msg.parse_header().await?;
@@ -398,7 +398,7 @@ where
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
-    pub async fn handle_subscribe(&mut self, msg: BinaryMessage<F, Link>, info: LS::Info) -> Result<()> {
+    pub async fn handle_subscribe(&mut self, msg: BinaryMessage<Link>, info: LS::Info) -> Result<()> {
         let preparsed = msg.parse_header().await?;
         // TODO: check content type
 
@@ -522,7 +522,7 @@ where
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or Ed25519 private key (if any).
     pub async fn handle_keyload(
         &mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, bool>> {
         let preparsed = msg.parse_header().await?;
@@ -624,7 +624,7 @@ where
     /// Verify new Author's MSS public key and update Author's MSS public key.
     pub async fn handle_signed_packet(
         &'_ mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, (ed25519::PublicKey, Bytes, Bytes)>> {
         // TODO: pass author_pk to unwrap
@@ -715,7 +715,7 @@ where
     /// Get public payload, decrypt masked payload and verify MAC.
     pub async fn handle_tagged_packet(
         &mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, (Bytes, Bytes)>> {
         let preparsed = msg.parse_header().await?;
@@ -841,7 +841,7 @@ where
     // Fetch unwrapped sequence message to fetch referenced message
     pub async fn handle_sequence(
         &mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
         store: bool,
     ) -> Result<GenericMessage<Link, sequence::ContentUnwrap<Link>>> {

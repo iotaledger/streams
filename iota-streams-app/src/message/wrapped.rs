@@ -41,7 +41,7 @@ where
 
 /// Result of wrapping the message.
 pub struct WrappedMessage<F, Link: HasLink> {
-    pub message: BinaryMessage<F, Link>,
+    pub message: BinaryMessage<Link>,
     pub wrapped: WrapState<F, Link>,
 }
 

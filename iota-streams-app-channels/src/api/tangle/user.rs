@@ -441,7 +441,8 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// * `link` - Address of message to act as root of previous message fetching
     pub async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
-        let header = msg.binary.parse_header().await?.header;
+        let preparsed: Preparsed = msg.binary.parse_header().await?;
+        let header = preparsed.header;
 
         let prev_msg_link = Address::from_bytes(&header.previous_msg_link.0);
         let prev_msg = self.transport.recv_message(&prev_msg_link).await?;
@@ -486,7 +487,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         loop {
             // Forget TangleMessage and timestamp
             let msg = msg0.binary;
-            let preparsed = msg.parse_header().await?;
+            let preparsed: Preparsed = msg.parse_header().await?;
             let link = preparsed.header.link;
             let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
@@ -530,7 +531,8 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// the message itself
     async fn parse_msg_info(&mut self, link: &Address) -> Result<(Address, u8, Message)> {
         let msg = self.transport.recv_message(link).await?;
-        let header = msg.binary.parse_header().await?.header;
+        let preparsed: Preparsed = msg.binary.parse_header().await?;
+        let header = preparsed.header;
         let link = Address::from_bytes(&header.previous_msg_link.0);
         Ok((link, header.content_type, msg))
     }
