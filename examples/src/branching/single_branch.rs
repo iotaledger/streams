@@ -80,7 +80,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
-    author.store_psk(pskid.clone(), psk.clone())?;
+    author.store_psk(pskid, psk)?;
     subscriberC.store_psk(pskid, psk)?;
 
     // Fetch state of subscriber for comparison after reset
