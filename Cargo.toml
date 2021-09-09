@@ -30,8 +30,6 @@ members = [
 # Members selected by default by Cargo commands like `test`
 default-members = [
     "iota-streams-core",
-    "iota-streams-core-edsig",
-    "iota-streams-core-keccak",
     "iota-streams-ddml",
     "iota-streams-app",
     "iota-streams-app-channels",
