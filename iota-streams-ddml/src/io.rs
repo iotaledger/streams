@@ -1,7 +1,6 @@
 //! Lightweight abstraction, a trinary equivalent of `Write` trait allowing access to trinary slices.
 
 use iota_streams_core::{
-    panic_if_not,
     prelude::{
         hex,
         String,
@@ -19,7 +18,7 @@ pub trait OStream {
     /// Try advance and panic in case of error.
     fn advance<'a>(&'a mut self, n: usize) -> &'a mut [u8] {
         let r = self.try_advance(n);
-        panic_if_not(r.is_ok());
+        assert!(r.is_ok());
         r.unwrap()
     }
 
@@ -40,7 +39,7 @@ pub trait IStream {
     /// Try advance and panic in case of error.
     fn advance<'a>(&'a mut self, n: usize) -> &'a [u8] {
         let r = self.try_advance(n);
-        panic_if_not(r.is_ok());
+        assert!(r.is_ok());
         r.unwrap()
     }
 

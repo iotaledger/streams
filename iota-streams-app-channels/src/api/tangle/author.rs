@@ -12,7 +12,6 @@ use crate::api::tangle::{
 
 use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
-    panic_if_not,
     prelude::{
         String,
         Vec,
@@ -160,7 +159,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
         let ann = author.user.user.announce().await?;
         let retrieved: Message = author.user.transport.recv_message(announcement).await?;
-        panic_if_not(retrieved.binary == ann.message);
+        assert!(retrieved.binary == ann.message);
 
         author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
         author.sync_state().await;

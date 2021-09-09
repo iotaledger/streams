@@ -55,10 +55,6 @@ pub fn err<T>(err: Errors) -> Result<T, anyhow::Error> {
     bail!(err)
 }
 
-pub fn panic_if_not(cond: bool) {
-    assert!(cond)
-}
-
 pub fn wrapped_err<T: Debug>(err: Errors, src: WrappedError<T>) -> anyhow::Error {
     anyhow!("\n\tStreams Error: {}\n\t\tCause: {:?}", err, src.0)
 }
