@@ -29,11 +29,13 @@ use iota_streams::{
             Rc,
             String,
         },
-        psk::pskid_to_hex_string,
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
     },
     ddml::types::*,
 };
-use iota_streams::core::psk::pskid_from_hex_str;
 
 #[wasm_bindgen]
 pub struct Subscriber {
@@ -428,13 +430,14 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn remove_psk(self, pskid_str: String) -> Result<()> {
-        pskid_from_hex_str(&pskid_str)
-            .map_or_else(
+        pskid_from_hex_str(&pskid_str).map_or_else(
             |err| Err(JsValue::from_str(&err.to_string())),
-            |pskid| self.subscriber
-                .borrow_mut()
-                .remove_psk(pskid)
-                .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
-            )
+            |pskid| {
+                self.subscriber
+                    .borrow_mut()
+                    .remove_psk(pskid)
+                    .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
+            },
+        )
     }
 }

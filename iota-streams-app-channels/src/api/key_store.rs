@@ -1,5 +1,6 @@
 use core::fmt;
 
+use core::borrow::BorrowMut;
 use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
     err,
@@ -13,7 +14,6 @@ use iota_streams_core::{
     Result,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
-use core::borrow::BorrowMut;
 
 pub trait KeyStore<Info, F: PRP>: Default {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>

@@ -416,10 +416,8 @@ where
 
     pub fn insert_subscriber(&mut self, pk: ed25519::PublicKey) -> Result<()> {
         let ref_link = self.appinst.as_ref().unwrap().rel().clone();
-        self.key_store.insert_cursor(
-            pk.into(),
-            Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM),
-        )
+        self.key_store
+            .insert_cursor(pk.into(), Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM))
     }
 
     /// Prepare Subscribe message.
@@ -427,26 +425,26 @@ where
         &'a self,
         link_to: &'a Link,
     ) -> Result<PreparedMessage<F, Link, unsubscribe::ContentWrap<'a, F, Link>>> {
-         match self.get_seq_no() {
-             Some(seq_no) => {
-                 let msg_link = self
-                     .link_gen
-                     .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
-                 let header = HDF::new(msg_link)
-                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
-                     .with_content_type(UNSUBSCRIBE)?
-                     .with_payload_length(1)?
-                     .with_seq_num(seq_no)
-                     .with_identifier(&self.sig_kp.public.into());
-                 let content = unsubscribe::ContentWrap {
-                     link: link_to.rel(),
-                     sig_kp: &self.sig_kp,
-                     _phantom: PhantomData,
-                 };
-                 Ok(PreparedMessage::new(header, content))
-             }
-             None => err!(SeqNumRetrievalFailure),
-         }
+        match self.get_seq_no() {
+            Some(seq_no) => {
+                let msg_link = self
+                    .link_gen
+                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
+                let header = HDF::new(msg_link)
+                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
+                    .with_content_type(UNSUBSCRIBE)?
+                    .with_payload_length(1)?
+                    .with_seq_num(seq_no)
+                    .with_identifier(&self.sig_kp.public.into());
+                let content = unsubscribe::ContentWrap {
+                    link: link_to.rel(),
+                    sig_kp: &self.sig_kp,
+                    _phantom: PhantomData,
+                };
+                Ok(PreparedMessage::new(header, content))
+            }
+            None => err!(SeqNumRetrievalFailure),
+        }
     }
 
     /// Unsubscribe from the channel.
@@ -480,7 +478,7 @@ where
                 self.key_store.remove(&id)?;
                 Ok(())
             }
-            false => err(UserNotRegistered)
+            false => err(UserNotRegistered),
         }
     }
 

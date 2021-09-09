@@ -35,4 +35,3 @@ pub const TAGGED_PACKET: u8 = 4;
 pub const SUBSCRIBE: u8 = 5;
 /// Unsubscribe Message Type
 pub const UNSUBSCRIBE: u8 = 6;
-

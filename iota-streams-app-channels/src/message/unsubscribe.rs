@@ -26,18 +26,21 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
-    Result,
     async_trait,
     prelude::Box,
     sponge::prp::PRP,
+    Result,
 };
+use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{LinkStore, EmptyLinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
-use iota_streams_core_edsig::signature::ed25519;
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
@@ -65,10 +68,10 @@ where
 #[async_trait(?Send)]
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
-     F: PRP,
-     Link: HasLink,
-     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-     Store: LinkStore<F, <Link as HasLink>::Rel>,
+    F: PRP,
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
     async fn wrap<'c, OS: io::OStream>(
         &self,
