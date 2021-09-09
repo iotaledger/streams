@@ -117,7 +117,8 @@ async fn main_client() {
 
 fn new_seed() -> String {
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
-    (0..10).map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
+    (0..10)
+        .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
         .collect::<String>()
 }
 
@@ -131,6 +132,6 @@ async fn main() {
     match env::var("TRANSPORT").ok().as_deref() {
         Some("tangle") => main_client().await,
         Some("bucket") | None => main_pure().await,
-        Some(other) => panic!("Unexpected TRANSPORT '{}'", other)
+        Some(other) => panic!("Unexpected TRANSPORT '{}'", other),
     }
 }

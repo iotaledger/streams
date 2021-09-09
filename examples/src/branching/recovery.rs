@@ -60,7 +60,9 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     for i in 1..6 {
         println!("Signed packet {} - Author", i);
         previous_msg_link = {
-            let (msg, seq) = author.send_signed_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+            let (msg, seq) = author
+                .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
+                .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
             panic_if_not(seq.is_none());
             msg
@@ -75,7 +77,9 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     for i in 6..11 {
         println!("Tagged packet {} - SubscriberA", i);
         previous_msg_link = {
-            let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+            let (msg, seq) = subscriberA
+                .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
+                .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
             panic_if_not(seq.is_none());
             msg
@@ -108,7 +112,9 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("States match...\nSending next sequenced message...");
-    let (last_msg, _seq) = new_author.send_signed_packet(latest_link, &public_payload, &masked_payload).await?;
+    let (last_msg, _seq) = new_author
+        .send_signed_packet(latest_link, &public_payload, &masked_payload)
+        .await?;
     println!("  msg => <{}> <{:x}>", last_msg.msgid, last_msg.to_msg_index());
 
     // Wait a second for message to propagate
