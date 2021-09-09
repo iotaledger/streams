@@ -12,7 +12,7 @@ use iota_streams::{
         },
     },
     core::{
-        panic_if_not,
+        assert,
         print,
         println,
         try_or,
@@ -92,7 +92,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     let anchor_msg_link = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         println!("  msg => <{}> {}", msg.msgid, msg);
-        panic_if_not(seq.is_none());
+        assert!(seq.is_none());
         print!("  Author     : {}", author);
         msg
     };
@@ -114,7 +114,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             .send_signed_packet(&anchor_msg_link, &empty_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> {}", msg.msgid, msg.to_msg_index());
-        panic_if_not(seq.is_none());
+        assert!(seq.is_none());
     }
     print!("  Author     : {}", author);
 

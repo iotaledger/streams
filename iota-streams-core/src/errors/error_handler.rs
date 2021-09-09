@@ -27,12 +27,12 @@ macro_rules! err {
 }
 
 #[macro_export]
-macro_rules! panic_if_not {
+macro_rules! assert{
     ($cond:expr) => {{
         if $crate::LOCATION_LOG && !$cond {
             $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
-        panic_if_not($cond)
+        ::core::assert!($cond)
     }};
 }
 
