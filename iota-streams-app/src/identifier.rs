@@ -32,7 +32,7 @@ use iota_streams_ddml::{
 use crate::message::*;
 use iota_streams_core::Errors::PublicKeyGenerationFailure;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum Identifier {
     EdPubKey(ed25519::PublicKeyWrap),
     PskId(PskId),
