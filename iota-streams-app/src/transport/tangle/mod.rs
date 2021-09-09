@@ -1,5 +1,4 @@
 //! Tangle-specific transport definitions.
-
 use core::{
     convert::{
         AsMut,
@@ -10,9 +9,8 @@ use core::{
     str::FromStr,
 };
 
-use iota_streams_core::Result;
-
 use iota_streams_core::{
+    anyhow,
     crypto::hashes::{
         blake2b,
         Digest,
@@ -36,8 +34,11 @@ use iota_streams_core::{
     Error,
     Errors::{
         BadHexFormat,
+        InvalidChannelAddress,
+        InvalidMsgId,
         MalformedAddressString,
     },
+    Result,
     WrappedError,
 };
 use iota_streams_core_edsig::signature::ed25519;
@@ -82,8 +83,7 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
 }
 
 // TODO: Use better feature to detect `chrono::Utc::new()`.
-#[cfg(all(feature = "std"))] //, not(feature = "wasmbind")
-                             //#[cfg(all(feature = "std"))]
+#[cfg(feature = "std")]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
     pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
@@ -94,32 +94,6 @@ impl<F> TangleMessage<F> {
     }
 }
 
-// #[cfg(feature = "wasmbind")]
-// impl<F> TangleMessage<F> {
-// Create TangleMessage from BinaryMessage and add the current timestamp.
-// pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
-// let timestamp = js_sys::Date::new_0().value_of() as u64;
-// Self {
-// binary: msg,
-// timestamp,
-// }
-// }
-// }
-// #[cfg(feature = "wasmbind")]
-// impl<F> TangleMessage<F> {
-// Create TangleMessage from BinaryMessage and add the current timestamp.
-// pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
-// Self {
-// binary: msg,
-// timestamp: wasm_timer::SystemTime::now()
-// .duration_since(wasm_timer::SystemTime::UNIX_EPOCH)
-// .unwrap()
-// .as_millis() as u64,
-// }
-// }
-// }
-
-//#[cfg(all(not(feature = "std"), not(feature = "wasmbind")))]
 #[cfg(not(feature = "std"))]
 impl<F> TangleMessage<F> {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
@@ -205,7 +179,7 @@ impl<F> TangleMessage<F> {
 /// `{:x?}` or `{:#x?}` to render them as hexadecimal arrays.
 ///
 /// [Display]: #impl-Display
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct TangleAddress {
     pub appinst: AppInst,
     pub msgid: MsgId,
@@ -217,7 +191,7 @@ impl TangleAddress {
     }
 
     /// Hash the content of the TangleAddress using `Blake2b256`
-    fn to_blake2b(&self) -> NBytes<U32> {
+    fn to_blake2b(self) -> NBytes<U32> {
         let hasher = blake2b::Blake2b256::new();
         let hash = hasher.chain(&self.appinst).chain(&self.msgid).finalize();
         hash.into()
@@ -228,7 +202,7 @@ impl TangleAddress {
     /// Currently this hash is computed with [Blake2b256].
     ///
     /// [Blake2b256]: https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE2|Blake2b256
-    pub fn to_msg_index(&self) -> NBytes<U32> {
+    pub fn to_msg_index(self) -> NBytes<U32> {
         self.to_blake2b()
     }
 
@@ -292,8 +266,8 @@ impl HasLink for TangleAddress {
 
     fn from_base_rel(base: &AppInst, rel: &MsgId) -> Self {
         Self {
-            appinst: base.clone(),
-            msgid: rel.clone(),
+            appinst: *base,
+            msgid: *rel,
         }
     }
 
@@ -368,7 +342,7 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
 
     /// Used by Author to get announcement message id, it's just stored internally by link generator
     fn get(&self) -> TangleAddress {
-        self.addr.clone()
+        self.addr
     }
 
     /// Used by Subscriber to initialize link generator with the same state as Author
@@ -379,7 +353,7 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     /// Used by users to pseudo-randomly generate a new uniform message link from a cursor
     fn uniform_link_from(&self, cursor: Cursor<&MsgId>) -> TangleAddress {
         TangleAddress {
-            appinst: self.addr.appinst.clone(),
+            appinst: self.addr.appinst,
             msgid: self.gen_uniform_msgid(cursor),
         }
     }
@@ -387,7 +361,7 @@ impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     /// Used by users to pseudo-randomly generate a new message link from a cursor
     fn link_from<T: AsRef<[u8]>>(&self, id: T, cursor: Cursor<&MsgId>) -> TangleAddress {
         TangleAddress {
-            appinst: self.addr.appinst.clone(),
+            appinst: self.addr.appinst,
             msgid: self.gen_msgid(id.as_ref(), cursor),
         }
     }
@@ -398,7 +372,7 @@ pub type AppInstSize = U40;
 pub const APPINST_SIZE: usize = 40;
 
 /// 40 byte Application Instance identifier.
-#[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 pub struct AppInst {
     pub(crate) id: NBytes<AppInstSize>,
 }
@@ -412,12 +386,15 @@ impl AppInst {
             id: unsafe { core::mem::transmute(id) },
         }
     }
-}
 
-impl AppInst {
     /// Get the hexadecimal representation of the AppInst
     pub fn to_hex_string(&self) -> String {
         format!("{:x}", self.id)
+    }
+
+    /// Get a view into the internal byte array that constitutes an `AppInst`
+    pub fn as_bytes(&self) -> &[u8] {
+        self.id.as_slice()
     }
 }
 
@@ -431,19 +408,16 @@ impl<'a> From<&'a [u8]> for AppInst {
 }
 
 impl FromStr for AppInst {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         // TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
         // currently lowercase hex
-        hex::decode(s).map_or(Err(()), |x| {
-            if x.len() == AppInstSize::USIZE {
-                Ok(AppInst {
-                    id: *<&NBytes<AppInstSize>>::from(&x[..]),
-                })
-            } else {
-                Err(())
-            }
-        })
+        let appinst_bin = hex::decode(s).map_err(|e| wrapped_err!(BadHexFormat(s.into()), WrappedError(e)))?;
+        (appinst_bin.len() == AppInstSize::USIZE)
+            .then(|| AppInst {
+                id: *<&NBytes<AppInstSize>>::from(&appinst_bin[..]),
+            })
+            .ok_or_else(|| anyhow!(InvalidChannelAddress))
     }
 }
 
@@ -513,7 +487,7 @@ pub type MsgIdSize = U12;
 pub const MSGID_SIZE: usize = 12;
 
 /// 12 byte Message Identifier unique within application instance.
-#[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 pub struct MsgId {
     pub(crate) id: NBytes<MsgIdSize>,
 }
@@ -522,6 +496,11 @@ impl MsgId {
     /// Get the hexadecimal representation of the MsgId
     pub fn to_hex_string(&self) -> String {
         format!("{:x}", self.id)
+    }
+
+    /// Get a view into the internal byte array that constitutes an `MsgId`
+    pub fn as_bytes(&self) -> &[u8] {
+        self.id.as_slice()
     }
 }
 
@@ -535,19 +514,16 @@ impl<'a> From<&'a [u8]> for MsgId {
 }
 
 impl FromStr for MsgId {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         // TODO: format for `s`: Bech32 (https://github.com/rust-bitcoin/rust-bech32)
         // currently lowercase hex
-        hex::decode(s).map_or(Err(()), |x| {
-            if x.len() == MsgIdSize::USIZE {
-                Ok(MsgId {
-                    id: *<&NBytes<MsgIdSize>>::from(&x[..]),
-                })
-            } else {
-                Err(())
-            }
-        })
+        let msgid_bin = hex::decode(s).map_err(|e| wrapped_err!(BadHexFormat(s.into()), WrappedError(e)))?;
+        (msgid_bin.len() == MsgIdSize::USIZE)
+            .then(|| MsgId {
+                id: *<&NBytes<MsgIdSize>>::from(&msgid_bin[..]),
+            })
+            .ok_or_else(|| anyhow!(InvalidMsgId))
     }
 }
 
@@ -616,5 +592,5 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
 
 /// Tangle-specific Transport Client. Uses [iota_client](https://github.com/iotaledger/iota.rs/tree/dev/iota-client)
 /// crate for node interfacing
-#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+#[cfg(any(feature = "client", feature = "wasm-client"))]
 pub mod client;

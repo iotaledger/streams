@@ -13,7 +13,6 @@ use iota_streams::{
     },
     core::{
         panic_if_not,
-        prelude::Rc,
         print,
         println,
         try_or,
@@ -23,9 +22,7 @@ use iota_streams::{
     ddml::types::*,
 };
 
-use core::cell::RefCell;
-
-pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelType, seed: &str) -> Result<()> {
+pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed: &str) -> Result<()> {
     let mut author = Author::new(seed, channel_impl, transport.clone());
     println!("Author single depth?: {}", author.is_single_depth());
 
@@ -37,7 +34,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nAnnounce Channel");
     let announcement_link = {
-        let msg = author.send_announce()?;
+        let msg = author.send_announce().await?;
         println!("  msg => <{}> {}", msg.msgid, msg);
         print!("  Author     : {}", author);
         msg
@@ -46,13 +43,13 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nHandle Announce Channel");
     {
-        subscriberA.receive_announcement(&announcement_link)?;
+        subscriberA.receive_announcement(&announcement_link).await?;
         print!("  SubscriberA: {}", subscriberA);
         try_or!(
             author.channel_address() == subscriberA.channel_address(),
             ApplicationInstanceMismatch(String::from("A"))
         )?;
-        subscriberB.receive_announcement(&announcement_link)?;
+        subscriberB.receive_announcement(&announcement_link).await?;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(
             author.channel_address() == subscriberB.channel_address(),
@@ -79,7 +76,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nSubscribe A");
     let subscribeA_link = {
-        let msg = subscriberA.send_subscribe(&announcement_link)?;
+        let msg = subscriberA.send_subscribe(&announcement_link).await?;
         println!("  msg => <{}> {}", msg.msgid, msg);
         print!("  SubscriberA: {}", subscriberA);
         msg
@@ -87,13 +84,13 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nHandle Subscribe A");
     {
-        author.receive_subscribe(&subscribeA_link)?;
+        author.receive_subscribe(&subscribeA_link).await?;
         print!("  Author     : {}", author);
     }
 
     println!("\nShare keyload for everyone [SubscriberA, PSK]");
     let anchor_msg_link = {
-        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
+        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         println!("  msg => <{}> {}", msg.msgid, msg);
         panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
@@ -102,9 +99,9 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
     println!("\nHandle Keyload");
     {
-        subscriberA.receive_keyload(&anchor_msg_link)?;
+        subscriberA.receive_keyload(&anchor_msg_link).await?;
         print!("  SubscriberA: {}", subscriberA);
-        subscriberB.receive_keyload(&anchor_msg_link)?;
+        subscriberB.receive_keyload(&anchor_msg_link).await?;
         print!("  SubscriberB: {}", subscriberB);
     }
 
@@ -113,7 +110,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
         let mut message = String::from("Message ");
         message.push_str(&i.to_string());
         let masked_payload = Bytes(message.as_bytes().to_vec());
-        let (msg, seq) = author.send_signed_packet(&anchor_msg_link, &empty_payload, &masked_payload)?;
+        let (msg, seq) = author.send_signed_packet(&anchor_msg_link, &empty_payload, &masked_payload).await?;
         println!("  msg => <{}> {}", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
     }
@@ -122,7 +119,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
     println!("\nSubscriber A fetching all messages");
     let mut unwrapped = Vec::new();
     loop {
-        let msgs = subscriberA.fetch_next_msgs();
+        let msgs = subscriberA.fetch_next_msgs().await;
         if msgs.is_empty() { break }
         unwrapped.extend(msgs);
     }
@@ -140,7 +137,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
 
 
     println!("\nSubscriber B fetching 4th message");
-    let msg = subscriberB.receive_msg_by_sequence_number(&anchor_msg_link, 4)?;
+    let msg = subscriberB.receive_msg_by_sequence_number(&anchor_msg_link, 4).await?;
     if let MessageContent::SignedPacket {pk: _, public_payload: _, masked_payload } = &msg.body {
         println!("  Msg => <{}>: {}", msg.link.msgid, String::from_utf8(masked_payload.0.to_vec())?);
         assert_eq!(masked_payload.0, "Message 4".as_bytes().to_vec());
@@ -149,7 +146,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelTyp
     }
 
     println!("\nSubscriber C trying to fetch 4th message");
-    let msg = subscriberC.receive_msg_by_sequence_number(&anchor_msg_link, 4);
+    let msg = subscriberC.receive_msg_by_sequence_number(&anchor_msg_link, 4).await;
     try_or!(msg.is_err(), SubscriberAccessMismatch("C".to_string()))?;
     println!("Subscriber C failed to read message, as intended\n");
     Ok(())
