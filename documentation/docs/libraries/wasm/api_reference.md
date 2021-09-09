@@ -139,6 +139,13 @@ Process a subscription message by its link.
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of subscription message     |
 
+#### _async -_ receive_unsubscribe(link)
+Process an unsubscription message by its link.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| link            | [`address`](#Address)         | Address of unsubscription message   |
+
 #### _async -_ receive_tagged_packet(link): [UserResponse](#UserResponse)
 Receive a tagged packet by its link.
 
@@ -226,6 +233,26 @@ Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use 
 
 **Returns:** A PskId String representing the Psk in store.
 
+#### remove_psk(pskid)
+Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key Id (PskId)
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| pskid           | String                                 | PskId string representing the Psk in store |
+
+#### store_new_subscriber(pk)
+Store the ed25519 Public Key identifier of a predefined subscriber into the Author instance
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| pk              | String                                  | Public Key string of Subscriber |
+
+#### auth_remove_subscriber(pk)
+Removes a Subscriber from the Author instance using their ed25519 Public Key
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| pk              | String                                 | Public Key string of Subscriber |
 
 ### Subscriber
 Additional user implementations of a Channel. Can publish and read from public branches, and 
@@ -330,6 +357,14 @@ Send a subscription message attached to an announcement message link.
 | --------------- | ------------------- | --------------------------------- |
 | link            | [`address`](#Address) | Address of announcement message |
 **Returns:** A User Response wrapper around the subscribe message.
+
+#### _async -_ send_unsubscribe(link): [UserResponse](#UserResponse)
+Send an unsubscription message attached to the user subscription message link.
+
+| Param           | Type                | Description                       |
+| --------------- | ------------------- | --------------------------------- |
+| link            | [`address`](#Address) | Address of subscription message |
+**Returns:** A User Response wrapper around the unsubscribe message.
 
 #### _async -_ send_tagged_packet(link, public_payload, masked_payload): [UserResponse](#UserResponse)
 Send a tagged packet message linked to a previous message (usually the announcement in a multi branch).
@@ -447,6 +482,13 @@ Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use 
 | psk             | String                        | Pre shared key in string format     |
 
 **Returns:** A PskId String representing the Psk in store.
+
+#### remove_psk(pskid)
+Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key Id (PskId)
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| pskid           | String                                 | PskId string representing the Psk in store |
 
 #### reset_state()
 Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
