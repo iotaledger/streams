@@ -232,9 +232,9 @@ impl Subscriber {
     pub async fn send_unsubscribe(self, link: Address) -> Result<UserResponse> {
         self.subscriber
             .borrow_mut()
-            .send_unsubscribe(link.to_inner())
+            .send_unsubscribe(link.as_inner())
             .await
-            .map(|link| UserResponse::new(Address::from_string(link.to_string()), None, None))
+            .map(|link| UserResponse::new(link.into(), None, None))
             .into_js_result()
     }
 
