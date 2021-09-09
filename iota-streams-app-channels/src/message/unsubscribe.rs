@@ -86,24 +86,11 @@ where
     }
 }
 
+#[derive(Default)]
 pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) sig_pk: ed25519::PublicKey,
     _phantom: std::marker::PhantomData<(F, Link)>,
-}
-
-impl<'a, F, Link> ContentUnwrap<F, Link>
-where
-    Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
-{
-    pub fn new() -> Self {
-        Self {
-            link: <<Link as HasLink>::Rel as Default>::default(),
-            sig_pk: ed25519::PublicKey::default(),
-            _phantom: std::marker::PhantomData,
-        }
-    }
 }
 
 #[async_trait(?Send)]

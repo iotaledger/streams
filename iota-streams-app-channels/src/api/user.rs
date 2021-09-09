@@ -457,7 +457,7 @@ where
         preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, unsubscribe::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = unsubscribe::ContentUnwrap::new();
+        let content = unsubscribe::ContentUnwrap::default();
         preparsed.unwrap(&self.link_store, content).await
     }
 
