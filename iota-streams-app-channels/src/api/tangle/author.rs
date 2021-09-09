@@ -263,15 +263,14 @@ impl<Trans: Transport + Clone> Author<Trans> {
         self.user.fetch_next_msgs().await
     }
 
-    /// Iteratively fetches next message until no new messages can be found, and return a vector
+    /// Iteratively fetches next messages until no new messages can be found, and return a vector
     /// containing all of them.
     pub async fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
-        let mut exists = true;
         let mut msgs = Vec::new();
-        while exists {
+        loop {
             let next_msgs = self.fetch_next_msgs().await;
             if next_msgs.is_empty() {
-                exists = false
+                break;
             } else {
                 msgs.extend(next_msgs)
             }
@@ -291,9 +290,11 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
     /// Iteratively fetches next messages until internal state has caught up
     pub async fn sync_state(&mut self) {
-        let mut exists = true;
-        while exists {
-            exists = !self.fetch_next_msgs().await.is_empty()
+        loop {
+            let next_msgs = self.fetch_next_msgs().await;
+            if next_msgs.is_empty() {
+                break;
+            }
         }
     }
 
