@@ -10,24 +10,24 @@ The API is spread out across three categories:
 Main user implementation of a Channel. Generates the channel, processes subscriptions 
 and 
 
-#### new(seed, options, multi_branching): Author 
+#### new(seed, options, channel_type): Author 
 Generates an Author instance 
 
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
 | seed            | `string`            | Unique user seed   |
 | options         | `SendOptions`       | Options for Client |
-| multi_branching | `bool`              | Channel Type       | 
+| implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
 **Returns:** An Author instance for administrating a channel.
 
-#### from_client(client, seed, multi_branching): Author 
+#### from_client(client, seed, implementation): Author 
 Create an Author instance from a client
 
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
 | client          | [`Client`](#Client) | A Client Instance  |
 | seed            | `string`            | Unique user seed   |
-| multi_branching | `bool`              | Channel Type       | 
+| implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
 **Returns:** An Author instance for administrating a channel.
 
 #### import(client, bytes, password): Author 
@@ -47,6 +47,17 @@ Export an Author instance as an encrypted array using a given password
 | --------------- | ------------------- | ------------------------- |
 | password        | `string`            | Key to encrypt            | 
 **Returns:** Binary array representing an encrypted state of the author.
+
+#### recover(seed, ann_address, implementation, options): Author
+Recover an Author instance from scratch using the known startup configurations
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+| seed            | `string`            | Unique user seed          |
+| ann_address     | [`Address`](#Address) | Announcement message address for validation | 
+| implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
+| options         | `SendOptions`       | Options for Client        |
+**Returns:** A recovered Author instance for administrating a channel.
 
 #### clone(): Author 
 Generate a copy of the Author instance for consumption by asynchronous functions
@@ -266,6 +277,16 @@ Export a Subscriber instance as an encrypted array using a given password
 | --------------- | ------------------- | ------------------------- |
 | password        | `string`            | Key to encrypt            | 
 **Returns:** Binary array representing an encrypted state of the subscriber.
+
+#### recover(seed, ann_address, implementation, options): Subscriber
+Recover a Subscriber instance from scratch using the known startup configurations
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+| seed            | `string`            | Unique user seed          |
+| ann_address     | [`Address`](#Address) | Announcement message address for fetching | 
+| options         | `SendOptions`       | Options for Client        |
+**Returns:** A recovered Subscriber instance for reading from and writing to a channel.
 
 #### clone(): Subscriber 
 Generate a copy of the Subscriber instance for consumption by asynchronous functions
