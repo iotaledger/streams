@@ -89,23 +89,12 @@ impl Author {
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
-        ApiAuthor::recover(
-            &seed,
-            &ann_address
-                .try_into()
-                .map_or_else(|_err| ApiAddress::default(), |addr| addr),
-            implementation.into(),
-            transport,
-        )
-        .await
-        .map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |auth| {
-                Ok(Author {
-                    author: Rc::new(RefCell::new(auth)),
-                })
-            },
-        )
+        ApiAuthor::recover(&seed, ann_address.as_inner(), implementation.into(), transport)
+            .await
+            .map(|auth| Author {
+                author: Rc::new(RefCell::new(auth)),
+            })
+            .into_js_result()
     }
 
     pub fn clone(&self) -> Author {

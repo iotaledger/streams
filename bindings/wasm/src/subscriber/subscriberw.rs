@@ -67,22 +67,12 @@ impl Subscriber {
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
 
-        ApiSubscriber::recover(
-            &seed,
-            &ann_address
-                .try_into()
-                .map_or_else(|_err| ApiAddress::default(), |addr| addr),
-            transport,
-        )
-        .await
-        .map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |sub| {
-                Ok(Subscriber {
-                    subscriber: Rc::new(RefCell::new(sub)),
-                })
-            },
-        )
+        ApiSubscriber::recover(&seed, ann_address.as_inner(), transport)
+            .await
+            .map(|sub| Subscriber {
+                subscriber: Rc::new(RefCell::new(sub)),
+            })
+            .into_js_result()
     }
 
     pub fn clone(&self) -> Subscriber {
