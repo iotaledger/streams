@@ -201,13 +201,9 @@ impl Author {
     pub async fn receive_unsubscribe(self, link_to: Address) -> Result<()> {
         self.author
             .borrow_mut()
-            .receive_unsubscribe(
-                &link_to
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr| addr),
-            )
+            .receive_unsubscribe(link_to.as_inner())
             .await
-            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |_| Ok(()))
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -353,12 +349,7 @@ impl Author {
     pub fn store_new_subscriber(&self, pk_str: String) -> Result<()> {
         public_key_from_string(&pk_str).map_or_else(
             |err| Err(err),
-            |pk| {
-                self.author
-                    .borrow_mut()
-                    .store_new_subscriber(pk)
-                    .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
-            },
+            |pk| self.author.borrow_mut().store_new_subscriber(pk).into_js_result(),
         )
     }
 
@@ -366,12 +357,7 @@ impl Author {
     pub fn remove_subscriber(&self, pk_str: String) -> Result<()> {
         public_key_from_string(&pk_str).map_or_else(
             |err| Err(err),
-            |pk| {
-                self.author
-                    .borrow_mut()
-                    .remove_subscriber(pk)
-                    .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
-            },
+            |pk| self.author.borrow_mut().remove_subscriber(pk).into_js_result(),
         )
     }
 
@@ -379,12 +365,7 @@ impl Author {
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
         pskid_from_hex_str(&pskid_str).map_or_else(
             |err| Err(JsValue::from_str(&err.to_string())),
-            |pskid| {
-                self.author
-                    .borrow_mut()
-                    .remove_psk(pskid)
-                    .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
-            },
+            |pskid| self.author.borrow_mut().remove_psk(pskid).into_js_result(),
         )
     }
 }

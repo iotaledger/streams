@@ -232,16 +232,10 @@ impl Subscriber {
     pub async fn send_unsubscribe(self, link: Address) -> Result<UserResponse> {
         self.subscriber
             .borrow_mut()
-            .send_unsubscribe(
-                &link
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
-            )
+            .send_unsubscribe(link.to_inner())
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |link| Ok(UserResponse::new(Address::from_string(link.to_string()), None, None)),
-            )
+            .map(|link| UserResponse::new(Address::from_string(link.to_string()), None, None))
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -342,12 +336,7 @@ impl Subscriber {
     pub fn remove_psk(self, pskid_str: String) -> Result<()> {
         pskid_from_hex_str(&pskid_str).map_or_else(
             |err| Err(JsValue::from_str(&err.to_string())),
-            |pskid| {
-                self.subscriber
-                    .borrow_mut()
-                    .remove_psk(pskid)
-                    .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
-            },
+            |pskid| self.subscriber.borrow_mut().remove_psk(pskid).into_js_result(),
         )
     }
 }
