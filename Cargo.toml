@@ -24,13 +24,24 @@ members = [
     "iota-streams-app",
     "iota-streams-app-channels",
     "iota-streams-app-channels-example",
-    #"iota-streams-app-channels-js",
     "bindings/wasm",
 ]
+
+# Members selected by default by Cargo commands like `test`
+default-members = [
+    "iota-streams-core",
+    "iota-streams-core-edsig",
+    "iota-streams-core-keccak",
+    "iota-streams-ddml",
+    "iota-streams-app",
+    "iota-streams-app-channels",
+    # TODO: Fix clippy warnings in wasm bindings
+    # "bindings/wasm",
+]
+
 exclude = [
     "bindings/c",
     "examples",
-    # "bindings/wasm",
 ]
 
 [features]
