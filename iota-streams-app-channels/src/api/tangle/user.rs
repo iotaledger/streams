@@ -177,7 +177,7 @@ impl<Trans> User<Trans> {
     async fn process_sequence(&mut self, msg: BinaryMessage, store: bool) -> Result<Address> {
         let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store).await?;
         let msg_link = self.user.link_gen.link_from(
-            unwrapped.body.id.to_bytes(),
+            unwrapped.body.id,
             Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
         );
         Ok(msg_link)
@@ -332,7 +332,7 @@ impl<Trans: Transport + Clone> User<Trans> {
                 .await?
                 .body;
             let msg_id = self.user.link_gen.link_from(
-                seq_msg.id.to_bytes(),
+                seq_msg.id,
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
 
@@ -418,8 +418,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             _pk,
             Cursor {
                 link,
-                branch_no: _,
-                seq_no: _,
+                ..
             },
         ) in ids
         {
@@ -555,7 +554,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             Some(pk) => {
                 let seq_no = self.user.fetch_anchor()?.seq_no;
                 let cursor = Cursor::new_at(anchor_link.rel(), 0, msg_num + seq_no);
-                let link = self.user.link_gen.link_from(pk.as_ref(), cursor);
+                let link = self.user.link_gen.link_from(pk, cursor);
                 let msg = self.transport.recv_message(&link).await?;
                 self.handle_message(msg, false).await
             }

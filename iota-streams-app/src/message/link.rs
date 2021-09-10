@@ -156,7 +156,7 @@ pub trait LinkGenerator<Link: HasLink>: Default {
         previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
         HDF::new_with_fields(
-            self.link_from(id.to_bytes(), cursor),
+            self.link_from(id, cursor),
             Bytes(previous_msg_link.to_bytes()),
             content_type,
             payload_length,
