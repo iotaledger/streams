@@ -37,17 +37,15 @@ impl fmt::Display for BinaryBody {
 
 impl From<Vec<u8>> for BinaryBody {
     fn from(bytes: Vec<u8>) -> Self {
-        Self {
-            bytes,
-        }
+        Self { bytes }
     }
 }
 
-impl<Link> BinaryMessage<Link>
-where
-{
-    pub async fn parse_header<F>(&self) -> Result<PreparsedMessage<'_, F, Link>> where F: PRP, 
-    Link: Clone + AbsorbExternalFallback<F> + HasLink + Debug,
+impl<Link> BinaryMessage<Link> {
+    pub async fn parse_header<F>(&self) -> Result<PreparsedMessage<'_, F, Link>>
+    where
+        F: PRP,
+        Link: Clone + AbsorbExternalFallback<F> + HasLink + Debug,
     {
         let mut ctx = unwrap::Context::new(&self.body.bytes[..]);
         let mut header =

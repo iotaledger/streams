@@ -126,10 +126,7 @@ pub async fn async_send_message_with_options(client: &iota_client::Client, msg: 
 }
 
 /// Retrieve a message from the tangle using a node client
-pub async fn async_recv_messages(
-    client: &iota_client::Client,
-    link: &TangleAddress,
-) -> Result<Vec<TangleMessage>> {
+pub async fn async_recv_messages(client: &iota_client::Client, link: &TangleAddress) -> Result<Vec<TangleMessage>> {
     match get_messages(client, link).await {
         Ok(txs) => Ok(txs
             .iter()
@@ -239,8 +236,7 @@ impl TransportOptions for Client {
 }
 
 #[async_trait(?Send)]
-impl Transport<TangleAddress, TangleMessage> for Client
-{
+impl Transport<TangleAddress, TangleMessage> for Client {
     /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage) -> Result<()> {
         async_send_message_with_options(&self.client, msg).await

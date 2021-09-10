@@ -293,7 +293,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
         loop {
             let next_msgs = self.fetch_next_msgs().await;
             if next_msgs.is_empty() {
-                break
+                break;
             } else {
                 msgs.extend(next_msgs)
             }
@@ -306,7 +306,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
         loop {
             let next_msgs = self.fetch_next_msgs().await;
             if next_msgs.is_empty() {
-                break
+                break;
             }
         }
     }

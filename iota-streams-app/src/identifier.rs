@@ -91,9 +91,9 @@ impl AsRef<[u8]> for Identifier {
 }
 
 impl core::fmt::LowerHex for Identifier {
-fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> { 
-    write!(f, "{}", hex::encode(self))
-}
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "{}", hex::encode(self))
+    }
 }
 
 impl core::fmt::Display for Identifier {

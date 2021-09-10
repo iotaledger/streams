@@ -28,13 +28,13 @@ macro_rules! err {
 
 #[macro_export]
 macro_rules! assert{
-    ($cond:expr $(,)?) => {{ 
+    ($cond:expr $(,)?) => {{
         if $crate::LOCATION_LOG && !$cond {
             $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
         ::core::assert!($cond)
     }};
-    ($cond:expr, $($arg:tt)+) => {{ 
+    ($cond:expr, $($arg:tt)+) => {{
         if $crate::LOCATION_LOG && !$cond {
             $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
