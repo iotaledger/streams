@@ -535,27 +535,35 @@ where
         let unwrapped = self
             .unwrap_keyload(preparsed, keys_lookup, own_keys, self.author_sig_pk.as_ref())
             .await?;
-        let processed = if unwrapped.pcf.content.key.is_some() {
+
+        // Process a generic message containing the access right bool, also return the list of identifiers
+        // to be stored.
+        let (processed, keys) = if unwrapped.pcf.content.key.is_some() {
             // Do not commit if key not found hence spongos state is invalid
-            let content = unwrapped.commit(&mut self.link_store, info)?;
 
             // Presence of the key indicates the user is allowed
             // Unwrapped nonce and key in content are not used explicitly.
             // The resulting spongos state is joined into a protected message state.
-            // Store any unknown publishers
-            if let Some(appinst) = &self.appinst {
-                for identifier in content.key_ids {
-                    if !self.key_store.contains(&identifier) {
-                        // Store at state 2 since 0 and 1 are reserved states
-                        self.key_store
-                            .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
-                    }
+            let content = unwrapped.commit(&mut self.link_store, info)?;
+            (GenericMessage::new(msg.link.clone(), prev_link, true), content.key_ids)
+        } else {
+            (
+                GenericMessage::new(msg.link.clone(), prev_link, false),
+                unwrapped.pcf.content.key_ids,
+            )
+        };
+
+        // Store any unknown publishers
+        if let Some(appinst) = &self.appinst {
+            for identifier in keys {
+                if !self.key_store.contains(&identifier) {
+                    // Store at state 2 since 0 and 1 are reserved states
+                    self.key_store
+                        .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
                 }
             }
-            GenericMessage::new(msg.link.clone(), prev_link, true)
-        } else {
-            GenericMessage::new(msg.link.clone(), prev_link, false)
-        };
+        }
+
         if !self.is_multi_branching() {
             self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
             if self.is_single_depth() {
