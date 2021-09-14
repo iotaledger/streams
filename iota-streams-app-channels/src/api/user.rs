@@ -475,7 +475,7 @@ where
         let id = pk.into();
         match self.key_store.contains(&id) {
             true => {
-                self.key_store.remove(&id)?;
+                self.key_store.remove(&id);
                 Ok(())
             }
             false => err(UserNotRegistered),
@@ -972,7 +972,14 @@ where
     }
 
     pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
-        self.key_store.remove(&pskid.into())
+        let id = pskid.into();
+        match self.key_store.contains(&id) {
+            true => {
+                self.key_store.remove(&id);
+                Ok(())
+            }
+            false => err(UserNotRegistered),
+        }
     }
 
     fn gen_next_msg_id(
