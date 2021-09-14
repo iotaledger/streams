@@ -48,7 +48,7 @@ async function main() {
   let sub_link = response.link;
   console.log("Subscription message at: ", sub_link.toString());
   console.log("Subscription message index: " + sub_link.toMsgIndexHex());
-  await auth.clone().receive_subscribe(sub_link);
+  await auth.clone().receive_subscribe(sub_link.copy());
   console.log("Subscription processed");
 
   console.log("Sending Keyload");
@@ -141,14 +141,21 @@ async function main() {
 
   console.log("\nSub sending unsubscribe message");
   response = await sub.clone().send_unsubscribe(sub_link);
-  let unsubscribe = response.get_link();
-  await auth.clone().receive_unsubscribe(unsubscribe);
+  await auth.clone().receive_unsubscribe(response.link);
   console.log("Author received unsubscribe and processed it");
+  
+  // Check that the subscriber is no longer included in keyloads following the unsubscription
+  console.log("\nAuthor sending new keyload to all subscribers");
+  response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
+  if (await sub.receive_keyload(response.link)) {
+    console.log("unsubscription unsuccessful");
+  } else {
+    console.log("unsubscription successful");
+  }
 
   let seed3 = make_seed(81);
   let sub2 = new streams.Subscriber(seed3, options.clone());
-  ann_link_copy = ann_link.copy();
-  await sub2.clone().receive_announcement(ann_link_copy);
+  await sub2.clone().receive_announcement(ann_link.copy());
 
   let sub2_pk = sub2.get_public_key();
   auth.clone().store_new_subscriber(sub2_pk);

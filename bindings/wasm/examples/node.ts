@@ -55,11 +55,11 @@ async function main() {
     let sub_link = response.link;
     console.log("Subscription message at: ", sub_link.toString());
     console.log("Subscription message index: " + sub_link.toMsgIndexHex());
-    await auth.clone().receive_subscribe(sub_link);
+    await auth.clone().receive_subscribe(sub_link.copy());
     console.log("Subscription processed");
 
     console.log("Sending Keyload");
-    response = await auth.clone().send_keyload_for_everyone(ann_link);
+    response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
     let keyload_link = response.link;
     console.log("Keyload message at: ", keyload_link.toString());
     console.log("Keyload message index: " + keyload_link.toMsgIndexHex());
@@ -114,10 +114,10 @@ async function main() {
     sub.clone().reset_state();
     let reset_state = sub.fetch_state();
 
-    var matches = true;
-    for (var i = 0; i < reset_state.length; i++) {
+    let matches = true;
+    for (let i = 0; i < reset_state.length; i++) {
         if (start_state[i].link.toString() != reset_state[i].link.toString() ||
-            start_state[i].seqNo != reset_state[i].get_seqNo ||
+            start_state[i].seqNo != reset_state[i].seqNo ||
             start_state[i].branchNo != reset_state[i].branchNo) {
             matches = false;
         }
@@ -151,6 +151,15 @@ async function main() {
     response = await sub.clone().send_unsubscribe(sub_link);
     await auth.clone().receive_unsubscribe(response.link);
     console.log("Author received unsubscribe and processed it");
+
+    // Check that the subscriber is no longer included in keyloads following the unsubscription
+    console.log("\nAuthor sending new keyload to all subscribers");
+    response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
+    if (await sub.receive_keyload(response.link)) {
+        console.log("unsubscription unsuccessful");
+    } else {
+        console.log("unsubscription successful");
+    }
 
     let seed3 = make_seed(81);
     let sub2 = new streams.Subscriber(seed3, options.clone());
