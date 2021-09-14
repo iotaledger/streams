@@ -183,7 +183,7 @@ impl<Trans> User<Trans> {
     ///   # Arguments
     ///   * `pskid` - An identifier representing a pre shared key
     pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
-        self.user.remove_psk(&pskid)
+        self.user.remove_psk(pskid)
     }
 
     /// Store a predefined Subscriber by their public key
@@ -199,7 +199,7 @@ impl<Trans> User<Trans> {
     ///   # Arguments
     ///   * `pk` - ed25519 public key of known subscriber
     pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
-        self.user.remove_subscriber(&pk)
+        self.user.remove_subscriber(pk)
     }
 
     /// Consume a binary sequence message and return the derived message link

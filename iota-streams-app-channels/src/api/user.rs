@@ -468,11 +468,11 @@ where
             .unwrap_unsubscribe(preparsed)
             .await?
             .commit(&mut self.link_store, info)?;
-        self.remove_subscriber(&content.sig_pk)
+        self.remove_subscriber(content.sig_pk)
     }
 
-    pub fn remove_subscriber(&mut self, pk: &ed25519::PublicKey) -> Result<()> {
-        let id = (*pk).into();
+    pub fn remove_subscriber(&mut self, pk: ed25519::PublicKey) -> Result<()> {
+        let id = pk.into();
         match self.key_store.contains(&id) {
             true => {
                 self.key_store.remove(&id)?;
@@ -971,8 +971,8 @@ where
         }
     }
 
-    pub fn remove_psk(&mut self, pskid: &PskId) -> Result<()> {
-        self.key_store.remove(&(*pskid).into())
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        self.key_store.remove(&pskid.into())
     }
 
     fn gen_next_msg_id(
