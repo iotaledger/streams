@@ -33,8 +33,8 @@ use iota_streams::{
             String,
             ToString,
         },
-        psk::pskid_to_hex_string,
         psk::pskid_from_hex_str,
+        psk::pskid_to_hex_string,
     },
     ddml::types::*,
 };
@@ -349,8 +349,7 @@ impl Author {
     }
 
     pub fn remove_subscriber(&self, pk_str: String) -> Result<()> {
-        public_key_from_string(&pk_str)
-            .and_then(|pk| self.author.borrow_mut().remove_subscriber(pk).into_js_result())
+        public_key_from_string(&pk_str).and_then(|pk| self.author.borrow_mut().remove_subscriber(pk).into_js_result())
     }
 
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
