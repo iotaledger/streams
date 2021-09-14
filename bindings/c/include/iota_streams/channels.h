@@ -179,7 +179,7 @@ extern err_t sub_receive_announce(subscriber_t *subscriber, address_t const *add
 extern err_t sub_send_subscribe(address_t const **link, subscriber_t *subscriber, address_t const *announcement_link);
 extern err_t sub_send_unsubscribe(address_t const **link, subscriber_t *subscriber, address_t const *subscription_link);
 // Keyload
-extern err_t sub_receive_keyload(subscriber_t *subscriber, address_t const *address);
+extern err_t sub_receive_keyload(uint8_t const **access, subscriber_t *subscriber, address_t const *address);
 extern err_t sub_receive_keyload_from_ids(message_links_t *links, subscriber_t *subscriber, next_msg_ids_t const *next_msg_ids);
 // Tagged Packets
 extern err_t sub_send_tagged_packet(message_links_t *links, subscriber_t *subscriber, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);

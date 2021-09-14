@@ -291,10 +291,15 @@ pub unsafe extern "C" fn sub_send_signed_packet(
 
 /// Process a keyload message
 #[no_mangle]
-pub unsafe extern "C" fn sub_receive_keyload(user: *mut Subscriber, link: *const Address) -> Err {
-    user.as_mut().map_or(Err::NullArgument, |user| {
-        link.as_ref().map_or(Err::NullArgument, |link| {
-            run_async(user.receive_keyload(link)).map_or(Err::OperationFailed, |_| Err::Ok)
+pub unsafe extern "C" fn sub_receive_keyload(access: *mut *const uint8_t, user: *mut Subscriber, link: *const Address) -> Err {
+    access.as_mut().map_or(Err::NullArgument, |a| {
+        user.as_mut().map_or(Err::NullArgument, |user| {
+            link.as_ref().map_or(Err::NullArgument, |link| {
+                run_async(user.receive_keyload(link)).map_or(Err::OperationFailed, |access| {
+                    if access { *a = safe_into_ptr(1) } else { *a = safe_into_ptr(0) }
+                    Err::Ok
+                })
+            })
         })
     })
 }

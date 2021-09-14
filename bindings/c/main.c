@@ -243,6 +243,7 @@ cleanup1:
   // Keyload
   {
     address_t const *keyload_link = NULL;
+    uint8_t const *access = NULL;
 
     printf("Author sending keyload... ");
     e = auth_send_keyload_for_everyone(&keyload_links, auth, ann_link);
@@ -256,8 +257,9 @@ cleanup1:
     if(e) goto cleanup2;
 
     printf("SubA receiving keyload... ");
-    e = sub_receive_keyload(subA, keyload_link);
-    printf("%s\n", !e ? "done" : "failed");
+    e = sub_receive_keyload(&access, subA, keyload_link);
+    printf("%s... ", !e ? "done" : "failed");
+    printf("%s\n", *access == 1 ? "has access" : "does not have access");
     if(e) goto cleanup2;
 
 cleanup2:
@@ -576,9 +578,14 @@ cleanup8:
     address_t const *unsubscribe = NULL;
     subscriber_t *subD = NULL;
     public_key_t const *sub_d_pk = NULL;
+    message_links_t new_keyload_links = { NULL, NULL };
+    uint8_t const *access = NULL;
 
     printf("Unsubscribing sub a...\n");
     e = sub_send_unsubscribe(&unsubscribe, subA, subA_link);
+    if(e) goto cleanup11;
+    printf("Author accepting unsubscribe...\n");
+    e = auth_receive_unsubscribe(auth, unsubscribe);
     if(e) goto cleanup11;
 
     printf("Creating sub D...\n");
@@ -595,9 +602,23 @@ cleanup8:
     e = auth_remove_subscriber(auth, sub_d_pk);
     if(e) goto cleanup11;
 
+    printf("Author sends new keyload to all current subscribers...\n");
+    e = auth_send_keyload_for_everyone(&new_keyload_links, auth, ann_link);
+    if(e) goto cleanup11;
+    printf("Subscriber A tries to access keyload...\n");
+    e = sub_receive_keyload(&access, subA, new_keyload_links.msg_link);
+    if(e) goto cleanup11;
+
+    if(*access == 1) {
+        printf("Subscriber A still has access to keyload, unsubscription failed...\n");
+    } else {
+        printf("Subscriber A does not have access to keyload, unsubscription successful...\n");
+    }
+
   cleanup11:
     drop_address(unsubscribe);
     sub_drop(subD);
+    drop_links(new_keyload_links);
   }
   printf("\n");
   if(e) goto cleanup;
