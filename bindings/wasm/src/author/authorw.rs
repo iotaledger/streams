@@ -12,14 +12,11 @@ use js_sys::Array;
 
 use core::cell::RefCell;
 
-use iota_streams::{
-    app::identifier::Identifier,
-    core::psk::pskid_from_hex_str,
-};
 /// Streams imports
 use iota_streams::{
     app::{
         futures::executor::block_on,
+        identifier::Identifier,
         transport::{
             tangle::client::Client as ApiClient,
             TransportOptions,
@@ -37,6 +34,7 @@ use iota_streams::{
             ToString,
         },
         psk::pskid_to_hex_string,
+        psk::pskid_from_hex_str,
     },
     ddml::types::*,
 };
@@ -345,27 +343,19 @@ impl Author {
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
     pub fn store_new_subscriber(&self, pk_str: String) -> Result<()> {
-        public_key_from_string(&pk_str).map_or_else(
-            |err| Err(err),
-            |pk| self.author.borrow_mut().store_new_subscriber(pk).into_js_result(),
-        )
+        public_key_from_string(&pk_str)
+            .and_then(|pk| self.author.borrow_mut().store_new_subscriber(pk).into_js_result())
     }
 
-    #[wasm_bindgen(catch)]
     pub fn remove_subscriber(&self, pk_str: String) -> Result<()> {
-        public_key_from_string(&pk_str).map_or_else(
-            |err| Err(err),
-            |pk| self.author.borrow_mut().remove_subscriber(pk).into_js_result(),
-        )
+        public_key_from_string(&pk_str)
+            .and_then(|pk| self.author.borrow_mut().remove_subscriber(pk).into_js_result())
     }
 
-    #[wasm_bindgen(catch)]
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
-        pskid_from_hex_str(&pskid_str).map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |pskid| self.author.borrow_mut().remove_psk(pskid).into_js_result(),
-        )
+        pskid_from_hex_str(&pskid_str)
+            .and_then(|pskid| self.author.borrow_mut().remove_psk(pskid).into())
+            .into_js_result()
     }
 }

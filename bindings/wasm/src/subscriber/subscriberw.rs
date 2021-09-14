@@ -332,11 +332,9 @@ impl Subscriber {
         self.subscriber.borrow_mut().reset_state().into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
-    pub fn remove_psk(self, pskid_str: String) -> Result<()> {
-        pskid_from_hex_str(&pskid_str).map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |pskid| self.subscriber.borrow_mut().remove_psk(pskid).into_js_result(),
-        )
+    pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
+        pskid_from_hex_str(&pskid_str)
+            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid).into())
+            .into_js_result()
     }
 }
