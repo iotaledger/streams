@@ -10,8 +10,8 @@ use crate::types::{
 use iota_streams::{
     app::transport::{
         tangle::client::{
-            Client as ApiClient,
             iota_client::Client as RustClient,
+            Client as ApiClient,
         },
         TransportDetails,
         TransportOptions,

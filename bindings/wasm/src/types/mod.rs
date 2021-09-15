@@ -4,11 +4,11 @@ use iota_streams::{
         message::Cursor as ApiCursor,
         transport::tangle::client::{
             iota_client::{
-                Api as ApiRust,
                 bee_rest_api::types::{
                     dtos::LedgerInclusionStateDto,
                     responses::MessageMetadataResponse as ApiMessageMetadata,
                 },
+                Api as ApiRust,
                 MilestoneResponse as ApiMilestoneResponse,
             },
             Details as ApiDetails,
