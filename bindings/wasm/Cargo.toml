@@ -1,5 +1,5 @@
 [package]
-name = "iota_streams_wasm"
+name = "streams_wasm"
 version = "0.0.1"
 authors = ["huhn511 <huhn@einfachIOTA.de>", "Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
 edition = "2018"
