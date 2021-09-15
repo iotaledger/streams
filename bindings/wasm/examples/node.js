@@ -17,22 +17,16 @@ main()
   });
 
 async function main() {
-  let options = new streams.SendOptions("https://chrysalis-nodes.iota.org/", true);
-  let auth = new streams.NodeAuthOptions();
-  auth.jwt = "testjwt";
-
-  let builder = new streams.ClientBuilder();
-  let client = await builder.node("https://chrysalis-nodes.iota.org/").finish(options);
-  console.log("client", client);
-
-  let seed = make_seed(81);
-  let author = streams.Author.fromClient(client, seed, streams.ChannelType.SingleBranch);
-  console.log("author", author);
-
-  /*
   // Default is a load balancer, if you have your own node it's recommended to use that instead
   let node = "https://chrysalis-nodes.iota.org/";
+
   let options = new streams.SendOptions(node, true);
+  let nodeAuth = new streams.NodeAuthOptions();
+  nodeAuth.jwt = "testjwt";
+
+  let builder = new streams.ClientBuilder();
+  let client = await builder.node(node).finish(options);
+
   let seed = make_seed(81);
   let auth = new streams.Author(seed, options.clone(), streams.ChannelType.SingleBranch);
 
@@ -166,7 +160,7 @@ async function main() {
       str += String.fromCharCode(bytes[i]);
     }
     return str;
-  }*/
+  }
 
   function make_seed(size) {
     const alphabet = "abcdefghijklmnopqrstuvwxyz";
