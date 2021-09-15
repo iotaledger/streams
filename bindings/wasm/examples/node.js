@@ -1,10 +1,4 @@
 const streams = require("../node/streams_wasm");
-const fetch = require("node-fetch");
-
-global.fetch = fetch;
-global.Headers = fetch.Headers;
-global.Request = fetch.Request;
-global.Response = fetch.Response;
 
 streams.set_panic_hook();
 
@@ -25,10 +19,10 @@ async function main() {
   nodeAuth.jwt = "testjwt";
 
   let builder = new streams.ClientBuilder();
-  let client = await builder.node(node).finish(options);
+  let client = await builder.node(node).finish(options.clone());
 
   let seed = make_seed(81);
-  let auth = new streams.Author(seed, options.clone(), streams.ChannelType.SingleBranch);
+  let auth = streams.Author.fromClient(client, seed, streams.ChannelType.SingleBranch);
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
@@ -137,8 +131,8 @@ async function main() {
   let password = "password"
   let exp = auth.clone().export(password);
 
-  let client = new streams.Client(node, options.clone());
-  let auth2 = streams.Author.import(client, exp, password);
+  let client2 = new streams.Client(node, options.clone());
+  let auth2 = streams.Author.import(client2, exp, password);
 
   if (auth2.channel_address !== auth.channel_address) {
       console.log("import failed");
