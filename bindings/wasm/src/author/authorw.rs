@@ -1,4 +1,3 @@
-use core::convert::TryInto as _;
 use wasm_bindgen::prelude::*;
 
 use crate::{
@@ -16,17 +15,17 @@ use core::cell::RefCell;
 use iota_streams::app::identifier::Identifier;
 /// Streams imports
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client as ApiClient,
-        TransportOptions,
+    app::{
+        futures::executor::block_on,
+        transport::{
+            tangle::client::Client as ApiClient,
+            TransportOptions,
+        },
     },
     app_channels::api::{
         psk_from_seed,
         pskid_from_psk,
-        tangle::{
-            Address as ApiAddress,
-            Author as ApiAuthor,
-        },
+        tangle::Author as ApiAuthor,
     },
     core::{
         prelude::{
@@ -41,7 +40,8 @@ use iota_streams::{
 
 #[wasm_bindgen]
 pub struct Author {
-    author: Rc<RefCell<ApiAuthor<ClientWrap>>>,
+    // Don't alias away the ugliness, so we don't forget
+    author: Rc<RefCell<ApiAuthor<Rc<RefCell<ApiClient>>>>>,
 }
 
 #[wasm_bindgen]
@@ -51,7 +51,6 @@ impl Author {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-
         let author = Rc::new(RefCell::new(ApiAuthor::new(&seed, implementation.into(), transport)));
         Author { author }
     }
@@ -68,22 +67,16 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Author> {
-        ApiAuthor::import(&bytes, password, client.to_inner()).map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |v| {
-                Ok(Author {
-                    author: Rc::new(RefCell::new(v)),
-                })
-            },
-        )
+        block_on(ApiAuthor::import(&bytes, password, client.to_inner()))
+            .map(|v| Author {
+                author: Rc::new(RefCell::new(v)),
+            })
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub fn export(&self, password: &str) -> Result<Vec<u8>> {
-        self.author
-            .borrow_mut()
-            .export(password)
-            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), Ok)
+        block_on(self.author.borrow_mut().export(password)).into_js_result()
     }
 
     pub fn clone(&self) -> Author {
@@ -94,13 +87,12 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn channel_address(&self) -> Result<String> {
-        to_result(
-            self.author
-                .borrow_mut()
-                .channel_address()
-                .map(|addr| addr.to_string())
-                .ok_or("channel not created"),
-        )
+        self.author
+            .borrow_mut()
+            .channel_address()
+            .map(|addr| addr.to_string())
+            .ok_or("channel not created")
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -118,7 +110,7 @@ impl Author {
         let psk = psk_from_seed(psk_seed_str.as_bytes());
         let pskid = pskid_from_psk(&psk);
         let pskid_str = pskid_to_hex_string(&pskid);
-        to_result(self.author.borrow_mut().store_psk(pskid, psk))?;
+        self.author.borrow_mut().store_psk(pskid, psk).into_js_result()?;
         Ok(pskid_str)
     }
 
@@ -129,36 +121,22 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub async fn send_announce(self) -> Result<UserResponse> {
-        self.author.borrow_mut().send_announce().await.map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |addr| Ok(UserResponse::new(Address::from_string(addr.to_string()), None, None)),
-        )
+        self.author
+            .borrow_mut()
+            .send_announce()
+            .await
+            .map(|addr| UserResponse::new(addr.into(), None, None))
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub async fn send_keyload_for_everyone(self, link: Address) -> Result<UserResponse> {
         self.author
             .borrow_mut()
-            .send_keyload_for_everyone(
-                &link
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
-            )
+            .send_keyload_for_everyone(link.as_inner())
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |(link, seq_link)| {
-                    if let Some(seq_link) = seq_link {
-                        Ok(UserResponse::from_strings(
-                            link.to_string(),
-                            Some(seq_link.to_string()),
-                            None,
-                        ))
-                    } else {
-                        Ok(UserResponse::from_strings(link.to_string(), None, None))
-                    }
-                },
-            )
+            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -168,27 +146,10 @@ impl Author {
         let identifiers: Vec<Identifier> = pks.chain(psks).collect();
         self.author
             .borrow_mut()
-            .send_keyload(
-                &link
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
-                &identifiers,
-            )
+            .send_keyload(link.as_inner(), &identifiers)
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |(link, seq_link)| {
-                    if let Some(seq_link) = seq_link {
-                        Ok(UserResponse::from_strings(
-                            link.to_string(),
-                            Some(seq_link.to_string()),
-                            None,
-                        ))
-                    } else {
-                        Ok(UserResponse::from_strings(link.to_string(), None, None))
-                    }
-                },
-            )
+            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -201,27 +162,13 @@ impl Author {
         self.author
             .borrow_mut()
             .send_tagged_packet(
-                &link
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
+                link.as_inner(),
                 &Bytes(public_payload.clone()),
                 &Bytes(masked_payload.clone()),
             )
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |(link, seq_link)| {
-                    if let Some(seq_link) = seq_link {
-                        Ok(UserResponse::from_strings(
-                            link.to_string(),
-                            Some(seq_link.to_string()),
-                            None,
-                        ))
-                    } else {
-                        Ok(UserResponse::from_strings(link.to_string(), None, None))
-                    }
-                },
-            )
+            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -233,140 +180,89 @@ impl Author {
     ) -> Result<UserResponse> {
         self.author
             .borrow_mut()
-            .send_signed_packet(
-                &link
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr: ApiAddress| addr),
-                &Bytes(public_payload),
-                &Bytes(masked_payload),
-            )
+            .send_signed_packet(link.as_inner(), &Bytes(public_payload), &Bytes(masked_payload))
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |(link, seq_link)| {
-                    if let Some(seq_link) = seq_link {
-                        Ok(UserResponse::from_strings(
-                            link.to_string(),
-                            Some(seq_link.to_string()),
-                            None,
-                        ))
-                    } else {
-                        Ok(UserResponse::from_strings(link.to_string(), None, None))
-                    }
-                },
-            )
+            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub async fn receive_subscribe(self, link_to: Address) -> Result<()> {
         self.author
             .borrow_mut()
-            .receive_subscribe(
-                &link_to
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr| addr),
-            )
+            .receive_subscribe(link_to.as_inner())
             .await
-            .map_or_else(|err| Err(JsValue::from_str(&err.to_string())), |_| Ok(()))
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub async fn receive_tagged_packet(self, link: Address) -> Result<UserResponse> {
         self.author
             .borrow_mut()
-            .receive_tagged_packet(
-                &link
-                    .copy()
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr| addr),
-            )
+            .receive_tagged_packet(link.as_inner())
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |(pub_bytes, masked_bytes)| {
-                    Ok(UserResponse::new(
-                        link,
-                        None,
-                        Some(Message::new(None, pub_bytes.0, masked_bytes.0)),
-                    ))
-                },
-            )
+            .map(|(pub_bytes, masked_bytes)| {
+                UserResponse::new(link, None, Some(Message::new(None, pub_bytes.0, masked_bytes.0)))
+            })
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub async fn receive_signed_packet(self, link: Address) -> Result<UserResponse> {
         self.author
             .borrow_mut()
-            .receive_signed_packet(
-                &link
-                    .copy()
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr| addr),
-            )
+            .receive_signed_packet(link.as_inner())
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |(pk, pub_bytes, masked_bytes)| {
-                    Ok(UserResponse::new(
-                        link,
-                        None,
-                        Some(Message::new(
-                            Some(public_key_to_string(&pk)),
-                            pub_bytes.0,
-                            masked_bytes.0,
-                        )),
-                    ))
-                },
-            )
+            .map(|(pk, pub_bytes, masked_bytes)| {
+                UserResponse::new(
+                    link,
+                    None,
+                    Some(Message::new(
+                        Some(public_key_to_string(&pk)),
+                        pub_bytes.0,
+                        masked_bytes.0,
+                    )),
+                )
+            })
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub async fn receive_sequence(self, link: Address) -> Result<Address> {
         self.author
             .borrow_mut()
-            .receive_sequence(&link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr))
+            .receive_sequence(link.as_inner())
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |address| Ok(Address::from_string(address.to_string())),
-            )
+            .map(Into::into)
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub async fn receive_msg(self, link: Address) -> Result<UserResponse> {
         self.author
             .borrow_mut()
-            .receive_msg(&link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr))
+            .receive_msg(link.as_inner())
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |msg| {
-                    let msgs = vec![msg];
-                    let responses = get_message_contents(msgs);
-                    Ok(responses[0].copy())
-                },
-            )
+            .map(|msg| {
+                let msgs = vec![msg];
+                let responses = get_message_contents(msgs);
+                responses[0].copy()
+            })
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub async fn receive_msg_by_sequence_number(self, anchor_link: Address, msg_num: u32) -> Result<UserResponse> {
         self.author
             .borrow_mut()
-            .receive_msg_by_sequence_number(
-                &anchor_link
-                    .try_into()
-                    .map_or_else(|_err| ApiAddress::default(), |addr| addr),
-                msg_num,
-            )
+            .receive_msg_by_sequence_number(anchor_link.as_inner(), msg_num)
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |msg| {
-                    let msgs = vec![msg];
-                    let response = get_message_contents(msgs);
-                    Ok(response[0].copy())
-                },
-            )
+            .map(|msg| {
+                let msgs = vec![msg];
+                let response = get_message_contents(msgs);
+                response[0].copy()
+            })
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -391,34 +287,27 @@ impl Author {
     pub async fn fetch_prev_msg(self, link: Address) -> Result<UserResponse> {
         self.author
             .borrow_mut()
-            .fetch_prev_msg(&link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr))
+            .fetch_prev_msg(link.as_inner())
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |msg| {
-                    let msgs = vec![msg];
-                    let responses = get_message_contents(msgs);
-                    Ok(responses[0].copy())
-                },
-            )
+            .map(|msg| {
+                let msgs = vec![msg];
+                let responses = get_message_contents(msgs);
+                responses[0].copy()
+            })
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
     pub async fn fetch_prev_msgs(self, link: Address, num_msgs: usize) -> Result<Array> {
         self.author
             .borrow_mut()
-            .fetch_prev_msgs(
-                &link.try_into().map_or_else(|_err| ApiAddress::default(), |addr| addr),
-                num_msgs,
-            )
+            .fetch_prev_msgs(link.as_inner(), num_msgs)
             .await
-            .map_or_else(
-                |err| Err(JsValue::from_str(&err.to_string())),
-                |msgs| {
-                    let responses = get_message_contents(msgs);
-                    Ok(responses.into_iter().map(JsValue::from).collect())
-                },
-            )
+            .map(|msgs| {
+                let responses = get_message_contents(msgs);
+                responses.into_iter().map(JsValue::from).collect()
+            })
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -426,24 +315,22 @@ impl Author {
         let branching = self.author.borrow_mut().is_multi_branching();
         let mut ids = Vec::new();
         for (id, cursor) in self.author.borrow_mut().gen_next_msg_ids(branching).iter() {
-            ids.push(NextMsgId::new(
-                identifier_to_string(id),
-                Address::from_string(cursor.link.to_string()),
-            ));
+            ids.push(NextMsgId::new(identifier_to_string(id), cursor.link.into()));
         }
         Ok(ids.into_iter().map(JsValue::from).collect())
     }
 
     #[wasm_bindgen(catch)]
     pub fn fetch_state(&self) -> Result<Array> {
-        self.author.borrow_mut().fetch_state().map_or_else(
-            |err| Err(JsValue::from_str(&err.to_string())),
-            |state_list| {
-                Ok(state_list
+        self.author
+            .borrow_mut()
+            .fetch_state()
+            .map(|state_list| {
+                state_list
                     .into_iter()
                     .map(|(id, cursor)| JsValue::from(UserState::new(id, cursor.into())))
-                    .collect())
-            },
-        )
+                    .collect()
+            })
+            .into_js_result()
     }
 }
