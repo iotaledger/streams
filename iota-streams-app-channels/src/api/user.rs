@@ -409,7 +409,7 @@ where
             .await?
             .commit(&mut self.link_store, info)?;
         // TODO: trust content.subscriber_sig_pk
-        // Unwrapped unsubscribe_key is not used explicitly.
+        // TODO: remove unused unsubscribe_key because it is unnecessary for verification anymore
         let subscriber_sig_pk = content.subscriber_sig_pk;
         self.insert_subscriber(subscriber_sig_pk)
     }
