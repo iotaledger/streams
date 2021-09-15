@@ -19,7 +19,11 @@ async function main() {
   nodeAuth.jwt = "testjwt";
 
   let builder = new streams.ClientBuilder();
-  let client = await builder.node(node).finish(options.clone());
+  let client = await builder
+    .node(node)
+    // Or add node authentication to a node setting
+    //.permanode(node, nodeAuth)
+    .finish(options.clone());
 
   let seed = make_seed(81);
   let auth = streams.Author.fromClient(client, seed, streams.ChannelType.SingleBranch);
