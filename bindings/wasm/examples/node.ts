@@ -44,6 +44,8 @@ async function main() {
     let seed2 = make_seed(81);
     let sub = new streams.Subscriber(seed2, options.clone());
     await sub.clone().receive_announcement(ann_link.copy());
+    let author_pk = sub.author_public_key();
+    console.log("Channel registered by subscriber, author's public key: ", author_pk);
 
     // copy state for comparison after reset later
     let start_state = sub.fetch_state();
@@ -53,11 +55,11 @@ async function main() {
     let sub_link = response.link;
     console.log("Subscription message at: ", sub_link.toString());
     console.log("Subscription message index: " + sub_link.toMsgIndexHex());
-    await auth.clone().receive_subscribe(sub_link);
+    await auth.clone().receive_subscribe(sub_link.copy());
     console.log("Subscription processed");
 
     console.log("Sending Keyload");
-    response = await auth.clone().send_keyload_for_everyone(ann_link);
+    response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
     let keyload_link = response.link;
     console.log("Keyload message at: ", keyload_link.toString());
     console.log("Keyload message index: " + keyload_link.toMsgIndexHex());
@@ -88,24 +90,7 @@ async function main() {
         console.log("Signed packet index: " + last_link.toMsgIndexHex());
     }
 
-    console.log("\nAuthor listening for next message");
     let exists = true;
-    let next_msgs = await auth.clone().listen();
-
-    if (next_msgs.length === 0) {
-        exists = false;
-    }
-
-    for (var i = 0; i < next_msgs.length; i++) {
-        console.log("Found a message...");
-        console.log(
-            "Public: ",
-            from_bytes(next_msgs[i].get_message().get_public_payload()),
-            "\tMasked: ",
-            from_bytes(next_msgs[i].get_message().get_masked_payload())
-        );
-    }
-
     console.log("\nAuthor fetching next messages");
     while (exists) {
         let next_msgs = await auth.clone().fetch_next_msgs();
@@ -129,10 +114,10 @@ async function main() {
     sub.clone().reset_state();
     let reset_state = sub.fetch_state();
 
-    var matches = true;
-    for (var i = 0; i < reset_state.length; i++) {
+    let matches = true;
+    for (let i = 0; i < reset_state.length; i++) {
         if (start_state[i].link.toString() != reset_state[i].link.toString() ||
-            start_state[i].seqNo != reset_state[i].get_seqNo ||
+            start_state[i].seqNo != reset_state[i].seqNo ||
             start_state[i].branchNo != reset_state[i].branchNo) {
             matches = false;
         }
@@ -162,6 +147,7 @@ async function main() {
         console.log("import succesfull")
     }
 
+<<<<<<< HEAD
     console.log("\nRecovering without state import");
     let auth3 = await streams.Author.recover(seed, ann_link, streams.ChannelType.SingleBranch, options.clone());
     if (auth3.channel_address !== auth.channel_address) {
@@ -172,6 +158,34 @@ async function main() {
 
 
     function to_bytes(str: string) {
+=======
+    console.log("\nSub sending unsubscribe message");
+    response = await sub.clone().send_unsubscribe(sub_link);
+    await auth.clone().receive_unsubscribe(response.link);
+    console.log("Author received unsubscribe and processed it");
+
+    // Check that the subscriber is no longer included in keyloads following the unsubscription
+    console.log("\nAuthor sending new keyload to all subscribers");
+    response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
+    if (await sub.receive_keyload(response.link)) {
+        console.log("unsubscription unsuccessful");
+    } else {
+        console.log("unsubscription successful");
+    }
+
+    let seed3 = make_seed(81);
+    let sub2 = new streams.Subscriber(seed3, options.clone());
+    await sub2.clone().receive_announcement(ann_link);
+
+    let sub2_pk = sub2.get_public_key();
+    auth.clone().store_new_subscriber(sub2_pk);
+    console.log("\nAuthor manually subscribed sub 2");
+
+    auth.clone().remove_subscriber(sub2_pk);
+    console.log("Author manually unsubscribed sub 2");
+
+    function to_bytes(str: String) {
+>>>>>>> be661a485007ab5e8f27393de01f116591fb40fe
         var bytes = new Uint8Array(str.length);
         for (var i = 0; i < str.length; ++i) {
             bytes[i] = str.charCodeAt(i);

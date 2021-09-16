@@ -126,6 +126,15 @@ Process a subscription message by its link.
 | link            | [`address_t const *`](#Address) | Address of subscription message     |
 **Returns:** Error code.
 
+#### auth_receive_unsubscribe(author, link): [err_t](#Err)
+Process an unsubscription message by its link.
+
+| Param           | Type                            | Description                         |
+| --------------- | ------------------------------- | ----------------------------------- |
+| author          | `author_t *`                    | Author instance                     |
+| link            | [`address_t const *`](#Address) | Address of unsubscription message   |
+**Returns:** Error code.
+
 #### auth_send_tagged_packet(links, author, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [err_t](#Err)
 Send a tagged packet message linked to a previous message.
 
@@ -274,6 +283,33 @@ Stores a given Pre Shared Key (Psk) into the Author instance, returning a Pre Sh
 | psk             | `char const *`                         | Unique Pre Shared Key    |
 **Returns:** Error code.
 
+#### auth_remove_psk(author, pskid): [err_t](#Err)
+Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key Id (PskId)
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| author          | `author_t *`                           | Author instance      |
+| pskid           | `pskid_t *`                            | PskId object representing the Psk in store |
+**Returns:** Error code.
+
+#### auth_store_new_subscriber(author, pk): [err_t](#Err)
+Store the ed25519 Public Key identifier of a predefined subscriber into the Author instance
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| author          | `author_t *`                           | Author instance          |
+| pk              | `public_key_t *`                       | Unique Public Key of Subscriber |
+**Returns:** Error code.
+
+#### auth_remove_subscriber(author, pk): [err_t](#Err)
+Removes a Subscriber from the Author instance using their ed25519 Public Key
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| author          | `author_t *`                           | Author instance          |
+| pk              | `public_key_t *`                       | Public Key of Subscriber |
+**Returns:** Error code.
+
 
 ### Subscriber 
 
@@ -390,13 +426,24 @@ Process an announcement message by its link.
 
 
 #### sub_send_subscribe(link, subscriber, announcement_link): [err_t](#Err)
-Send a subscription message, initialising the channel 
+Send a subscription message, initialising connection to the channel. Should be attached to announcement link.
 
 | Param             | Type                             | Description               |
 | ----------------- | -------------------------------- | ------------------------- |
 | link              | [`address_t const **`](#Address) | The address of the subscription message. |
-| subscriber         | `subscriber_t *`                | Subscriber instance       |
+| subscriber        |  `subscriber_t *`                | Subscriber instance       |
 | announcement_link | [`address_t const *`](#Address)  | Announcement link         |
+**Returns:** Error code.
+
+#### sub_send_unsubscribe(link, subscriber, subscription_link): [err_t](#Err)
+Send an unsubscription message, informing the Author that the subscription to the channel can be removed. Attached 
+to subscription message.  
+
+| Param             | Type                             | Description               |
+| ----------------- | -------------------------------- | ------------------------- |
+| link              | [`address_t const **`](#Address) | The address of the subscription message. |
+| subscriber        | `subscriber_t *`                 | Subscriber instance        |
+| subscription_link | [`address_t const *`](#Address)  | Subscription link         |
 **Returns:** Error code.
 
 #### sub_send_tagged_packet(links, subscriber, link_to, public_payload_ptr, public_payload_size, masked_payload_ptr, masked_payload_size): [err_t](#Err)
@@ -566,6 +613,14 @@ Stores a given Pre Shared Key (Psk) into the Subscriber instance, returning a Pr
 | psk             | `char const *`                         | Unique Pre Shared Key    |
 **Returns:** Error code.
 
+#### sub_remove_psk(subscriber, pskid): [err_t](#Err)
+Removes a Pre Shared Key (Psk) from the Subscriber instance using a Pre Shared Key Id (PskId)
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| subscriber      | `subscriber_t *`                       | Subscriber instance      |
+| pskid           | `pskid_t *`                            | PskId object representing the Psk in store |
+**Returns:** Error code.
 
 
 ## Types

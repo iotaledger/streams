@@ -157,6 +157,16 @@ pub unsafe extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const 
     })
 }
 
+/// unwrap and remove a subscriber from the list of subscribers
+#[no_mangle]
+pub unsafe extern "C" fn auth_receive_unsubscribe(user: *mut Author, link: *const Address) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        link.as_ref().map_or(Err::NullArgument, |link| {
+            run_async(user.receive_unsubscribe(link)).map_or(Err::OperationFailed, |_| Err::Ok)
+        })
+    })
+}
+
 /// Create a new keyload for a list of subscribers.
 #[no_mangle]
 pub unsafe extern "C" fn auth_send_keyload(
@@ -472,6 +482,33 @@ pub unsafe extern "C" fn auth_store_psk(c_pskid: *mut *const PskId, c_user: *mut
                     Err::Ok
                 })
             })
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_remove_psk(c_user: *mut Author, c_pskid: *const PskId) -> Err {
+    c_user.as_mut().map_or(Err::NullArgument, |user| {
+        c_pskid.as_ref().map_or(Err::NullArgument, |pskid| {
+            user.remove_psk(*pskid).map_or(Err::OperationFailed, |_| Err::Ok)
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_store_new_subscriber(c_user: *mut Author, c_pk: *const PublicKey) -> Err {
+    c_user.as_mut().map_or(Err::NullArgument, |user| {
+        c_pk.as_ref().map_or(Err::NullArgument, |pk| {
+            user.store_new_subscriber(*pk).map_or(Err::OperationFailed, |_| Err::Ok)
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_remove_subscriber(c_user: *mut Author, c_pk: *const PublicKey) -> Err {
+    c_user.as_mut().map_or(Err::NullArgument, |user| {
+        c_pk.as_ref().map_or(Err::NullArgument, |pk| {
+            user.remove_subscriber(*pk).map_or(Err::OperationFailed, |_| Err::Ok)
         })
     })
 }

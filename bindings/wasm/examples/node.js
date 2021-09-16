@@ -48,7 +48,7 @@ async function main() {
   let sub_link = response.link;
   console.log("Subscription message at: ", sub_link.toString());
   console.log("Subscription message index: " + sub_link.toMsgIndexHex());
-  await auth.clone().receive_subscribe(sub_link);
+  await auth.clone().receive_subscribe(sub_link.copy());
   console.log("Subscription processed");
 
   console.log("Sending Keyload");
@@ -83,25 +83,7 @@ async function main() {
     console.log("Signed packet index: " + last_link.toMsgIndexHex());
   }
 
-  console.log("\nAuthor listening for next message");
   let exists = true;
-
-  let next_msgs = await auth.clone().listen();
-
-  if (next_msgs.length === 0) {
-    exists = false;
-  }
-
-  for (var i = 0; i < next_msgs.length; i++) {
-    console.log("Found a message...");
-    console.log(
-        "Public: ",
-        from_bytes(next_msgs[i].get_message().get_public_payload()),
-        "\tMasked: ",
-        from_bytes(next_msgs[i].get_message().get_masked_payload())
-    );
-  }
-
   console.log("\nAuthor fetching next messages");
   while (exists) {
     let next_msgs = await auth.clone().fetch_next_msgs();
@@ -166,6 +148,30 @@ async function main() {
     console.log("recovery succesfull")
   }
 
+  console.log("\nSub sending unsubscribe message");
+  response = await sub.clone().send_unsubscribe(sub_link);
+  await auth.clone().receive_unsubscribe(response.link);
+  console.log("Author received unsubscribe and processed it");
+  
+  // Check that the subscriber is no longer included in keyloads following the unsubscription
+  console.log("\nAuthor sending new keyload to all subscribers");
+  response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
+  if (await sub.receive_keyload(response.link)) {
+    console.log("unsubscription unsuccessful");
+  } else {
+    console.log("unsubscription successful");
+  }
+
+  let seed3 = make_seed(81);
+  let sub2 = new streams.Subscriber(seed3, options.clone());
+  await sub2.clone().receive_announcement(ann_link.copy());
+
+  let sub2_pk = sub2.get_public_key();
+  auth.clone().store_new_subscriber(sub2_pk);
+  console.log("\nAuthor manually subscribed sub 2");
+
+  auth.clone().remove_subscriber(sub2_pk);
+  console.log("Author manually unsubscribed sub 2");
 
   function to_bytes(str) {
     var bytes = [];
