@@ -90,8 +90,8 @@ async function main() {
         console.log("Signed packet index: " + last_link.toMsgIndexHex());
     }
 
-    let exists = true;
     console.log("\nAuthor fetching next messages");
+    let exists = true;
     while (exists) {
         let next_msgs = await auth.clone().fetch_next_msgs();
 
@@ -147,9 +147,8 @@ async function main() {
         console.log("import succesfull")
     }
 
-<<<<<<< HEAD
     console.log("\nRecovering without state import");
-    let auth3 = await streams.Author.recover(seed, ann_link, streams.ChannelType.SingleBranch, options.clone());
+    let auth3 = await streams.Author.recover(seed, ann_link.copy(), streams.ChannelType.SingleBranch, options.clone());
     if (auth3.channel_address !== auth.channel_address) {
         console.log("recovery failed")
     } else {
@@ -157,8 +156,6 @@ async function main() {
     }
 
 
-    function to_bytes(str: string) {
-=======
     console.log("\nSub sending unsubscribe message");
     response = await sub.clone().send_unsubscribe(sub_link);
     await auth.clone().receive_unsubscribe(response.link);
@@ -185,7 +182,6 @@ async function main() {
     console.log("Author manually unsubscribed sub 2");
 
     function to_bytes(str: String) {
->>>>>>> be661a485007ab5e8f27393de01f116591fb40fe
         var bytes = new Uint8Array(str.length);
         for (var i = 0; i < str.length; ++i) {
             bytes[i] = str.charCodeAt(i);

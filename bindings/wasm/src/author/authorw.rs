@@ -79,7 +79,6 @@ impl Author {
         block_on(self.author.borrow_mut().export(password)).into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
     pub async fn recover(
         seed: String,
         ann_address: Address,

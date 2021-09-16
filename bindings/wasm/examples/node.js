@@ -83,8 +83,8 @@ async function main() {
     console.log("Signed packet index: " + last_link.toMsgIndexHex());
   }
 
-  let exists = true;
   console.log("\nAuthor fetching next messages");
+  let exists = true;
   while (exists) {
     let next_msgs = await auth.clone().fetch_next_msgs();
 
@@ -141,7 +141,7 @@ async function main() {
   }
 
   console.log("\nRecovering without state import");
-  let auth3 = await streams.Author.recover(seed, ann_link, streams.ChannelType.SingleBranch, options.clone());
+  let auth3 = await streams.Author.recover(seed, ann_link.copy(), streams.ChannelType.SingleBranch, options.clone());
   if (auth3.channel_address !== auth.channel_address) {
     console.log("recovery failed")
   } else {
