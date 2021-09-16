@@ -77,6 +77,14 @@ impl<Trans> Subscriber<Trans> {
         self.user.store_psk(pskid, psk, true)
     }
 
+    /// Remove a PSK from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        self.user.remove_psk(pskid)
+    }
+
     /// Fetch the Address (application instance) of the channel.
     pub fn channel_address(&self) -> Option<&ChannelAddress> {
         self.user.channel_address()
@@ -225,11 +233,11 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
             .await
     }
 
-    // Unsubscribe from the Channel app instance.
-    // pub pub async fn unsubscribe(&mut self, link_to: &Address) -> Result<Message> {
-    // TODO: lookup link_to Subscribe message.
-    // self.user.unsubscribe(link_to.rel(), MsgInfo::Unsubscribe).await
-    // }
+    /// Send an Unsubscribe message to inform the Author that you would like to be removed
+    /// from the channel instance.
+    pub async fn send_unsubscribe(&mut self, link_to: &Address) -> Result<Address> {
+        self.user.send_unsubscribe(link_to).await
+    }
 
     /// Receive and Process an announcement message.
     ///

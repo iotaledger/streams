@@ -188,6 +188,29 @@ pub unsafe extern "C" fn sub_send_subscribe(
     })
 }
 
+/// Unsubscribe from a Channel app instance.
+#[no_mangle]
+pub unsafe extern "C" fn sub_send_unsubscribe(
+    r: *mut *const Address,
+    user: *mut Subscriber,
+    subscription_link: *const Address,
+) -> Err {
+    r.as_mut().map_or(Err::NullArgument, |r| {
+        user.as_mut().map_or(Err::NullArgument, |user| {
+            subscription_link
+                .as_ref()
+                .map_or(Err::NullArgument, |sub_link| -> Err {
+                    run_async(user.send_unsubscribe(sub_link))
+                        .map_or(Err::OperationFailed, |link| -> Err {
+                            *r = safe_into_ptr(link);
+                            Err::Ok
+                        })
+                })
+        })
+    })
+}
+
+
 #[no_mangle]
 pub unsafe extern "C" fn sub_send_tagged_packet(
     r: *mut MessageLinks,
@@ -268,10 +291,15 @@ pub unsafe extern "C" fn sub_send_signed_packet(
 
 /// Process a keyload message
 #[no_mangle]
-pub unsafe extern "C" fn sub_receive_keyload(user: *mut Subscriber, link: *const Address) -> Err {
-    user.as_mut().map_or(Err::NullArgument, |user| {
-        link.as_ref().map_or(Err::NullArgument, |link| {
-            run_async(user.receive_keyload(link)).map_or(Err::OperationFailed, |_| Err::Ok)
+pub unsafe extern "C" fn sub_receive_keyload(access: *mut *const uint8_t, user: *mut Subscriber, link: *const Address) -> Err {
+    access.as_mut().map_or(Err::NullArgument, |a| {
+        user.as_mut().map_or(Err::NullArgument, |user| {
+            link.as_ref().map_or(Err::NullArgument, |link| {
+                run_async(user.receive_keyload(link)).map_or(Err::OperationFailed, |access| {
+                    if access { *a = safe_into_ptr(1) } else { *a = safe_into_ptr(0) }
+                    Err::Ok
+                })
+            })
         })
     })
 }
@@ -503,6 +531,15 @@ pub unsafe extern "C" fn sub_store_psk(c_pskid: *mut *const PskId, c_user: *mut 
                     Err::Ok
                 })
             })
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sub_remove_psk(c_user: *mut Subscriber, c_pskid: *const PskId) -> Err {
+    c_user.as_mut().map_or(Err::NullArgument, |user| {
+        c_pskid.as_ref().map_or(Err::NullArgument, |pskid| {
+            user.remove_psk(*pskid).map_or(Err::OperationFailed, |_| Err::Ok)
         })
     })
 }
