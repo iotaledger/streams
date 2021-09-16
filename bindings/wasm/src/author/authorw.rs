@@ -79,6 +79,24 @@ impl Author {
         block_on(self.author.borrow_mut().export(password)).into_js_result()
     }
 
+    pub async fn recover(
+        seed: String,
+        ann_address: Address,
+        implementation: ChannelType,
+        options: SendOptions,
+    ) -> Result<Author> {
+        let mut client = ApiClient::new_from_url(&options.url());
+        client.set_send_options(options.into());
+        let transport = Rc::new(RefCell::new(client));
+
+        ApiAuthor::recover(&seed, ann_address.as_inner(), implementation.into(), transport)
+            .await
+            .map(|auth| Author {
+                author: Rc::new(RefCell::new(auth)),
+            })
+            .into_js_result()
+    }
+
     pub fn clone(&self) -> Author {
         Author {
             author: self.author.clone(),

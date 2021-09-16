@@ -125,6 +125,7 @@ async function main() {
     console.log("Found a message at index: " + prev_msgs[j].link.toMsgIndexHex());
   }
 
+  console.log("\nExporting and importing state")
   // Import export example
   // TODO: Use stronghold
   let password = "password"
@@ -137,6 +138,14 @@ async function main() {
       console.log("import failed");
   } else {
       console.log("import succesfull")
+  }
+
+  console.log("\nRecovering without state import");
+  let auth3 = await streams.Author.recover(seed, ann_link.copy(), streams.ChannelType.SingleBranch, options.clone());
+  if (auth3.channel_address !== auth.channel_address) {
+    console.log("recovery failed")
+  } else {
+    console.log("recovery succesfull")
   }
 
   console.log("\nSub sending unsubscribe message");
@@ -163,7 +172,6 @@ async function main() {
 
   auth.clone().remove_subscriber(sub2_pk);
   console.log("Author manually unsubscribed sub 2");
-
 
   function to_bytes(str) {
     var bytes = [];
