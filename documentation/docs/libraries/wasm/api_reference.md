@@ -188,7 +188,7 @@ to ensure the user state matches all other publishers.
 | --------------- | ----------------------------- | ----------------------------------- |
 
 #### _async -_ fetch_next_msgs(): Array<[UserResponse](#UserResponse)>
-Fetch the next message sent by each publisher (empty array if none are present).
+Fetch all the next messages pending to be received by the user (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
@@ -416,7 +416,7 @@ to ensure the user state matches all other publishers.
 | --------------- | ----------------------------- | ----------------------------------- |
 
 #### _async -_ fetch_next_msgs(): Array<[UserResponse](#UserResponse)>
-Fetch the next message sent by each publisher (empty array if none are present).
+Fetch all the next messages pending to be received by the user (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |

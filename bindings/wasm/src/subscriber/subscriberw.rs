@@ -18,7 +18,10 @@ use iota_streams::{
     app_channels::api::{
         psk_from_seed,
         pskid_from_psk,
-        tangle::Subscriber as ApiSubscriber,
+        tangle::{
+            futures::TryStreamExt,
+            Subscriber as ApiSubscriber,
+        },
     },
     core::{
         prelude::{
@@ -187,31 +190,21 @@ impl Subscriber {
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
     pub async fn receive_msg(self, link: Address) -> Result<UserResponse> {
         self.subscriber
             .borrow_mut()
             .receive_msg(link.as_inner())
             .await
-            .map(|msg| {
-                let msgs = vec![msg];
-                let responses = get_message_contents(msgs);
-                responses[0].copy()
-            })
+            .map(get_message_content)
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
     pub async fn receive_msg_by_sequence_number(self, anchor_link: Address, msg_num: u32) -> Result<UserResponse> {
         self.subscriber
             .borrow_mut()
             .receive_msg_by_sequence_number(anchor_link.as_inner(), msg_num)
             .await
-            .map(|msg| {
-                let msgs = vec![msg];
-                let response = get_message_contents(msgs);
-                response[0].copy()
-            })
+            .map(get_message_content)
             .into_js_result()
     }
 
@@ -255,35 +248,41 @@ impl Subscriber {
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
-    pub async fn sync_state(self) -> Result<()> {
-        loop {
-            let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
-            if msgs.is_empty() {
-                break;
-            }
-        }
-        Ok(())
+    #[wasm_bindgen(js_name = "syncState")]
+    pub async fn sync_state(self) -> Result<usize> {
+        self.subscriber.borrow_mut().sync_state().await.into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
+    #[wasm_bindgen(js_name = "fetchNextMsgs")]
     pub async fn fetch_next_msgs(self) -> Result<Array> {
-        let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
-        let payloads = get_message_contents(msgs);
-        Ok(payloads.into_iter().map(JsValue::from).collect())
+        self.subscriber
+            .borrow_mut()
+            .messages()
+            .map_ok(get_message_content)
+            .map_ok(JsValue::from)
+            .try_collect()
+            .await
+            .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
+    #[wasm_bindgen(js_name = "fetchNextMsg")]
+    pub async fn fetch_next_msg(self) -> Result<Option<UserResponse>> {
+        Ok(self
+            .subscriber
+            .borrow_mut()
+            .messages()
+            .try_next()
+            .await
+            .into_js_result()?
+            .map(get_message_content))
+    }
+
     pub async fn fetch_prev_msg(self, link: Address) -> Result<UserResponse> {
         self.subscriber
             .borrow_mut()
             .fetch_prev_msg(link.as_inner())
             .await
-            .map(|msg| {
-                let msgs = vec![msg];
-                let responses = get_message_contents(msgs);
-                responses[0].copy()
-            })
+            .map(get_message_content)
             .into_js_result()
     }
 

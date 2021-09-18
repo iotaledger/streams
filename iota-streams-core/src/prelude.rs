@@ -8,6 +8,7 @@ pub use alloc::{
         self,
         RefCell,
     },
+    collections::vec_deque::VecDeque,
     format,
     rc::{
         self,
@@ -38,6 +39,7 @@ pub use std::{
         self,
         RefCell,
     },
+    collections::vec_deque::VecDeque,
     format,
     rc::{
         self,

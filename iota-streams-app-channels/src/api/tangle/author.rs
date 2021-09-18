@@ -6,11 +6,14 @@ use iota_streams_core::Result;
 use super::*;
 use crate::api::tangle::{
     ChannelType,
+    IntoMessages,
+    Messages,
     UnwrappedMessage,
     User,
 };
 
 use iota_streams_app::identifier::Identifier;
+
 use iota_streams_core::{
     prelude::{
         String,
@@ -162,7 +165,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
         assert!(retrieved.binary == ann.message);
 
         author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
-        author.sync_state().await;
+        author.sync_state().await?;
 
         Ok(author)
     }
@@ -258,24 +261,20 @@ impl<Trans: Transport + Clone> Author<Trans> {
         self.user.receive_sequence(link).await
     }
 
-    /// Retrieves the next message for each user (if present in transport layer) and returns them
-    pub async fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
-        self.user.fetch_next_msgs().await
+    /// Start a [`Messages`] stream to traverse the channel messages
+    /// 
+    /// See the documentation in [`Messages`] for more details and examples.
+    pub fn messages(&mut self) -> Messages<Trans> {
+        self.user.messages()
     }
 
-    /// Iteratively fetches next messages until no new messages can be found, and return a vector
-    /// containing all of them.
-    pub async fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
-        let mut msgs = Vec::new();
-        loop {
-            let next_msgs = self.fetch_next_msgs().await;
-            if next_msgs.is_empty() {
-                break;
-            } else {
-                msgs.extend(next_msgs)
-            }
-        }
-        msgs
+    /// Iteratively fetches all the pending messages from the transport
+    /// 
+    /// Return a vector with all the messages collected. This is a convenience
+    /// method around the [`Messages`] stream. Check out its docs for more
+    /// advanced usages. 
+    pub async fn fetch_next_msgs(&mut self) -> Result<Vec<UnwrappedMessage>> {
+        self.user.fetch_next_msgs().await
     }
 
     /// Retrieves the previous message from the message specified (provided the user has access to it)
@@ -288,14 +287,11 @@ impl<Trans: Transport + Clone> Author<Trans> {
         self.user.fetch_prev_msgs(link, max).await
     }
 
-    /// Iteratively fetches next messages until internal state has caught up
-    pub async fn sync_state(&mut self) {
-        loop {
-            let next_msgs = self.fetch_next_msgs().await;
-            if next_msgs.is_empty() {
-                break;
-            }
-        }
+    /// Iteratively fetches all the next messages until internal state has caught up
+    /// 
+    /// If succeeded, returns the number of messages advanced. 
+    pub async fn sync_state(&mut self) -> Result<usize> {
+        self.user.sync_state().await
     }
 
     /// Receive and process a message of unknown type. Message will be handled appropriately and
@@ -336,5 +332,11 @@ impl<Trans: Clone> fmt::Display for Author<Trans> {
             hex::encode(self.user.user.sig_kp.public.as_bytes()),
             self.user.user.key_store
         )
+    }
+}
+
+impl<Trans> IntoMessages<Trans> for Author<Trans> {
+    fn messages(&mut self) -> Messages<'_, Trans> {
+        IntoMessages::messages(&mut self.user)
     }
 }

@@ -1,7 +1,11 @@
+use futures::{
+    future,
+    TryStreamExt,
+};
 use iota_streams_app::{
     identifier::Identifier,
     message::{
-        HasLink as _,
+        HasLink,
         LinkGenerator,
     },
 };
@@ -174,7 +178,7 @@ impl<Trans> User<Trans> {
     }
 
     /// Consume a binary sequence message and return the derived message link
-    async fn process_sequence(&mut self, msg: BinaryMessage, store: bool) -> Result<Address> {
+    async fn process_sequence(&mut self, msg: &BinaryMessage, store: bool) -> Result<Address> {
         let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store).await?;
         let msg_link = self.user.link_gen.link_from(
             unwrapped.body.id,
@@ -328,7 +332,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         if let Some(_addr) = &self.user.appinst {
             let seq_msg = self
                 .user
-                .handle_sequence(msg.binary, MsgInfo::Sequence, true)
+                .handle_sequence(&msg.binary, MsgInfo::Sequence, true)
                 .await?
                 .body;
             let msg_id = self.user.link_gen.link_from(
@@ -351,7 +355,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         // TODO: msg.timestamp is lost
         let m = self
             .user
-            .handle_signed_packet(msg.binary, MsgInfo::SignedPacket)
+            .handle_signed_packet(&msg.binary, MsgInfo::SignedPacket)
             .await?;
         Ok(m.body)
     }
@@ -364,7 +368,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         let msg = self.transport.recv_message(link).await?;
         let m = self
             .user
-            .handle_tagged_packet(msg.binary, MsgInfo::TaggedPacket)
+            .handle_tagged_packet(&msg.binary, MsgInfo::TaggedPacket)
             .await?;
         Ok(m.body)
     }
@@ -376,7 +380,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub async fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
         let msg = self.transport.recv_message(link).await?;
         // TODO: Timestamp is lost.
-        self.user.handle_subscribe(msg.binary, MsgInfo::Subscribe).await
+        self.user.handle_subscribe(&msg.binary, MsgInfo::Subscribe).await
     }
 
     /// Receive and Process an announcement message [Subscriber].
@@ -385,7 +389,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// * `link_to` - Address of the Channel Announcement message
     pub async fn receive_announcement(&mut self, link: &Address) -> Result<()> {
         let msg = self.transport.recv_message(link).await?;
-        self.user.handle_announcement(msg.binary, MsgInfo::Announce).await
+        self.user.handle_announcement(&msg.binary, MsgInfo::Announce).await
     }
 
     /// Receive and process a keyload message [Subscriber].
@@ -394,7 +398,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link` - Address of the message to be processed
     pub async fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         let msg = self.transport.recv_message(link).await?;
-        let m = self.user.handle_keyload(msg.binary, MsgInfo::Keyload).await?;
+        let m = self.user.handle_keyload(&msg.binary, MsgInfo::Keyload).await?;
         Ok(m.body)
     }
 
@@ -409,28 +413,28 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.handle_message(msg, true).await
     }
 
-    /// Retrieves the next message for each user (if present in transport layer) and returns them [Author, Subscriber]
-    pub async fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
-        let ids = self.user.gen_next_msg_ids(self.user.is_multi_branching());
-        let mut msgs = Vec::new();
+    /// Start a [`Messages`] stream to traverse the channel messages
+    /// 
+    /// See the documentation in [`Messages`] for more details and examples.
+    pub fn messages(&mut self) -> Messages<Trans> {
+        IntoMessages::messages(self)
+    }
 
-        for (
-            _pk,
-            Cursor {
-                link,
-                ..
-            },
-        ) in ids
-        {
-            let msg = self.transport.recv_message(&link).await;
+    /// Iteratively fetches all the next messages until internal state has caught up
+    /// 
+    /// If succeeded, returns the number of messages advanced. 
+    pub async fn sync_state(&mut self) -> Result<usize> {
+        // ignoring the result is sound as Drain::Error is Infallible
+        self.messages().try_fold(0, |n, _| future::ok(n + 1)).await
+    }
 
-            if let Ok(msg) = msg {
-                if let Ok(msg) = self.handle_message(msg, true).await {
-                    msgs.push(msg);
-                }
-            }
-        }
-        msgs
+    /// Iteratively fetches all the pending messages from the transport
+    /// 
+    /// Return a vector with all the messages collected. This is a convenience
+    /// method around the [`Messages`] stream. Check out its docs for more
+    /// advanced usages. 
+    pub async fn fetch_next_msgs(&mut self) -> Result<Vec<UnwrappedMessage>> {
+        self.messages().try_collect().await
     }
 
     /// Retrieves the previous message from the message specified (provided the user has access to it) [Author,
@@ -461,7 +465,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         for _ in 0..max {
             msg_info = self.parse_msg_info(&msg_info.0).await?;
             if msg_info.1 == message::SEQUENCE {
-                let msg_link = self.process_sequence(msg_info.2.binary, false).await?;
+                let msg_link = self.process_sequence(&msg_info.2.binary, false).await?;
                 msg_info = self.parse_msg_info(&msg_link).await?;
             }
             to_process.push(msg_info.2);
@@ -481,45 +485,47 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     /// # Arguments
     /// * `msg` - Binary message of unknown type
-    pub async fn handle_message(&mut self, mut msg0: Message, store: bool) -> Result<UnwrappedMessage> {
+    pub async fn handle_message<M>(&mut self, msg: M, store: bool) -> Result<UnwrappedMessage>
+    where
+        M: Into<BinaryMessage>,
+    {
         let mut sequenced = false;
+        let mut msg = msg.into();
         loop {
-            // Forget TangleMessage and timestamp
-            let msg = msg0.binary;
             let preparsed: Preparsed = msg.parse_header().await?;
             let link = preparsed.header.link;
             let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
             match preparsed.header.content_type {
-                message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket).await {
+                message::SIGNED_PACKET => match self.user.handle_signed_packet(&msg, MsgInfo::SignedPacket).await {
                     Ok(m) => {
                         return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
                     }
                     Err(e) => match sequenced {
-                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable(msg))),
                         false => return Err(e),
                     },
                 },
-                message::TAGGED_PACKET => match self.user.handle_tagged_packet(msg, MsgInfo::TaggedPacket).await {
+                message::TAGGED_PACKET => match self.user.handle_tagged_packet(&msg, MsgInfo::TaggedPacket).await {
                     Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
                     Err(e) => match sequenced {
-                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
+                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable(msg))),
                         false => return Err(e),
                     },
                 },
                 message::KEYLOAD => {
                     // So long as the unwrap has not failed, we will return a blank object to
-                    // inform the user that a message was present, even if the use wasn't part of
+                    // inform the user that a message was present, even if the user wasn't part of
                     // the keyload itself. This is to prevent sequencing failures
-                    let m = self.user.handle_keyload(msg, MsgInfo::Keyload).await?;
+                    let m = self.user.handle_keyload(&msg, MsgInfo::Keyload).await?;
                     // TODO: Verify content, whether user is allowed or not!
                     let u = m.map(|_allowed| MessageContent::new_keyload());
                     return Ok(u);
                 }
                 message::SEQUENCE => {
-                    let msg_link = self.process_sequence(msg, store).await?;
-                    let msg = self.transport.recv_message(&msg_link).await?;
+                    let msg_link = self.process_sequence(&msg, store).await?;
+                    let sequenced_msg = self.transport.recv_message(&msg_link).await?;
                     sequenced = true;
-                    msg0 = msg;
+                    msg = sequenced_msg.binary;
                 }
                 unknown_content => return err!(UnknownMsgType(unknown_content)),
             }
@@ -560,5 +566,11 @@ impl<Trans: Transport + Clone> User<Trans> {
             }
             None => err(UserNotRegistered),
         }
+    }
+}
+
+impl<Trans> IntoMessages<Trans> for User<Trans> {
+    fn messages(&mut self) -> Messages<'_, Trans> {
+        Messages::new(self)
     }
 }

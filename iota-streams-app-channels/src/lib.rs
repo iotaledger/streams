@@ -38,3 +38,18 @@ pub mod api;
 pub trait Lookup<Key, Value> {
     fn lookup(&self, key: Key) -> Option<Value>;
 }
+
+// Reexport the most frequently used types for an easier discoverability
+#[cfg(feature = "tangle")]
+pub use api::tangle::{
+    Address,
+    Author,
+    ChannelType,
+    MessageContent,
+    Subscriber,
+    UnwrappedMessage,
+};
+#[cfg(feature = "client")]
+pub use iota_streams_app::transport::tangle::client::Client as Tangle;
+
+pub use iota_streams_ddml::types::Bytes;

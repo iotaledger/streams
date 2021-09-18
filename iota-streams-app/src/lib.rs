@@ -42,7 +42,7 @@ pub mod transport;
 
 pub use cstr_core;
 pub use cty;
-#[cfg(feature = "tangle")]
+#[cfg(feature = "client")]
 pub use futures;
 // pub trait TrustProvider<PublicKey> {
 // fn check_trusted(pk: &PublicKey) -> Result<()>;

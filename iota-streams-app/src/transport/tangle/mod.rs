@@ -82,6 +82,12 @@ impl LinkedMessage<TangleAddress> for TangleMessage {
     }
 }
 
+impl From<TangleMessage> for BinaryMessage<TangleAddress> {
+    fn from(message: TangleMessage) -> Self {
+        message.binary
+    }
+}
+
 // TODO: Use better feature to detect `chrono::Utc::new()`.
 #[cfg(feature = "std")]
 impl TangleMessage {
@@ -592,5 +598,5 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
 
 /// Tangle-specific Transport Client. Uses [iota_client](https://github.com/iotaledger/iota.rs/tree/dev/iota-client)
 /// crate for node interfacing
-#[cfg(any(feature = "client", feature = "wasm-client"))]
+#[cfg(feature = "client")]
 pub mod client;

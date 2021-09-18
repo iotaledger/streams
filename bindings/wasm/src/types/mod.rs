@@ -313,32 +313,30 @@ impl MsgId {
     }
 }
 
-pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
-    let mut payloads = Vec::new();
-    for msg in msgs {
-        match msg.body {
-            MessageContent::SignedPacket {
-                pk,
-                public_payload: p,
-                masked_payload: m,
-            } => payloads.push(UserResponse::new(
-                msg.link.into(),
-                None,
-                Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
-            )),
-            MessageContent::TaggedPacket {
-                public_payload: p,
-                masked_payload: m,
-            } => payloads.push(UserResponse::new(
-                msg.link.into(),
-                None,
-                Some(Message::new(None, p.0, m.0)),
-            )),
-            MessageContent::Sequence => (),
-            _ => payloads.push(UserResponse::new(msg.link.into(), None, None)),
-        };
+pub fn get_message_content(msg: UnwrappedMessage) -> UserResponse {
+    match msg.body {
+        MessageContent::SignedPacket {
+            pk,
+            public_payload: p,
+            masked_payload: m,
+        } => UserResponse::new(
+            msg.link.into(),
+            None,
+            Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
+        ),
+        MessageContent::TaggedPacket {
+            public_payload: p,
+            masked_payload: m,
+        } => UserResponse::new(msg.link.into(), None, Some(Message::new(None, p.0, m.0))),
+        _ => UserResponse::new(msg.link.into(), None, None),
     }
-    payloads
+}
+
+pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
+    msgs.into_iter()
+        .filter(|msg| msg.body.is_sequence())
+        .map(get_message_content)
+        .collect()
 }
 
 #[wasm_bindgen]
