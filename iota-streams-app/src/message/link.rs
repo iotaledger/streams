@@ -36,7 +36,7 @@ pub trait HasLink: Sized + Default + Clone + Eq {
 
 /// Represents an input state for message identifier generation.
 /// Contains an Address and sequencing states.
-#[derive(Clone, Default)]
+#[derive(Clone, Copy, Hash, Default)]
 pub struct Cursor<Link> {
     pub link: Link,
     pub branch_no: u32,
