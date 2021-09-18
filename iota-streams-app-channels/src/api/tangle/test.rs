@@ -149,5 +149,5 @@ fn run_basic_scenario() {
     };
 
     let transport = Rc::new(RefCell::new(crate::api::tangle::BucketTransport::new()));
-    assert!(dbg!(smol::block_on(example(transport)).is_ok()));
+    smol::block_on(example(transport)).unwrap();
 }
