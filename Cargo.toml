@@ -50,7 +50,7 @@ std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddm
 tangle = ["iota-streams-app/tangle", "iota-streams-app-channels/tangle"]
 # Enable Tangle transport client implementation (implies `tangle` feature)
 client = ["iota-streams-app/client", "iota-streams-app-channels/client", "tangle"]
-# Enable wasm-related features from the subpackages
+# Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
 wasm-client = ["iota-streams-app/wasm-client", "iota-streams-app-channels/wasm-client"]
 # Enable debug logging when fallible functions return Result::Err
 err-location-log = ["iota-streams-core/err-location-log"]

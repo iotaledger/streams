@@ -20,7 +20,7 @@ use iota_streams_app::{
     },
 };
 
-#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+#[cfg(any(feature = "client", feature = "wasm-client"))]
 use iota_streams_app::transport::tangle::client::Details as ClientDetails;
 
 pub use message::Cursor;
@@ -46,7 +46,7 @@ pub type ChannelAddress = AppInst;
 /// Binary encoded message type.
 pub type Message = TangleMessage;
 // Details for a message on our tangle transport
-#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+#[cfg(any(feature = "client", feature = "wasm-client"))]
 pub type Details = ClientDetails;
 
 /// Wrapped Message for sending and commit

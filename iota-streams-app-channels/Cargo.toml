@@ -16,7 +16,7 @@ std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddm
 tangle = ["iota-streams-app/tangle", "futures", "async-recursion"]
 # Enable re-export of Tangle client from iota-streams-app 
 client = ["iota-streams-app/client"]
-# Enable wasm-related features from dependencies 
+# Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
 wasm-client = ["iota-streams-app/wasm-client"]
 
 [lib]

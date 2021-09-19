@@ -49,7 +49,7 @@ pub use api::tangle::{
     Subscriber,
     UnwrappedMessage,
 };
-#[cfg(feature = "client")]
+#[cfg(any(feature = "client", feature = "wasm-client"))]
 pub use iota_streams_app::transport::tangle::client::Client as Tangle;
 
 pub use iota_streams_ddml::types::Bytes;

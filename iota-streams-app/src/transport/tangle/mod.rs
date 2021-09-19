@@ -598,5 +598,5 @@ impl<F: PRP> AbsorbFallback<F> for MsgId {
 
 /// Tangle-specific Transport Client. Uses [iota_client](https://github.com/iotaledger/iota.rs/tree/dev/iota-client)
 /// crate for node interfacing
-#[cfg(feature = "client")]
+#[cfg(any(feature = "client", feature = "wasm-client"))]
 pub mod client;
