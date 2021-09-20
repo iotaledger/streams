@@ -15,7 +15,7 @@ std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddm
 # Enable Tangle-specific transport abstractions
 tangle = ["chrono", "num_cpus"]
 # Enable Tangle transport client implementation (implies `tangle` and `std` features)
-client = ["iota-client/default", "futures", "tangle", "std"]
+client = ["iota-client/async", "futures", "tangle", "std"]
 # Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
 wasm-client = ["iota-client/wasm", "chrono/wasmbind", "futures", "tangle", "std"]
 # Enable synchronized transports using parking-lot
