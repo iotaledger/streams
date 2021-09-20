@@ -414,27 +414,30 @@ impl<Trans: Transport + Clone> User<Trans> {
     }
 
     /// Start a [`Messages`] stream to traverse the channel messages
-    /// 
+    ///
     /// See the documentation in [`Messages`] for more details and examples.
     pub fn messages(&mut self) -> Messages<Trans> {
         IntoMessages::messages(self)
     }
 
     /// Iteratively fetches all the next messages until internal state has caught up
-    /// 
-    /// If succeeded, returns the number of messages advanced. 
+    ///
+    /// If succeeded, returns the number of messages advanced.
     pub async fn sync_state(&mut self) -> Result<usize> {
         // ignoring the result is sound as Drain::Error is Infallible
-        self.messages().try_fold(0, |n, _| future::ok(n + 1)).await
+        self.messages()
+            .into_stream()
+            .try_fold(0, |n, _| future::ok(n + 1))
+            .await
     }
 
     /// Iteratively fetches all the pending messages from the transport
-    /// 
+    ///
     /// Return a vector with all the messages collected. This is a convenience
     /// method around the [`Messages`] stream. Check out its docs for more
-    /// advanced usages. 
+    /// advanced usages.
     pub async fn fetch_next_msgs(&mut self) -> Result<Vec<UnwrappedMessage>> {
-        self.messages().try_collect().await
+        self.messages().into_stream().try_collect().await
     }
 
     /// Retrieves the previous message from the message specified (provided the user has access to it) [Author,

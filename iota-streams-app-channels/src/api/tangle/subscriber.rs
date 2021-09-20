@@ -273,9 +273,9 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
     }
 
     /// Start a [`Messages`] stream to traverse the channel messages
-    /// 
+    ///
     /// See the documentation in [`Messages`] for more details and examples.
-    pub fn messages(&mut self) -> Messages<Trans> {
+    pub fn messages(&mut self) -> Messages<'_, Trans> {
         self.user.messages()
     }
 
@@ -290,17 +290,17 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
     }
 
     /// Iteratively fetches all the pending messages from the transport
-    /// 
+    ///
     /// Return a vector with all the messages collected. This is a convenience
     /// method around the [`Messages`] stream. Check out its docs for more
-    /// advanced usages. 
+    /// advanced usages.
     pub async fn fetch_next_msgs(&mut self) -> Result<Vec<UnwrappedMessage>> {
         self.user.fetch_next_msgs().await
     }
 
     /// Iteratively fetches all the next messages until internal state has caught up
-    /// 
-    /// If succeeded, returns the number of messages advanced. 
+    ///
+    /// If succeeded, returns the number of messages advanced.
     pub async fn sync_state(&mut self) -> Result<usize> {
         self.user.sync_state().await
     }

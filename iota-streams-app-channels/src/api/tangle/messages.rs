@@ -3,7 +3,6 @@ use core::future::Future;
 use async_recursion::async_recursion;
 use futures::{
     future,
-    task::Context,
     Stream,
     StreamExt,
     TryStreamExt,
@@ -47,8 +46,8 @@ pub trait IntoMessages<Trans> {
 ///
 /// Use this stream to preorderly traverse the messages of the channel. This stream is usually
 /// created from any type implementing [`IntoMessages`], calling its [`IntoMessages::messages()`] method (both
-/// [`Author`](struct.Author.html) and [`Subscriber`](struct.Subscriber.html) implement it). The main method is [`Messages::next()`],
-/// which returns the next message in the channel that is readable by the user.
+/// [`Author`](struct.Author.html) and [`Subscriber`](struct.Subscriber.html) implement it). The main method is
+/// [`Messages::next()`], which returns the next message in the channel that is readable by the user.
 ///
 /// This type implements [`futures::Stream`] and [`futures::TryStream`], therefore it can be used with all the adapters
 /// provided by [`futures::StreamExt`] and [`futures::TryStreamExt`]:
@@ -110,7 +109,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let mut n = 0;
 /// #
-/// let mut messages = subscriber.messages();
+/// let mut messages = subscriber.messages().into_stream();
 /// while let Some(msg) = messages.try_next().await? {
 ///     println!(
 ///         "New message!\n\tPublic: {}\n\tMasked: {}\n",
@@ -181,7 +180,7 @@ pub trait IntoMessages<Trans> {
 ///     )
 ///     .await?;
 ///
-/// let messages: Vec<UnwrappedMessage> = subscriber.messages().try_collect().await?;
+/// let messages: Vec<UnwrappedMessage> = subscriber.messages().into_stream().try_collect().await?;
 /// assert_eq!(
 ///     messages,
 ///     vec![
@@ -257,7 +256,7 @@ pub trait IntoMessages<Trans> {
 /// # let subscriber_process = async move {
 /// #
 /// # let mut n = 0;
-/// let mut messages = subscriber.messages();
+/// let mut messages = subscriber.messages().into_stream();
 /// loop {
 /// #   if n >= 6 {
 /// #       break;
@@ -394,6 +393,7 @@ pub trait IntoMessages<Trans> {
 ///
 /// let messages: Vec<UnwrappedMessage> = subscriber
 ///     .messages()
+///     .into_stream()
 ///     .try_skip_while(|msg| {
 ///         future::ok(
 ///             msg.body
@@ -477,23 +477,22 @@ pub trait IntoMessages<Trans> {
 /// message is yielded before its childs. As a consequence, there might be multiple transport
 /// calls before a message is yielded, and several messages can be accumulated in memory until their turn.
 /// Therefore, some jitter might be expected, with a worst case of fetching all the messages before any is
-/// yielded. 
-/// 
+/// yielded.
+///
 /// Sequence messages and unreadable messages are not yielded, as they are not considered to add any end-user value.
 /// Particularly unreadable messages are optimistically considered children waiting for their parent, thus accumulated
-/// in memory and reprocessed instead of being yielded. 
-/// 
+/// in memory and reprocessed instead of being yielded.
+///
 /// After the last currently available message has been returned, [`Messages::next()`] returns `None`, at which point
-/// the [`StreamExt`] and [`TryStreamExt`] methods will consider the [`Stream`] finished and stop iterating. 
+/// the [`StreamExt`] and [`TryStreamExt`] methods will consider the [`Stream`] finished and stop iterating.
 /// It is safe to continue calling [`Messages::next()`] or any method from [`StreamExt`] and [`TryStreamExt`] polling
-/// for new messages. 
-/// 
-/// Being a [`futures::Stream`] that fetches data from an external source, it's naturally defined as a [`futures::TryStream`], which means
-/// it returns a [`Result`] wrapping the [`UnwrappedMessage`]. In the event of a network failure, [`Messages::next()`] 
-/// will return `Err`. It is strongly suggested that, when suitable, use the methods in [`futures::TryStreamExt`] to make
-/// the error-handling much more ergonomic (with the use of `?`) and shortcircuit the [`futures::Stream`] on the first error. 
-/// 
-/// 
+/// for new messages.
+///
+/// Being a [`futures::Stream`] that fetches data from an external source, it's naturally defined as a
+/// [`futures::TryStream`], which means it returns a [`Result`] wrapping the [`UnwrappedMessage`]. In the event of a
+/// network failure, [`Messages::next()`] will return `Err`. It is strongly suggested that, when suitable, use the
+/// methods in [`futures::TryStreamExt`] to make the error-handling much more ergonomic (with the use of `?`) and
+/// shortcircuit the [`futures::Stream`] on the first error.
 pub struct Messages<'a, Trans> {
     user: &'a mut User<Trans>,
     ids_stack: Vec<(Identifier, Cursor<Address>)>,
@@ -518,7 +517,7 @@ impl<'a, Trans> Messages<'a, Trans> {
     }
 
     /// Fetch the next message of the channel
-    /// 
+    ///
     /// See [`Messages`] documentation and examples for more details.
     #[async_recursion(?Send)]
     pub async fn next(&mut self) -> Option<Result<UnwrappedMessage>>
@@ -590,8 +589,8 @@ impl<'a, Trans> Messages<'a, Trans> {
     }
 
     /// Start streaming from a particular message
-    /// 
-    /// Once that message is fetched and yielded, the returned [`Stream`] will yield only 
+    ///
+    /// Once that message is fetched and yielded, the returned [`Stream`] will yield only
     /// descendants of that message.
     /// ```
     /// use iota_streams_app_channels::{
@@ -638,7 +637,7 @@ impl<'a, Trans> Messages<'a, Trans> {
     /// subscriber.receive_announcement(&announcement_link).await?;
     /// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
     /// author.receive_subscribe(&subscription_link).await?;
-    /// 
+    ///
     /// let (first_keyload_link, _sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
     /// let (tag_first_branch_link, _sequence_link) = author
     ///     .send_signed_packet(&first_keyload_link, &Bytes::new(), &b"branch 1".into())
@@ -663,30 +662,27 @@ impl<'a, Trans> Messages<'a, Trans> {
     ///     )
     ///     .await?;
     ///
-    /// let messages: Vec<UnwrappedMessage> = 
-    ///     subscriber
-    ///         .messages()
-    ///         .filter_branch(|msg| future::ok(
+    /// let messages: Vec<UnwrappedMessage> = subscriber
+    ///     .messages()
+    ///     .filter_branch(|msg| {
+    ///         future::ok(
     ///             msg.body
     ///                 .masked_payload()
     ///                 .and_then(Bytes::as_str)
     ///                 .map(|payload| payload != "branch 2")
-    ///                 .unwrap_or(true)
-    ///         ))
-    ///         .try_collect()
-    ///         .await?;
-    /// 
+    ///                 .unwrap_or(true),
+    ///         )
+    ///     })
+    ///     .try_collect()
+    ///     .await?;
+    ///
     /// assert_eq!(
     ///     messages,
     ///     vec![
     ///         UnwrappedMessage::new(
     ///             tag_second_branch_link,
     ///             second_keyload_link,
-    ///             MessageContent::new_signed_packet(
-    ///                 author.get_public_key().clone(),
-    ///                 Bytes::new(),
-    ///                 b"branch 2"
-    ///             )
+    ///             MessageContent::new_signed_packet(author.get_public_key().clone(), Bytes::new(), b"branch 2")
     ///         ),
     ///         UnwrappedMessage::new(
     ///             first_packet_second_branch_link,
@@ -713,7 +709,8 @@ impl<'a, Trans> Messages<'a, Trans> {
         F: Future<Output = Result<bool>> + 'a,
         Trans: Transport,
     {
-        self.try_skip_while(p)
+        self.into_stream()
+            .try_skip_while(p)
             .scan(None, |branch_last_link, msg| {
                 future::ready(Some(msg.map(|msg| {
                     let branch_last_link = branch_last_link.get_or_insert(msg.prev_link);
@@ -726,6 +723,15 @@ impl<'a, Trans> Messages<'a, Trans> {
                 })))
             })
             .try_filter_map(future::ok)
+    }
+
+    pub fn into_stream(self) -> impl Stream<Item = Result<UnwrappedMessage>> + 'a
+    where
+        Trans: Transport,
+    {
+        futures::stream::unfold(self, |mut this| {
+            Box::pin(async move { this.next().await.map(|r| (r, this)) })
+        })
     }
 }
 
@@ -747,16 +753,34 @@ impl<'a, Trans> From<Messages<'a, Trans>> for &'a mut User<Trans> {
     }
 }
 
-impl<'a, Trans> Stream for Messages<'a, Trans>
-where
-    Trans: Transport,
-{
-    type Item = Result<UnwrappedMessage>;
-
-    fn poll_next(
-        mut self: core::pin::Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-    ) -> futures::task::Poll<Option<Self::Item>> {
-        Messages::next(&mut self).as_mut().poll(ctx)
-    }
-}
+// impl<Trans> Stream for Messages<Trans>
+// where
+//     Trans: Transport + Unpin,
+// {
+//     type Item = Result<UnwrappedMessage>;
+//
+//     fn poll_next(
+//         mut self: Pin<&mut Self>,
+//         ctx: &mut Context<'_>,
+//     ) -> Poll<Option<Self::Item>> {
+//         println!("poll-next -");
+//         match self.future {
+//             Some(future) => match future.as_mut().poll(ctx) {
+//                 r @ Poll::Ready(_) => {
+//                     self.future = None;
+//                     r
+//                 },
+//                 r @ Poll::Pending => {
+//                     r
+//                 }
+//             },
+//             None => {
+//                 self.future = Some(Messages::next(self.get_mut()));
+//                 self.poll_next(ctx)
+//             }
+//         }
+//         // let r = Messages::next(&mut self).as_mut().poll(ctx);
+//         // println!("done: {:?}", r);
+//         // r
+//     }
+// }

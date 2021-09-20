@@ -1,10 +1,8 @@
 use iota_streams::{
-    app::{
-        message::HasLink,
-    },
+    app::message::HasLink,
     app_channels::api::tangle::{
-        IntoMessages,
         futures::TryStreamExt,
+        IntoMessages,
         Transport,
     },
     core::Result,
@@ -15,7 +13,7 @@ where
     T: Transport,
     S: IntoMessages<T>,
 {
-    let mut msgs = streamable.messages();
+    let mut msgs = streamable.messages().into_stream();
     while let Some(msg) = msgs.try_next().await? {
         println!("Message exists at {}... ", &msg.link.rel());
     }

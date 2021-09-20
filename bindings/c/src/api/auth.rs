@@ -393,7 +393,7 @@ pub unsafe extern "C" fn auth_receive_msg_by_sequence_number(
 pub unsafe extern "C" fn auth_fetch_next_msg(umsg: *mut *const UnwrappedMessage, user: *mut Author) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         umsg.as_mut().map_or(Err::NullArgument, |umsg| {
-            run_async(user.messages().try_next()).map_or(Err::OperationFailed, |m| {
+            run_async(user.messages().into_stream().try_next()).map_or(Err::OperationFailed, |m| {
                 *umsg = m.map_or_else(null, safe_into_ptr);
                 Err::Ok
             })
