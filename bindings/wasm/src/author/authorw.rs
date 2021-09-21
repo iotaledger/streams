@@ -267,7 +267,6 @@ impl Author {
         self.author
             .borrow_mut()
             .messages()
-            .into_stream()
             .map_ok(get_message_content)
             .map_ok(JsValue::from)
             .try_collect()
@@ -281,7 +280,6 @@ impl Author {
             .author
             .borrow_mut()
             .messages()
-            .into_stream()
             .try_next()
             .await
             .into_js_result()?

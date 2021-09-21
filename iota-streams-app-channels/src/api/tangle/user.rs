@@ -425,10 +425,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// If succeeded, returns the number of messages advanced.
     pub async fn sync_state(&mut self) -> Result<usize> {
         // ignoring the result is sound as Drain::Error is Infallible
-        self.messages()
-            .into_stream()
-            .try_fold(0, |n, _| future::ok(n + 1))
-            .await
+        self.messages().try_fold(0, |n, _| future::ok(n + 1)).await
     }
 
     /// Iteratively fetches all the pending messages from the transport
@@ -437,7 +434,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// method around the [`Messages`] stream. Check out its docs for more
     /// advanced usages.
     pub async fn fetch_next_msgs(&mut self) -> Result<Vec<UnwrappedMessage>> {
-        self.messages().into_stream().try_collect().await
+        self.messages().try_collect().await
     }
 
     /// Retrieves the previous message from the message specified (provided the user has access to it) [Author,
@@ -573,7 +570,10 @@ impl<Trans: Transport + Clone> User<Trans> {
 }
 
 impl<Trans> IntoMessages<Trans> for User<Trans> {
-    fn messages(&mut self) -> Messages<'_, Trans> {
+    fn messages(&mut self) -> Messages<'_, Trans>
+    where
+        Trans: Transport,
+    {
         Messages::new(self)
     }
 }

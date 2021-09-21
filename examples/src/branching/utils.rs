@@ -13,7 +13,7 @@ where
     T: Transport,
     S: IntoMessages<T>,
 {
-    let mut msgs = streamable.messages().into_stream();
+    let mut msgs = streamable.messages();
     while let Some(msg) = msgs.try_next().await? {
         println!("Message exists at {}... ", &msg.link.rel());
     }

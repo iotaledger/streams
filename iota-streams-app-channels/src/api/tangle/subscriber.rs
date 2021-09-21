@@ -342,7 +342,10 @@ impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
 }
 
 impl<Trans> IntoMessages<Trans> for Subscriber<Trans> {
-    fn messages(&mut self) -> Messages<'_, Trans> {
+    fn messages(&mut self) -> Messages<'_, Trans>
+    where
+        Trans: Transport,
+    {
         IntoMessages::messages(&mut self.user)
     }
 }

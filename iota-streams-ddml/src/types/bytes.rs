@@ -24,7 +24,7 @@ impl Bytes {
     /// Attempts to convert the Bytes into a str
     ///
     /// If the Bytes are valid UTF8, this method returns `Some(str)`, otherwise returns `None`
-    /// This is the borrowed alternative of the owned [`into_string()`].
+    /// This is the borrowed alternative of the owned [`Bytes::into_string()`].
     pub fn as_str(&self) -> Option<&str> {
         core::str::from_utf8(&self.0).ok()
     }
@@ -32,7 +32,7 @@ impl Bytes {
     /// Attempts to convert the Bytes into a String
     ///
     /// If the Bytes are valid UTF8, this method returns `Some(String)`, otherwise returns `None`
-    /// This is the owned alternative of the borrowed [`as_str()`].
+    /// This is the owned alternative of the borrowed [`Bytes::as_str()`].
     pub fn into_string(self) -> Option<String> {
         String::from_utf8(self.0).ok()
     }

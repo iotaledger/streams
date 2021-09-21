@@ -1,8 +1,15 @@
-use core::future::Future;
+use core::{
+    future::Future,
+    pin::Pin,
+};
 
 use async_recursion::async_recursion;
 use futures::{
     future,
+    task::{
+        Context,
+        Poll,
+    },
     Stream,
     StreamExt,
     TryStreamExt,
@@ -39,7 +46,9 @@ use super::{
 // TODO: run examples in actions
 
 pub trait IntoMessages<Trans> {
-    fn messages(&mut self) -> Messages<'_, Trans>;
+    fn messages(&mut self) -> Messages<'_, Trans>
+    where
+        Trans: Transport;
 }
 
 /// a [`Stream`] over the messages of the channel pending to be fetch from the transport
@@ -109,7 +118,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let mut n = 0;
 /// #
-/// let mut messages = subscriber.messages().into_stream();
+/// let mut messages = subscriber.messages();
 /// while let Some(msg) = messages.try_next().await? {
 ///     println!(
 ///         "New message!\n\tPublic: {}\n\tMasked: {}\n",
@@ -180,7 +189,7 @@ pub trait IntoMessages<Trans> {
 ///     )
 ///     .await?;
 ///
-/// let messages: Vec<UnwrappedMessage> = subscriber.messages().into_stream().try_collect().await?;
+/// let messages: Vec<UnwrappedMessage> = subscriber.messages().try_collect().await?;
 /// assert_eq!(
 ///     messages,
 ///     vec![
@@ -256,7 +265,7 @@ pub trait IntoMessages<Trans> {
 /// # let subscriber_process = async move {
 /// #
 /// # let mut n = 0;
-/// let mut messages = subscriber.messages().into_stream();
+/// let mut messages = subscriber.messages();
 /// loop {
 /// #   if n >= 6 {
 /// #       break;
@@ -393,7 +402,6 @@ pub trait IntoMessages<Trans> {
 ///
 /// let messages: Vec<UnwrappedMessage> = subscriber
 ///     .messages()
-///     .into_stream()
 ///     .try_skip_while(|msg| {
 ///         future::ok(
 ///             msg.body
@@ -493,7 +501,11 @@ pub trait IntoMessages<Trans> {
 /// network failure, [`Messages::next()`] will return `Err`. It is strongly suggested that, when suitable, use the
 /// methods in [`futures::TryStreamExt`] to make the error-handling much more ergonomic (with the use of `?`) and
 /// shortcircuit the [`futures::Stream`] on the first error.
-pub struct Messages<'a, Trans> {
+pub struct Messages<'a, Trans>(PinBoxFut<'a, (MessagesState<'a, Trans>, Option<Result<UnwrappedMessage>>)>);
+
+type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
+
+pub struct MessagesState<'a, Trans> {
     user: &'a mut User<Trans>,
     ids_stack: Vec<(Identifier, Cursor<Address>)>,
     msg_queue: HashMap<Address, VecDeque<BinaryMessage>>,
@@ -501,7 +513,7 @@ pub struct Messages<'a, Trans> {
     successful_round: bool,
 }
 
-impl<'a, Trans> Messages<'a, Trans> {
+impl<'a, Trans> MessagesState<'a, Trans> {
     pub fn new(user: &'a mut User<Trans>) -> Self {
         Self {
             user,
@@ -510,10 +522,6 @@ impl<'a, Trans> Messages<'a, Trans> {
             stage: VecDeque::new(),
             successful_round: false,
         }
-    }
-
-    pub fn as_mut_user(&mut self) -> &mut User<Trans> {
-        &mut self.user
     }
 
     /// Fetch the next message of the channel
@@ -586,6 +594,23 @@ impl<'a, Trans> Messages<'a, Trans> {
                 }
             }
         }
+    }
+}
+
+impl<'a, Trans> Messages<'a, Trans>
+where
+    Trans: Transport,
+{
+    pub fn new(user: &'a mut User<Trans>) -> Self {
+        let mut state = MessagesState::new(user);
+        Self(Box::pin(async move {
+            let r = state.next().await;
+            (state, r)
+        }))
+    }
+
+    pub async fn next(&mut self) -> Option<Result<UnwrappedMessage>> {
+        StreamExt::next(self).await
     }
 
     /// Start streaming from a particular message
@@ -707,10 +732,8 @@ impl<'a, Trans> Messages<'a, Trans> {
     ) -> impl Stream<Item = Result<UnwrappedMessage>> + 'a
     where
         F: Future<Output = Result<bool>> + 'a,
-        Trans: Transport,
     {
-        self.into_stream()
-            .try_skip_while(p)
+        self.try_skip_while(p)
             .scan(None, |branch_last_link, msg| {
                 future::ready(Some(msg.map(|msg| {
                     let branch_last_link = branch_last_link.get_or_insert(msg.prev_link);
@@ -724,63 +747,34 @@ impl<'a, Trans> Messages<'a, Trans> {
             })
             .try_filter_map(future::ok)
     }
-
-    pub fn into_stream(self) -> impl Stream<Item = Result<UnwrappedMessage>> + 'a
-    where
-        Trans: Transport,
-    {
-        futures::stream::unfold(self, |mut this| {
-            Box::pin(async move { this.next().await.map(|r| (r, this)) })
-        })
-    }
 }
 
-impl<'a, Trans> AsMut<User<Trans>> for Messages<'a, Trans> {
-    fn as_mut(&mut self) -> &mut User<Trans> {
-        self.as_mut_user()
-    }
-}
-
-impl<'a, Trans> From<&'a mut User<Trans>> for Messages<'a, Trans> {
+impl<'a, Trans> From<&'a mut User<Trans>> for Messages<'a, Trans>
+where
+    Trans: Transport,
+{
     fn from(user: &'a mut User<Trans>) -> Self {
         Self::new(user)
     }
 }
 
-impl<'a, Trans> From<Messages<'a, Trans>> for &'a mut User<Trans> {
-    fn from(into_stream: Messages<'a, Trans>) -> Self {
-        into_stream.user
+impl<'a, Trans> Stream for Messages<'a, Trans>
+where
+    Trans: Transport,
+{
+    type Item = Result<UnwrappedMessage>;
+
+    fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // let MessagesProj(mut future) = self.as_mut().project();
+        match self.0.as_mut().poll(ctx) {
+            Poll::Ready((mut state, result)) => {
+                self.set(Messages(Box::pin(async move {
+                    let r = state.next().await;
+                    (state, r)
+                })));
+                Poll::Ready(result)
+            }
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
-
-// impl<Trans> Stream for Messages<Trans>
-// where
-//     Trans: Transport + Unpin,
-// {
-//     type Item = Result<UnwrappedMessage>;
-//
-//     fn poll_next(
-//         mut self: Pin<&mut Self>,
-//         ctx: &mut Context<'_>,
-//     ) -> Poll<Option<Self::Item>> {
-//         println!("poll-next -");
-//         match self.future {
-//             Some(future) => match future.as_mut().poll(ctx) {
-//                 r @ Poll::Ready(_) => {
-//                     self.future = None;
-//                     r
-//                 },
-//                 r @ Poll::Pending => {
-//                     r
-//                 }
-//             },
-//             None => {
-//                 self.future = Some(Messages::next(self.get_mut()));
-//                 self.poll_next(ctx)
-//             }
-//         }
-//         // let r = Messages::next(&mut self).as_mut().poll(ctx);
-//         // println!("done: {:?}", r);
-//         // r
-//     }
-// }

@@ -336,7 +336,10 @@ impl<Trans: Clone> fmt::Display for Author<Trans> {
 }
 
 impl<Trans> IntoMessages<Trans> for Author<Trans> {
-    fn messages(&mut self) -> Messages<'_, Trans> {
+    fn messages(&mut self) -> Messages<'_, Trans>
+    where
+        Trans: Transport,
+    {
         IntoMessages::messages(&mut self.user)
     }
 }
