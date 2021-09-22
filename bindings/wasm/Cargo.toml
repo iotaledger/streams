@@ -27,3 +27,6 @@ iota-streams = {path = "../../", default-features = false, features = ["tangle",
 
 # Needed to specify the js/wasm feature for a sub-crate
 getrandom = {version = "0.2.2", features = ["js"]}
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.28"
