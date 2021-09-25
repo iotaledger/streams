@@ -1,11 +1,11 @@
 ---
-name: Request a feature for Streams
-about: Request a feature
+name: Request a feature or enhancement for Streams
+about: Request a feature or enhancement
 ---
 
 ## Description
 
-Briefly describe the feature that you are requesting.
+Briefly describe the feature or enhancement that you are requesting.
 
 ## Motivation
 
