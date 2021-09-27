@@ -109,9 +109,9 @@ If your feature has a public-facing API, please consider the following:
 <summary>Contribute to the documentation :black_nib:</summary>
 <br>
 
-The Streams documentation is hosted on https://wiki.iota.org, which is built from content in the [documentation](https://github.com/iotaledger/documentation) repository.
+The IOTA Streams documentation is hosted on [https://wiki.iota.org/](https://wiki.iota.org/streams/welcome), and built from this repositories' documentation folder using Docusarus.  
 
-Please see the [guidelines](https://github.com/iotaledger/documentation/CONTRIBUTING.md) on the documentation repository for information on how to contribute to the documentation.
+For information on how to contribute to the documentation please see the [contribution guidelines](https://wiki.iota.org/docs/participate/contribute-to-wiki/welcome).
 
 </details>
 
