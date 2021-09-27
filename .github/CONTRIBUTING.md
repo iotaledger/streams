@@ -12,7 +12,7 @@ Thanks! :heart:
 
 If you have a general or technical question, you can use one of the following resources instead of submitting an issue:
 
-- [**Developer documentation:**](https://docs.iota.org/) For official information about developing with IOTA technology
+- [**Developer documentation:**](https://wiki.iota.org/) For official information about developing with IOTA technology
 - [**Discord:**](https://discord.iota.org/) For real-time chats with the developers and community members
 - [**IOTA cafe:**](https://iota.cafe/) For technical discussions with the Research and Development Department at the IOTA Foundation
 - [**StackExchange:**](https://iota.stackexchange.com/) For technical and troubleshooting questions
@@ -109,7 +109,7 @@ If your feature has a public-facing API, please consider the following:
 <summary>Contribute to the documentation :black_nib:</summary>
 <br>
 
-The Streams documentation is hosted on https://docs.iota.org, which is built from content in the [documentation](https://github.com/iotaledger/documentation) repository.
+The Streams documentation is hosted on https://wiki.iota.org, which is built from content in the [documentation](https://github.com/iotaledger/documentation) repository.
 
 Please see the [guidelines](https://github.com/iotaledger/documentation/CONTRIBUTING.md) on the documentation repository for information on how to contribute to the documentation.
 
