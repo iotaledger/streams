@@ -38,6 +38,10 @@ use iota_streams::{
     ddml::types::*,
 };
 
+use client_wasm::{
+    Client as RustClient,
+};
+
 #[wasm_bindgen]
 pub struct Author {
     // Don't alias away the ugliness, so we don't forget
@@ -52,6 +56,16 @@ impl Author {
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
         let author = Rc::new(RefCell::new(ApiAuthor::new(&seed, implementation.into(), transport)));
+        Author { author }
+    }
+
+    #[wasm_bindgen(catch, js_name = "fromClientRs")]
+    pub fn from_client_rs(client: RustClient, seed: String, implementation: ChannelType) -> Author {
+        let author = Rc::new(RefCell::new(ApiAuthor::new(
+            &seed,
+            implementation.into(),
+            client.to_inner(),
+        )));
         Author { author }
     }
 

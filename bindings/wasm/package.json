@@ -40,6 +40,7 @@
     "@types/node-fetch": "^2.5.10",
     "@wasm-tool/wasm-pack-plugin": "^1.1.0",
     "copy-webpack-plugin": "^9.0",
+    "jsdoc": "^3.6.7",
     "mocha": "^7.1.2",
     "rimraf": "^3.0.0",
     "ts-node": "^9.1.1",
@@ -47,10 +48,10 @@
     "wasm-pack": "^0.10.0",
     "webpack": "^5.39.1",
     "webpack-cli": "^4",
-    "webpack-dev-server": "^3.7.1",
-    "jsdoc": "^3.6.7"
+    "webpack-dev-server": "^3.7.1"
   },
   "dependencies": {
+    "@iota/client": "^2.1.0",
     "node-fetch": "^2.6.0"
   }
 }

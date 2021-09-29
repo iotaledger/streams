@@ -1,5 +1,7 @@
 const streams = require("../node/streams_wasm");
 
+const { ClientBuilder } = require('@iota/client')
+
 streams.set_panic_hook();
 
 main()
@@ -18,15 +20,12 @@ async function main() {
   let nodeAuth = new streams.NodeAuthOptions();
   nodeAuth.jwt = "testjwt";
 
-  let builder = new streams.ClientBuilder();
-  let client = await builder
+  const client = new ClientBuilder()
     .node(node)
-    // Or add node authentication to a node setting
-    //.permanode(node, nodeAuth)
-    .finish(options.clone());
+    .build();
 
   let seed = make_seed(81);
-  let auth = streams.Author.fromClient(client, seed, streams.ChannelType.SingleBranch);
+  let auth = streams.Author.fromClientRs(client, seed, streams.ChannelType.SingleBranch);
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
