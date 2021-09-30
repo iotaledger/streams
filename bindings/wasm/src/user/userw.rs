@@ -7,6 +7,8 @@ use crate::types::{
     SendOptions,
 };
 
+use client_wasm::client::Client as RustWasmClient;
+
 use iota_streams::{
     app::transport::{
         tangle::client::{
@@ -26,19 +28,19 @@ use iota_streams::{
 #[derive(Clone)]
 pub struct StreamsClient(pub(crate) Rc<RefCell<ApiClient>>);
 
-pub fn new_with_client(iota_client: RustClient, options: SendOptions) -> StreamsClient {
-    let client = ApiClient::new(options.into(), iota_client);
-    let transport = Rc::new(RefCell::new(client));
-
-    StreamsClient(transport)
-}
-
 #[wasm_bindgen]
 impl StreamsClient {
     #[wasm_bindgen(constructor)]
     pub fn new(node: String, options: SendOptions) -> Self {
         let mut client = ApiClient::new_from_url(&node);
         client.set_send_options(options.into());
+        let transport = Rc::new(RefCell::new(client));
+        StreamsClient(transport)
+    }
+
+    #[wasm_bindgen(js_name = "fromClient")]
+    pub fn from_client(client: &RustWasmClient) -> StreamsClient {
+        let client = ApiClient::new(Default::default(), RustClient::clone(&client.to_inner()));
         let transport = Rc::new(RefCell::new(client));
         StreamsClient(transport)
     }
@@ -63,7 +65,7 @@ impl StreamsClient {
 
 impl StreamsClient {
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_inner(self) -> Rc<RefCell<ApiClient>> {
+    pub fn into_inner(self) -> Rc<RefCell<ApiClient>> {
         self.0
     }
 }

@@ -14,21 +14,17 @@ async function main() {
     // Default is a load balancer, if you have your own node it's recommended to use that instead
     let node = "https://chrysalis-nodes.iota.org/";
     let options = new streams.SendOptions(node, true);
-    let nodeAuth = new streams.NodeAuthOptions();
-    nodeAuth.jwt = "testjwt";
 
     let builder = new streams.ClientBuilder();
     let client = await builder
         .node(node)
-        // Or add node authentication to a node setting
-        //.permanode(node, nodeAuth)
-        .finish(options.clone());
-
+        .build();
     let seed = make_seed(81);
-    let auth = streams.Author.fromClient(client, seed, streams.ChannelType.SingleBranch);
+    let auth = streams.Author.fromClient(streams.StreamsClient.fromClient(client), seed, streams.ChannelType.SingleBranch);
 
     console.log("channel address: ", auth.channel_address());
     console.log("multi branching: ", auth.is_multi_branching());
+    console.log("IOTA client info:", await client.getInfo());
 
     let response = await auth.clone().send_announce();
     let ann_link = response.link;
@@ -133,7 +129,7 @@ async function main() {
     let password = "password"
     let exp = auth.clone().export(password);
 
-    let client2 = new streams.Client(node, options.clone());
+    let client2 = new streams.StreamsClient(node, options.clone());
     let auth2 = streams.Author.import(client2, exp, password);
 
     if (auth2.channel_address !== auth.channel_address) {

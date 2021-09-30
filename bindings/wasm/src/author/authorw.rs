@@ -40,11 +40,6 @@ use iota_streams::{
     ddml::types::*,
 };
 
-pub use client_wasm;
-use client_wasm::{
-    client::Client as RustWasmClient,
-};
-
 #[wasm_bindgen]
 pub struct Author {
     // Don't alias away the ugliness, so we don't forget
@@ -62,30 +57,19 @@ impl Author {
         Author { author }
     }
 
-    #[wasm_bindgen(catch, js_name = "fromClientRs")]
-    pub fn from_client_rs(client: RustWasmClient, seed: String, implementation: ChannelType) -> Author {
-        let api_client = ApiClient::new_from_client(client.to_inner());
-        let author = Rc::new(RefCell::new(ApiAuthor::new(
-            &seed,
-            implementation.into(),
-            Rc::new(RefCell::new(api_client)),
-        )));
-        Author { author }
-    }
-
     #[wasm_bindgen(catch, js_name = "fromClient")]
     pub fn from_client(client: StreamsClient, seed: String, implementation: ChannelType) -> Author {
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,
             implementation.into(),
-            client.to_inner(),
+            client.into_inner(),
         )));
         Author { author }
     }
 
     #[wasm_bindgen(catch)]
     pub fn import(client: StreamsClient, bytes: Vec<u8>, password: &str) -> Result<Author> {
-        block_on(ApiAuthor::import(&bytes, password, client.to_inner()))
+        block_on(ApiAuthor::import(&bytes, password, client.into_inner()))
             .map(|v| Author {
                 author: Rc::new(RefCell::new(v)),
             })
