@@ -39,7 +39,6 @@ futures = { version = "0.3.8", default-features = false, features = ["executor"]
 
 # Dependencies for "client" feature
 iota-client = { git = "https://github.com/kwek20/iota.rs", branch  = "wasm-export", default-features = false, optional = true }
-# iota-client = { path = "../../iota.rs/iota-client", default-features = false, optional = true }
 num_cpus = { version = "1.10", optional = true }
 
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
