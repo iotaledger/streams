@@ -40,7 +40,7 @@ impl StreamsClient {
 
     #[wasm_bindgen(js_name = "fromClient")]
     pub fn from_client(client: &RustWasmClient) -> StreamsClient {
-        let client = ApiClient::new(Default::default(), RustClient::clone(&client.to_inner()));
+        let client = ApiClient::new(Default::default(), RustClient::clone(&client.into_inner()));
         let transport = Rc::new(RefCell::new(client));
         StreamsClient(transport)
     }

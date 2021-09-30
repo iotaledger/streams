@@ -306,7 +306,7 @@ impl<F: PRP> Spongos<F> {
 
     /// Only `inner` part of the state may be serialized.
     /// State should be committed.
-    pub fn to_inner(&self) -> Result<Inner<F>> {
+    pub fn into_inner(&self) -> Result<Inner<F>> {
         try_or!(self.is_committed(), SpongosNotCommitted)?;
         Ok(self.s.inner().clone().into())
     }
@@ -338,13 +338,13 @@ impl<F: PRP> From<&Inner<F>> for Spongos<F> {
 
 impl<F: PRP> From<Spongos<F>> for Inner<F> {
     fn from(inner: Spongos<F>) -> Self {
-        inner.to_inner().unwrap()
+        inner.into_inner().unwrap()
     }
 }
 
 impl<F: PRP> From<&Spongos<F>> for Inner<F> {
     fn from(inner: &Spongos<F>) -> Self {
-        inner.to_inner().unwrap()
+        inner.into_inner().unwrap()
     }
 }
 
