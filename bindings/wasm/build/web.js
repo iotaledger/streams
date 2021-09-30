@@ -3,11 +3,7 @@ const fs = require('fs')
 
 const entryFilePath = path.join(__dirname, '../web/streams_wasm.js')
 const entryFile = fs.readFileSync(entryFilePath).toString()
-// comment out this code so it works for Webpack
-let changedFile = entryFile.replace(
-    "input = import.meta.url.replace(",
-    "// input = import.meta.url.replace("
-)
+let changedFile = entryFile
     // Rename original init function, because we want to use the name for our own function
     .replace(
         "async function init(input) {",
