@@ -24,23 +24,23 @@ use iota_streams::{
 
 #[wasm_bindgen]
 #[derive(Clone)]
-pub struct Client(pub(crate) Rc<RefCell<ApiClient>>);
+pub struct StreamsClient(pub(crate) Rc<RefCell<ApiClient>>);
 
-pub fn new_with_client(iota_client: RustClient, options: SendOptions) -> Client {
+pub fn new_with_client(iota_client: RustClient, options: SendOptions) -> StreamsClient {
     let client = ApiClient::new(options.into(), iota_client);
     let transport = Rc::new(RefCell::new(client));
 
-    Client(transport)
+    StreamsClient(transport)
 }
 
 #[wasm_bindgen]
-impl Client {
+impl StreamsClient {
     #[wasm_bindgen(constructor)]
     pub fn new(node: String, options: SendOptions) -> Self {
         let mut client = ApiClient::new_from_url(&node);
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-        Client(transport)
+        StreamsClient(transport)
     }
 
     pub fn get_link_details(mut self, link: &Address) -> js_sys::Promise {
@@ -61,16 +61,16 @@ impl Client {
     }
 }
 
-impl Client {
+impl StreamsClient {
     #[allow(clippy::wrong_self_convention)]
     pub fn to_inner(self) -> Rc<RefCell<ApiClient>> {
         self.0
     }
 }
 
-impl From<ApiClient> for Client {
+impl From<ApiClient> for StreamsClient {
     fn from(client: ApiClient) -> Self {
         let transport = Rc::new(RefCell::new(client));
-        Client(transport)
+        StreamsClient(transport)
     }
 }

@@ -51,7 +51,7 @@
     "webpack-dev-server": "^3.7.1"
   },
   "dependencies": {
-    "@iota/client": "^2.1.0",
+    "@iota/client-wasm": "^0.1.2",
     "node-fetch": "^2.6.0"
   }
 }

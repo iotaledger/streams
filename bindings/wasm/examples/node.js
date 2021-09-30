@@ -1,6 +1,6 @@
 const streams = require("../node/streams_wasm");
 
-const { ClientBuilder } = require('@iota/client')
+const { ClientBuilder } = require('@iota/client-wasm/node')
 
 streams.set_panic_hook();
 
@@ -17,10 +17,7 @@ async function main() {
   let node = "https://chrysalis-nodes.iota.org/";
 
   let options = new streams.SendOptions(node, true);
-  let nodeAuth = new streams.NodeAuthOptions();
-  nodeAuth.jwt = "testjwt";
-
-  const client = new ClientBuilder()
+  const client = await new ClientBuilder()
     .node(node)
     .build();
 
