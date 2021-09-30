@@ -17,15 +17,18 @@ async function main() {
   let node = "https://chrysalis-nodes.iota.org/";
 
   let options = new streams.SendOptions(node, true);
-  const client = await new ClientBuilder()
+  const client = await new streams.ClientBuilder()
     .node(node)
     .build();
 
+
   let seed = make_seed(81);
   let auth = streams.Author.fromClientRs(client, seed, streams.ChannelType.SingleBranch);
+  //console.log(await client.getInfo());
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
+
 
   let response = await auth.clone().send_announce();
   let ann_link = response.link;

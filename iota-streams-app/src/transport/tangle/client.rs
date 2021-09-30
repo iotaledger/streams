@@ -20,7 +20,6 @@ use iota_streams_core::{
     err,
     prelude::{
         Vec,
-        Rc,
     },
     try_or,
     wrapped_err,
@@ -161,7 +160,7 @@ pub async fn async_get_link_details(client: &iota_client::Client, link: &TangleA
 /// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
 pub struct Client {
     send_opt: SendOptions,
-    client: Rc<iota_client::Client>,
+    client: iota_client::Client,
 }
 
 impl Default for Client {
@@ -169,12 +168,12 @@ impl Default for Client {
     fn default() -> Self {
         Self {
             send_opt: SendOptions::default(),
-            client: Rc::new(block_on(
+            client: block_on(
                 iota_client::ClientBuilder::new()
                     .with_node("http://localhost:14265")
                     .unwrap()
                     .finish(),
-                ).unwrap()),
+                ).unwrap(),
         }
     }
 }
@@ -184,12 +183,12 @@ impl Client {
     pub fn new(options: SendOptions, client: iota_client::Client) -> Self {
         Self {
             send_opt: options,
-            client: Rc::new(client),
+            client: client,
         }
     }
 
     // Create an instance of Client with a ready client
-    pub fn new_from_client(client: Rc<iota_client::Client>) -> Self {
+    pub fn new_from_client(client: iota_client::Client) -> Self {
         Self {
             send_opt: SendOptions::default(),
             client,
@@ -203,13 +202,13 @@ impl Client {
                 url: url.to_string(),
                 ..Default::default()
             },
-            client: Rc::new(block_on(
+            client: block_on(
                 iota_client::ClientBuilder::new()
                     .with_node(url)
                     .unwrap()
                     .with_local_pow(false)
                     .finish(),
-                ).unwrap()),
+                ).unwrap(),
         }
     }
 }
@@ -218,13 +217,13 @@ impl Clone for Client {
     fn clone(&self) -> Self {
         Self {
             send_opt: self.send_opt.clone(),
-            client: Rc::new(block_on(
+            client: block_on(
                 iota_client::ClientBuilder::new()
                     .with_node(&self.send_opt.url)
                     .unwrap()
                     .with_local_pow(self.send_opt.local_pow)
                     .finish(),
-            ).unwrap()),
+            ).unwrap(),
         }
     }
 }

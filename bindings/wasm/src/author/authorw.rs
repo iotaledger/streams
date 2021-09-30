@@ -18,7 +18,9 @@ use iota_streams::{
     app::{
         futures::executor::block_on,
         transport::{
-            tangle::client::Client as ApiClient,
+            tangle::client::{
+                Client as ApiClient,
+            },
             TransportOptions,
         },
     },
