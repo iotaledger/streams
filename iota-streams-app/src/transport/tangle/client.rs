@@ -18,9 +18,7 @@ use iota_client::bee_message::{
 
 use iota_streams_core::{
     err,
-    prelude::{
-        Vec,
-    },
+    prelude::Vec,
     try_or,
     wrapped_err,
     Errors::*,
@@ -173,7 +171,8 @@ impl Default for Client {
                     .with_node("http://localhost:14265")
                     .unwrap()
                     .finish(),
-                ).unwrap(),
+            )
+            .unwrap(),
         }
     }
 }
@@ -183,14 +182,6 @@ impl Client {
     pub fn new(options: SendOptions, client: iota_client::Client) -> Self {
         Self {
             send_opt: options,
-            client: client,
-        }
-    }
-
-    // Create an instance of Client with a ready client
-    pub fn new_from_client(client: iota_client::Client) -> Self {
-        Self {
-            send_opt: SendOptions::default(),
             client,
         }
     }
@@ -208,7 +199,8 @@ impl Client {
                     .unwrap()
                     .with_local_pow(false)
                     .finish(),
-                ).unwrap(),
+            )
+            .unwrap(),
         }
     }
 }
@@ -223,7 +215,8 @@ impl Clone for Client {
                     .unwrap()
                     .with_local_pow(self.send_opt.local_pow)
                     .finish(),
-            ).unwrap(),
+            )
+            .unwrap(),
         }
     }
 }

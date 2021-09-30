@@ -1,7 +1,5 @@
 const streams = require("../node/streams_wasm");
 
-const { ClientBuilder } = require('@iota/client-wasm/node')
-
 streams.set_panic_hook();
 
 main()
@@ -15,19 +13,17 @@ main()
 async function main() {
   // Default is a load balancer, if you have your own node it's recommended to use that instead
   let node = "https://chrysalis-nodes.iota.org/";
-
   let options = new streams.SendOptions(node, true);
+
   const client = await new streams.ClientBuilder()
     .node(node)
     .build();
-
-
   let seed = make_seed(81);
-  let auth = streams.Author.fromClientRs(client, seed, streams.ChannelType.SingleBranch);
-  //console.log(await client.getInfo());
+  let auth = streams.Author.fromClient(streams.StreamsClient.fromClient(client), seed, streams.ChannelType.SingleBranch);
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
+  console.log("IOTA client info:", await client.getInfo());
 
 
   let response = await auth.clone().send_announce();
@@ -114,8 +110,8 @@ async function main() {
   var matches = true;
   for (var i = 0; i < reset_state.length; i++) {
     if (start_state[i].link.toString() != reset_state[i].link.toString() ||
-        start_state[i].seqNo != reset_state[i].seqNo ||
-        start_state[i].branchNo != reset_state[i].branchNo) {
+      start_state[i].seqNo != reset_state[i].seqNo ||
+      start_state[i].branchNo != reset_state[i].branchNo) {
       matches = false;
     }
   }
@@ -134,13 +130,13 @@ async function main() {
   let password = "password"
   let exp = auth.clone().export(password);
 
-  let client2 = new streams.Client(node, options.clone());
+  let client2 = new streams.StreamsClient(node, options.clone());
   let auth2 = streams.Author.import(client2, exp, password);
 
   if (auth2.channel_address !== auth.channel_address) {
-      console.log("import failed");
+    console.log("import failed");
   } else {
-      console.log("import succesfull")
+    console.log("import succesfull")
   }
 
   function to_bytes(str) {
