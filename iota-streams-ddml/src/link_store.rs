@@ -19,7 +19,7 @@ use iota_streams_core::{
     try_or,
     Errors::{
         GenericLinkNotFound,
-        MessageLinkNotFoundInTangle,
+        MessageLinkNotFound,
     },
 };
 
@@ -120,7 +120,7 @@ where
 {
     type Info = Info;
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        try_or!(self.link() == link, MessageLinkNotFoundInTangle(link.to_string()))?;
+        try_or!(self.link() == link, MessageLinkNotFound(link.to_string()))?;
         Ok((self.spongos().into(), self.info().clone()))
     }
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
@@ -173,7 +173,7 @@ where
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
         match self.map.get(link) {
             Some((inner, info)) => Ok((inner.into(), info.clone())),
-            None => err!(MessageLinkNotFoundInTangle(link.to_string())),
+            None => err!(MessageLinkNotFound(link.to_string())),
         }
     }
 
