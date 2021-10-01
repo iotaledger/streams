@@ -25,7 +25,10 @@ use iota_streams::{
             Rc,
             String,
         },
-        psk::pskid_to_hex_string,
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
     },
     ddml::types::*,
 };
@@ -58,6 +61,19 @@ impl Subscriber {
         block_on(ApiSubscriber::import(&bytes, password, client.into_inner()))
             .map(|v| Subscriber {
                 subscriber: Rc::new(RefCell::new(v)),
+            })
+            .into_js_result()
+    }
+
+    pub async fn recover(seed: String, ann_address: Address, options: SendOptions) -> Result<Subscriber> {
+        let mut client = ApiClient::new_from_url(&options.url());
+        client.set_send_options(options.into());
+        let transport = Rc::new(RefCell::new(client));
+
+        ApiSubscriber::recover(&seed, ann_address.as_inner(), transport)
+            .await
+            .map(|sub| Subscriber {
+                subscriber: Rc::new(RefCell::new(sub)),
             })
             .into_js_result()
     }
@@ -227,6 +243,16 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
+    pub async fn send_unsubscribe(self, link: Address) -> Result<UserResponse> {
+        self.subscriber
+            .borrow_mut()
+            .send_unsubscribe(link.as_inner())
+            .await
+            .map(|link| UserResponse::new(link.into(), None, None))
+            .into_js_result()
+    }
+
+    #[wasm_bindgen(catch)]
     pub async fn send_tagged_packet(
         self,
         link: Address,
@@ -318,5 +344,11 @@ impl Subscriber {
     #[wasm_bindgen(catch)]
     pub fn reset_state(self) -> Result<()> {
         self.subscriber.borrow_mut().reset_state().into_js_result()
+    }
+
+    pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
+        pskid_from_hex_str(&pskid_str)
+            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid).into())
+            .into_js_result()
     }
 }

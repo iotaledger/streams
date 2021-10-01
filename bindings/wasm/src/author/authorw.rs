@@ -12,11 +12,11 @@ use js_sys::Array;
 
 use core::cell::RefCell;
 
-use iota_streams::app::identifier::Identifier;
 /// Streams imports
 use iota_streams::{
     app::{
         futures::executor::block_on,
+        identifier::Identifier,
         transport::{
             tangle::client::Client as ApiClient,
             TransportOptions,
@@ -33,6 +33,7 @@ use iota_streams::{
             String,
             ToString,
         },
+        psk::pskid_from_hex_str,
         psk::pskid_to_hex_string,
     },
     ddml::types::*,
@@ -77,6 +78,24 @@ impl Author {
     #[wasm_bindgen(catch)]
     pub fn export(&self, password: &str) -> Result<Vec<u8>> {
         block_on(self.author.borrow_mut().export(password)).into_js_result()
+    }
+
+    pub async fn recover(
+        seed: String,
+        ann_address: Address,
+        implementation: ChannelType,
+        options: SendOptions,
+    ) -> Result<Author> {
+        let mut client = ApiClient::new_from_url(&options.url());
+        client.set_send_options(options.into());
+        let transport = Rc::new(RefCell::new(client));
+
+        ApiAuthor::recover(&seed, ann_address.as_inner(), implementation.into(), transport)
+            .await
+            .map(|auth| Author {
+                author: Rc::new(RefCell::new(auth)),
+            })
+            .into_js_result()
     }
 
     pub fn clone(&self) -> Author {
@@ -191,6 +210,15 @@ impl Author {
         self.author
             .borrow_mut()
             .receive_subscribe(link_to.as_inner())
+            .await
+            .into_js_result()
+    }
+
+    #[wasm_bindgen(catch)]
+    pub async fn receive_unsubscribe(self, link_to: Address) -> Result<()> {
+        self.author
+            .borrow_mut()
+            .receive_unsubscribe(link_to.as_inner())
             .await
             .into_js_result()
     }
@@ -331,6 +359,21 @@ impl Author {
                     .map(|(id, cursor)| JsValue::from(UserState::new(id, cursor.into())))
                     .collect()
             })
+            .into_js_result()
+    }
+
+    pub fn store_new_subscriber(&self, pk_str: String) -> Result<()> {
+        public_key_from_string(&pk_str)
+            .and_then(|pk| self.author.borrow_mut().store_new_subscriber(pk).into_js_result())
+    }
+
+    pub fn remove_subscriber(&self, pk_str: String) -> Result<()> {
+        public_key_from_string(&pk_str).and_then(|pk| self.author.borrow_mut().remove_subscriber(pk).into_js_result())
+    }
+
+    pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
+        pskid_from_hex_str(&pskid_str)
+            .and_then(|pskid| self.author.borrow_mut().remove_psk(pskid).into())
             .into_js_result()
     }
 }

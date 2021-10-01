@@ -169,8 +169,37 @@ impl<Trans> User<Trans> {
         })
     }
 
+    /// Store a PSK in the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    ///   * `psk` - A pre shared key
     pub fn store_psk(&mut self, pskid: PskId, psk: Psk, use_psk: bool) -> Result<()> {
         self.user.store_psk(pskid, psk, use_psk)
+    }
+
+    /// Remove a PSK from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        self.user.remove_psk(pskid)
+    }
+
+    /// Store a predefined Subscriber by their public key
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn store_new_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.insert_subscriber(pk)
+    }
+
+    /// Remove a Subscriber from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.remove_subscriber(pk)
     }
 
     /// Consume a binary sequence message and return the derived message link
@@ -317,6 +346,15 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.send_message(msg, MsgInfo::Subscribe).await
     }
 
+    /// Create and Send an Unsubscribe message to a Channel app instance [Subscriber].
+    ///
+    /// # Arguments
+    /// * `link_to` - Address of the user subscription message
+    pub async fn send_unsubscribe(&mut self, link_to: &Address) -> Result<Address> {
+        let msg = self.user.unsubscribe(link_to).await?;
+        self.send_message(msg, MsgInfo::Unsubscribe).await
+    }
+
     // Receive
 
     /// Receive and process a sequence message [Author, Subscriber].
@@ -377,6 +415,16 @@ impl<Trans: Transport + Clone> User<Trans> {
         let msg = self.transport.recv_message(link).await?;
         // TODO: Timestamp is lost.
         self.user.handle_subscribe(msg.binary, MsgInfo::Subscribe).await
+    }
+
+    /// Receive and process an unsubscribe message [Author].
+    ///
+    ///  # Arguments
+    ///  * `link` - Address of the message to be processed
+    pub async fn receive_unsubscribe(&mut self, link: &Address) -> Result<()> {
+        let msg = self.transport.recv_message(link).await?;
+        // TODO: Timestamp is lost.
+        self.user.handle_unsubscribe(msg.binary, MsgInfo::Unsubscribe).await
     }
 
     /// Receive and Process an announcement message [Subscriber].

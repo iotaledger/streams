@@ -126,6 +126,9 @@ extern err_t auth_send_keyload(message_links_t *links, author_t *author, address
 
 // Subscribe
 extern err_t auth_receive_subscribe(author_t *author, address_t const *address);
+extern err_t auth_receive_unsubscribe(author_t *author, address_t const *address);
+extern err_t auth_store_new_subscriber(author_t *author, public_key_t const *public_key);
+extern err_t auth_remove_subscriber(author_t *author, public_key_t const *public_key);
 
 // Tagged Packets
 extern err_t auth_send_tagged_packet(message_links_t *links, author_t *author, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);
@@ -148,6 +151,7 @@ extern err_t auth_sync_state(unwrapped_messages_t const **umsgs, author_t *autho
 extern err_t auth_fetch_state(user_state_t const **state, author_t *author);
 // Store Psk
 extern err_t auth_store_psk(psk_id_t const **pskid, author_t *author, char const *psk);
+extern err_t auth_remove_psk(author_t *author, char const *pskid);
 
 
 /////////////
@@ -173,8 +177,9 @@ extern void sub_unregister(subscriber_t *subscriber);
 extern err_t sub_receive_announce(subscriber_t *subscriber, address_t const *address);
 // Subscribe
 extern err_t sub_send_subscribe(address_t const **link, subscriber_t *subscriber, address_t const *announcement_link);
+extern err_t sub_send_unsubscribe(address_t const **link, subscriber_t *subscriber, address_t const *subscription_link);
 // Keyload
-extern err_t sub_receive_keyload(subscriber_t *subscriber, address_t const *address);
+extern err_t sub_receive_keyload(uint8_t const **access, subscriber_t *subscriber, address_t const *address);
 extern err_t sub_receive_keyload_from_ids(message_links_t *links, subscriber_t *subscriber, next_msg_ids_t const *next_msg_ids);
 // Tagged Packets
 extern err_t sub_send_tagged_packet(message_links_t *links, subscriber_t *subscriber, message_links_t link_to, uint8_t const *public_payload_ptr, size_t public_payload_size, uint8_t const *masked_payload_ptr, size_t masked_payload_size);
@@ -198,6 +203,8 @@ extern err_t sub_fetch_state(user_state_t const **state, subscriber_t *subscribe
 extern err_t sub_reset_state(subscriber_t *subscriber);
 // Store Psk
 extern err_t sub_store_psk(psk_id_t const **pskid, subscriber_t *subscriber, char const *psk);
+extern err_t sub_remove_psk(author_t *author, char const *pskid);
+
 
 /////////////
 /// Utility
