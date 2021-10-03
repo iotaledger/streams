@@ -299,6 +299,29 @@ impl Subscriber {
             .into_js_result()
     }
 
+    /// Generate the next batch of message {@link Address} to poll
+    ///
+    /// Given the set of users registered as participants of the channel and their current registered
+    /// sequencing position, this method generates a set of new {@link Address} to poll for new messages
+    /// (one for each user, represented by its identifier). However, beware that it is not recommended to
+    /// use this method as a means to implement message traversal, as there's no guarantee that the addresses
+    /// returned are the immediately next addresses to be processed. use {@link Subscriber#fetchNextMsg} instead.
+    ///
+    /// Keep in mind that in multi-branch channels, the link returned corresponds to the next sequence message.
+    ///
+    /// @see Subscriber#fetchNextMsg
+    /// @see Subscriber#fetchNextMsgs
+    /// @returns {NextMsgAddress[]}
+    #[wasm_bindgen(js_name = "genNextMsgAddresses")]
+    pub fn gen_next_msg_addresses(&self) -> Array {
+        self.subscriber
+            .borrow()
+            .gen_next_msg_addresses()
+            .into_iter()
+            .map(|(id, cursor)| JsValue::from(NextMsgAddress::new(identifier_to_string(&id), cursor.link.into())))
+            .collect()
+    }
+
     #[wasm_bindgen(catch)]
     pub fn fetch_state(&self) -> Result<Array> {
         self.subscriber

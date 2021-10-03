@@ -4,10 +4,7 @@ use futures::{
 };
 use iota_streams_app::{
     identifier::Identifier,
-    message::{
-        HasLink,
-        LinkGenerator,
-    },
+    message::HasLink,
 };
 use iota_streams_core::{
     err,
@@ -143,14 +140,19 @@ impl<Trans> User<Trans> {
         self.user.reset_state()
     }
 
-    /// Generate a vector containing the next sequenced message identifier for each publishing
-    /// participant in the channel
-    /// [Author, Subscriber]
+    /// Generate the next batch of message [`Address`] to poll
     ///
-    ///   # Arguments
-    ///   * `branching` - Boolean representing the sequencing nature of the channel
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(Identifier, Cursor<Address>)> {
-        self.user.gen_next_msg_ids(branching)
+    /// Given the set of users registered as participants of the channel and their current registered
+    /// sequencing position, this method generates a set of new [`Address`] to poll for new messages
+    /// (one for each user, represented by its [`Identifier`]). However, beware that it is not recommended to
+    /// use this method as a means to implement message traversal, as there's no guarantee that the addresses
+    /// returned are the immediately next addresses to be processed. use [`User::messages()`] instead.
+    ///
+    /// Keep in mind that in multi-branch channels, the link returned corresponds to the next sequence message.
+    ///
+    /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information
+    pub fn gen_next_msg_addresses(&self) -> Vec<(Identifier, Cursor<Address>)> {
+        self.user.gen_next_msg_links()
     }
 
     /// Commit to state a wrapped message and type
@@ -180,11 +182,12 @@ impl<Trans> User<Trans> {
     /// Consume a binary sequence message and return the derived message link
     async fn process_sequence(&mut self, msg: &BinaryMessage, store: bool) -> Result<Address> {
         let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store).await?;
-        let msg_link = self.user.link_gen.link_from(
+        let msg_cursor = self.user.gen_link(
             unwrapped.body.id,
-            Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
+            &unwrapped.body.ref_link,
+            unwrapped.body.seq_num.0 as u32,
         );
-        Ok(msg_link)
+        Ok(msg_cursor.link)
     }
 }
 
@@ -335,12 +338,10 @@ impl<Trans: Transport + Clone> User<Trans> {
                 .handle_sequence(&msg.binary, MsgInfo::Sequence, true)
                 .await?
                 .body;
-            let msg_id = self.user.link_gen.link_from(
-                seq_msg.id,
-                Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
-            );
-
-            Ok(msg_id)
+            let msg_cursor = self
+                .user
+                .gen_link(seq_msg.id, &seq_msg.ref_link, seq_msg.seq_num.0 as u32);
+            Ok(msg_cursor.link)
         } else {
             err!(UserNotRegistered)
         }
@@ -559,9 +560,8 @@ impl<Trans: Transport + Clone> User<Trans> {
         match self.author_public_key() {
             Some(pk) => {
                 let seq_no = self.user.fetch_anchor()?.seq_no;
-                let cursor = Cursor::new_at(anchor_link.rel(), 0, msg_num + seq_no);
-                let link = self.user.link_gen.link_from(pk, cursor);
-                let msg = self.transport.recv_message(&link).await?;
+                let msg_cursor = self.user.gen_link(pk, anchor_link.rel(), seq_no + msg_num);
+                let msg = self.transport.recv_message(&msg_cursor.link).await?;
                 self.handle_message(msg, false).await
             }
             None => err(UserNotRegistered),

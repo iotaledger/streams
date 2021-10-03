@@ -211,13 +211,6 @@ Fetch a defined number of previous messages in a channel.
 | max             | `number`                      | Max number of messages to fetch     |
 **Returns:** An array of User Response wrappers around the retrieved messages.
 
-#### _async -_ gen_next_msg_ids(): Array<[NextMsgId](#NextMsgId)>
-Fetch the next message sent by each publisher (empty array if none are present).
-
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-**Returns:** An array of NextMsgId wrappers for each publisher in the channel.
-
 #### store_psk(psk): String 
 Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use in keyload messages 
 | Param           | Type                          | Description                         |

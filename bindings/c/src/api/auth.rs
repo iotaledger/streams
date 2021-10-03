@@ -345,7 +345,7 @@ pub unsafe extern "C" fn auth_receive_sequence(r: *mut *const Address, user: *mu
 pub unsafe extern "C" fn auth_gen_next_msg_ids(ids: *mut *const NextMsgIds, user: *mut Author) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         ids.as_mut().map_or(Err::NullArgument, |ids| {
-            let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
+            let next_msg_ids = user.gen_next_msg_addresses();
             *ids = safe_into_ptr(next_msg_ids);
             Err::Ok
         })

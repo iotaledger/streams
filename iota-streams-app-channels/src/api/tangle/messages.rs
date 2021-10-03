@@ -566,7 +566,7 @@ impl<'a, Trans> MessagesState<'a, Trans> {
             let (_id, Cursor { link, .. }) = match self.ids_stack.pop() {
                 Some(id_cursor) => id_cursor,
                 None => {
-                    let mut id_cursors = self.user.gen_next_msg_ids(self.user.is_multi_branching());
+                    let mut id_cursors = self.user.gen_next_msg_addresses();
                     let last = id_cursors.pop()?;
                     self.ids_stack = id_cursors;
                     self.successful_round = false; // new round
@@ -765,7 +765,6 @@ where
     type Item = Result<UnwrappedMessage>;
 
     fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // let MessagesProj(mut future) = self.as_mut().project();
         match self.0.as_mut().poll(ctx) {
             Poll::Ready((mut state, result)) => {
                 self.set(Messages(Box::pin(async move {

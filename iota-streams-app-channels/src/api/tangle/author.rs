@@ -81,13 +81,19 @@ impl<Trans> Author<Trans> {
         self.user.store_psk(pskid, psk, false)
     }
 
-    /// Generate a vector containing the next sequenced message identifier for each publishing
-    /// participant in the channel
+    /// Generate the next batch of message [`Address`] to poll
     ///
-    ///   # Arguments
-    ///   * `branching` - Boolean representing the sequencing nature of the channel
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(Identifier, Cursor<Address>)> {
-        self.user.gen_next_msg_ids(branching)
+    /// Given the set of users registered as participants of the channel and their current registered
+    /// sequencing position, this method generates a set of new [`Address`] to poll for new messages
+    /// (one for each user, represented by its [`Identifier`]). However, beware that it is not recommended to
+    /// use this method as a means to implement message traversal, as there's no guarantee that the addresses
+    /// returned are the immediately next addresses to be processed. use [`Author::messages()`] instead.
+    ///
+    /// Keep in mind that in multi-branch channels, the link returned corresponds to the next sequence message.
+    ///
+    /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information.
+    pub fn gen_next_msg_addresses(&self) -> Vec<(Identifier, Cursor<Address>)> {
+        self.user.gen_next_msg_addresses()
     }
 
     /// Stores the provided link to the internal sequencing state for the provided participant

@@ -365,9 +365,10 @@ pub struct UserResponse {
 }
 
 #[wasm_bindgen]
-pub struct NextMsgId {
-    identifier: String,
-    msgid: Address,
+pub struct NextMsgAddress {
+    #[wasm_bindgen(getter_with_clone)]
+    pub identifier: String,
+    pub address: Address,
 }
 
 #[wasm_bindgen]
@@ -519,19 +520,9 @@ impl Message {
 }
 
 #[wasm_bindgen]
-impl NextMsgId {
-    pub fn new(identifier: String, msgid: Address) -> Self {
-        NextMsgId { identifier, msgid }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn identifier(&self) -> String {
-        self.identifier.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn link(&self) -> Address {
-        self.msgid
+impl NextMsgAddress {
+    pub fn new(identifier: String, address: Address) -> Self {
+        Self { identifier, address }
     }
 }
 

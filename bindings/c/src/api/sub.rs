@@ -340,7 +340,7 @@ pub unsafe extern "C" fn sub_receive_signed_packet(
 pub unsafe extern "C" fn sub_gen_next_msg_ids(ids: *mut *const NextMsgIds, user: *mut Subscriber) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         ids.as_mut().map_or(Err::NullArgument, |ids| {
-            let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
+            let next_msg_ids = user.gen_next_msg_addresses();
             *ids = safe_into_ptr(next_msg_ids);
             Err::Ok
         })
