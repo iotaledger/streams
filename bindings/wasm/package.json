@@ -10,13 +10,13 @@
     "example": "examples"
   },
   "scripts": {
-    "build:nodejs": "wasm-pack build --target nodejs --out-dir node && rm ./node/.gitignore",
+    "build:nodejs": "wasm-pack build --target nodejs --out-dir node && node ./build/node && rm ./node/.gitignore",
     "build:web": "wasm-pack build --target web --out-dir web && node ./build/web && rm ./web/.gitignore",
     "build": "npm run build:web && npm run build:nodejs",
     "pretest": "npm run build:nodejs",
     "prepublishOnly": "npm run build",
     "test": "mocha",
-    "serve": "webpack-dev-server",
+    "serve": "webpack serve",
     "example:nodejs": "node examples/node.js",
     "example:nodets": "ts-node examples/node.ts",
     "doc:nodejs": "jsdoc -d node/jsdoc -c jsdoc-conf.json node"

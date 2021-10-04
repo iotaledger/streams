@@ -56,18 +56,19 @@ impl Author {
         Author { author }
     }
 
-    pub fn from_client(client: Client, seed: String, implementation: ChannelType) -> Author {
+    #[wasm_bindgen(catch, js_name = "fromClient")]
+    pub fn from_client(client: StreamsClient, seed: String, implementation: ChannelType) -> Author {
         let author = Rc::new(RefCell::new(ApiAuthor::new(
             &seed,
             implementation.into(),
-            client.to_inner(),
+            client.into_inner(),
         )));
         Author { author }
     }
 
     #[wasm_bindgen(catch)]
-    pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Author> {
-        block_on(ApiAuthor::import(&bytes, password, client.to_inner()))
+    pub fn import(client: StreamsClient, bytes: Vec<u8>, password: &str) -> Result<Author> {
+        block_on(ApiAuthor::import(&bytes, password, client.into_inner()))
             .map(|v| Author {
                 author: Rc::new(RefCell::new(v)),
             })
@@ -119,8 +120,8 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
-    pub fn get_client(&self) -> Client {
-        Client(self.author.borrow_mut().get_transport().clone())
+    pub fn get_client(&self) -> StreamsClient {
+        StreamsClient(self.author.borrow_mut().get_transport().clone())
     }
 
     #[wasm_bindgen(catch)]

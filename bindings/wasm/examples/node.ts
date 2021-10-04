@@ -1,17 +1,4 @@
-import * as streams from '../node/iota_streams_wasm';
-
-import * as fetch from 'node-fetch';
-
-// npm install --save-dev @types/node-fetch
-// @ts-ignore
-global.fetch = fetch;
-// @ts-ignore
-global.Headers = fetch.Headers;
-// @ts-ignore
-global.Request = fetch.Request;
-// @ts-ignore
-global.Response = fetch.Response;
-
+import * as streams from '../node/streams_wasm';
 
 streams.set_panic_hook();
 
@@ -27,11 +14,17 @@ async function main() {
     // Default is a load balancer, if you have your own node it's recommended to use that instead
     let node = "https://chrysalis-nodes.iota.org/";
     let options = new streams.SendOptions(node, true);
+
+    let builder = new streams.ClientBuilder();
+    let client = await builder
+        .node(node)
+        .build();
     let seed = make_seed(81);
-    let auth = new streams.Author(seed, options.clone(), streams.ChannelType.SingleBranch);
+    let auth = streams.Author.fromClient(streams.StreamsClient.fromClient(client), seed, streams.ChannelType.SingleBranch);
 
     console.log("channel address: ", auth.channel_address());
     console.log("multi branching: ", auth.is_multi_branching());
+    console.log("IOTA client info:", await client.getInfo());
 
     let response = await auth.clone().send_announce();
     let ann_link = response.link;
@@ -138,8 +131,8 @@ async function main() {
     let password = "password"
     let exp = auth.clone().export(password);
 
-    let client = new streams.Client(node, options.clone());
-    let auth2 = streams.Author.import(client, exp, password);
+    let client2 = new streams.StreamsClient(node, options.clone());
+    let auth2 = streams.Author.import(client2, exp, password);
 
     if (auth2.channel_address !== auth.channel_address) {
         console.log("import failed");
