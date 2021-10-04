@@ -265,6 +265,13 @@ Removes a Subscriber from the Author instance using their ed25519 Public Key
 | --------------- | -------------------------------------- | ------------------------ |
 | pk              | String                                 | Public Key string of Subscriber |
 
+#### reset_state()
+Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+
+
 ### Subscriber
 Additional user implementations of a Channel. Can publish and read from public branches, and 
 branches that have been restricted by keyload messages that contain their public key. 

@@ -143,6 +143,12 @@ impl<Trans> Author<Trans> {
         Ok(state)
     }
 
+    /// Resets the cursor state storage to allow an Author to retrieve all messages in a channel
+    /// from scratch
+    pub fn reset_state(&mut self) -> Result<()> {
+        self.user.reset_state()
+    }
+
     /// Serialize user state and encrypt it with password.
     ///
     ///   # Arguments

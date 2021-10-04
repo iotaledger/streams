@@ -273,6 +273,14 @@ Fetch the current user state to see the latest links for each publisher
 | author          | `author_t *`                  | Author instance                     |
 **Returns:** Error code. 
 
+#### auth_reset_state(author): [err_t](#Err)
+Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| author          | `author_t *`                  | Author instance                     |
+**Returns:** Error code.
+
 #### auth_store_psk(pskid, author, psk): [err_t](#Err) 
 Stores a given Pre Shared Key (Psk) into the Author instance, returning a Pre Shared Key Id (PskId) 
 
@@ -592,6 +600,13 @@ Fetch the current subscriber state to see the latest links for each publisher
 | subscriber       | `subscriber_t *`             | Subscriber instance                 |
 **Returns:** Error code.
 
+#### sub_reset_state(subscriber): [err_t](#Err)
+Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| subscriber      | `subscriber_t *`              | Subscriber instance                 |
+**Returns:** Error code.
 
 #### sub_store_psk(pskid, subscriber, psk): [err_t](#Err) 
 Stores a given Pre Shared Key (Psk) into the Subscriber instance, returning a Pre Shared Key Id (PskId) 
