@@ -364,38 +364,38 @@ pub trait IntoMessages<Trans> {
 /// author.receive_subscribe(&subscription_link).await?;
 /// let (first_keyload_link, _sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
 /// let (tag_first_branch_link, _sequence_link) = author
-///     .send_signed_packet(&first_keyload_link, &Bytes::new(), &b"branch 1".into())
+///     .send_signed_packet(&first_keyload_link, &Default::default(), &b"branch 1".into())
 ///     .await?;
 /// let (first_packet_first_branch_link, _sequence_link) = author
 ///     .send_signed_packet(
 ///         &tag_first_branch_link,
-///         &Bytes::new(),
+///         &Default::default(),
 ///         &b"masked payload in branch 1".into(),
 ///     )
 ///     .await?;
 /// let (second_packet_first_branch_link, _sequence_link) = author
 ///     .send_signed_packet(
 ///         &first_packet_first_branch_link,
-///         &Bytes::new(),
+///         &Default::default(),
 ///         &b"another masked payload in branch 1".into(),
 ///     )
 ///     .await?;
 ///
 /// let (second_keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
 /// let (tag_second_branch_link, _sequence_link) = author
-///     .send_signed_packet(&second_keyload_link, &Bytes::new(), &b"branch 2".into())
+///     .send_signed_packet(&second_keyload_link, &Default::default(), &b"branch 2".into())
 ///     .await?;
 /// let (first_packet_second_branch_link, sequence_link) = author
 ///     .send_signed_packet(
 ///         &tag_second_branch_link,
-///         &Bytes::new(),
+///         &Default::default(),
 ///         &b"masked payload in branch 2".into(),
 ///     )
 ///     .await?;
 /// let (second_packet_second_branch_link, sequence_link) = author
 ///     .send_signed_packet(
 ///         &first_packet_second_branch_link,
-///         &Bytes::new(),
+///         &Default::default(),
 ///         &b"another masked payload in branch 2".into(),
 ///     )
 ///     .await?;
@@ -432,18 +432,14 @@ pub trait IntoMessages<Trans> {
 ///         UnwrappedMessage::new(
 ///             first_packet_second_branch_link,
 ///             tag_second_branch_link,
-///             MessageContent::new_signed_packet(
-///                 author.get_public_key().clone(),
-///                 Bytes::new(),
-///                 b"masked payload in branch 2"
-///             )
+///             MessageContent::new_signed_packet(author.get_public_key().clone(), b"", b"masked payload in branch 2")
 ///         ),
 ///         UnwrappedMessage::new(
 ///             second_packet_second_branch_link,
 ///             first_packet_second_branch_link,
 ///             MessageContent::new_signed_packet(
 ///                 author.get_public_key().clone(),
-///                 Bytes::new(),
+///                 b"",
 ///                 b"another masked payload in branch 2"
 ///             )
 ///         ),
@@ -534,6 +530,7 @@ impl<'a, Trans> MessagesState<'a, Trans> {
     {
         if let Some(binary_msg) = self.stage.pop_front() {
             // Drain stage if not empty...
+            let msg_link = *binary_msg.link();
             match self.user.handle_message(binary_msg, true).await {
                 Ok(UnwrappedMessage {
                     body: MessageContent::Unreadable(unreadable_binary),
@@ -555,6 +552,14 @@ impl<'a, Trans> MessagesState<'a, Trans> {
                     // Check if message has descendants pending to process and stage them for processing
                     if let Some(msgs) = self.msg_queue.remove(readable_msg.link()) {
                         self.stage.extend(msgs);
+                    }
+                    // If the handled message is a sequence_message, readable_msg is its referenced msg,
+                    // not the sequence msg itself. However, messages can be linked to either.
+                    // Currently inferring it's a sequence message by checking if the links match:
+                    if msg_link != *readable_msg.link() {
+                        if let Some(msgs) = self.msg_queue.remove(&msg_link) {
+                            self.stage.extend(msgs);
+                        }
                     }
                     Some(Ok(readable_msg))
                 }
@@ -665,24 +670,24 @@ where
     ///
     /// let (first_keyload_link, _sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
     /// let (tag_first_branch_link, _sequence_link) = author
-    ///     .send_signed_packet(&first_keyload_link, &Bytes::new(), &b"branch 1".into())
+    ///     .send_signed_packet(&first_keyload_link, &Default::default(), &b"branch 1".into())
     ///     .await?;
     /// let (first_packet_first_branch_link, _sequence_link) = author
     ///     .send_signed_packet(
     ///         &tag_first_branch_link,
-    ///         &Bytes::new(),
+    ///         &Default::default(),
     ///         &b"masked payload in branch 1".into(),
     ///     )
     ///     .await?;
     ///
     /// let (second_keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
     /// let (tag_second_branch_link, _sequence_link) = author
-    ///     .send_signed_packet(&second_keyload_link, &Bytes::new(), &b"branch 2".into())
+    ///     .send_signed_packet(&second_keyload_link, &Default::default(), &b"branch 2".into())
     ///     .await?;
     /// let (first_packet_second_branch_link, sequence_link) = author
     ///     .send_signed_packet(
     ///         &tag_second_branch_link,
-    ///         &Bytes::new(),
+    ///         &Default::default(),
     ///         &b"masked payload in branch 2".into(),
     ///     )
     ///     .await?;
@@ -707,16 +712,12 @@ where
     ///         UnwrappedMessage::new(
     ///             tag_second_branch_link,
     ///             second_keyload_link,
-    ///             MessageContent::new_signed_packet(author.get_public_key().clone(), Bytes::new(), b"branch 2")
+    ///             MessageContent::new_signed_packet(author.get_public_key().clone(), b"", b"branch 2")
     ///         ),
     ///         UnwrappedMessage::new(
     ///             first_packet_second_branch_link,
     ///             tag_second_branch_link,
-    ///             MessageContent::new_signed_packet(
-    ///                 author.get_public_key().clone(),
-    ///                 Bytes::new(),
-    ///                 b"masked payload in branch 2"
-    ///             )
+    ///             MessageContent::new_signed_packet(author.get_public_key().clone(), b"", b"masked payload in branch 2")
     ///         ),
     ///     ]
     /// );
@@ -775,5 +776,53 @@ where
             }
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::{
+        cell::RefCell,
+        rc::Rc,
+    };
+
+    use crate::{
+        Author,
+        ChannelType,
+        Subscriber,
+    };
+    use iota_streams_app::transport::BucketTransport;
+    use iota_streams_core::Result;
+
+    #[test]
+    fn messages_can_be_linked_to_sequence_messages() -> Result<()> {
+        let p = Default::default();
+        smol::block_on(async {
+            let transport = Rc::new(RefCell::new(BucketTransport::new()));
+            let mut author = Author::new("author", ChannelType::MultiBranch, transport.clone());
+            let announcement_link = author.send_announce().await?;
+            let mut subscriber = Subscriber::new("subscriber", transport.clone());
+            subscriber.receive_announcement(&announcement_link).await?;
+            let subscription = subscriber.send_subscribe(&announcement_link).await?;
+            author.receive_subscribe(&subscription).await?;
+
+            let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
+            let (packet_link, _) = author.send_signed_packet(&keyload_link, &p, &p).await?;
+            let (_, seq_link) = author.send_signed_packet(&packet_link, &p, &p).await?;
+
+            subscriber.sync_state().await?;
+            // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
+            subscriber
+                .send_signed_packet(&seq_link.expect("sequence link should be Some(link)"), &p, &p)
+                .await?;
+
+            // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
+            let mut subscriber = Subscriber::new("subscriber", transport);
+            subscriber.receive_announcement(&announcement_link).await?;
+            let n_msgs = subscriber.sync_state().await?;
+            assert_eq!(n_msgs, 4);
+            Ok(())
+        })
     }
 }
