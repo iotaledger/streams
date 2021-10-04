@@ -323,16 +323,6 @@ Generates a new Subscriber instance
 | transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** Error code.
 
-#### sub_recover(sub, seed, announcement, transport): [err_t](#Err) 
-Recover a Subscriber instance using the announcement address link and seed.
-
-| Param           | Type                                   | Description              |
-| --------------- | -------------------------------------- | ------------------------ |
-| sub             | `subscriber_t *`                       | Placeholder for resulting Subscriber instance |
-| seed            | `char const *`                         | Unique user seed         |
-| announcement    | [`address_t const *`](#Address)        | Announcement link        |
-| transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
-**Returns:** Error code.
 
 #### sub_drop(user)
 Drop a Subscriber instance from memory.
