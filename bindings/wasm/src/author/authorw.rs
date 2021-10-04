@@ -257,11 +257,34 @@ impl Author {
             .into_js_result()
     }
 
+    /// Fetch all the pending messages that the user can read so as to bring the state of the user up to date
+    ///
+    /// This is the main method to bring the user to the latest state of the channel in order to be able to
+    /// publish new messages to it. It makes sure that the messages are processed in topologically order
+    /// (ie parent messages before child messages), ensuring a consistent state regardless of the order of publication.
+    ///
+    /// @returns {number} the amount of messages processed
+    /// @throws Throws error if an error has happened during message retrieval.
+    /// @see {@link Author#fetchNextMsg} for a method that retrieves the immediately next message that the user can read
+    /// @see {@link Author#fetchNextMsgs} for a method that retrieves all pending messages and collects
+    ///      them into an Array.
     #[wasm_bindgen(js_name = "syncState")]
     pub async fn sync_state(self) -> Result<usize> {
         self.author.borrow_mut().sync_state().await.into_js_result()
     }
 
+    /// Fetch all the pending messages that the user can read and collect them into an Array
+    ///
+    /// This is the main method to traverse the a channel forward at once.  It
+    /// makes sure that the messages in the Array are topologically ordered (ie
+    /// parent messages before child messages), ensuring a consistent state regardless
+    /// of the order of publication.
+    ///
+    /// @returns {UserResponse[]}
+    /// @throws Throws error if an error has happened during message retrieval.
+    /// @see {@link Author#fetchNextMsg} for a method that retrieves the immediately next message that the user can read
+    /// @see {@link Author#syncState} for a method that traverses all pending messages to update the state
+    ///      without accumulating them.
     #[wasm_bindgen(js_name = "fetchNextMsgs")]
     pub async fn fetch_next_msgs(self) -> Result<Array> {
         self.author
@@ -274,6 +297,20 @@ impl Author {
             .into_js_result()
     }
 
+    /// Fetch the immediately next message that the user can read
+    ///
+    /// This is the main method to traverse the a channel forward message by message, as it
+    /// makes sure that no message is returned unless its parent message in the branches tree has already
+    /// been returned, ensuring a consistent state regardless of the order of publication.
+    ///
+    /// Keep in mind that internally this method might have to fetch multiple messages until the correct
+    /// message to be returned is found.
+    ///
+    /// @throws Throws error if an error has happened during message retrieval.
+    /// @see {@link Author#fetchNextMsgs} for a method that retrieves all pending messages and collects
+    ///      them into an Array.
+    /// @see {@link Author#syncState} for a method that traverses all pending messages to update the state
+    ///      without accumulating them.
     #[wasm_bindgen(js_name = "fetchNextMsg")]
     pub async fn fetch_next_msg(self) -> Result<Option<UserResponse>> {
         Ok(self
