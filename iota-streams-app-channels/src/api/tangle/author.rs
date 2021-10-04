@@ -187,7 +187,6 @@ impl<Trans: Transport + Clone> Author<Trans> {
         panic_if_not(retrieved.binary == ann.message);
 
         author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
-        author.sync_state().await;
 
         Ok(author)
     }
