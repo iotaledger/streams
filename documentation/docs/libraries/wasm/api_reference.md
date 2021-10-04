@@ -305,16 +305,6 @@ Export a Subscriber instance as an encrypted array using a given password
 | password        | `string`            | Key to encrypt            | 
 **Returns:** Binary array representing an encrypted state of the subscriber.
 
-#### recover(seed, ann_address, implementation, options): Subscriber
-Recover a Subscriber instance from scratch using the known startup configurations
-
-| Param           | Type                | Description               |
-| --------------- | ------------------- | ------------------------- |
-| seed            | `string`            | Unique user seed          |
-| ann_address     | [`Address`](#Address) | Announcement message address for fetching | 
-| options         | `SendOptions`       | Options for Client        |
-**Returns:** A recovered Subscriber instance for reading from and writing to a channel.
-
 #### clone(): Subscriber 
 Generate a copy of the Subscriber instance for consumption by asynchronous functions
 
