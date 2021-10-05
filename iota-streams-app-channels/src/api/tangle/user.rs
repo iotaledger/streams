@@ -1,14 +1,20 @@
+use async_recursion::async_recursion;
 use futures::{
     future,
+    TryFutureExt,
     TryStreamExt,
 };
+
 use iota_streams_app::{
     identifier::Identifier,
     message::HasLink,
 };
 use iota_streams_core::{
     err,
-    prelude::Vec,
+    prelude::{
+        Box,
+        Vec,
+    },
     prng,
     psk::{
         Psk,
@@ -486,50 +492,57 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     /// # Arguments
     /// * `msg` - Binary message of unknown type
+    #[async_recursion(?Send)]
     pub async fn handle_message<M>(&mut self, msg: M, store: bool) -> Result<UnwrappedMessage>
     where
-        M: Into<BinaryMessage>,
+        M: AsRef<BinaryMessage>,
     {
-        let mut sequenced = false;
-        let mut msg = msg.into();
-        loop {
-            let preparsed: Preparsed = msg.parse_header().await?;
-            let link = preparsed.header.link;
-            let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
-            match preparsed.header.content_type {
-                message::SIGNED_PACKET => match self.user.handle_signed_packet(&msg, MsgInfo::SignedPacket).await {
-                    Ok(m) => {
-                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
-                    }
-                    Err(e) => match sequenced {
-                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable(msg))),
-                        false => return Err(e),
-                    },
-                },
-                message::TAGGED_PACKET => match self.user.handle_tagged_packet(&msg, MsgInfo::TaggedPacket).await {
-                    Ok(m) => return Ok(m.map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
-                    Err(e) => match sequenced {
-                        true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable(msg))),
-                        false => return Err(e),
-                    },
-                },
-                message::KEYLOAD => {
-                    // So long as the unwrap has not failed, we will return a blank object to
-                    // inform the user that a message was present, even if the user wasn't part of
-                    // the keyload itself. This is to prevent sequencing failures
-                    let m = self.user.handle_keyload(&msg, MsgInfo::Keyload).await?;
-                    // TODO: Verify content, whether user is allowed or not!
-                    let u = m.map(|_allowed| MessageContent::new_keyload());
-                    return Ok(u);
-                }
-                message::SEQUENCE => {
-                    let msg_link = self.process_sequence(&msg, store).await?;
-                    let sequenced_msg = self.transport.recv_message(&msg_link).await?;
-                    sequenced = true;
-                    msg = sequenced_msg.binary;
-                }
-                unknown_content => return err!(UnknownMsgType(unknown_content)),
+        let msg = msg.as_ref();
+        let preparsed: Preparsed = msg.parse_header().await?;
+        match preparsed.header.content_type {
+            message::SIGNED_PACKET => Ok(self
+                .user
+                .handle_signed_packet(msg, MsgInfo::SignedPacket)
+                .await?
+                .map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked))),
+            message::TAGGED_PACKET => Ok(self
+                .user
+                .handle_tagged_packet(msg, MsgInfo::TaggedPacket)
+                .await?
+                .map(|(public, masked)| MessageContent::new_tagged_packet(public, masked))),
+            message::KEYLOAD => {
+                // So long as the unwrap has not failed, we will return a blank object to
+                // inform the user that a message was present, even if the user wasn't part of
+                // the keyload itself. This is to prevent sequencing failures
+                Ok(self
+                    .user
+                    .handle_keyload(msg, MsgInfo::Keyload)
+                    .await?
+                    // TODO: Verify content, whether user is allowed or not
+                    .map(|_allowed| MessageContent::new_keyload()))
             }
+            message::SEQUENCE => {
+                let msg_link = self.process_sequence(msg, store).await?;
+                let sequenced_msg = self.transport.recv_message(&msg_link).await?;
+                let unwrapped_msg = self.handle_message(&sequenced_msg, store).await;
+                // future::ready artificiality is needed to be able to move sequence_msg into the async closure
+                future::ready(unwrapped_msg)
+                    .or_else(|_| async {
+                        // As long as the sequence message is readable, we return Ok even if the referenced msg is not.
+                        // This lets subscribers advance the cursor of the publisher even if they don't have access
+                        // to this particular msg
+                        let preparsed: Preparsed<'_> = sequenced_msg.binary.parse_header().await?;
+                        let link = preparsed.header.link;
+                        let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
+                        Ok(UnwrappedMessage::new(
+                            link,
+                            prev_link,
+                            MessageContent::unreadable(sequenced_msg.binary),
+                        ))
+                    })
+                    .await
+            }
+            unknown_content => err!(UnknownMsgType(unknown_content)),
         }
     }
 

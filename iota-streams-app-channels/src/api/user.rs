@@ -537,9 +537,8 @@ where
             if let Some(appinst) = &self.appinst {
                 for identifier in content.key_ids {
                     if !self.key_store.contains(&identifier) {
-                        // Store at state 2 since 0 and 1 are reserved states
                         self.key_store
-                            .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
+                            .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
                     }
                 }
             }

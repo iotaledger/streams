@@ -56,3 +56,9 @@ impl<Link> BinaryMessage<Link> {
         Ok(PreparsedMessage { header, ctx })
     }
 }
+
+impl<Link> AsRef<BinaryMessage<Link>> for BinaryMessage<Link> {
+    fn as_ref(&self) -> &BinaryMessage<Link> {
+        self
+    }
+}

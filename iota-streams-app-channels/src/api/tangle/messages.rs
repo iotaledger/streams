@@ -530,12 +530,11 @@ impl<'a, Trans> MessagesState<'a, Trans> {
     {
         if let Some(binary_msg) = self.stage.pop_front() {
             // Drain stage if not empty...
-            let msg_link = *binary_msg.link();
-            match self.user.handle_message(binary_msg, true).await {
+            match self.user.handle_message(&binary_msg, true).await {
                 Ok(UnwrappedMessage {
                     body: MessageContent::Unreadable(unreadable_binary),
                     prev_link,
-                    ..
+                    link,
                 }) => {
                     // The message might be unreadable because it's predecessor might still be pending
                     // to be retrieved from the Tangle. We could defensively check if the predecessor
@@ -546,6 +545,18 @@ impl<'a, Trans> MessagesState<'a, Trans> {
                         .entry(prev_link)
                         .or_default()
                         .push_back(unreadable_binary);
+
+                    // If the handled message is a sequence_message, unreadable_binary is its referenced msg,
+                    // not the sequence msg itself. However, messages can be linked to either. The sequence
+                    // message has already been read successfuly, thus we need to awake any messages linked to it.
+                    // Currently inferring it's a sequence message by checking if the original_link
+                    // is different from resulting readable_msg link:
+                    if *binary_msg.link() != link {
+                        if let Some(msgs) = self.msg_queue.remove(binary_msg.link()) {
+                            self.stage.extend(msgs);
+                        }
+                    }
+
                     self.next().await
                 }
                 Ok(readable_msg) => {
@@ -553,14 +564,17 @@ impl<'a, Trans> MessagesState<'a, Trans> {
                     if let Some(msgs) = self.msg_queue.remove(readable_msg.link()) {
                         self.stage.extend(msgs);
                     }
+
                     // If the handled message is a sequence_message, readable_msg is its referenced msg,
                     // not the sequence msg itself. However, messages can be linked to either.
-                    // Currently inferring it's a sequence message by checking if the links match:
-                    if msg_link != *readable_msg.link() {
-                        if let Some(msgs) = self.msg_queue.remove(&msg_link) {
+                    // Currently inferring it's a sequence message by checking if the original_link
+                    // is different from resulting readable_msg link:
+                    if binary_msg.link() != readable_msg.link() {
+                        if let Some(msgs) = self.msg_queue.remove(binary_msg.link()) {
                             self.stage.extend(msgs);
                         }
                     }
+
                     Some(Ok(readable_msg))
                 }
                 // message-Handling errors are a normal execution path, just skip them
@@ -788,30 +802,28 @@ mod tests {
     };
 
     use crate::{
+        api::tangle::BucketTransport,
+        Address,
         Author,
         ChannelType,
         Subscriber,
     };
-    use iota_streams_app::transport::BucketTransport;
     use iota_streams_core::Result;
+
+    type Transport = Rc<RefCell<BucketTransport>>;
 
     #[test]
     fn messages_can_be_linked_to_sequence_messages() -> Result<()> {
         let p = Default::default();
         smol::block_on(async {
-            let transport = Rc::new(RefCell::new(BucketTransport::new()));
-            let mut author = Author::new("author", ChannelType::MultiBranch, transport.clone());
-            let announcement_link = author.send_announce().await?;
-            let mut subscriber = Subscriber::new("subscriber", transport.clone());
-            subscriber.receive_announcement(&announcement_link).await?;
-            let subscription = subscriber.send_subscribe(&announcement_link).await?;
-            author.receive_subscribe(&subscription).await?;
+            let (mut author, mut subscriber, announcement_link, transport) = author_subscriber_fixture().await?;
 
             let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
             let (packet_link, _) = author.send_signed_packet(&keyload_link, &p, &p).await?;
             let (_, seq_link) = author.send_signed_packet(&packet_link, &p, &p).await?;
 
             subscriber.sync_state().await?;
+
             // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
             subscriber
                 .send_signed_packet(&seq_link.expect("sequence link should be Some(link)"), &p, &p)
@@ -821,8 +833,66 @@ mod tests {
             let mut subscriber = Subscriber::new("subscriber", transport);
             subscriber.receive_announcement(&announcement_link).await?;
             let n_msgs = subscriber.sync_state().await?;
-            assert_eq!(n_msgs, 4);
+            assert_eq!(n_msgs, 4); // keyload, 2 signed packets from author, and last signed-packet from herself
             Ok(())
         })
+    }
+
+    #[test]
+    fn sequence_messages_awake_pending_messages_link_to_them_even_if_the_referenced_messages_are_unreadable(
+    ) -> Result<()> {
+        let p = Default::default();
+        smol::block_on(async {
+            let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
+
+            let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
+            subscriber1.sync_state().await?;
+            let (packet_link, _) = subscriber1.send_signed_packet(&keyload_link, &p, &p).await?;
+            // This packet will never be readable by subscriber2. However, the sequence is
+            let (_, seq_link) = subscriber1.send_signed_packet(&packet_link, &p, &p).await?;
+
+            let mut subscriber2 =
+                subscriber_fixture("subscriber2", &mut author, &announcement_link, transport.clone()).await?;
+
+            author.sync_state().await?;
+            // This keyload link to announcement is necessary (for now) to "introduce" both subscribers
+            // otherwise subscriber2 isn't aware of subscriber1 and will never walk through the sequence messages
+            //  of subscriber1 to reach keyload2
+            author.send_keyload_for_everyone(&announcement_link).await?;
+
+            // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
+            let (keyload2_link, _) = author
+                .send_keyload_for_everyone(&seq_link.expect("sequence link should be Some(link)"))
+                .await?;
+
+            subscriber1.sync_state().await?;
+            subscriber1.send_signed_packet(&keyload2_link, &p, &p).await?;
+
+            let n_msgs = subscriber2.sync_state().await?;
+            assert_eq!(n_msgs, 4); // first announcement, announcement keyload, keyload2 and last signed packet
+            Ok(())
+        })
+    }
+
+    /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport
+    async fn author_subscriber_fixture() -> Result<(Author<Transport>, Subscriber<Transport>, Address, Transport)> {
+        let transport = Rc::new(RefCell::new(BucketTransport::new()));
+        let mut author = Author::new("author", ChannelType::MultiBranch, transport.clone());
+        let announcement_link = author.send_announce().await?;
+        let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, transport.clone()).await?;
+        Ok((author, subscriber, announcement_link, transport))
+    }
+
+    async fn subscriber_fixture(
+        seed: &str,
+        author: &mut Author<Transport>,
+        announcement_link: &Address,
+        transport: Transport,
+    ) -> Result<Subscriber<Transport>> {
+        let mut subscriber = Subscriber::new(seed, transport);
+        subscriber.receive_announcement(announcement_link).await?;
+        let subscription = subscriber.send_subscribe(announcement_link).await?;
+        author.receive_subscribe(&subscription).await?;
+        Ok(subscriber)
     }
 }

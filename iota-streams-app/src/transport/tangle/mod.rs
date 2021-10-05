@@ -88,6 +88,12 @@ impl From<TangleMessage> for BinaryMessage<TangleAddress> {
     }
 }
 
+impl AsRef<BinaryMessage<TangleAddress>> for TangleMessage {
+    fn as_ref(&self) -> &BinaryMessage<TangleAddress> {
+        &self.binary
+    }
+}
+
 // TODO: Use better feature to detect `chrono::Utc::new()`.
 #[cfg(feature = "std")]
 impl TangleMessage {
