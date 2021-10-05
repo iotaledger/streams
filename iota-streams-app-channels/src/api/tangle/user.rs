@@ -14,6 +14,7 @@ use iota_streams_core::{
         PskId,
     },
     try_or,
+    unwrap_or_break,
     Errors::{
         AnnouncementIsFirst,
         ChannelDuplication,
@@ -494,7 +495,6 @@ impl<Trans: Transport + Clone> User<Trans> {
         if header.content_type == message::ANNOUNCE {
             return err!(AnnouncementIsFirst);
         }
-
         let prev_msg_link = Address::try_from_bytes(&header.previous_msg_link.0)?;
         let prev_msg = self.transport.recv_message(&prev_msg_link).await?;
         let unwrapped = self.handle_message(prev_msg, false).await?;
@@ -511,7 +511,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         let mut msgs = Vec::new();
 
         for _ in 0..max {
-            msg_info = self.parse_msg_info(&msg_info.0).await?;
+            msg_info = unwrap_or_break!(self.parse_msg_info(&msg_info.0).await);
             if msg_info.1 == message::SEQUENCE {
                 let msg_link = self.process_sequence(msg_info.2.binary, false).await?;
                 msg_info = self.parse_msg_info(&msg_link).await?;
