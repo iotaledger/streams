@@ -50,14 +50,15 @@ impl Subscriber {
         Subscriber { subscriber }
     }
 
-    pub fn from_client(client: Client, seed: String) -> Subscriber {
-        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.to_inner())));
+    #[wasm_bindgen(catch, js_name = "fromClient")]
+    pub fn from_client(client: StreamsClient, seed: String) -> Subscriber {
+        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.into_inner())));
         Subscriber { subscriber }
     }
 
     #[wasm_bindgen(catch)]
-    pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Subscriber> {
-        block_on(ApiSubscriber::import(&bytes, password, client.to_inner()))
+    pub fn import(client: StreamsClient, bytes: Vec<u8>, password: &str) -> Result<Subscriber> {
+        block_on(ApiSubscriber::import(&bytes, password, client.into_inner()))
             .map(|v| Subscriber {
                 subscriber: Rc::new(RefCell::new(v)),
             })
@@ -94,8 +95,8 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
-    pub fn get_client(&self) -> Client {
-        Client(self.subscriber.borrow_mut().get_transport().clone())
+    pub fn get_client(&self) -> StreamsClient {
+        StreamsClient(self.subscriber.borrow_mut().get_transport().clone())
     }
 
     #[wasm_bindgen(catch)]

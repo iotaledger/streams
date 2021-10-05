@@ -50,4 +50,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./documentation/build
-          cname: streams.docs.iota.org
+#          cname: streams.docs.iota.org

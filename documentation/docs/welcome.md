@@ -8,7 +8,7 @@ This is the documentation for the official IOTA Streams software. You can read m
 
 This library is in active development. The library targets the Chrysalis network and does not work with the IOTA legacy network.
 
-More information about Chrysalis components is available at [documentation portal](https://chrysalis.docs.iota.org/).
+More information about Chrysalis components is available at [documentation portal](https://wiki.iota.org/chrysalis-docs/welcome).
 
 ## Joining the discussion
 

@@ -8,7 +8,7 @@ use iota_streams::{
             ChannelType,
             Subscriber,
             Transport,
-        }
+        },
     },
     core::{
         panic_if_not,
@@ -85,11 +85,11 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
-    author.store_psk(pskid.clone(), psk.clone())?;
+    author.store_psk(pskid, psk)?;
     subscriberC.store_psk(pskid, psk)?;
 
     // Fetch state of subscriber for comparison after reset
-    let sub_a_start_state: HashMap<_,_> = subscriberA.fetch_state()?.into_iter().collect();
+    let sub_a_start_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
 
     println!("\nSubscribe B");
     let subscribeB_link = {
@@ -126,7 +126,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nSigned packet");
     let previous_msg_link = {
-        let (msg, seq) = author.send_signed_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = author
+            .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
@@ -135,7 +137,8 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nHandle Signed packet");
     {
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&previous_msg_link).await?;
+        let (_signer_pk, unwrapped_public, unwrapped_masked) =
+            subscriberA.receive_signed_packet(&previous_msg_link).await?;
         print!("  SubscriberA: {}", subscriberA);
         try_or!(
             public_payload == unwrapped_public,
@@ -154,7 +157,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
-        let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberA
+            .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
@@ -174,7 +179,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let  (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&previous_msg_link).await?;
+        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&previous_msg_link).await?;
         print!("  SubscriberC: {}", subscriberC);
         try_or!(
             public_payload == unwrapped_public,
@@ -188,7 +193,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nTagged packet 2 - SubscriberA");
     let previous_msg_link = {
-        let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberA
+            .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
@@ -197,7 +204,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nTagged packet 3 - SubscriberA");
     let previous_msg_link = {
-        let (msg, seq) = subscriberA.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberA
+            .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
@@ -211,7 +220,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nTagged packet 4 - SubscriberB");
     let previous_msg_link = {
-        let (msg, seq) = subscriberB.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberB
+            .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
         print!("  SubscriberB: {}", subscriberB);
@@ -242,16 +253,16 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             masked_payload == unwrapped_masked,
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
-
     }
 
     println!("\nSubscriber fetching transactions...");
     utils::s_fetch_next_messages(&mut subscriberC).await;
 
-
     println!("\nTagged packet 5 - SubscriberC");
     let previous_msg_link = {
-        let (msg, seq) = subscriberC.send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberC
+            .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
         println!("  msg => <{}> {:x}", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
         print!("  SubscriberC: {}", subscriberC);
@@ -288,7 +299,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nSigned packet");
     let signed_packet_link = {
-        let (msg, seq) = author.send_signed_packet(&previous_msg_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = author
+            .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
@@ -342,7 +355,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     }
 
     subscriberA.reset_state()?;
-    let new_state: HashMap<_,_>  = subscriberA.fetch_state()?.into_iter().collect();
+    let new_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
 
     println!("\nSubscriber A resetting state");
     let mut matches = false;
