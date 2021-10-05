@@ -82,6 +82,8 @@ pub enum Errors {
     //////////
     /// Malformed address string: missing colon (':') separator between appinst and msgid
     MalformedAddressString,
+    /// Invalid Message Address
+    InvalidMessageAddress,
     /// Invalid Channel Address
     InvalidChannelAddress,
     /// Invalid Msg id
@@ -158,6 +160,8 @@ pub enum Errors {
     SingleDepthOperationFailure,
     /// Operation only available on single depth channels
     ChannelNotSingleDepth,
+    /// Announcement message does not have a previous message
+    AnnouncementIsFirst,
 
     //////////
     // User Recovery
