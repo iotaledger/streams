@@ -91,7 +91,7 @@ impl<Trans> Subscriber<Trans> {
     }
 
     /// Fetch the Announcement Link of the channel.
-    pub fn announcement_link(&self) -> Option<&TangleAddress> {
+    pub fn announcement_link(&self) -> &Option<TangleAddress> {
         self.user.announcement_link()
     }
 

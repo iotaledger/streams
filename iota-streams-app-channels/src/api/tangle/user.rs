@@ -71,8 +71,8 @@ impl<Trans> User<Trans> {
     }
 
     /// Fetch the Announcement Link of the channel.
-    pub fn announcement_link(&self) -> Option<&TangleAddress> {
-        self.user.appinst.as_ref()
+    pub fn announcement_link(&self) -> &Option<TangleAddress> {
+        &self.user.appinst
     }
 
     /// Channel Author's signature public key

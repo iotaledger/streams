@@ -115,13 +115,11 @@ impl Author {
     }
 
     #[wasm_bindgen(catch, js_name = "announcementLink")]
-    pub fn announcement_link(&self) -> Result<String> {
+    pub fn announcement_link(&self) -> Option<String> {
         self.author
             .borrow_mut()
             .announcement_link()
             .map(|addr| addr.to_string())
-            .ok_or("announcement link not found, channel not created")
-            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]

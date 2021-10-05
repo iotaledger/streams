@@ -95,13 +95,11 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch, js_name = "announcementLink")]
-    pub fn announcement_link(&self) -> Result<String> {
+    pub fn announcement_link(&self) -> Option<String> {
         self.subscriber
             .borrow_mut()
             .announcement_link()
             .map(|addr| addr.to_string())
-            .ok_or("announcement link not found")
-            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
