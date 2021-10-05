@@ -149,6 +149,7 @@ extern err_t auth_fetch_prev_msg(unwrapped_message_t const **umsg, author_t *aut
 extern err_t auth_fetch_prev_msgs(unwrapped_messages_t const **umsgs, author_t *author, address_t const *address, size_t num_msgs);
 extern err_t auth_sync_state(unwrapped_messages_t const **umsgs, author_t *author);
 extern err_t auth_fetch_state(user_state_t const **state, author_t *author);
+extern err_t auth_reset_state(author_t *author);
 // Store Psk
 extern err_t auth_store_psk(psk_id_t const **pskid, author_t *author, char const *psk);
 extern err_t auth_remove_psk(author_t *author, char const *pskid);
@@ -159,7 +160,6 @@ extern err_t auth_remove_psk(author_t *author, char const *pskid);
 /////////////
 typedef struct Subscriber subscriber_t;
 extern err_t sub_new(subscriber_t **sub, char const *seed, transport_t *transport);
-extern err_t sub_recover(subscriber_t **sub, char const *seed, address_t const *announcement, transport_t *transport);
 extern err_t sub_import(subscriber_t **sub, buffer_t buffer, char const *password, transport_t *transport);
 extern err_t sub_export(buffer_t *buf, subscriber_t const *subscriber, char const *password);
 extern void sub_drop(subscriber_t *);

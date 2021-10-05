@@ -24,32 +24,6 @@ pub unsafe extern "C" fn sub_new(
     })
 }
 
-/// Recover an existing channel from seed and existing announcement message
-#[no_mangle]
-pub unsafe extern "C" fn sub_recover(
-    c_sub: *mut *mut Subscriber,
-    c_seed: *const c_char,
-    c_ann_address: *const Address,
-    transport: *mut TransportWrap,
-) -> Err {
-    if c_seed == null() {
-        return Err::NullArgument;
-    }
-
-    CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
-        c_ann_address.as_ref().map_or(Err::NullArgument, |addr| {
-            transport.as_ref().map_or(Err::NullArgument, |tsp| {
-                c_sub.as_mut().map_or(Err::NullArgument, |sub| {
-                    run_async(Subscriber::recover(seed, addr, tsp.clone())).map_or(Err::OperationFailed, |user| {
-                        *sub = safe_into_mut_ptr(user);
-                        Err::Ok
-                    })
-                })
-            })
-        })
-    })
-}
-
 /// Import an Author instance from an encrypted binary array
 #[no_mangle]
 pub unsafe extern "C" fn sub_import(
