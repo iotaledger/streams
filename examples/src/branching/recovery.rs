@@ -92,7 +92,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     utils::a_fetch_next_messages(&mut author).await;
 
     println!("\n\nTime to try to recover the instance...");
-    let mut new_author = Author::recover(seed, &announcement_link, channel_type, transport).await?;
+    let mut new_author = Author::recover(seed, &announcement_link, channel_type, transport.clone()).await?;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;
@@ -132,5 +132,15 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     panic_if_not!(matches);
 
     println!("Last message matches, recovery, sync and send successful");
+
+    println!("\nTesting export/import");
+    let exported = author.export("Password").await?;
+    println!("Author exported...");
+    let new_auth = Author::import(&exported, "Password", transport).await?;
+    println!("Author imported...");
+    let retrieved_announcement = new_auth.announcement_link().unwrap();
+    panic_if_not!(retrieved_announcement == &announcement_link);
+    println!("Imported Author announcement message matches original\n");
+
     Ok(())
 }
