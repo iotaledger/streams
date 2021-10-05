@@ -552,6 +552,7 @@ cleanup8:
     if(e) goto cleanup9;
 
  cleanup9:
+    drop_address(recovered_announcement);
     auth_drop(auth_new);
     drop_buffer(bytes);
   }

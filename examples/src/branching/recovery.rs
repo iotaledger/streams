@@ -139,7 +139,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     let new_auth = Author::import(&exported, "Password", transport).await?;
     println!("Author imported...");
     let retrieved_announcement = new_auth.announcement_link().unwrap();
-    panic_if_not!(retrieved_announcement == &announcement_link);
+    panic_if_not!(retrieved_announcement == announcement_link);
     println!("Imported Author announcement message matches original\n");
 
     Ok(())

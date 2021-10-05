@@ -117,7 +117,7 @@ pub unsafe extern "C" fn sub_announcement_link(addr: *mut *const Address, user: 
     user.as_ref().map_or(Err::NullArgument, |user| {
         addr.as_mut().map_or(Err::NullArgument, |addr| {
             user.announcement_link().map_or(Err::OperationFailed, |ann_link| {
-                *addr = ann_link as *const Address;
+                *addr = safe_into_ptr(ann_link);
                 Err::Ok
             })
         })
