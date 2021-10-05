@@ -73,6 +73,13 @@ Return the channel address of the channel instance.
 | --------------- | ------------------- | ------------------------- |
 **Returns:** Channel Address for user generated channel.
 
+#### announcement_link(): string
+Return the announcement link of the channel instance.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+**Returns:** Announcement Address for user generated channel.
+
 #### is_multi_branching(): bool 
 Check if a channel type is single branching or multi branching. 
 
@@ -328,6 +335,13 @@ Return the channel address of the channel instance.
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 **Returns:** Channel Address for user generated channel.
+
+#### announcement_link(): string
+Return the announcement link of the channel instance.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+**Returns:** Announcement Address for user generated channel.
 
 #### is_multi_branching(): bool 
 Check if a channel type is single branching or multi branching. 
