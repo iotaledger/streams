@@ -539,6 +539,7 @@ cleanup8:
   {
     buffer_t bytes = { NULL, 0, 0 };
     author_t *auth_new = NULL;
+    address_t const *recovered_announcement = NULL;
 
     printf("Exporting author state... ");
     e = auth_export(&bytes, auth, "my_password");
@@ -552,7 +553,13 @@ cleanup8:
     //auth_import consumes bytes, need to clear to avoid double-free
     bytes.ptr = NULL;
 
+    printf("Checking announcement link exists... ");
+    e = auth_announcement_link(&recovered_announcement, auth_new);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup9;
+
  cleanup9:
+    drop_address(recovered_announcement);
     auth_drop(auth_new);
     drop_buffer(bytes);
   }

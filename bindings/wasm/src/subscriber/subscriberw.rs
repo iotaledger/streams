@@ -81,6 +81,14 @@ impl Subscriber {
             .into_js_result()
     }
 
+    #[wasm_bindgen(catch, js_name = "announcementLink")]
+    pub fn announcement_link(&self) -> Option<String> {
+        self.subscriber
+            .borrow_mut()
+            .announcement_link()
+            .map(|addr| addr.to_string())
+    }
+
     #[wasm_bindgen(catch)]
     pub fn get_client(&self) -> StreamsClient {
         StreamsClient(self.subscriber.borrow_mut().get_transport().clone())

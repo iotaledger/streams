@@ -114,6 +114,19 @@ pub unsafe extern "C" fn auth_channel_address(addr: *mut *const ChannelAddress, 
     })
 }
 
+/// Channel announcement link.
+#[no_mangle]
+pub unsafe extern "C" fn auth_announcement_link(addr: *mut *const Address, user: *const Author) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        addr.as_mut().map_or(Err::NullArgument, |addr| {
+            user.announcement_link().map_or(Err::OperationFailed, |ann_link| {
+                *addr = safe_into_ptr(ann_link);
+                Err::Ok
+            })
+        })
+    })
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn auth_is_multi_branching(flag: *mut uint8_t, user: *const Author) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {

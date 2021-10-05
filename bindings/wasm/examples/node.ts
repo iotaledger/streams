@@ -140,6 +140,12 @@ async function main() {
         console.log("import succesfull")
     }
 
+    if (auth2.announcementLink() !== ann_link.toString()) {
+        console.log("recovered announcement does not match");
+    } else {
+        console.log("recovered announcement matches");
+    }
+
     console.log("\nRecovering without state import");
     let auth3 = await streams.Author.recover(seed, ann_link.copy(), streams.ChannelType.SingleBranch, options.clone());
     if (auth3.channel_address !== auth.channel_address) {

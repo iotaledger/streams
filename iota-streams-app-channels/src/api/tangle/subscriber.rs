@@ -90,6 +90,11 @@ impl<Trans> Subscriber<Trans> {
         self.user.channel_address()
     }
 
+    /// Fetch the Announcement Link of the channel.
+    pub fn announcement_link(&self) -> &Option<TangleAddress> {
+        self.user.announcement_link()
+    }
+
     /// Return boolean representing the sequencing nature of the channel
     pub fn is_multi_branching(&self) -> bool {
         self.user.is_multi_branching()

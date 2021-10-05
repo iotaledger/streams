@@ -70,6 +70,11 @@ impl<Trans> User<Trans> {
         self.user.appinst.as_ref().map(|x| &x.appinst)
     }
 
+    /// Fetch the Announcement Link of the channel.
+    pub fn announcement_link(&self) -> &Option<TangleAddress> {
+        &self.user.appinst
+    }
+
     /// Channel Author's signature public key
     pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
         self.user.author_public_key()
