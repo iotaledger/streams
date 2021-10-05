@@ -9,7 +9,7 @@ use iota_streams::{
             MessageContent,
             Subscriber,
             Transport,
-        }
+        },
     },
     core::{
         panic_if_not,
@@ -110,7 +110,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         let mut message = String::from("Message ");
         message.push_str(&i.to_string());
         let masked_payload = Bytes(message.as_bytes().to_vec());
-        let (msg, seq) = author.send_signed_packet(&anchor_msg_link, &empty_payload, &masked_payload).await?;
+        let (msg, seq) = author
+            .send_signed_packet(&anchor_msg_link, &empty_payload, &masked_payload)
+            .await?;
         println!("  msg => <{}> {}", msg.msgid, msg.to_msg_index());
         panic_if_not(seq.is_none());
     }
@@ -120,26 +122,44 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     let mut unwrapped = Vec::new();
     loop {
         let msgs = subscriberA.fetch_next_msgs().await;
-        if msgs.is_empty() { break }
+        if msgs.is_empty() {
+            break;
+        }
         unwrapped.extend(msgs);
     }
 
     assert_eq!(unwrapped.len(), 10);
     for msg in unwrapped {
-        if let MessageContent::SignedPacket {pk: _, public_payload: _, masked_payload } = &msg.body {
-            println!("  Msg => <{}>: {}", msg.link.msgid, String::from_utf8(masked_payload.0.to_vec())?);
+        if let MessageContent::SignedPacket {
+            pk: _,
+            public_payload: _,
+            masked_payload,
+        } = &msg.body
+        {
+            println!(
+                "  Msg => <{}>: {}",
+                msg.link.msgid,
+                String::from_utf8(masked_payload.0.to_vec())?
+            );
         } else {
             panic!("Packet found was not a signed packet from author")
         }
-
     }
     print!(" SubscriberA     : {}", subscriberA);
 
-
     println!("\nSubscriber B fetching 4th message");
     let msg = subscriberB.receive_msg_by_sequence_number(&anchor_msg_link, 4).await?;
-    if let MessageContent::SignedPacket {pk: _, public_payload: _, masked_payload } = &msg.body {
-        println!("  Msg => <{}>: {}", msg.link.msgid, String::from_utf8(masked_payload.0.to_vec())?);
+    if let MessageContent::SignedPacket {
+        pk: _,
+        public_payload: _,
+        masked_payload,
+    } = &msg.body
+    {
+        println!(
+            "  Msg => <{}>: {}",
+            msg.link.msgid,
+            String::from_utf8(masked_payload.0.to_vec())?
+        );
         assert_eq!(masked_payload.0, "Message 4".as_bytes().to_vec());
     } else {
         panic!("Packet found was not a signed packet from author")

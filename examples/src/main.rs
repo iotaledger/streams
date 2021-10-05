@@ -97,11 +97,6 @@ async fn main_pure() {
 
 #[allow(dead_code)]
 async fn main_client() {
-    // Load or .env file, log message if we failed
-    if dotenv::dotenv().is_err() {
-        println!(".env file not found; copy and rename example.env to \".env\"");
-    };
-
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
 
@@ -122,12 +117,21 @@ async fn main_client() {
 
 fn new_seed() -> String {
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
-    (0..10).map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
+    (0..10)
+        .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
         .collect::<String>()
 }
 
 #[tokio::main]
 async fn main() {
-    main_pure().await;
-    //main_client().await;
+    // Load or .env file, log message if we failed
+    if dotenv::dotenv().is_err() {
+        println!(".env file not found; copy and rename example.env to \".env\"");
+    };
+
+    match env::var("TRANSPORT").ok().as_deref() {
+        Some("tangle") => main_client().await,
+        Some("bucket") | None => main_pure().await,
+        Some(other) => panic!("Unexpected TRANSPORT '{}'", other),
+    }
 }
