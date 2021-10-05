@@ -81,7 +81,6 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     println!("\nAuthor Predefines Subscriber A");
     author.store_new_subscriber(*subscriberA.get_public_key())?;
 
-
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
@@ -378,7 +377,10 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     println!("\nAuthor sending new keyload to all subscribers");
     let new_keyload = author.send_keyload_for_everyone(&announcement_link).await?;
     println!("Subscriber B checking that they do not have access to new keyload");
-    try_or!(!subscriberB.receive_keyload(&new_keyload.0).await?, SubscriberAccessMismatch("B".to_string()))?;
+    try_or!(
+        !subscriberB.receive_keyload(&new_keyload.0).await?,
+        SubscriberAccessMismatch("B".to_string())
+    )?;
     println!("Subscriber B does not have access to the new keyload");
 
     Ok(())
