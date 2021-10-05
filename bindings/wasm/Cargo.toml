@@ -10,9 +10,8 @@ license = "MIT"
 [lib]
 crate-type = ["cdylib"]
 
-# TODO: Discover this:
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
+[profile.release]
+opt-level = 's'
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -24,7 +23,7 @@ js-sys = "0.3.46"
 
 serde = { version = "1.0", features = ["derive"] }
 iota-streams = {path = "../../", default-features = false, features = ["tangle", "wasm-client"]}
-client-wasm = { git = "https://github.com/kwek20/iota.rs", branch  = "wasm-export", default-features = false }
+client-wasm = { git = "https://github.com/iotaledger/iota.rs", rev  = "ee19ec4", default-features = false }
 
 # Needed to specify the js/wasm feature for a sub-crate
 getrandom = {version = "0.2.2", features = ["js"]}
