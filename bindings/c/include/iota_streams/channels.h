@@ -160,7 +160,6 @@ extern err_t auth_remove_psk(author_t *author, char const *pskid);
 /////////////
 typedef struct Subscriber subscriber_t;
 extern err_t sub_new(subscriber_t **sub, char const *seed, transport_t *transport);
-extern err_t sub_recover(subscriber_t **sub, char const *seed, address_t const *announcement, transport_t *transport);
 extern err_t sub_import(subscriber_t **sub, buffer_t buffer, char const *password, transport_t *transport);
 extern err_t sub_export(buffer_t *buf, subscriber_t const *subscriber, char const *password);
 extern void sub_drop(subscriber_t *);
