@@ -120,7 +120,7 @@ impl Author {
             .borrow_mut()
             .announcement_link()
             .map(|addr| addr.to_string())
-            .ok_or("channel not created")
+            .ok_or("announcement link not found, channel not created")
             .into_js_result()
     }
 

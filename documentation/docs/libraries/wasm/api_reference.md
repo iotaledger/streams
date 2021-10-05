@@ -73,7 +73,7 @@ Return the channel address of the channel instance.
 | --------------- | ------------------- | ------------------------- |
 **Returns:** Channel Address for user generated channel.
 
-#### announcement_link(): string
+#### announcementLink(): string
 Return the announcement link of the channel instance.
 
 | Param           | Type                | Description               |
@@ -336,7 +336,7 @@ Return the channel address of the channel instance.
 | --------------- | ------------------- | ------------------------- |
 **Returns:** Channel Address for user generated channel.
 
-#### announcement_link(): string
+#### announcementLink(): string
 Return the announcement link of the channel instance.
 
 | Param           | Type                | Description               |

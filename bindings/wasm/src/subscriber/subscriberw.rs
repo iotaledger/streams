@@ -100,7 +100,7 @@ impl Subscriber {
             .borrow_mut()
             .announcement_link()
             .map(|addr| addr.to_string())
-            .ok_or("channel not created")
+            .ok_or("announcement link not found")
             .into_js_result()
     }
 
