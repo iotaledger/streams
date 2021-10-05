@@ -66,7 +66,9 @@ impl<Trans> Author<Trans> {
     }
 
     /// Fetch the Announcement Link of the channel.
-    pub fn announcement_link(&self) -> Option<&TangleAddress> { self.user.announcement_link() }
+    pub fn announcement_link(&self) -> Option<&TangleAddress> {
+        self.user.announcement_link()
+    }
 
     /// Fetch the user ed25519 public key
     pub fn get_public_key(&self) -> &ed25519::PublicKey {

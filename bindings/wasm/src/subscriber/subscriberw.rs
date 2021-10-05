@@ -94,7 +94,7 @@ impl Subscriber {
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch, js_name="announcementLink")]
+    #[wasm_bindgen(catch, js_name = "announcementLink")]
     pub fn announcement_link(&self) -> Result<String> {
         self.subscriber
             .borrow_mut()

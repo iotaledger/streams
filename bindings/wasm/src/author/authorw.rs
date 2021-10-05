@@ -114,7 +114,7 @@ impl Author {
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch, js_name="announcementLink")]
+    #[wasm_bindgen(catch, js_name = "announcementLink")]
     pub fn announcement_link(&self) -> Result<String> {
         self.author
             .borrow_mut()
