@@ -493,12 +493,12 @@ cleanup7:
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
 
-      printf("Syncing author... ");
-      e = auth_sync_state(&sync_returns, recovered_auth);
-      printf("  %s\n", !e ? "done" : "failed");
-      if(e) goto cleanup8;
+    printf("Syncing author... ");
+    e = auth_sync_state(&sync_returns, recovered_auth);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup8;
 
-      e = auth_fetch_state(&recovered_auth_state, recovered_auth);
+    e = auth_fetch_state(&recovered_auth_state, recovered_auth);
     if(e) goto cleanup8;
     e = auth_fetch_state(&original_auth_state, auth);
     if(e) goto cleanup8;
