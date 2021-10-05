@@ -415,12 +415,12 @@ where
     }
 
     pub fn insert_subscriber(&mut self, pk: ed25519::PublicKey) -> Result<()> {
-        let ref_link = self.appinst.as_ref().unwrap().rel().clone();
-        match !self.key_store.contains(&pk.into()) {
-            true => self
+        match (!self.key_store.contains(&pk.into()), &self.appinst) {
+            (_, None) => err!(UserNotRegistered),
+            (true, Some(ref_link)) => self
                 .key_store
-                .insert_cursor(pk.into(), Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM)),
-            false => err!(UserAlreadyRegistered(hex::encode(pk.as_bytes()))),
+                .insert_cursor(pk.into(), Cursor::new_at(ref_link.rel().clone(), 0, SEQ_MESSAGE_NUM)),
+            (false, Some(_)) => err!(UserAlreadyRegistered(hex::encode(pk.as_bytes()))),
         }
     }
 
