@@ -28,3 +28,6 @@ client-wasm = { git = "https://github.com/kwek20/iota.rs", branch  = "wasm-expor
 
 # Needed to specify the js/wasm feature for a sub-crate
 getrandom = {version = "0.2.2", features = ["js"]}
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.28"

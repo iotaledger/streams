@@ -16,6 +16,7 @@
     "pretest": "npm run build:nodejs",
     "prepublishOnly": "npm run build",
     "test": "mocha",
+    "unittest": "wasm-pack test --node",
     "serve": "webpack serve",
     "example:nodejs": "node examples/node.js",
     "example:nodets": "ts-node examples/node.ts",

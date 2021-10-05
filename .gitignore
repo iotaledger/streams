@@ -11,3 +11,4 @@ book
 .vscode
 .project
 .env
+.DS_Store
