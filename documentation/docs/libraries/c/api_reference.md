@@ -65,6 +65,16 @@ Return the channel address of the channel instance.
 | user            | `author_t const *`  | Author instance           |
 **Returns:** Error Code.
 
+#### auth_announcement_link(addr, author): [err_t](#Err)
+Return the announcement link of the channel instance.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+| addr            | `address_t const *` | Placeholder for resulting announcement link object |
+| author          | `author_t const *`  | Author instance           |
+**Returns:** Error code.
+
+
 #### auth_is_multi_branching(flag, user): [err_t](#Err) 
 Check if a channel type is single branching or multi branching. 
 
@@ -370,6 +380,15 @@ Return the channel address of the channel instance.
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | addr            | `channel_address_t const *`| Placeholder for resulting channel address object |
+| subscriber      | `subscriber_t const *` | Subscriber instance    |
+**Returns:** Error code.
+
+#### sub_announcement_link(addr, subscriber): [err_t](#Err)
+Return the announcement link of the channel instance.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+| addr            | `address_t const *` | Placeholder for resulting announcement link object |
 | subscriber      | `subscriber_t const *` | Subscriber instance    |
 **Returns:** Error code.
 

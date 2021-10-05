@@ -115,6 +115,7 @@ extern err_t auth_import(author_t **auth, buffer_t buffer, char const *password,
 extern err_t auth_export(buffer_t *buf, author_t const *user, char const *password);
 
 extern err_t auth_channel_address(channel_address_t const **addr, author_t const *user);
+extern err_t auth_announcement_link(address_t const **addr, author_t const *user);
 extern err_t auth_is_multi_branching(uint8_t *flag, author_t const *user);
 extern err_t auth_get_public_key(public_key_t const **pk, author_t const *user);
 
@@ -165,6 +166,7 @@ extern err_t sub_export(buffer_t *buf, subscriber_t const *subscriber, char cons
 extern void sub_drop(subscriber_t *);
 
 extern err_t sub_channel_address(channel_address_t const **addr, subscriber_t const *subscriber);
+extern err_t sub_announcement_link(address_t const **addr, subscriber_t const *user);
 extern err_t sub_is_multi_branching(uint8_t *flag, subscriber_t const *subscriber);
 extern err_t sub_get_public_key(public_key_t const **pk, subscriber_t const *subscriber);
 extern err_t sub_author_public_key(public_key_t const **pk, subscriber_t const *subscriber);
