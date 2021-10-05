@@ -137,9 +137,9 @@ impl<Trans> User<Trans> {
         self.user.fetch_state()
     }
 
-    /// Resets the cursor state storage to allow a Subscriber to retrieve all messages in a channel
+    /// Resets the cursor state storage to allow a User to retrieve all messages in a channel
     /// from scratch
-    /// [Subscriber]
+    /// [Author, Subscriber]
     pub fn reset_state(&mut self) -> Result<()> {
         self.user.reset_state()
     }

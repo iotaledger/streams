@@ -93,6 +93,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
 
     println!("\n\nTime to try to recover the instance...");
     let mut new_author = Author::recover(seed, &announcement_link, channel_type, transport.clone()).await?;
+    new_author.sync_state().await;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;

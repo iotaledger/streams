@@ -262,6 +262,7 @@ where
                     key_store.insert_cursor(*id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
                 }
                 self.key_store = key_store;
+                self.link_store = LS::default();
 
                 self.link_gen.reset(appinst.clone());
                 Ok(())
@@ -300,7 +301,7 @@ where
         if let Some(appinst) = &self.appinst {
             try_or!(
                 appinst == &preparsed.header.link,
-                UserAlreadyRegistered(appinst.base().to_string())
+                UserAlreadyRegistered(hex::encode(self.sig_kp.public), appinst.base().to_string())
             )?;
         }
 
@@ -415,9 +416,16 @@ where
     }
 
     pub fn insert_subscriber(&mut self, pk: ed25519::PublicKey) -> Result<()> {
-        let ref_link = self.appinst.as_ref().unwrap().rel().clone();
-        self.key_store
-            .insert_cursor(pk.into(), Cursor::new_at(ref_link, 0, SEQ_MESSAGE_NUM))
+        match (!self.key_store.contains(&pk.into()), &self.appinst) {
+            (_, None) => err!(UserNotRegistered),
+            (true, Some(ref_link)) => self
+                .key_store
+                .insert_cursor(pk.into(), Cursor::new_at(ref_link.rel().clone(), 0, SEQ_MESSAGE_NUM)),
+            (false, Some(ref_link)) => err!(UserAlreadyRegistered(
+                hex::encode(pk.as_bytes()),
+                ref_link.base().to_string()
+            )),
+        }
     }
 
     /// Prepare Subscribe message.

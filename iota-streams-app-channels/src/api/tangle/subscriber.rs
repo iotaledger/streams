@@ -175,21 +175,6 @@ impl<Trans> Subscriber<Trans> {
 }
 
 impl<Trans: Transport + Clone> Subscriber<Trans> {
-    /// Generates a new Subscriber implementation from input. It then syncs state of the user from
-    /// the given announcement message link
-    ///
-    ///  # Arguements
-    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
-    /// * `announcement` - An existing announcement message link for processing
-    /// * `transport` - Transport object used for sending and receiving
-    pub async fn recover(seed: &str, announcement: &Address, transport: Trans) -> Result<Self> {
-        let mut subscriber = Subscriber::new(seed, transport);
-        subscriber.receive_announcement(announcement).await?;
-        subscriber.sync_state().await;
-
-        Ok(subscriber)
-    }
-
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments

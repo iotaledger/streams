@@ -65,19 +65,6 @@ impl Subscriber {
             .into_js_result()
     }
 
-    pub async fn recover(seed: String, ann_address: Address, options: SendOptions) -> Result<Subscriber> {
-        let mut client = ApiClient::new_from_url(&options.url());
-        client.set_send_options(options.into());
-        let transport = Rc::new(RefCell::new(client));
-
-        ApiSubscriber::recover(&seed, ann_address.as_inner(), transport)
-            .await
-            .map(|sub| Subscriber {
-                subscriber: Rc::new(RefCell::new(sub)),
-            })
-            .into_js_result()
-    }
-
     pub fn clone(&self) -> Subscriber {
         Subscriber {
             subscriber: self.subscriber.clone(),

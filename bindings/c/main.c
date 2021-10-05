@@ -486,9 +486,15 @@ cleanup7:
     address_t const *recovered_state_link = NULL;
     address_t const *original_state_link = NULL;
     unwrapped_messages_t const *message_returns = NULL;
+    unwrapped_messages_t const *sync_returns = NULL;
 
     printf("Recovering author... ");
     e = auth_recover(&recovered_auth, seed, ann_link, implementation_type, tsp);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup8;
+
+    printf("Syncing author... ");
+    e = auth_sync_state(&sync_returns, recovered_auth);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
 
@@ -525,6 +531,7 @@ cleanup8:
     drop_user_state(recovered_auth_state);
     auth_drop(recovered_auth);
     drop_unwrapped_messages(message_returns);
+    drop_unwrapped_messages(sync_returns);
   }
   printf("\n");
   if(e) goto cleanup;

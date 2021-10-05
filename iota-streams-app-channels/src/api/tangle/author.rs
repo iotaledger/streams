@@ -148,6 +148,12 @@ impl<Trans> Author<Trans> {
         Ok(state)
     }
 
+    /// Resets the cursor state storage to allow an Author to retrieve all messages in a channel
+    /// from scratch
+    pub fn reset_state(&mut self) -> Result<()> {
+        self.user.reset_state()
+    }
+
     /// Serialize user state and encrypt it with password.
     ///
     ///   # Arguments
@@ -192,7 +198,6 @@ impl<Trans: Transport + Clone> Author<Trans> {
         panic_if_not(retrieved.binary == ann.message);
 
         author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
-        author.sync_state().await;
 
         Ok(author)
     }

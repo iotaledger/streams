@@ -370,6 +370,11 @@ impl Author {
             .into_js_result()
     }
 
+    #[wasm_bindgen(catch)]
+    pub fn reset_state(self) -> Result<()> {
+        self.author.borrow_mut().reset_state().into_js_result()
+    }
+
     pub fn store_new_subscriber(&self, pk_str: String) -> Result<()> {
         public_key_from_string(&pk_str)
             .and_then(|pk| self.author.borrow_mut().store_new_subscriber(pk).into_js_result())
