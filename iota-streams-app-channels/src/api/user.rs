@@ -300,7 +300,7 @@ where
         if let Some(appinst) = &self.appinst {
             try_or!(
                 appinst == &preparsed.header.link,
-                UserAlreadyRegistered(appinst.base().to_string())
+                UserAlreadyRegistered(hex::encode(self.sig_kp.public), appinst.base().to_string())
             )?;
         }
 
@@ -420,7 +420,10 @@ where
             (true, Some(ref_link)) => self
                 .key_store
                 .insert_cursor(pk.into(), Cursor::new_at(ref_link.rel().clone(), 0, SEQ_MESSAGE_NUM)),
-            (false, Some(_)) => err!(UserAlreadyRegistered(hex::encode(pk.as_bytes()))),
+            (false, Some(ref_link)) => err!(UserAlreadyRegistered(
+                hex::encode(pk.as_bytes()),
+                ref_link.base().to_string()
+            )),
         }
     }
 

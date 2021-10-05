@@ -136,8 +136,8 @@ pub enum Errors {
     //////////
     /// Cannot create a channel, user is already registered to channel {0}
     ChannelCreationFailure(String),
-    /// Cannot unwrap message, user already registered to channel {0}
-    UserAlreadyRegistered(String),
+    /// Cannot register new user {0}, user is already registered to channel {1}
+    UserAlreadyRegistered(String, String),
     /// User is not registered to a channel
     UserNotRegistered,
     /// Message application instance does not match user channel (expected: {0}, found: {1}
