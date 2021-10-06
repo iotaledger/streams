@@ -162,8 +162,8 @@ pub enum Errors {
     SingleDepthOperationFailure,
     /// Operation only available on single depth channels
     ChannelNotSingleDepth,
-    /// Announcement message does not have a previous message
-    AnnouncementIsFirst,
+    /// Message '{0}' does not have a previous message
+    NoPreviousMessage(String),
 
     //////////
     // User Recovery
