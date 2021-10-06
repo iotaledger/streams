@@ -1,7 +1,7 @@
 const path = require('path')
 const fs = require('fs')
 
-const entryFilePath = path.join(__dirname, '../web/streams_wasm.js')
+const entryFilePath = path.join(__dirname, '../web/streams.js')
 const entryFile = fs.readFileSync(entryFilePath).toString()
 let changedFile = entryFile
     // Rename original init function, because we want to use the name for our own function
@@ -24,7 +24,7 @@ fs.writeFileSync(
     changedFile
 )
 
-const entryFilePathTs = path.join(__dirname, '../web/streams_wasm.d.ts')
+const entryFilePathTs = path.join(__dirname, '../web/streams.d.ts')
 const entryFileTs = fs.readFileSync(entryFilePathTs).toString()
 // Replace the init function in the ts file
 let changedFileTs = entryFileTs.replace(

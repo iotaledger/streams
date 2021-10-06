@@ -1,10 +1,10 @@
 [package]
-name = "streams_wasm"
-version = "0.0.1"
-authors = ["huhn511 <huhn@einfachIOTA.de>", "Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
+name = "streams"
+version = "0.1.2"
+authors = ["huhn511 <huhn@einfachIOTA.de>", "Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org>"]
 edition = "2018"
 repository = "https://github.com/iotaledger/streams"
-homepage = "https://www.iota.org"
+homepage = "https://wiki.iota.org/streams/libraries/wasm/overview"
 license = "MIT"
 
 [lib]

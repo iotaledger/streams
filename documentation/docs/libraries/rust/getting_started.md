@@ -30,7 +30,7 @@ iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "maste
 
     ```bash
     [dependencies]
-    iota-streams = { version = "1.0.0", path = "../streams" }
+    iota-streams = { version = "0.1.2", path = "../streams" }
     ```
 
 ## Basic Usage
