@@ -1,7 +1,7 @@
 [package]
 name = "iota-streams-core"
-version = "0.3.1"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
+version = "0.1.2"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
@@ -15,10 +15,6 @@ std = ["rand/std", "digest/std", "hex/std"]
 err-location-log = []
 sync-spin = ["spin"]
 sync-parking-lot = ["parking_lot"]
-
-[lib]
-name = "iota_streams_core"
-path = "src/lib.rs"
 
 [dependencies]
 # digest version should correspond to curve25519-dalek's version
