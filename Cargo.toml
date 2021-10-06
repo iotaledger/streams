@@ -9,6 +9,9 @@ license = "Apache-2.0/MIT"
 readme = "README.md"
 keywords = ["iota", "streams"]
 description = "A Rust implementation of the IOTA Streams"
+repository = "https://github.com/iotaledger/streams"
+homepage = "https://wiki.iota.org/streams/libraries/rust/overview"
+
 autoexamples = false
 
 [lib]
