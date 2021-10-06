@@ -1,4 +1,4 @@
-import * as streams from '../node/streams_wasm';
+import * as streams from '../node/streams';
 
 streams.set_panic_hook();
 

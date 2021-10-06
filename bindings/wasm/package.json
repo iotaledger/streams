@@ -1,6 +1,6 @@
 {
-  "name": "@iota/streams-wasm",
-  "version": "1.1.0",
+  "name": "@iota/streams",
+  "version": "0.1.2",
   "description": "WASM binding for the IOTA streams library",
   "repository": {
     "type": "git",

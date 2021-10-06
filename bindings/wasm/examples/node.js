@@ -1,4 +1,4 @@
-const streams = require("../node/streams_wasm");
+const streams = require("../node/streams");
 
 streams.set_panic_hook();
 
