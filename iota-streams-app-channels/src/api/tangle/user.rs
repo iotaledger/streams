@@ -7,16 +7,21 @@ use iota_streams_app::{
 };
 use iota_streams_core::{
     err,
-    prelude::Vec,
+    prelude::{
+        ToString,
+        Vec,
+    },
     prng,
     psk::{
         Psk,
         PskId,
     },
     try_or,
+    unwrap_or_break,
     Errors::{
         ChannelDuplication,
         ChannelNotSingleDepth,
+        NoPreviousMessage,
         UnknownMsgType,
         UserNotRegistered,
     },
@@ -495,8 +500,8 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
         let header = msg.binary.parse_header().await?.header;
-
-        let prev_msg_link = Address::from_bytes(&header.previous_msg_link.0);
+        let prev_msg_link = Address::try_from_bytes(&header.previous_msg_link.0)
+            .or_else(|_| err!(NoPreviousMessage(link.to_string())))?;
         let prev_msg = self.transport.recv_message(&prev_msg_link).await?;
         let unwrapped = self.handle_message(prev_msg, false).await?;
         Ok(unwrapped)
@@ -512,7 +517,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         let mut msgs = Vec::new();
 
         for _ in 0..max {
-            msg_info = self.parse_msg_info(&msg_info.0).await?;
+            msg_info = unwrap_or_break!(self.parse_msg_info(&msg_info.0).await);
             if msg_info.1 == message::SEQUENCE {
                 let msg_link = self.process_sequence(msg_info.2.binary, false).await?;
                 msg_info = self.parse_msg_info(&msg_link).await?;
@@ -541,7 +546,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             let msg = msg0.binary;
             let preparsed = msg.parse_header().await?;
             let link = preparsed.header.link;
-            let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
+            let prev_link = Address::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
             match preparsed.header.content_type {
                 message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket).await {
                     Ok(m) => {
@@ -584,7 +589,8 @@ impl<Trans: Transport + Clone> User<Trans> {
     async fn parse_msg_info(&mut self, link: &Address) -> Result<(Address, u8, Message)> {
         let msg = self.transport.recv_message(link).await?;
         let header = msg.binary.parse_header().await?.header;
-        let link = Address::from_bytes(&header.previous_msg_link.0);
+        let link = Address::try_from_bytes(&header.previous_msg_link.0)
+            .or_else(|_| err!(NoPreviousMessage(link.to_string())))?;
         Ok((link, header.content_type, msg))
     }
 

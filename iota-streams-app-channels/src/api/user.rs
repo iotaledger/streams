@@ -597,7 +597,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, bool>> {
         let preparsed = msg.parse_header().await?;
-        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
         let seq_no = preparsed.header.seq_num;
         // We need to borrow self.key_store, self.sig_kp and self.ke_kp at this scope
         // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
@@ -708,7 +708,7 @@ where
     ) -> Result<GenericMessage<Link, (ed25519::PublicKey, Bytes, Bytes)>> {
         // TODO: pass author_pk to unwrap
         let preparsed = msg.parse_header().await?;
-        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
         let seq_no = preparsed.header.seq_num;
         let content = self
             .unwrap_signed_packet(preparsed)
@@ -798,7 +798,7 @@ where
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, (Bytes, Bytes)>> {
         let preparsed = msg.parse_header().await?;
-        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
         let seq_no = preparsed.header.seq_num;
         let content = self
             .unwrap_tagged_packet(preparsed)
@@ -926,7 +926,7 @@ where
     ) -> Result<GenericMessage<Link, sequence::ContentUnwrap<Link>>> {
         let preparsed = msg.parse_header().await?;
         let sender_id = preparsed.header.sender_id;
-        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
         let content = self
             .unwrap_sequence(preparsed)
             .await?
