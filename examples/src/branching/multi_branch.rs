@@ -8,10 +8,10 @@ use iota_streams::{
             ChannelType,
             Subscriber,
             Transport,
-        }
+        },
     },
     core::{
-        prelude::{HashMap, Rc},
+        prelude::HashMap,
         print,
         println,
         try_or,
@@ -21,11 +21,9 @@ use iota_streams::{
     ddml::types::*,
 };
 
-use core::cell::RefCell;
-
 use super::utils;
 
-pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelType, seed: &str) -> Result<()> {
+pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed: &str) -> Result<()> {
     let mut author = Author::new(seed, channel_type, transport.clone());
     println!("Author multi branching?: {}", author.is_multi_branching());
 
@@ -38,27 +36,27 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
 
     println!("\nAnnounce Channel");
     let announcement_link = {
-        let msg = author.send_announce()?;
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        let msg = author.send_announce().await?;
+        println!("  msg => <{}> {:x}", msg.msgid, msg.to_msg_index());
         print!("  Author     : {}", author);
         msg
     };
 
     println!("\nHandle Announce Channel");
     {
-        subscriberA.receive_announcement(&announcement_link)?;
+        subscriberA.receive_announcement(&announcement_link).await?;
         print!("  SubscriberA: {}", subscriberA);
         try_or!(
             author.channel_address() == subscriberA.channel_address(),
             ApplicationInstanceMismatch(String::from("A"))
         )?;
-        subscriberB.receive_announcement(&announcement_link)?;
+        subscriberB.receive_announcement(&announcement_link).await?;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(
             author.channel_address() == subscriberB.channel_address(),
             ApplicationInstanceMismatch(String::from("B"))
         )?;
-        subscriberC.receive_announcement(&announcement_link)?;
+        subscriberC.receive_announcement(&announcement_link).await?;
         print!("  SubscriberC: {}", subscriberC);
         try_or!(
             author.channel_address() == subscriberC.channel_address(),
@@ -80,68 +78,72 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
-    author.store_psk(pskid.clone(), psk.clone())?;
+    author.store_psk(pskid, psk)?;
     subscriberC.store_psk(pskid, psk)?;
 
     // Fetch state of subscriber for comparison after reset
-    let sub_a_start_state: HashMap<_,_> = subscriberA.fetch_state()?.into_iter().collect();
+    let sub_a_start_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
 
     println!("\nSubscribe A");
     let subscribeA_link = {
-        let msg = subscriberA.send_subscribe(&announcement_link)?;
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        let msg = subscriberA.send_subscribe(&announcement_link).await?;
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         print!("  SubscriberA: {}", subscriberA);
         msg
     };
 
     println!("\nHandle Subscribe A");
     {
-        author.receive_subscribe(&subscribeA_link)?;
+        author.receive_subscribe(&subscribeA_link).await?;
         print!("  Author     : {}", author);
     }
 
     println!("\nShare keyload for everyone [SubscriberA]");
     let (keyload_link, keyload_seq) = {
-        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
+        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
         print!("  Author     : {}", author);
         (msg, seq)
     };
 
-    println!("\nHandle Share keyload for everyone [SubscriberA, PSK]: {:?}", &keyload_link);
+    println!(
+        "\nHandle Share keyload for everyone [SubscriberA, PSK]: {}",
+        &keyload_link
+    );
     {
-        let msg_tag = subscriberA.receive_sequence(&keyload_seq)?;
-        let resultB = subscriberB.receive_keyload(&msg_tag)?;
+        let msg_tag = subscriberA.receive_sequence(&keyload_seq).await?;
+        let resultB = subscriberB.receive_keyload(&msg_tag).await?;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(!resultB, SubscriberAccessMismatch(String::from("B")))?;
 
-        subscriberA.receive_keyload(&msg_tag)?;
+        subscriberA.receive_keyload(&msg_tag).await?;
         print!("  SubscriberA: {}", subscriberA);
 
-        subscriberC.receive_keyload(&msg_tag)?;
+        subscriberC.receive_keyload(&msg_tag).await?;
         print!("  SubscriberC: {}", subscriberC);
-
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA);
+    utils::s_fetch_next_messages(&mut subscriberA).await;
 
     println!("\nTagged packet 1 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberA.send_tagged_packet(&keyload_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = subscriberA
+            .send_tagged_packet(&keyload_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
         print!("  SubscriberA: {}", subscriberA);
         (msg, seq)
     };
 
     println!("\nHandle Tagged packet 1 - SubscriberA");
     {
-        let msg_tag = author.receive_sequence(&tagged_packet_seq)?;
-        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
+        let msg_tag = author.receive_sequence(&tagged_packet_seq).await?;
+        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag).await?;
         print!("  Author     : {}", author);
         try_or!(
             public_payload == unwrapped_public,
@@ -152,7 +154,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&msg_tag)?;
+        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&msg_tag).await?;
         print!("  SubscriberC: {}", subscriberC);
         try_or!(
             public_payload == unwrapped_public,
@@ -163,28 +165,30 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let resultB = subscriberB.receive_tagged_packet(&msg_tag);
+        let resultB = subscriberB.receive_tagged_packet(&msg_tag).await;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(resultB.is_err(), SubscriberAccessMismatch(String::from("B")))?;
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author);
+    utils::a_fetch_next_messages(&mut author).await;
 
     println!("\nSigned packet");
     let (_signed_packet_link, signed_packet_seq) = {
-        let (msg, seq) = author.send_signed_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = author
+            .send_signed_packet(&tagged_packet_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
         print!("  Author     : {}", author);
         (msg, seq)
     };
 
     println!("\nHandle Signed packet");
     {
-        let msg_tag = subscriberA.receive_sequence(&signed_packet_seq)?;
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
+        let msg_tag = subscriberA.receive_sequence(&signed_packet_seq).await?;
+        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag).await?;
         print!("  SubscriberA: {}", subscriberA);
         try_or!(
             public_payload == unwrapped_public,
@@ -198,58 +202,60 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
 
     println!("\nSubscribe B");
     let subscribeB_link = {
-        let msg = subscriberB.send_subscribe(&announcement_link)?;
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
+        let msg = subscriberB.send_subscribe(&announcement_link).await?;
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         print!("  SubscriberB: {}", subscriberB);
         msg
     };
 
     println!("\nHandle Subscribe B");
     {
-        author.receive_subscribe(&subscribeB_link)?;
+        author.receive_subscribe(&subscribeB_link).await?;
         print!("  Author     : {}", author);
     }
 
     println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
     let (keyload_link, keyload_seq) = {
-        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link)?;
+        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
         print!("  Author     : {}", author);
         (msg, seq)
     };
 
     println!("\nHandle Share keyload for everyone [SubscriberA, SubscriberB]");
     {
-        let msg_tag = subscriberA.receive_sequence(&keyload_seq)?;
+        let msg_tag = subscriberA.receive_sequence(&keyload_seq).await?;
         print!("  Author     : {}", author);
 
-        subscriberA.receive_keyload(&msg_tag)?;
+        subscriberA.receive_keyload(&msg_tag).await?;
         print!("  SubscriberA: {}", subscriberA);
-        subscriberB.receive_keyload(&msg_tag)?;
+        subscriberB.receive_keyload(&msg_tag).await?;
         print!("  SubscriberB: {}", subscriberB);
-        subscriberC.receive_keyload(&msg_tag)?;
+        subscriberC.receive_keyload(&msg_tag).await?;
         print!("  SubscriberC: {}", subscriberC);
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA);
+    utils::s_fetch_next_messages(&mut subscriberA).await;
 
     println!("\nTagged packet 2 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberA.send_tagged_packet(&keyload_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = subscriberA
+            .send_tagged_packet(&keyload_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
         print!("  SubscriberA: {}", subscriberA);
         (msg, seq)
     };
 
     println!("\nHandle Tagged packet 2 - SubscriberA");
     {
-        let msg_tag = author.receive_sequence(&tagged_packet_seq)?;
-        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
+        let msg_tag = author.receive_sequence(&tagged_packet_seq).await?;
+        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag).await?;
         print!("  Author     : {}", author);
         try_or!(
             public_payload == unwrapped_public,
@@ -260,7 +266,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
 
-        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&msg_tag)?;
+        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&msg_tag).await?;
         print!("  SubscriberC     : {}", subscriberC);
         try_or!(
             public_payload == unwrapped_public,
@@ -273,24 +279,26 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
     }
 
     println!("\nSubscriber B fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberB);
+    utils::s_fetch_next_messages(&mut subscriberB).await;
 
     println!("\nTagged packet 3 - SubscriberB");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberB.send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = subscriberB
+            .send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
         print!("  SubscriberB: {}", subscriberB);
         (msg, seq)
     };
 
     println!("\nHandle Tagged packet 3 - SubscriberB");
     {
-        let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq)?;
+        let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq).await?;
         print!("  SubscriberA: {}", subscriberA);
 
-        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
+        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag).await?;
         print!("  Author     : {}", author);
         try_or!(
             public_payload == unwrapped_public,
@@ -300,7 +308,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
             masked_payload == unwrapped_masked,
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
-        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&msg_tag)?;
+        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&msg_tag).await?;
         print!("  SubscriberC: {}", subscriberC);
         try_or!(
             public_payload == unwrapped_public,
@@ -313,11 +321,13 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
     }
 
     println!("\nSubscriber C fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberC);
+    utils::s_fetch_next_messages(&mut subscriberC).await;
 
     println!("\nTagged packet 4 - SubscriberC");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberC.send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)?;
+        let (msg, seq) = subscriberC
+            .send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
         println!("  msg => <{}> {}", msg.msgid, msg);
         println!("  seq => <{}> {}", seq.msgid, seq);
@@ -327,10 +337,10 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
 
     println!("\nHandle Tagged packet 4 - SubscriberC");
     {
-        let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq)?;
+        let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq).await?;
         print!("  SubscriberA: {}", subscriberA);
 
-        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag)?;
+        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag).await?;
         print!("  Author     : {}", author);
         try_or!(
             public_payload == unwrapped_public,
@@ -340,7 +350,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
             masked_payload == unwrapped_masked,
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
-        let (unwrapped_public, unwrapped_masked) = subscriberB.receive_tagged_packet(&msg_tag)?;
+        let (unwrapped_public, unwrapped_masked) = subscriberB.receive_tagged_packet(&msg_tag).await?;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(
             public_payload == unwrapped_public,
@@ -350,33 +360,34 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
             masked_payload == unwrapped_masked,
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
-
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author);
+    utils::a_fetch_next_messages(&mut author).await;
 
     println!("\nSigned packet");
     let (signed_packet_link, signed_packet_seq) = {
-        let (msg, seq) = author.send_signed_packet(&tagged_packet_seq, &public_payload, &masked_payload)?;
+        let (msg, seq) = author
+            .send_signed_packet(&tagged_packet_seq, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
-        println!("  msg => <{}> {:?}", msg.msgid, msg);
-        println!("  seq => <{}> {:?}", seq.msgid, seq);
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
         print!("  Author     : {}", author);
         (msg, seq)
     };
 
     println!("\nHandle Signed packet");
     {
-        let msg_tag = subscriberA.receive_sequence(&signed_packet_seq)?;
+        let msg_tag = subscriberA.receive_sequence(&signed_packet_seq).await?;
         print!("  Author     : {}", author);
 
         println!("\nSubscriber A fetching transactions...");
-        utils::s_fetch_next_messages(&mut subscriberA);
+        utils::s_fetch_next_messages(&mut subscriberA).await;
         println!("\nSubscriber B fetching transactions...");
-        utils::s_fetch_next_messages(&mut subscriberB);
+        utils::s_fetch_next_messages(&mut subscriberB).await;
 
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag)?;
+        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag).await?;
         print!("  SubscriberA: {}", subscriberA);
         try_or!(
             public_payload == unwrapped_public,
@@ -386,7 +397,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
             masked_payload == unwrapped_masked,
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
-        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&msg_tag)?;
+        let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberB.receive_signed_packet(&msg_tag).await?;
         print!("  SubscriberB: {}", subscriberB);
         try_or!(
             public_payload == unwrapped_public,
@@ -400,7 +411,7 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
 
     println!("\nSubscriber A checking previous message");
     {
-        let msg = subscriberA.fetch_prev_msg(&signed_packet_link)?;
+        let msg = subscriberA.fetch_prev_msg(&signed_packet_link).await?;
         println!("Found message: {}", msg.link.msgid);
         try_or!(
             msg.link == tagged_packet_link,
@@ -411,14 +422,14 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
 
     println!("\nSubscriber A checking 3 previous messages");
     {
-        let msgs = subscriberA.fetch_prev_msgs(&signed_packet_link, 3)?;
+        let msgs = subscriberA.fetch_prev_msgs(&signed_packet_link, 3).await?;
         try_or!(msgs.len() == 3, ValueMismatch(3, msgs.len()))?;
         println!("Found {} messages", msgs.len());
         println!("  SubscriberB: {}", subscriberA);
     }
 
     subscriberA.reset_state()?;
-    let new_state: HashMap<_,_>  = subscriberA.fetch_state()?.into_iter().collect();
+    let new_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
 
     println!("\nSubscriber A resetting state");
     let mut matches = false;
@@ -429,6 +440,23 @@ pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_type: ChannelTyp
         try_or!(matches, StateMismatch)?;
     }
     println!("Subscriber states matched");
+
+    println!("\nAuthor unsubscribes Subscriber A");
+    author.remove_subscriber(*subscriberA.get_public_key())?;
+
+    println!("\nSubscriber B sending unsubscribe message");
+    let unsub_link = subscriberB.send_unsubscribe(&subscribeB_link).await?;
+    println!("Author receiving unsubscribe");
+    author.receive_unsubscribe(&unsub_link).await?;
+
+    println!("\nAuthor sending new keyload to all subscribers");
+    let new_keyload = author.send_keyload_for_everyone(&announcement_link).await?;
+    println!("Subscriber B checking that they do not have access to new keyload");
+    try_or!(
+        !subscriberB.receive_keyload(&new_keyload.0).await?,
+        SubscriberAccessMismatch("B".to_string())
+    )?;
+    println!("Subscriber B does not have access to the new keyload");
 
     Ok(())
 }

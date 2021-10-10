@@ -8,11 +8,14 @@ use iota_streams_core::{
         string::ToString,
         HashMap,
     },
-    Errors::MessageLinkNotFound,
+    Errors::MessageLinkNotFoundInBucket,
 };
 
-#[cfg(feature = "async")]
-use iota_streams_core::Errors::MessageNotUnique;
+use iota_streams_core::{
+    async_trait,
+    prelude::Box,
+    Errors::MessageNotUnique,
+};
 
 #[derive(Clone, Debug)]
 pub struct BucketTransport<Link, Msg> {
@@ -47,40 +50,6 @@ impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 
-#[cfg(not(feature = "async"))]
-impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg> {
-    type Details = ();
-    fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details> {
-        Ok(())
-    }
-}
-
-#[cfg(not(feature = "async"))]
-impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
-where
-    Link: Eq + hash::Hash + Clone + core::fmt::Debug + core::fmt::Display,
-    Msg: LinkedMessage<Link> + Clone,
-{
-    fn send_message(&mut self, msg: &Msg) -> Result<()> {
-        if let Some(msgs) = self.bucket.get_mut(msg.link()) {
-            msgs.push(msg.clone());
-            Ok(())
-        } else {
-            self.bucket.insert(msg.link().clone(), vec![msg.clone()]);
-            Ok(())
-        }
-    }
-
-    fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
-        if let Some(msgs) = self.bucket.get(link) {
-            Ok(msgs.clone())
-        } else {
-            err!(MessageLinkNotFound(link.to_string()))
-        }
-    }
-}
-
-#[cfg(feature = "async")]
 #[async_trait(?Send)]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
@@ -101,7 +70,7 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            err!(MessageLinkNotFound(link.to_string()))
+            err!(MessageLinkNotFoundInBucket(link.to_string()))
         }
     }
 
@@ -111,12 +80,11 @@ where
             try_or!(msgs.is_empty(), MessageNotUnique(link.to_string())).unwrap();
             Ok(msg)
         } else {
-            err!(MessageLinkNotFound(link.to_string()))?
+            err!(MessageLinkNotFoundInBucket(link.to_string()))?
         }
     }
 }
 
-#[cfg(feature = "async")]
 #[async_trait(?Send)]
 impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg>
 where

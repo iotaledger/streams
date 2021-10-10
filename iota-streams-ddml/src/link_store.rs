@@ -19,7 +19,7 @@ use iota_streams_core::{
     try_or,
     Errors::{
         GenericLinkNotFound,
-        MessageLinkNotFoundInTangle,
+        MessageLinkNotFoundInStore,
     },
 };
 
@@ -58,6 +58,8 @@ pub trait LinkStore<F, Link> {
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))>
     where
         F: PRP;
+
+    fn len(&self) -> usize;
 }
 
 /// Empty "dummy" link store that stores no links.
@@ -87,6 +89,10 @@ impl<F, Link, Info> LinkStore<F, Link> for EmptyLinkStore<F, Link, Info> {
     {
         Vec::new()
     }
+
+    fn len(&self) -> usize {
+        0
+    }
 }
 
 /// Link store that contains a single link.
@@ -114,7 +120,7 @@ where
 {
     type Info = Info;
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        try_or!(self.link() == link, MessageLinkNotFoundInTangle(link.to_string()))?;
+        try_or!(self.link() == link, MessageLinkNotFoundInStore(link.to_string()))?;
         Ok((self.spongos().into(), self.info().clone()))
     }
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
@@ -132,6 +138,10 @@ where
     }
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> {
         vec![(&self.0, &self.1)]
+    }
+
+    fn len(&self) -> usize {
+        1
     }
 }
 
@@ -163,7 +173,7 @@ where
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
         match self.map.get(link) {
             Some((inner, info)) => Ok((inner.into(), info.clone())),
-            None => err!(MessageLinkNotFoundInTangle(link.to_string())),
+            None => err!(MessageLinkNotFoundInStore(link.to_string())),
         }
     }
 
@@ -186,5 +196,9 @@ where
 
     fn iter(&self) -> Vec<(&Link, &(Inner<F>, Self::Info))> {
         self.map.iter().collect()
+    }
+
+    fn len(&self) -> usize {
+        self.map.len()
     }
 }
