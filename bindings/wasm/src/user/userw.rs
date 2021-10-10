@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+
 use wasm_bindgen::prelude::*;
 
 use crate::types::{
@@ -18,10 +20,7 @@ use iota_streams::{
         TransportDetails,
         TransportOptions,
     },
-    core::prelude::{
-        Rc,
-        RefCell,
-    },
+    core::prelude::Rc,
 };
 
 #[wasm_bindgen]
