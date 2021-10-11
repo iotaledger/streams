@@ -19,6 +19,7 @@ js-sys = "0.3.46"
 serde = { version = "1.0", features = ["derive"] }
 iota-streams = {path = "../../", default-features = false, features = ["tangle", "wasm-client"]}
 client-wasm = { git = "https://github.com/iotaledger/iota.rs", rev  = "ee19ec4", default-features = false }
+futures = { version = "0.3.8", default-features = false, features = ["executor"]}
 
 # Needed to specify the js/wasm feature for a sub-crate
 getrandom = {version = "0.2.2", features = ["js"]}

@@ -1,4 +1,10 @@
 use core::fmt;
+
+use futures::{
+    executor::block_on,
+    future::join_all,
+};
+
 use iota_streams_core::{
     async_trait,
     prelude::Box,
@@ -27,10 +33,6 @@ use iota_streams_core::{
 };
 
 use crate::{
-    futures::{
-        executor::block_on,
-        future::join_all,
-    },
     message::BinaryMessage,
     transport::{
         tangle::*,
