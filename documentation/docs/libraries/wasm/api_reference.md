@@ -536,6 +536,8 @@ Generic Types and Primitives used in Wasm API:
 - [Address](#Address)
 - [Message](#Message)
 - [NextMsgId](#NextMsgId)
+- [PskIds](#PskIds)
+- [PublicKeys](#PublicKeys)
 - [Cursor](#Cursor)
 - [UserState](#UserState)
 
