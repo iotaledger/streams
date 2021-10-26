@@ -530,19 +530,22 @@ Reset the mapping of known publisher states for the channel for retrieval of mes
 
 ## Types
 Generic Types and Primitives used in Wasm API:
-- [Client](#Client)
+- [StreamsClient](#StreamsClient)
 - [SendOptions](#SendOptions)
 - [UserResponse](#UserResponse)
 - [Address](#Address)
 - [Message](#Message)
 - [NextMsgId](#NextMsgId)
+- [PskIds](#PskIds)
+- [PublicKeys](#PublicKeys)
 - [Cursor](#Cursor)
 - [UserState](#UserState)
 
-### Client 
+### StreamsClient 
 Transport client for interacting with an Iota node.
+**Note:** You can also use the client builder of the [iota.rs](https://github.com/iotaledger/iota.rs/blob/dev/documentation/docs/libraries/nodejs/api_reference.md#clientbuilder) library to build your client. This way you can create a client, which connects to a Permanode.
 
-#### new(node, options): Client
+#### new(node, options): StreamsClient
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
 | node            | `string`            | A node URL         |
@@ -595,22 +598,22 @@ Create a copy of the User Response
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** A copy of the User Response.
 
-#### get_link(): [Address](#Address)
-Fetch the link of the retrieved or sent message.
+#### link: [Address](#Address)
+Directly access link attribute of the User Response
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** The link for the retrieved or sent message.
 
-#### get_seq_link(): [Address](#Address)
-Fetch the sequence link of the retrieved or sent message (Default if there is none).
+#### seqLink: [Address](#Address)
+Directly access sequence link attribute of the User Response
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** The link for the retrieved or sent message.
 
-#### get_message(): [Message](#Message)
-Fetch the retrieved or sent message (Default if there is none).
+#### message: [Message](#Message)
+Directly access message attribute of the User Response
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
@@ -640,7 +643,7 @@ Streams Address containing the Application Instance and Message Id
 | --------- | --------------------- | -------------------------------------------- |
 **Returns:** The Message Identifier of the Address
 
-#### from_string(address): Address
+#### parse(address): Address
 Make an Address object from a string representation
  
 | Param     | Type                  | Description                                  |
@@ -648,7 +651,7 @@ Make an Address object from a string representation
 | address   | `string`              | String representation of an Address          |
 **Returns:** An Address object
 
-#### to_string(): string
+#### toString(): string
 Return a string representation of an Address object
 
 | Param     | Type                  | Description                                  |
