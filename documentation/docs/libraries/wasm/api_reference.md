@@ -6,9 +6,10 @@ The API is spread out across three categories:
 - [Subscriber](#Subscriber)
 - [Types](#Types)
 
-### Author
+<br/><br/>
+## Author
 Main user implementation of a Channel. Generates the channel, processes subscriptions 
-and 
+and manage them. It can also send and fetch messages.
 
 #### new(seed, options, channel_type): Author 
 Generates an Author instance 
@@ -18,8 +19,10 @@ Generates an Author instance
 | seed            | `string`            | Unique user seed   |
 | options         | `SendOptions`       | Options for Client |
 | implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
+
 **Returns:** An Author instance for administrating a channel.
 
+<br/><br/>
 #### from_client(client, seed, implementation): Author 
 Create an Author instance from a client
 
@@ -27,9 +30,11 @@ Create an Author instance from a client
 | --------------- | ------------------- | ------------------ |
 | client          | [`Client`](#Client) | A Client Instance  |
 | seed            | `string`            | Unique user seed   |
-| implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
+| implementation  | [`ChannelType`](#ChannelType) | Channel Type    |
+
 **Returns:** An Author instance for administrating a channel.
 
+<br/><br/>
 #### import(client, bytes, password): Author 
 Import an Author instance from an encrypted binary array
 
@@ -38,16 +43,20 @@ Import an Author instance from an encrypted binary array
 | client          | [`Client`](#Client) | A Client Instance         |
 | bytes           | `Uint8Array`        | Exported binary of author |
 | password        | `string`            | Key to decrypt binary     | 
+
 **Returns:** A recovered Author instance for administrating a channel.
 
+<br/><br/>
 #### export(password): Uint8Array 
 Export an Author instance as an encrypted array using a given password
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | password        | `string`            | Key to encrypt            | 
+
 **Returns:** Binary array representing an encrypted state of the author.
 
+<br/><br/>
 #### recover(seed, ann_address, implementation, options): Author
 Recover an Author instance from scratch using the known startup configurations
 
@@ -57,59 +66,74 @@ Recover an Author instance from scratch using the known startup configurations
 | ann_address     | [`Address`](#Address) | Announcement message address for validation | 
 | implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
 | options         | `SendOptions`       | Options for Client        |
+
 **Returns:** A recovered Author instance for administrating a channel.
 
+<br/><br/>
 #### clone(): Author 
 Generate a copy of the Author instance for consumption by asynchronous functions
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** A consumable Author instance for functions.
 
+<br/><br/>
 #### channel_address(): string 
 Return the channel address of the channel instance. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** Channel Address for user generated channel.
 
+<br/><br/>
 #### announcementLink(): string
 Return the announcement link of the channel instance.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** Announcement Address for user generated channel.
 
+<br/><br/>
 #### is_multi_branching(): bool 
 Check if a channel type is single branching or multi branching. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** Boolean representing the channel type: false=single branch, true=multi branch.
 
+<br/><br/>
 #### get_public_key(): string 
 Retrieve the Author public key.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** The Author public key in hex representation.
 
+<br/><br/>
 #### fetch_state(): Array<[UserState](#UserState)>
 Retrieve the currently known publisher states for the channel.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** An array of user state objects representing the currently known state of all publishers in the channel.
 
-
-#### The following functions require author.clone() to use, as they consume the instance 
+<br/><br/>
+### The following functions require author.clone() to use, as they consume the instance 
 #### _async -_ send_announce(): [UserResponse](#UserResponse)
 Send an announcement message, initialising the channel 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** A User Response wrapper around the announcement message.
 
+<br/><br/>
 #### _async -_ send_keyload_for_everyone(link): [UserResponse](#UserResponse)
 Send a keyload message for all subscribed participants in the channel, linked to a previous message 
 (usually the announcement in a multi branch).
@@ -117,8 +141,10 @@ Send a keyload message for all subscribed participants in the channel, linked to
 | Param           | Type                  | Description                        |
 | --------------- | --------------------- | ---------------------------------- |
 | link            | [`address`](#Address) | Address of message being linked to |
+
 **Returns:** A User Response wrapper around the keyload message.
 
+<br/><br/>
 #### _async -_ send_keyload(link, psk_ids, sig_pks): [UserResponse](#UserResponse)
 Send a keyload message for specified subscribers and pre shared keys in the channel, linked to a previous 
 message (usually the announcement in a multi branch).
@@ -128,8 +154,10 @@ message (usually the announcement in a multi branch).
 | link            | [`address`](#Address)         | Address of message being linked to            |
 | psk_ids         | [`PskIds`](#PskIds)           | Array of PskId's for included subscribers     |
 | sig_pks         | [`PublicKeys`](#PublicKeys)   | Array of Public Keys for included subscribers |
+
 **Returns:** A User Response wrapper around the keyload message.
 
+<br/><br/>
 #### _async -_ send_tagged_packet(link, public_payload, masked_payload): [UserResponse](#UserResponse)
 Send a tagged packet message linked to a previous message (usually the announcement in a multi branch).
 
@@ -138,8 +166,10 @@ Send a tagged packet message linked to a previous message (usually the announcem
 | link            | [`address`](#Address)         | Address of message being linked to            |
 | public_payload  | `Uint8Array`                  | Byte array of public payload for message      |
 | masked_payload  | `Uint8Array`                  | Byte array of masked payload for message      |
+
 **Returns:** A User Response wrapper around the tagged packet message.
 
+<br/><br/>
 #### _async -_ send_signed_packet(link, public_payload, masked_payload): [UserResponse](#UserResponse)
 Send a signed packet message linked to a previous message (usually the announcement in a multi branch).
 
@@ -148,8 +178,10 @@ Send a signed packet message linked to a previous message (usually the announcem
 | link            | [`address`](#Address)         | Address of message being linked to            |
 | public_payload  | `Uint8Array`                  | Byte array of public payload for message      |
 | masked_payload  | `Uint8Array`                  | Byte array of masked payload for message      |
+
 **Returns:** A User Response wrapper around the signed packet message.
 
+<br/><br/>
 #### _async -_ receive_subscribe(link)
 Process a subscription message by its link.
 
@@ -157,6 +189,7 @@ Process a subscription message by its link.
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of subscription message     |
 
+<br/><br/>
 #### _async -_ receive_unsubscribe(link)
 Process an unsubscription message by its link.
 
@@ -164,38 +197,47 @@ Process an unsubscription message by its link.
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of unsubscription message   |
 
+<br/><br/>
 #### _async -_ receive_tagged_packet(link): [UserResponse](#UserResponse)
 Receive a tagged packet by its link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of tagged packet message    |
+
 **Returns:** A User Response wrapper around the tagged packet message.
 
+<br/><br/>
 #### _async -_ receive_signed_packet(link): [UserResponse](#UserResponse)
 Receive a signed packet by its link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of signed packet message    |
+
 **Returns:** A User Response wrapper around the signed packet message.
 
+<br/><br/>
 #### _async -_ receive_sequence(link): [Address](#Address)
 Receive a sequence message by its link, and return the address of the sequenced message. 
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of tagged packet message    |
+
 **Returns:** The address link of the sequenced message.
 
+<br/><br/>
 #### _async -_ receive_msg(link): [UserResponse](#UserResponse)
 Receive a message generically without knowing its type.
 
 | Param           | Type                          | Description                          |
 | --------------- | ----------------------------- | ------------------------------------ |
 | link            | [`address`](#Address)         | Address of the message to be fetched |
+
 **Returns:** A User Response wrapper around the retrieved message.
 
+<br/><br/>
 #### _async -_ receive_msg_by_sequence_number(anchor_link, msg_num): [UserResponse](#UserResponse)
 Receive a message by its msg number in an anchored single depth channel.
 
@@ -203,8 +245,10 @@ Receive a message by its msg number in an anchored single depth channel.
 | --------------- | ----------------------------- | ------------------------------------ |
 | anchor_link     | [`address`](#Address)         | Anchor message link for the channel  |
 | msg_num         | `number`                     | Number of the message being retrieved|
+
 **Returns:** A User Response wrapper around the retrieved message.
 
+<br/><br/>
 #### _async -_ sync_state()
 Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
 to ensure the user state matches all other publishers.
@@ -212,21 +256,26 @@ to ensure the user state matches all other publishers.
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 
+<br/><br/>
 #### _async -_ fetch_next_msgs(): Array<[UserResponse](#UserResponse)>
 Fetch the next message sent by each publisher (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
+
 **Returns:** An array of User Response wrappers around the retrieved messages.
 
+<br/><br/>
 #### _async -_ fetch_prev_msg(link): [UserResponse](#UserResponse)
 Fetch the previous message sent before the provided message link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address off message to begin fetching from |
+
 **Returns:** A User Response wrapper around the retrieved message.
 
+<br/><br/>
 #### _async -_ fetch_prev_msgs(link, max): Array<[UserResponse](#UserResponse)>
 Fetch a defined number of previous messages in a channel.
 
@@ -234,23 +283,29 @@ Fetch a defined number of previous messages in a channel.
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address off message to begin fetching from |
 | max             | `number`                      | Max number of messages to fetch     |
+
 **Returns:** An array of User Response wrappers around the retrieved messages.
 
+<br/><br/>
 #### _async -_ gen_next_msg_ids(): Array<[NextMsgId](#NextMsgId)>
 Fetch the next message sent by each publisher (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
+
 **Returns:** An array of NextMsgId wrappers for each publisher in the channel.
 
+<br/><br/>
 #### store_psk(psk): String 
 Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use in keyload messages 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | psk             | String                        | Pre shared key in string format     |
 
+
 **Returns:** A PskId String representing the Psk in store.
 
+<br/><br/>
 #### remove_psk(pskid)
 Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key Id (PskId)
 
@@ -258,6 +313,7 @@ Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key I
 | --------------- | -------------------------------------- | ------------------------ |
 | pskid           | String                                 | PskId string representing the Psk in store |
 
+<br/><br/>
 #### store_new_subscriber(pk)
 Store the ed25519 Public Key identifier of a predefined subscriber into the Author instance
 
@@ -265,6 +321,7 @@ Store the ed25519 Public Key identifier of a predefined subscriber into the Auth
 | --------------- | -------------------------------------- | ------------------------ |
 | pk              | String                                  | Public Key string of Subscriber |
 
+<br/><br/>
 #### auth_remove_subscriber(pk)
 Removes a Subscriber from the Author instance using their ed25519 Public Key
 
@@ -272,6 +329,7 @@ Removes a Subscriber from the Author instance using their ed25519 Public Key
 | --------------- | -------------------------------------- | ------------------------ |
 | pk              | String                                 | Public Key string of Subscriber |
 
+<br/><br/>
 #### reset_state()
 Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
 
@@ -279,7 +337,8 @@ Reset the mapping of known publisher states for the channel for retrieval of mes
 | --------------- | ------------------- | ------------------------- |
 
 
-### Subscriber
+<br/><br/>
+## Subscriber
 Additional user implementations of a Channel. Can publish and read from public branches, and 
 branches that have been restricted by keyload messages that contain their public key. 
 
@@ -290,8 +349,10 @@ Generates a Subscriber instance
 | --------------- | ------------------- | ------------------ |
 | seed            | `string`            | Unique user seed   |
 | options         | `SendOptions`       | Options for Client |
+
 **Returns:** A Subscriber instance.
 
+<br/><br/>
 #### from_client(client, seed): Subscriber 
 Create a Subscriber instance from a client
 
@@ -299,8 +360,10 @@ Create a Subscriber instance from a client
 | --------------- | ------------------- | ------------------ |
 | client          | [`Client`](#Client) | A Client Instance  |
 | seed            | `string`            | Unique user seed   |
+
 **Returns:** A Subscriber instance.
 
+<br/><br/>
 #### import(client, bytes, password): Subscriber 
 Import a Subscriber instance from an encrypted binary array
 
@@ -309,95 +372,120 @@ Import a Subscriber instance from an encrypted binary array
 | client          | [`Client`](#Client) | A Client Instance         |
 | bytes           | `Uint8Array`        | Exported binary of author |
 | password        | `string`            | Key to decrypt binary     | 
+
 **Returns:** A recovered Subscriber instance.
 
+<br/><br/>
 #### export(password): Uint8Array 
 Export a Subscriber instance as an encrypted array using a given password
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | password        | `string`            | Key to encrypt            | 
+
 **Returns:** Binary array representing an encrypted state of the subscriber.
 
+<br/><br/>
 #### clone(): Subscriber 
 Generate a copy of the Subscriber instance for consumption by asynchronous functions
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** A consumable Subscriber instance for functions.
 
+<br/><br/>
 #### channel_address(): string 
 Return the channel address of the channel instance. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** Channel Address for user generated channel.
 
+<br/><br/>
 #### announcementLink(): string
 Return the announcement link of the channel instance.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** Announcement Address for user generated channel.
 
+<br/><br/>
 #### is_multi_branching(): bool 
 Check if a channel type is single branching or multi branching. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** Boolean representing the channel type: false=single branch, true=multi branch.
 
+<br/><br/>
 #### get_public_key(): string 
 Retrieve the Subscriber public key.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** The Subscriber public key in hex representation.
 
+<br/><br/>
 #### author_public_key(): string 
 Retrieve the Author public key. Errors if no channel is registered.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** The Subscriber public key in hex representation.
 
+<br/><br/>
 #### is_registered(): bool 
 Check if the subscriber instance has processed a channel announcement. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** Boolean representing if the subscriber instance has processed a channel announcement correctly.
 
+<br/><br/>
 #### unregister() 
 Unregister a subscriber instance from a channel. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 
+<br/><br/>
 #### fetch_state(): Array<[UserState](#UserState)>
 Retrieve the currently known publisher states for the channel.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
+
 **Returns:** An array of user state objects representing the currently known state of all publishers in the channel.
 
-#### The following functions require subscriber.clone() to use, as they consume the instance 
+<br/><br/>
+### The following functions require subscriber.clone() to use, as they consume the instance 
 #### _async -_ send_subscribe(link): [UserResponse](#UserResponse)
 Send a subscription message attached to an announcement message link. 
 
 | Param           | Type                | Description                       |
 | --------------- | ------------------- | --------------------------------- |
 | link            | [`address`](#Address) | Address of announcement message |
+
 **Returns:** A User Response wrapper around the subscribe message.
 
+<br/><br/>
 #### _async -_ send_unsubscribe(link): [UserResponse](#UserResponse)
 Send an unsubscription message attached to the user subscription message link.
 
 | Param           | Type                | Description                       |
 | --------------- | ------------------- | --------------------------------- |
 | link            | [`address`](#Address) | Address of subscription message |
+
 **Returns:** A User Response wrapper around the unsubscribe message.
 
+<br/><br/>
 #### _async -_ send_tagged_packet(link, public_payload, masked_payload): [UserResponse](#UserResponse)
 Send a tagged packet message linked to a previous message (usually the announcement in a multi branch).
 
@@ -406,8 +494,10 @@ Send a tagged packet message linked to a previous message (usually the announcem
 | link            | [`address`](#Address)         | Address of message being linked to            |
 | public_payload  | `Uint8Array`                  | Byte array of public payload for message      |
 | masked_payload  | `Uint8Array`                  | Byte array of masked payload for message      |
+
 **Returns:** A User Response wrapper around the tagged packet message.
 
+<br/><br/>
 #### _async -_ send_signed_packet(link, public_payload, masked_payload): [UserResponse](#UserResponse)
 Send a signed packet message linked to a previous message (usually the announcement in a multi branch).
 
@@ -416,8 +506,10 @@ Send a signed packet message linked to a previous message (usually the announcem
 | link            | [`address`](#Address)         | Address of message being linked to            |
 | public_payload  | `Uint8Array`                  | Byte array of public payload for message      |
 | masked_payload  | `Uint8Array`                  | Byte array of masked payload for message      |
+
 **Returns:** A User Response wrapper around the signed packet message.
 
+<br/><br/>
 #### _async -_ receive_announcement(link)
 Process an announcement message and register the channel.
 
@@ -425,47 +517,57 @@ Process an announcement message and register the channel.
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of the announcement message |
 
+<br/><br/>
 #### _async -_ receive_keyload(link): bool
 Receive a keyload by its link and return whether the subscriber has access beyond it or not.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of tagged packet message    |
+
 **Returns:** Boolean representing access to the branch.
 
-
+<br/><br/>
 #### _async -_ receive_tagged_packet(link): [UserResponse](#UserResponse)
 Receive a tagged packet by its link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of tagged packet message    |
+
 **Returns:** A User Response wrapper around the tagged packet message.
 
+<br/><br/>
 #### _async -_ receive_signed_packet(link): [UserResponse](#UserResponse)
 Receive a signed packet by its link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of signed packet message    |
+
 **Returns:** A User Response wrapper around the signed packet message.
 
+<br/><br/>
 #### _async -_ receive_sequence(link): [Address](#Address)
 Receive a sequence message by its link, and return the address of the sequenced message. 
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of tagged packet message    |
+
 **Returns:** The address link of the sequenced message.
 
+<br/><br/>
 #### _async -_ receive_msg(link): [UserResponse](#UserResponse)
 Receive a message generically without knowing its type.
 
 | Param           | Type                          | Description                          |
 | --------------- | ----------------------------- | ------------------------------------ |
 | link            | [`address`](#Address)         | Address of the message to be fetched |
+
 **Returns:** A User Response wrapper around the retrieved message.
 
+<br/><br/>
 #### _async -_ receive_msg_by_sequence_number(anchor_link, msg_num): [UserResponse](#UserResponse)
 Receive a message by its msg number in an anchored single depth channel.
 
@@ -473,8 +575,10 @@ Receive a message by its msg number in an anchored single depth channel.
 | --------------- | ----------------------------- | ------------------------------------ |
 | anchor_link     | [`address`](#Address)         | Anchor message link for the channel  |
 | msg_num         | `number`                     | Number of the message being retrieved|
+
 **Returns:** A User Response wrapper around the retrieved message.
 
+<br/><br/>
 #### _async -_ sync_state()
 Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
 to ensure the user state matches all other publishers.
@@ -482,21 +586,26 @@ to ensure the user state matches all other publishers.
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 
+<br/><br/>
 #### _async -_ fetch_next_msgs(): Array<[UserResponse](#UserResponse)>
 Fetch the next message sent by each publisher (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
+
 **Returns:** An array of User Response wrappers around the retrieved messages.
 
+<br/><br/>
 #### _async -_ fetch_prev_msg(link): [UserResponse](#UserResponse)
 Fetch the previous message sent before the provided message link.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address off message to begin fetching from |
+
 **Returns:** A User Response wrapper around the retrieved message.
 
+<br/><br/>
 #### _async -_ fetch_prev_msgs(link, max): Array<[UserResponse](#UserResponse)>
 Fetch a defined number of previous messages in a channel.
 
@@ -504,9 +613,10 @@ Fetch a defined number of previous messages in a channel.
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address off message to begin fetching from |
 | max             | `number`                      | Max number of messages to fetch     |
+
 **Returns:** An array of User Response wrappers around the retrieved messages.
 
-
+<br/><br/>
 #### store_psk(psk): String 
 Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use in keyload messages 
 | Param           | Type                          | Description                         |
@@ -515,6 +625,7 @@ Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use 
 
 **Returns:** A PskId String representing the Psk in store.
 
+<br/><br/>
 #### remove_psk(pskid)
 Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key Id (PskId)
 
@@ -522,12 +633,14 @@ Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key I
 | --------------- | -------------------------------------- | ------------------------ |
 | pskid           | String                                 | PskId string representing the Psk in store |
 
+<br/><br/>
 #### reset_state()
 Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 
+<br/><br/>
 ## Types
 Generic Types and Primitives used in Wasm API:
 - [Client](#Client)
@@ -539,6 +652,7 @@ Generic Types and Primitives used in Wasm API:
 - [Cursor](#Cursor)
 - [UserState](#UserState)
 
+<br/><br/>
 ### Client 
 Transport client for interacting with an Iota node.
 
@@ -547,9 +661,10 @@ Transport client for interacting with an Iota node.
 | --------------- | ------------------- | ------------------ |
 | node            | `string`            | A node URL         |
 | options         | `SendOptions`       | Options for Client |
+
 **Returns:** A client instance.
 
-
+<br/><br/>
 ### SendOptions
 Options for a transport client
 
@@ -559,11 +674,11 @@ Create a new set of Send Options for the client
 | Param     | Type                 | Description                  |
 | --------- | -------------------- | ---------------------------- |
 | url       | `string`             | A node URL                   |
-| depth     | `number`             | Tangle depth for attachment  |
 | local_pow | `bool`               | Perform pow locally          |
-| threads   | `number`             | Number of threads for client |
+
 **Returns:** Send Options for a client instance.
 
+<br/><br/>
 ### UserResponse
 Response structure containing the details of a sent or retrieved message 
 
@@ -575,8 +690,10 @@ Create a new User Response from the return of the rust api for sending and recei
 | link      | [`Address`](#Address) | Address link of message                      |
 | seq_link  | [`Address`](#Address) | Sequence Address Link (can be undefined)     |
 | message   | [`Message`](#Message) | Sent or retrieved message (can be undefined) |
+
 **Returns:** User Response containing links and message.
 
+<br/><br/>
 #### from_strings(link, seq_link, message): UserResponse
 Create a new User Response from the return of the rust api for sending and receiving messages, 
 using strings for the link and seq_link inputs.
@@ -586,37 +703,37 @@ using strings for the link and seq_link inputs.
 | link      | `string`              | Address string of message                    |
 | seq_link  | `string`              | Sequence Address string (can be undefined)   |
 | message   | [`Message`](#Message) | Sent or retrieved message (can be undefined) |
+
 **Returns:** User Response containing links and message.
 
+<br/><br/>
 #### copy(): UserResponse
 Create a copy of the User Response
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** A copy of the User Response.
 
-#### get_link(): [Address](#Address)
-Fetch the link of the retrieved or sent message.
-
-| Param     | Type                  | Description                                  |
-| --------- | --------------------- | -------------------------------------------- |
-**Returns:** The link for the retrieved or sent message.
-
+<br/><br/>
 #### get_seq_link(): [Address](#Address)
 Fetch the sequence link of the retrieved or sent message (Default if there is none).
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** The link for the retrieved or sent message.
 
+<br/><br/>
 #### get_message(): [Message](#Message)
 Fetch the retrieved or sent message (Default if there is none).
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** The retrieved or sent message.
 
-
+<br/><br/>
 ### Address
 Streams Address containing the Application Instance and Message Id 
 
@@ -625,36 +742,46 @@ Streams Address containing the Application Instance and Message Id
 | --------- | --------------------- | -------------------------------------------- |
 | addr_id   | `string`              | Application instance of the channel          |
 
+<br/><br/>
 #### addr_id(): string
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** The Channel Identifier/Application Instance of the Address
 
+<br/><br/>
 #### set_msg_id(msg_id)
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
 | msg_id    | `string`              | Message Identifier of the message itself     |
 
+<br/><br/>
 #### msg_id(): string
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** The Message Identifier of the Address
 
+<br/><br/>
 #### from_string(address): Address
 Make an Address object from a string representation
  
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
 | address   | `string`              | String representation of an Address          |
+
 **Returns:** An Address object
 
+<br/><br/>
 #### to_string(): string
 Return a string representation of an Address object
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** String representation of an Address
 
+<br/><br/>
 ### Message 
 A wrapper for a Rust Streams Message
 
@@ -663,8 +790,10 @@ Generate a default message object
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** A default Message object
 
+<br/><br/>
 #### new(pk, public_payload, masked_payload): Message
 Make a Message object from the optional pk and the public and masked payloads
  
@@ -673,29 +802,37 @@ Make a Message object from the optional pk and the public and masked payloads
 | pk             | `string / undefined` | Optional public key for message      |
 | public_payload | `Uint8Array`         | Public payload bytes                 |
 | masked_payload | `Uint8Array`         | Masked payload bytes                 |
+
 **Returns:** A Message wrapper object
 
+<br/><br/>
 #### get_public_key(): string
 Fetch the public key of the Message sender (default if none is presented)
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Public key in hex representation of the sender of the message 
 
+<br/><br/>
 #### get_public_payload(): Uint8Array
 Fetch the public payload of the Message sender
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Public payload byte array 
 
+<br/><br/>
 #### get_masked_payload(): Uint8Array
 Fetch the masked payload of the Message sender
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Masked payload byte array 
 
+<br/><br/>
 ### NextMsgId 
 A wrapper for a Rust NextMsgId structure
 
@@ -706,23 +843,19 @@ Make a NextMsgId object from the identifier and expected next message address
 | -------------- | --------------------- | ------------------------------------ |
 | identifier     | `string`              | Identifier for expected message      |
 | msgid          | [`Address`](#Address) | Address of expected next message     |
+
 **Returns:** A NextMsgId wrapper object
 
+<br/><br/>
 #### get_identifier(): string
 Fetch the identifier of the Message sender
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Identifier in hex representation of the sender of the message 
 
-#### get_link(): Address
-Fetch the link of the expected next message for that sender
-
-| Param     | Type                  | Description                                  |
-| --------- | --------------------- | -------------------------------------------- |
-**Returns:** Public payload byte array 
-
-
+<br/><br/>
 ### PskIds
 An array of PskIds representing the Pre Shared Keys that are used in keyload messages.
 
@@ -731,8 +864,10 @@ Generate a new array of PskIds
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Empty array for PskIds to be added to
 
+<br/><br/>
 #### add(pskid) 
 Add a pskid 
 
@@ -740,17 +875,16 @@ Add a pskid
 | --------- | --------------------- | ---------------------------------------------- | 
 | pskid     | `string`              | PskId string representation [must be 32 bytes] |
 
-
+<br/><br/>
 #### get_ids(): Array&lt;string>
 Fetch PskIds in string formatting
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Array of PskIds in string formatting
 
-
-
-
+<br/><br/>
 ### PublicKeys
 An array of PublicKeys representing a set of users.
 
@@ -759,8 +893,10 @@ Generate a new array of PublicKeys
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Empty array for PublicKeys to be added to
 
+<br/><br/>
 #### add(pk) 
 Add a public key string
 
@@ -768,20 +904,23 @@ Add a public key string
 | --------- | --------------------- | ---------------------------------------------- | 
 | pk        | `string`              | Public Key string representation               |
 
-
+<br/><br/>
 #### get_pks(): Array&lt;string>
 Fetch Public Keys in string formatting
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Array of Public Keys in string formatting
 
+<br/><br/>
 ### Cursor
 The publishing state of a particular publisher (The latest sequenced message known for that publisher). This includes:
 - The latest published message link
 - The sequence state number of the publisher
 - A branch number for that latest posted message 
 
+<br/><br/>
 ### UserState
 A wrapper around a publisher state. Includes the identifier and [cursor](#Cursor) of the publisher
 
@@ -790,25 +929,32 @@ Get the public key of the user from the state
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** Identifier of publisher in hex formatting
 
+<br/><br/>
 #### get_link() 
 Get the link from the internal cursor object 
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** The latest published message link 
 
+<br/><br/>
 #### get_seq_no()
 Get the sequence state number from the internal cursor object 
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** The latest sequence state number of the publisher 
 
+<br/><br/>
 #### get_branch_no()
 Get the branch state number from the internal cursor object
 
 | Param     | Type                  | Description                                  |
 | --------- | --------------------- | -------------------------------------------- |
+
 **Returns:** The latest branch state number of the publisher 
