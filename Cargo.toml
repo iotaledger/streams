@@ -23,7 +23,6 @@ members = [
     "iota-streams-ddml",
     "iota-streams-app",
     "iota-streams-app-channels",
-    "iota-streams-app-channels-example",
     "bindings/wasm",
 ]
 
