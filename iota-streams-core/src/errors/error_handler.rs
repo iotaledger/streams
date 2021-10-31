@@ -52,6 +52,21 @@ macro_rules! wrapped_err {
     }};
 }
 
+#[macro_export]
+macro_rules! unwrap_or_break {
+    ($result:expr) => {
+        match $result {
+            Ok(r) => r,
+            Err(e) => {
+                if $crate::LOCATION_LOG {
+                    $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!());
+                }
+                break;
+            }
+        }
+    };
+}
+
 pub fn try_or(cond: bool, err: Errors) -> Result<(), anyhow::Error> {
     ensure!(cond, err);
     Ok(())

@@ -1,20 +1,14 @@
 [package]
-name = "iota_streams_wasm"
-version = "0.0.1"
-authors = ["huhn511 <huhn@einfachIOTA.de>", "Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
+name = "streams"
+version = "0.1.2"
+authors = ["huhn511 <huhn@einfachIOTA.de>", "Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org>"]
 edition = "2018"
 repository = "https://github.com/iotaledger/streams"
-homepage = "https://www.iota.org"
+homepage = "https://wiki.iota.org/streams/libraries/wasm/overview"
 license = "MIT"
 
 [lib]
 crate-type = ["cdylib"]
-
-# TODO: Discover this:
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 wasm-bindgen = { version = "0.2" }
@@ -24,6 +18,10 @@ js-sys = "0.3.46"
 
 serde = { version = "1.0", features = ["derive"] }
 iota-streams = {path = "../../", default-features = false, features = ["tangle", "wasm-client"]}
+client-wasm = { git = "https://github.com/iotaledger/iota.rs", rev  = "ee19ec4", default-features = false }
 
 # Needed to specify the js/wasm feature for a sub-crate
 getrandom = {version = "0.2.2", features = ["js"]}
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.28"

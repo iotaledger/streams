@@ -15,6 +15,7 @@ use iota_streams_core::{
         blake2b,
         Digest,
     },
+    err,
     prelude::{
         typenum::{
             U12,
@@ -35,6 +36,7 @@ use iota_streams_core::{
     Errors::{
         BadHexFormat,
         InvalidChannelAddress,
+        InvalidMessageAddress,
         InvalidMsgId,
         MalformedAddressString,
     },
@@ -277,11 +279,14 @@ impl HasLink for TangleAddress {
         bytes
     }
 
-    fn from_bytes(bytes: &[u8]) -> Self {
-        TangleAddress::new(
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() != APPINST_SIZE + MSGID_SIZE {
+            return err!(InvalidMessageAddress);
+        }
+        Ok(TangleAddress::new(
             AppInst::from(&bytes[0..APPINST_SIZE]),
             MsgId::from(&bytes[APPINST_SIZE..]),
-        )
+        ))
     }
 }
 

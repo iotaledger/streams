@@ -77,6 +77,10 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         )?;
     }
 
+    // Predefine Subscriber A
+    println!("\nAuthor Predefines Subscriber A");
+    author.store_new_subscriber(*subscriberA.get_public_key())?;
+
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
@@ -85,20 +89,6 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     // Fetch state of subscriber for comparison after reset
     let sub_a_start_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
-
-    println!("\nSubscribe A");
-    let subscribeA_link = {
-        let msg = subscriberA.send_subscribe(&announcement_link).await?;
-        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-        print!("  SubscriberA: {}", subscriberA);
-        msg
-    };
-
-    println!("\nHandle Subscribe A");
-    {
-        author.receive_subscribe(&subscribeA_link).await?;
-        print!("  Author     : {}", author);
-    }
 
     println!("\nSubscribe B");
     let subscribeB_link = {
@@ -375,6 +365,23 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         try_or!(matches, StateMismatch)?;
     }
     println!("Subscriber states matched");
+
+    println!("\nAuthor unsubscribes Subscriber A");
+    author.remove_subscriber(*subscriberA.get_public_key())?;
+
+    println!("\nSubscriber B sending unsubscribe message");
+    let unsub_link = subscriberB.send_unsubscribe(&subscribeB_link).await?;
+    println!("Author receiving unsubscribe");
+    author.receive_unsubscribe(&unsub_link).await?;
+
+    println!("\nAuthor sending new keyload to all subscribers");
+    let new_keyload = author.send_keyload_for_everyone(&announcement_link).await?;
+    println!("Subscriber B checking that they do not have access to new keyload");
+    try_or!(
+        !subscriberB.receive_keyload(&new_keyload.0).await?,
+        SubscriberAccessMismatch("B".to_string())
+    )?;
+    println!("Subscriber B does not have access to the new keyload");
 
     Ok(())
 }

@@ -114,6 +114,19 @@ pub unsafe extern "C" fn auth_channel_address(addr: *mut *const ChannelAddress, 
     })
 }
 
+/// Channel announcement link.
+#[no_mangle]
+pub unsafe extern "C" fn auth_announcement_link(addr: *mut *const Address, user: *const Author) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        addr.as_mut().map_or(Err::NullArgument, |addr| {
+            user.announcement_link().map_or(Err::OperationFailed, |ann_link| {
+                *addr = safe_into_ptr(ann_link);
+                Err::Ok
+            })
+        })
+    })
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn auth_is_multi_branching(flag: *mut uint8_t, user: *const Author) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {
@@ -153,6 +166,16 @@ pub unsafe extern "C" fn auth_receive_subscribe(user: *mut Author, link: *const 
     user.as_mut().map_or(Err::NullArgument, |user| {
         link.as_ref().map_or(Err::NullArgument, |link| {
             run_async(user.receive_subscribe(link)).map_or(Err::OperationFailed, |_| Err::Ok)
+        })
+    })
+}
+
+/// unwrap and remove a subscriber from the list of subscribers
+#[no_mangle]
+pub unsafe extern "C" fn auth_receive_unsubscribe(user: *mut Author, link: *const Address) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        link.as_ref().map_or(Err::NullArgument, |link| {
+            run_async(user.receive_unsubscribe(link)).map_or(Err::OperationFailed, |_| Err::Ok)
         })
     })
 }
@@ -457,6 +480,13 @@ pub unsafe extern "C" fn auth_fetch_state(state: *mut *const UserState, user: *m
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn auth_reset_state(user: *mut Author) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        user.reset_state().map_or(Err::OperationFailed, |_| Err::Ok)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn auth_store_psk(c_pskid: *mut *const PskId, c_user: *mut Author, c_psk_seed: *const c_char) -> Err {
     if c_psk_seed == null() {
         return Err::NullArgument;
@@ -472,6 +502,33 @@ pub unsafe extern "C" fn auth_store_psk(c_pskid: *mut *const PskId, c_user: *mut
                     Err::Ok
                 })
             })
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_remove_psk(c_user: *mut Author, c_pskid: *const PskId) -> Err {
+    c_user.as_mut().map_or(Err::NullArgument, |user| {
+        c_pskid.as_ref().map_or(Err::NullArgument, |pskid| {
+            user.remove_psk(*pskid).map_or(Err::OperationFailed, |_| Err::Ok)
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_store_new_subscriber(c_user: *mut Author, c_pk: *const PublicKey) -> Err {
+    c_user.as_mut().map_or(Err::NullArgument, |user| {
+        c_pk.as_ref().map_or(Err::NullArgument, |pk| {
+            user.store_new_subscriber(*pk).map_or(Err::OperationFailed, |_| Err::Ok)
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_remove_subscriber(c_user: *mut Author, c_pk: *const PublicKey) -> Err {
+    c_user.as_mut().map_or(Err::NullArgument, |user| {
+        c_pk.as_ref().map_or(Err::NullArgument, |pk| {
+            user.remove_subscriber(*pk).map_or(Err::OperationFailed, |_| Err::Ok)
         })
     })
 }

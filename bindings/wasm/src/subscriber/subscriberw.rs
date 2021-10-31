@@ -25,7 +25,10 @@ use iota_streams::{
             Rc,
             String,
         },
-        psk::pskid_to_hex_string,
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
     },
     ddml::types::*,
 };
@@ -47,14 +50,15 @@ impl Subscriber {
         Subscriber { subscriber }
     }
 
-    pub fn from_client(client: Client, seed: String) -> Subscriber {
-        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.to_inner())));
+    #[wasm_bindgen(catch, js_name = "fromClient")]
+    pub fn from_client(client: StreamsClient, seed: String) -> Subscriber {
+        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.into_inner())));
         Subscriber { subscriber }
     }
 
     #[wasm_bindgen(catch)]
-    pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Subscriber> {
-        block_on(ApiSubscriber::import(&bytes, password, client.to_inner()))
+    pub fn import(client: StreamsClient, bytes: Vec<u8>, password: &str) -> Result<Subscriber> {
+        block_on(ApiSubscriber::import(&bytes, password, client.into_inner()))
             .map(|v| Subscriber {
                 subscriber: Rc::new(RefCell::new(v)),
             })
@@ -77,9 +81,17 @@ impl Subscriber {
             .into_js_result()
     }
 
+    #[wasm_bindgen(catch, js_name = "announcementLink")]
+    pub fn announcement_link(&self) -> Option<String> {
+        self.subscriber
+            .borrow_mut()
+            .announcement_link()
+            .map(|addr| addr.to_string())
+    }
+
     #[wasm_bindgen(catch)]
-    pub fn get_client(&self) -> Client {
-        Client(self.subscriber.borrow_mut().get_transport().clone())
+    pub fn get_client(&self) -> StreamsClient {
+        StreamsClient(self.subscriber.borrow_mut().get_transport().clone())
     }
 
     #[wasm_bindgen(catch)]
@@ -226,6 +238,16 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch)]
+    pub async fn send_unsubscribe(self, link: Address) -> Result<UserResponse> {
+        self.subscriber
+            .borrow_mut()
+            .send_unsubscribe(link.as_inner())
+            .await
+            .map(|link| UserResponse::new(link.into(), None, None))
+            .into_js_result()
+    }
+
+    #[wasm_bindgen(catch)]
     pub async fn send_tagged_packet(
         self,
         link: Address,
@@ -317,5 +339,11 @@ impl Subscriber {
     #[wasm_bindgen(catch)]
     pub fn reset_state(self) -> Result<()> {
         self.subscriber.borrow_mut().reset_state().into_js_result()
+    }
+
+    pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
+        pskid_from_hex_str(&pskid_str)
+            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid).into())
+            .into_js_result()
     }
 }

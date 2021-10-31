@@ -64,6 +64,11 @@ impl<Trans> Author<Trans> {
         self.user.channel_address()
     }
 
+    /// Fetch the Announcement Link of the channel.
+    pub fn announcement_link(&self) -> &Option<TangleAddress> {
+        self.user.announcement_link()
+    }
+
     /// Fetch the user ed25519 public key
     pub fn get_public_key(&self) -> &ed25519::PublicKey {
         self.user.get_public_key()
@@ -76,6 +81,30 @@ impl<Trans> Author<Trans> {
     ///   * `psk` - A pre shared key
     pub fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
         self.user.store_psk(pskid, psk, false)
+    }
+
+    /// Remove a PSK from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        self.user.remove_psk(pskid)
+    }
+
+    /// Store a predefined Subscriber by their public key
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn store_new_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.store_new_subscriber(pk)
+    }
+
+    /// Remove a Subscriber from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.remove_subscriber(pk)
     }
 
     /// Generate a vector containing the next sequenced message identifier for each publishing
@@ -116,6 +145,12 @@ impl<Trans> Author<Trans> {
             state.push((hex::encode(pk.to_bytes()), cursor))
         }
         Ok(state)
+    }
+
+    /// Resets the cursor state storage to allow an Author to retrieve all messages in a channel
+    /// from scratch
+    pub fn reset_state(&mut self) -> Result<()> {
+        self.user.reset_state()
     }
 
     /// Serialize user state and encrypt it with password.
@@ -162,7 +197,6 @@ impl<Trans: Transport + Clone> Author<Trans> {
         assert!(retrieved.binary == ann.message);
 
         author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
-        author.sync_state().await;
 
         Ok(author)
     }
@@ -232,6 +266,14 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///  * `link` - Address of the message to be processed
     pub async fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
         self.user.receive_subscribe(link).await
+    }
+
+    /// Receive and process an unsubscribe message.
+    ///
+    ///  # Arguments
+    ///  * `link` - Address of the message to be processed
+    pub async fn receive_unsubscribe(&mut self, link: &Address) -> Result<()> {
+        self.user.receive_unsubscribe(link).await
     }
 
     /// Receive and process a signed packet message.

@@ -10,24 +10,24 @@ The API is spread out across three categories:
 Main user implementation of a Channel. Generates the channel, processes subscriptions 
 and 
 
-#### new(seed, options, multi_branching): Author 
+#### new(seed, options, channel_type): Author 
 Generates an Author instance 
 
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
 | seed            | `string`            | Unique user seed   |
 | options         | `SendOptions`       | Options for Client |
-| multi_branching | `bool`              | Channel Type       | 
+| implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
 **Returns:** An Author instance for administrating a channel.
 
-#### from_client(client, seed, multi_branching): Author 
+#### from_client(client, seed, implementation): Author 
 Create an Author instance from a client
 
 | Param           | Type                | Description        |
 | --------------- | ------------------- | ------------------ |
 | client          | [`Client`](#Client) | A Client Instance  |
 | seed            | `string`            | Unique user seed   |
-| multi_branching | `bool`              | Channel Type       | 
+| implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
 **Returns:** An Author instance for administrating a channel.
 
 #### import(client, bytes, password): Author 
@@ -48,6 +48,17 @@ Export an Author instance as an encrypted array using a given password
 | password        | `string`            | Key to encrypt            | 
 **Returns:** Binary array representing an encrypted state of the author.
 
+#### recover(seed, ann_address, implementation, options): Author
+Recover an Author instance from scratch using the known startup configurations
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+| seed            | `string`            | Unique user seed          |
+| ann_address     | [`Address`](#Address) | Announcement message address for validation | 
+| implementation  | [`ChannelType`](#ChannelType) | Channel Type    | 
+| options         | `SendOptions`       | Options for Client        |
+**Returns:** A recovered Author instance for administrating a channel.
+
 #### clone(): Author 
 Generate a copy of the Author instance for consumption by asynchronous functions
 
@@ -61,6 +72,13 @@ Return the channel address of the channel instance.
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 **Returns:** Channel Address for user generated channel.
+
+#### announcementLink(): string
+Return the announcement link of the channel instance.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+**Returns:** Announcement Address for user generated channel.
 
 #### is_multi_branching(): bool 
 Check if a channel type is single branching or multi branching. 
@@ -138,6 +156,13 @@ Process a subscription message by its link.
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
 | link            | [`address`](#Address)         | Address of subscription message     |
+
+#### _async -_ receive_unsubscribe(link)
+Process an unsubscription message by its link.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| link            | [`address`](#Address)         | Address of unsubscription message   |
 
 #### _async -_ receive_tagged_packet(link): [UserResponse](#UserResponse)
 Receive a tagged packet by its link.
@@ -226,6 +251,33 @@ Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use 
 
 **Returns:** A PskId String representing the Psk in store.
 
+#### remove_psk(pskid)
+Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key Id (PskId)
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| pskid           | String                                 | PskId string representing the Psk in store |
+
+#### store_new_subscriber(pk)
+Store the ed25519 Public Key identifier of a predefined subscriber into the Author instance
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| pk              | String                                  | Public Key string of Subscriber |
+
+#### auth_remove_subscriber(pk)
+Removes a Subscriber from the Author instance using their ed25519 Public Key
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| pk              | String                                 | Public Key string of Subscriber |
+
+#### reset_state()
+Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+
 
 ### Subscriber
 Additional user implementations of a Channel. Can publish and read from public branches, and 
@@ -281,6 +333,13 @@ Return the channel address of the channel instance.
 | --------------- | ------------------- | ------------------------- |
 **Returns:** Channel Address for user generated channel.
 
+#### announcementLink(): string
+Return the announcement link of the channel instance.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+**Returns:** Announcement Address for user generated channel.
+
 #### is_multi_branching(): bool 
 Check if a channel type is single branching or multi branching. 
 
@@ -330,6 +389,14 @@ Send a subscription message attached to an announcement message link.
 | --------------- | ------------------- | --------------------------------- |
 | link            | [`address`](#Address) | Address of announcement message |
 **Returns:** A User Response wrapper around the subscribe message.
+
+#### _async -_ send_unsubscribe(link): [UserResponse](#UserResponse)
+Send an unsubscription message attached to the user subscription message link.
+
+| Param           | Type                | Description                       |
+| --------------- | ------------------- | --------------------------------- |
+| link            | [`address`](#Address) | Address of subscription message |
+**Returns:** A User Response wrapper around the unsubscribe message.
 
 #### _async -_ send_tagged_packet(link, public_payload, masked_payload): [UserResponse](#UserResponse)
 Send a tagged packet message linked to a previous message (usually the announcement in a multi branch).
@@ -447,6 +514,13 @@ Store a Pre Shared Key (Psk) and retrieve the Pre Shared Key Id (PskId) for use 
 | psk             | String                        | Pre shared key in string format     |
 
 **Returns:** A PskId String representing the Psk in store.
+
+#### remove_psk(pskid)
+Removes a Pre Shared Key (Psk) from the Author instance using a Pre Shared Key Id (PskId)
+
+| Param           | Type                                   | Description              |
+| --------------- | -------------------------------------- | ------------------------ |
+| pskid           | String                                 | PskId string representing the Psk in store |
 
 #### reset_state()
 Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.

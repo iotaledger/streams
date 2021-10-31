@@ -253,7 +253,7 @@ impl Transport<TangleAddress, TangleMessage> for Client {
             try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()))?;
             Ok(msg)
         } else {
-            err!(MessageLinkNotFound(link.to_string()))
+            err!(MessageLinkNotFoundInTangle(link.to_string()))
         }
     }
 }

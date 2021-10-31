@@ -1,10 +1,4 @@
-const streams = require("../node/iota_streams_wasm");
-const fetch = require("node-fetch");
-
-global.fetch = fetch;
-global.Headers = fetch.Headers;
-global.Request = fetch.Request;
-global.Response = fetch.Response;
+const streams = require("../node/streams");
 
 streams.set_panic_hook();
 
@@ -20,11 +14,17 @@ async function main() {
   // Default is a load balancer, if you have your own node it's recommended to use that instead
   let node = "https://chrysalis-nodes.iota.org/";
   let options = new streams.SendOptions(node, true);
+
+  const client = await new streams.ClientBuilder()
+    .node(node)
+    .build();
   let seed = make_seed(81);
-  let auth = new streams.Author(seed, options.clone(), streams.ChannelType.SingleBranch);
+  let auth = streams.Author.fromClient(streams.StreamsClient.fromClient(client), seed, streams.ChannelType.SingleBranch);
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
+  console.log("IOTA client info:", await client.getInfo());
+
 
   let response = await auth.clone().send_announce();
   let ann_link = response.link;
@@ -48,7 +48,7 @@ async function main() {
   let sub_link = response.link;
   console.log("Subscription message at: ", sub_link.toString());
   console.log("Subscription message index: " + sub_link.toMsgIndexHex());
-  await auth.clone().receive_subscribe(sub_link);
+  await auth.clone().receive_subscribe(sub_link.copy());
   console.log("Subscription processed");
 
   console.log("Sending Keyload");
@@ -110,8 +110,8 @@ async function main() {
   var matches = true;
   for (var i = 0; i < reset_state.length; i++) {
     if (start_state[i].link.toString() != reset_state[i].link.toString() ||
-        start_state[i].seqNo != reset_state[i].seqNo ||
-        start_state[i].branchNo != reset_state[i].branchNo) {
+      start_state[i].seqNo != reset_state[i].seqNo ||
+      start_state[i].branchNo != reset_state[i].branchNo) {
       matches = false;
     }
   }
@@ -125,19 +125,59 @@ async function main() {
     console.log("Found a message at index: " + prev_msgs[j].link.toMsgIndexHex());
   }
 
+  console.log("\nExporting and importing state")
   // Import export example
   // TODO: Use stronghold
   let password = "password"
   let exp = auth.clone().export(password);
 
-  let client = new streams.Client(node, options.clone());
-  let auth2 = streams.Author.import(client, exp, password);
+  let client2 = new streams.StreamsClient(node, options.clone());
+  let auth2 = streams.Author.import(client2, exp, password);
 
   if (auth2.channel_address !== auth.channel_address) {
-      console.log("import failed");
+    console.log("import failed");
   } else {
-      console.log("import succesfull")
+    console.log("import succesfull")
   }
+
+  if (auth2.announcementLink() != ann_link.toString()) {
+    console.log("recovered announcement does not match");
+  } else {
+    console.log("recovered announcement matches");
+  }
+
+  console.log("\nRecovering without state import");
+  let auth3 = await streams.Author.recover(seed, ann_link.copy(), streams.ChannelType.SingleBranch, options.clone());
+  if (auth3.channel_address !== auth.channel_address) {
+    console.log("recovery failed")
+  } else {
+    console.log("recovery succesfull")
+  }
+
+  console.log("\nSub sending unsubscribe message");
+  response = await sub.clone().send_unsubscribe(sub_link);
+  await auth.clone().receive_unsubscribe(response.link);
+  console.log("Author received unsubscribe and processed it");
+  
+  // Check that the subscriber is no longer included in keyloads following the unsubscription
+  console.log("\nAuthor sending new keyload to all subscribers");
+  response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
+  if (await sub.receive_keyload(response.link)) {
+    console.log("unsubscription unsuccessful");
+  } else {
+    console.log("unsubscription successful");
+  }
+
+  let seed3 = make_seed(81);
+  let sub2 = new streams.Subscriber(seed3, options.clone());
+  await sub2.clone().receive_announcement(ann_link.copy());
+
+  let sub2_pk = sub2.get_public_key();
+  auth.clone().store_new_subscriber(sub2_pk);
+  console.log("\nAuthor manually subscribed sub 2");
+
+  auth.clone().remove_subscriber(sub2_pk);
+  console.log("Author manually unsubscribed sub 2");
 
   function to_bytes(str) {
     var bytes = [];

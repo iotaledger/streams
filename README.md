@@ -1,12 +1,12 @@
 <h1 align="center">
   <br>
-  <a href="https://docs.iota.org/docs/iota-streams/1.1/overview"><img src="streams.png"></a>
+  <a href="https://wiki.iota.org/streams/welcome"><img src="streams.png"></a>
 </h1>
 
 <h2 align="center">A cryptographic framework for building secure messaging protocols</h2>
 
 <p align="center">
-    <a href="https://docs.iota.org/docs/iota-streams/1.1/overview" style="text-decoration:none;">
+    <a href="https://wiki.iota.org/streams/welcome" style="text-decoration:none;">
     <img src="https://img.shields.io/badge/Documentation%20portal-blue.svg?style=for-the-badge"
          alt="Developer documentation portal">
       </p>
@@ -93,7 +93,7 @@ iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "devel
 
     ```bash
     [dependencies]
-    iota-streams = { version = "1.0.0", path = "../streams" }
+    iota-streams = { version = "0.1.2", path = "../streams" }
     ```
 
 ## Getting started
@@ -120,7 +120,7 @@ fn main() {
 }
 ```
 
- For a more detailed guide, go to our [documentation portal](https://docs.iota.org/docs/channels/1.3/overview).
+ For a more detailed guide, go to our [documentation portal](https://wiki.iota.org/streams/welcome).
 
 ## API reference
 
@@ -132,7 +132,7 @@ cargo doc --open
 
 ## Examples
 
-We have an example in the [`examples` directory](examples/src/main.rs). that you can use as a reference when developing your own protocols with IOTA Streams.
+We have an example in the [`examples` directory](examples/src/main.rs), which you can use as a reference when developing your own protocols with IOTA Streams.
 
 A `no_std` version can be found in [`iota-streams-app-channels-example` directory](iota-streams-app-channels-example/src/main.rs)
 
