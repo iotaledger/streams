@@ -36,7 +36,6 @@ hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
 # Dependencies for "client" feature
-#tokio = {version = "1.1", default-features = false, features = ["rt"], optional = true }
 iota-client = { git = "https://github.com/iotaledger/iota.rs", rev  = "ee19ec4", default-features = false, optional = true }
 num_cpus = { version = "1.10", optional = true }
 
