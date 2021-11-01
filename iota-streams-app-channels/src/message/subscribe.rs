@@ -1,5 +1,7 @@
 //! `Subscribe` message content. This message is published by a user willing to become
-//! a subscriber to this channel. It contains subscriber's Ed25519 public key that will be used
+//! a subscriber to this channel.
+//!
+//! It contains subscriber's Ed25519 public key that will be used
 //! in keyload to encrypt session keys. Subscriber's Ed25519 public key is encrypted with
 //! the `unsubscribe_key` which in turn is encapsulated for channel owner using
 //! owner's Ed25519 public key. The resulting spongos state will be used for unsubscription.
@@ -8,19 +10,15 @@
 //! Channel Owner must maintain the resulting spongos state associated to the Subscriber's
 //! Ed25519 public key.
 //!
-//! Note, in the `Channel` Application Subscriber doesn't have signature keys and thus
-//! can't prove possession of the Ed25519 private key with signature. Such proof can
-//! be established in an interactive protocol by channel Owner's request.
-//! Such protocol is out of scope. To be discussed.
-//!
 //! ```ddml
 //! message Subscribe {
 //!     join link msgid;
-//!     x25519(key) byte unsubscribe_key[3072];
+//!     x25519(key) byte unsubscribe_key[32];
 //!     commit;
-//!     mask byte pk[3072];
+//!     mask byte pk[32];
 //!     commit;
-//!     squeeze byte mac[27];
+//!     squeeze external byte hash[78];
+//!     mssig(hash) sig;
 //! }
 //! ```
 //!
@@ -34,7 +32,9 @@
 //!
 //! * `pk` -- subscriber's Ed25519 public key.
 //!
-//! * `mac` -- authentication tag.
+//! * `hash` -- hash value to be signed.
+//!
+//! * `sig` -- message signature generated with the senders private key.
 //!
 //! Note, the `unsubscribe_key` is masked and verified in the `x25519` operation and
 //! thus is not additionally `absorb`ed in this message.
@@ -44,12 +44,13 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
+    async_trait,
+    prelude::Box,
     sponge::prp::PRP,
     wrapped_err,
     Errors::MessageCreationFailure,
     Result,
     WrappedError,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -73,13 +74,14 @@ pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) _phantom: core::marker::PhantomData<(Link, F)>,
 }
 
+#[async_trait(?Send)]
 impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: PRP,
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?
@@ -89,6 +91,7 @@ where
     }
 }
 
+#[async_trait(?Send)]
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
     F: PRP,
@@ -96,7 +99,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn wrap<'c, OS: io::OStream>(
+    async fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -137,6 +140,7 @@ where
     }
 }
 
+#[async_trait(?Send)]
 impl<'a, F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<'a, F, Link>
 where
     F: PRP,
@@ -144,7 +148,7 @@ where
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn unwrap<'c, IS: io::IStream>(
+    async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,

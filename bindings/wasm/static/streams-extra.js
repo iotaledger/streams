@@ -174,7 +174,7 @@ function addMessage(message){
 
   let doc = document.getElementById("messages");
   let msg_id = message.get_link().msg_id;
-  let pk = message.get_message().get_pk();
+  let pk = message.get_message().get_public_key();
   let user = subs.find(s => s.pk === pk);
   count += 1;
 

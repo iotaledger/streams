@@ -3,10 +3,8 @@
 ## Setup for development
 
 ```bash
-git clone https://github.com/iota-community/streams
-cd streams
-git checkout feat/wasm-binding
-cd bindings/wasm
+git clone https://github.com/iotaledger/streams
+cd streams/bindings/wasm
 npm install
 ```
 
@@ -25,5 +23,12 @@ npm run build:nodejs
 ```
 
 ```bash
-npm run example:node
+npm run example:nodejs
 ```
+
+## Generate docs
+```bash
+npm run doc:nodejs
+```
+
+The generated docs are available in `node/jsdocs/index.html`

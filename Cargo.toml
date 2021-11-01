@@ -2,13 +2,16 @@
 
 [package]
 name = "iota-streams"
-version = "1.0.0"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
+version = "0.1.2"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
 keywords = ["iota", "streams"]
-description = "A rust implementation of the IOTA Streams"
+description = "A Rust implementation of the IOTA Streams"
+repository = "https://github.com/iotaledger/streams"
+homepage = "https://wiki.iota.org/streams/libraries/rust/overview"
+
 autoexamples = false
 
 [lib]
@@ -34,23 +37,23 @@ exclude = [
 ]
 
 [features]
-default = ["std", "tangle", "sync-client"]
+default = ["std", "client"]
 # Enable `std` feature in dependencies
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "iota-streams-app-channels/std"]
-async = ["iota-streams-app/async", "iota-streams-app-channels/async"]
 tangle = ["iota-streams-app/tangle", "iota-streams-app-channels/tangle"]
-sync-client = ["iota-streams-app/sync-client", "iota-streams-app-channels/sync-client"]
-async-client = ["iota-streams-app/async-client", "iota-streams-app-channels/async-client"]
-wasm-client = ["iota-streams-app/wasm-client", "iota-streams-app-channels/wasm-client"]
+client = ["iota-streams-app/client", "tangle"]
+wasm-client = ["iota-streams-app/wasm-client", "iota-streams-app-channels/wasm-client", "tangle"]
 err-location-log = ["iota-streams-core/err-location-log"]
+sync-spin = ["iota-streams-app/sync-spin", "iota-streams-core/sync-spin"]
+sync-parking-lot = ["iota-streams-app/sync-parking-lot", "std", "iota-streams-core/sync-parking-lot"]
 
 [dependencies]
-iota-streams-core = { version = "0.3.0", path = "iota-streams-core", default-features = false }
-iota-streams-core-keccak = { version = "0.3.0", path = "iota-streams-core-keccak", default-features = false }
-iota-streams-core-edsig = { version = "0.2.0", path = "iota-streams-core-edsig", default-features = false }
-iota-streams-ddml = { version = "0.2.2", path = "iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "1.0.0", path = "iota-streams-app", default-features = false }
-iota-streams-app-channels = { version = "1.0.0", path = "iota-streams-app-channels", default-features = false }
+iota-streams-core = { version = "0.1.2", path = "iota-streams-core", default-features = false }
+iota-streams-core-keccak = { version = "0.1.2", path = "iota-streams-core-keccak", default-features = false }
+iota-streams-core-edsig = { version = "0.1.2", path = "iota-streams-core-edsig", default-features = false }
+iota-streams-ddml = { version = "0.1.2", path = "iota-streams-ddml", default-features = false }
+iota-streams-app = { version = "0.1.2", path = "iota-streams-app", default-features = false }
+iota-streams-app-channels = { version = "0.1.2", path = "iota-streams-app-channels", default-features = false }
 
 #[profile.release-nostd]
 #inherits = "release"

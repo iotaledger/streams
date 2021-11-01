@@ -1,23 +1,26 @@
 {
-  "name": "iota-streams-wasm",
-  "version": "0.0.1",
+  "name": "@iota/streams",
+  "version": "0.1.2",
   "description": "WASM binding for the IOTA streams library",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iotaledger/identity.rs.git"
+    "url": "git+https://github.com/iotaledger/streams.git"
   },
   "directories": {
     "example": "examples"
   },
   "scripts": {
-    "build:nodejs": "wasm-pack build --target nodejs --out-dir wasm-node && rm ./wasm-node/.gitignore",
-    "build:web": "wasm-pack build --target web --out-dir wasm-web && node ./build/web && rm ./wasm-web/.gitignore",
+    "build:nodejs": "wasm-pack build --target nodejs --out-dir node && node ./build/node && rm ./node/.gitignore",
+    "build:web": "wasm-pack build --target web --out-dir web && node ./build/web && rm ./web/.gitignore",
     "build": "npm run build:web && npm run build:nodejs",
     "pretest": "npm run build:nodejs",
     "prepublishOnly": "npm run build",
     "test": "mocha",
-    "serve": "webpack-dev-server",
-    "example:node": "node examples/node.js"
+    "unittest": "wasm-pack test --node",
+    "serve": "webpack serve",
+    "example:nodejs": "node examples/node.js",
+    "example:nodets": "ts-node examples/node.ts",
+    "doc:nodejs": "jsdoc -d node/jsdoc -c jsdoc-conf.json node"
   },
   "contributors": [
     "huhn511 <huhn.dev@gmail.com>"
@@ -30,22 +33,25 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "web",
+    "node"
+  ],
   "devDependencies": {
     "@types/node-fetch": "^2.5.10",
     "@wasm-tool/wasm-pack-plugin": "^1.1.0",
-    "copy-webpack-plugin": "^5.0.3",
+    "copy-webpack-plugin": "^9.0",
     "mocha": "^7.1.2",
     "rimraf": "^3.0.0",
     "ts-node": "^9.1.1",
     "typescript": "^4.3.4",
-    "wasm-pack": "^0.9.1",
+    "wasm-pack": "^0.10.0",
     "webpack": "^5.39.1",
-    "webpack-cli": "^3.3.3",
-    "webpack-dev-server": "^3.7.1"
+    "webpack-cli": "^4",
+    "webpack-dev-server": "^4.1.1",
+    "jsdoc": "^3.6.7"
   },
   "dependencies": {
-    "node-fetch": "^2.6.0",
-    "wabt": "^1.0.20",
-    "wasm2wat": "^1.1.0"
+    "node-fetch": "^2.6.0"
   }
 }

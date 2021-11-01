@@ -9,8 +9,8 @@ use core::fmt::Debug;
 #[macro_export]
 macro_rules! try_or {
     ($cond:expr, $err:expr) => {{
-        if LOCATION_LOG && !$cond {
-            println!("\n!!! Error occurred @ {}, {}", file!(), line!())
+        if $crate::LOCATION_LOG && !$cond {
+            $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
         try_or($cond, $err)
     }};
@@ -19,8 +19,8 @@ macro_rules! try_or {
 #[macro_export]
 macro_rules! err {
     ($err:expr) => {{
-        if LOCATION_LOG {
-            println!("\n!!! Error occurred @ {}, {}", file!(), line!());
+        if $crate::LOCATION_LOG {
+            $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!());
         }
         err($err)
     }};
@@ -29,8 +29,8 @@ macro_rules! err {
 #[macro_export]
 macro_rules! panic_if_not {
     ($cond:expr) => {{
-        if LOCATION_LOG && !$cond {
-            println!("\n!!! Error occurred @ {}, {}", file!(), line!())
+        if $crate::LOCATION_LOG && !$cond {
+            $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
         panic_if_not($cond)
     }};
@@ -39,11 +39,26 @@ macro_rules! panic_if_not {
 #[macro_export]
 macro_rules! wrapped_err {
     ($err:expr, $wrapped:expr) => {{
-        if LOCATION_LOG {
-            println!("\n!!! Error occurred @ {}, {}", file!(), line!());
+        if $crate::LOCATION_LOG {
+            $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!());
         }
         wrapped_err($err, $wrapped)
     }};
+}
+
+#[macro_export]
+macro_rules! unwrap_or_break {
+    ($result:expr) => {
+        match $result {
+            Ok(r) => r,
+            Err(e) => {
+                if $crate::LOCATION_LOG {
+                    $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!());
+                }
+                break;
+            }
+        }
+    };
 }
 
 pub fn try_or(cond: bool, err: Errors) -> Result<(), anyhow::Error> {

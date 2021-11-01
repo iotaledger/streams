@@ -1,6 +1,8 @@
-//! `TaggedPacket` message content. The message may be linked to any other message
-//! in the channel. It contains both plain and masked payloads. The message is
-//! authenticated with MAC and can be published by channel owner or by a recipient.
+//! `TaggedPacket` message content. The message has a plain and masked payload and is authenticated
+//! with MAC.
+//!
+//! The message may be linked to any other message in the channel and can be published by any
+//! participant in a channel.
 //!
 //! ```ddml
 //! message TaggedPacket {
@@ -8,7 +10,7 @@
 //!     absorb bytes public_payload;
 //!     mask bytes masked_payload;
 //!     commit;
-//!     squeeze byte mac[81];
+//!     squeeze byte mac[32];
 //! }
 //! ```
 //!
@@ -27,7 +29,11 @@ use iota_streams_app::message::{
     HasLink,
 };
 use iota_streams_core::{
-    prelude::typenum::Unsigned as _,
+    async_trait,
+    prelude::{
+        typenum::Unsigned as _,
+        Box,
+    },
     sponge::{
         prp::PRP,
         spongos,
@@ -55,13 +61,14 @@ where
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
+#[async_trait(?Send)]
 impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: PRP,
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
 {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         let mac = Mac(spongos::MacSize::<F>::USIZE);
         ctx.join(&store, self.link)?
@@ -74,6 +81,7 @@ where
     }
 }
 
+#[async_trait(?Send)]
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
     F: PRP,
@@ -81,7 +89,7 @@ where
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn wrap<'c, OS: io::OStream>(
+    async fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -104,15 +112,13 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-impl<F, Link> ContentUnwrap<F, Link>
+impl<F, Link> Default for ContentUnwrap<F, Link>
 where
     Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    fn default() -> Self {
         Self {
-            link: <<Link as HasLink>::Rel as Default>::default(),
+            link: Link::Rel::default(),
             public_payload: Bytes::default(),
             masked_payload: Bytes::default(),
             _phantom: core::marker::PhantomData,
@@ -120,6 +126,7 @@ where
     }
 }
 
+#[async_trait(?Send)]
 impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
 where
     F: PRP,
@@ -127,7 +134,7 @@ where
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
-    fn unwrap<'c, IS: io::IStream>(
+    async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,

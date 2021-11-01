@@ -22,6 +22,12 @@ pub enum Errors {
     SpongosNotCommitted,
     /// Link not found in store. (Possibly unimplemented)
     GenericLinkNotFound,
+    /// Unexpected/invalid Identifier
+    BadIdentifier,
+    /// Psk has already been stored
+    PskAlreadyStored,
+    /// Input string {0} is not in hex format
+    BadHexFormat(String),
 
     //////////
     // Cryptographic
@@ -44,6 +50,8 @@ pub enum Errors {
     BadMac,
     /// No default Random Number Generator available for no_std usage
     NoStdRngMissing,
+    /// Oneof value is unexpected
+    BadOneof,
 
     //////////
     // DDML IO
@@ -62,12 +70,26 @@ pub enum Errors {
     //////////
     /// More than one message found: with link {0}
     MessageNotUnique(String),
-    /// Message at link {0} not found in tangle
-    MessageLinkNotFound(String),
-    /// Message at link {0} not found in store
+    /// Message at link {0} not found in state store
     MessageLinkNotFoundInStore(String),
+    /// Message at link {0} not found in Tangle
+    MessageLinkNotFoundInTangle(String),
+    /// Message at link {0} not found in Bucket transport
+    MessageLinkNotFoundInBucket(String),
     /// Transport object is already borrowed
     TransportNotAvailable,
+
+    //////////
+    // Iota Transport
+    //////////
+    /// Malformed address string: missing colon (':') separator between appinst and msgid
+    MalformedAddressString,
+    /// Invalid Message Address
+    InvalidMessageAddress,
+    /// Invalid Channel Address
+    InvalidChannelAddress,
+    /// Invalid Msg id
+    InvalidMsgId,
 
     //////////
     // Iota Client
@@ -110,14 +132,16 @@ pub enum Errors {
     BadMessageInfo(u8),
     /// Failed to make message
     MessageCreationFailure,
+    /// Identifier could not be generated with given bytes. Must be an ed25519 Public Key or a PskId
+    IdentifierGenerationFailure,
 
     //////////
     // Users
     //////////
     /// Cannot create a channel, user is already registered to channel {0}
     ChannelCreationFailure(String),
-    /// Cannot unwrap announcement message, already registered to channel {0}
-    UserAlreadyRegistered(String),
+    /// Cannot register new user {0}, user is already registered to channel {1}
+    UserAlreadyRegistered(String, String),
     /// User is not registered to a channel
     UserNotRegistered,
     /// Message application instance does not match user channel (expected: {0}, found: {1}
@@ -132,6 +156,14 @@ pub enum Errors {
     StateStoreFailure,
     /// Cannot generate new channel, it may already exists. please try using a different seed
     ChannelDuplication,
+    /// Subscriber already has a psk stored, cannot add another
+    SinglePskAllowance,
+    /// Subscriber send operations are not allowed in Single Depth mode
+    SingleDepthOperationFailure,
+    /// Operation only available on single depth channels
+    ChannelNotSingleDepth,
+    /// Message '{0}' does not have a previous message
+    NoPreviousMessage(String),
 
     //////////
     // User Recovery
@@ -162,14 +194,14 @@ pub enum Errors {
     SubscriberAccessMismatch(String),
     /// Expected Link does not match (expected: {0}, found {1})
     LinkMismatch(String, String),
+    /// States do not match
+    StateMismatch,
 
     //////////
     // Tests
     //////////
     /// Bytes are invalid. Values don't match (expected {0}, found {1}
     InvalidBytes(String, String),
-    /// Cannot process hex from {0}
-    InvalidHex(String),
     /// Squeezed tag is invalid. Unwrapped tag doesn't match (expected {0}, found {1}
     InvalidTagSqueeze(String, String),
     /// Squeezed hash is invalid. Unwrapped hash doesn't match (expected {0}, found {1}

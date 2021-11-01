@@ -2,6 +2,7 @@ use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
+use core::fmt::Debug;
 use iota_streams_core::{
     prelude::Vec,
     sponge::prp::PRP,
@@ -62,14 +63,14 @@ impl<F> From<Vec<u8>> for BinaryBody<F> {
 impl<F, Link> BinaryMessage<F, Link>
 where
     F: PRP,
-    Link: Clone + AbsorbExternalFallback<F> + HasLink + std::fmt::Debug,
+    Link: Clone + AbsorbExternalFallback<F> + HasLink + Debug,
 {
-    pub fn parse_header(&self) -> Result<PreparsedMessage<F, Link>> {
+    pub async fn parse_header(&self) -> Result<PreparsedMessage<'_, F, Link>> {
         let mut ctx = unwrap::Context::new(&self.body.bytes[..]);
         let mut header =
             HDF::<Link>::new(self.link().clone()).with_previous_msg_link(Bytes(self.prev_link().to_bytes()));
         let store = EmptyLinkStore::<F, Link, ()>::default();
-        header.unwrap(&store, &mut ctx)?;
+        header.unwrap(&store, &mut ctx).await?;
 
         Ok(PreparsedMessage { header, ctx })
     }

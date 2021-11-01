@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-app-channels-example"
-version = "1.0.0"
+version = "0.1.2"
 authors = ["Vlad Semenov <semenov.vlad.by@gmail.com>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
 edition = "2018"
 
@@ -8,12 +8,11 @@ edition = "2018"
 default = ["tangle"]
 # enable std
 std = ["iota-streams/std", "hex/std"]
-async = ["iota-streams/async"]
 tangle = ["iota-streams/tangle"]
 
 [dependencies]
 wee_alloc = "0.4.5"
-iota-streams = { version = "1.0.0", path = "..", default-features = false}
+iota-streams = { version = "0.1.2", path = "..", default-features = false}
 hex = { version = "0.4", default-features = false}
 #[profile.release]
 ##inherits = "release"

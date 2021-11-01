@@ -1,4 +1,5 @@
 //! `Announce` message content. This is the initial message of the Channel application instance.
+//!
 //! It announces channel owner's public keys: Ed25519 signature key and corresponding X25519 key
 //! exchange key (derived from Ed25519 public key). The `Announce` message is similar to
 //! self-signed certificate in a conventional PKI.
@@ -20,7 +21,11 @@
 //!
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
 
-use iota_streams_core::Result;
+use iota_streams_core::{
+    async_trait,
+    prelude::Box,
+    Result,
+};
 
 use iota_streams_app::message;
 use iota_streams_core::sponge::prp::PRP;
@@ -50,8 +55,9 @@ impl<'a, F> ContentWrap<'a, F> {
     }
 }
 
+#[async_trait(?Send)]
 impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
-    fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.sig_kp.public)?;
         ctx.absorb(&self.flags)?;
         ctx.ed25519(self.sig_kp, HashSig)?;
@@ -59,8 +65,9 @@ impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     }
 }
 
+#[async_trait(?Send)]
 impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
-    fn wrap<'c, OS: io::OStream>(
+    async fn wrap<'c, OS: io::OStream>(
         &self,
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -96,11 +103,12 @@ impl<F> Default for ContentUnwrap<F> {
     }
 }
 
+#[async_trait(?Send)]
 impl<F, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F>
 where
     F: PRP,
 {
-    fn unwrap<'c, IS: io::IStream>(
+    async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,

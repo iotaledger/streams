@@ -14,19 +14,15 @@ extern crate std;
 #[cfg(not(any(target_arch = "wasm32", feature = "std")))]
 #[macro_export]
 macro_rules! println {
-    () => {};
-    ($($arg:tt)*) => {
-        return ();
-    };
+    () => {{}};
+    ($($arg:tt)*) => {{}};
 }
 
 #[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! print {
-    () => {};
-    ($($arg:tt)*) => {
-        return ();
-    };
+    () => {{}};
+    ($($arg:tt)*) => {{}};
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -79,3 +75,6 @@ pub use errors::{
     error_handler::*,
     error_messages::*,
 };
+
+pub use async_trait::async_trait;
+pub use crypto;

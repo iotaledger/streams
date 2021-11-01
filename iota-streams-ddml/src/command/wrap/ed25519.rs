@@ -21,7 +21,6 @@ use iota_streams_core::{
     wrapped_err,
     Errors::SignatureFailure,
     WrappedError,
-    LOCATION_LOG,
 };
 use iota_streams_core_edsig::signature::ed25519;
 
@@ -47,6 +46,6 @@ impl<F: PRP, OS: io::OStream> Ed25519<&ed25519::Keypair, HashSig> for Context<F,
     fn ed25519(&mut self, sk: &ed25519::Keypair, _hash: HashSig) -> Result<&mut Self> {
         // Squeeze external and commit cost nothing in the stream.
         let mut hash = External(NBytes::<U64>::default());
-        self.squeeze(&mut hash)?.commit()?.ed25519(sk, &hash)
+        self.commit()?.squeeze(&mut hash)?.ed25519(sk, &hash)
     }
 }

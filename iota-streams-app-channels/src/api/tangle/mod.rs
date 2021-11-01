@@ -1,9 +1,7 @@
 //! Default parameters for Author and Subscriber types.
 
-use super::{
-    pk_store::PublicKeyMap,
-    psk_store::PresharedKeyMap,
-};
+use super::key_store::KeyMap;
+pub use iota_streams_app::transport::tangle::MsgId;
 use iota_streams_app::{
     message::{
         self,
@@ -14,12 +12,14 @@ use iota_streams_app::{
         tangle::{
             AppInst,
             DefaultTangleLinkGenerator,
-            MsgId,
             TangleAddress,
             TangleMessage,
         },
     },
 };
+
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+use iota_streams_app::transport::tangle::client::Details as ClientDetails;
 
 pub use message::Cursor;
 // Bring trait methods into scope publicly.
@@ -30,15 +30,12 @@ pub use transport::{
 };
 
 pub use super::ChannelType;
+use super::DefaultF;
 use iota_streams_core::psk;
-use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
 
 use iota_streams_core_edsig::signature::ed25519;
-
-/// Default spongos PRP.
-pub type DefaultF = KeccakF1600;
 
 /// Identifiers for Pre-Shared Keys
 pub type PskIds = psk::PskIds;
@@ -50,6 +47,9 @@ pub type ChannelAddress = AppInst;
 
 /// Binary encoded message type.
 pub type Message = TangleMessage<DefaultF>;
+// Details for a message on our tangle transport
+#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
+pub type Details = ClientDetails;
 
 /// Wrapped Message for sending and commit
 pub type WrappedMessage = message::WrappedMessage<DefaultF, Address>;
@@ -57,8 +57,6 @@ pub type WrappedMessage = message::WrappedMessage<DefaultF, Address>;
 pub type WrapState = message::WrapState<DefaultF, Address>;
 /// Wrapper for optional sequence message and state
 pub type WrappedSequence = super::user::WrappedSequence<DefaultF, Address>;
-/// Wrapped sequencing information with optional WrapState
-pub type WrapStateSequence = super::user::WrapStateSequence<DefaultF, Address>;
 /// Ed25519 Public Key
 pub type PublicKey = ed25519::PublicKey;
 
@@ -67,10 +65,8 @@ pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
 /// Sequence State information
 pub type SeqState = Cursor<MsgId>;
-/// Public Key Mapping for sequence states
-pub type PkStore = PublicKeyMap<SeqState>;
-/// Pre-Shared Key Mapping
-pub type PskStore = PresharedKeyMap;
+/// Identifier Key Mapping for sequence states
+pub type KeyStore = KeyMap<SeqState>;
 
 /// Link Generator specifies algorithm for generating new message addressed.
 pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
@@ -83,19 +79,19 @@ pub type BucketTransport = transport::BucketTransport<Address, Message>;
 
 /// Transportation trait for Tangle Client implementation
 // TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
-pub trait Transport: transport::Transport<Address, Message> {}
-// impl<T> Transport for T where T: transport::Transport<Address, Message> {}
-impl Transport for transport::SharedTransport<BucketTransport> {}
-
-#[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
-impl Transport for iota_streams_app::transport::tangle::client::Client {}
+pub trait Transport: transport::Transport<Address, Message> + Clone {}
+impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone {}
 
 mod msginfo;
 pub use msginfo::MsgInfo;
 
-/// Message body returned as part of handle message routine.
+// SignedPacket is 240 bytes in stack (192 + 24 + 24), which means 5 times more than
+// the next biggest variant (TaggedPacket, 48 bytes), and the impossibility of inlining.
+// Boxing PublicKey would usually be a net performance improvement if SignedPacket wasn't frequent.
+// However, chances are it is the most frequent variant, therefore a profile must confirm there's
+// enough performance improvement to justify the ergonomic drawback of re-enabling this lint
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
+/// Message body returned as part of handle message routine.
 pub enum MessageContent {
     Announce,
     Keyload,
@@ -149,12 +145,10 @@ pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
 /// Generic binary message type for sequence handling
 pub type BinaryMessage = message::GenericMessage<Address, BinaryBody<DefaultF>>;
 
-#[allow(clippy::ptr_arg)]
 mod user;
 /// User object storing the Auth/Sub implementation as well as the transport instance
 pub use user::User;
 
-#[allow(clippy::ptr_arg)]
 mod author;
 /// Tangle-specific Channel Author type.
 pub use author::Author;

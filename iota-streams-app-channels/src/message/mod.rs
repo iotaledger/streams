@@ -18,13 +18,20 @@ pub mod subscribe;
 /// Sequence message.
 pub mod sequence;
 
-pub const ANNOUNCE: u8 = 0;
-pub const KEYLOAD: u8 = 1;
-pub const SEQUENCE: u8 = 2;
-pub const SIGNED_PACKET: u8 = 3;
-pub const TAGGED_PACKET: u8 = 4;
-pub const SUBSCRIBE: u8 = 5;
-pub const UNSUBSCRIBE: u8 = 6;
+/// Unsubscribe message.
+pub mod unsubscribe;
 
-// Unsubscribe message.
-// pub mod unsubscribe;
+/// Announcement Message Type
+pub const ANNOUNCE: u8 = 0;
+/// Keyload Message Type
+pub const KEYLOAD: u8 = 1;
+/// Sequence Message Type
+pub const SEQUENCE: u8 = 2;
+/// Signed Packet Message Type
+pub const SIGNED_PACKET: u8 = 3;
+/// Tagged Packet Message Type
+pub const TAGGED_PACKET: u8 = 4;
+/// Subscribe Message Type
+pub const SUBSCRIBE: u8 = 5;
+/// Unsubscribe Message Type
+pub const UNSUBSCRIBE: u8 = 6;
