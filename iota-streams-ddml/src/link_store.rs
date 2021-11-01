@@ -1,7 +1,10 @@
 use core::hash;
 use iota_streams_core::Result;
 
-use core::fmt::{Debug, Display};
+use core::fmt::{
+    Debug,
+    Display,
+};
 use iota_streams_core::{
     err,
     prelude::{
