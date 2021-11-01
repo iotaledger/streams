@@ -1,7 +1,7 @@
 use core::fmt;
 
+use iota_streams_app::id::identifier::Identifier;
 use core::borrow::BorrowMut;
-use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
     err,
     prelude::{
@@ -14,6 +14,8 @@ use iota_streams_core::{
     Result,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
+#[cfg(feature = "use-did")]
+use iota_streams_core::Errors::UnsupportedIdentifier;
 
 pub trait KeyStore<Info, F: PRP>: Default {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
@@ -27,6 +29,8 @@ pub trait KeyStore<Info, F: PRP>: Default {
     fn get_psk(&self, id: &Identifier) -> Option<Psk>;
     fn contains(&self, id: &Identifier) -> bool;
     fn insert_cursor(&mut self, id: Identifier, info: Info) -> Result<()>;
+    #[cfg(feature = "use-did")]
+    fn insert_did(&mut self, id: Identifier, xkey: x25519::PublicKey, info: Info) -> Result<()>;
     fn insert_psk(&mut self, id: Identifier, psk: Option<Psk>, info: Info) -> Result<()>;
     fn get_next_pskid(&self) -> Option<&Identifier>;
     fn keys(&self) -> Vec<(&Identifier, Vec<u8>)>;
@@ -73,6 +77,11 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                     .get_key_value(id)
                     .map(|(e, (x, _))| x.map(|xx| (e, xx.to_vec())))
                     .flatten(),
+                #[cfg(feature = "use-did")]
+                Identifier::DID(_id) => self
+                    .ke_pks
+                    .get_key_value(id)
+                    .map(|(e, (x, _))| (e, x.as_bytes().to_vec())),
             })
             .collect()
     }
@@ -81,17 +90,23 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
         match id {
             Identifier::EdPubKey(_pk) => self.ke_pks.get(id).map(|(_x, i)| i),
             Identifier::PskId(_id) => self.psks.get(id).map(|(_x, i)| i),
+            #[cfg(feature = "use-did")]
+            Identifier::DID(_id) => self.ke_pks.get(id).map(|(_x,i)| i),
         }
     }
     fn get_mut(&mut self, id: &Identifier) -> Option<&mut Info> {
         match id {
             Identifier::EdPubKey(_pk) => self.ke_pks.get_mut(id).map(|(_x, i)| i),
             Identifier::PskId(_id) => self.psks.get_mut(id).map(|(_x, i)| i),
+            #[cfg(feature = "use-did")]
+            Identifier::DID(_id) => self.ke_pks.get_mut(id).map(|(_x,i)| i),
         }
     }
     fn get_ke_pk(&self, id: &Identifier) -> Option<&x25519::PublicKey> {
         match id {
             Identifier::EdPubKey(_pk) => self.ke_pks.get(id).map(|(x, _i)| x),
+            #[cfg(feature = "use-did")]
+            Identifier::DID(_pk) => self.ke_pks.get(id).map(|(x, _i)| x),
             _ => None,
         }
     }
@@ -135,6 +150,19 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 self.psks.insert(id, (None, info));
                 Ok(())
             }
+            #[cfg(feature = "use-did")]
+            _ => err(UnsupportedIdentifier)
+        }
+    }
+
+    #[cfg(feature = "use-did")]
+    fn insert_did(&mut self, id: Identifier, xkey: x25519::PublicKey, info: Info) -> Result<()> {
+        match &id {
+            Identifier::DID(_id) => {
+                self.ke_pks.insert(id, (xkey, info));
+                Ok(())
+            }
+            _ => err(UnsupportedIdentifier)
         }
     }
 

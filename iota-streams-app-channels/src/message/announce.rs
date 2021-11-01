@@ -25,10 +25,20 @@ use iota_streams_core::{
     async_trait,
     prelude::Box,
     Result,
+    sponge::prp::PRP,
 };
 
-use iota_streams_app::message;
-use iota_streams_core::sponge::prp::PRP;
+use iota_streams_app::{
+    message::{
+        self,
+        ContentSign,
+        ContentVerify,
+    },
+    id::{
+        Identifier,
+        KeyPairs,
+    }
+};
 use iota_streams_core_edsig::{
     key_exchange::x25519,
     signature::ed25519,
@@ -40,15 +50,15 @@ use iota_streams_ddml::{
 };
 
 pub struct ContentWrap<'a, F> {
-    sig_kp: &'a ed25519::Keypair,
+    key_pairs: &'a KeyPairs,
     flags: Uint8,
     _phantom: core::marker::PhantomData<F>,
 }
 
 impl<'a, F> ContentWrap<'a, F> {
-    pub fn new(sig_kp: &'a ed25519::Keypair, flags: u8) -> Self {
+    pub fn new(key_pairs: &'a KeyPairs, flags: u8) -> Self {
         Self {
-            sig_kp,
+            key_pairs,
             flags: Uint8(flags),
             _phantom: core::marker::PhantomData,
         }
@@ -58,9 +68,10 @@ impl<'a, F> ContentWrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.absorb(&self.sig_kp.public)?;
+        self.key_pairs.id.sizeof(ctx).await?;
+        ctx.absorb(&self.key_pairs.sig_kp.public)?;
         ctx.absorb(&self.flags)?;
-        ctx.ed25519(self.sig_kp, HashSig)?;
+        let ctx = self.key_pairs.sizeof(ctx).await?;
         Ok(ctx)
     }
 }
@@ -72,15 +83,17 @@ impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.absorb(&self.sig_kp.public)?;
+        self.key_pairs.id.wrap(_store, ctx).await?;
+        ctx.absorb(&self.key_pairs.sig_kp.public)?;
         ctx.absorb(&self.flags)?;
-        ctx.ed25519(self.sig_kp, HashSig)?;
+        let ctx = self.key_pairs.sign(ctx).await?;
         Ok(ctx)
     }
 }
 
 pub struct ContentUnwrap<F> {
     pub(crate) sig_pk: ed25519::PublicKey,
+    pub(crate) identifier: Identifier,
 
     #[allow(dead_code)]
     pub(crate) ke_pk: x25519::PublicKey,
@@ -91,6 +104,7 @@ pub struct ContentUnwrap<F> {
 impl<F> Default for ContentUnwrap<F> {
     fn default() -> Self {
         let sig_pk = ed25519::PublicKey::default();
+        let identifier = Identifier::EdPubKey(sig_pk.into());
         // No need to worry about unwrap since it's operating from default input
         let ke_pk = x25519::public_from_ed25519(&sig_pk).unwrap();
         let flags = Uint8(0);
@@ -98,6 +112,7 @@ impl<F> Default for ContentUnwrap<F> {
             sig_pk,
             ke_pk,
             flags,
+            identifier,
             _phantom: core::marker::PhantomData,
         }
     }
@@ -110,13 +125,15 @@ where
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
-        _store: &Store,
+        store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        self.identifier.unwrap(store, ctx).await?;
         ctx.absorb(&mut self.sig_pk)?;
+        let kp = KeyPairs::new_from_id(self.sig_pk.into()).await?;
         self.ke_pk = x25519::public_from_ed25519(&self.sig_pk)?;
         ctx.absorb(&mut self.flags)?;
-        ctx.ed25519(&self.sig_pk, HashSig)?;
+        let ctx = kp.verify(ctx).await?;
         Ok(ctx)
     }
 }

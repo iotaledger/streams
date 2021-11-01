@@ -17,14 +17,14 @@ use iota_streams_core::{
     },
     err,
     prelude::{
+        Box,
+        String,
+        ToString,
         typenum::{
             U12,
             U32,
             U40,
         },
-        Box,
-        String,
-        ToString,
         Vec,
     },
     sponge::{
@@ -49,7 +49,6 @@ use iota_streams_ddml::{
     io,
     types::*,
 };
-
 use cstr_core::CStr;
 use cty::c_char;
 

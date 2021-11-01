@@ -53,8 +53,8 @@ impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
 #[async_trait(?Send)]
 impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
 where
-    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
-    Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
+    Link: Eq + hash::Hash + Clone + core::fmt::Display,
+    Msg: LinkedMessage<Link> + Clone,
 {
     async fn send_message(&mut self, msg: &Msg) -> Result<()> {
         if let Some(msgs) = self.bucket.get_mut(msg.link()) {
@@ -88,7 +88,7 @@ where
 #[async_trait(?Send)]
 impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg>
 where
-    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
+    Link: Eq + hash::Hash + Clone + core::fmt::Display,
 {
     type Details = ();
     async fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details> {

@@ -241,7 +241,7 @@ impl TransportOptions for Client {
 #[async_trait(?Send)]
 impl<F> Transport<TangleAddress, TangleMessage<F>> for Client
 where
-    F: 'static + core::marker::Send + core::marker::Sync,
+    F: 'static,
 {
     /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {

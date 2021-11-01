@@ -8,22 +8,24 @@ use core::{
 };
 
 use iota_streams_app::{
-    identifier::Identifier,
     message::{
+        *,
         hdf::{
             FLAG_BRANCHING_MASK,
             HDF,
         },
-        *,
     },
 };
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     async_trait,
     err,
+    Errors::*,
     prelude::{
         string::ToString,
         typenum::U32,
         Box,
+        vec::IntoIter,
         Vec,
     },
     prng,
@@ -32,13 +34,12 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
+    Result,
     sponge::prp::{
         Inner,
         PRP,
     },
     try_or,
-    Errors::*,
-    Result,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -56,12 +57,13 @@ use iota_streams_ddml::{
 
 use crate::{
     api::{
-        key_store::*,
         ChannelType,
+        key_store::*,
     },
     message::*,
     Lookup,
 };
+use iota_streams_app::id::keys::KeyPairs;
 use core::borrow::BorrowMut;
 
 const ANN_MESSAGE_NUM: u32 = 0;
@@ -111,21 +113,19 @@ where
     F: PRP,
     Link: HasLink,
 {
-    // PRNG object used for Ed25519, X25519, Spongos key generation, etc.
-    // pub(crate) prng: prng::Prng<F>,
     _phantom: PhantomData<F>,
 
-    /// Own Ed25519 private key.
-    pub(crate) sig_kp: ed25519::Keypair,
-
-    /// Own x25519 key pair corresponding to Ed25519 keypair.
-    pub(crate) ke_kp: (x25519::StaticSecret, x25519::PublicKey),
+    /// Users' key pairings and identifier (can contain DID)
+    pub(crate) key_pairs: KeyPairs,
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     pub(crate) key_store: Keys,
 
     /// Author's Ed25519 public key.
     pub(crate) author_sig_pk: Option<ed25519::PublicKey>,
+
+    /// Author's Id
+    pub(crate) author_id: Option<Identifier>,
 
     /// Link generator.
     pub(crate) link_gen: LG,
@@ -159,18 +159,13 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     fn default() -> Self {
-        let sig_kp = ed25519::Keypair {
-            secret: ed25519::SecretKey::from_bytes(&[0; ed25519::SECRET_KEY_LENGTH]).unwrap(),
-            public: ed25519::PublicKey::default(),
-        };
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+        let id = KeyPairs::default();
 
         Self {
             _phantom: PhantomData,
-            sig_kp,
-            ke_kp,
-
+            key_pairs: id,
             key_store: Keys::default(),
+            author_id: None,
             author_sig_pk: None,
             link_gen: LG::default(),
             link_store: LS::default(),
@@ -196,15 +191,11 @@ where
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
     pub fn gen(
-        prng: prng::Prng<F>,
-        nonce: Vec<u8>,
+        id: KeyPairs,
         channel_type: ChannelType,
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
     ) -> Self {
-        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
-
         let flags: u8 = match channel_type {
             ChannelType::SingleBranch => 0,
             ChannelType::MultiBranch => 1,
@@ -213,10 +204,9 @@ where
 
         Self {
             _phantom: PhantomData,
-            sig_kp,
-            ke_kp,
-
+            key_pairs: id,
             key_store: Keys::default(),
+            author_id: None,
             author_sig_pk: None,
             link_gen: LG::default(),
             link_store: LS::default(),
@@ -236,13 +226,14 @@ where
                 self.appinst.as_ref().unwrap().base().to_string()
             ));
         }
-        self.link_gen.gen(&self.sig_kp.public, channel_idx);
+        self.link_gen.gen(&self.key_pairs.sig_kp.public, channel_idx);
         let appinst = self.link_gen.get();
+        match &self.key_pairs.id {
+            Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
+            _ => self.store_cursor(self.key_pairs.id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32), None)?,
+        }
 
-        let identifier = self.sig_kp.public.into();
-        self.key_store
-            .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
-        self.author_sig_pk = Some(self.sig_kp.public);
+        self.author_id = Some(self.key_pairs.id.clone());
         self.anchor = Some(Cursor::new_at(appinst.clone(), 0, 2_u32));
         self.appinst = Some(appinst);
         Ok(())
@@ -259,7 +250,15 @@ where
             Some(appinst) => {
                 let mut key_store = Keys::default();
                 for (id, _cursor) in self.key_store.iter() {
-                    key_store.insert_cursor(*id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
+                    match id {
+                        #[cfg(feature = "use-did")]
+                        Identifier::DID(_did) => {
+                            if let Some(pk) = self.key_store.get_ke_pk(id) {
+                                key_store.insert_did(*id, *pk, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
+                            }
+                        },
+                        _ => key_store.insert_cursor(*id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?
+                    }
                 }
                 self.key_store = key_store;
                 self.link_store = LS::default();
@@ -280,12 +279,12 @@ where
     pub fn prepare_announcement(&self) -> Result<PreparedMessage<F, Link, announce::ContentWrap<F>>> {
         // Create HDF for the first message in the channel.
         let msg_link = self.link_gen.get();
-        let header = HDF::new(msg_link)
+        let header = HDF::new(msg_link.clone())
             .with_content_type(ANNOUNCE)?
             .with_payload_length(1)?
             .with_seq_num(ANN_MESSAGE_NUM)
-            .with_identifier(&self.sig_kp.public.into());
-        let content = announce::ContentWrap::new(&self.sig_kp, self.flags);
+            .with_identifier(&self.key_pairs.id);
+        let content = announce::ContentWrap::new(&self.key_pairs, self.flags);
         Ok(PreparedMessage::new(header, content))
     }
 
@@ -301,13 +300,12 @@ where
         if let Some(appinst) = &self.appinst {
             try_or!(
                 appinst == &preparsed.header.link,
-                UserAlreadyRegistered(hex::encode(self.sig_kp.public), appinst.base().to_string())
+                UserAlreadyRegistered(hex::encode(self.key_pairs.sig_kp.public), appinst.base().to_string())
             )?;
         }
 
         let content = announce::ContentUnwrap::<F>::default();
-        let r = preparsed.unwrap(&self.link_store, content).await;
-        r
+        preparsed.unwrap(&self.link_store, content).await
     }
 
     /// Bind Subscriber (or anonymously subscribe) to the channel announced
@@ -323,9 +321,14 @@ where
             NotAnnouncement(preparsed.content_type())
         )?;
 
-        let unwrapped = self.unwrap_announcement(preparsed).await?;
-        let link = unwrapped.link.clone();
-        let content = unwrapped.commit(&mut self.link_store, info)?;
+        let (link, cursor, flags, sig_pk, id) = {
+            let unwrapped = self.unwrap_announcement(preparsed).await?;
+            let link = unwrapped.link.clone();
+            let content = unwrapped.commit(&mut self.link_store, info)?;
+            let id = content.identifier.clone();
+            let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
+            (link, cursor, content.flags, content.sig_pk.clone(), id)
+        };
         // TODO: check commit after message is done / before joined
 
         // TODO: Verify trust to Author's public key?
@@ -334,17 +337,24 @@ where
         // TODO: Verify appinst (address) == public key.
         // At the moment the Author is free to choose any address, not tied to PK.
 
-        let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
-        self.key_store
-            .insert_cursor(Identifier::EdPubKey(content.sig_pk.into()), cursor.clone())?;
-        self.key_store
-            .insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
+        let xkey = x25519::public_from_ed25519(&sig_pk)?;
+        match &id {
+            Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
+            _ => self.store_cursor(id, cursor.clone(), Some(xkey))?,
+        }
+
+        match &self.key_pairs.id {
+            Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
+            _ => self.store_cursor(self.key_pairs.id, cursor, Some(xkey))?,
+        }
+
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.anchor = Some(Cursor::new_at(link.clone(), 0, 2_u32));
         self.appinst = Some(link);
-        self.author_sig_pk = Some(content.sig_pk);
-        self.flags = content.flags.0;
+        self.author_id = Some(id);
+        self.author_sig_pk = Some(sig_pk);
+        self.flags = flags.0;
         Ok(())
     }
 
@@ -353,23 +363,24 @@ where
         &'a self,
         link_to: &'a Link,
     ) -> Result<PreparedMessage<F, Link, subscribe::ContentWrap<'a, F, Link>>> {
-        if let Some(author_sig_pk) = &self.author_sig_pk {
-            let identifier = Identifier::EdPubKey(ed25519::PublicKeyWrap(*author_sig_pk));
-            if let Some(author_ke_pk) = self.key_store.get_ke_pk(&identifier) {
-                let msg_link = self
-                    .link_gen
-                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM));
+        if let Some(identifier) = &self.author_id {
+            //let identifier = Identifier::EdPubKey(ed25519::PublicKeyWrap(*author_sig_pk));
+            if let Some(author_ke_pk) = self.key_store.get_ke_pk(identifier) {
+                let msg_link = self.link_gen.link_from(
+                    &self.key_pairs.id.to_bytes(),
+                    Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM),
+                );
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SUBSCRIBE)?
                     .with_payload_length(1)?
                     .with_seq_num(SUB_MESSAGE_NUM)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.key_pairs.id);
                 let unsubscribe_key = NBytes::from(prng::random_key());
                 let content = subscribe::ContentWrap {
                     link: link_to.rel(),
                     unsubscribe_key,
-                    subscriber_sig_kp: &self.sig_kp,
+                    subscriber_id: &self.key_pairs,
                     author_ke_pk,
                     _phantom: PhantomData,
                 };
@@ -391,11 +402,12 @@ where
     pub async fn unwrap_subscribe<'a>(
         &self,
         preparsed: PreparsedMessage<'_, F, Link>,
-        author_ke_pk: &'a x25519::StaticSecret,
+        author_id: &'a KeyPairs,
     ) -> Result<UnwrappedMessage<F, Link, subscribe::ContentUnwrap<'a, F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = subscribe::ContentUnwrap::new(author_ke_pk)?;
-        preparsed.unwrap(&self.link_store, content).await
+        let content = subscribe::ContentUnwrap::new(author_id)?;
+        let r = preparsed.unwrap(&self.link_store, content).await;
+        r
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
@@ -406,7 +418,7 @@ where
         let content = self
             // We need to borrow self.ke_kp.0 at this scope
             // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
-            .unwrap_subscribe(preparsed, &self.ke_kp.0)
+            .unwrap_subscribe(preparsed, &self.key_pairs)
             .await?
             .commit(&mut self.link_store, info)?;
         // TODO: trust content.subscriber_sig_pk
@@ -437,16 +449,16 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(self.key_pairs.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(UNSUBSCRIBE)?
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.key_pairs.sig_kp.public.into());
                 let content = unsubscribe::ContentWrap {
                     link: link_to.rel(),
-                    sig_kp: &self.sig_kp,
+                    kp: &self.key_pairs,
                     _phantom: PhantomData,
                 };
                 Ok(PreparedMessage::new(header, content))
@@ -476,11 +488,10 @@ where
             .unwrap_unsubscribe(preparsed)
             .await?
             .commit(&mut self.link_store, info)?;
-        self.remove_subscriber(content.sig_pk)
+        self.remove_subscriber(content.kp.id)
     }
 
-    pub fn remove_subscriber(&mut self, pk: ed25519::PublicKey) -> Result<()> {
-        let id = pk.into();
+    pub fn remove_subscriber(&mut self, id: Identifier) -> Result<()> {
         match self.key_store.contains(&id) {
             true => {
                 self.key_store.remove(&id);
@@ -490,12 +501,12 @@ where
         }
     }
 
-    fn do_prepare_keyload<'a>(
+    fn do_prepare_keyload<'a, KeyMap>(
         &'a self,
         header: HDF<Link>,
         link_to: &'a Link::Rel,
-        keys: Vec<(&'a Identifier, Vec<u8>)>,
-    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>> {
+        keys: KeyMap,
+    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link, KeyMap>>> {
         let nonce = NBytes::from(prng::random_nonce());
         let key = NBytes::from(prng::random_key());
         let content = keyload::ContentWrap {
@@ -503,8 +514,8 @@ where
             nonce,
             key,
             keys,
-            sig_kp: &self.sig_kp,
-            _phantom: PhantomData,
+            key_pair: &self.key_pairs,
+            _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(header, content))
     }
@@ -513,7 +524,7 @@ where
         &'a self,
         link_to: &'a Link,
         keys: I,
-    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>>
+    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link, IntoIter<(&Identifier, Vec<u8>)>>>>
     where
         I: IntoIterator<Item = &'b Identifier>,
     {
@@ -521,15 +532,15 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(&self.key_pairs.id.to_bytes(), Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.key_pairs.id);
                 let filtered_keys = self.key_store.filter(keys);
-                self.do_prepare_keyload(header, link_to.rel(), filtered_keys)
+                self.do_prepare_keyload(header, link_to.rel(), filtered_keys.into_iter())
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -538,20 +549,20 @@ where
     pub fn prepare_keyload_for_everyone<'a>(
         &'a self,
         link_to: &'a Link,
-    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>> {
+    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link, IntoIter<(&Identifier, Vec<u8>)>>>> {
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(&self.key_pairs.id.to_bytes(), Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = hdf::HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.key_pairs.sig_kp.public.into());
                 let keys = self.key_store.keys();
-                self.do_prepare_keyload(header, link_to.rel(), keys)
+                self.do_prepare_keyload(header, link_to.rel(), keys.into_iter())
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -577,14 +588,15 @@ where
         preparsed: PreparsedMessage<'_, F, Link>,
         keys_lookup: KeysLookup<'a, F, Link, Keys>,
         own_keys: OwnKeys<'a>,
-        author_sig_pk: Option<&'a ed25519::PublicKey>,
+        author_id: Option<&'a Identifier>,
     ) -> Result<
         UnwrappedMessage<F, Link, keyload::ContentUnwrap<'a, F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>,
     > {
         self.ensure_appinst(&preparsed)?;
-        if let Some(author_sig_pk) = author_sig_pk {
-            let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_sig_pk);
-            preparsed.unwrap(&self.link_store, content).await
+        if let Some(author_id) = author_id {
+            let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_id);
+            let unwrapped = preparsed.unwrap(&self.link_store, content).await?;
+            Ok(unwrapped)
         } else {
             err!(AuthorSigKeyNotFound)
         }
@@ -602,10 +614,8 @@ where
         // We need to borrow self.key_store, self.sig_kp and self.ke_kp at this scope
         // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
         let keys_lookup = KeysLookup::new(&self.key_store);
-        let own_keys = OwnKeys(&self.sig_kp, &self.ke_kp);
-        let unwrapped = self
-            .unwrap_keyload(preparsed, keys_lookup, own_keys, self.author_sig_pk.as_ref())
-            .await?;
+        let own_keys = OwnKeys(&self.key_pairs);
+        let unwrapped = self.unwrap_keyload(preparsed, keys_lookup, own_keys, self.author_id.as_ref()).await?;
 
         // Process a generic message containing the access right bool, also return the list of identifiers
         // to be stored.
@@ -615,6 +625,7 @@ where
             // Presence of the key indicates the user is allowed
             // Unwrapped nonce and key in content are not used explicitly.
             // The resulting spongos state is joined into a protected message state.
+
             let content = unwrapped.commit(&mut self.link_store, info)?;
             (GenericMessage::new(msg.link.clone(), prev_link, true), content.key_ids)
         } else {
@@ -659,19 +670,19 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(&self.key_pairs.id.to_bytes(), Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SIGNED_PACKET)?
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.key_pairs.id);
                 let content = signed_packet::ContentWrap {
                     link: link_to.rel(),
                     public_payload,
                     masked_payload,
-                    sig_kp: &self.sig_kp,
-                    _phantom: PhantomData,
+                    key_pair: &self.key_pairs,
+                    _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(header, content))
             }
@@ -705,7 +716,7 @@ where
         &'_ mut self,
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
-    ) -> Result<GenericMessage<Link, (ed25519::PublicKey, Bytes, Bytes)>> {
+    ) -> Result<GenericMessage<Link, (Identifier, Bytes, Bytes)>> {
         // TODO: pass author_pk to unwrap
         let preparsed = msg.parse_header().await?;
         let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
@@ -723,7 +734,7 @@ where
             self.store_state_for_all(link, seq_no.0 as u32 + 1)?;
         }
 
-        let body = (content.sig_pk, content.public_payload, content.masked_payload);
+        let body = (content.id, content.public_payload, content.masked_payload);
         Ok(GenericMessage::new(msg.link, prev_link, body))
     }
 
@@ -734,18 +745,17 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<F, Link, tagged_packet::ContentWrap<'a, F, Link>>> {
-        let identifier = self.get_identifier()?;
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(identifier.to_bytes(), Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(&self.key_pairs.id.to_bytes(), Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(TAGGED_PACKET)?
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
-                    .with_identifier(&identifier);
+                    .with_identifier(&self.key_pairs.id);
                 let content = tagged_packet::ContentWrap {
                     link: link_to.rel(),
                     public_payload,
@@ -755,17 +765,6 @@ where
                 Ok(PreparedMessage::new(header, content))
             }
             None => err!(SeqNumRetrievalFailure),
-        }
-    }
-
-    fn get_identifier(&self) -> Result<Identifier> {
-        if self.use_psk {
-            match self.key_store.get_next_pskid() {
-                Some(pskid) => Ok(*pskid),
-                None => err(MessageBuildFailure),
-            }
-        } else {
-            Ok(self.sig_kp.public.into())
         }
     }
 
@@ -823,21 +822,21 @@ where
         seq_no: u64,
         ref_link: &'a <Link as HasLink>::Rel,
     ) -> Result<PreparedMessage<F, Link, sequence::ContentWrap<'a, Link>>> {
-        let identifier = self.get_identifier()?;
         let msg_link = self
             .link_gen
-            .link_from(identifier.to_bytes(), Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
+            .link_from(&self.key_pairs.id.to_bytes(), Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
         let header = HDF::new(msg_link)
             .with_previous_msg_link(Bytes(link_to.to_bytes()))
             .with_content_type(SEQUENCE)?
             .with_payload_length(1)?
             .with_seq_num(SEQ_MESSAGE_NUM)
-            .with_identifier(&identifier);
+            .with_identifier(&self.key_pairs.id);
 
         let content = sequence::ContentWrap {
             link: link_to.rel(),
-            id: identifier,
+            id: self.key_pairs.id.clone(),
             seq_num: seq_no,
+            ke_pk: &self.key_pairs.ke_kp.1,
             ref_link,
         };
 
@@ -845,26 +844,26 @@ where
     }
 
     pub async fn wrap_sequence(&mut self, ref_link: &<Link as HasLink>::Rel) -> Result<WrappedSequence<F, Link>> {
-        let identifier = self.get_identifier()?;
-        match self.key_store.get(&identifier) {
+        match self.key_store.get(&self.key_pairs.id) {
             Some(cursor) => {
                 let mut cursor = cursor.clone();
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
                     let msg_link = self
                         .link_gen
-                        .link_from(identifier.to_bytes(), Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
+                        .link_from(&self.key_pairs.id.to_bytes(), Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
                     let previous_msg_link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), &cursor.link);
                     let header = HDF::new(msg_link)
                         .with_previous_msg_link(Bytes(previous_msg_link.to_bytes()))
                         .with_content_type(SEQUENCE)?
                         .with_payload_length(1)?
                         .with_seq_num(SEQ_MESSAGE_NUM)
-                        .with_identifier(&identifier);
+                        .with_identifier(&self.key_pairs.id);
 
                     let content = sequence::ContentWrap::<Link> {
                         link: &cursor.link,
-                        id: identifier,
+                        id: self.key_pairs.id.clone(),
                         seq_num: cursor.get_seq_num(),
+                        ke_pk: &self.key_pairs.ke_kp.1,
                         ref_link,
                     };
 
@@ -877,9 +876,10 @@ where
                 } else if self.is_single_depth() {
                     Ok(WrappedSequence::SingleDepth(cursor))
                 } else {
-                    let msg_link = self
-                        .link_gen
-                        .link_from(self.sig_kp.public, Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no));
+                    let msg_link = self.link_gen.link_from(
+                        &self.key_pairs.id.to_bytes(),
+                        Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no),
+                    );
                     cursor.link = msg_link.rel().clone();
                     Ok(WrappedSequence::single_branch(cursor))
                 }
@@ -896,8 +896,7 @@ where
     ) -> Result<Option<Link>> {
         cursor.link = wrapped_state.link.rel().clone();
         cursor.next_seq();
-        self.key_store
-            .insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
+        self.store_cursor(self.key_pairs.id, cursor, None)?;
         let link = wrapped_state.link.clone();
         wrapped_state.commit(&mut self.link_store, info)?;
         Ok(Some(link))
@@ -932,7 +931,7 @@ where
             .await?
             .commit(&mut self.link_store, info)?;
         if store {
-            self.store_state(sender_id, msg.link.rel().clone())?;
+            self.store_state(sender_id, content.ke_pk, msg.link.rel().clone())?;
         }
         Ok(GenericMessage::new(msg.link, prev_link, content))
     }
@@ -948,7 +947,7 @@ where
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn get_seq_no(&self) -> Option<u32> {
         self.key_store
-            .get(&Identifier::EdPubKey(self.sig_kp.public.into()))
+            .get(&self.key_pairs.id)
             .map(|cursor| cursor.seq_no)
     }
 
@@ -967,13 +966,17 @@ where
     pub fn store_psk(&mut self, pskid: PskId, psk: Psk, use_psk: bool) -> Result<()> {
         match &self.appinst {
             Some(appinst) => {
-                if use_psk && self.key_store.get_next_pskid() != None {
-                    return err(StateStoreFailure);
+                if use_psk {
+                    if self.key_store.get_next_pskid() != None {
+                        return err(StateStoreFailure);
+                    }
+                    self.key_pairs.id = pskid.into();
                 }
 
-                if !self.key_store.contains(&pskid.into()) {
+                let identifier = Identifier::from(pskid);
+                if !self.key_store.contains(&identifier) {
                     self.key_store.insert_psk(
-                        pskid.into(),
+                        identifier.clone(),
                         Some(psk),
                         Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
                     )?;
@@ -1026,29 +1029,30 @@ where
     pub fn gen_next_msg_ids(&self, branching: bool) -> Vec<(Identifier, Cursor<Link>)> {
         let mut ids = Vec::new();
 
-        // TODO: Do the same for self.sig_kp.public
+        // TODO: Do the same for self.id.get_sig_kp().public
         for pk_info in self.key_store.iter() {
             Self::gen_next_msg_id(&mut ids, &self.link_gen, pk_info, branching);
         }
         ids
     }
 
-    pub fn store_state(&mut self, id: Identifier, link: <Link as HasLink>::Rel) -> Result<()> {
+    pub fn store_state(&mut self, id: Identifier, _ke_pk: x25519::PublicKey, link: <Link as HasLink>::Rel) -> Result<()> {
         if let Some(cursor) = self.key_store.get(&id) {
             let mut cursor = cursor.clone();
             cursor.link = link;
             cursor.next_seq();
-            self.key_store.insert_cursor(id, cursor)?;
+            match &id {
+                #[cfg(feature = "use-did")]
+                Identifier::DID(_did) => self.key_store.insert_did(id, _ke_pk, cursor)?,
+                _ => self.key_store.insert_cursor(id, cursor)?
+            }
         }
         Ok(())
     }
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
-            self.key_store.insert_cursor(
-                Identifier::EdPubKey(self.sig_kp.public.into()),
-                Cursor::new_at(link.clone(), 0, seq_no),
-            )?;
+            self.store_cursor(self.key_pairs.id, Cursor::new_at(link.clone(), 0, seq_no), None)?;
             for (_pk, cursor) in self.key_store.iter_mut() {
                 cursor.link = link.clone();
                 cursor.seq_no = seq_no;
@@ -1083,6 +1087,18 @@ where
             None => err(UserNotRegistered),
         }
     }
+
+    fn store_cursor(&mut self, id: Identifier, cursor: Cursor<<Link as HasLink>::Rel>, _xkey: Option<x25519::PublicKey>) -> Result<()> {
+        match &id {
+            #[cfg(feature = "use-did")]
+            Identifier::DID(_did) => {
+                let xkey = if _xkey.is_some() { _xkey.unwrap() } else { self.key_pairs.ke_kp.1 };
+                self.key_store.insert_did(id, xkey, cursor)?
+            },
+            _ => self.key_store.insert_cursor(id, cursor)?
+        }
+        Ok(())
+    }
 }
 
 #[async_trait(?Send)]
@@ -1098,7 +1114,7 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(&self.key_pairs.sig_kp.secret.as_bytes()[..]))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1107,6 +1123,13 @@ where
         ctx.absorb(&oneof_appinst)?;
         if let Some(ref appinst) = self.appinst {
             ctx.absorb(<&Fallback<Link>>::from(appinst))?;
+        }
+
+        let oneof_author_id = Uint8(if self.author_id.is_some() { 1 } else { 0 });
+        ctx.absorb(&oneof_author_id)?;
+        if let Some(ref author_id) = self.author_id {
+            author_id.sizeof(ctx).await?;
+            //ctx.absorb(&Bytes(author_sig_pk.to_bytes()))?;
         }
 
         let oneof_author_sig_pk = Uint8(if self.author_sig_pk.is_some() { 1 } else { 0 });
@@ -1134,6 +1157,18 @@ where
             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
+
+            #[cfg(feature = "use-did")]
+                {
+                    // If Identifier is DID type, absorb the storage key for the cursor
+                    if let Identifier::DID(_) = id {
+                        ctx.absorb(Uint8(1))?;
+                        let storage_key = self.key_store.get_ke_pk(id).unwrap();
+                        ctx.absorb(storage_key)?;
+                    } else {
+                        ctx.absorb(Uint8(0))?;
+                    }
+                }
         }
         ctx.commit()?.squeeze(Mac(32))?;
         Ok(ctx)
@@ -1158,7 +1193,7 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(&self.key_pairs.sig_kp.secret.as_bytes()[..]))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1167,6 +1202,13 @@ where
         ctx.absorb(&oneof_appinst)?;
         if let Some(ref appinst) = self.appinst {
             ctx.absorb(<&Fallback<Link>>::from(appinst))?;
+        }
+
+        let oneof_author_id = Uint8(if self.author_id.is_some() { 1 } else { 0 });
+        ctx.absorb(&oneof_author_id)?;
+        if let Some(ref author_id) = self.author_id {
+            author_id.wrap(store, ctx).await?;
+            //ctx.absorb(&Bytes(author_sig_pk.to_bytes()))?;
         }
 
         let oneof_author_sig_pk = Uint8(if self.author_sig_pk.is_some() { 1 } else { 0 });
@@ -1194,6 +1236,17 @@ where
             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.borrow().link))?
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
+            #[cfg(feature = "use-did")]
+            {
+                // If Identifier is DID type, absorb the storage key for the cursor
+                if let Identifier::DID(_) = id {
+                    ctx.absorb(Uint8(1))?;
+                    let storage_key = self.key_store.get_ke_pk(id).unwrap();
+                    ctx.absorb(storage_key)?;
+                } else {
+                    ctx.absorb(Uint8(0))?;
+                }
+            }
         }
         ctx.commit()?.squeeze(Mac(32))?;
         Ok(ctx)
@@ -1223,7 +1276,7 @@ where
         let mut message_encoding = Bytes::new();
         let mut uniform_payload_length = Uint64(0);
         ctx
-            //.absorb(&self.sig_kp.public)
+            //.absorb(&self.id.get_sig_kp().public)
             .mask(&mut sig_sk_bytes)?
             .absorb(&mut flags)?
             .absorb(&mut message_encoding)?
@@ -1237,6 +1290,20 @@ where
             let mut appinst = Link::default();
             ctx.absorb(<&mut Fallback<Link>>::from(&mut appinst))?;
             Some(appinst)
+        } else {
+            None
+        };
+
+        let mut oneof_author_id = Uint8(0);
+        ctx.absorb(&mut oneof_author_id)?.guard(
+            oneof_author_id.0 < 2,
+            AuthorSigPkRecoveryFailure(oneof_author_id.0),
+        )?;
+
+        let author_id = if oneof_author_id.0 == 1 {
+            let mut author_id = Identifier::EdPubKey(Default::default());
+            author_id.unwrap(store, ctx).await?;
+            Some(author_id)
         } else {
             None
         };
@@ -1277,21 +1344,38 @@ where
             let mut seq_no = Uint32(0);
             let (id, ctx) = Identifier::unwrap_new(store, ctx).await?;
             ctx.absorb(&mut link)?.absorb(&mut branch_no)?.absorb(&mut seq_no)?;
-            key_store.insert_cursor(id, Cursor::new_at(link.0, branch_no.0, seq_no.0))?;
+            let cursor = Cursor::new_at(link.0, branch_no.0, seq_no.0);
+
+            #[cfg(feature = "use-did")]
+            {
+                let mut one_of_id_type = Uint8(0);
+                ctx.absorb(&mut one_of_id_type)?;
+                if one_of_id_type.0 == 1 {
+                    let mut store_key = x25519::PublicKey::from([0;32]);
+                    ctx.absorb(&mut store_key)?;
+                    key_store.insert_did(id, store_key, cursor)?;
+                } else {
+                    key_store.insert_cursor(id, cursor)?;
+                }
+            }
+
+            #[cfg(not(feature = "use-did"))]
+            key_store.insert_cursor(id, cursor)?;
         }
 
         ctx.commit()?.squeeze(Mac(32))?;
 
         let sig_sk = ed25519::SecretKey::from_bytes(sig_sk_bytes.as_ref()).unwrap();
         let sig_pk = ed25519::PublicKey::from(&sig_sk);
-        self.sig_kp = ed25519::Keypair {
+        let id = KeyPairs::from(ed25519::Keypair {
             secret: sig_sk,
             public: sig_pk,
-        };
-        self.ke_kp = x25519::keypair_from_ed25519(&self.sig_kp);
+        });
+        self.key_pairs = id;
         self.link_store = link_store;
         self.key_store = key_store;
         self.author_sig_pk = author_sig_pk;
+        self.author_id = author_id;
         if let Some(ref seed) = appinst {
             self.link_gen.reset(seed.clone());
         }
@@ -1404,20 +1488,16 @@ where
     }
 }
 
-pub struct OwnKeys<'a>(&'a ed25519::Keypair, &'a (x25519::StaticSecret, x25519::PublicKey));
+pub struct OwnKeys<'a>(&'a KeyPairs);
 
 impl<'a> Lookup<&Identifier, &'a x25519::StaticSecret> for OwnKeys<'a> {
     fn lookup(&self, id: &Identifier) -> Option<&'a x25519::StaticSecret> {
-        let Self(ed25519::Keypair { public: sig_pk, .. }, (ke_sk, _)) = self;
-        match id.get_pk() {
-            Some(pk_id) => {
-                if sig_pk == pk_id {
-                    Some(ke_sk)
-                } else {
-                    None
-                }
-            }
-            None => None,
+        let Self(KeyPairs {id: self_id, ..}) = self;
+        if id == self_id {
+            let secret = &self.0.ke_kp.0;
+            Some(secret)
+        } else {
+            None
         }
     }
 }

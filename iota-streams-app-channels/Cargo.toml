@@ -14,6 +14,8 @@ default = ["std", "tangle"]
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "hex/std"]
 tangle = ["iota-streams-app/tangle"]
 wasm-client = ["iota-streams-app/wasm-client", "tangle", "std"]
+use-did = ["iota-streams-app/use-did", "tangle"]
+account = ["iota-streams-app/account"]
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }

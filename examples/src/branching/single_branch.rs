@@ -23,9 +23,28 @@ use iota_streams::{
 };
 
 use super::utils;
+use iota_streams::core::iota_identity::crypto::KeyPair;
+use iota_streams::core::iota_identity::iota::{Client as DIDClient, IotaDID};
+use iota_streams::app::id::DIDInfo;
 
-pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, channel_impl, transport.clone());
+pub async fn example<'a, T: 'a + Transport>(keypair: Option<(String, KeyPair, DIDClient)>, transport: T, channel_type: ChannelType, seed: &str) -> Result<()> {
+    let mut author = match keypair {
+        Some((did, keypair, did_client)) => {
+            let (author, _author_keypair) = Author::new_with_did(
+                seed,
+                channel_type,
+                transport.clone(),
+                DIDInfo {
+                    did: Some(IotaDID::parse(did)?),
+                    key_fragment: "streams-key-1".to_string(),
+                    did_client
+                },
+                &keypair
+            ).await?;
+            author
+        },
+        None => Author::new(seed, channel_type, transport.clone())
+    };
     println!("Author multi branching?: {}", author.is_multi_branching());
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
@@ -39,6 +58,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     let announcement_link = {
         let msg = author.send_announce().await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         print!("  Author     : {}", author);
         msg
     };
@@ -94,6 +114,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     let subscribeB_link = {
         let msg = subscriberB.send_subscribe(&announcement_link).await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         print!("  SubscriberB: {}", subscriberB);
         msg
     };
@@ -108,6 +129,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     let previous_msg_link = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
         msg
@@ -129,6 +151,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
         msg
@@ -160,6 +183,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
         msg
@@ -196,6 +220,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
         msg
@@ -207,6 +232,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         panic_if_not(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
         msg
@@ -223,6 +249,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         panic_if_not(seq.is_none());
         print!("  SubscriberB: {}", subscriberB);
         msg
@@ -302,6 +329,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+
         panic_if_not(seq.is_none());
         print!("  Author     : {}", author);
         msg

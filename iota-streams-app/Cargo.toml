@@ -19,6 +19,8 @@ client = ["iota-client/default", "tangle", "std"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
 wasm-client = ["iota-client/wasm", "chrono/wasmbind", "tangle", "std"]
+use-did = ["tangle", "serde"]
+account = ["iota-streams-core/account"]
 sync-parking-lot = ["iota-streams-core/sync-parking-lot"]
 sync-spin = ["iota-streams-core/sync-spin"]
 
@@ -34,8 +36,11 @@ hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
 # Dependencies for "client" feature
+#tokio = {version = "1.1", default-features = false, features = ["rt"], optional = true }
 iota-client = { git = "https://github.com/iotaledger/iota.rs", rev  = "ee19ec4", default-features = false, optional = true }
 num_cpus = { version = "1.10", optional = true }
 
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 cty = { version = "0.2.1" }
+
+serde = { version = "1.0", features = ["derive"], optional = true}

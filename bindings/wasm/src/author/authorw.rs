@@ -16,7 +16,11 @@ use core::cell::RefCell;
 use iota_streams::{
     app::{
         futures::executor::block_on,
-        identifier::Identifier,
+        id::{
+            Identifier,
+            DIDInfo as ApiDIDInfo,
+            create_identity,
+        },
         transport::{
             tangle::client::Client as ApiClient,
             TransportOptions,
@@ -38,6 +42,7 @@ use iota_streams::{
     },
     ddml::types::*,
 };
+use std::convert::TryFrom;
 
 #[wasm_bindgen]
 pub struct Author {
@@ -64,6 +69,37 @@ impl Author {
             client.into_inner(),
         )));
         Author { author }
+    }
+
+    #[wasm_bindgen(catch, js_name = "fromDID")]
+    pub async fn from_did(seed: String, client: StreamsClient, implementation: ChannelType, info: DIDInfo, keypair: DIDKeypair) -> Result<Author> {
+        let did_info = ApiDIDInfo::try_from(info).unwrap();
+        ApiAuthor::new_with_did(
+            &seed,
+            implementation.into(),
+            client.into_inner(),
+            did_info,
+            &keypair.into())
+            .await
+            .map( |author| Author { author: Rc::new(RefCell::new(author.0)) })
+            .into_js_result()
+    }
+
+    #[wasm_bindgen(catch, js_name = "createIdentity")]
+    pub async fn create_identity(url: String, network: DIDNetwork) -> Result<DIDInfoWrapper> {
+
+        create_identity(&url, network.clone().into())
+            .await
+            .map(|(did, keypair, _client)| {
+                let info = DIDInfo::new(
+                    did,
+                    "streams-1".to_string(),
+                    url,
+                    network,
+                );
+                DIDInfoWrapper::new(info, keypair.into())
+            })
+            .into_js_result()
     }
 
     #[wasm_bindgen(catch)]
@@ -95,6 +131,27 @@ impl Author {
             .map(|auth| Author {
                 author: Rc::new(RefCell::new(auth)),
             })
+            .into_js_result()
+    }
+
+    pub async fn recover_with_did(
+        seed: String,
+        implementation: ChannelType,
+        client: StreamsClient,
+        ann_address: Address,
+        info: DIDInfo,
+    ) -> Result<Author> {
+        let did_info = ApiDIDInfo::try_from(info).unwrap();
+        ApiAuthor::recover_with_did(
+            &seed,
+            implementation.into(),
+            ann_address.as_inner(),
+            client.into_inner(),
+            did_info)
+            .await
+            .map( |author|
+                Author { author: Rc::new(RefCell::new(author)) }
+            )
             .into_js_result()
     }
 
@@ -249,12 +306,12 @@ impl Author {
             .borrow_mut()
             .receive_signed_packet(link.as_inner())
             .await
-            .map(|(pk, pub_bytes, masked_bytes)| {
+            .map(|(id, pub_bytes, masked_bytes)| {
                 UserResponse::new(
                     link,
                     None,
                     Some(Message::new(
-                        Some(public_key_to_string(&pk)),
+                        Some(identifier_to_string(&id)),
                         pub_bytes.0,
                         masked_bytes.0,
                     )),

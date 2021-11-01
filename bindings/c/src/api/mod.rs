@@ -1,3 +1,8 @@
+use core::ptr::{
+    null,
+    null_mut,
+};
+
 use iota_streams::{
     app::{
         cstr_core::{
@@ -9,9 +14,9 @@ use iota_streams::{
             size_t,
             uint8_t,
         },
-        identifier::Identifier,
         message::Cursor,
         transport::tangle::MsgId,
+        id::Identifier,
     },
     app_channels::api::{
         psk_from_seed,
@@ -26,11 +31,6 @@ use iota_streams::{
 
 use tokio::runtime::Runtime;
 use once_cell::sync::OnceCell;
-
-use core::ptr::{
-    null,
-    null_mut,
-};
 
 pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
     match channel_type {
@@ -190,9 +190,9 @@ pub unsafe extern "C" fn transport_client_new_from_url(c_url: *const c_char) -> 
 
 #[cfg(feature = "client")]
 mod client_details {
-    use super::*;
     use iota_streams::app::transport::{
         tangle::client::{
+            Details as ApiDetails,
             iota_client::{
                 bee_rest_api::types::{
                     dtos::LedgerInclusionStateDto,
@@ -200,10 +200,11 @@ mod client_details {
                 },
                 MilestoneResponse,
             },
-            Details as ApiDetails,
         },
         TransportDetails as _,
     };
+
+    use super::*;
 
     #[repr(C)]
     pub struct TransportDetails {
@@ -613,7 +614,7 @@ fn handle_message_contents(m: &UnwrappedMessage) -> PacketPayloads {
         } => (p, m).into(),
 
         MessageContent::SignedPacket {
-            pk: _,
+            id: _,
             public_payload: p,
             masked_payload: m,
         } => (p, m).into(),
@@ -623,8 +624,7 @@ fn handle_message_contents(m: &UnwrappedMessage) -> PacketPayloads {
 }
 
 mod auth;
-pub use auth::*;
-
 mod sub;
 pub use sub::*;
+pub use auth::*;
 use core::future::Future;

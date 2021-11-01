@@ -53,14 +53,17 @@
 use crate::Lookup;
 
 use core::convert::TryFrom;
+
 use iota_streams_app::{
-    identifier::Identifier,
     message::{
         self,
         ContentUnwrapNew,
+        ContentSign,
+        ContentVerify,
         HasLink,
     },
 };
+
 use iota_streams_core::{
     async_trait,
     prelude::{
@@ -78,10 +81,7 @@ use iota_streams_core::{
     Result,
     WrappedError,
 };
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -91,25 +91,30 @@ use iota_streams_ddml::{
     },
     types::*,
 };
+use iota_streams_app::id::{
+    identifier::Identifier,
+    KeyPairs,
+};
 
-pub struct ContentWrap<'a, F, Link>
+pub struct ContentWrap<'a, F, Link, Keys>
 where
     Link: HasLink,
 {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub nonce: NBytes<U16>,
     pub key: NBytes<U32>,
-    pub(crate) keys: Vec<(&'a Identifier, Vec<u8>)>,
-    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) keys: Keys,
+    pub(crate) key_pair: &'a KeyPairs,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
+impl<'a, F, Link, Keys> message::ContentSizeof<F> for ContentWrap<'a, F, Link, Keys>
 where
     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Keys: Clone + ExactSizeIterator<Item = (&'a Identifier, Vec<u8>)>,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -120,17 +125,22 @@ where
         {
             ctx.absorb(repeated_keys)?;
             // Loop through provided identifiers, masking the shared key for each one
-            for key_pair in self.keys.clone().into_iter() {
-                let (id, store_id) = key_pair;
+            for (id, store_id) in self.keys.clone().into_iter() {
+                let store_id: &[u8] = &store_id;
                 let ctx = id.sizeof(ctx).await?;
                 // fork in order to skip the actual keyload data which may be unavailable to all recipients
                 {
                     match &id {
                         Identifier::PskId(_pskid) => ctx
-                            .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(&store_id))))?
+                            .absorb(External(<&NBytes<psk::PskSize>>::from(store_id)))?
                             .commit()?
                             .mask(&self.key)?,
-                        Identifier::EdPubKey(_pk) => match <[u8; 32]>::try_from(store_id.as_ref()) {
+                        Identifier::EdPubKey(_pk) => match <[u8; 32]>::try_from(store_id) {
+                            Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &self.key)?,
+                            Err(e) => return Err(wrapped_err(BadIdentifier, WrappedError(e))),
+                        },
+                        #[cfg(feature = "use-did")]
+                        Identifier::DID(_id) => match <[u8; 32]>::try_from(store_id) {
                             Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &self.key)?,
                             Err(e) => return Err(wrapped_err(BadIdentifier, WrappedError(e))),
                         },
@@ -141,19 +151,20 @@ where
 
         ctx.absorb(External(&self.key))?;
         // Fork for signing
-        ctx.ed25519(self.sig_kp, HashSig)?;
+        let ctx = self.key_pair.sizeof(ctx).await?;
         ctx.commit()?;
         Ok(ctx)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+impl<'a, F, Link, Store, Keys> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link, Keys>
 where
     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
     Link: HasLink,
     <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
     Store: LinkStore<F, <Link as HasLink>::Rel>,
+    Keys: Clone + ExactSizeIterator<Item = (&'a Identifier, Vec<u8>)>,
 {
     async fn wrap<'c, OS: io::OStream>(
         &self,
@@ -169,8 +180,8 @@ where
         {
             ctx.absorb(repeated_keys)?;
             // Loop through provided identifiers, masking the shared key for each one
-            for key_pair in self.keys.clone().into_iter() {
-                let (id, store_id) = key_pair;
+            for (id, store_id) in self.keys.clone().into_iter() {
+                let store_id: &[u8] = &store_id;
                 let ctx = id.wrap(store, ctx).await?;
 
                 // fork in order to skip the actual keyload data which may be unavailable to all recipients
@@ -178,10 +189,15 @@ where
                 {
                     match &id {
                         Identifier::PskId(_pskid) => ctx
-                            .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(&store_id))))?
+                            .absorb(External(<&NBytes<psk::PskSize>>::from(store_id)))?
                             .commit()?
                             .mask(&self.key)?,
-                        Identifier::EdPubKey(_pk) => match <[u8; 32]>::try_from(store_id.as_ref()) {
+                        Identifier::EdPubKey(_pk) => match <[u8; 32]>::try_from(store_id) {
+                            Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &self.key)?,
+                            Err(e) => return Err(wrapped_err(BadIdentifier, WrappedError(e))),
+                        },
+                        #[cfg(feature = "use-did")]
+                        Identifier::DID(_id) => match <[u8; 32]>::try_from(store_id) {
                             Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &self.key)?,
                             Err(e) => return Err(wrapped_err(BadIdentifier, WrappedError(e))),
                         },
@@ -196,7 +212,7 @@ where
         ctx.absorb(External(&self.key))?;
         // Fork the context to sign
         let signature_fork = ctx.spongos.fork();
-        ctx.absorb(&id_hash)?.ed25519(self.sig_kp, HashSig)?;
+        let ctx = self.key_pair.sign(ctx.absorb(&id_hash)?).await?;
         ctx.spongos = signature_fork;
         ctx.commit()?;
         Ok(ctx)
@@ -213,7 +229,7 @@ where
     pub(crate) ke_sk_store: KeSkStore,
     pub(crate) key_ids: Vec<Identifier>,
     pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
-    pub(crate) sig_pk: &'a ed25519::PublicKey,
+    pub(crate) id: &'a Identifier,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -223,7 +239,7 @@ where
     Link: HasLink,
     Link::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, sig_pk: &'a ed25519::PublicKey) -> Self {
+    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, id: &'a Identifier) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NBytes::default(),
@@ -231,7 +247,7 @@ where
             ke_sk_store,
             key_ids: Vec::new(),
             key: None,
-            sig_pk,
+            id,
             _phantom: core::marker::PhantomData,
         }
     }
@@ -256,10 +272,11 @@ where
     where
         IS: io::IStream,
     {
+        let key_pair = KeyPairs::new_from_id(*self.id).await?;
         let mut id_hash = External(NBytes::<U64>::default());
         let mut repeated_keys = Size(0);
-        ctx.join(store, &mut self.link)?.absorb(&mut self.nonce)?;
 
+        ctx.join(store, &mut self.link)?.absorb(&mut self.nonce)?;
         // Fork to recover identifiers
         {
             let saved_fork = ctx.spongos.fork();
@@ -303,6 +320,21 @@ where
                                 ctx.drop(n)?;
                             }
                         }
+                        #[cfg(feature = "use-did")]
+                        Identifier::DID(_did) => {
+                            if let Some(ke_sk) = self.ke_sk_store.lookup(&id) {
+                                let mut key = NBytes::<U32>::default();
+                                ctx.x25519(ke_sk, &mut key)?;
+                                self.key = Some(key);
+                                self.key_ids.push(id);
+                            } else {
+                                self.key_ids.push(id);
+
+                                // Just drop the rest of the forked message so not to waste Spongos operations
+                                let n = Size(64);
+                                ctx.drop(n)?;
+                            }
+                        }
                     }
                     ctx.spongos = internal_fork;
                 }
@@ -313,10 +345,9 @@ where
 
         if let Some(ref key) = self.key {
             ctx.absorb(External(key))?;
-
             // Fork for signature verification
             let signature_fork = ctx.spongos.fork();
-            ctx.absorb(&id_hash)?.ed25519(self.sig_pk, HashSig)?;
+            let ctx = key_pair.verify(ctx.absorb(&id_hash)?).await?;
             ctx.spongos = signature_fork;
             ctx.commit()
         } else {

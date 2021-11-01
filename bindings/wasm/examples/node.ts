@@ -20,8 +20,17 @@ async function main() {
         .node(node)
         .build();
     let seed = make_seed(81);
-    let auth = streams.Author.fromClient(streams.StreamsClient.fromClient(client), seed, streams.ChannelType.SingleBranch);
 
+    // Generate a DID to use with the stream
+    let did_info_wrapper = await streams.Author.createIdentity(node, streams.DIDNetwork.Mainnet);
+    // Make an author using this DID
+    let auth = await streams.Author.fromDID(
+        seed,
+        streams.StreamsClient.fromClient(client),
+        streams.ChannelType.SingleBranch,
+        did_info_wrapper.info,
+        did_info_wrapper.keypair
+    );
     console.log("channel address: ", auth.channel_address());
     console.log("multi branching: ", auth.is_multi_branching());
     console.log("IOTA client info:", await client.getInfo());
@@ -147,8 +156,14 @@ async function main() {
     }
 
     console.log("\nRecovering without state import");
-    let auth3 = await streams.Author.recover(seed, ann_link.copy(), streams.ChannelType.SingleBranch, options.clone());
-    if (auth3.channel_address !== auth.channel_address) {
+    let client3 = new streams.StreamsClient(node, options.clone());
+    let auth3 = await streams.Author.recover_with_did(
+        seed,
+        streams.ChannelType.SingleBranch,
+        client3,
+        ann_link.copy(),
+        did_info_wrapper.info
+    );    if (auth3.channel_address !== auth.channel_address) {
         console.log("recovery failed")
     } else {
         console.log("recovery succesfull")

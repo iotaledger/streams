@@ -24,7 +24,7 @@ use iota_streams_ddml::{
 };
 
 use super::*;
-use crate::identifier::Identifier;
+use crate::id::identifier::Identifier;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
@@ -257,7 +257,7 @@ where
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
-        _store: &Store,
+        store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         let mut content_type_and_payload_length = NBytes::<U2>::default();
@@ -295,7 +295,7 @@ where
             .absorb(&mut self.previous_msg_link)?
             .skip(&mut self.seq_num)?;
 
-        let (id, ctx) = Identifier::unwrap_new(_store, ctx).await?;
+        let (id, ctx) = Identifier::unwrap_new(store, ctx).await?;
         self.sender_id = id;
 
         Ok(ctx)

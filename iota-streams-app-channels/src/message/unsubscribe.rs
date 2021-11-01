@@ -21,10 +21,7 @@
 //!
 //! * `sig` -- message signature generated with the senders private key.
 
-use iota_streams_app::message::{
-    self,
-    HasLink,
-};
+use iota_streams_app::message::{self, HasLink, ContentSign, ContentVerify};
 use iota_streams_core::{
     async_trait,
     prelude::Box,
@@ -41,10 +38,11 @@ use iota_streams_ddml::{
     },
     types::*,
 };
+use iota_streams_app::id::{KeyPairs, Identifier};
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) kp: &'a KeyPairs,
     pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
@@ -57,10 +55,10 @@ where
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        ctx.join(&store, self.link)?
-            .absorb(&self.sig_kp.public)?
-            .commit()?
-            .ed25519(self.sig_kp, HashSig)?;
+        ctx.join(&store, self.link)?;
+        let mut ctx = self.kp.id.sizeof(ctx).await?
+            .commit()?;
+        ctx = self.kp.sizeof(ctx).await?;
         Ok(ctx)
     }
 }
@@ -78,10 +76,10 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?
-            .absorb(&self.sig_kp.public)?
-            .commit()?
-            .ed25519(self.sig_kp, HashSig)?;
+        ctx.join(store, self.link)?;
+        let mut ctx = self.kp.id.wrap(store, ctx).await?
+            .commit()?;
+        ctx = self.kp.sign(ctx).await?;
         Ok(ctx)
     }
 }
@@ -89,7 +87,7 @@ where
 #[derive(Default)]
 pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) sig_pk: ed25519::PublicKey,
+    pub(crate) kp: KeyPairs,
     _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
@@ -106,10 +104,12 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.join(store, &mut self.link)?
-            .absorb(&mut self.sig_pk)?
-            .commit()?
-            .ed25519(&self.sig_pk, HashSig)?;
+        let mut id = Identifier::EdPubKey(ed25519::PublicKey::default().into());
+        ctx.join(store, &mut self.link)?;
+        let ctx = id.unwrap(store, ctx).await?
+            .commit()?;
+        self.kp = KeyPairs::new_from_id(id).await?;
+        self.kp.verify(ctx).await?;
         Ok(ctx)
     }
 }

@@ -9,11 +9,14 @@ keywords = ["iota", "streams", "core"]
 description = "A rust implementation of the IOTA Streams core utils"
 
 [features]
-default = ["std"]
+default = ["std", "use-did"]
 # enable std
 std = ["rand/std", "digest/std", "hex/std"]
 err-location-log = []
+use-did = ["identity"]
+account = ["identity/account", "use-did"]
 sync-spin = ["spin"]
+did-wasm = ["identity/wasm", "use-did"]
 sync-parking-lot = ["parking_lot"]
 
 [dependencies]
@@ -32,7 +35,11 @@ spin = { version = "0.9.2", default-features = false, features = ["mutex", "spin
 displaydoc = { version = "0.2", default-features = false, optional = false }
 
 iota-crypto = { git = "https://github.com/iotaledger/crypto.rs", features = ["blake2b"], branch = "dev" }
+#identity = { git = "https://github.com/iotaledger/identity.rs", branch = "dev", default-features = false, features = ["wasm"], optional = true }
+identity = { path = "../../identity.rs/identity", default-features = false, optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["console"] }

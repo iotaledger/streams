@@ -7,7 +7,7 @@ use iota_streams_core::{
 use iota_streams_core_edsig::signature::ed25519;
 
 use super::hdf::HDF;
-use crate::identifier::Identifier;
+use crate::id::identifier::Identifier;
 use iota_streams_ddml::types::Bytes;
 
 /// Type of "absolute" links. For http it's the absolute URL.

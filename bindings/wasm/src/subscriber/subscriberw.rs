@@ -14,6 +14,7 @@ use iota_streams::{
             tangle::client::Client as ApiClient,
             TransportOptions,
         },
+        id::DIDInfo as ApiDIDInfo,
     },
     app_channels::api::{
         psk_from_seed,
@@ -32,6 +33,8 @@ use iota_streams::{
     },
     ddml::types::*,
 };
+use std::convert::TryFrom;
+
 
 #[wasm_bindgen]
 pub struct Subscriber {
@@ -50,6 +53,19 @@ impl Subscriber {
         Subscriber { subscriber }
     }
 
+    #[wasm_bindgen(catch, js_name = "fromDID")]
+    pub async fn from_did(seed: String, client: StreamsClient, info: DIDInfo, keypair: DIDKeypair) -> Result<Subscriber> {
+        let did_info = ApiDIDInfo::try_from(info).unwrap();
+        ApiSubscriber::new_with_did(
+            &seed,
+            client.into_inner(),
+            did_info,
+            &keypair.into())
+            .await
+            .map( |author| Subscriber { subscriber: Rc::new(RefCell::new(author.0)) })
+            .into_js_result()
+    }
+
     #[wasm_bindgen(catch, js_name = "fromClient")]
     pub fn from_client(client: StreamsClient, seed: String) -> Subscriber {
         let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.into_inner())));
@@ -62,6 +78,24 @@ impl Subscriber {
             .map(|v| Subscriber {
                 subscriber: Rc::new(RefCell::new(v)),
             })
+            .into_js_result()
+    }
+
+    pub async fn recover_with_did(
+        seed: String,
+        client: StreamsClient,
+        ann_address: Address,
+        info: DIDInfo,
+    ) -> Result<Subscriber> {
+        let did_info = ApiDIDInfo::try_from(info).unwrap();
+        ApiSubscriber::recover_with_did(
+            &seed,
+            ChannelType::SingleBranch.into(),
+            ann_address.as_inner(),
+            client.into_inner(),
+            did_info)
+            .await
+            .map( |subscriber| Subscriber { subscriber: Rc::new(RefCell::new(subscriber)) })
             .into_js_result()
     }
 
@@ -175,12 +209,12 @@ impl Subscriber {
             .borrow_mut()
             .receive_signed_packet(link.as_inner())
             .await
-            .map(|(pk, pub_bytes, masked_bytes)| {
+            .map(|(id, pub_bytes, masked_bytes)| {
                 UserResponse::new(
                     link,
                     None,
                     Some(Message::new(
-                        Some(public_key_to_string(&pk)),
+                        Some(identifier_to_string(&id)),
                         pub_bytes.0,
                         masked_bytes.0,
                     )),

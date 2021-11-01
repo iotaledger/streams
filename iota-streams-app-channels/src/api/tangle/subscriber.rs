@@ -13,7 +13,7 @@ use crate::api::tangle::{
     User,
 };
 
-use iota_streams_app::identifier::Identifier;
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     prelude::{
         String,
@@ -25,7 +25,16 @@ use iota_streams_core::{
     },
     Errors::SingleDepthOperationFailure,
 };
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_core_edsig::{
+    signature::ed25519,
+    key_exchange::x25519,
+};
+#[cfg(all(feature = "account", feature = "use-did"))]
+use iota_streams_core::iota_identity::account::Account;
+#[cfg(feature = "use-did")]
+use iota_streams_app::id::DIDInfo;
+#[cfg(feature = "use-did")]
+use iota_streams_core::iota_identity::crypto::KeyPair;
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
@@ -109,11 +118,12 @@ impl<Trans> Subscriber<Trans> {
     /// [Used for multi-branching sequence state updates]
     ///
     ///   # Arguments
-    ///   * `pk` - ed25519 Public Key of the sender of the message
+    ///   * `id` - Identifier of the sender of the message
+    ///   * `ke_pk` - x25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
-    pub fn store_state(&mut self, id: Identifier, link: &Address) -> Result<()> {
+    pub fn store_state(&mut self, id: Identifier, ke_pk: x25519::PublicKey, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(id, link)
+        self.user.store_state(id, ke_pk, link)
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -174,7 +184,40 @@ impl<Trans> Subscriber<Trans> {
     }
 }
 
+#[cfg(feature = "use-did")]
+impl<Trans: Transport + Clone> Subscriber <Trans> {
+    #[cfg(feature = "account")]
+    pub async fn new_with_account(account: Account, transport: Trans, did_info: DIDInfo) -> Result<Self> {
+        let user = User::new_with_account(account, SingleBranch, transport, did_info).await?;
+        Ok(Self { user })
+    }
+
+    pub async fn new_with_did(seed: &str, transport: Trans, did_info: DIDInfo, did_keypair: &KeyPair) -> Result<(Self, ed25519::Keypair)> {
+        let (user, user_keypair) = User::new_with_did(
+            seed,
+            SingleBranch,
+            transport,
+            did_info,
+            did_keypair
+        ).await?;
+        Ok((Self { user }, user_keypair))
+    }
+}
+
 impl<Trans: Transport + Clone> Subscriber<Trans> {
+    #[cfg(feature = "use-did")]
+    pub async fn recover_with_did(
+        seed: &str,
+        channel_type: ChannelType,
+        announcement: &Address,
+        transport: Trans,
+        did_info: DIDInfo,
+    ) -> Result<Self> {
+        let mut subscriber = User::recover_with_did(seed, channel_type, transport, did_info).await?;
+        subscriber.transport.recv_message(announcement).await?;
+        Ok( Self { user: subscriber })
+    }
+
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments
@@ -249,7 +292,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
+    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
         self.user.receive_signed_packet(link).await
     }
 
@@ -338,7 +381,7 @@ impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.user.user.sig_kp.public.as_bytes()),
+            hex::encode(&self.user.user.key_pairs.id.to_bytes()),
             self.user.user.key_store
         )
     }

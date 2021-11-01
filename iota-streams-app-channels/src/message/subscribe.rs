@@ -39,10 +39,7 @@
 //! Note, the `unsubscribe_key` is masked and verified in the `x25519` operation and
 //! thus is not additionally `absorb`ed in this message.
 
-use iota_streams_app::message::{
-    self,
-    HasLink,
-};
+use iota_streams_app::message::{self, HasLink, ContentSign, ContentVerify};
 use iota_streams_core::{
     async_trait,
     prelude::Box,
@@ -65,11 +62,12 @@ use iota_streams_ddml::{
     },
     types::*,
 };
+use iota_streams_app::id::{KeyPairs, Identifier};
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
-    pub(crate) subscriber_sig_kp: &'a ed25519::Keypair,
+    pub(crate) subscriber_id: &'a KeyPairs,
     pub(crate) author_ke_pk: &'a x25519::PublicKey,
     pub(crate) _phantom: core::marker::PhantomData<(Link, F)>,
 }
@@ -85,8 +83,9 @@ where
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?
-            .mask(&self.subscriber_sig_kp.public)?
-            .ed25519(self.subscriber_sig_kp, HashSig)?;
+            .mask(&self.subscriber_id.sig_kp.public)?;
+        let mut ctx = self.subscriber_id.id.sizeof(ctx).await?;
+        ctx = self.subscriber_id.sizeof(ctx).await?;
         Ok(ctx)
     }
 }
@@ -106,17 +105,19 @@ where
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?
-            .mask(&self.subscriber_sig_kp.public)?
-            .ed25519(self.subscriber_sig_kp, HashSig)?;
+            .mask(&self.subscriber_id.sig_kp.public)?;
+        let mut ctx = self.subscriber_id.id.wrap(store, ctx).await?;
+        ctx = self.subscriber_id.sign(ctx).await?;
         Ok(ctx)
     }
 }
 
 pub struct ContentUnwrap<'a, F, Link: HasLink> {
+    author_id: &'a KeyPairs,
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
     pub subscriber_sig_pk: ed25519::PublicKey,
-    author_ke_sk: &'a x25519::StaticSecret,
+    pub subscriber_id: Identifier,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -126,13 +127,15 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Result<Self> {
+    pub fn new(author_id: &'a KeyPairs) -> Result<Self> {
+
         match ed25519::PublicKey::from_bytes(&[0_u8; ed25519::PUBLIC_KEY_LENGTH]) {
             Ok(pk) => Ok(Self {
+                author_id,
                 link: <<Link as HasLink>::Rel as Default>::default(),
                 unsubscribe_key: NBytes::<U32>::default(),
                 subscriber_sig_pk: pk,
-                author_ke_sk,
+                subscriber_id: Identifier::EdPubKey(pk.into()),
                 _phantom: core::marker::PhantomData,
             }),
             Err(e) => Err(wrapped_err!(MessageCreationFailure, WrappedError(e))),
@@ -154,9 +157,13 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
-            .x25519(self.author_ke_sk, &mut self.unsubscribe_key)?
-            .mask(&mut self.subscriber_sig_pk)?
-            .ed25519(&self.subscriber_sig_pk, HashSig)?;
+            .x25519(&self.author_id.ke_kp.0, &mut self.unsubscribe_key)?
+            .mask(&mut self.subscriber_sig_pk)?;
+        let mut ctx = self.subscriber_id.unwrap(store, ctx).await?;
+        let sub_kp = KeyPairs::new_from_id(self.subscriber_id.clone()).await?;
+        ctx = sub_kp.verify(ctx).await?;
+        //    .mask(&mut self.subscriber_sig_pk)?
+        //    .ed25519(&self.subscriber_sig_pk, HashSig)?;
         Ok(ctx)
     }
 }

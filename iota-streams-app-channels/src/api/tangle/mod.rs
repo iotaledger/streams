@@ -96,7 +96,7 @@ pub enum MessageContent {
     Announce,
     Keyload,
     SignedPacket {
-        pk: PublicKey,
+        id: Identifier,
         public_payload: Bytes,
         masked_payload: Bytes,
     },
@@ -119,9 +119,9 @@ impl MessageContent {
         Self::Keyload
     }
 
-    pub fn new_signed_packet(pk: PublicKey, public_payload: Bytes, masked_payload: Bytes) -> Self {
+    pub fn new_signed_packet(id: Identifier, public_payload: Bytes, masked_payload: Bytes) -> Self {
         Self::SignedPacket {
-            pk,
+            id,
             public_payload,
             masked_payload,
         }
@@ -156,5 +156,6 @@ pub use author::Author;
 mod subscriber;
 /// Tangle-specific Channel Subscriber type.
 pub use subscriber::Subscriber;
+use iota_streams_app::id::Identifier;
 
 pub mod test;

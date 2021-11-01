@@ -131,7 +131,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     assert_eq!(unwrapped.len(), 10);
     for msg in unwrapped {
         if let MessageContent::SignedPacket {
-            pk: _,
+            id: _,
             public_payload: _,
             masked_payload,
         } = &msg.body
@@ -150,7 +150,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     println!("\nSubscriber B fetching 4th message");
     let msg = subscriberB.receive_msg_by_sequence_number(&anchor_msg_link, 4).await?;
     if let MessageContent::SignedPacket {
-        pk: _,
+        id: _,
         public_payload: _,
         masked_payload,
     } = &msg.body

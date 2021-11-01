@@ -134,6 +134,8 @@ pub enum Errors {
     MessageCreationFailure,
     /// Identifier could not be generated with given bytes. Must be an ed25519 Public Key or a PskId
     IdentifierGenerationFailure,
+    /// Identifier type is not supported for this operation
+    UnsupportedIdentifier,
 
     //////////
     // Users
@@ -162,6 +164,16 @@ pub enum Errors {
     SingleDepthOperationFailure,
     /// Operation only available on single depth channels
     ChannelNotSingleDepth,
+    /// DID not present
+    DIDMissing,
+    /// DID Document failed to update method
+    DocumentUpdateFailure,
+    /// Failed to retrieve an Identity Id from account
+    DIDRetrievalFailure,
+    /// Failed to retrieve DID info from user KeyPair
+    DIDInfoRetrievalFailure,
+    /// Failed to set DID
+    DIDSetFailure,
     /// Message '{0}' does not have a previous message
     NoPreviousMessage(String),
 

@@ -1,10 +1,9 @@
-use iota_streams_core::Result;
-
 use super::*;
 use iota_streams_core::{
     sponge::prp::PRP,
     try_or,
     Errors::OutputStreamNotFullyConsumed,
+    Result,
 };
 use iota_streams_ddml::{
     command::{

@@ -9,8 +9,8 @@
 //! # Channel Application
 //! Channel Application has evolved from previous versions of Streams. There are two
 //! roles: Author and Subscriber. Author is a channel instance owner capable of
-//! proving her identity by signing messages. Subscribers in this sense are anonymous
-//! as their public identity (Ed25519 public key) are not revealed publicly.
+//! proving her id by signing messages. Subscribers in this sense are anonymous
+//! as their public id (Ed25519 public key) are not revealed publicly.
 //! Author can share session key information (Keyload) with a set of Subscribers.
 //! Author as well as allowed Subscribers can then interact privately and securely.
 //!
@@ -32,7 +32,13 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
-pub mod identifier;
+pub use cstr_core;
+pub use cty;
+
+
+
+/// Streams Identity and Identifier definitions
+pub mod id;
 
 /// Streams Message definitions and utils for wrapping/unwrapping.
 pub mod message;
@@ -40,8 +46,6 @@ pub mod message;
 /// Transport-related abstractions.
 pub mod transport;
 
-pub use cstr_core;
-pub use cty;
 #[cfg(feature = "tangle")]
 pub use futures;
 // pub trait TrustProvider<PublicKey> {

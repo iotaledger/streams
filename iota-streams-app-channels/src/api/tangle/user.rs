@@ -1,17 +1,20 @@
 use iota_streams_app::{
-    identifier::Identifier,
     message::{
         HasLink as _,
         LinkGenerator,
     },
+    id::{
+        identifier::Identifier,
+        keys::KeyPairs,
+    }
 };
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_core::{
     err,
     prelude::{
         ToString,
         Vec,
     },
-    prng,
     psk::{
         Psk,
         PskId,
@@ -28,10 +31,26 @@ use iota_streams_core::{
     Result,
 };
 
-use super::*;
 use crate::{
     api,
     message,
+};
+
+use super::*;
+
+#[cfg(all(feature = "account", feature = "use-did"))]
+use iota_streams_core::iota_identity::account::Account;
+
+#[cfg(feature = "use-did")]
+use iota_streams_app::{
+    id::DIDInfo,
+    futures::executor::block_on,
+};
+
+#[cfg(feature = "use-did")]
+use iota_streams_core::{
+    iota_identity::crypto::KeyPair as DIDKeyPair,
+    Errors::DIDMissing,
 };
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
@@ -53,10 +72,19 @@ impl<Trans> User<Trans> {
     /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
     pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
+        #[cfg(not(feature = "use-did"))]
+        let id = KeyPairs::new::<DefaultF>(seed);
+
+        #[cfg(feature = "use-did")]
+        let id = {
+            let mut kp = KeyPairs::new::<DefaultF>(seed);
+            // Make default did info wrapper to allow user to verify DID based user signatures
+            block_on(kp.make_default_did_info()).unwrap();
+            kp
+        };
+
         let user = UserImp::gen(
-            prng::from_seed("IOTA Streams Channels user sig keypair", seed),
-            nonce,
+            id,
             channel_type,
             ENCODING.as_bytes().to_vec(),
             PAYLOAD_LENGTH,
@@ -97,7 +125,7 @@ impl<Trans> User<Trans> {
 
     /// Fetch the user ed25519 public key
     pub fn get_public_key(&self) -> &PublicKey {
-        &self.user.sig_kp.public
+        &self.user.key_pairs.sig_kp.public
     }
 
     pub fn is_registered(&self) -> bool {
@@ -106,7 +134,7 @@ impl<Trans> User<Trans> {
 
     pub fn unregister(&mut self) {
         self.user.appinst = None;
-        self.user.author_sig_pk = None;
+        self.user.author_id = None;
     }
 
     // Utility
@@ -118,9 +146,9 @@ impl<Trans> User<Trans> {
     ///   # Arguments
     ///   * `pk` - ed25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
-    pub fn store_state(&mut self, id: Identifier, link: &Address) -> Result<()> {
+    pub fn store_state(&mut self, id: Identifier, ke_pk: x25519::PublicKey, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(id, link.msgid)
+        self.user.store_state(id, ke_pk, link.msgid.clone())
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
@@ -209,7 +237,7 @@ impl<Trans> User<Trans> {
     ///   # Arguments
     ///   * `pk` - ed25519 public key of known subscriber
     pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
-        self.user.remove_subscriber(pk)
+        self.user.remove_subscriber(pk.into())
     }
 
     /// Consume a binary sequence message and return the derived message link
@@ -220,6 +248,106 @@ impl<Trans> User<Trans> {
             Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
         );
         Ok(msg_link)
+    }
+}
+
+#[cfg(feature = "use-did")]
+impl<Trans: Transport + Clone> User<Trans> {
+    #[cfg(feature = "account")]
+    /// Creates a new User from an existing Identity (DID) Account
+    ///
+    /// # Arguments
+    /// * `account` - DID Account Structure
+    /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
+    /// * `transport` - Transport object used for sending and receiving
+    /// * `did_info` - DID Information wrapper, containing the relevant details and client for DID's
+    pub async fn new_with_account(
+        account: Account,
+        channel_type: ChannelType,
+        transport: Trans,
+        did_info: DIDInfo,
+    ) -> Result<Self> {
+        let id = KeyPairs::new_from_account(
+            account,
+            did_info.key_fragment,
+            did_info.client
+        ).await?;
+
+        let user = UserImp::gen(
+            id,
+            channel_type,
+            ENCODING.as_bytes().to_vec(),
+            PAYLOAD_LENGTH,
+        );
+        Ok(Self { user, transport})
+    }
+
+    /// Creates a new User from an existing Identity (DID)
+    ///
+    /// # Arguments
+    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
+    /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
+    /// * `transport` - Transport object used for sending and receiving
+    /// * `did_info` - DID Information wrapper, containing the relevant details and client for DID's
+    /// * `keypair` - DID authentication keypair to verify ownership and update document
+    pub async fn new_with_did(
+        seed: &str,
+        channel_type: ChannelType,
+        transport: Trans,
+        did_info: DIDInfo,
+        keypair: &DIDKeyPair,
+    ) -> Result<(Self, ed25519::Keypair)> {
+        match did_info.did {
+            Some(did) => {
+                let id = KeyPairs::new_from_did::<DefaultF>(
+                    seed,
+                    did_info.did_client,
+                    did.into_string(),
+                    did_info.key_fragment,
+                    keypair
+                ).await?;
+
+                let kp = id.sig_kp.to_bytes();
+                let user = UserImp::gen(
+                    id,
+                    channel_type,
+                    ENCODING.as_bytes().to_vec(),
+                    PAYLOAD_LENGTH,
+                );
+                Ok((Self { user, transport}, ed25519::Keypair::from_bytes(&kp)?))
+            },
+            None => err!(DIDMissing)
+        }
+
+    }
+
+    /// Recover a User instance from an existing DID Document method
+    ///
+    /// # Arguments
+    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
+    /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
+    /// * `transport` - Transport object used for sending and receiving
+    /// * `did_info` - DID Information wrapper, containing the relevant details and client for DID's
+    pub async fn recover_with_did(
+        seed: &str,
+        channel_type: ChannelType,
+        transport: Trans,
+        did_info: DIDInfo,
+    ) -> Result<Self> {
+        match &did_info.did {
+            Some(_did) => {
+                let id = KeyPairs::new_from_info::<DefaultF>(seed, did_info).await?;
+                let user = UserImp::gen(
+                    id,
+                    channel_type,
+                    ENCODING.as_bytes().to_vec(),
+                    PAYLOAD_LENGTH,
+                );
+                Ok(Self { user, transport})
+            },
+            None => err!(DIDMissing)
+        }
+
     }
 }
 
@@ -234,8 +362,8 @@ impl<Trans: Transport + Clone> User<Trans> {
             WrappedSequence::MultiBranch(
                 cursor,
                 WrappedMessage {
-                    message,
                     wrapped: wrapped_state,
+                    message,
                 },
             ) => {
                 self.transport.send_message(&Message::new(message)).await?;
@@ -271,7 +399,6 @@ impl<Trans: Transport + Clone> User<Trans> {
         ref_link: &MsgId,
         info: MsgInfo,
     ) -> Result<(Address, Option<Address>)> {
-        // Send & commit original message
         self.transport.send_message(&Message::new(msg.message)).await?;
         let msg_link = self.commit_wrapped(msg.wrapped, info)?;
 
@@ -304,8 +431,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.sign_packet(link_to, public_payload, masked_payload).await?;
-        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
-            .await
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket).await
     }
 
     /// Create and send a tagged packet [Author, Subscriber].
@@ -321,8 +447,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.tag_packet(link_to, public_payload, masked_payload).await?;
-        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
-            .await
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket).await
     }
 
     /// Create and send a new keyload for a list of subscribers [Author].
@@ -394,7 +519,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(PublicKey, Bytes, Bytes)> {
+    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
         // TODO: msg.timestamp is lost
         let m = self
@@ -410,10 +535,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link` - Address of the message to be processed
     pub async fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
-        let m = self
-            .user
-            .handle_tagged_packet(msg.binary, MsgInfo::TaggedPacket)
-            .await?;
+        let m = self.user.handle_tagged_packet(msg.binary, MsgInfo::TaggedPacket).await?;
         Ok(m.body)
     }
 
@@ -461,7 +583,6 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
-    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     pub async fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
         self.handle_message(msg, true).await
@@ -508,6 +629,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     }
 
     /// Retrieves a specified number of previous messages from an original specified messsage link [Author, Subscriber]
+    ///
     /// # Arguments
     /// * `link` - Address of message to act as root of previous message fetching
     /// * `max` - The number of msgs to try and parse
@@ -530,7 +652,6 @@ impl<Trans: Transport + Clone> User<Trans> {
             let unwrapped = self.handle_message(msg, false).await?;
             msgs.push(unwrapped);
         }
-
         Ok(msgs)
     }
 
@@ -538,7 +659,8 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// content type [Author, Subscriber].
     ///
     /// # Arguments
-    /// * `msg` - Binary message of unknown type
+    /// * `msg0` - Binary message of unknown type
+    /// * `store` - Boolean informing state whether to store sequencing data or not
     pub async fn handle_message(&mut self, mut msg0: Message, store: bool) -> Result<UnwrappedMessage> {
         let mut sequenced = false;
         loop {
@@ -550,7 +672,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             match preparsed.header.content_type {
                 message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket).await {
                     Ok(m) => {
-                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                        return Ok(m.map(|(id, public, masked)| MessageContent::new_signed_packet(id, public, masked)))
                     }
                     Err(e) => match sequenced {
                         true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
@@ -603,7 +725,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub async fn receive_msg_by_sequence_number(
         &mut self,
         anchor_link: &Address,
-        msg_num: u32,
+        msg_num: u32
     ) -> Result<UnwrappedMessage> {
         if !self.is_single_depth() {
             return err(ChannelNotSingleDepth);

@@ -1,6 +1,7 @@
 use core::str::FromStr;
 use iota_streams::{
     app::{
+        futures::executor::block_on,
         message::Cursor as ApiCursor,
         transport::tangle::client::{
             iota_client::{
@@ -12,6 +13,10 @@ use iota_streams::{
             },
             Details as ApiDetails,
             SendOptions as ApiSendOptions,
+        },
+        id::{
+            DIDInfo as ApiDIDInfo,
+            Identifier
         },
     },
     app_channels::api::tangle::{
@@ -29,20 +34,35 @@ use iota_streams::{
             ToString,
         },
         psk::{
+            PskId,
             pskid_from_hex_str,
             pskid_to_hex_string,
         },
         Error as ApiError,
+        iota_identity::{
+            crypto::{
+                KeyPair as ApiDIDKeypair,
+                KeyType,
+                PublicKey as DIDPublicKey,
+                PrivateKey as DIDPrivateKey,
+            },
+            iota::{
+                Network as ApiDIDNetwork,
+                IotaDID,
+                Client as DIDClient,
+            },
+            core::{
+                encode_b58,
+                decode_b58
+            }
+        },
     },
     ddml::types::hex,
 };
-use wasm_bindgen::prelude::*;
 
-use iota_streams::{
-    app::identifier::Identifier,
-    core::psk::PskId,
-};
+use wasm_bindgen::prelude::*;
 use js_sys::Array;
+use std::convert::TryFrom;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
 
@@ -313,18 +333,174 @@ impl MsgId {
     }
 }
 
+/// DID related information for generating a new User
+#[wasm_bindgen]
+pub struct DIDInfo {
+    did: String,
+    key_fragment: String,
+    url: String,
+    network: DIDNetwork
+}
+
+#[wasm_bindgen]
+pub struct DIDInfoWrapper {
+    info: DIDInfo,
+    keypair: DIDKeypair,
+}
+
+/// Network type for DID client
+#[wasm_bindgen]
+#[derive(Clone, Copy)]
+pub enum DIDNetwork {
+    Mainnet,
+    Devnet
+}
+
+/// DID Keypair
+#[wasm_bindgen]
+#[derive(Clone)]
+pub struct DIDKeypair {
+    public: String,
+    private: String
+}
+
+#[wasm_bindgen]
+impl DIDKeypair {
+    #[wasm_bindgen(constructor)]
+    pub fn new(public_key: String, private_key: String) -> DIDKeypair {
+        DIDKeypair { public: public_key, private: private_key }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn public(&self) -> String {
+        self.public.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn private(&self) -> String {
+        self.private.clone()
+    }
+}
+
+impl From<DIDKeypair> for ApiDIDKeypair {
+    fn from(kp: DIDKeypair) -> Self {
+        ApiDIDKeypair::from((
+            KeyType::Ed25519,
+            DIDPublicKey::from(decode_b58(&kp.public()).unwrap()),
+            DIDPrivateKey::from(decode_b58(&kp.private()).unwrap())
+        ))
+    }
+}
+
+impl From<ApiDIDKeypair> for DIDKeypair {
+    fn from(kp: ApiDIDKeypair) -> Self {
+        DIDKeypair::new(
+            encode_b58(&kp.public()),
+            encode_b58(&kp.private())
+        )
+    }
+}
+
+#[wasm_bindgen]
+impl DIDInfo {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        did: String,
+        key_fragment: String,
+        url: String,
+        network: DIDNetwork,
+    ) -> DIDInfo {
+        DIDInfo { did, key_fragment, url, network }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn did(&self) -> String {
+        self.did.clone()
+    }
+
+    #[wasm_bindgen(getter, js_name = "keyFragment")]
+    pub fn key_fragment(&self) -> String {
+        self.key_fragment.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn url(&self) -> String {
+        self.url.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn network(&self) -> DIDNetwork {
+        self.network.clone()
+    }
+
+    pub fn clone(&self) -> DIDInfo {
+        DIDInfo {
+            did: self.did.clone(),
+            key_fragment: self.key_fragment.clone(),
+            url: self.url.clone(),
+            network: self.network.clone()
+        }
+    }
+}
+
+#[wasm_bindgen]
+impl DIDInfoWrapper {
+    #[wasm_bindgen(constructor)]
+    pub fn new(info: DIDInfo, keypair: DIDKeypair) -> DIDInfoWrapper {
+        DIDInfoWrapper { info, keypair }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn info(&self) -> DIDInfo {
+        self.info.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn keypair(&self) -> DIDKeypair {
+        self.keypair.clone()
+    }
+}
+
+impl TryFrom<DIDInfo> for ApiDIDInfo {
+    type Error = JsValue;
+
+    fn try_from(info: DIDInfo) -> Result<ApiDIDInfo> {
+        IotaDID::parse(&info.did).map(|did| {
+            let builder = DIDClient::builder()
+                .network(info.network.clone().into())
+                .node(&info.url)
+                .unwrap();
+            let client = block_on(builder.build()).unwrap();
+            ApiDIDInfo {
+                did: Some(did),
+                key_fragment: info.key_fragment(),
+                did_client: client,
+            }
+        }).into_js_result()
+    }
+}
+
+impl From<DIDNetwork> for ApiDIDNetwork {
+    fn from(n: DIDNetwork) -> Self {
+        match n {
+            DIDNetwork::Mainnet => ApiDIDNetwork::Mainnet,
+            DIDNetwork::Devnet => ApiDIDNetwork::Devnet,
+        }
+    }
+}
+
 pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
     let mut payloads = Vec::new();
     for msg in msgs {
         match msg.body {
             MessageContent::SignedPacket {
-                pk,
+                id,
                 public_payload: p,
                 masked_payload: m,
             } => payloads.push(UserResponse::new(
                 msg.link.into(),
                 None,
-                Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
+                Some(Message::new(Some(hex::encode(id.to_bytes())), p.0, m.0)),
             )),
             MessageContent::TaggedPacket {
                 public_payload: p,
