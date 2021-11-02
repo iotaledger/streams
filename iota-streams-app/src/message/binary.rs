@@ -41,16 +41,16 @@ impl From<Vec<u8>> for BinaryBody {
     }
 }
 
-impl<Link> BinaryMessage<Link> {
-    pub async fn parse_header<F>(&self) -> Result<PreparsedMessage<'_, F, Link>>
+impl<AbsLink> BinaryMessage<AbsLink> {
+    pub async fn parse_header<F>(&self) -> Result<PreparsedMessage<'_, F, AbsLink>>
     where
         F: PRP,
-        Link: Clone + AbsorbExternalFallback<F> + HasLink + Debug,
+        AbsLink: Clone + AbsorbExternalFallback<F> + HasLink + Debug,
     {
         let mut ctx = unwrap::Context::new(&self.body.bytes[..]);
         let mut header =
-            HDF::<Link>::new(self.link().clone()).with_previous_msg_link(Bytes(self.prev_link().to_bytes()));
-        let store = EmptyLinkStore::<F, Link, ()>::default();
+            HDF::<AbsLink>::new(self.link().clone()).with_previous_msg_link(Bytes(self.prev_link().to_bytes()));
+        let store = EmptyLinkStore::<F, AbsLink, ()>::default();
         header.unwrap(&store, &mut ctx).await?;
 
         Ok(PreparsedMessage { header, ctx })
