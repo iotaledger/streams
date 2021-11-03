@@ -119,7 +119,7 @@ pub async fn async_send_message_with_options(client: &iota_client::Client, msg: 
     client
         .message()
         .with_index(hash)
-        .with_data(msg.binary.body.bytes.clone())
+        .with_data(msg.binary.body.to_bytes())
         .finish()
         .await?;
     Ok(())
