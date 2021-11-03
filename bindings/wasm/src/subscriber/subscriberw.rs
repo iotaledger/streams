@@ -10,11 +10,11 @@ use core::cell::RefCell;
 use iota_streams::{
     app::{
         futures::executor::block_on,
+        id::DIDInfo as ApiDIDInfo,
         transport::{
             tangle::client::Client as ApiClient,
             TransportOptions,
         },
-        id::DIDInfo as ApiDIDInfo,
     },
     app_channels::api::{
         psk_from_seed,
@@ -35,7 +35,6 @@ use iota_streams::{
 };
 use std::convert::TryFrom;
 
-
 #[wasm_bindgen]
 pub struct Subscriber {
     // Don't alias away the ugliness, so we don't forget
@@ -54,15 +53,18 @@ impl Subscriber {
     }
 
     #[wasm_bindgen(catch, js_name = "fromDID")]
-    pub async fn from_did(seed: String, client: StreamsClient, info: DIDInfo, keypair: DIDKeypair) -> Result<Subscriber> {
+    pub async fn from_did(
+        seed: String,
+        client: StreamsClient,
+        info: DIDInfo,
+        keypair: DIDKeypair,
+    ) -> Result<Subscriber> {
         let did_info = ApiDIDInfo::try_from(info).unwrap();
-        ApiSubscriber::new_with_did(
-            &seed,
-            client.into_inner(),
-            did_info,
-            &keypair.into())
+        ApiSubscriber::new_with_did(&seed, client.into_inner(), did_info, &keypair.into())
             .await
-            .map( |author| Subscriber { subscriber: Rc::new(RefCell::new(author.0)) })
+            .map(|author| Subscriber {
+                subscriber: Rc::new(RefCell::new(author.0)),
+            })
             .into_js_result()
     }
 
@@ -93,10 +95,13 @@ impl Subscriber {
             ChannelType::SingleBranch.into(),
             ann_address.as_inner(),
             client.into_inner(),
-            did_info)
-            .await
-            .map( |subscriber| Subscriber { subscriber: Rc::new(RefCell::new(subscriber)) })
-            .into_js_result()
+            did_info,
+        )
+        .await
+        .map(|subscriber| Subscriber {
+            subscriber: Rc::new(RefCell::new(subscriber)),
+        })
+        .into_js_result()
     }
 
     pub fn clone(&self) -> Subscriber {

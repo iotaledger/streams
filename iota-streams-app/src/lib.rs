@@ -35,8 +35,6 @@ extern crate std;
 pub use cstr_core;
 pub use cty;
 
-
-
 /// Streams Identity and Identifier definitions
 pub mod id;
 

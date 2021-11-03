@@ -11,6 +11,12 @@ use crate::api::tangle::{
 };
 
 use iota_streams_app::id::identifier::Identifier;
+#[cfg(feature = "use-did")]
+use iota_streams_app::id::DIDInfo;
+#[cfg(all(feature = "account", feature = "use-did"))]
+use iota_streams_core::iota_identity::account::Account;
+#[cfg(feature = "use-did")]
+use iota_streams_core::iota_identity::crypto::KeyPair as DIDKeyPair;
 use iota_streams_core::{
     panic_if_not,
     prelude::{
@@ -20,18 +26,12 @@ use iota_streams_core::{
     psk::{
         Psk,
         PskId,
-    }
+    },
 };
 use iota_streams_core_edsig::{
-    signature::ed25519,
     key_exchange::x25519,
+    signature::ed25519,
 };
-#[cfg(all(feature = "account", feature = "use-did"))]
-use iota_streams_core::iota_identity::account::Account;
-#[cfg(feature = "use-did")]
-use iota_streams_app::id::DIDInfo;
-#[cfg(feature = "use-did")]
-use iota_streams_core::iota_identity::crypto::KeyPair as DIDKeyPair;
 
 /// Author Object. Contains User API.
 pub struct Author<Trans> {
@@ -133,7 +133,7 @@ impl<Trans> Author<Trans> {
     ///   * `id` - Identifier of the sender of the message
     ///   * `ke_pk` - x25519 Public Key of the sender of the message
     ///   * `link` - Address link to be stored in internal sequence state mapping
-    pub fn store_state(&mut self, id: Identifier, ke_pk: x25519::PublicKey,link: &Address) -> Result<()> {
+    pub fn store_state(&mut self, id: Identifier, ke_pk: x25519::PublicKey, link: &Address) -> Result<()> {
         self.user.store_state(id, ke_pk, link)
     }
 
@@ -207,7 +207,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
         did_info: DIDInfo,
         did_keypair: &DIDKeyPair,
     ) -> Result<(Self, ed25519::Keypair)> {
-        let (mut user, user_keypair)  = User::new_with_did(seed, channel_type, transport, did_info, did_keypair).await?;
+        let (mut user, user_keypair) = User::new_with_did(seed, channel_type, transport, did_info, did_keypair).await?;
         let channel_idx = 0_u64;
         let _ = user.user.create_channel(channel_idx);
         Ok((Self { user }, user_keypair))
@@ -258,7 +258,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
         author.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
 
-        Ok( Self { user: author })
+        Ok(Self { user: author })
     }
 
     /// Send an announcement message, generating a channel.

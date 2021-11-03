@@ -2,6 +2,10 @@ use core::str::FromStr;
 use iota_streams::{
     app::{
         futures::executor::block_on,
+        id::{
+            DIDInfo as ApiDIDInfo,
+            Identifier,
+        },
         message::Cursor as ApiCursor,
         transport::tangle::client::{
             iota_client::{
@@ -14,10 +18,6 @@ use iota_streams::{
             Details as ApiDetails,
             SendOptions as ApiSendOptions,
         },
-        id::{
-            DIDInfo as ApiDIDInfo,
-            Identifier
-        },
     },
     app_channels::api::tangle::{
         Address as ApiAddress,
@@ -29,40 +29,40 @@ use iota_streams::{
         UnwrappedMessage,
     },
     core::{
+        iota_identity::{
+            core::{
+                decode_b58,
+                encode_b58,
+            },
+            crypto::{
+                KeyPair as ApiDIDKeypair,
+                KeyType,
+                PrivateKey as DIDPrivateKey,
+                PublicKey as DIDPublicKey,
+            },
+            iota::{
+                Client as DIDClient,
+                IotaDID,
+                Network as ApiDIDNetwork,
+            },
+        },
         prelude::{
             String,
             ToString,
         },
         psk::{
-            PskId,
             pskid_from_hex_str,
             pskid_to_hex_string,
+            PskId,
         },
         Error as ApiError,
-        iota_identity::{
-            crypto::{
-                KeyPair as ApiDIDKeypair,
-                KeyType,
-                PublicKey as DIDPublicKey,
-                PrivateKey as DIDPrivateKey,
-            },
-            iota::{
-                Network as ApiDIDNetwork,
-                IotaDID,
-                Client as DIDClient,
-            },
-            core::{
-                encode_b58,
-                decode_b58
-            }
-        },
     },
     ddml::types::hex,
 };
 
-use wasm_bindgen::prelude::*;
 use js_sys::Array;
 use std::convert::TryFrom;
+use wasm_bindgen::prelude::*;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
 
@@ -339,7 +339,7 @@ pub struct DIDInfo {
     did: String,
     key_fragment: String,
     url: String,
-    network: DIDNetwork
+    network: DIDNetwork,
 }
 
 #[wasm_bindgen]
@@ -353,7 +353,7 @@ pub struct DIDInfoWrapper {
 #[derive(Clone, Copy)]
 pub enum DIDNetwork {
     Mainnet,
-    Devnet
+    Devnet,
 }
 
 /// DID Keypair
@@ -361,14 +361,17 @@ pub enum DIDNetwork {
 #[derive(Clone)]
 pub struct DIDKeypair {
     public: String,
-    private: String
+    private: String,
 }
 
 #[wasm_bindgen]
 impl DIDKeypair {
     #[wasm_bindgen(constructor)]
     pub fn new(public_key: String, private_key: String) -> DIDKeypair {
-        DIDKeypair { public: public_key, private: private_key }
+        DIDKeypair {
+            public: public_key,
+            private: private_key,
+        }
     }
 
     #[wasm_bindgen(getter)]
@@ -387,30 +390,27 @@ impl From<DIDKeypair> for ApiDIDKeypair {
         ApiDIDKeypair::from((
             KeyType::Ed25519,
             DIDPublicKey::from(decode_b58(&kp.public()).unwrap()),
-            DIDPrivateKey::from(decode_b58(&kp.private()).unwrap())
+            DIDPrivateKey::from(decode_b58(&kp.private()).unwrap()),
         ))
     }
 }
 
 impl From<ApiDIDKeypair> for DIDKeypair {
     fn from(kp: ApiDIDKeypair) -> Self {
-        DIDKeypair::new(
-            encode_b58(&kp.public()),
-            encode_b58(&kp.private())
-        )
+        DIDKeypair::new(encode_b58(&kp.public()), encode_b58(&kp.private()))
     }
 }
 
 #[wasm_bindgen]
 impl DIDInfo {
     #[wasm_bindgen(constructor)]
-    pub fn new(
-        did: String,
-        key_fragment: String,
-        url: String,
-        network: DIDNetwork,
-    ) -> DIDInfo {
-        DIDInfo { did, key_fragment, url, network }
+    pub fn new(did: String, key_fragment: String, url: String, network: DIDNetwork) -> DIDInfo {
+        DIDInfo {
+            did,
+            key_fragment,
+            url,
+            network,
+        }
     }
 
     #[wasm_bindgen(getter)]
@@ -438,7 +438,7 @@ impl DIDInfo {
             did: self.did.clone(),
             key_fragment: self.key_fragment.clone(),
             url: self.url.clone(),
-            network: self.network.clone()
+            network: self.network.clone(),
         }
     }
 }
@@ -465,18 +465,20 @@ impl TryFrom<DIDInfo> for ApiDIDInfo {
     type Error = JsValue;
 
     fn try_from(info: DIDInfo) -> Result<ApiDIDInfo> {
-        IotaDID::parse(&info.did).map(|did| {
-            let builder = DIDClient::builder()
-                .network(info.network.clone().into())
-                .node(&info.url)
-                .unwrap();
-            let client = block_on(builder.build()).unwrap();
-            ApiDIDInfo {
-                did: Some(did),
-                key_fragment: info.key_fragment(),
-                did_client: client,
-            }
-        }).into_js_result()
+        IotaDID::parse(&info.did)
+            .map(|did| {
+                let builder = DIDClient::builder()
+                    .network(info.network.clone().into())
+                    .node(&info.url)
+                    .unwrap();
+                let client = block_on(builder.build()).unwrap();
+                ApiDIDInfo {
+                    did: Some(did),
+                    key_fragment: info.key_fragment(),
+                    did_client: client,
+                }
+            })
+            .into_js_result()
     }
 }
 

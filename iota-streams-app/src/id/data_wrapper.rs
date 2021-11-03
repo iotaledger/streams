@@ -1,13 +1,24 @@
-use iota_streams_core::iota_identity::crypto::{SetSignature, Signature, TrySignature, TrySignatureMut};
-use iota_streams_core::iota_identity::did::{MethodUriType, TryMethod};
-use iota_streams_core::prelude::Vec;
+use iota_streams_core::{
+    iota_identity::{
+        crypto::{
+            SetSignature,
+            Signature,
+            TrySignature,
+            TrySignatureMut,
+        },
+        did::{
+            MethodUriType,
+            TryMethod,
+        },
+    },
+    prelude::Vec,
+};
 use serde::Serialize;
-
 
 #[derive(Serialize)]
 pub struct DataWrapper {
     pub data: Vec<u8>,
-    pub signature: Option<Signature>
+    pub signature: Option<Signature>,
 }
 
 impl TrySignature for DataWrapper {

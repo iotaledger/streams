@@ -29,10 +29,7 @@ pub trait ContentWrap<F, Store>: ContentSizeof<F> {
 
 #[async_trait(?Send)]
 pub trait ContentSign<F, OS: io::OStream> {
-    async fn sign<'c>(
-        &self,
-        ctx: &'c mut wrap::Context<F, OS>,
-    ) -> Result<&'c mut wrap::Context<F, OS>>;
+    async fn sign<'c>(&self, ctx: &'c mut wrap::Context<F, OS>) -> Result<&'c mut wrap::Context<F, OS>>;
 }
 
 #[async_trait(?Send)]
@@ -44,13 +41,9 @@ pub trait ContentUnwrap<F, Store> {
     ) -> Result<&'c mut unwrap::Context<F, IS>>;
 }
 
-
 #[async_trait(?Send)]
 pub trait ContentVerify<'a, F, IS: io::IStream> {
-    async fn verify<'c>(
-        &self,
-        ctx: &'c mut unwrap::Context<F, IS>,
-    ) -> Result<&'c mut unwrap::Context<F, IS>>;
+    async fn verify<'c>(&self, ctx: &'c mut unwrap::Context<F, IS>) -> Result<&'c mut unwrap::Context<F, IS>>;
 }
 
 #[async_trait(?Send)]

@@ -39,7 +39,18 @@
 //! Note, the `unsubscribe_key` is masked and verified in the `x25519` operation and
 //! thus is not additionally `absorb`ed in this message.
 
-use iota_streams_app::message::{self, HasLink, ContentSign, ContentVerify};
+use iota_streams_app::{
+    id::{
+        Identifier,
+        KeyPairs,
+    },
+    message::{
+        self,
+        ContentSign,
+        ContentVerify,
+        HasLink,
+    },
+};
 use iota_streams_core::{
     async_trait,
     prelude::Box,
@@ -62,7 +73,6 @@ use iota_streams_ddml::{
     },
     types::*,
 };
-use iota_streams_app::id::{KeyPairs, Identifier};
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
@@ -128,7 +138,6 @@ where
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
     pub fn new(author_id: &'a KeyPairs) -> Result<Self> {
-
         match ed25519::PublicKey::from_bytes(&[0_u8; ed25519::PUBLIC_KEY_LENGTH]) {
             Ok(pk) => Ok(Self {
                 author_id,

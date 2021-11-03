@@ -28,12 +28,23 @@
 //!
 //! * `sig` -- message signature generated with the senders private key.
 
-use iota_streams_app::message::{self, HasLink, ContentSign, ContentVerify};
+use iota_streams_app::{
+    id::{
+        Identifier,
+        KeyPairs,
+    },
+    message::{
+        self,
+        ContentSign,
+        ContentVerify,
+        HasLink,
+    },
+};
 use iota_streams_core::{
-    sponge::prp::PRP,
-    Result,
     async_trait,
     prelude::Box,
+    sponge::prp::PRP,
+    Result,
 };
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
@@ -45,7 +56,6 @@ use iota_streams_ddml::{
     },
     types::*,
 };
-use iota_streams_app::id::{KeyPairs, Identifier};
 
 pub struct ContentWrap<'a, F, Link>
 where
@@ -69,7 +79,10 @@ where
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?;
-        self.key_pair.id.sizeof(ctx).await?
+        self.key_pair
+            .id
+            .sizeof(ctx)
+            .await?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?;
         self.key_pair.sizeof(ctx).await?;
@@ -92,7 +105,10 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?;
-        self.key_pair.id.wrap(store, ctx).await?
+        self.key_pair
+            .id
+            .wrap(store, ctx)
+            .await?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?;
         self.key_pair.sign(ctx).await?;
@@ -138,7 +154,10 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?;
-        let mut ctx = self.id.unwrap(store, ctx).await?
+        let mut ctx = self
+            .id
+            .unwrap(store, ctx)
+            .await?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?;
         let kp = KeyPairs::new_from_id(self.id).await?;

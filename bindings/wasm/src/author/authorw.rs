@@ -17,9 +17,9 @@ use iota_streams::{
     app::{
         futures::executor::block_on,
         id::{
-            Identifier,
-            DIDInfo as ApiDIDInfo,
             create_identity,
+            DIDInfo as ApiDIDInfo,
+            Identifier,
         },
         transport::{
             tangle::client::Client as ApiClient,
@@ -72,31 +72,34 @@ impl Author {
     }
 
     #[wasm_bindgen(catch, js_name = "fromDID")]
-    pub async fn from_did(seed: String, client: StreamsClient, implementation: ChannelType, info: DIDInfo, keypair: DIDKeypair) -> Result<Author> {
+    pub async fn from_did(
+        seed: String,
+        client: StreamsClient,
+        implementation: ChannelType,
+        info: DIDInfo,
+        keypair: DIDKeypair,
+    ) -> Result<Author> {
         let did_info = ApiDIDInfo::try_from(info).unwrap();
         ApiAuthor::new_with_did(
             &seed,
             implementation.into(),
             client.into_inner(),
             did_info,
-            &keypair.into())
-            .await
-            .map( |author| Author { author: Rc::new(RefCell::new(author.0)) })
-            .into_js_result()
+            &keypair.into(),
+        )
+        .await
+        .map(|author| Author {
+            author: Rc::new(RefCell::new(author.0)),
+        })
+        .into_js_result()
     }
 
     #[wasm_bindgen(catch, js_name = "createIdentity")]
     pub async fn create_identity(url: String, network: DIDNetwork) -> Result<DIDInfoWrapper> {
-
         create_identity(&url, network.clone().into())
             .await
             .map(|(did, keypair, _client)| {
-                let info = DIDInfo::new(
-                    did,
-                    "streams-1".to_string(),
-                    url,
-                    network,
-                );
+                let info = DIDInfo::new(did, "streams-1".to_string(), url, network);
                 DIDInfoWrapper::new(info, keypair.into())
             })
             .into_js_result()
@@ -147,12 +150,13 @@ impl Author {
             implementation.into(),
             ann_address.as_inner(),
             client.into_inner(),
-            did_info)
-            .await
-            .map( |author|
-                Author { author: Rc::new(RefCell::new(author)) }
-            )
-            .into_js_result()
+            did_info,
+        )
+        .await
+        .map(|author| Author {
+            author: Rc::new(RefCell::new(author)),
+        })
+        .into_js_result()
     }
 
     pub fn clone(&self) -> Author {

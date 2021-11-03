@@ -54,16 +54,18 @@ use crate::Lookup;
 
 use core::convert::TryFrom;
 
-use iota_streams_app::{
-    message::{
-        self,
-        ContentUnwrapNew,
-        ContentSign,
-        ContentVerify,
-        HasLink,
-    },
+use iota_streams_app::message::{
+    self,
+    ContentSign,
+    ContentUnwrapNew,
+    ContentVerify,
+    HasLink,
 };
 
+use iota_streams_app::id::{
+    identifier::Identifier,
+    KeyPairs,
+};
 use iota_streams_core::{
     async_trait,
     prelude::{
@@ -90,10 +92,6 @@ use iota_streams_ddml::{
         LinkStore,
     },
     types::*,
-};
-use iota_streams_app::id::{
-    identifier::Identifier,
-    KeyPairs,
 };
 
 pub struct ContentWrap<'a, F, Link, Keys>

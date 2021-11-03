@@ -24,20 +24,20 @@
 use iota_streams_core::{
     async_trait,
     prelude::Box,
-    Result,
     sponge::prp::PRP,
+    Result,
 };
 
 use iota_streams_app::{
+    id::{
+        Identifier,
+        KeyPairs,
+    },
     message::{
         self,
         ContentSign,
         ContentVerify,
     },
-    id::{
-        Identifier,
-        KeyPairs,
-    }
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,

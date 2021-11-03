@@ -1,9 +1,9 @@
 use iota_streams_core::{
     async_trait,
+    prelude::Box,
     sponge::prp::PRP,
     try_or,
     Errors::ValueOutOfRange,
-    prelude::Box,
     Result,
 };
 use iota_streams_ddml::{

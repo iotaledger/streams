@@ -1,14 +1,13 @@
 use iota_streams_app::{
+    id::{
+        identifier::Identifier,
+        keys::KeyPairs,
+    },
     message::{
         HasLink as _,
         LinkGenerator,
     },
-    id::{
-        identifier::Identifier,
-        keys::KeyPairs,
-    }
 };
-use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_core::{
     err,
     prelude::{
@@ -30,6 +29,7 @@ use iota_streams_core::{
     },
     Result,
 };
+use iota_streams_core_edsig::key_exchange::x25519;
 
 use crate::{
     api,
@@ -43,8 +43,8 @@ use iota_streams_core::iota_identity::account::Account;
 
 #[cfg(feature = "use-did")]
 use iota_streams_app::{
-    id::DIDInfo,
     futures::executor::block_on,
+    id::DIDInfo,
 };
 
 #[cfg(feature = "use-did")]
@@ -83,12 +83,7 @@ impl<Trans> User<Trans> {
             kp
         };
 
-        let user = UserImp::gen(
-            id,
-            channel_type,
-            ENCODING.as_bytes().to_vec(),
-            PAYLOAD_LENGTH,
-        );
+        let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
         Self { user, transport }
     }
 
@@ -267,19 +262,10 @@ impl<Trans: Transport + Clone> User<Trans> {
         transport: Trans,
         did_info: DIDInfo,
     ) -> Result<Self> {
-        let id = KeyPairs::new_from_account(
-            account,
-            did_info.key_fragment,
-            did_info.client
-        ).await?;
+        let id = KeyPairs::new_from_account(account, did_info.key_fragment, did_info.client).await?;
 
-        let user = UserImp::gen(
-            id,
-            channel_type,
-            ENCODING.as_bytes().to_vec(),
-            PAYLOAD_LENGTH,
-        );
-        Ok(Self { user, transport})
+        let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
+        Ok(Self { user, transport })
     }
 
     /// Creates a new User from an existing Identity (DID)
@@ -304,21 +290,16 @@ impl<Trans: Transport + Clone> User<Trans> {
                     did_info.did_client,
                     did.into_string(),
                     did_info.key_fragment,
-                    keypair
-                ).await?;
+                    keypair,
+                )
+                .await?;
 
                 let kp = id.sig_kp.to_bytes();
-                let user = UserImp::gen(
-                    id,
-                    channel_type,
-                    ENCODING.as_bytes().to_vec(),
-                    PAYLOAD_LENGTH,
-                );
-                Ok((Self { user, transport}, ed25519::Keypair::from_bytes(&kp)?))
-            },
-            None => err!(DIDMissing)
+                let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
+                Ok((Self { user, transport }, ed25519::Keypair::from_bytes(&kp)?))
+            }
+            None => err!(DIDMissing),
         }
-
     }
 
     /// Recover a User instance from an existing DID Document method
@@ -337,17 +318,11 @@ impl<Trans: Transport + Clone> User<Trans> {
         match &did_info.did {
             Some(_did) => {
                 let id = KeyPairs::new_from_info::<DefaultF>(seed, did_info).await?;
-                let user = UserImp::gen(
-                    id,
-                    channel_type,
-                    ENCODING.as_bytes().to_vec(),
-                    PAYLOAD_LENGTH,
-                );
-                Ok(Self { user, transport})
-            },
-            None => err!(DIDMissing)
+                let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
+                Ok(Self { user, transport })
+            }
+            None => err!(DIDMissing),
         }
-
     }
 }
 
@@ -431,7 +406,8 @@ impl<Trans: Transport + Clone> User<Trans> {
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.sign_packet(link_to, public_payload, masked_payload).await?;
-        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket).await
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::SignedPacket)
+            .await
     }
 
     /// Create and send a tagged packet [Author, Subscriber].
@@ -447,7 +423,8 @@ impl<Trans: Transport + Clone> User<Trans> {
         masked_payload: &Bytes,
     ) -> Result<(Address, Option<Address>)> {
         let msg = self.user.tag_packet(link_to, public_payload, masked_payload).await?;
-        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket).await
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::TaggedPacket)
+            .await
     }
 
     /// Create and send a new keyload for a list of subscribers [Author].
@@ -535,7 +512,10 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link` - Address of the message to be processed
     pub async fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
-        let m = self.user.handle_tagged_packet(msg.binary, MsgInfo::TaggedPacket).await?;
+        let m = self
+            .user
+            .handle_tagged_packet(msg.binary, MsgInfo::TaggedPacket)
+            .await?;
         Ok(m.body)
     }
 
@@ -725,7 +705,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub async fn receive_msg_by_sequence_number(
         &mut self,
         anchor_link: &Address,
-        msg_num: u32
+        msg_num: u32,
     ) -> Result<UnwrappedMessage> {
         if !self.is_single_depth() {
             return err(ChannelNotSingleDepth);

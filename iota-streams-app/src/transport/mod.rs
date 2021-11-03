@@ -66,7 +66,6 @@ impl<Link, Tsp: TransportDetails<Link>> TransportDetails<Link> for Rc<RefCell<Ts
     }
 }
 
-
 #[async_trait(?Send)]
 impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<Tsp>> {
     // Send a message.

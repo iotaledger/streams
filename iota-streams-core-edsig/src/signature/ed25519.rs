@@ -3,10 +3,10 @@ pub use ed25519_dalek::{
     PublicKey,
     SecretKey,
     Signature,
+    Signer,
     PUBLIC_KEY_LENGTH,
     SECRET_KEY_LENGTH,
     SIGNATURE_LENGTH,
-    Signer,
 };
 
 use core::hash::{

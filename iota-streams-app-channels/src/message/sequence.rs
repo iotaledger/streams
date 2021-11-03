@@ -33,8 +33,10 @@ use iota_streams_core::{
 
 use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core_edsig::signature::ed25519;
-use iota_streams_core_edsig::key_exchange::x25519;
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -116,7 +118,7 @@ where
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             id: ed25519::PublicKey::default().into(),
-            ke_pk: x25519::PublicKey::from([0_u8;32]),
+            ke_pk: x25519::PublicKey::from([0_u8; 32]),
             seq_num: Uint64(0),
             ref_link: <<Link as HasLink>::Rel as Default>::default(),
         }

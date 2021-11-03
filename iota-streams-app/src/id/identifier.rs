@@ -1,23 +1,26 @@
 use iota_streams_core::{
     async_trait,
     err,
-    Errors::BadOneof,
     prelude::{
         Box,
         Vec,
     },
     psk::{
         self,
-        PskId
+        PskId,
     },
-    Result,
     sponge::prp::PRP,
+    Errors::BadOneof,
+    Result,
 };
-#[cfg(feature="use-did")]
+#[cfg(feature = "use-did")]
 use iota_streams_core::{
     iota_identity::{
+        core::{
+            decode_b58,
+            encode_b58,
+        },
         iota::IotaDID,
-        core::{decode_b58, encode_b58},
     },
     prelude::ToString,
 };
@@ -28,18 +31,24 @@ use iota_streams_ddml::{
     types::*,
 };
 
-
 #[cfg(feature = "use-did")]
-use crate::id::{DIDWrap, DID_CORE, DIDSize};
+use crate::id::{
+    DIDSize,
+    DIDWrap,
+    DID_CORE,
+};
 
 use crate::message::*;
-use core::fmt::{Display, Formatter};
+use core::fmt::{
+    Display,
+    Formatter,
+};
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Identifier {
     EdPubKey(ed25519::PublicKeyWrap),
     PskId(PskId),
-    #[cfg(feature="use-did")]
+    #[cfg(feature = "use-did")]
     DID(DIDWrap),
 }
 
@@ -66,23 +75,20 @@ impl From<PskId> for Identifier {
     }
 }
 
-#[cfg(feature="use-did")]
+#[cfg(feature = "use-did")]
 impl From<&IotaDID> for Identifier {
     fn from(did: &IotaDID) -> Self {
-        Identifier::DID(DIDWrap::clone_from_slice(&decode_b58(did.method_id()).unwrap_or(Vec::new())))
+        Identifier::DID(DIDWrap::clone_from_slice(
+            &decode_b58(did.method_id()).unwrap_or(Vec::new()),
+        ))
     }
 }
 
 impl Display for Identifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "Identifier({})",
-            hex::encode(self.to_bytes())
-        )
+        write!(f, "Identifier({})", hex::encode(self.to_bytes()))
     }
 }
-
 
 #[async_trait(?Send)]
 impl<F: PRP> ContentSizeof<F> for Identifier {
@@ -98,7 +104,7 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
                 ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
             }
-            #[cfg(feature="use-did")]
+            #[cfg(feature = "use-did")]
             Identifier::DID(did) => {
                 let oneof = Uint8(2);
                 ctx.mask(&oneof)?.mask(<&NBytes<DIDSize>>::from(&did))?;
@@ -126,7 +132,7 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
                 ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
             }
-            #[cfg(feature="use-did")]
+            #[cfg(feature = "use-did")]
             Identifier::DID(did) => {
                 let oneof = Uint8(2);
                 ctx.mask(&oneof)?.mask(<&NBytes<DIDSize>>::from(&did))?;
@@ -170,7 +176,7 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
                 let id = Identifier::PskId(pskid);
                 Ok((id, ctx))
             }
-            #[cfg(feature="use-did")]
+            #[cfg(feature = "use-did")]
             2 => {
                 let mut did_bytes = NBytes::<DIDSize>::default();
                 ctx.mask(&mut did_bytes)?;

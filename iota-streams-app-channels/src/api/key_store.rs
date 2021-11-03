@@ -1,7 +1,9 @@
 use core::fmt;
 
-use iota_streams_app::id::identifier::Identifier;
 use core::borrow::BorrowMut;
+use iota_streams_app::id::identifier::Identifier;
+#[cfg(feature = "use-did")]
+use iota_streams_core::Errors::UnsupportedIdentifier;
 use iota_streams_core::{
     err,
     prelude::{
@@ -14,8 +16,6 @@ use iota_streams_core::{
     Result,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
-#[cfg(feature = "use-did")]
-use iota_streams_core::Errors::UnsupportedIdentifier;
 
 pub trait KeyStore<Info, F: PRP>: Default {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
@@ -91,7 +91,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
             Identifier::EdPubKey(_pk) => self.ke_pks.get(id).map(|(_x, i)| i),
             Identifier::PskId(_id) => self.psks.get(id).map(|(_x, i)| i),
             #[cfg(feature = "use-did")]
-            Identifier::DID(_id) => self.ke_pks.get(id).map(|(_x,i)| i),
+            Identifier::DID(_id) => self.ke_pks.get(id).map(|(_x, i)| i),
         }
     }
     fn get_mut(&mut self, id: &Identifier) -> Option<&mut Info> {
@@ -99,7 +99,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
             Identifier::EdPubKey(_pk) => self.ke_pks.get_mut(id).map(|(_x, i)| i),
             Identifier::PskId(_id) => self.psks.get_mut(id).map(|(_x, i)| i),
             #[cfg(feature = "use-did")]
-            Identifier::DID(_id) => self.ke_pks.get_mut(id).map(|(_x,i)| i),
+            Identifier::DID(_id) => self.ke_pks.get_mut(id).map(|(_x, i)| i),
         }
     }
     fn get_ke_pk(&self, id: &Identifier) -> Option<&x25519::PublicKey> {
@@ -151,7 +151,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 Ok(())
             }
             #[cfg(feature = "use-did")]
-            _ => err(UnsupportedIdentifier)
+            _ => err(UnsupportedIdentifier),
         }
     }
 
@@ -162,7 +162,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 self.ke_pks.insert(id, (xkey, info));
                 Ok(())
             }
-            _ => err(UnsupportedIdentifier)
+            _ => err(UnsupportedIdentifier),
         }
     }
 

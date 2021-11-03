@@ -14,6 +14,12 @@ use crate::api::tangle::{
 };
 
 use iota_streams_app::id::identifier::Identifier;
+#[cfg(feature = "use-did")]
+use iota_streams_app::id::DIDInfo;
+#[cfg(all(feature = "account", feature = "use-did"))]
+use iota_streams_core::iota_identity::account::Account;
+#[cfg(feature = "use-did")]
+use iota_streams_core::iota_identity::crypto::KeyPair;
 use iota_streams_core::{
     prelude::{
         String,
@@ -26,15 +32,9 @@ use iota_streams_core::{
     Errors::SingleDepthOperationFailure,
 };
 use iota_streams_core_edsig::{
-    signature::ed25519,
     key_exchange::x25519,
+    signature::ed25519,
 };
-#[cfg(all(feature = "account", feature = "use-did"))]
-use iota_streams_core::iota_identity::account::Account;
-#[cfg(feature = "use-did")]
-use iota_streams_app::id::DIDInfo;
-#[cfg(feature = "use-did")]
-use iota_streams_core::iota_identity::crypto::KeyPair;
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
@@ -185,21 +185,20 @@ impl<Trans> Subscriber<Trans> {
 }
 
 #[cfg(feature = "use-did")]
-impl<Trans: Transport + Clone> Subscriber <Trans> {
+impl<Trans: Transport + Clone> Subscriber<Trans> {
     #[cfg(feature = "account")]
     pub async fn new_with_account(account: Account, transport: Trans, did_info: DIDInfo) -> Result<Self> {
         let user = User::new_with_account(account, SingleBranch, transport, did_info).await?;
         Ok(Self { user })
     }
 
-    pub async fn new_with_did(seed: &str, transport: Trans, did_info: DIDInfo, did_keypair: &KeyPair) -> Result<(Self, ed25519::Keypair)> {
-        let (user, user_keypair) = User::new_with_did(
-            seed,
-            SingleBranch,
-            transport,
-            did_info,
-            did_keypair
-        ).await?;
+    pub async fn new_with_did(
+        seed: &str,
+        transport: Trans,
+        did_info: DIDInfo,
+        did_keypair: &KeyPair,
+    ) -> Result<(Self, ed25519::Keypair)> {
+        let (user, user_keypair) = User::new_with_did(seed, SingleBranch, transport, did_info, did_keypair).await?;
         Ok((Self { user }, user_keypair))
     }
 }
@@ -215,7 +214,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
     ) -> Result<Self> {
         let mut subscriber = User::recover_with_did(seed, channel_type, transport, did_info).await?;
         subscriber.transport.recv_message(announcement).await?;
-        Ok( Self { user: subscriber })
+        Ok(Self { user: subscriber })
     }
 
     /// Create and Send a Subscribe message to a Channel app instance.
