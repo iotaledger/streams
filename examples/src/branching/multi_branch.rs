@@ -441,5 +441,22 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
     println!("Subscriber states matched");
 
+    println!("\nAuthor unsubscribes Subscriber A");
+    author.remove_subscriber(*subscriberA.get_public_key())?;
+
+    println!("\nSubscriber B sending unsubscribe message");
+    let unsub_link = subscriberB.send_unsubscribe(&subscribeB_link).await?;
+    println!("Author receiving unsubscribe");
+    author.receive_unsubscribe(&unsub_link).await?;
+
+    println!("\nAuthor sending new keyload to all subscribers");
+    let new_keyload = author.send_keyload_for_everyone(&announcement_link).await?;
+    println!("Subscriber B checking that they do not have access to new keyload");
+    try_or!(
+        !subscriberB.receive_keyload(&new_keyload.0).await?,
+        SubscriberAccessMismatch("B".to_string())
+    )?;
+    println!("Subscriber B does not have access to the new keyload");
+
     Ok(())
 }

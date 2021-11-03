@@ -1,6 +1,6 @@
 [package]
 name = "iota-streams-core-keccak"
-version = "0.3.1"
+version = "0.1.2"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
@@ -12,12 +12,8 @@ description = "IOTA Streams Spongos adapter for Keccak"
 default = ["std"]
 std = ["iota-streams-core/std"]
 
-[lib]
-name = "iota_streams_core_keccak"
-path = "src/lib.rs"
-
 [dependencies]
-iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-features = false }
+iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
 keccak = "0.1"
 
 [dev-dependencies]

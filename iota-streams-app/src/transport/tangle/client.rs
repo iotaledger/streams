@@ -119,7 +119,7 @@ pub async fn async_send_message_with_options(client: &iota_client::Client, msg: 
     client
         .message()
         .with_index(hash)
-        .with_data(msg.binary.body.bytes.clone())
+        .with_data(msg.binary.body.to_bytes())
         .finish()
         .await?;
     Ok(())
@@ -253,7 +253,7 @@ impl Transport<TangleAddress, TangleMessage> for Client {
             try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()))?;
             Ok(msg)
         } else {
-            err!(MessageLinkNotFound(link.to_string()))
+            err!(MessageLinkNotFoundInTangle(link.to_string()))
         }
     }
 }

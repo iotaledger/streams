@@ -26,6 +26,11 @@ module.exports = {
       collapsed: false,
       items: [
         {
+          type: 'doc',
+          label: 'Overview',
+          id: 'libraries/overview'
+        },
+        {
           type: "category",
           label: "Rust",
           items: [

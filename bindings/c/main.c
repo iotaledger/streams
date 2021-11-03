@@ -54,8 +54,10 @@ int main()
   public_key_t const *sub_a_pk = NULL;
   char const *recovered_link_id = NULL;
   char const *original_link_id = NULL;
+  address_t const *subA_link = NULL;
 
-  printf("Starting c bindings test\n\n");
+
+    printf("Starting c bindings test\n\n");
   uint8_t multi_branching = 1;
   char seed[] = "bindings test seed";
   rand_seed(seed, sizeof(seed));
@@ -205,7 +207,6 @@ cleanup0:
 
   // Subscribe
   {
-    address_t const *subA_link = NULL;
     address_t const *subB_link = NULL;
     psk_id_t const *pskidC_auth = NULL;
     psk_id_t const *pskidC_subC = NULL;
@@ -235,7 +236,6 @@ cleanup1:
     drop_pskid(pskidC_subC);
     drop_pskid(pskidC_auth);
     drop_address(subB_link);
-    drop_address(subA_link);
   }
   printf("\n");
   if(e) goto cleanup;
@@ -243,6 +243,7 @@ cleanup1:
   // Keyload
   {
     address_t const *keyload_link = NULL;
+    uint8_t const *access = NULL;
 
     printf("Author sending keyload... ");
     e = auth_send_keyload_for_everyone(&keyload_links, auth, ann_link);
@@ -256,8 +257,9 @@ cleanup1:
     if(e) goto cleanup2;
 
     printf("SubA receiving keyload... ");
-    e = sub_receive_keyload(subA, keyload_link);
-    printf("%s\n", !e ? "done" : "failed");
+    e = sub_receive_keyload(&access, subA, keyload_link);
+    printf("%s... ", !e ? "done" : "failed");
+    printf("%s\n", *access == 1 ? "has access" : "does not have access");
     if(e) goto cleanup2;
 
 cleanup2:
@@ -484,9 +486,15 @@ cleanup7:
     address_t const *recovered_state_link = NULL;
     address_t const *original_state_link = NULL;
     unwrapped_messages_t const *message_returns = NULL;
+    unwrapped_messages_t const *sync_returns = NULL;
 
     printf("Recovering author... ");
     e = auth_recover(&recovered_auth, seed, ann_link, implementation_type, tsp);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup8;
+
+    printf("Syncing author... ");
+    e = auth_sync_state(recovered_auth);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
 
@@ -523,6 +531,7 @@ cleanup8:
     drop_user_state(recovered_auth_state);
     auth_drop(recovered_auth);
     drop_unwrapped_messages(message_returns);
+    drop_unwrapped_messages(sync_returns);
   }
   printf("\n");
   if(e) goto cleanup;
@@ -530,6 +539,7 @@ cleanup8:
   {
     buffer_t bytes = { NULL, 0, 0 };
     author_t *auth_new = NULL;
+    address_t const *recovered_announcement = NULL;
 
     printf("Exporting author state... ");
     e = auth_export(&bytes, auth, "my_password");
@@ -543,9 +553,64 @@ cleanup8:
     //auth_import consumes bytes, need to clear to avoid double-free
     bytes.ptr = NULL;
 
+    printf("Checking announcement link exists... ");
+    e = auth_announcement_link(&recovered_announcement, auth_new);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup9;
+
  cleanup9:
+    drop_address(recovered_announcement);
     auth_drop(auth_new);
     drop_buffer(bytes);
+  }
+  printf("\n");
+  if(e) goto cleanup;
+
+  {
+    address_t const *unsubscribe = NULL;
+    subscriber_t *subD = NULL;
+    public_key_t const *sub_d_pk = NULL;
+    message_links_t new_keyload_links = { NULL, NULL };
+    uint8_t const *access = NULL;
+
+    printf("Unsubscribing sub a...\n");
+    e = sub_send_unsubscribe(&unsubscribe, subA, subA_link);
+    if(e) goto cleanup11;
+    printf("Author accepting unsubscribe...\n");
+    e = auth_receive_unsubscribe(auth, unsubscribe);
+    if(e) goto cleanup11;
+
+    printf("Creating sub D...\n");
+    char const subD_seed[] = "SUBSCRIBERD9SEED";
+    e = sub_new(&subD, subD_seed, tsp);
+    if(e) goto cleanup11;
+    e = sub_get_public_key(&sub_d_pk, subD);
+    if(e) goto cleanup11;
+
+    printf("Author manually subscribing sub D...\n");
+    e = auth_store_new_subscriber(auth, sub_d_pk);
+    if(e) goto cleanup11;
+    printf("Author manually unsubscribing sub D...\n");
+    e = auth_remove_subscriber(auth, sub_d_pk);
+    if(e) goto cleanup11;
+
+    printf("Author sends new keyload to all current subscribers...\n");
+    e = auth_send_keyload_for_everyone(&new_keyload_links, auth, ann_link);
+    if(e) goto cleanup11;
+    printf("Subscriber A tries to access keyload...\n");
+    e = sub_receive_keyload(&access, subA, new_keyload_links.msg_link);
+    if(e) goto cleanup11;
+
+    if(*access == 1) {
+        printf("Subscriber A still has access to keyload, unsubscription failed...\n");
+    } else {
+        printf("Subscriber A does not have access to keyload, unsubscription successful...\n");
+    }
+
+  cleanup11:
+    drop_address(unsubscribe);
+    sub_drop(subD);
+    drop_links(new_keyload_links);
   }
   printf("\n");
   if(e) goto cleanup;
@@ -564,13 +629,14 @@ cleanup8:
 
     printf("  reset sub state link: '%s'\n", reset_state_link_id);
     printf("  original  state link: '%s'\n", original_state_link_id);
+
+    cleanup10:
+      drop_user_state(reset_sub_state);
+      drop_address(reset_sub_state_link);
   }
   printf("\n");
   if(e) goto cleanup;
 
-cleanup10:
-  drop_user_state(reset_sub_state);
-  drop_address(reset_sub_state_link);
 
 cleanup:
   printf("Error code: %d\n", e);
@@ -580,6 +646,7 @@ cleanup:
   sub_drop(subC);
   sub_drop(subB);
   sub_drop(subA);
+  drop_address(subA_link);
 
   drop_address(ann_link);
   auth_drop(auth);

@@ -31,7 +31,7 @@ pub trait HasLink: Sized + Default + Clone + Eq {
     fn to_bytes(&self) -> Vec<u8>;
 
     /// Get link from bytes
-    fn from_bytes(bytes: &[u8]) -> Self;
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self>;
 }
 
 /// Represents an input state for message identifier generation.

@@ -1,7 +1,7 @@
 [package]
 name = "iota-streams-app-channels"
-version = "1.0.1"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
+version = "0.1.2"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
@@ -19,16 +19,12 @@ client = ["iota-streams-app/client"]
 # Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
 wasm-client = ["iota-streams-app/wasm-client"]
 
-[lib]
-name = "iota_streams_app_channels"
-path = "src/lib.rs"
-
 [dependencies]
-iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-features = false }
-iota-streams-core-edsig = { version = "0.2.1", path = "../iota-streams-core-edsig", default-features = false }
-iota-streams-core-keccak = { version = "0.3.1", path = "../iota-streams-core-keccak", default-features = false }
-iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "1.0.1", path = "../iota-streams-app", default-features = false }
+iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
+iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsig", default-features = false }
+iota-streams-core-keccak = { version = "0.1.2", path = "../iota-streams-core-keccak", default-features = false }
+iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-features = false }
+iota-streams-app = { version = "0.1.2", path = "../iota-streams-app", default-features = false }
 
 hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, optional = true }

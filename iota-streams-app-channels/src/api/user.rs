@@ -263,6 +263,7 @@ where
                     key_store.insert_cursor(*id, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
                 }
                 self.key_store = key_store;
+                self.link_store = LS::default();
 
                 self.link_gen.reset(appinst.clone());
                 Ok(())
@@ -301,7 +302,7 @@ where
         if let Some(appinst) = &self.appinst {
             try_or!(
                 appinst == &preparsed.header.link,
-                UserAlreadyRegistered(appinst.base().to_string())
+                UserAlreadyRegistered(hex::encode(self.sig_kp.public), appinst.base().to_string())
             )?;
         }
 
@@ -404,14 +405,84 @@ where
             .await?
             .commit(&mut self.link_store, info)?;
         // TODO: trust content.subscriber_sig_pk
+        // TODO: remove unused unsubscribe_key because it is unnecessary for verification anymore
         let subscriber_sig_pk = content.subscriber_sig_pk;
-        let ref_link = self.appinst.as_ref().unwrap().rel().clone();
-        self.key_store.insert_cursor(
-            Identifier::EdPubKey(subscriber_sig_pk.into()),
-            Cursor::new_at(ref_link, 0, INIT_MESSAGE_NUM),
-        )?;
-        // Unwrapped unsubscribe_key is not used explicitly.
-        Ok(())
+        self.insert_subscriber(subscriber_sig_pk)
+    }
+
+    pub fn insert_subscriber(&mut self, pk: ed25519::PublicKey) -> Result<()> {
+        match (!self.key_store.contains(&pk.into()), &self.appinst) {
+            (_, None) => err!(UserNotRegistered),
+            (true, Some(ref_link)) => self
+                .key_store
+                .insert_cursor(pk.into(), Cursor::new_at(ref_link.rel().clone(), 0, INIT_MESSAGE_NUM)),
+            (false, Some(ref_link)) => err!(UserAlreadyRegistered(
+                hex::encode(pk.as_bytes()),
+                ref_link.base().to_string()
+            )),
+        }
+    }
+
+    /// Prepare Subscribe message.
+    pub fn prepare_unsubscribe<'a>(
+        &'a self,
+        link_to: &'a Link,
+    ) -> Result<PreparedMessage<F, Link, unsubscribe::ContentWrap<'a, F, Link>>> {
+        match self.get_seq_no() {
+            Some(seq_no) => {
+                let msg_link = self
+                    .link_gen
+                    .link_from(self.sig_kp.public, Cursor::new_at(link_to.rel(), 0, seq_no));
+                let header = HDF::new(msg_link)
+                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
+                    .with_content_type(UNSUBSCRIBE)?
+                    .with_payload_length(1)?
+                    .with_seq_num(seq_no)
+                    .with_identifier(&self.sig_kp.public.into());
+                let content = unsubscribe::ContentWrap {
+                    link: link_to.rel(),
+                    sig_kp: &self.sig_kp,
+                    _phantom: PhantomData,
+                };
+                Ok(PreparedMessage::new(header, content))
+            }
+            None => err!(SeqNumRetrievalFailure),
+        }
+    }
+
+    /// Unsubscribe from the channel.
+    pub async fn unsubscribe(&self, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
+        self.prepare_unsubscribe(link_to)?.wrap(&self.link_store).await
+    }
+
+    pub async fn unwrap_unsubscribe<'a>(
+        &self,
+        preparsed: PreparsedMessage<'_, F, Link>,
+    ) -> Result<UnwrappedMessage<F, Link, unsubscribe::ContentUnwrap<F, Link>>> {
+        self.ensure_appinst(&preparsed)?;
+        let content = unsubscribe::ContentUnwrap::default();
+        preparsed.unwrap(&self.link_store, content).await
+    }
+
+    /// Confirm unsubscription request ownership and remove subscriber.
+    pub async fn handle_unsubscribe(&mut self, msg: BinaryMessage<Link>, info: LS::Info) -> Result<()> {
+        let preparsed = msg.parse_header().await?;
+        let content = self
+            .unwrap_unsubscribe(preparsed)
+            .await?
+            .commit(&mut self.link_store, info)?;
+        self.remove_subscriber(content.sig_pk)
+    }
+
+    pub fn remove_subscriber(&mut self, pk: ed25519::PublicKey) -> Result<()> {
+        let id = pk.into();
+        match self.key_store.contains(&id) {
+            true => {
+                self.key_store.remove(&id);
+                Ok(())
+            }
+            false => err(UserNotRegistered),
+        }
     }
 
     fn do_prepare_keyload<'a>(
@@ -517,7 +588,7 @@ where
         info: LS::Info,
     ) -> Result<GenericMessage<Link, bool>> {
         let preparsed = msg.parse_header().await?;
-        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
         let seq_no = preparsed.header.seq_num;
         // We need to borrow self.key_store, self.sig_kp and self.ke_kp at this scope
         // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
@@ -526,26 +597,35 @@ where
         let unwrapped = self
             .unwrap_keyload(preparsed, keys_lookup, own_keys, self.author_sig_pk.as_ref())
             .await?;
-        let processed = if unwrapped.pcf.content.key.is_some() {
+
+        // Process a generic message containing the access right bool, also return the list of identifiers
+        // to be stored.
+        let (processed, keys) = if unwrapped.pcf.content.key.is_some() {
             // Do not commit if key not found hence spongos state is invalid
-            let content = unwrapped.commit(&mut self.link_store, info)?;
 
             // Presence of the key indicates the user is allowed
             // Unwrapped nonce and key in content are not used explicitly.
             // The resulting spongos state is joined into a protected message state.
-            // Store any unknown publishers
-            if let Some(appinst) = &self.appinst {
-                for identifier in content.key_ids {
-                    if !self.key_store.contains(&identifier) {
-                        self.key_store
-                            .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
-                    }
+            let content = unwrapped.commit(&mut self.link_store, info)?;
+            (GenericMessage::new(msg.link.clone(), prev_link, true), content.key_ids)
+        } else {
+            (
+                GenericMessage::new(msg.link.clone(), prev_link, false),
+                unwrapped.pcf.content.key_ids,
+            )
+        };
+
+        // Store any unknown publishers
+        if let Some(appinst) = &self.appinst {
+            for identifier in keys {
+                if !self.key_store.contains(&identifier) {
+                    // Store at state 2 since 0 and 1 are reserved states
+                    self.key_store
+                        .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
                 }
             }
-            GenericMessage::new(msg.link.clone(), prev_link, true)
-        } else {
-            GenericMessage::new(msg.link.clone(), prev_link, false)
-        };
+        }
+
         if !self.is_multi_branching() {
             self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
             if self.is_single_depth() {
@@ -617,7 +697,7 @@ where
     ) -> Result<GenericMessage<Link, (ed25519::PublicKey, Bytes, Bytes)>> {
         // TODO: pass author_pk to unwrap
         let preparsed = msg.parse_header().await?;
-        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
         let seq_no = preparsed.header.seq_num;
         let content = self
             .unwrap_signed_packet(preparsed)
@@ -705,7 +785,7 @@ where
         info: LS::Info,
     ) -> Result<GenericMessage<Link, (Bytes, Bytes)>> {
         let preparsed = msg.parse_header().await?;
-        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
         let seq_no = preparsed.header.seq_num;
         let content = self
             .unwrap_tagged_packet(preparsed)
@@ -802,7 +882,7 @@ where
     ) -> Result<GenericMessage<Link, sequence::ContentUnwrap<Link>>> {
         let preparsed = msg.parse_header().await?;
         let sender_id = preparsed.header.sender_id;
-        let prev_link = Link::from_bytes(&preparsed.header.previous_msg_link.0);
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
         let content = self
             .unwrap_sequence(preparsed)
             .await?
@@ -860,6 +940,17 @@ where
                 }
             }
             None => err(UserNotRegistered),
+        }
+    }
+
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        let id = pskid.into();
+        match self.key_store.contains(&id) {
+            true => {
+                self.key_store.remove(&id);
+                Ok(())
+            }
+            false => err(UserNotRegistered),
         }
     }
 

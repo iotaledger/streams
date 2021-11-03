@@ -13,6 +13,7 @@ use iota_streams_core::{
     err,
     prelude::{
         Box,
+        ToString,
         Vec,
     },
     prng,
@@ -21,9 +22,11 @@ use iota_streams_core::{
         PskId,
     },
     try_or,
+    unwrap_or_break,
     Errors::{
         ChannelDuplication,
         ChannelNotSingleDepth,
+        NoPreviousMessage,
         UnknownMsgType,
         UserNotRegistered,
     },
@@ -75,6 +78,11 @@ impl<Trans> User<Trans> {
     /// Fetch the Address (application instance) of the channel.
     pub fn channel_address(&self) -> Option<&ChannelAddress> {
         self.user.appinst.as_ref().map(|x| &x.appinst)
+    }
+
+    /// Fetch the Announcement Link of the channel.
+    pub fn announcement_link(&self) -> &Option<TangleAddress> {
+        &self.user.appinst
     }
 
     /// Channel Author's signature public key
@@ -139,9 +147,9 @@ impl<Trans> User<Trans> {
         self.user.fetch_state()
     }
 
-    /// Resets the cursor state storage to allow a Subscriber to retrieve all messages in a channel
+    /// Resets the cursor state storage to allow a User to retrieve all messages in a channel
     /// from scratch
-    /// [Subscriber]
+    /// [Author, Subscriber]
     pub fn reset_state(&mut self) -> Result<()> {
         self.user.reset_state()
     }
@@ -181,8 +189,37 @@ impl<Trans> User<Trans> {
         })
     }
 
+    /// Store a PSK in the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    ///   * `psk` - A pre shared key
     pub fn store_psk(&mut self, pskid: PskId, psk: Psk, use_psk: bool) -> Result<()> {
         self.user.store_psk(pskid, psk, use_psk)
+    }
+
+    /// Remove a PSK from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pskid` - An identifier representing a pre shared key
+    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+        self.user.remove_psk(pskid)
+    }
+
+    /// Store a predefined Subscriber by their public key
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn store_new_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.insert_subscriber(pk)
+    }
+
+    /// Remove a Subscriber from the user instance
+    ///
+    ///   # Arguments
+    ///   * `pk` - ed25519 public key of known subscriber
+    pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
+        self.user.remove_subscriber(pk)
     }
 
     /// Consume a binary sequence message and return the derived message link
@@ -330,6 +367,15 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.send_message(msg, MsgInfo::Subscribe).await
     }
 
+    /// Create and Send an Unsubscribe message to a Channel app instance [Subscriber].
+    ///
+    /// # Arguments
+    /// * `link_to` - Address of the user subscription message
+    pub async fn send_unsubscribe(&mut self, link_to: &Address) -> Result<Address> {
+        let msg = self.user.unsubscribe(link_to).await?;
+        self.send_message(msg, MsgInfo::Unsubscribe).await
+    }
+
     // Receive
 
     /// Receive and process a sequence message [Author, Subscriber].
@@ -388,6 +434,16 @@ impl<Trans: Transport + Clone> User<Trans> {
         let msg = self.transport.recv_message(link).await?;
         // TODO: Timestamp is lost.
         self.user.handle_subscribe(&msg.binary, MsgInfo::Subscribe).await
+    }
+
+    /// Receive and process an unsubscribe message [Author].
+    ///
+    ///  # Arguments
+    ///  * `link` - Address of the message to be processed
+    pub async fn receive_unsubscribe(&mut self, link: &Address) -> Result<()> {
+        let msg = self.transport.recv_message(link).await?;
+        // TODO: Timestamp is lost.
+        self.user.handle_unsubscribe(msg.binary, MsgInfo::Unsubscribe).await
     }
 
     /// Receive and Process an announcement message [Subscriber].
@@ -453,8 +509,8 @@ impl<Trans: Transport + Clone> User<Trans> {
         let msg = self.transport.recv_message(link).await?;
         let preparsed: Preparsed = msg.binary.parse_header().await?;
         let header = preparsed.header;
-
-        let prev_msg_link = Address::from_bytes(&header.previous_msg_link.0);
+        let prev_msg_link = Address::try_from_bytes(&header.previous_msg_link.0)
+            .or_else(|_| err!(NoPreviousMessage(link.to_string())))?;
         let prev_msg = self.transport.recv_message(&prev_msg_link).await?;
         let unwrapped = self.handle_message(prev_msg, false).await?;
         Ok(unwrapped)
@@ -470,7 +526,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         let mut msgs = Vec::new();
 
         for _ in 0..max {
-            msg_info = self.parse_msg_info(&msg_info.0).await?;
+            msg_info = unwrap_or_break!(self.parse_msg_info(&msg_info.0).await);
             if msg_info.1 == message::SEQUENCE {
                 let msg_link = self.process_sequence(&msg_info.2.binary, false).await?;
                 msg_info = self.parse_msg_info(&msg_link).await?;
@@ -533,7 +589,7 @@ impl<Trans: Transport + Clone> User<Trans> {
                         // to this particular msg
                         let preparsed: Preparsed<'_> = sequenced_msg.binary.parse_header().await?;
                         let link = preparsed.header.link;
-                        let prev_link = TangleAddress::from_bytes(&preparsed.header.previous_msg_link.0);
+                        let prev_link = TangleAddress::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
                         Ok(UnwrappedMessage::new(
                             link,
                             prev_link,
@@ -552,7 +608,8 @@ impl<Trans: Transport + Clone> User<Trans> {
         let msg = self.transport.recv_message(link).await?;
         let preparsed: Preparsed = msg.binary.parse_header().await?;
         let header = preparsed.header;
-        let link = Address::from_bytes(&header.previous_msg_link.0);
+        let link = Address::try_from_bytes(&header.previous_msg_link.0)
+            .or_else(|_| err!(NoPreviousMessage(link.to_string())))?;
         Ok((link, header.content_type, msg))
     }
 

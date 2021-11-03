@@ -2,13 +2,16 @@
 
 [package]
 name = "iota-streams"
-version = "1.0.0"
+version = "0.1.2"
 authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
 keywords = ["iota", "streams"]
-description = "A rust implementation of the IOTA Streams"
+description = "A Rust implementation of the IOTA Streams"
+repository = "https://github.com/iotaledger/streams"
+homepage = "https://wiki.iota.org/streams/libraries/rust/overview"
+
 autoexamples = false
 
 [lib]
@@ -23,7 +26,6 @@ members = [
     "iota-streams-ddml",
     "iota-streams-app",
     "iota-streams-app-channels",
-    "iota-streams-app-channels-example",
     "bindings/wasm",
 ]
 
@@ -60,12 +62,12 @@ sync-spin = ["iota-streams-app/sync-spin", "iota-streams-core/sync-spin"]
 sync-parking-lot = ["iota-streams-app/sync-parking-lot", "iota-streams-core/sync-parking-lot", "std"]
 
 [dependencies]
-iota-streams-core = { version = "0.3.0", path = "iota-streams-core", default-features = false }
-iota-streams-core-keccak = { version = "0.3.0", path = "iota-streams-core-keccak", default-features = false }
-iota-streams-core-edsig = { version = "0.2.0", path = "iota-streams-core-edsig", default-features = false }
-iota-streams-ddml = { version = "0.2.2", path = "iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "1.0.0", path = "iota-streams-app", default-features = false }
-iota-streams-app-channels = { version = "1.0.0", path = "iota-streams-app-channels", default-features = false }
+iota-streams-core = { version = "0.1.2", path = "iota-streams-core", default-features = false }
+iota-streams-core-keccak = { version = "0.1.2", path = "iota-streams-core-keccak", default-features = false }
+iota-streams-core-edsig = { version = "0.1.2", path = "iota-streams-core-edsig", default-features = false }
+iota-streams-ddml = { version = "0.1.2", path = "iota-streams-ddml", default-features = false }
+iota-streams-app = { version = "0.1.2", path = "iota-streams-app", default-features = false }
+iota-streams-app-channels = { version = "0.1.2", path = "iota-streams-app-channels", default-features = false }
 
 #[profile.release-nostd]
 #inherits = "release"
