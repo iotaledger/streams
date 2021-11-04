@@ -152,8 +152,8 @@ message (usually the announcement in a multi branch).
 | Param           | Type                          | Description                                   |
 | --------------- | ----------------------------- | --------------------------------------------- |
 | link            | [`address`](#Address)         | Address of message being linked to            |
-| psk_ids         | [`PskIds`](#PskIds)           | Array of PskId's for included subscribers     |
-| sig_pks         | [`PublicKeys`](#PublicKeys)   | Array of Public Keys for included subscribers |
+| psk_ids         | [`PskIds`](#PskIds)           | PskIds instance                               |
+| sig_pks         | [`PublicKeys`](#PublicKeys)   | PublicKeys instance                           |
 
 **Returns:** A User Response wrapper around the keyload message.
 
