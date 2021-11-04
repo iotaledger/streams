@@ -40,6 +40,14 @@ use crate::{
 
 use iota_streams_core::prelude::String;
 
+#[cfg(feature = "use-did")]
+use iota_streams_core::iota_identity::{
+    iota::{
+        Client as DIDClient,
+        Network as DIDNetwork,
+    },
+};
+
 /// Options for the user Client
 #[derive(Clone)]
 pub struct SendOptions {
@@ -261,6 +269,23 @@ where
         } else {
             err!(MessageLinkNotFoundInTangle(link.to_string()))
         }
+    }
+
+    fn get_url(&self) -> String {
+        self.send_opt.url.clone()
+    }
+
+    #[cfg(feature = "use-did")]
+    async fn to_did_client(&self) -> Result<DIDClient> {
+        DIDClient::builder()
+            .network(DIDNetwork::Mainnet)
+            .primary_node(&self.send_opt.url, None, None)
+            .map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
+            .unwrap()
+            .local_pow(self.send_opt.local_pow)
+            .build()
+            .await
+            .map_err(|err| wrapped_err!(ClientOperationFailure, WrappedError(err)))
     }
 }
 

@@ -99,6 +99,14 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     _phantom: std::marker::PhantomData<(F, Link)>,
 }
 
+impl<F: Default, Link: HasLink> ContentUnwrap<F, Link> {
+    pub fn new(kp: KeyPairs) -> Self {
+        let mut ctx = Self::default();
+        ctx.kp = kp;
+        ctx
+    }
+}
+
 #[async_trait(?Send)]
 impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
 where
@@ -115,7 +123,7 @@ where
         let mut id = Identifier::EdPubKey(ed25519::PublicKey::default().into());
         ctx.join(store, &mut self.link)?;
         let ctx = id.unwrap(store, ctx).await?.commit()?;
-        self.kp = KeyPairs::new_from_id(id).await?;
+        self.kp.set_id(id);
         self.kp.verify(ctx).await?;
         Ok(ctx)
     }

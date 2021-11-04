@@ -303,8 +303,8 @@ where
                 UserAlreadyRegistered(hex::encode(self.key_pairs.sig_kp.public), appinst.base().to_string())
             )?;
         }
-
-        let content = announce::ContentUnwrap::<F>::default();
+        let kp = KeyPairs::from(&self.key_pairs);
+        let content = announce::ContentUnwrap::<F>::new(kp);
         preparsed.unwrap(&self.link_store, content).await
     }
 
@@ -402,10 +402,11 @@ where
     pub async fn unwrap_subscribe<'a>(
         &self,
         preparsed: PreparsedMessage<'_, F, Link>,
-        author_id: &'a KeyPairs,
+        author_id: &'a x25519::StaticSecret
     ) -> Result<UnwrappedMessage<F, Link, subscribe::ContentUnwrap<'a, F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = subscribe::ContentUnwrap::new(author_id)?;
+        let kp = KeyPairs::from(&self.key_pairs);
+        let content = subscribe::ContentUnwrap::new(author_id, kp)?;
         let r = preparsed.unwrap(&self.link_store, content).await;
         r
     }
@@ -418,7 +419,7 @@ where
         let content = self
             // We need to borrow self.ke_kp.0 at this scope
             // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
-            .unwrap_subscribe(preparsed, &self.key_pairs)
+            .unwrap_subscribe(preparsed, &self.key_pairs.ke_kp.0)
             .await?
             .commit(&mut self.link_store, info)?;
         // TODO: trust content.subscriber_sig_pk
@@ -477,7 +478,8 @@ where
         preparsed: PreparsedMessage<'_, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, unsubscribe::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = unsubscribe::ContentUnwrap::default();
+        let kp = KeyPairs::from(&self.key_pairs);
+        let content = unsubscribe::ContentUnwrap::new(kp);
         preparsed.unwrap(&self.link_store, content).await
     }
 
@@ -588,18 +590,14 @@ where
         preparsed: PreparsedMessage<'_, F, Link>,
         keys_lookup: KeysLookup<'a, F, Link, Keys>,
         own_keys: OwnKeys<'a>,
-        author_id: Option<&'a Identifier>,
+        kp: KeyPairs
     ) -> Result<
-        UnwrappedMessage<F, Link, keyload::ContentUnwrap<'a, F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>,
+        UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>,
     > {
         self.ensure_appinst(&preparsed)?;
-        if let Some(author_id) = author_id {
-            let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_id);
-            let unwrapped = preparsed.unwrap(&self.link_store, content).await?;
-            Ok(unwrapped)
-        } else {
-            err!(AuthorSigKeyNotFound)
-        }
+        let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, kp);
+        let unwrapped = preparsed.unwrap(&self.link_store, content).await?;
+        Ok(unwrapped)
     }
 
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or Ed25519 private key (if any).
@@ -608,54 +606,65 @@ where
         msg: BinaryMessage<F, Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, bool>> {
-        let preparsed = msg.parse_header().await?;
-        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
-        let seq_no = preparsed.header.seq_num;
-        // We need to borrow self.key_store, self.sig_kp and self.ke_kp at this scope
-        // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
-        let keys_lookup = KeysLookup::new(&self.key_store);
-        let own_keys = OwnKeys(&self.key_pairs);
-        let unwrapped = self
-            .unwrap_keyload(preparsed, keys_lookup, own_keys, self.author_id.as_ref())
-            .await?;
+        match &self.author_id {
+            Some(author_id) => {
+                let preparsed = msg.parse_header().await?;
+                let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
+                let seq_no = preparsed.header.seq_num;
+                // We need to borrow self.key_store, self.sig_kp and self.ke_kp at this scope
+                // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
+                let keys_lookup = KeysLookup::new(&self.key_store);
+                let own_keys = OwnKeys(&self.key_pairs);
+                // Create a copy of KeyPairs object and replace id contents with author details
+                // This is done to accommodate DID client transfer into messages when necessary
+                let mut key_pairs = KeyPairs::from(&self.key_pairs);
+                key_pairs.set_id(author_id.clone());
+                let unwrapped = self
+                    .unwrap_keyload(preparsed, keys_lookup, own_keys, key_pairs)
+                    .await?;
 
-        // Process a generic message containing the access right bool, also return the list of identifiers
-        // to be stored.
-        let (processed, keys) = if unwrapped.pcf.content.key.is_some() {
-            // Do not commit if key not found hence spongos state is invalid
+                // Process a generic message containing the access right bool, also return the list of identifiers
+                // to be stored.
+                let (processed, keys) = if unwrapped.pcf.content.key.is_some() {
+                    // Do not commit if key not found hence spongos state is invalid
 
-            // Presence of the key indicates the user is allowed
-            // Unwrapped nonce and key in content are not used explicitly.
-            // The resulting spongos state is joined into a protected message state.
+                    // Presence of the key indicates the user is allowed
+                    // Unwrapped nonce and key in content are not used explicitly.
+                    // The resulting spongos state is joined into a protected message state.
 
-            let content = unwrapped.commit(&mut self.link_store, info)?;
-            (GenericMessage::new(msg.link.clone(), prev_link, true), content.key_ids)
-        } else {
-            (
-                GenericMessage::new(msg.link.clone(), prev_link, false),
-                unwrapped.pcf.content.key_ids,
-            )
-        };
+                    let content = unwrapped.commit(&mut self.link_store, info)?;
+                    (GenericMessage::new(msg.link.clone(), prev_link, true), content.key_ids)
+                } else {
+                    (
+                        GenericMessage::new(msg.link.clone(), prev_link, false),
+                        unwrapped.pcf.content.key_ids,
+                    )
+                };
 
-        // Store any unknown publishers
-        if let Some(appinst) = &self.appinst {
-            for identifier in keys {
-                if !self.key_store.contains(&identifier) {
-                    // Store at state 2 since 0 and 1 are reserved states
-                    self.key_store
-                        .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
+                // Store any unknown publishers
+                if let Some(appinst) = &self.appinst {
+                    for identifier in keys {
+                        if !self.key_store.contains(&identifier) {
+                            // Store at state 2 since 0 and 1 are reserved states
+                            self.key_store
+                                .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2))?;
+                        }
+                    }
                 }
-            }
+
+                if !self.is_multi_branching() {
+                    self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
+                    if self.is_single_depth() {
+                        self.anchor = Some(Cursor::new_at(msg.link.clone(), 0, seq_no.0 as u32 + 1));
+                    }
+                }
+
+                Ok(processed)
+            },
+            None => err!(AuthorSigKeyNotFound)
+
         }
 
-        if !self.is_multi_branching() {
-            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
-            if self.is_single_depth() {
-                self.anchor = Some(Cursor::new_at(msg.link.clone(), 0, seq_no.0 as u32 + 1));
-            }
-        }
-
-        Ok(processed)
     }
 
     /// Prepare SignedPacket message.
@@ -709,7 +718,8 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, signed_packet::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = signed_packet::ContentUnwrap::default();
+        let kp = KeyPairs::from(&self.key_pairs);
+        let content = signed_packet::ContentUnwrap::new(kp);
         preparsed.unwrap(&self.link_store, content).await
     }
 

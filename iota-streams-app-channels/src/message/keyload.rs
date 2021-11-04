@@ -217,7 +217,7 @@ where
     }
 }
 
-pub struct ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
+pub struct ContentUnwrap<F, Link, PskStore, KeSkStore>
 where
     Link: HasLink,
 {
@@ -227,17 +227,17 @@ where
     pub(crate) ke_sk_store: KeSkStore,
     pub(crate) key_ids: Vec<Identifier>,
     pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
-    pub(crate) id: &'a Identifier,
+    kp: KeyPairs,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, 'b, F, Link, PskStore, KeSkStore> ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
+impl<'a, 'b, F, Link, PskStore, KeSkStore> ContentUnwrap<F, Link, PskStore, KeSkStore>
 where
     F: PRP,
     Link: HasLink,
     Link::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, id: &'a Identifier) -> Self {
+    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, kp: KeyPairs) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NBytes::default(),
@@ -245,7 +245,7 @@ where
             ke_sk_store,
             key_ids: Vec::new(),
             key: None,
-            id,
+            kp,
             _phantom: core::marker::PhantomData,
         }
     }
@@ -253,7 +253,7 @@ where
 
 #[async_trait(?Send)]
 impl<'a, 'b, F, Link, LStore, PskStore, KeSkStore> message::ContentUnwrap<F, LStore>
-    for ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
+    for ContentUnwrap<F, Link, PskStore, KeSkStore>
 where
     F: PRP + Clone,
     Link: HasLink,
@@ -270,7 +270,6 @@ where
     where
         IS: io::IStream,
     {
-        let key_pair = KeyPairs::new_from_id(*self.id).await?;
         let mut id_hash = External(NBytes::<U64>::default());
         let mut repeated_keys = Size(0);
 
@@ -345,7 +344,7 @@ where
             ctx.absorb(External(key))?;
             // Fork for signature verification
             let signature_fork = ctx.spongos.fork();
-            let ctx = key_pair.verify(ctx.absorb(&id_hash)?).await?;
+            let ctx = self.kp.verify(ctx.absorb(&id_hash)?).await?;
             ctx.spongos = signature_fork;
             ctx.commit()
         } else {

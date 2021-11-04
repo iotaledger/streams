@@ -82,7 +82,6 @@ use iota_streams_core::{
         DIDInfoRetrievalFailure,
         DIDMissing,
         DIDRetrievalFailure,
-        DIDSetFailure,
         DocumentUpdateFailure,
         SignatureFailure,
     },
@@ -112,6 +111,8 @@ use iota_streams_ddml::{
         Uint8,
     },
 };
+#[cfg(feature = "use-did")]
+use futures::executor::block_on;
 
 pub struct KeyPairs {
     pub id: Identifier,
@@ -126,6 +127,7 @@ pub struct DIDInfo {
     pub did: Option<IotaDID>,
     pub key_fragment: String,
     pub did_client: Client,
+    pub url: String,
 }
 
 impl KeyPairs {
@@ -148,59 +150,6 @@ impl KeyPairs {
             ke_kp,
         }
     }
-
-    /// Create a new KeyPairs structure with default values using an Identifier as the foundation
-    ///
-    /// # Arguments
-    /// * `id` - Identifier of the new KeyPairs instance
-    pub async fn new_from_id(id: Identifier) -> Result<Self> {
-        match &id {
-            Identifier::EdPubKey(pk) => {
-                // Unknown Private Key
-                let mut bytes = vec![0_u8; 32];
-                let x_pk = x25519::public_from_ed25519(&pk.0)?;
-                // Expand the bytes with the public key bytes
-                bytes.extend_from_slice(pk.0.as_bytes());
-                // Make the key pairs for the identity
-                let sig_kp = ed25519::Keypair::from_bytes(&bytes)?;
-                let ke_kp = (x25519::StaticSecret::from([0_u8; 32]), x_pk);
-
-                let kp = {
-                    #[cfg(feature = "use-did")]
-                    {
-                        let mut kp = KeyPairs {
-                            id,
-                            did_info: None,
-                            sig_kp,
-                            ke_kp,
-                        };
-                        kp.make_default_did_info().await?;
-                        kp
-                    }
-                    #[cfg(not(feature = "use-did"))]
-                    KeyPairs { id, sig_kp, ke_kp }
-                };
-                Ok(kp)
-            }
-            #[cfg(feature = "use-did")]
-            Identifier::DID(did) => {
-                let mut kp = KeyPairs {
-                    id,
-                    did_info: None,
-                    sig_kp: ed25519::Keypair::from_bytes(&[0_u8; 64])?,
-                    ke_kp: (
-                        x25519::StaticSecret::from([0_u8; 32]),
-                        x25519::PublicKey::from([0_u8; 32]),
-                    ),
-                };
-
-                kp.make_default_did_info().await?;
-                kp.set_did(did_from_bytes(did)?)?;
-                Ok(kp)
-            }
-            _ => Ok(KeyPairs::default()),
-        }
-    }
 }
 
 #[cfg(feature = "use-did")]
@@ -213,7 +162,8 @@ impl KeyPairs {
     /// * `account` - DID Account Structure
     /// * `key_fragment` - Identifier for new verification method within the DID document
     /// * `did_client` - Identity Client for publishing and retrieving DID documents from the tangle
-    pub async fn new_from_account(account: Account, key_fragment: String, did_client: Client) -> Result<KeyPairs> {
+    /// * `url` - Url for network that connection will be established with
+    pub async fn new_from_account(account: Account, key_fragment: String, did_client: Client, url: String) -> Result<KeyPairs> {
         // Get the id of the original document from account, and resolve the identity to verify it
         match account.store().index().await?.get(&IdentityId::from(1)) {
             Some(id) => {
@@ -239,6 +189,7 @@ impl KeyPairs {
                     did: Some(did.clone()),
                     key_fragment: prepend,
                     did_client,
+                    url
                 };
 
                 Ok(Self {
@@ -266,6 +217,7 @@ impl KeyPairs {
         did: String,
         key_fragment: String,
         keypair: &DIDKeyPair,
+        url: String,
     ) -> Result<KeyPairs> {
         // Generate the base layer keypair
         let mut kp = KeyPairs::new::<F>(seed);
@@ -294,6 +246,7 @@ impl KeyPairs {
             did: Some(doc.id().clone()),
             key_fragment: prepend,
             did_client,
+            url,
         };
 
         // Update the KeyPairs structure Id and DIDInfo Wrapper
@@ -330,21 +283,49 @@ impl KeyPairs {
         }
     }
 
-    // TODO: This currently defaults to mainnet with chrysalis-nodes, we need to figure out a reasonable way to go about
-    // making this accessible from the user api
-    pub async fn make_default_did_info(&mut self) -> Result<()> {
-        let did_client = Client::builder()
-            .network(Network::Mainnet)
-            .primary_node("https://chrysalis-nodes.iota.org", None, None)?
-            .build()
-            .await?;
-        let info = DIDInfo {
-            did: None,
-            key_fragment: "".to_string(),
-            did_client,
+    pub fn set_id(&mut self, id: Identifier) {
+        match &id {
+            Identifier::EdPubKey(pk) => {
+                self.sig_kp = ed25519::Keypair {
+                    secret: ed25519::SecretKey::from_bytes(&[0; 32]).unwrap(),
+                    public: ed25519::PublicKey::from(pk.0)
+                };
+                self.id = id;
+            },
+            _ => {
+                self.sig_kp = ed25519::Keypair::from_bytes(&[0;64]).unwrap();
+                self.id = id;
+            }
+        }
+    }
+}
+
+impl From<&KeyPairs> for KeyPairs {
+    fn from(kp: &KeyPairs) -> Self {
+        let did_info = match &kp.did_info {
+            Some(info) => {
+                Some(DIDInfo {
+                    did: None,
+                    key_fragment: "".to_string(),
+                    did_client: block_on(
+                        Client::builder()
+                            .network(info.did_client.network())
+                            .primary_node(&info.url, None, None)
+                            .unwrap()
+                            .build()
+                    ).unwrap(),
+                    url: info.url.clone()
+                })
+            }
+            None => None
         };
-        self.did_info = Some(info);
-        Ok(())
+
+        KeyPairs {
+            id: kp.id.clone(),
+            did_info,
+            sig_kp: ed25519::Keypair::from_bytes(&kp.sig_kp.to_bytes()).unwrap(),
+            ke_kp: (kp.ke_kp.0.clone(), kp.ke_kp.1.clone())
+        }
     }
 }
 
@@ -428,20 +409,6 @@ impl KeyPairs {
                 }
             }
             None => err(SignatureFailure),
-        }
-    }
-
-    /// Set the DID within a KeyPairs Structure
-    ///
-    /// # Arguments
-    /// * `did` - DID identifier
-    fn set_did(&mut self, did: IotaDID) -> Result<()> {
-        match self.did_info.as_mut() {
-            Some(info) => {
-                info.did = Some(did);
-                Ok(())
-            }
-            None => err(DIDSetFailure)?,
         }
     }
 }

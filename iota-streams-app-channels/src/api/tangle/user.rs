@@ -65,6 +65,7 @@ pub struct User<Trans> {
 }
 
 impl<Trans> User<Trans> {
+    #[cfg(not(feature = "use-did"))]
     /// Create a new User instance.
     ///
     /// # Arguments
@@ -72,17 +73,7 @@ impl<Trans> User<Trans> {
     /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
     pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        #[cfg(not(feature = "use-did"))]
         let id = KeyPairs::new::<DefaultF>(seed);
-
-        #[cfg(feature = "use-did")]
-        let id = {
-            let mut kp = KeyPairs::new::<DefaultF>(seed);
-            // Make default did info wrapper to allow user to verify DID based user signatures
-            block_on(kp.make_default_did_info()).unwrap();
-            kp
-        };
-
         let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
         Self { user, transport }
     }
@@ -248,6 +239,19 @@ impl<Trans> User<Trans> {
 
 #[cfg(feature = "use-did")]
 impl<Trans: Transport + Clone> User<Trans> {
+    #[cfg(feature = "use-did")]
+    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
+        let mut id = KeyPairs::new::<DefaultF>(seed);
+        id.did_info = Some(DIDInfo {
+            did: None,
+            key_fragment: "".to_string(),
+            did_client: block_on(transport.to_did_client()).unwrap(),
+            url: transport.get_url()
+        });
+
+        let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
+        Self { user, transport }
+    }
     #[cfg(feature = "account")]
     /// Creates a new User from an existing Identity (DID) Account
     ///
@@ -291,6 +295,7 @@ impl<Trans: Transport + Clone> User<Trans> {
                     did.into_string(),
                     did_info.key_fragment,
                     keypair,
+                    transport.get_url(),
                 )
                 .await?;
 

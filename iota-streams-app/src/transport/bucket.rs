@@ -17,6 +17,9 @@ use iota_streams_core::{
     Errors::MessageNotUnique,
 };
 
+#[cfg(feature = "use-did")]
+use iota_streams_core::iota_identity::iota::Client as DIDClient;
+
 #[derive(Clone)]
 pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
@@ -83,6 +86,16 @@ where
             err!(MessageLinkNotFoundInBucket(link.to_string()))?
         }
     }
+
+    fn get_url(&self) -> String {
+        String::new()
+    }
+
+    #[cfg(feature = "use-did")]
+    async fn to_did_client(&self) -> Result<DIDClient> {
+        unimplemented!()
+    }
+
 }
 
 #[async_trait(?Send)]

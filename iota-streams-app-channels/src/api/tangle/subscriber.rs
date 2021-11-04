@@ -42,6 +42,7 @@ pub struct Subscriber<T> {
 }
 
 impl<Trans> Subscriber<Trans> {
+    #[cfg(not(feature = "use-did"))]
     /// Create a new Subscriber instance, generate new Ed25519 key pair.
     ///
     /// # Arguments
@@ -186,6 +187,17 @@ impl<Trans> Subscriber<Trans> {
 
 #[cfg(feature = "use-did")]
 impl<Trans: Transport + Clone> Subscriber<Trans> {
+    #[cfg(feature = "use-did")]
+    /// Create a new Subscriber instance, generate new Ed25519 key pair.
+    ///
+    /// # Arguments
+    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
+    /// * `transport` - Transport object used for sending and receiving
+    pub fn new(seed: &str, transport: Trans) -> Self {
+        let user = User::new(seed, SingleBranch, transport);
+        Self { user }
+    }
+
     #[cfg(feature = "account")]
     pub async fn new_with_account(account: Account, transport: Trans, did_info: DIDInfo) -> Result<Self> {
         let user = User::new_with_account(account, SingleBranch, transport, did_info).await?;

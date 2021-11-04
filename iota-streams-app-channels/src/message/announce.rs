@@ -98,6 +98,7 @@ pub struct ContentUnwrap<F> {
     #[allow(dead_code)]
     pub(crate) ke_pk: x25519::PublicKey,
     pub(crate) flags: Uint8,
+    kp: KeyPairs,
     _phantom: core::marker::PhantomData<F>,
 }
 
@@ -113,8 +114,15 @@ impl<F> Default for ContentUnwrap<F> {
             ke_pk,
             flags,
             identifier,
+            kp: KeyPairs::default(),
             _phantom: core::marker::PhantomData,
         }
+    }
+}
+
+impl<F> ContentUnwrap<F> {
+    pub fn new(kp: KeyPairs) -> Self {
+        Self { kp, ..Default::default() }
     }
 }
 
@@ -130,10 +138,10 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         self.identifier.unwrap(store, ctx).await?;
         ctx.absorb(&mut self.sig_pk)?;
-        let kp = KeyPairs::new_from_id(self.sig_pk.into()).await?;
+        self.kp.set_id(self.identifier.clone());
         self.ke_pk = x25519::public_from_ed25519(&self.sig_pk)?;
         ctx.absorb(&mut self.flags)?;
-        let ctx = kp.verify(ctx).await?;
+        let ctx = self.kp.verify(ctx).await?;
         Ok(ctx)
     }
 }

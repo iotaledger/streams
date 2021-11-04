@@ -123,11 +123,12 @@ where
 }
 
 pub struct ContentUnwrap<'a, F, Link: HasLink> {
-    author_id: &'a KeyPairs,
+    author_id: &'a x25519::StaticSecret,
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
     pub subscriber_sig_pk: ed25519::PublicKey,
     pub subscriber_id: Identifier,
+    sub_kp: KeyPairs,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -137,7 +138,7 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(author_id: &'a KeyPairs) -> Result<Self> {
+    pub fn new(author_id: &'a x25519::StaticSecret, sub_kp: KeyPairs) -> Result<Self> {
         match ed25519::PublicKey::from_bytes(&[0_u8; ed25519::PUBLIC_KEY_LENGTH]) {
             Ok(pk) => Ok(Self {
                 author_id,
@@ -145,6 +146,7 @@ where
                 unsubscribe_key: NBytes::<U32>::default(),
                 subscriber_sig_pk: pk,
                 subscriber_id: Identifier::EdPubKey(pk.into()),
+                sub_kp,
                 _phantom: core::marker::PhantomData,
             }),
             Err(e) => Err(wrapped_err!(MessageCreationFailure, WrappedError(e))),
@@ -166,11 +168,11 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
-            .x25519(&self.author_id.ke_kp.0, &mut self.unsubscribe_key)?
+            .x25519(self.author_id, &mut self.unsubscribe_key)?
             .mask(&mut self.subscriber_sig_pk)?;
         let mut ctx = self.subscriber_id.unwrap(store, ctx).await?;
-        let sub_kp = KeyPairs::new_from_id(self.subscriber_id.clone()).await?;
-        ctx = sub_kp.verify(ctx).await?;
+        self.sub_kp.set_id(self.subscriber_id.clone());
+        ctx = self.sub_kp.verify(ctx).await?;
         //    .mask(&mut self.subscriber_sig_pk)?
         //    .ed25519(&self.subscriber_sig_pk, HashSig)?;
         Ok(ctx)

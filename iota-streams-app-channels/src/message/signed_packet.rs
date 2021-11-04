@@ -121,20 +121,22 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) public_payload: Bytes,
     pub(crate) masked_payload: Bytes,
     pub(crate) id: Identifier,
+    kp: KeyPairs,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-impl<F, Link> Default for ContentUnwrap<F, Link>
+impl<F, Link> ContentUnwrap<F, Link>
 where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    fn default() -> Self {
+    pub fn new(kp: KeyPairs) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             public_payload: Bytes::default(),
             masked_payload: Bytes::default(),
             id: ed25519::PublicKey::default().into(),
+            kp: kp,
             _phantom: core::marker::PhantomData,
         }
     }
@@ -160,8 +162,8 @@ where
             .await?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?;
-        let kp = KeyPairs::new_from_id(self.id).await?;
-        ctx = kp.verify(ctx).await?;
+        self.kp.set_id(self.id);
+        ctx = self.kp.verify(ctx).await?;
         Ok(ctx)
     }
 }

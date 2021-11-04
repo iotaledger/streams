@@ -39,6 +39,7 @@ pub struct Author<Trans> {
 }
 
 impl<Trans> Author<Trans> {
+    #[cfg(not(feature = "use-did"))]
     /// Create a new Author instance, generate new Ed25519 key pair.
     ///
     /// # Arguments
@@ -187,6 +188,22 @@ impl<Trans> Author<Trans> {
 
 #[cfg(feature = "use-did")]
 impl<Trans: Transport + Clone> Author<Trans> {
+    #[cfg(feature = "use-did")]
+    /// Create a new Author instance, generate new Ed25519 key pair.
+    ///
+    /// # Arguments
+    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
+    /// * `encoding` - A string slice representing the encoding type for the message [supported: utf-8]
+    /// * `payload_length` - Maximum size in bytes of payload per message chunk [1-1024],
+    /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
+    /// * `transport` - Transport object used for sending and receiving
+    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
+        let mut user = User::new(seed, channel_type, transport);
+        let channel_idx = 0_u64;
+        let _ = user.user.create_channel(channel_idx);
+        Self { user }
+    }
+
     #[cfg(feature = "account")]
     pub async fn new_with_account(
         account: Account,

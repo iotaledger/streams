@@ -36,7 +36,8 @@ pub async fn example<T: Transport>(identity: Option<(String, KeyPair, DIDClient)
                 DIDInfo {
                     did: Some(IotaDID::parse(did)?),
                     key_fragment: "streams-key-1".to_string(),
-                    did_client
+                    did_client,
+                    url: transport.get_url()
                 },
                 &keypair
             ).await?;
