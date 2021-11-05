@@ -469,13 +469,14 @@ impl TryFrom<DIDInfo> for ApiDIDInfo {
             .map(|did| {
                 let builder = DIDClient::builder()
                     .network(info.network.clone().into())
-                    .node(&info.url)
+                    .primary_node(&info.url, None, None)
                     .unwrap();
                 let client = block_on(builder.build()).unwrap();
                 ApiDIDInfo {
                     did: Some(did),
                     key_fragment: info.key_fragment(),
                     did_client: client,
+                    url: info.url
                 }
             })
             .into_js_result()
