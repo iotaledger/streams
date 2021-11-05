@@ -150,6 +150,23 @@ impl KeyPairs {
             ke_kp,
         }
     }
+
+    pub fn set_id(&mut self, id: Identifier) {
+        match &id {
+            Identifier::EdPubKey(pk) => {
+                self.sig_kp = ed25519::Keypair {
+                    secret: ed25519::SecretKey::from_bytes(&[0; 32]).unwrap(),
+                    public: ed25519::PublicKey::from(pk.0)
+                };
+                self.id = id;
+            },
+            _ => {
+                self.sig_kp = ed25519::Keypair::from_bytes(&[0;64]).unwrap();
+                self.id = id;
+            }
+        }
+    }
+
 }
 
 #[cfg(feature = "use-did")]
@@ -282,26 +299,11 @@ impl KeyPairs {
             err(DIDMissing)
         }
     }
-
-    pub fn set_id(&mut self, id: Identifier) {
-        match &id {
-            Identifier::EdPubKey(pk) => {
-                self.sig_kp = ed25519::Keypair {
-                    secret: ed25519::SecretKey::from_bytes(&[0; 32]).unwrap(),
-                    public: ed25519::PublicKey::from(pk.0)
-                };
-                self.id = id;
-            },
-            _ => {
-                self.sig_kp = ed25519::Keypair::from_bytes(&[0;64]).unwrap();
-                self.id = id;
-            }
-        }
-    }
 }
 
 impl From<&KeyPairs> for KeyPairs {
     fn from(kp: &KeyPairs) -> Self {
+        #[cfg(feature = "use-did")]
         let did_info = match &kp.did_info {
             Some(info) => {
                 Some(DIDInfo {
@@ -322,6 +324,7 @@ impl From<&KeyPairs> for KeyPairs {
 
         KeyPairs {
             id: kp.id.clone(),
+            #[cfg(feature = "use-did")]
             did_info,
             sig_kp: ed25519::Keypair::from_bytes(&kp.sig_kp.to_bytes()).unwrap(),
             ke_kp: (kp.ke_kp.0.clone(), kp.ke_kp.1.clone())
