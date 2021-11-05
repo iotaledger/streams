@@ -104,6 +104,11 @@ pub unsafe extern "C" fn drop_address(addr: *const Address) {
     safe_drop_ptr(addr)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn drop_id(id: *const Identifier) {
+    safe_drop_ptr(id)
+}
+
 pub type PskIds = Vec<PskId>;
 pub type KePks = Vec<PublicKey>;
 
@@ -133,12 +138,12 @@ pub extern "C" fn drop_user_state(s: *const UserState) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
+pub unsafe extern "C" fn get_link_from_state(state: *const UserState, id: *const Identifier) -> *const Address {
     state.as_ref().map_or(null(), |state_ref| {
-        pub_key.as_ref().map_or(null(), |pub_key| {
-            let pk_str = hex::encode(pub_key.as_bytes());
-            for (pk, cursor) in state_ref {
-                if pk == &pk_str {
+        id.as_ref().map_or(null(), |identifier| {
+            let id_str = hex::encode(identifier.to_bytes());
+            for (id, cursor) in state_ref {
+                if id == &id_str {
                     return safe_into_ptr(cursor.link.clone());
                 }
             }

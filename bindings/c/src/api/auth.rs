@@ -225,6 +225,17 @@ pub unsafe extern "C" fn auth_get_public_key(pk: *mut *const PublicKey, user: *c
     })
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn auth_get_id(id: *mut *const Identifier, user: *const Author) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        id.as_mut().map_or(Err::NullArgument, |id| {
+            *id = user.get_id() as *const Identifier;
+            Err::Ok
+        })
+    })
+}
+
+
 /// Announce creation of a new Channel.
 #[no_mangle]
 pub unsafe extern "C" fn auth_send_announce(addr: *mut *const Address, user: *mut Author) -> Err {

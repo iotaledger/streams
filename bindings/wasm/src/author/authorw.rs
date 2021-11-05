@@ -208,6 +208,11 @@ impl Author {
     }
 
     #[wasm_bindgen(catch)]
+    pub fn get_id(&self) -> Result<String> {
+        Ok(identifier_to_string(self.author.borrow_mut().get_id()))
+    }
+
+    #[wasm_bindgen(catch)]
     pub async fn send_announce(self) -> Result<UserResponse> {
         self.author
             .borrow_mut()

@@ -85,6 +85,11 @@ impl<Trans> Author<Trans> {
         self.user.get_public_key()
     }
 
+    /// Fetch the user Identifier
+    pub fn get_id(&self) -> &Identifier {
+        self.user.get_id()
+    }
+
     /// Store a PSK in the user instance
     ///
     ///   # Arguments

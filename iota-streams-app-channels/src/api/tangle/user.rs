@@ -114,6 +114,11 @@ impl<Trans> User<Trans> {
         &self.user.key_pairs.sig_kp.public
     }
 
+    /// Fetch user Identifier
+    pub fn get_id(&self) -> &Identifier {
+        &self.user.key_pairs.id
+    }
+
     pub fn is_registered(&self) -> bool {
         self.user.appinst.is_some()
     }

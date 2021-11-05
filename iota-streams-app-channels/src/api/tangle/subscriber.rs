@@ -73,6 +73,11 @@ impl<Trans> Subscriber<Trans> {
         self.user.get_public_key()
     }
 
+    /// Fetch the user Identifier
+    pub fn get_id(&self) -> &Identifier {
+        self.user.get_id()
+    }
+
     /// Channel Author's signature public key
     pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
         self.user.author_public_key()

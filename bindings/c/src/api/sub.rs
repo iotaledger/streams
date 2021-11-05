@@ -119,6 +119,17 @@ pub unsafe extern "C" fn sub_get_public_key(pk: *mut *const PublicKey, user: *co
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn sub_get_id(id: *mut *const Identifier, user: *const Subscriber) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        id.as_mut().map_or(Err::NullArgument, |id| {
+            *id = user.get_id() as *const Identifier;
+            Err::Ok
+        })
+    })
+}
+
+
+#[no_mangle]
 pub unsafe extern "C" fn sub_author_public_key(pk: *mut *const PublicKey, user: *const Subscriber) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {
         pk.as_mut().map_or(Err::NullArgument, |pk| {

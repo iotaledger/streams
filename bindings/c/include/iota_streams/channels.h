@@ -23,6 +23,8 @@ typedef struct PublicKey public_key_t;
 typedef struct PskId psk_id_t;
 typedef struct PskIds psk_ids_t;
 typedef struct KePks ke_pks_t;
+typedef struct Identifier identifier_t;
+extern void drop_id(identifier_t const *);
 
 typedef struct NextMsgIds next_msg_ids_t;
 extern void drop_next_msg_ids(next_msg_ids_t const *);
@@ -118,6 +120,7 @@ extern err_t auth_channel_address(channel_address_t const **addr, author_t const
 extern err_t auth_announcement_link(address_t const **addr, author_t const *author);
 extern err_t auth_is_multi_branching(uint8_t *flag, author_t const *author);
 extern err_t auth_get_public_key(public_key_t const **pk, author_t const *author);
+extern err_t auth_get_id(identifier_t const **id, author_t const *author);
 
 // Announce
 extern err_t auth_send_announce(address_t const **addr, author_t *author);
@@ -169,6 +172,7 @@ extern err_t sub_channel_address(channel_address_t const **addr, subscriber_t co
 extern err_t sub_announcement_link(address_t const **addr, subscriber_t const *subscriber);
 extern err_t sub_is_multi_branching(uint8_t *flag, subscriber_t const *subscriber);
 extern err_t sub_get_public_key(public_key_t const **pk, subscriber_t const *subscriber);
+extern err_t sub_get_id(identifier_t const **id, subscriber_t const *subscriber);
 extern err_t sub_author_public_key(public_key_t const **pk, subscriber_t const *subscriber);
 
 // Registration state
@@ -227,7 +231,7 @@ extern packet_payloads_t get_indexed_payload(unwrapped_messages_t const *message
 
 extern char const *get_address_index_str(address_t const *address);
 
-extern address_t const *get_link_from_state(user_state_t const *state, public_key_t const *pub_key);
+extern address_t const *get_link_from_state(user_state_t const *state, identifier_t const *id);
 
 extern char const *pskid_as_str(psk_id_t const *pskid);
 extern void drop_pskid(psk_id_t const *pskid);
