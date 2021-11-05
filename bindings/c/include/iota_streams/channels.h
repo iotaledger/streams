@@ -233,3 +233,28 @@ extern char const *pskid_as_str(psk_id_t const *pskid);
 extern void drop_pskid(psk_id_t const *pskid);
 
 #endif //IOTA_STREAMS_CHANNELS_H
+
+
+#ifndef STREAMS_DID_H
+#define STREAMS_DID_H
+typedef struct DIDKeypair did_keypair_t;
+typedef struct DIDInfo did_info_t;
+typedef struct DIDInfoWrapper did_info_wrapper_t;
+
+extern const did_keypair_t *new_did_keypair(char const *public_key, char const *private_key);
+extern const did_keypair_t *get_info_wrapper_keypair(did_info_wrapper_t const *wrapper);
+extern const did_info_t *get_info_wrapper_info(did_info_wrapper_t const *wrapper);
+
+extern err_t create_new_identity(did_info_wrapper_t const **wrapper, char const *url, uint8_t network);
+
+extern err_t auth_new_from_did(author_t **auth, char const *seed, uint8_t implementation, transport_t *transport,did_info_t const *info, did_keypair_t const *keypair);
+extern err_t sub_new_from_did(subscriber_t **sub, char const *seed, transport_t *transport,did_info_t const *info, did_keypair_t const *keypair);
+
+extern err_t auth_recover_with_did(author_t **auth, char const *seed, address_t const *ann_address, uint8_t implementation, transport_t *transport, did_info_t  const *info);
+
+extern void drop_info_wrapper(did_info_wrapper_t const *wrapper);
+extern void drop_info(did_info_t const *info);
+extern void drop_did_keypair(did_keypair_t const *kp);
+
+#endif //STREAMS_DID_H
+

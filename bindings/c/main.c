@@ -56,6 +56,12 @@ int main()
   char const *original_link_id = NULL;
   address_t const *subA_link = NULL;
 
+#ifdef IOTA_STREAMS_DID
+  did_info_wrapper_t const *wrapper = NULL;
+  did_info_t const *info = NULL;
+  did_keypair_t const *keypair = NULL;
+#endif
+
 
     printf("Starting c bindings test\n\n");
   uint8_t multi_branching = 1;
@@ -68,12 +74,26 @@ int main()
 
   printf("Using node: %s\n\n", url);
   tsp = transport_client_new_from_url(url);
+
+  #ifdef IOTA_STREAMS_DID
+    printf("Creating new identity...");
+    e = create_new_identity(&wrapper, url, 0);
+    printf("%s\n", !e ? "done" : "failed");
+    if(e) goto cleanup;
+    info = get_info_wrapper_info(wrapper);
+    keypair = get_info_wrapper_keypair(wrapper);
+  #endif
 #else
   printf("Using bucket transport (offline) \n\n");
   tsp = transport_new();
 #endif
+#ifdef IOTA_STREAMS_DID
+  printf("Making author from did with seed '%s'... ", seed);
+  e = auth_new_from_did(&auth, seed, implementation_type, tsp, info, keypair);
+#else
   printf("Making author with seed '%s'... ", seed);
   e = auth_new(&auth, seed, implementation_type, tsp);
+#endif
   printf("%s\n", !e ? "done" : "failed");
   if(e) goto cleanup;
 
@@ -489,7 +509,11 @@ cleanup7:
     unwrapped_messages_t const *sync_returns = NULL;
 
     printf("Recovering author... ");
+#ifdef IOTA_STREAMS_DID
+    e = auth_recover_with_did(&recovered_auth, seed, ann_link, implementation_type, tsp, info);
+#else
     e = auth_recover(&recovered_auth, seed, ann_link, implementation_type, tsp);
+#endif
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
 
@@ -652,6 +676,12 @@ cleanup:
   transport_drop(tsp);
   drop_user_state(original_sub_state);
   drop_address(original_sub_state_link);
+
+#ifdef IOTA_STREAMS_DID
+  drop_info_wrapper(wrapper);
+  drop_info(info);
+  drop_did_keypair(keypair);
+#endif
 
   return (e == ERR_OK ? 0 : 1);
 }

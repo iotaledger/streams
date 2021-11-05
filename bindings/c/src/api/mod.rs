@@ -529,8 +529,8 @@ impl<'a> From<(&'a Bytes, &'a Bytes)> for PacketPayloads {
     }
 }
 
-impl From<(PublicKey, Bytes, Bytes)> for PacketPayloads {
-    fn from(signed_payloads: (PublicKey, Bytes, Bytes)) -> Self {
+impl From<(Identifier, Bytes, Bytes)> for PacketPayloads {
+    fn from(signed_payloads: (Identifier, Bytes, Bytes)) -> Self {
         let payloads = (signed_payloads.1, signed_payloads.2);
         PacketPayloads::from(payloads)
     }
@@ -622,6 +622,12 @@ fn handle_message_contents(m: &UnwrappedMessage) -> PacketPayloads {
         _ => PacketPayloads::default(),
     }
 }
+
+
+#[cfg(feature = "use-did")]
+mod did;
+#[cfg(feature = "use-did")]
+pub use did::*;
 
 mod auth;
 mod sub;

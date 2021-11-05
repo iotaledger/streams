@@ -6,6 +6,7 @@ include(FetchContent)
 option(NO_STD "Enable no_std build, without iota_client" OFF)
 option(IOTA_CLIENT "Enable transport via iota_client" ON)
 option(STATIC "Build static library" OFF)
+option(USE_DID "Enable DID related functionality" ON)
 option(RELEASE "Build release library (defaults to release)" ON)
 
 set(cargo_features "")
@@ -17,10 +18,15 @@ endif(${NO_STD})
 
 if(${IOTA_CLIENT})
   add_definitions(-DIOTA_STREAMS_CHANNELS_CLIENT)
-  set(cargo_features "${cargo_features}client")
+  set(cargo_features "${cargo_features}client, ")
 endif(${IOTA_CLIENT})
 
-message("NO_STD=${NO_STD} IOTA_CLIENT=${IOTA_CLIENT} STATIC=${STATIC} RELEASE=${RELEASE}")
+if(${USE_DID})
+  add_definitions(-DIOTA_STREAMS_DID)
+  set(cargo_features "${cargo_features}use-did")
+endif(${USE_DID})
+
+message("NO_STD=${NO_STD} IOTA_CLIENT=${IOTA_CLIENT} STATIC=${STATIC} USE_DID=${USE_DID} RELEASE=${RELEASE}")
 
 include_directories(include/)
 

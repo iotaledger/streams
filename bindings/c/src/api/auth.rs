@@ -26,6 +26,45 @@ pub unsafe extern "C" fn auth_new(
     })
 }
 
+#[cfg(feature = "use-did")]
+#[no_mangle]
+pub unsafe extern "C" fn auth_new_from_did(
+    c_author: *mut *mut Author,
+    c_seed: *const c_char,
+    channel_type: uint8_t,
+    transport: *mut TransportWrap,
+    info: *const DIDInfo,
+    did_keypair: *const DIDKeypair,
+) -> Err {
+    if c_seed == null() {
+        return Err::NullArgument;
+    }
+    let channel_impl = get_channel_type(channel_type);
+
+    CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
+        transport.as_ref().map_or(Err::NullArgument, |tsp| {
+            info.as_ref().map_or(Err::NullArgument, |did_info| {
+                did_keypair.as_ref().map_or(Err::NullArgument, |keypair| {
+                    c_author.as_mut().map_or(Err::NullArgument, |author| {
+                        ApiDIDInfo::try_from(did_info).map_or(Err::BadArgument, |api_info| {
+                            run_async(Author::new_with_did(
+                                seed,
+                                channel_impl,
+                                tsp.clone(),
+                                api_info,
+                                &keypair.into(),
+                            )).map_or(Err::OperationFailed, |user| {
+                                *author = safe_into_mut_ptr(user.0);
+                                Err::Ok
+                            })
+                        })
+                    })
+                })
+            })
+        })
+    })
+}
+
 /// Recover an existing channel from seed and existing announcement message
 #[no_mangle]
 pub unsafe extern "C" fn auth_recover(
@@ -46,6 +85,45 @@ pub unsafe extern "C" fn auth_recover(
                     run_async(Author::recover(seed, addr, channel_impl, tsp.clone())).map_or(Err::OperationFailed, |user| {
                         *author = safe_into_mut_ptr(user);
                         Err::Ok
+                    })
+                })
+            })
+        })
+    })
+}
+
+#[cfg(feature = "use-did")]
+#[no_mangle]
+pub unsafe extern "C" fn auth_recover_with_did(
+    c_author: *mut *mut Author,
+    c_seed: *const c_char,
+    c_ann_address: *const Address,
+    channel_type: uint8_t,
+    transport: *mut TransportWrap,
+    info: *const DIDInfo,
+) -> Err {
+    if c_seed == null() {
+        return Err::NullArgument;
+    }
+    let channel_impl = get_channel_type(channel_type);
+
+    CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
+        transport.as_ref().map_or(Err::NullArgument, |tsp| {
+            info.as_ref().map_or(Err::NullArgument, |did_info| {
+                c_ann_address.as_ref().map_or(Err::NullArgument, |ann_address| {
+                    c_author.as_mut().map_or(Err::NullArgument, |author| {
+                        ApiDIDInfo::try_from(did_info).map_or(Err::BadArgument, |api_info| {
+                            run_async(Author::recover_with_did(
+                                seed,
+                                channel_impl,
+                                ann_address,
+                                tsp.clone(),
+                                api_info,
+                            )).map_or(Err::OperationFailed, |user| {
+                                *author = safe_into_mut_ptr(user);
+                                Err::Ok
+                            })
+                        })
                     })
                 })
             })
