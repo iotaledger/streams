@@ -94,7 +94,7 @@ use iota_streams_core_edsig::signature::ed25519::Signer;
 #[cfg(feature = "account")]
 use iota_streams_core::iota_identity::account::{
     Account,
-    Command,
+    MethodSecret,
     IdentityId,
 };
 
@@ -181,9 +181,7 @@ impl KeyPairs {
     /// * `url` - Url for network that connection will be established with
     pub async fn new_from_account(
         account: Account,
-        key_fragment: String,
-        did_client: Client,
-        url: String,
+        mut did_info: DIDInfo,
     ) -> Result<KeyPairs> {
         // Get the id of the original document from account, and resolve the identity to verify it
         match account.store().index().await?.get(&IdentityId::from(1)) {
@@ -198,23 +196,20 @@ impl KeyPairs {
                 let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
                 // Create the command and update the DID account
-                let command = Command::create_method()
-                    .fragment(&key_fragment)
-                    .keypair(did_sig_kp)
-                    .finish()?;
-                account.update_identity(doc.id(), command).await?;
-                let did = doc.id();
+                account.update_identity(doc.id())
+                    .create_method()
+                    .scope(MethodScope::VerificationMethod)
+                    .fragment(&did_info.key_fragment)
+                    .method_secret(MethodSecret::Ed25519(did_sig_kp.private().clone()))
+                    .apply()
+                    .await?;
                 let mut prepend = String::from("#");
-                prepend.push_str(&key_fragment);
-                let did_info = DIDInfo {
-                    did: Some(did.clone()),
-                    key_fragment: prepend,
-                    did_client,
-                    url,
-                };
+                prepend.push_str(&did_info.key_fragment);
+                did_info.did = Some(doc.id().clone());
+                did_info.key_fragment = prepend;
 
                 Ok(Self {
-                    id: did.into(),
+                    id: doc.id().into(),
                     did_info: Some(did_info),
                     sig_kp,
                     ke_kp,

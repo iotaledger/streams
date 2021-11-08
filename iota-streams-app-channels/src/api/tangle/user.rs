@@ -271,8 +271,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         transport: Trans,
         did_info: DIDInfo,
     ) -> Result<Self> {
-        let id = KeyPairs::new_from_account(account, did_info.key_fragment, did_info.client).await?;
-
+        let id = KeyPairs::new_from_account(account, did_info).await?;
         let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
         Ok(Self { user, transport })
     }
