@@ -94,8 +94,8 @@ use iota_streams_core_edsig::signature::ed25519::Signer;
 #[cfg(feature = "account")]
 use iota_streams_core::iota_identity::account::{
     Account,
-    MethodSecret,
     IdentityId,
+    MethodSecret,
 };
 
 #[cfg(feature = "use-did")]
@@ -179,10 +179,7 @@ impl KeyPairs {
     /// * `key_fragment` - Identifier for new verification method within the DID document
     /// * `did_client` - Identity Client for publishing and retrieving DID documents from the tangle
     /// * `url` - Url for network that connection will be established with
-    pub async fn new_from_account(
-        account: Account,
-        mut did_info: DIDInfo,
-    ) -> Result<KeyPairs> {
+    pub async fn new_from_account(account: Account, mut did_info: DIDInfo) -> Result<KeyPairs> {
         // Get the id of the original document from account, and resolve the identity to verify it
         match account.store().index().await?.get(&IdentityId::from(1)) {
             Some(id) => {
@@ -196,7 +193,8 @@ impl KeyPairs {
                 let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
                 // Create the command and update the DID account
-                account.update_identity(doc.id())
+                account
+                    .update_identity(doc.id())
                     .create_method()
                     .scope(MethodScope::VerificationMethod)
                     .fragment(&did_info.key_fragment)

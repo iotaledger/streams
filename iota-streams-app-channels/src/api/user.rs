@@ -70,8 +70,8 @@ const ANN_MESSAGE_NUM: u32 = 0;
 const SUB_MESSAGE_NUM: u32 = 0;
 const SEQ_MESSAGE_NUM: u32 = 1;
 
-type PreparedKeyload<'a, F, Link> = PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link, IntoIter<(&'a Identifier, Vec<u8>)>>>;
-
+type PreparedKeyload<'a, F, Link> =
+    PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link, IntoIter<(&'a Identifier, Vec<u8>)>>>;
 
 /// Sequence wrapping object
 ///
@@ -524,11 +524,7 @@ where
         Ok(PreparedMessage::new(header, content))
     }
 
-    pub fn prepare_keyload<'a, 'b, I>(
-        &'a self,
-        link_to: &'a Link,
-        keys: I,
-    ) -> Result<PreparedKeyload<'a, F, Link>>
+    pub fn prepare_keyload<'a, 'b, I>(&'a self, link_to: &'a Link, keys: I) -> Result<PreparedKeyload<'a, F, Link>>
     where
         I: IntoIterator<Item = &'b Identifier>,
     {
@@ -550,10 +546,7 @@ where
         }
     }
 
-    pub fn prepare_keyload_for_everyone<'a>(
-        &'a self,
-        link_to: &'a Link,
-    ) -> Result<PreparedKeyload<'a, F, Link>> {
+    pub fn prepare_keyload_for_everyone<'a>(&'a self, link_to: &'a Link) -> Result<PreparedKeyload<'a, F, Link>> {
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
