@@ -136,7 +136,7 @@ where
             public_payload: Bytes::default(),
             masked_payload: Bytes::default(),
             id: ed25519::PublicKey::default().into(),
-            kp: kp,
+            kp,
             _phantom: core::marker::PhantomData,
         }
     }

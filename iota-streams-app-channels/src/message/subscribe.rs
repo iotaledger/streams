@@ -171,10 +171,8 @@ where
             .x25519(self.author_id, &mut self.unsubscribe_key)?
             .mask(&mut self.subscriber_sig_pk)?;
         let mut ctx = self.subscriber_id.unwrap(store, ctx).await?;
-        self.sub_kp.set_id(self.subscriber_id.clone());
+        self.sub_kp.set_id(self.subscriber_id);
         ctx = self.sub_kp.verify(ctx).await?;
-        //    .mask(&mut self.subscriber_sig_pk)?
-        //    .ed25519(&self.subscriber_sig_pk, HashSig)?;
         Ok(ctx)
     }
 }

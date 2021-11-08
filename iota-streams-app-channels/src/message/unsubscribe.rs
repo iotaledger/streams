@@ -101,9 +101,7 @@ pub struct ContentUnwrap<F, Link: HasLink> {
 
 impl<F: Default, Link: HasLink> ContentUnwrap<F, Link> {
     pub fn new(kp: KeyPairs) -> Self {
-        let mut ctx = Self::default();
-        ctx.kp = kp;
-        ctx
+        Self { kp, ..Default::default()}
     }
 }
 

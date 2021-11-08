@@ -156,7 +156,7 @@ impl KeyPairs {
             Identifier::EdPubKey(pk) => {
                 self.sig_kp = ed25519::Keypair {
                     secret: ed25519::SecretKey::from_bytes(&[0; 32]).unwrap(),
-                    public: ed25519::PublicKey::from(pk.0),
+                    public: pk.0,
                 };
                 self.id = id;
             }
@@ -321,11 +321,11 @@ impl From<&KeyPairs> for KeyPairs {
         };
 
         KeyPairs {
-            id: kp.id.clone(),
+            id: kp.id,
             #[cfg(feature = "use-did")]
             did_info,
             sig_kp: ed25519::Keypair::from_bytes(&kp.sig_kp.to_bytes()).unwrap(),
-            ke_kp: (kp.ke_kp.0.clone(), kp.ke_kp.1.clone()),
+            ke_kp: (kp.ke_kp.0.clone(), kp.ke_kp.1),
         }
     }
 }

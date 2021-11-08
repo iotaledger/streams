@@ -70,6 +70,9 @@ const ANN_MESSAGE_NUM: u32 = 0;
 const SUB_MESSAGE_NUM: u32 = 0;
 const SEQ_MESSAGE_NUM: u32 = 1;
 
+type PreparedKeyload<'a, F, Link> = PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link, IntoIter<(&'a Identifier, Vec<u8>)>>>;
+
+
 /// Sequence wrapping object
 ///
 /// When using multibranch mode, this wrapping object contains the (wrapped) sequence message ([`WrappedMessage`]) to be
@@ -233,7 +236,7 @@ where
             _ => self.store_cursor(self.key_pairs.id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32), None)?,
         }
 
-        self.author_id = Some(self.key_pairs.id.clone());
+        self.author_id = Some(self.key_pairs.id);
         self.anchor = Some(Cursor::new_at(appinst.clone(), 0, 2_u32));
         self.appinst = Some(appinst);
         Ok(())
@@ -279,7 +282,7 @@ where
     pub fn prepare_announcement(&self) -> Result<PreparedMessage<F, Link, announce::ContentWrap<F>>> {
         // Create HDF for the first message in the channel.
         let msg_link = self.link_gen.get();
-        let header = HDF::new(msg_link.clone())
+        let header = HDF::new(msg_link)
             .with_content_type(ANNOUNCE)?
             .with_payload_length(1)?
             .with_seq_num(ANN_MESSAGE_NUM)
@@ -325,9 +328,8 @@ where
             let unwrapped = self.unwrap_announcement(preparsed).await?;
             let link = unwrapped.link.clone();
             let content = unwrapped.commit(&mut self.link_store, info)?;
-            let id = content.identifier.clone();
             let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
-            (link, cursor, content.flags, content.sig_pk.clone(), id)
+            (link, cursor, content.flags, content.sig_pk, content.identifier)
         };
         // TODO: check commit after message is done / before joined
 
@@ -526,7 +528,7 @@ where
         &'a self,
         link_to: &'a Link,
         keys: I,
-    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link, IntoIter<(&Identifier, Vec<u8>)>>>>
+    ) -> Result<PreparedKeyload<'a, F, Link>>
     where
         I: IntoIterator<Item = &'b Identifier>,
     {
@@ -551,7 +553,7 @@ where
     pub fn prepare_keyload_for_everyone<'a>(
         &'a self,
         link_to: &'a Link,
-    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link, IntoIter<(&Identifier, Vec<u8>)>>>> {
+    ) -> Result<PreparedKeyload<'a, F, Link>> {
         match self.get_seq_no() {
             Some(seq_no) => {
                 let msg_link = self
@@ -617,7 +619,7 @@ where
                 // Create a copy of KeyPairs object and replace id contents with author details
                 // This is done to accommodate DID client transfer into messages when necessary
                 let mut key_pairs = KeyPairs::from(&self.key_pairs);
-                key_pairs.set_id(author_id.clone());
+                key_pairs.set_id(*author_id);
                 let unwrapped = self.unwrap_keyload(preparsed, keys_lookup, own_keys, key_pairs).await?;
 
                 // Process a generic message containing the access right bool, also return the list of identifiers
@@ -842,7 +844,7 @@ where
 
         let content = sequence::ContentWrap {
             link: link_to.rel(),
-            id: self.key_pairs.id.clone(),
+            id: self.key_pairs.id,
             seq_num: seq_no,
             ke_pk: &self.key_pairs.ke_kp.1,
             ref_link,
@@ -870,7 +872,7 @@ where
 
                     let content = sequence::ContentWrap::<Link> {
                         link: &cursor.link,
-                        id: self.key_pairs.id.clone(),
+                        id: self.key_pairs.id,
                         seq_num: cursor.get_seq_num(),
                         ke_pk: &self.key_pairs.ke_kp.1,
                         ref_link,
@@ -983,7 +985,7 @@ where
                 let identifier = Identifier::from(pskid);
                 if !self.key_store.contains(&identifier) {
                     self.key_store.insert_psk(
-                        identifier.clone(),
+                        identifier,
                         Some(psk),
                         Cursor::new_at(appinst.rel().clone(), 0, 2_u32),
                     )?;

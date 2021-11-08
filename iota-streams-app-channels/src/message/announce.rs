@@ -141,7 +141,7 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         self.identifier.unwrap(store, ctx).await?;
         ctx.absorb(&mut self.sig_pk)?;
-        self.kp.set_id(self.identifier.clone());
+        self.kp.set_id(self.identifier);
         self.ke_pk = x25519::public_from_ed25519(&self.sig_pk)?;
         ctx.absorb(&mut self.flags)?;
         let ctx = self.kp.verify(ctx).await?;

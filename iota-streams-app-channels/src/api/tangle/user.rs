@@ -139,7 +139,7 @@ impl<Trans> User<Trans> {
     ///   * `link` - Address link to be stored in internal sequence state mapping
     pub fn store_state(&mut self, id: Identifier, ke_pk: x25519::PublicKey, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(id, ke_pk, link.msgid.clone())
+        self.user.store_state(id, ke_pk, link.msgid)
     }
 
     /// Stores the provided link and sequence number to the internal sequencing state for all participants
