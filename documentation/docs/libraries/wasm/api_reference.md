@@ -9,7 +9,7 @@ The API is spread out across three categories:
 <br/><br/>
 ## Author
 Main user implementation of a Channel. Generates the channel, processes subscriptions 
-and manage them. It can also send and fetch messages.
+and manages them. It can also send and fetch messages.
 
 #### new(seed, options, channel_type): Author 
 Generates an Author instance 
