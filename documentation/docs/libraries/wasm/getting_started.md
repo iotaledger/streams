@@ -5,25 +5,23 @@ machine.
 ### Install the library
 To install the library, you could run:
 
-```npm i @iota/streams-wasm```
+```npm i @iota/streams```
 
 
 ### Starting a Channel 
 Once the package has been built, you can pull it into a script file like so: 
 ```javascript
-const streams = require("@iota/streams/node/streams.js");
+const streams = require("@iota/streams/node");
 
 let node = "https://chrysalis-nodes.iota.org/";
 
 // Options include: (node-url, local pow)
 let options = new streams.SendOptions(node, true);
 
-let client = await new streams.ClientBuilder().node(node).build();
-
-let auth = streams.Author.fromClient(streams.StreamsClient.fromClient(client), "Unique Seed Here", streams.ChannelType.SingleBranch);
+let author = new streams.Author("Unique Seed Here", options.clone(), streams.ChannelType.MultiBranch );
 
 // Response formatting: {link, sequence link, msg }
-let response = await auth.clone().send_announce();
+let response = await author.clone().send_announce();
 
 let ann_link = response.link;
 
