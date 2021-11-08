@@ -240,7 +240,7 @@ impl KeyPairs {
         // Retrieve the DID document from the tangle
         let did = IotaDID::parse(did)?;
         let mut doc = did_client.read_document(&did).await?;
-        let message_id = doc.message_id().clone();
+        let message_id = *doc.message_id();
 
         // Create a new verification method for the DID document
         let method = IotaVerificationMethod::from_did(did, &new_key, key_fragment.as_str())?;
@@ -301,8 +301,7 @@ impl KeyPairs {
 impl From<&KeyPairs> for KeyPairs {
     fn from(kp: &KeyPairs) -> Self {
         #[cfg(feature = "use-did")]
-        let did_info = match &kp.did_info {
-            Some(info) => Some(DIDInfo {
+        let did_info = kp.did_info.as_ref().map(|info| DIDInfo {
                 did: None,
                 key_fragment: "".to_string(),
                 did_client: block_on(
@@ -314,9 +313,7 @@ impl From<&KeyPairs> for KeyPairs {
                 )
                 .unwrap(),
                 url: info.url.clone(),
-            }),
-            None => None,
-        };
+            });
 
         KeyPairs {
             id: kp.id,

@@ -79,7 +79,7 @@ impl From<PskId> for Identifier {
 impl From<&IotaDID> for Identifier {
     fn from(did: &IotaDID) -> Self {
         Identifier::DID(DIDWrap::clone_from_slice(
-            &decode_b58(did.method_id()).unwrap_or(Vec::new()),
+            &decode_b58(did.method_id()).unwrap_or_default(),
         ))
     }
 }
