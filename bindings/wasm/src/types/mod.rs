@@ -476,7 +476,7 @@ impl TryFrom<DIDInfo> for ApiDIDInfo {
                     did: Some(did),
                     key_fragment: info.key_fragment(),
                     did_client: client,
-                    url: info.url
+                    url: info.url,
                 }
             })
             .into_js_result()

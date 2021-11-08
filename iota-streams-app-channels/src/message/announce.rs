@@ -122,7 +122,10 @@ impl<F> Default for ContentUnwrap<F> {
 
 impl<F> ContentUnwrap<F> {
     pub fn new(kp: KeyPairs) -> Self {
-        Self { kp, ..Default::default() }
+        Self {
+            kp,
+            ..Default::default()
+        }
     }
 }
 

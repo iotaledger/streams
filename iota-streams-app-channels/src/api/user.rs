@@ -402,7 +402,7 @@ where
     pub async fn unwrap_subscribe<'a>(
         &self,
         preparsed: PreparsedMessage<'_, F, Link>,
-        author_id: &'a x25519::StaticSecret
+        author_id: &'a x25519::StaticSecret,
     ) -> Result<UnwrappedMessage<F, Link, subscribe::ContentUnwrap<'a, F, Link>>> {
         self.ensure_appinst(&preparsed)?;
         let kp = KeyPairs::from(&self.key_pairs);
@@ -590,10 +590,9 @@ where
         preparsed: PreparsedMessage<'_, F, Link>,
         keys_lookup: KeysLookup<'a, F, Link, Keys>,
         own_keys: OwnKeys<'a>,
-        kp: KeyPairs
-    ) -> Result<
-        UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>,
-    > {
+        kp: KeyPairs,
+    ) -> Result<UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>>
+    {
         self.ensure_appinst(&preparsed)?;
         let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, kp);
         let unwrapped = preparsed.unwrap(&self.link_store, content).await?;
@@ -619,9 +618,7 @@ where
                 // This is done to accommodate DID client transfer into messages when necessary
                 let mut key_pairs = KeyPairs::from(&self.key_pairs);
                 key_pairs.set_id(author_id.clone());
-                let unwrapped = self
-                    .unwrap_keyload(preparsed, keys_lookup, own_keys, key_pairs)
-                    .await?;
+                let unwrapped = self.unwrap_keyload(preparsed, keys_lookup, own_keys, key_pairs).await?;
 
                 // Process a generic message containing the access right bool, also return the list of identifiers
                 // to be stored.
@@ -660,11 +657,9 @@ where
                 }
 
                 Ok(processed)
-            },
-            None => err!(AuthorSigKeyNotFound)
-
+            }
+            None => err!(AuthorSigKeyNotFound),
         }
-
     }
 
     /// Prepare SignedPacket message.

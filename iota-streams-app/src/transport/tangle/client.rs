@@ -41,11 +41,9 @@ use crate::{
 use iota_streams_core::prelude::String;
 
 #[cfg(feature = "use-did")]
-use iota_streams_core::iota_identity::{
-    iota::{
-        Client as DIDClient,
-        Network as DIDNetwork,
-    },
+use iota_streams_core::iota_identity::iota::{
+    Client as DIDClient,
+    Network as DIDNetwork,
 };
 
 /// Options for the user Client

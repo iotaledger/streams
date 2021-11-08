@@ -4,11 +4,11 @@ use iota_streams_core::{
         Box,
         Rc,
         RefCell,
-        Vec,
         String,
+        Vec,
     },
-    Result,
     try_or,
+    Result,
 };
 
 #[cfg(feature = "use-did")]
@@ -114,16 +114,16 @@ mod sync {
     };
     use iota_streams_core::{
         async_trait,
+        iota_identity::iota::Client,
         prelude::{
             Arc,
             Box,
             Mutex,
+            String,
             Vec,
         },
         Result,
     };
-    use iota_streams_core::iota_identity::iota::Client;
-    use iota_streams_core::prelude::String;
 
     impl<Tsp: TransportOptions> TransportOptions for Arc<Mutex<Tsp>> {
         type SendOptions = <Tsp as TransportOptions>::SendOptions;

@@ -95,7 +95,6 @@ where
     async fn to_did_client(&self) -> Result<DIDClient> {
         unimplemented!()
     }
-
 }
 
 #[async_trait(?Send)]

@@ -104,6 +104,8 @@ use crate::id::{
     DID_CORE,
 };
 #[cfg(feature = "use-did")]
+use futures::executor::block_on;
+#[cfg(feature = "use-did")]
 use iota_streams_ddml::{
     command::Absorb,
     types::{
@@ -111,8 +113,6 @@ use iota_streams_ddml::{
         Uint8,
     },
 };
-#[cfg(feature = "use-did")]
-use futures::executor::block_on;
 
 pub struct KeyPairs {
     pub id: Identifier,
@@ -156,17 +156,16 @@ impl KeyPairs {
             Identifier::EdPubKey(pk) => {
                 self.sig_kp = ed25519::Keypair {
                     secret: ed25519::SecretKey::from_bytes(&[0; 32]).unwrap(),
-                    public: ed25519::PublicKey::from(pk.0)
+                    public: ed25519::PublicKey::from(pk.0),
                 };
                 self.id = id;
-            },
+            }
             _ => {
-                self.sig_kp = ed25519::Keypair::from_bytes(&[0;64]).unwrap();
+                self.sig_kp = ed25519::Keypair::from_bytes(&[0; 64]).unwrap();
                 self.id = id;
             }
         }
     }
-
 }
 
 #[cfg(feature = "use-did")]
@@ -180,7 +179,12 @@ impl KeyPairs {
     /// * `key_fragment` - Identifier for new verification method within the DID document
     /// * `did_client` - Identity Client for publishing and retrieving DID documents from the tangle
     /// * `url` - Url for network that connection will be established with
-    pub async fn new_from_account(account: Account, key_fragment: String, did_client: Client, url: String) -> Result<KeyPairs> {
+    pub async fn new_from_account(
+        account: Account,
+        key_fragment: String,
+        did_client: Client,
+        url: String,
+    ) -> Result<KeyPairs> {
         // Get the id of the original document from account, and resolve the identity to verify it
         match account.store().index().await?.get(&IdentityId::from(1)) {
             Some(id) => {
@@ -206,7 +210,7 @@ impl KeyPairs {
                     did: Some(did.clone()),
                     key_fragment: prepend,
                     did_client,
-                    url
+                    url,
                 };
 
                 Ok(Self {
@@ -305,21 +309,20 @@ impl From<&KeyPairs> for KeyPairs {
     fn from(kp: &KeyPairs) -> Self {
         #[cfg(feature = "use-did")]
         let did_info = match &kp.did_info {
-            Some(info) => {
-                Some(DIDInfo {
-                    did: None,
-                    key_fragment: "".to_string(),
-                    did_client: block_on(
-                        Client::builder()
-                            .network(info.did_client.network())
-                            .primary_node(&info.url, None, None)
-                            .unwrap()
-                            .build()
-                    ).unwrap(),
-                    url: info.url.clone()
-                })
-            }
-            None => None
+            Some(info) => Some(DIDInfo {
+                did: None,
+                key_fragment: "".to_string(),
+                did_client: block_on(
+                    Client::builder()
+                        .network(info.did_client.network())
+                        .primary_node(&info.url, None, None)
+                        .unwrap()
+                        .build(),
+                )
+                .unwrap(),
+                url: info.url.clone(),
+            }),
+            None => None,
         };
 
         KeyPairs {
@@ -327,7 +330,7 @@ impl From<&KeyPairs> for KeyPairs {
             #[cfg(feature = "use-did")]
             did_info,
             sig_kp: ed25519::Keypair::from_bytes(&kp.sig_kp.to_bytes()).unwrap(),
-            ke_kp: (kp.ke_kp.0.clone(), kp.ke_kp.1.clone())
+            ke_kp: (kp.ke_kp.0.clone(), kp.ke_kp.1.clone()),
         }
     }
 }

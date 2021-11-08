@@ -251,7 +251,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             did: None,
             key_fragment: "".to_string(),
             did_client: block_on(transport.to_did_client()).unwrap(),
-            url: transport.get_url()
+            url: transport.get_url(),
         });
 
         let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
