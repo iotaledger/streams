@@ -154,7 +154,7 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn get_id(&self) -> Result<String> {
-        Ok(identifier_to_string(self.author.borrow_mut().get_id()))
+        Ok(identifier_to_string(self.subscriber.borrow_mut().get_id()))
     }
 
     #[wasm_bindgen(catch)]
