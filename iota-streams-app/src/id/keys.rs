@@ -302,18 +302,18 @@ impl From<&KeyPairs> for KeyPairs {
     fn from(kp: &KeyPairs) -> Self {
         #[cfg(feature = "use-did")]
         let did_info = kp.did_info.as_ref().map(|info| DIDInfo {
-                did: None,
-                key_fragment: "".to_string(),
-                did_client: block_on(
-                    Client::builder()
-                        .network(info.did_client.network())
-                        .primary_node(&info.url, None, None)
-                        .unwrap()
-                        .build(),
-                )
-                .unwrap(),
-                url: info.url.clone(),
-            });
+            did: None,
+            key_fragment: "".to_string(),
+            did_client: block_on(
+                Client::builder()
+                    .network(info.did_client.network())
+                    .primary_node(&info.url, None, None)
+                    .unwrap()
+                    .build(),
+            )
+            .unwrap(),
+            url: info.url.clone(),
+        });
 
         KeyPairs {
             id: kp.id,

@@ -112,6 +112,8 @@ mod sync {
         TransportDetails,
         TransportOptions,
     };
+    #[cfg(feature = "use-did")]
+    use iota_streams_core::iota_identity::iota::Client as DIDClient;
     use iota_streams_core::{
         async_trait,
         prelude::{
@@ -123,8 +125,6 @@ mod sync {
         },
         Result,
     };
-    #[cfg(feature = "use-did")]
-    use iota_streams_core::iota_identity::iota::Client as DIDClient;
 
     impl<Tsp: TransportOptions> TransportOptions for Arc<Mutex<Tsp>> {
         type SendOptions = <Tsp as TransportOptions>::SendOptions;

@@ -1106,7 +1106,7 @@ where
             Identifier::DID(_did) => {
                 let xkey = match _xkey {
                     Some(key) => key,
-                    None => self.key_pairs.ke_kp.1
+                    None => self.key_pairs.ke_kp.1,
                 };
                 self.key_store.insert_did(id, xkey, cursor)?
             }
