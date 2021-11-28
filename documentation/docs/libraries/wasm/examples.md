@@ -19,7 +19,7 @@ let author = streams.Author.fromClient(streams.StreamsClient.fromClient(client),
 let response = await author.clone().send_announce();
 let ann_link = response.link;
 // Link used by subscribers to attach to instance
-console.log("Announced at: ", ann_link.to_string());
+console.log("Announced at: ", ann_link.toString());
 ```
 
 ### Subscriber Generation
@@ -36,7 +36,7 @@ Subscriber sends a subscription message:
 let response = sub.clone().send_subscribe(ann_link.copy());
 let sub_link = response.link;
 // Link to be provided to the Author for subscription
-console.log("Subscription link: ", sub_link.to_string());
+console.log("Subscription link: ", sub_link.toString());
 ```
 
 ### Author accepts and processes subscription: 
@@ -51,7 +51,7 @@ Author sends a keyload for all participants in the channel:
 let response = author.clone().send_keyload_for_everyone(ann_link.copy());
 let keyload_link = response.link;
 // Keyload message can now act as starting point for a protected branch
-console.log("Keyload link for everyone: ", keyload_link.to_string());
+console.log("Keyload link for everyone: ", keyload_link.toString());
 ``` 
 
 ### Keyload (case 2)
@@ -61,7 +61,7 @@ let response = author.clone().send_keyload(ann_link.copy
 (), [], ["SubA_PublicKey"]);
 let sub_A_keyload_link = response.link;
 // Keyload message can now act as starting point for a protected branch
-console.log("Keyload link for SubA: ", sub_A_keyload_link.to_string());
+console.log("Keyload link for SubA: ", sub_A_keyload_link.toString());
 ``` 
 
 ### Sending Messages
@@ -85,7 +85,7 @@ let response = subA.clone().send_signed_packet(
     masked_payload
 );
 let msg_link = response.link;
-console.log("New message sent by Sub A at: ", msg_link.to_string());
+console.log("New message sent by Sub A at: ", msg_link.toString());
 ```
 
 ### Message Fetching 
