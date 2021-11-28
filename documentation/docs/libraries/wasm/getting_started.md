@@ -25,5 +25,5 @@ let response = await author.clone().send_announce();
 
 let ann_link = response.link;
 
-console.log("Channel Announcement at: ", ann_link.to_string());
+console.log("Channel Announcement at: ", ann_link.toString());
 ```
