@@ -5,7 +5,9 @@ This is the documentation for the official IOTA Streams software. You can read m
 Streams is an organizational tool for structuring and navigating secure data through the Tangle. Streams organizes data by ordering it in a uniform and interoperable structure. Needless to say, it is also based on our official *one source code of truth* [IOTA Rust library](https://github.com/iotaledger/iota.rs).
 
 :::caution
+
 This library is in active development. The library targets the Chrysalis network and does not work with the IOTA legacy network.
+
 :::
 
 More information about Chrysalis components is available at [documentation portal](https://wiki.iota.org/chrysalis-docs/welcome).
