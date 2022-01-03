@@ -20,10 +20,13 @@ bee-rest-api = "=0.1.2"
 ```
 
 ## Basic Usage
-Once installed, users can implement their author and subscribers and start a new channel.
+With the needed dependencies added, we can start using the Streams library. Below are two example scripts: one to create an author and announce a channel and one to create a subscriber and find the channel.
  
-### Author Implementation
+### Author example
+Replace the seed of the author with a random string and run the script to get the announcement link.
+
 ```
+use anyhow::Result;
 use iota_streams::app_channels::api::tangle::{Author, ChannelType};
 use iota_streams::app::transport::tangle::client::Client;
 
@@ -33,20 +36,25 @@ async fn main() -> Result<()> {
     let client = Client::new_from_url(node);
 
     // Author implementation will set the Channel Type
-    let mut author = Author::new("AUTHORS_UNIQUE_SEED", ChannelType::SingleBranch, client);
+    let mut author = Author::new("AUTHOR_SEED", ChannelType::SingleBranch, client);
     
     // Start the channel and retrieve the announcement address link
-    let ann_address = author.send_announce()?;   
+    let ann_address = author.send_announce().await?;   
 
     // Convert the announcement address to a string to share with others
-    println!("{}", ann_address.to_string()); 
+    println!("{}", ann_address.to_string());
+    Ok(())
 }
 ```
 
-### Subscriber Implementation
+### Subscriber example
+Replace the seed of the subscriber with a random string, paste the announcement link from the author script above and run the script to let the subscriber find the channel.
+
 ```
+use anyhow::Result;
 use iota_streams::app_channels::api::tangle::{Address, Subscriber};
 use iota_streams::app::transport::tangle::client::Client;
+use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -55,13 +63,14 @@ async fn main() -> Result<()> {
 
     // Subscriber implementation does not need to specify a channel type, it will be 
     // parsed from the announcement message
-    let mut subscriber = Subscriber::new("SUBSCRIBER_UNIQUE_SEED", client);
+    let mut subscriber = Subscriber::new("SUBSCRIBER_SEED", client);
     
     // Create Address object from announcement address string
-    let ann_address = Address::from_str("Announcement link address provided by author")?;   
+    let ann_address = Address::from_str("ANNOUNCEMENT_LINK")?;   
 
     // Process the announcement message
-    subscriber.receive_announcement(ann_address)?;
+    subscriber.receive_announcement(&ann_address).await?;
+    Ok(())
 }
 ```
 
