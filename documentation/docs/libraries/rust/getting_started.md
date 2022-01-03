@@ -1,34 +1,23 @@
 # Getting Started
 Streams requires an asynchronous runtime environment to be set, we suggest using [tokio](https://docs.rs/tokio/latest/tokio/). Streams also uses [anyhow](https://docs.rs/anyhow/latest/anyhow/) for error handling, so projects can use `anyhow::Result` and `anyhow::Error` for easier integration. 
 
-If you don't have a rust project setup yet you can create one by running,
-
-    cargo new my-library
-
-**Remote**
-Add the following to your `Cargo.toml` file:
+To create a new Rust project, run:
 
 ```bash
-[dependencies]
-tokio = { version = "1.5.0", features = ["full"] }
-anyhow = { version = "1.0", default-features = false }
-iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "master"}
+cargo new PROJECT_NAME
 ```
 
-**Local**
+Change to the project folder and add the following dependencies to your `Cargo.toml` file:
 
-1. Clone the streams repository
+```toml
+tokio = { version = "1.5.0", features = ["full"] }
+anyhow = { version = "1.0" }
+iota-streams = { git = "https://github.com/iotaledger/streams", branch = "develop"}
 
-    ```bash
-    git clone https://github.com/iotaledger/streams
-    ```
-
-2. Add the following to your `Cargo.toml` file:
-
-    ```bash
-    [dependencies]
-    iota-streams = { version = "0.1.2", path = "../streams" }
-    ```
+# Temporarily needed because Streams is a work in progress
+bee-message = "=0.1.5"
+bee-rest-api = "=0.1.2"
+```
 
 ## Basic Usage
 Once installed, users can implement their author and subscribers and start a new channel.
