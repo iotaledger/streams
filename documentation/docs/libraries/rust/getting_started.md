@@ -1,8 +1,5 @@
 # Getting Started
-Streams requires an asynchronous runtime environment to be set (we suggest using `tokio`). Streams also uses 
-`anyhow` for error handling, so for ease of use, new projects can use `anyhow::Result` and `anyhow::Error` 
-for easier integration. 
-
+Streams requires an asynchronous runtime environment to be set, we suggest using [tokio](https://docs.rs/tokio/latest/tokio/). Streams also uses [anyhow](https://docs.rs/anyhow/latest/anyhow/) for error handling, so projects can use `anyhow::Result` and `anyhow::Error` for easier integration. 
 
 If you don't have a rust project setup yet you can create one by running,
 
