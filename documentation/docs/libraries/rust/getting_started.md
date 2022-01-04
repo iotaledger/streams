@@ -20,10 +20,10 @@ bee-rest-api = "=0.1.2"
 ```
 
 ## Basic Usage
-With the needed projects and their dependencies added, we can start using the Streams library. Below are two example scripts for both the author and the subscriber. The author script will announce a channel and print the announcement address. The subscriber script handles the announcement to let the subscriber know where to find the channel.
+With the needed projects and their dependencies added, we can start using the Streams library. Below are two example scripts for both the author and the subscriber. The author script will announce a channel and print the announcement link. The subscriber script handles the announcement to let the subscriber know where to find the channel.
  
 ### Author
-Replace the seed of the author with a random string and run the script to get the announcement address.
+Replace the seed of the author with a random string and run the script to get the announcement link.
 
 ```
 use anyhow::Result;
@@ -38,17 +38,17 @@ async fn main() -> Result<()> {
     // Author implementation will set the Channel Type
     let mut author = Author::new("AUTHOR_SEED", ChannelType::SingleBranch, client);
     
-    // Start the channel and retrieve the announcement address link
-    let ann_address = author.send_announce().await?;   
+    // Start the channel and retrieve the announcement link
+    let ann_link = author.send_announce().await?;   
 
-    // Convert the announcement address to a string to share with others
-    println!("{}", ann_address.to_string());
+    // Convert the announcement link to a string to share with others
+    println!("{}", ann_link.to_string());
     Ok(())
 }
 ```
 
 ### Subscriber
-Replace the seed of the subscriber with a random string, paste the announcement address from the author script above and run the script to let the subscriber find the channel.
+Replace the seed of the subscriber with a random string, paste the announcement link from the author script above and run the script to let the subscriber find the channel.
 
 ```
 use anyhow::Result;
@@ -65,11 +65,11 @@ async fn main() -> Result<()> {
     // parsed from the announcement message
     let mut subscriber = Subscriber::new("SUBSCRIBER_SEED", client);
     
-    // Create Address object from announcement address string
-    let ann_address = Address::from_str("ANNOUNCEMENT_LINK")?;   
+    // Create Address object from announcement link string
+    let ann_link = Address::from_str("ANNOUNCEMENT_LINK")?;   
 
     // Process the announcement message
-    subscriber.receive_announcement(&ann_address).await?;
+    subscriber.receive_announcement(&ann_link).await?;
     Ok(())
 }
 ```
@@ -78,12 +78,12 @@ async fn main() -> Result<()> {
 Now we can begin subscribing users to the channel and generating branches to specify access control for publishers and subscribers via keyload messages.  
 
 ### Subscription
-To subscribe to a channel, subscribers create a subscribe message that is linked to the channel announcement message. The address of this message should then be provided to the author. This allows the author to handle the announcement message and use the public key of the subscriber for access control and validation purposes.
+To subscribe to a channel, subscribers create a subscribe message that is linked to the channel announcement message. The link of this message should then be provided to the author. This allows the author to handle the announcement message and use the public key of the subscriber for access control and validation purposes.
 
 #### Subscriber
 ```
 // Send subscription message
-let sub_link = subscriber.send_subscribe(&ann_address)?;
+let sub_link = subscriber.send_subscribe(&ann_link)?;
 // Provide this link to the author
 println!("{}", sub_link.to_string());
 ```
