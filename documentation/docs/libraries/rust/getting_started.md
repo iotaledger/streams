@@ -96,52 +96,43 @@ author.receive_subscribe(&sub_link).await?;
 ```
 
 ### Keyloads 
-Keyload messages are used as an access control mechanism for a branch. A random key is generated and masked within the 
-message using the public keys or Psk's included in them. This allows the Author to specify which channel 
-participants have access to which branches. There are 2 ways to send a keyload: 
+Keyload messages are used as an access control mechanism for a branch. A random key is generated and masked within the message using the public keys or pre-shared keys included in them. This allows the author to specify which subscribers have access to which branches. There are 2 ways to send a keyload:
 1. `send_keyload(&Address, &Vec<PskId>, &Vec<PublicKey>)` - In this function you need to specify:
-    - the message link that the Keyload message will be attached to (for generating new branches, this should be the 
-    Announce message) 
-    - a slice containing the PskId's of the Pre-Shared Keys intended to be included 
-    - a slice containing the `ed25519::PublicKey`'s of each Subscriber that is meant to be granted access 
-2. `send_keyload_for_everyone(&Address)` - In this function you only need to specify the message link that the Keyload 
-will be attaching to. The Keyload will be sent including all stored PSK's and all stored Subscriber public keys 
+    - The message link that the keyload message will be attached to (for generating new branches, this should be the Announce message).
+    - A slice containing the `PskId`'s of the pre-shared keys to grant access.
+    - A slice containing the `ed25519::PublicKey`'s of each subscriber to grant access.
+2. `send_keyload_for_everyone(&Address)` - In this function you only need to specify the message link that the keyload will be attaching to. The keyload will be sent including all stored pre-shared keys and all stored subscriber public keys.
 
 Example: 
 ```
-// Send Keyload for everyone (starting a new branch) 
-author.send_keyload_for_everyone(&announcement_link)?;
+// Send keyload for everyone (starting a new branch) 
+author.send_keyload_for_everyone(&ann_link).await?;
 
-// Send Keyload including Pre Shared Key 2 
-author.send_keyload(&announcement_link, &vec![PskId2], &vec![])?;
+// Send keyload including pre-shared key 2 
+author.send_keyload(&ann_link, &vec![psk_id_2], &vec![]).await?;
 
-// Send Keyload for Subscriber 3
-author.send_keyload(&announcement_link, &vec![], &vec![subscriber_3_pub_key])?;
+// Send keyload for subscriber 3
+author.send_keyload(&ann_link, &vec![], &vec![sub_3_pub_key]).await?;
 ```
 
-### Pre-Shared Keys 
-As an alternative to subscribing via public key exchange, an Author may specify access control through the use of 
-a Pre-Shared Key (PSK). A PSK is a 32 byte array containing a secret key shared outside of the streams instance 
-that can be used to specify access through a Keyload message. If an Author issues a Keyload with a PSK included, 
-and a Subscriber reads this message with the same PSK stored within itself, then the Subscriber can participate in 
-the proceeding branch without being subscribed to the channel. 
+### Pre-shared keys 
+As an alternative to subscribing via public key exchange, an author may specify access control through the use of a Pre-Shared Key (PSK). A PSK is a 32 byte array containing a secret key, shared outside of the Streams instance, that can be used to specify access through a keyload message. If an author issues a keyload with a PSK included, and a subscriber reads this message with the same PSK stored within itself, then the subscriber can participate in the proceeding branch without being subscribed to the channel. 
 
 Example: 
 ```
-// Create a random key (for example) and make the Psk from it
+// Create a random key and make the PSK from it
 let key = rand::thread_rng().gen::<[u8; 32]>();
 let psk = iota_streams::core::psk::Psk::clone_from_slice(&key);
 
-// Store the psk and retrieve the pskid
-let pskid = author.store_psk(psk.clone());
+// Store the psk and retrieve the `PskId`
+let psk_id = author.store_psk(psk.clone());
 
-// Create a keyload with the psk included
-let keyload_link = author.send_keyload(&prev_msg_link, &vec![pskid], &vec![])?;
+// Create a keyload with the PSK included
+let keyload_link = author.send_keyload(&prev_msg_link, &vec![pskid], &vec![]).await?;
 
-// Store the same psk in subscriber 
-let _sub_pskid = subscriber.store_psk(psk);
+// Store the same PSK in the subscriber 
+let _sub_psk_id = subscriber.store_psk(psk);
 
 // Process keyload message from subscriber end
-subscriber.receive_keyload(&keyload_link)?;
+subscriber.receive_keyload(&keyload_link).await?;
 ```
-
