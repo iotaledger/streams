@@ -7,7 +7,7 @@ To create a new Rust project, run:
 cargo new PROJECT_NAME
 ```
 
-Change to the project folder and add the following dependencies to your `Cargo.toml` file:
+Create two of these Rust projects, one for the author and one for the subscriber, and add the following dependencies to both their `Cargo.toml` files:
 
 ```toml
 tokio = { version = "1.5.0", features = ["full"] }
@@ -20,10 +20,10 @@ bee-rest-api = "=0.1.2"
 ```
 
 ## Basic Usage
-With the needed dependencies added, we can start using the Streams library. Below are two example scripts: one to create an author and announce a channel and one to create a subscriber and find the channel.
+With the needed projects and their dependencies added, we can start using the Streams library. Below are two example scripts for both the author and the subscriber. The author script will announce a channel and print the announcement address. The subscriber script handles the announcement to let the subscriber know where to find the channel.
  
-### Author example
-Replace the seed of the author with a random string and run the script to get the announcement link.
+### Author
+Replace the seed of the author with a random string and run the script to get the announcement address.
 
 ```
 use anyhow::Result;
@@ -47,8 +47,8 @@ async fn main() -> Result<()> {
 }
 ```
 
-### Subscriber example
-Replace the seed of the subscriber with a random string, paste the announcement link from the author script above and run the script to let the subscriber find the channel.
+### Subscriber
+Replace the seed of the subscriber with a random string, paste the announcement address from the author script above and run the script to let the subscriber find the channel.
 
 ```
 use anyhow::Result;
