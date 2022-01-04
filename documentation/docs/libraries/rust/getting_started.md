@@ -83,8 +83,8 @@ To subscribe to a channel, subscribers create a subscribe message that is linked
 #### Subscriber
 ```
 // Send subscription message
-let sub_link = subscriber.send_subscribe(&ann_link)?;
-// Provide this link to the author
+let sub_link = subscriber.send_subscribe(&ann_link).await?;
+// Provide the link to the author
 println!("{}", sub_link.to_string());
 ```
 
@@ -92,7 +92,7 @@ println!("{}", sub_link.to_string());
 ```
 // Process subscriber link 
 let sub_link = Address::from_str("SUBSCRIPTION_LINK")?;
-author.receive_subscribe(&sub_link)?;
+author.receive_subscribe(&sub_link).await?;
 ```
 
 ### Keyloads 
