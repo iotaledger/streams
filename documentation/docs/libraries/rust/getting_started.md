@@ -128,7 +128,7 @@ let psk = iota_streams::core::psk::Psk::clone_from_slice(&key);
 let psk_id = author.store_psk(psk.clone());
 
 // Create a keyload with the PSK included
-let keyload_link = author.send_keyload(&prev_msg_link, &vec![pskid], &vec![]).await?;
+let keyload_link = author.send_keyload(&prev_msg_link, &vec![psk_id], &vec![]).await?;
 
 // Store the same PSK in the subscriber 
 let _sub_psk_id = subscriber.store_psk(psk);
