@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
 Now we can begin subscribing users to the channel and generating branches to specify access control for publishers and subscribers via keyload messages.  
 
 ### Subscription
-To subscribe to a channel, subscribers create a subscribe message that is linked to the channel announcement message. The link of this message should then be provided to the author. This allows the author to handle the announcement message and use the public key of the subscriber for access control and validation purposes.
+To subscribe to a channel, subscribers create a subscribe message that is linked to the channel announcement message. The link of this message should then be provided to the author. This allows the author to handle the subscription message and use the public key of the subscriber for access control and validation purposes.
 
 #### Subscriber
 ```
