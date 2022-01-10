@@ -1007,17 +1007,17 @@ where
         let (
             id,
             Cursor {
-                link: prev_link,
+                link: last_link,
                 branch_no: _,
                 seq_no,
             },
         ) = pk_info;
 
         if branching {
-            let msg_id = link_gen.link_from(id, Cursor::new_at(&*prev_link, 0, 1));
+            let msg_id = link_gen.link_from(id, Cursor::new_at(&*last_link, 0, 1));
             ids.push((*id, Cursor::new_at(msg_id, 0, 1)));
         } else {
-            let msg_id = link_gen.link_from(id, Cursor::new_at(&*prev_link, 0, *seq_no));
+            let msg_id = link_gen.link_from(id, Cursor::new_at(&*last_link, 0, *seq_no));
             ids.push((*id, Cursor::new_at(msg_id, 0, *seq_no)));
         }
     }
