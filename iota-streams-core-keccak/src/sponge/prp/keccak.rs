@@ -1,3 +1,5 @@
+#![allow(clippy::derivable_impls)]
+
 use iota_streams_core::{
     prelude::{
         generic_array::GenericArray,
