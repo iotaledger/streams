@@ -26,7 +26,6 @@ members = [
     "iota-streams-ddml",
     "iota-streams-app",
     "iota-streams-app-channels",
-    "bindings/wasm",
 ]
 
 # Members selected by default by Cargo commands like `test`
@@ -41,6 +40,7 @@ default-members = [
 
 exclude = [
     "bindings/c",
+    "bindings/wasm",
     "examples",
 ]
 
