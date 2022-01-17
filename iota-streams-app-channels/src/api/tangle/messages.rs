@@ -362,6 +362,7 @@ pub trait IntoMessages<Trans> {
 /// subscriber.receive_announcement(&announcement_link).await?;
 /// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
 /// author.receive_subscribe(&subscription_link).await?;
+///
 /// let (first_keyload_link, _sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
 /// let (tag_first_branch_link, _sequence_link) = author
 ///     .send_signed_packet(&first_keyload_link, &Default::default(), &b"branch 1".into())
@@ -402,7 +403,7 @@ pub trait IntoMessages<Trans> {
 ///
 /// let messages: Vec<UnwrappedMessage> = subscriber
 ///     .messages()
-///     .try_skip_while(|msg| {
+///     .filter_branch(|msg| {
 ///         future::ok(
 ///             msg.body
 ///                 .masked_payload()
@@ -411,21 +412,10 @@ pub trait IntoMessages<Trans> {
 ///                 .unwrap_or(true),
 ///         )
 ///     })
-///     .scan(None, |branch_last_link, msg| {
-///         future::ready(Some(msg.map(|msg| {
-///             let branch_last_link = branch_last_link.get_or_insert(msg.prev_link);
-///             if msg.prev_link == *branch_last_link {
-///                 *branch_last_link = msg.link;
-///                 Some(msg)
-///             } else {
-///                 None
-///             }
-///         })))
-///     })
-///     .try_filter_map(future::ok)
-///     .skip(1) // skip tag message
+///     .skip(1) // Skip tag message
 ///     .try_collect()
 ///     .await?;
+///
 /// assert_eq!(
 ///     messages,
 ///     vec![
@@ -444,24 +434,6 @@ pub trait IntoMessages<Trans> {
 ///             )
 ///         ),
 ///     ]
-/// );
-///
-/// // This particular case is conveniently abstracted away in the Messages::filter_branch():
-/// subscriber.reset_state();
-/// assert_eq!(
-///     messages,
-///     subscriber
-///         .messages()
-///         .filter_branch(|msg| future::ok(
-///             msg.body
-///                 .masked_payload()
-///                 .and_then(Bytes::as_str)
-///                 .map(|payload| payload != "branch 2")
-///                 .unwrap_or(true)
-///         ))
-///         .skip(1)
-///         .try_collect::<Vec<UnwrappedMessage>>()
-///         .await?
 /// );
 /// # Ok(())
 /// # })
@@ -636,119 +608,17 @@ where
     ///
     /// Once that message is fetched and yielded, the returned [`Stream`] will yield only
     /// descendants of that message.
-    /// ```
-    /// use iota_streams_app_channels::{
-    ///     api::tangle::futures::{
-    ///         future,
-    ///         StreamExt,
-    ///         TryStreamExt,
-    ///     },
-    ///     Address,
-    ///     Author,
-    ///     Bytes,
-    ///     ChannelType,
-    ///     MessageContent,
-    ///     Subscriber,
-    ///     Tangle,
-    ///     UnwrappedMessage,
-    /// };
     ///
-    /// #
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
-    /// # use iota_streams_app_channels::api::tangle::BucketTransport;
-    /// # use iota_streams_core::Result;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// # smol::block_on(async {
-    /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
-    /// #
-    /// let author_seed = "cryptographically-secure-random-author-seed";
-    /// let author_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-    /// #
-    /// # let author_transport = test_transport.clone();
-    /// #
-    /// let mut author = Author::new(author_seed, ChannelType::MultiBranch, author_transport);
-    ///
-    /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-    /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-    /// #
-    /// # let subscriber_transport = test_transport.clone();
-    /// #
-    /// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport);
-    ///
-    /// let announcement_link = author.send_announce().await?;
-    /// subscriber.receive_announcement(&announcement_link).await?;
-    /// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
-    /// author.receive_subscribe(&subscription_link).await?;
-    ///
-    /// let (first_keyload_link, _sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
-    /// let (tag_first_branch_link, _sequence_link) = author
-    ///     .send_signed_packet(&first_keyload_link, &Default::default(), &b"branch 1".into())
-    ///     .await?;
-    /// let (first_packet_first_branch_link, _sequence_link) = author
-    ///     .send_signed_packet(
-    ///         &tag_first_branch_link,
-    ///         &Default::default(),
-    ///         &b"masked payload in branch 1".into(),
-    ///     )
-    ///     .await?;
-    ///
-    /// let (second_keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
-    /// let (tag_second_branch_link, _sequence_link) = author
-    ///     .send_signed_packet(&second_keyload_link, &Default::default(), &b"branch 2".into())
-    ///     .await?;
-    /// let (first_packet_second_branch_link, sequence_link) = author
-    ///     .send_signed_packet(
-    ///         &tag_second_branch_link,
-    ///         &Default::default(),
-    ///         &b"masked payload in branch 2".into(),
-    ///     )
-    ///     .await?;
-    ///
-    /// let messages: Vec<UnwrappedMessage> = subscriber
-    ///     .messages()
-    ///     .filter_branch(|msg| {
-    ///         future::ok(
-    ///             msg.body
-    ///                 .masked_payload()
-    ///                 .and_then(Bytes::as_str)
-    ///                 .map(|payload| payload != "branch 2")
-    ///                 .unwrap_or(true),
-    ///         )
-    ///     })
-    ///     .try_collect()
-    ///     .await?;
-    ///
-    /// assert_eq!(
-    ///     messages,
-    ///     vec![
-    ///         UnwrappedMessage::new(
-    ///             tag_second_branch_link,
-    ///             second_keyload_link,
-    ///             MessageContent::new_signed_packet(author.get_public_key().clone(), b"", b"branch 2")
-    ///         ),
-    ///         UnwrappedMessage::new(
-    ///             first_packet_second_branch_link,
-    ///             tag_second_branch_link,
-    ///             MessageContent::new_signed_packet(author.get_public_key().clone(), b"", b"masked payload in branch 2")
-    ///         ),
-    ///     ]
-    /// );
-    /// # Ok(())
-    /// # })
-    /// # }
-    /// ```
     ///  See [example in `Messages` docs](struct.Messages.html#filter-the-messages-of-a-particular-branch)
     /// for more details.
     pub fn filter_branch<F>(
         self,
-        p: impl FnMut(&UnwrappedMessage) -> F + 'a,
+        predicate: impl FnMut(&UnwrappedMessage) -> F + 'a,
     ) -> impl Stream<Item = Result<UnwrappedMessage>> + 'a
     where
         F: Future<Output = Result<bool>> + 'a,
     {
-        self.try_skip_while(p)
+        self.try_skip_while(predicate)
             .scan(None, |branch_last_link, msg| {
                 future::ready(Some(msg.map(|msg| {
                     let branch_last_link = branch_last_link.get_or_insert(msg.prev_link);
