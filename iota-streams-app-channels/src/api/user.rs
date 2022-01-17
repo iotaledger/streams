@@ -954,16 +954,18 @@ where
         }
     }
 
-    /// Generate the link of a message of a user given its previous link and its sequence number
+    /// Generate the link of a message
+    /// 
+    /// The link is generated from the link of the last message sent by the publishing user and its sequence number
     ///
     /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information
-    pub fn gen_link<I>(&self, id: I, previous_link: &Link::Rel, current_seq_no: u32) -> Cursor<Link>
+    pub fn gen_link<I>(&self, id: I, last_link: &Link::Rel, current_seq_no: u32) -> Cursor<Link>
     where
         I: AsRef<[u8]>,
     {
         let new_link = self
             .link_gen
-            .link_from(id, Cursor::new_at(previous_link, 0, current_seq_no));
+            .link_from(id, Cursor::new_at(last_link, 0, current_seq_no));
         Cursor::new_at(new_link, 0, current_seq_no)
     }
 

@@ -33,6 +33,7 @@ impl<'a, F: PRP, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<N
         let mut bytes = [0_u8; ed25519::SIGNATURE_LENGTH];
         let slice = self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?;
         bytes.copy_from_slice(slice);
+        #[allow(deprecated)]
         let signature = ed25519::Signature::new(bytes);
         match pk.verify_prehashed(prehashed, Some(context), &signature) {
             Ok(()) => Ok(self),
