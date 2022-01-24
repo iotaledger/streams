@@ -31,4 +31,4 @@ futures = { version = "0.3.8", default-features = false, optional = true }
 async-recursion = { version = "0.3.2", default-features = false, optional = true }
 
 [dev-dependencies]
-smol = { version = "1.2.5" }
+tokio = { version = "1.15", default-features = false }

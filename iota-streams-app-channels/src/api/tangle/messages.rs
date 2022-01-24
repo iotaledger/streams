@@ -81,8 +81,8 @@ pub trait IntoMessages<Trans> {
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
 /// # use iota_streams_core::Result;
 /// #
-/// # fn main() -> Result<()> {
-/// # smol::block_on(async {
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
 /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
@@ -132,7 +132,6 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # assert_eq!(n, 3);
 /// # Ok(())
-/// # })
 /// # }
 /// ```
 ///
@@ -155,8 +154,8 @@ pub trait IntoMessages<Trans> {
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
 /// # use iota_streams_core::Result;
 /// #
-/// # fn main() -> Result<()> {
-/// #  smol::block_on(async {
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
 /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
@@ -216,7 +215,6 @@ pub trait IntoMessages<Trans> {
 /// );
 /// #
 /// # Ok(())
-/// # })
 /// # }
 /// ```
 ///
@@ -227,14 +225,16 @@ pub trait IntoMessages<Trans> {
 /// use iota_streams_app_channels::{
 ///     api::tangle::futures::TryStreamExt,
 ///     Author,
+///     Bytes,
 ///     ChannelType,
+///     Subscriber,
 ///     Tangle,
 /// };
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
 /// # use iota_streams_core::{prelude::{Rc, RefCell}, Result};
 ///
-/// # fn main() -> Result<()> {
-/// # smol::block_on(async {
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
 /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
@@ -307,7 +307,6 @@ pub trait IntoMessages<Trans> {
 /// # author_process.await?;
 /// # subscriber_process.await?;
 /// # Ok(())
-/// # })
 /// # }
 /// #
 /// ```
@@ -316,15 +315,17 @@ pub trait IntoMessages<Trans> {
 /// ```
 /// use iota_streams_app_channels::{
 ///     api::tangle::futures::TryStreamExt,
+///     Author,
 ///     Bytes,
+///     ChannelType,
 ///     Subscriber,
 ///     Tangle,
 /// };
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
 /// # use iota_streams_core::{prelude::{Rc, RefCell}, Result};
 /// #
-/// # fn main() -> Result<()> {
-/// # smol::block_on(async {
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
 /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
 /// #
 /// # let author_seed = "cryptographically-secure-random-author-seed";
@@ -400,7 +401,6 @@ pub trait IntoMessages<Trans> {
 /// # author_process.await?;
 /// # subscriber_process.await?;
 /// # Ok(())
-/// # })
 /// # }
 /// #
 /// ```
@@ -428,8 +428,8 @@ pub trait IntoMessages<Trans> {
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
 /// # use iota_streams_core::Result;
 /// #
-/// # fn main() -> Result<()> {
-/// # smol::block_on(async {
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
 /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
@@ -524,7 +524,6 @@ pub trait IntoMessages<Trans> {
 ///     ]
 /// );
 /// # Ok(())
-/// # })
 /// # }
 /// ```
 /// ## Iterate until finding a particular message
@@ -770,66 +769,62 @@ mod tests {
 
     type Transport = Rc<RefCell<BucketTransport>>;
 
-    #[test]
-    fn messages_can_be_linked_to_sequence_messages() -> Result<()> {
+    #[tokio::test]
+    async fn messages_can_be_linked_to_sequence_messages() -> Result<()> {
         let p = Default::default();
-        smol::block_on(async {
-            let (mut author, mut subscriber, announcement_link, transport) = author_subscriber_fixture().await?;
+        let (mut author, mut subscriber, announcement_link, transport) = author_subscriber_fixture().await?;
 
-            let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
-            let (packet_link, _) = author.send_signed_packet(&keyload_link, &p, &p).await?;
-            let (_, seq_link) = author.send_signed_packet(&packet_link, &p, &p).await?;
+        let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
+        let (packet_link, _) = author.send_signed_packet(&keyload_link, &p, &p).await?;
+        let (_, seq_link) = author.send_signed_packet(&packet_link, &p, &p).await?;
 
-            subscriber.sync_state().await?;
+        subscriber.sync_state().await?;
 
-            // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
-            subscriber
-                .send_signed_packet(&seq_link.expect("sequence link should be Some(link)"), &p, &p)
-                .await?;
+        // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
+        subscriber
+            .send_signed_packet(&seq_link.expect("sequence link should be Some(link)"), &p, &p)
+            .await?;
 
-            // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
-            let mut subscriber = Subscriber::new("subscriber", transport);
-            subscriber.receive_announcement(&announcement_link).await?;
-            let n_msgs = subscriber.sync_state().await?;
-            assert_eq!(n_msgs, 4); // keyload, 2 signed packets from author, and last signed-packet from herself
-            Ok(())
-        })
+        // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
+        let mut subscriber = Subscriber::new("subscriber", transport);
+        subscriber.receive_announcement(&announcement_link).await?;
+        let n_msgs = subscriber.sync_state().await?;
+        assert_eq!(n_msgs, 4); // keyload, 2 signed packets from author, and last signed-packet from herself
+        Ok(())
     }
 
-    #[test]
-    fn sequence_messages_awake_pending_messages_link_to_them_even_if_the_referenced_messages_are_unreadable(
+    #[tokio::test]
+    async fn sequence_messages_awake_pending_messages_link_to_them_even_if_the_referenced_messages_are_unreadable(
     ) -> Result<()> {
         let p = Default::default();
-        smol::block_on(async {
-            let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
+        let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
 
-            let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
-            subscriber1.sync_state().await?;
-            let (packet_link, _) = subscriber1.send_signed_packet(&keyload_link, &p, &p).await?;
-            // This packet will never be readable by subscriber2. However, the sequence is
-            let (_, seq_link) = subscriber1.send_signed_packet(&packet_link, &p, &p).await?;
+        let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
+        subscriber1.sync_state().await?;
+        let (packet_link, _) = subscriber1.send_signed_packet(&keyload_link, &p, &p).await?;
+        // This packet will never be readable by subscriber2. However, the sequence is
+        let (_, seq_link) = subscriber1.send_signed_packet(&packet_link, &p, &p).await?;
 
-            let mut subscriber2 =
-                subscriber_fixture("subscriber2", &mut author, &announcement_link, transport.clone()).await?;
+        let mut subscriber2 =
+            subscriber_fixture("subscriber2", &mut author, &announcement_link, transport.clone()).await?;
 
-            author.sync_state().await?;
-            // This keyload link to announcement is necessary (for now) to "introduce" both subscribers
-            // otherwise subscriber2 isn't aware of subscriber1 and will never walk through the sequence messages
-            //  of subscriber1 to reach keyload2
-            author.send_keyload_for_everyone(&announcement_link).await?;
+        author.sync_state().await?;
+        // This keyload link to announcement is necessary (for now) to "introduce" both subscribers
+        // otherwise subscriber2 isn't aware of subscriber1 and will never walk through the sequence messages
+        //  of subscriber1 to reach keyload2
+        author.send_keyload_for_everyone(&announcement_link).await?;
 
-            // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
-            let (keyload2_link, _) = author
-                .send_keyload_for_everyone(&seq_link.expect("sequence link should be Some(link)"))
-                .await?;
+        // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
+        let (keyload2_link, _) = author
+            .send_keyload_for_everyone(&seq_link.expect("sequence link should be Some(link)"))
+            .await?;
 
-            subscriber1.sync_state().await?;
-            subscriber1.send_signed_packet(&keyload2_link, &p, &p).await?;
+        subscriber1.sync_state().await?;
+        subscriber1.send_signed_packet(&keyload2_link, &p, &p).await?;
 
-            let n_msgs = subscriber2.sync_state().await?;
-            assert_eq!(n_msgs, 4); // first announcement, announcement keyload, keyload2 and last signed packet
-            Ok(())
-        })
+        let n_msgs = subscriber2.sync_state().await?;
+        assert_eq!(n_msgs, 4); // first announcement, announcement keyload, keyload2 and last signed packet
+        Ok(())
     }
 
     /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport

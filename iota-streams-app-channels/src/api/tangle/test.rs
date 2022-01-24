@@ -141,13 +141,14 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn run_basic_scenario() {
+#[cfg(test)]
+#[tokio::test]
+async fn run_basic_scenario() {
     use iota_streams_core::prelude::{
         Rc,
         RefCell,
     };
 
     let transport = Rc::new(RefCell::new(crate::api::tangle::BucketTransport::new()));
-    smol::block_on(example(transport)).unwrap();
+    example(transport).await.unwrap();
 }
