@@ -197,8 +197,8 @@ where
         let appinst = self.link_gen.get();
 
         self.key_store
-            .insert_cursor(self.user_id.id.clone(), Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
-        self.author_id = Some(self.user_id.id.clone());
+            .insert_cursor(self.user_id.id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
+        self.author_id = Some(self.user_id.id);
         self.anchor = Some(Cursor::new_at(appinst.clone(), 0, 2_u32));
         self.appinst = Some(appinst);
         Ok(())
@@ -292,8 +292,8 @@ where
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
         self.key_store
-            .insert_cursor(content.author_id.id.clone(), cursor.clone())?;
-        self.key_store.insert_cursor(self.user_id.id.clone(), cursor)?;
+            .insert_cursor(content.author_id.id, cursor.clone())?;
+        self.key_store.insert_cursor(self.user_id.id, cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.anchor = Some(Cursor::new_at(link.clone(), 0, 2_u32));
@@ -309,7 +309,7 @@ where
         link_to: &'a Link,
     ) -> Result<PreparedMessage<F, Link, subscribe::ContentWrap<'a, F, Link>>> {
         if let Some(author_id) = &self.author_id {
-            if let Some(author_ke_pk) = self.key_store.get_ke_pk(&author_id) {
+            if let Some(author_ke_pk) = self.key_store.get_ke_pk(author_id) {
                 let msg_link = self
                     .link_gen
                     .link_from(self.user_id.id, Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM));

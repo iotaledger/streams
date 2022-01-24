@@ -44,9 +44,9 @@ use iota_streams_app::{
     message::{self, ContentSign, ContentVerify, HasLink},
 };
 use iota_streams_core::{
-    async_trait, prelude::Box, sponge::prp::PRP, wrapped_err, Errors::MessageCreationFailure, Result, WrappedError,
+    async_trait, prelude::Box, sponge::prp::PRP, Result,
 };
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_ddml::{
     command::*,
     io,

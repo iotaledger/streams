@@ -32,7 +32,7 @@ impl Identifier {
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Identifier::EdPubKey(id) => id.0.as_ref(),
-            Identifier::PskId(id) => &id,
+            Identifier::PskId(id) => id,
         }
     }
 

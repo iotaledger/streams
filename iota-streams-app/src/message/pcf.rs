@@ -109,9 +109,9 @@ where
     F: PRP,
     Content: ContentSizeof<F>,
 {
-    async fn sizeof<'c>(&self, mut ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.frame_type)?.skip(&self.payload_frame_num)?;
-        self.content.sizeof(&mut ctx).await?;
+        self.content.sizeof(ctx).await?;
         Ok(ctx)
     }
 }
@@ -125,10 +125,10 @@ where
     async fn wrap<'c, OS: io::OStream>(
         &self,
         store: &Store,
-        mut ctx: &'c mut wrap::Context<F, OS>,
+        ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.absorb(&self.frame_type)?.skip(&self.payload_frame_num)?;
-        self.content.wrap(store, &mut ctx).await?;
+        self.content.wrap(store, ctx).await?;
         Ok(ctx)
     }
 }
@@ -142,11 +142,11 @@ where
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
-        mut ctx: &'c mut unwrap::Context<F, IS>,
+        ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.absorb(&mut self.frame_type)?.skip(&mut self.payload_frame_num)?;
         payload_frame_num_check(&self.payload_frame_num)?;
-        self.content.unwrap(store, &mut ctx).await?;
+        self.content.unwrap(store, ctx).await?;
         Ok(ctx)
     }
 }

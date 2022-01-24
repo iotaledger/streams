@@ -6,15 +6,9 @@ use iota_streams_core::{
     sponge::prp::PRP,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct KeccakF1600 {
     state: [u64; 25],
-}
-
-impl Default for KeccakF1600 {
-    fn default() -> Self {
-        Self { state: [0u64; 25] }
-    }
 }
 
 impl KeccakF1600 {
