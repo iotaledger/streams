@@ -393,7 +393,7 @@ where
         // TODO: trust content.subscriber_sig_pk
         // TODO: remove unused unsubscribe_key because it is unnecessary for verification anymore
         let subscriber_id = content.subscriber_id;
-        self.insert_subscriber(subscriber_id)
+        self.insert_subscriber(subscriber_id.id)
     }
 
     pub fn insert_subscriber(&mut self, id: Identifier) -> Result<()> {

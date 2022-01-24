@@ -127,16 +127,13 @@ where
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
     pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Result<Self> {
-        match ed25519::PublicKey::from_bytes(&[0_u8; ed25519::PUBLIC_KEY_LENGTH]) {
-            Ok(pk) => Ok(Self {
-                link: <<Link as HasLink>::Rel as Default>::default(),
-                unsubscribe_key: NBytes::<U32>::default(),
-                subscriber_id: Identity::default(),
-                author_ke_sk,
-                _phantom: core::marker::PhantomData,
-            }),
-            Err(e) => Err(wrapped_err!(MessageCreationFailure, WrappedError(e))),
-        }
+        Ok(Self {
+            link: <<Link as HasLink>::Rel as Default>::default(),
+            unsubscribe_key: NBytes::<U32>::default(),
+            subscriber_id: Identity::default(),
+            author_ke_sk,
+            _phantom: core::marker::PhantomData,
+        })
     }
 }
 
