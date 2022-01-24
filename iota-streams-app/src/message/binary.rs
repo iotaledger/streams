@@ -3,15 +3,8 @@ use iota_streams_core::Result;
 
 use super::*;
 use core::fmt::Debug;
-use iota_streams_core::{
-    prelude::Vec,
-    sponge::prp::PRP,
-};
-use iota_streams_ddml::{
-    command::unwrap,
-    link_store::EmptyLinkStore,
-    types::*,
-};
+use iota_streams_core::{prelude::Vec, sponge::prp::PRP};
+use iota_streams_ddml::{command::unwrap, link_store::EmptyLinkStore, types::*};
 
 /// Binary Message body with information of how to parse it.
 pub struct BinaryBody<F> {

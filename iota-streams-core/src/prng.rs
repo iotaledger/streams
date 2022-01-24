@@ -3,21 +3,14 @@
 use crate::{
     prelude::{
         generic_array::{
-            typenum::{
-                U16,
-                U32,
-            },
-            ArrayLength,
-            GenericArray,
+            typenum::{U16, U32},
+            ArrayLength, GenericArray,
         },
         Vec,
     },
     sponge::{
         prp::PRP,
-        spongos::{
-            self,
-            Spongos,
-        },
+        spongos::{self, Spongos},
     },
 };
 

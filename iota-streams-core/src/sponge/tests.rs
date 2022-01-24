@@ -1,12 +1,6 @@
 #![allow(clippy::many_single_char_names)]
-use super::{
-    prp::PRP,
-    spongos::*,
-};
-use crate::prelude::{
-    generic_array::typenum::Unsigned as _,
-    Vec,
-};
+use super::{prp::PRP, spongos::*};
+use crate::prelude::{generic_array::typenum::Unsigned as _, Vec};
 
 fn bytes_spongosn<F: PRP>(n: usize) {
     let mut rng = Spongos::<F>::init();

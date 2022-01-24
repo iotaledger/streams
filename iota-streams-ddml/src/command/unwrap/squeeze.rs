@@ -1,16 +1,8 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{
-    command::Squeeze,
-    io,
-    types::Mac,
-};
-use iota_streams_core::{
-    sponge::prp::PRP,
-    try_or,
-    Errors::BadMac,
-};
+use crate::{command::Squeeze, io, types::Mac};
+use iota_streams_core::{sponge::prp::PRP, try_or, Errors::BadMac};
 
 /// External values are not encoded. Squeeze and compare tag trits.
 impl<'a, F: PRP, IS: io::IStream> Squeeze<&'a Mac> for Context<F, IS> {

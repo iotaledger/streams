@@ -22,24 +22,13 @@
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
 
 use iota_streams_app::id::Identity;
-use iota_streams_core::{
-    async_trait,
-    prelude::Box,
-    Result,
-};
+use iota_streams_core::{async_trait, prelude::Box, Result};
 
 use iota_streams_app::message;
 use iota_streams_app::message::{ContentSign, ContentVerify};
 use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
-use iota_streams_ddml::{
-    command::*,
-    io,
-    types::*,
-};
+use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_ddml::{command::*, io, types::*};
 
 pub struct ContentWrap<'a, F> {
     user_id: &'a Identity,
@@ -113,7 +102,6 @@ impl<F> ContentUnwrap<F> {
         }
     }
 }
-
 
 #[async_trait(?Send)]
 impl<F, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F>

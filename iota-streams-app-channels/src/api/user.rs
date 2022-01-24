@@ -1,66 +1,38 @@
 use core::{
     borrow::Borrow,
-    fmt::{
-        self,
-        Debug,
-    },
+    fmt::{self, Debug},
     marker::PhantomData,
 };
 
 use iota_streams_app::{
     id::{Identifier, Identity},
     message::{
+        hdf::{FLAG_BRANCHING_MASK, HDF},
         *,
-        hdf::{
-            FLAG_BRANCHING_MASK,
-            HDF,
-        },
     },
 };
 use iota_streams_core::{
-    async_trait,
-    err,
-    Errors::*,
-    prelude::{
-        Box,
-        string::ToString,
-        typenum::U32,
-        Vec,
-    },
+    async_trait, err,
+    prelude::{string::ToString, typenum::U32, Box, Vec},
     prng,
-    psk::{
-        self,
-        Psk,
-        PskId,
-    },
-    Result,
-    sponge::prp::{
-        Inner,
-        PRP,
-    },
+    psk::{self, Psk, PskId},
+    sponge::prp::{Inner, PRP},
     try_or,
+    Errors::*,
+    Result,
 };
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
+use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{
-        EmptyLinkStore,
-        LinkStore,
-    },
+    link_store::{EmptyLinkStore, LinkStore},
     types::*,
 };
 
 use crate::{
-    api::{
-        ChannelType,
-        key_store::*,
-    },
-    Lookup,
+    api::{key_store::*, ChannelType},
     message::*,
+    Lookup,
 };
 use core::borrow::BorrowMut;
 
@@ -321,8 +293,7 @@ where
         let cursor = Cursor::new_at(link.rel().clone(), 0, 2_u32);
         self.key_store
             .insert_cursor(content.author_id.id.clone(), cursor.clone())?;
-        self.key_store
-            .insert_cursor(self.user_id.id.clone(), cursor)?;
+        self.key_store.insert_cursor(self.user_id.id.clone(), cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.anchor = Some(Cursor::new_at(link.clone(), 0, 2_u32));
@@ -402,10 +373,7 @@ where
             (true, Some(ref_link)) => self
                 .key_store
                 .insert_cursor(id, Cursor::new_at(ref_link.rel().clone(), 0, SEQ_MESSAGE_NUM)),
-            (false, Some(ref_link)) => err!(UserAlreadyRegistered(
-                id.to_string(),
-                ref_link.base().to_string()
-            )),
+            (false, Some(ref_link)) => err!(UserAlreadyRegistered(id.to_string(), ref_link.base().to_string())),
         }
     }
 
@@ -460,7 +428,7 @@ where
         self.remove_subscriber(content.subscriber_id.id)
     }
 
-    pub fn remove_subscriber(&mut self,  id: Identifier) -> Result<()> {
+    pub fn remove_subscriber(&mut self, id: Identifier) -> Result<()> {
         match self.key_store.contains(&id) {
             true => {
                 self.key_store.remove(&id);
@@ -558,9 +526,8 @@ where
         keys_lookup: KeysLookup<'a, F, Link, Keys>,
         own_keys: OwnKeys<'a>,
         author_id: Identity,
-    ) -> Result<
-        UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>,
-    > {
+    ) -> Result<UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>>
+    {
         self.ensure_appinst(&preparsed)?;
         let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_id);
         preparsed.unwrap(&self.link_store, content).await
@@ -625,9 +592,8 @@ where
                 }
                 Ok(processed)
             }
-            None => err!(AuthorIdNotFound)
+            None => err!(AuthorIdNotFound),
         }
-
     }
 
     /// Prepare SignedPacket message.
@@ -881,8 +847,7 @@ where
     ) -> Result<Option<Link>> {
         cursor.link = wrapped_state.link.rel().clone();
         cursor.next_seq();
-        self.key_store
-            .insert_cursor(self.user_id.id, cursor)?;
+        self.key_store.insert_cursor(self.user_id.id, cursor)?;
         let link = wrapped_state.link.clone();
         wrapped_state.commit(&mut self.link_store, info)?;
         Ok(Some(link))
@@ -932,9 +897,7 @@ where
 
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn get_seq_no(&self) -> Option<u32> {
-        self.key_store
-            .get(&self.user_id.id)
-            .map(|cursor| cursor.seq_no)
+        self.key_store.get(&self.user_id.id).map(|cursor| cursor.seq_no)
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -1030,10 +993,8 @@ where
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
-            self.key_store.insert_cursor(
-                self.user_id.id,
-                Cursor::new_at(link.clone(), 0, seq_no),
-            )?;
+            self.key_store
+                .insert_cursor(self.user_id.id, Cursor::new_at(link.clone(), 0, seq_no))?;
             for (_pk, cursor) in self.key_store.iter_mut() {
                 cursor.link = link.clone();
                 cursor.seq_no = seq_no;
@@ -1227,10 +1188,8 @@ where
         };
 
         let mut oneof_author_id = Uint8(0);
-        ctx.absorb(&mut oneof_author_id)?.guard(
-            oneof_author_id.0 < 2,
-            AuthorSigPkRecoveryFailure(oneof_author_id.0),
-        )?;
+        ctx.absorb(&mut oneof_author_id)?
+            .guard(oneof_author_id.0 < 2, AuthorSigPkRecoveryFailure(oneof_author_id.0))?;
 
         let author_id = if oneof_author_id.0 == 1 {
             let mut author_id = Identifier::default();

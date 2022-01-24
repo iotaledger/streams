@@ -1,27 +1,15 @@
 use wasm_bindgen::prelude::*;
 
-use crate::types::{
-    Address,
-    Details,
-    ResultExt,
-    SendOptions,
-};
+use crate::types::{Address, Details, ResultExt, SendOptions};
 
 use client_wasm::client::Client as RustWasmClient;
 
 use iota_streams::{
     app::transport::{
-        tangle::client::{
-            iota_client::Client as RustClient,
-            Client as ApiClient,
-        },
-        TransportDetails,
-        TransportOptions,
+        tangle::client::{iota_client::Client as RustClient, Client as ApiClient},
+        TransportDetails, TransportOptions,
     },
-    core::prelude::{
-        Rc,
-        RefCell,
-    },
+    core::prelude::{Rc, RefCell},
 };
 
 #[wasm_bindgen]

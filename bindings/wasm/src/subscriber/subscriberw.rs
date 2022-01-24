@@ -1,34 +1,18 @@
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
-use crate::{
-    types::*,
-    user::userw::*,
-};
+use crate::{types::*, user::userw::*};
 
 use core::cell::RefCell;
 use iota_streams::{
     app::{
         futures::executor::block_on,
-        transport::{
-            tangle::client::Client as ApiClient,
-            TransportOptions,
-        },
+        transport::{tangle::client::Client as ApiClient, TransportOptions},
     },
-    app_channels::api::{
-        psk_from_seed,
-        pskid_from_psk,
-        tangle::Subscriber as ApiSubscriber,
-    },
+    app_channels::api::{psk_from_seed, pskid_from_psk, tangle::Subscriber as ApiSubscriber},
     core::{
-        prelude::{
-            Rc,
-            String,
-        },
-        psk::{
-            pskid_from_hex_str,
-            pskid_to_hex_string,
-        },
+        prelude::{Rc, String},
+        psk::{pskid_from_hex_str, pskid_to_hex_string},
     },
     ddml::types::*,
 };

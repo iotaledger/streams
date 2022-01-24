@@ -3,22 +3,9 @@ use iota_streams_core::Result;
 use super::Context;
 use crate::{
     command::Mask,
-    types::{
-        sizeof_sizet,
-        ArrayLength,
-        Bytes,
-        NBytes,
-        Size,
-        Uint16,
-        Uint32,
-        Uint64,
-        Uint8,
-    },
+    types::{sizeof_sizet, ArrayLength, Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
 };
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
+use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
 
 /// Mask Uint8.
 impl<F> Mask<&Uint8> for Context<F> {

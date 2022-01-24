@@ -1,11 +1,6 @@
 use iota_streams_core::{
     async_trait,
-    prelude::{
-        Box,
-        Rc,
-        RefCell,
-        Vec,
-    },
+    prelude::{Box, Rc, RefCell, Vec},
     Result,
 };
 
@@ -86,19 +81,10 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
 
 #[cfg(any(feature = "sync-spin", feature = "sync-parking-lot"))]
 mod sync {
-    use super::{
-        Transport,
-        TransportDetails,
-        TransportOptions,
-    };
+    use super::{Transport, TransportDetails, TransportOptions};
     use iota_streams_core::{
         async_trait,
-        prelude::{
-            Arc,
-            Box,
-            Mutex,
-            Vec,
-        },
+        prelude::{Arc, Box, Mutex, Vec},
         Result,
     };
 

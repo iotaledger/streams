@@ -1,29 +1,15 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 
 use core::fmt;
-use iota_streams_core::{
-    err,
-    Result,
-};
+use iota_streams_core::{err, Result};
 
 use super::*;
-use crate::api::tangle::{
-    ChannelType::SingleBranch,
-    UnwrappedMessage,
-    User,
-};
+use crate::api::tangle::{ChannelType::SingleBranch, UnwrappedMessage, User};
 
 use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
-    prelude::{
-        String,
-        Vec,
-        ToString,
-    },
-    psk::{
-        Psk,
-        PskId,
-    },
+    prelude::{String, ToString, Vec},
+    psk::{Psk, PskId},
     Errors::SingleDepthOperationFailure,
 };
 
@@ -335,11 +321,6 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
 
 impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "<{}>\n{}",
-            self.get_id().to_string(),
-            self.user.user.key_store
-        )
+        write!(f, "<{}>\n{}", self.get_id().to_string(), self.user.user.key_store)
     }
 }

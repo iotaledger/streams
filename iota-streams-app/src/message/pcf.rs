@@ -1,22 +1,10 @@
-use iota_streams_core::{
-    async_trait,
-    prelude::Box,
-    Result,
-};
+use iota_streams_core::{async_trait, prelude::Box, Result};
 
-use iota_streams_core::{
-    sponge::prp::PRP,
-    try_or,
-    Errors::ValueOutOfRange,
-};
+use iota_streams_core::{sponge::prp::PRP, try_or, Errors::ValueOutOfRange};
 use iota_streams_ddml::{
     command::*,
     io,
-    types::{
-        typenum::U3,
-        GenericArray,
-        *,
-    },
+    types::{typenum::U3, GenericArray, *},
 };
 
 use super::*;

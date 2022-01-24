@@ -5,18 +5,10 @@ use curve25519_dalek::edwards;
 use ed25519_dalek::ExpandedSecretKey;
 use iota_streams_core::{
     err,
-    prelude::{
-        HashSet,
-        Vec,
-    },
+    prelude::{HashSet, Vec},
     Errors::KeyConversionFailure,
 };
-pub use x25519_dalek::{
-    EphemeralSecret,
-    PublicKey,
-    SharedSecret,
-    StaticSecret,
-};
+pub use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret, StaticSecret};
 
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 // pub type PublicKeySize = U32;

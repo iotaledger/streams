@@ -4,36 +4,23 @@ use iota_streams::{
         id::Identifier,
         message::Cursor as ApiCursor,
         transport::tangle::client::{
-            Details as ApiDetails,
             iota_client::{
                 bee_rest_api::types::{
-                    dtos::LedgerInclusionStateDto,
-                    responses::MessageMetadataResponse as ApiMessageMetadata,
+                    dtos::LedgerInclusionStateDto, responses::MessageMetadataResponse as ApiMessageMetadata,
                 },
                 MilestoneResponse as ApiMilestoneResponse,
             },
-            SendOptions as ApiSendOptions,
+            Details as ApiDetails, SendOptions as ApiSendOptions,
         },
     },
     app_channels::api::tangle::{
-        Address as ApiAddress,
-        ChannelAddress as ApiChannelAddress,
-        ChannelType as ApiChannelType,
-        MessageContent,
-        MsgId as ApiMsgId,
-        PublicKey,
-        UnwrappedMessage,
+        Address as ApiAddress, ChannelAddress as ApiChannelAddress, ChannelType as ApiChannelType, MessageContent,
+        MsgId as ApiMsgId, PublicKey, UnwrappedMessage,
     },
     core::{
+        prelude::{String, ToString},
+        psk::{pskid_from_hex_str, pskid_to_hex_string},
         Error as ApiError,
-        prelude::{
-            String,
-            ToString,
-        },
-        psk::{
-            pskid_from_hex_str,
-            pskid_to_hex_string,
-        },
     },
     ddml::types::hex,
 };
@@ -499,10 +486,7 @@ mod public_keys_tests {
 
     use iota_streams::app_channels::api::tangle::PublicKey;
 
-    use super::{
-        public_key_to_string,
-        PublicKeys,
-    };
+    use super::{public_key_to_string, PublicKeys};
 
     pub type Result<T> = core::result::Result<T, JsValue>;
 

@@ -1,37 +1,18 @@
 use iota_streams_app::{
-    id::{Identity, Identifier},
-    message::{
-        HasLink as _,
-        LinkGenerator,
-    },
+    id::{Identifier, Identity},
+    message::{HasLink as _, LinkGenerator},
 };
 use iota_streams_core::{
     err,
-    Errors::{
-        ChannelDuplication,
-        ChannelNotSingleDepth,
-        NoPreviousMessage,
-        UnknownMsgType,
-        UserNotRegistered,
-    },
-    prelude::{
-        ToString,
-        Vec,
-    },
-    psk::{
-        Psk,
-        PskId,
-    },
+    prelude::{ToString, Vec},
+    psk::{Psk, PskId},
+    try_or, unwrap_or_break,
+    Errors::{ChannelDuplication, ChannelNotSingleDepth, NoPreviousMessage, UnknownMsgType, UserNotRegistered},
     Result,
-    try_or,
-    unwrap_or_break,
 };
 
 use super::*;
-use crate::{
-    api,
-    message,
-};
+use crate::{api, message};
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
 
@@ -53,12 +34,7 @@ impl<Trans> User<Trans> {
     /// * `transport` - Transport object used for sending and receiving
     pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
         let id = Identity::new::<DefaultF>(seed);
-        let user = UserImp::gen(
-            id,
-            channel_type,
-            ENCODING.as_bytes().to_vec(),
-            PAYLOAD_LENGTH,
-        );
+        let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
         Self { user, transport }
     }
 

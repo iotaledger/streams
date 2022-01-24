@@ -1,15 +1,7 @@
-use iota_streams_core::{
-    async_trait,
-    prelude::Box,
-    Result,
-};
+use iota_streams_core::{async_trait, prelude::Box, Result};
 
 use iota_streams_ddml::{
-    command::{
-        sizeof,
-        unwrap,
-        wrap,
-    },
+    command::{sizeof, unwrap, wrap},
     io,
 };
 

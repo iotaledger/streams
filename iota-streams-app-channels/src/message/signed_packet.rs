@@ -30,21 +30,13 @@
 
 use iota_streams_app::{
     id::Identity,
-    message::{self, ContentSign, ContentVerify, HasLink}
+    message::{self, ContentSign, ContentVerify, HasLink},
 };
-use iota_streams_core::{
-    async_trait,
-    prelude::Box,
-    sponge::prp::PRP,
-    Result,
-};
+use iota_streams_core::{async_trait, prelude::Box, sponge::prp::PRP, Result};
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{
-        EmptyLinkStore,
-        LinkStore,
-    },
+    link_store::{EmptyLinkStore, LinkStore},
     types::*,
 };
 
@@ -70,7 +62,10 @@ where
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?;
-        self.user_id.id.sizeof(ctx).await?
+        self.user_id
+            .id
+            .sizeof(ctx)
+            .await?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?;
         let ctx = self.user_id.sizeof(ctx).await?;
@@ -93,7 +88,10 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?;
-        self.user_id.id.wrap(store, ctx).await?
+        self.user_id
+            .id
+            .wrap(store, ctx)
+            .await?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?;
         let ctx = self.user_id.sign(ctx).await?;
@@ -139,7 +137,10 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?;
-        self.user_id.id.unwrap(store, ctx).await?
+        self.user_id
+            .id
+            .unwrap(store, ctx)
+            .await?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?;
         let ctx = self.user_id.verify(ctx).await?;

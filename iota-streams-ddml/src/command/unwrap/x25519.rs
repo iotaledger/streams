@@ -2,17 +2,9 @@ use iota_streams_core::Result;
 
 use super::Context;
 use crate::{
-    command::{
-        Absorb,
-        Commit,
-        Mask,
-        X25519,
-    },
+    command::{Absorb, Commit, Mask, X25519},
     io,
-    types::{
-        ArrayLength,
-        NBytes,
-    },
+    types::{ArrayLength, NBytes},
 };
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::key_exchange::x25519;

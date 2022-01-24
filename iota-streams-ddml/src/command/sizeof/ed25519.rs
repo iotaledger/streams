@@ -3,13 +3,7 @@ use iota_streams_core::Result;
 use super::Context;
 use crate::{
     command::Ed25519,
-    types::{
-        External,
-        HashSig,
-        Mac,
-        NBytes,
-        U64,
-    },
+    types::{External, HashSig, Mac, NBytes, U64},
 };
 use iota_streams_core_edsig::signature::ed25519;
 

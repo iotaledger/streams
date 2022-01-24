@@ -1,15 +1,7 @@
 use iota_streams_core::{
-    async_trait,
-    err,
-    prelude::{
-        Box,
-        Vec,
-        ToString
-    },
-    psk::{
-        self,
-        PskId,
-    },
+    async_trait, err,
+    prelude::{Box, ToString, Vec},
+    psk::{self, PskId},
     sponge::prp::PRP,
     Errors::BadOneof,
     Result,
@@ -17,11 +9,7 @@ use iota_streams_core::{
 
 use iota_streams_core_edsig::signature::ed25519;
 
-use iota_streams_ddml::{
-    command::*,
-    io,
-    types::*,
-};
+use iota_streams_ddml::{command::*, io, types::*};
 
 use crate::message::*;
 use iota_streams_core::prelude::String;
@@ -44,7 +32,7 @@ impl Identifier {
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Identifier::EdPubKey(id) => id.0.as_ref(),
-            Identifier::PskId(id) => &id
+            Identifier::PskId(id) => &id,
         }
     }
 
@@ -87,7 +75,6 @@ impl AsRef<[u8]> for Identifier {
     }
 }
 
-
 #[async_trait(?Send)]
 impl<F: PRP> ContentSizeof<F> for Identifier {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
@@ -101,8 +88,7 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
                 let oneof = Uint8(1);
                 ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
-            }
-            //TODO: Implement DID logic
+            } //TODO: Implement DID logic
         }
     }
 }
@@ -124,8 +110,7 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
                 let oneof = Uint8(1);
                 ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
-            }
-            //TODO: implement DID logic
+            } //TODO: implement DID logic
         }
     }
 }

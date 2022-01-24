@@ -19,10 +19,7 @@ pub enum ChannelType {
 }
 
 use iota_streams_core::psk;
-pub use iota_streams_core::psk::{
-    Psk,
-    PskId,
-};
+pub use iota_streams_core::psk::{Psk, PskId};
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 
 /// Default spongos PRP.

@@ -1,41 +1,18 @@
 use core::fmt;
-use iota_streams_core::{
-    async_trait,
-    prelude::Box,
-};
+use iota_streams_core::{async_trait, prelude::Box};
 
 pub use iota_client;
 
-use iota_client::{
-    bee_rest_api::types::responses::MessageMetadataResponse,
-    MilestoneResponse,
-};
+use iota_client::{bee_rest_api::types::responses::MessageMetadataResponse, MilestoneResponse};
 
-use iota_client::bee_message::{
-    payload::Payload,
-    Message,
-};
+use iota_client::bee_message::{payload::Payload, Message};
 
-use iota_streams_core::{
-    err,
-    prelude::Vec,
-    try_or,
-    wrapped_err,
-    Errors::*,
-    Result,
-    WrappedError,
-};
+use iota_streams_core::{err, prelude::Vec, try_or, wrapped_err, Errors::*, Result, WrappedError};
 
 use crate::{
-    futures::{
-        executor::block_on,
-        future::join_all,
-    },
+    futures::{executor::block_on, future::join_all},
     message::BinaryMessage,
-    transport::{
-        tangle::*,
-        *,
-    },
+    transport::{tangle::*, *},
 };
 
 use iota_streams_core::prelude::String;
@@ -116,13 +93,14 @@ pub async fn async_send_message_with_options<F>(client: &iota_client::Client, ms
     let hash = msg.binary.link.to_msg_index();
 
     // TODO: Get rid of copy caused by to_owned
-    try_or!(client
-        .message()
-        .with_index(hash)
-        .with_data(msg.binary.body.bytes.clone())
-        .finish()
-        .await
-        .is_ok(),
+    try_or!(
+        client
+            .message()
+            .with_index(hash)
+            .with_data(msg.binary.body.bytes.clone())
+            .finish()
+            .await
+            .is_ok(),
         ClientOperationFailure
     )?;
     Ok(())

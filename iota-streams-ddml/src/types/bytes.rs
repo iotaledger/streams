@@ -1,12 +1,6 @@
-use core::{
-    fmt,
-    hash,
-};
+use core::{fmt, hash};
 
-use iota_streams_core::prelude::{
-    hex,
-    Vec,
-};
+use iota_streams_core::prelude::{hex, Vec};
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
 #[derive(Eq, Clone, Debug, Default)]

@@ -1,21 +1,10 @@
 #![allow(non_snake_case)]
-use crate::api::tangle::{
-    Author,
-    Subscriber,
-};
+use crate::api::tangle::{Author, Subscriber};
 use iota_streams_app::message::HasLink;
 
-use iota_streams_core::{
-    try_or,
-    Errors::*,
-};
+use iota_streams_core::{try_or, Errors::*};
 
-use iota_streams_core::{
-    ensure,
-    prelude::string::ToString,
-    println,
-    Result,
-};
+use iota_streams_core::{ensure, prelude::string::ToString, println, Result};
 
 use super::*;
 

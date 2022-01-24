@@ -4,24 +4,13 @@ use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
-use crate::api::tangle::{
-    ChannelType,
-    UnwrappedMessage,
-    User,
-};
+use crate::api::tangle::{ChannelType, UnwrappedMessage, User};
 
 use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     panic_if_not,
-    prelude::{
-        String,
-        Vec,
-        ToString,
-    },
-    psk::{
-        Psk,
-        PskId,
-    },
+    prelude::{String, ToString, Vec},
+    psk::{Psk, PskId},
 };
 
 /// Author Object. Contains User API.
@@ -372,11 +361,6 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
 impl<Trans: Clone> fmt::Display for Author<Trans> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "<{}>\n{}",
-            self.get_id().to_string(),
-            self.user.user.key_store
-        )
+        write!(f, "<{}>\n{}", self.get_id().to_string(), self.user.user.key_store)
     }
 }
