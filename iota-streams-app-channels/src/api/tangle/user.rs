@@ -1,5 +1,5 @@
 use iota_streams_app::{
-    identifier::Identifier,
+    id::{Identity, Identifier},
     message::{
         HasLink as _,
         LinkGenerator,
@@ -7,17 +7,6 @@ use iota_streams_app::{
 };
 use iota_streams_core::{
     err,
-    prelude::{
-        ToString,
-        Vec,
-    },
-    prng,
-    psk::{
-        Psk,
-        PskId,
-    },
-    try_or,
-    unwrap_or_break,
     Errors::{
         ChannelDuplication,
         ChannelNotSingleDepth,
@@ -25,7 +14,17 @@ use iota_streams_core::{
         UnknownMsgType,
         UserNotRegistered,
     },
+    prelude::{
+        ToString,
+        Vec,
+    },
+    psk::{
+        Psk,
+        PskId,
+    },
     Result,
+    try_or,
+    unwrap_or_break,
 };
 
 use super::*;
@@ -53,10 +52,9 @@ impl<Trans> User<Trans> {
     /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
     pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
+        let id = Identity::new::<DefaultF>(seed);
         let user = UserImp::gen(
-            prng::from_seed("IOTA Streams Channels user sig keypair", seed),
-            nonce,
+            id,
             channel_type,
             ENCODING.as_bytes().to_vec(),
             PAYLOAD_LENGTH,
@@ -80,9 +78,9 @@ impl<Trans> User<Trans> {
         &self.user.appinst
     }
 
-    /// Channel Author's signature public key
-    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
-        self.user.author_public_key()
+    /// Channel Author's public Id
+    pub fn author_id(&self) -> Option<&Identifier> {
+        self.user.author_id()
     }
 
     /// Return boolean representing the sequencing nature of the channel
@@ -95,9 +93,9 @@ impl<Trans> User<Trans> {
         self.user.is_single_depth()
     }
 
-    /// Fetch the user ed25519 public key
-    pub fn get_public_key(&self) -> &PublicKey {
-        &self.user.sig_kp.public
+    /// Fetch the user public Id
+    pub fn get_id(&self) -> &Identifier {
+        &self.user.user_id.id
     }
 
     pub fn is_registered(&self) -> bool {
@@ -106,7 +104,7 @@ impl<Trans> User<Trans> {
 
     pub fn unregister(&mut self) {
         self.user.appinst = None;
-        self.user.author_sig_pk = None;
+        self.user.author_id = None;
     }
 
     // Utility
@@ -199,17 +197,17 @@ impl<Trans> User<Trans> {
     /// Store a predefined Subscriber by their public key
     ///
     ///   # Arguments
-    ///   * `pk` - ed25519 public key of known subscriber
-    pub fn store_new_subscriber(&mut self, pk: PublicKey) -> Result<()> {
-        self.user.insert_subscriber(pk)
+    ///   * `id` - Identifier of known subscriber
+    pub fn store_new_subscriber(&mut self, id: Identifier) -> Result<()> {
+        self.user.insert_subscriber(id)
     }
 
     /// Remove a Subscriber from the user instance
     ///
     ///   # Arguments
-    ///   * `pk` - ed25519 public key of known subscriber
-    pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
-        self.user.remove_subscriber(pk)
+    ///   * `id` - Identifier of known subscriber
+    pub fn remove_subscriber(&mut self, id: Identifier) -> Result<()> {
+        self.user.remove_subscriber(id)
     }
 
     /// Consume a binary sequence message and return the derived message link
@@ -394,7 +392,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(PublicKey, Bytes, Bytes)> {
+    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
         // TODO: msg.timestamp is lost
         let m = self
@@ -550,7 +548,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             match preparsed.header.content_type {
                 message::SIGNED_PACKET => match self.user.handle_signed_packet(msg, MsgInfo::SignedPacket).await {
                     Ok(m) => {
-                        return Ok(m.map(|(pk, public, masked)| MessageContent::new_signed_packet(pk, public, masked)))
+                        return Ok(m.map(|(id, public, masked)| MessageContent::new_signed_packet(id, public, masked)))
                     }
                     Err(e) => match sequenced {
                         true => return Ok(UnwrappedMessage::new(link, prev_link, MessageContent::unreadable())),
@@ -608,7 +606,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         if !self.is_single_depth() {
             return err(ChannelNotSingleDepth);
         }
-        match self.author_public_key() {
+        match self.author_id() {
             Some(pk) => {
                 let seq_no = self.user.fetch_anchor()?.seq_no;
                 let cursor = Cursor::new_at(anchor_link.rel(), 0, msg_num + seq_no);

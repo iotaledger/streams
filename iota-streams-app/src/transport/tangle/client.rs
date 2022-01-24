@@ -116,12 +116,15 @@ pub async fn async_send_message_with_options<F>(client: &iota_client::Client, ms
     let hash = msg.binary.link.to_msg_index();
 
     // TODO: Get rid of copy caused by to_owned
-    client
+    try_or!(client
         .message()
         .with_index(hash)
         .with_data(msg.binary.body.bytes.clone())
         .finish()
-        .await?;
+        .await
+        .is_ok(),
+        ClientOperationFailure
+    )?;
     Ok(())
 }
 

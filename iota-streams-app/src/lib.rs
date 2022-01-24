@@ -32,13 +32,14 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
-pub mod identifier;
-
 /// Streams Message definitions and utils for wrapping/unwrapping.
 pub mod message;
 
 /// Transport-related abstractions.
 pub mod transport;
+
+/// Identity based Signature/Verification utilities
+pub mod id;
 
 pub use cstr_core;
 pub use cty;

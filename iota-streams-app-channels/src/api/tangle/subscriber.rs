@@ -13,11 +13,12 @@ use crate::api::tangle::{
     User,
 };
 
-use iota_streams_app::identifier::Identifier;
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     prelude::{
         String,
         Vec,
+        ToString,
     },
     psk::{
         Psk,
@@ -25,7 +26,6 @@ use iota_streams_core::{
     },
     Errors::SingleDepthOperationFailure,
 };
-use iota_streams_core_edsig::signature::ed25519;
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
@@ -58,14 +58,14 @@ impl<Trans> Subscriber<Trans> {
         self.user.unregister()
     }
 
-    /// Fetch the user ed25519 public key
-    pub fn get_public_key(&self) -> &ed25519::PublicKey {
-        self.user.get_public_key()
+    /// Fetch the user public Id
+    pub fn get_id(&self) -> &Identifier {
+        self.user.get_id()
     }
 
-    /// Channel Author's signature public key
-    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
-        self.user.author_public_key()
+    /// Channel Author's public Id
+    pub fn author_id(&self) -> Option<&Identifier> {
+        self.user.author_id()
     }
 
     /// Store a PSK in the user instance
@@ -249,7 +249,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
+    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
         self.user.receive_signed_packet(link).await
     }
 
@@ -338,7 +338,7 @@ impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.user.user.sig_kp.public.as_bytes()),
+            self.get_id().to_string(),
             self.user.user.key_store
         )
     }

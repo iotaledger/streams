@@ -54,34 +54,32 @@ use crate::Lookup;
 
 use core::convert::TryFrom;
 use iota_streams_app::{
-    identifier::Identifier,
     message::{
         self,
         ContentUnwrapNew,
         HasLink,
     },
 };
+use iota_streams_app::id::{Identifier, Identity};
+use iota_streams_app::message::{ContentSign, ContentVerify};
 use iota_streams_core::{
     async_trait,
+    Errors::BadIdentifier,
     prelude::{
-        typenum::Unsigned as _,
         Box,
+        typenum::Unsigned as _,
         Vec,
     },
     psk,
+    Result,
     sponge::{
         prp::PRP,
         spongos,
     },
     wrapped_err,
-    Errors::BadIdentifier,
-    Result,
     WrappedError,
 };
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
+use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -100,7 +98,7 @@ where
     pub nonce: NBytes<U16>,
     pub key: NBytes<U32>,
     pub(crate) keys: Vec<(&'a Identifier, Vec<u8>)>,
-    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) user_id: &'a Identity,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -141,7 +139,7 @@ where
 
         ctx.absorb(External(&self.key))?;
         // Fork for signing
-        ctx.ed25519(self.sig_kp, HashSig)?;
+        let ctx = self.user_id.sizeof(ctx).await?;
         ctx.commit()?;
         Ok(ctx)
     }
@@ -196,14 +194,14 @@ where
         ctx.absorb(External(&self.key))?;
         // Fork the context to sign
         let signature_fork = ctx.spongos.fork();
-        ctx.absorb(&id_hash)?.ed25519(self.sig_kp, HashSig)?;
+        let ctx = self.user_id.sign(ctx.absorb(&id_hash)?).await?;
         ctx.spongos = signature_fork;
         ctx.commit()?;
         Ok(ctx)
     }
 }
 
-pub struct ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
+pub struct ContentUnwrap<F, Link, PskStore, KeSkStore>
 where
     Link: HasLink,
 {
@@ -213,17 +211,17 @@ where
     pub(crate) ke_sk_store: KeSkStore,
     pub(crate) key_ids: Vec<Identifier>,
     pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
-    pub(crate) sig_pk: &'a ed25519::PublicKey,
+    pub(crate) author_id: Identity,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-impl<'a, 'b, F, Link, PskStore, KeSkStore> ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
+impl<'a, 'b, F, Link, PskStore, KeSkStore> ContentUnwrap<F, Link, PskStore, KeSkStore>
 where
     F: PRP,
     Link: HasLink,
     Link::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, sig_pk: &'a ed25519::PublicKey) -> Self {
+    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, author_id: Identity) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NBytes::default(),
@@ -231,7 +229,7 @@ where
             ke_sk_store,
             key_ids: Vec::new(),
             key: None,
-            sig_pk,
+            author_id,
             _phantom: core::marker::PhantomData,
         }
     }
@@ -239,7 +237,7 @@ where
 
 #[async_trait(?Send)]
 impl<'a, 'b, F, Link, LStore, PskStore, KeSkStore> message::ContentUnwrap<F, LStore>
-    for ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
+    for ContentUnwrap<F, Link, PskStore, KeSkStore>
 where
     F: PRP + Clone,
     Link: HasLink,
@@ -316,7 +314,7 @@ where
 
             // Fork for signature verification
             let signature_fork = ctx.spongos.fork();
-            ctx.absorb(&id_hash)?.ed25519(self.sig_pk, HashSig)?;
+            let ctx = self.author_id.verify(ctx.absorb(&id_hash)?).await?;
             ctx.spongos = signature_fork;
             ctx.commit()
         } else {

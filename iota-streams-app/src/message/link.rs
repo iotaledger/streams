@@ -4,10 +4,9 @@ use iota_streams_core::{
     prelude::Vec,
     Result,
 };
-use iota_streams_core_edsig::signature::ed25519;
 
 use super::hdf::HDF;
-use crate::identifier::Identifier;
+use crate::id::identifier::Identifier;
 use iota_streams_ddml::types::Bytes;
 
 /// Type of "absolute" links. For http it's the absolute URL.
@@ -111,7 +110,7 @@ impl<Link: fmt::Debug> fmt::Debug for Cursor<Link> {
 /// Abstraction-helper to generate message links.
 pub trait LinkGenerator<Link: HasLink>: Default {
     /// Used by Author to generate a new application instance: channels address and announcement message identifier
-    fn gen(&mut self, pk: &ed25519::PublicKey, idx: u64);
+    fn gen(&mut self, id: &Identifier, idx: u64);
 
     /// Used by Author to get announcement message id, it's just stored internally by link generator
     fn get(&self) -> Link;

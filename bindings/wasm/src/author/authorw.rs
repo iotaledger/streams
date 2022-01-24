@@ -16,7 +16,7 @@ use core::cell::RefCell;
 use iota_streams::{
     app::{
         futures::executor::block_on,
-        identifier::Identifier,
+        id::Identifier,
         transport::{
             tangle::client::Client as ApiClient,
             TransportOptions,

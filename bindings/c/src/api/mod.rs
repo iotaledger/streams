@@ -9,7 +9,7 @@ use iota_streams::{
             size_t,
             uint8_t,
         },
-        identifier::Identifier,
+        id::Identifier,
         message::Cursor,
         transport::tangle::MsgId,
     },
@@ -193,6 +193,7 @@ mod client_details {
     use super::*;
     use iota_streams::app::transport::{
         tangle::client::{
+            Details as ApiDetails,
             iota_client::{
                 bee_rest_api::types::{
                     dtos::LedgerInclusionStateDto,
@@ -200,7 +201,6 @@ mod client_details {
                 },
                 MilestoneResponse,
             },
-            Details as ApiDetails,
         },
         TransportDetails as _,
     };
@@ -613,7 +613,7 @@ fn handle_message_contents(m: &UnwrappedMessage) -> PacketPayloads {
         } => (p, m).into(),
 
         MessageContent::SignedPacket {
-            pk: _,
+            id: _,
             public_payload: p,
             masked_payload: m,
         } => (p, m).into(),

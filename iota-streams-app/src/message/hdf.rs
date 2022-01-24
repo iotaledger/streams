@@ -24,7 +24,7 @@ use iota_streams_ddml::{
 };
 
 use super::*;
-use crate::identifier::Identifier;
+use crate::id::identifier::Identifier;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 

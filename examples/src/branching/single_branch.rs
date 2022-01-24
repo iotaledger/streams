@@ -79,7 +79,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     // Predefine Subscriber A
     println!("\nAuthor Predefines Subscriber A");
-    author.store_new_subscriber(*subscriberA.get_public_key())?;
+    author.store_new_subscriber(*subscriberA.get_id())?;
 
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
@@ -367,7 +367,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     println!("Subscriber states matched");
 
     println!("\nAuthor unsubscribes Subscriber A");
-    author.remove_subscriber(*subscriberA.get_public_key())?;
+    author.remove_subscriber(*subscriberA.get_id())?;
 
     println!("\nSubscriber B sending unsubscribe message");
     let unsub_link = subscriberB.send_unsubscribe(&subscribeB_link).await?;

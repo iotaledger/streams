@@ -1,8 +1,10 @@
 use core::str::FromStr;
 use iota_streams::{
     app::{
+        id::Identifier,
         message::Cursor as ApiCursor,
         transport::tangle::client::{
+            Details as ApiDetails,
             iota_client::{
                 bee_rest_api::types::{
                     dtos::LedgerInclusionStateDto,
@@ -10,7 +12,6 @@ use iota_streams::{
                 },
                 MilestoneResponse as ApiMilestoneResponse,
             },
-            Details as ApiDetails,
             SendOptions as ApiSendOptions,
         },
     },
@@ -24,6 +25,7 @@ use iota_streams::{
         UnwrappedMessage,
     },
     core::{
+        Error as ApiError,
         prelude::{
             String,
             ToString,
@@ -32,16 +34,12 @@ use iota_streams::{
             pskid_from_hex_str,
             pskid_to_hex_string,
         },
-        Error as ApiError,
     },
     ddml::types::hex,
 };
 use wasm_bindgen::prelude::*;
 
-use iota_streams::{
-    app::identifier::Identifier,
-    core::psk::PskId,
-};
+use iota_streams::core::psk::PskId;
 use js_sys::Array;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
@@ -318,13 +316,13 @@ pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
     for msg in msgs {
         match msg.body {
             MessageContent::SignedPacket {
-                pk,
+                id,
                 public_payload: p,
                 masked_payload: m,
             } => payloads.push(UserResponse::new(
                 msg.link.into(),
                 None,
-                Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
+                Some(Message::new(Some(id.to_string()), p.0, m.0)),
             )),
             MessageContent::TaggedPacket {
                 public_payload: p,

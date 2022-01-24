@@ -3,6 +3,7 @@
 use super::key_store::KeyMap;
 pub use iota_streams_app::transport::tangle::MsgId;
 use iota_streams_app::{
+    id::Identifier,
     message::{
         self,
         BinaryBody,
@@ -96,7 +97,7 @@ pub enum MessageContent {
     Announce,
     Keyload,
     SignedPacket {
-        pk: PublicKey,
+        id: Identifier,
         public_payload: Bytes,
         masked_payload: Bytes,
     },
@@ -119,9 +120,9 @@ impl MessageContent {
         Self::Keyload
     }
 
-    pub fn new_signed_packet(pk: PublicKey, public_payload: Bytes, masked_payload: Bytes) -> Self {
+    pub fn new_signed_packet(id: Identifier, public_payload: Bytes, masked_payload: Bytes) -> Self {
         Self::SignedPacket {
-            pk,
+            id,
             public_payload,
             masked_payload,
         }

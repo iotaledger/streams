@@ -148,8 +148,8 @@ pub enum Errors {
     MessageAppInstMismatch(String, String),
     /// Author public x25519 exchange key not found in user instance
     AuthorExchangeKeyNotFound,
-    /// Author public ed25519 signature key not found in user instance
-    AuthorSigKeyNotFound,
+    /// Author public id not found in user instance
+    AuthorIdNotFound,
     /// Error retrieving sequence number for message preparation: No sequence number generated
     SeqNumRetrievalFailure,
     /// State store has failed to retrieve

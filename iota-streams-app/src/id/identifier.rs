@@ -2,23 +2,17 @@ use iota_streams_core::{
     async_trait,
     err,
     prelude::{
-        digest::generic_array::GenericArray,
         Box,
         Vec,
+        ToString
     },
     psk::{
         self,
         PskId,
-        PSKID_SIZE,
     },
     sponge::prp::PRP,
-    wrapped_err,
-    Errors::{
-        BadOneof,
-        IdentifierGenerationFailure,
-    },
+    Errors::BadOneof,
     Result,
-    WrappedError,
 };
 
 use iota_streams_core_edsig::signature::ed25519;
@@ -30,12 +24,13 @@ use iota_streams_ddml::{
 };
 
 use crate::message::*;
-use iota_streams_core::Errors::PublicKeyGenerationFailure;
+use iota_streams_core::prelude::String;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Identifier {
     EdPubKey(ed25519::PublicKeyWrap),
     PskId(PskId),
+    //TODO: Add DID(method)
 }
 
 impl Identifier {
@@ -46,14 +41,10 @@ impl Identifier {
         }
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> iota_streams_core::Result<Self> {
-        match bytes.len() {
-            ed25519::PUBLIC_KEY_LENGTH => match ed25519::PublicKey::from_bytes(bytes) {
-                Ok(pk) => Ok(Identifier::EdPubKey(pk.into())),
-                Err(e) => Err(wrapped_err(PublicKeyGenerationFailure, WrappedError(e))),
-            },
-            PSKID_SIZE => Ok(Identifier::PskId(GenericArray::clone_from_slice(bytes))),
-            _ => err(IdentifierGenerationFailure),
+    pub fn as_bytes(&self) -> &[u8] {
+        match self {
+            Identifier::EdPubKey(id) => id.0.as_ref(),
+            Identifier::PskId(id) => &id
         }
     }
 
@@ -63,6 +54,12 @@ impl Identifier {
         } else {
             None
         }
+    }
+}
+
+impl Default for Identifier {
+    fn default() -> Self {
+        Identifier::from(ed25519::PublicKey::default())
     }
 }
 
@@ -78,6 +75,19 @@ impl From<PskId> for Identifier {
     }
 }
 
+impl ToString for Identifier {
+    fn to_string(&self) -> String {
+        hex::encode(self.to_bytes())
+    }
+}
+
+impl AsRef<[u8]> for Identifier {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+
 #[async_trait(?Send)]
 impl<F: PRP> ContentSizeof<F> for Identifier {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
@@ -92,6 +102,7 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
                 ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
             }
+            //TODO: Implement DID logic
         }
     }
 }
@@ -114,6 +125,7 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
                 ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
                 Ok(ctx)
             }
+            //TODO: implement DID logic
         }
     }
 }
@@ -152,6 +164,7 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
                 let id = Identifier::PskId(pskid);
                 Ok((id, ctx))
             }
+            //TODO: Implement DID logic
             _ => err(BadOneof),
         }
     }
