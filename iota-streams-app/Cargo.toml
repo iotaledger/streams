@@ -18,7 +18,7 @@ tangle = []
 client = ["iota-client/default", "futures", "tangle", "std"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-wasm-client = ["iota-client/wasm", "rand/wasm-bindgen", "futures", "tangle", "std"]
+wasm-client = ["iota-client/wasm", "futures", "tangle", "std"]
 sync-parking-lot = ["iota-streams-core/sync-parking-lot"]
 sync-spin = ["iota-streams-core/sync-spin"]
 
@@ -31,8 +31,6 @@ iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-
 anyhow = { version = "1.0.26", default-features = false }
 hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
-
-rand = { version = "0.7", default-features = false }
 
 # Dependencies for "client" feature
 iota-client = { git = "https://github.com/iotaledger/iota.rs", rev  = "ee19ec4", default-features = false, optional = true }
