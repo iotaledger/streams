@@ -19,7 +19,6 @@ pub use message::Cursor;
 pub use message::LinkGenerator as _;
 pub use transport::{Transport as _, TransportOptions as _};
 
-pub use super::ChannelType;
 use super::DefaultF;
 use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;
@@ -139,12 +138,15 @@ mod user;
 /// User object storing the Auth/Sub implementation as well as the transport instance
 pub use user::User;
 
-mod author;
-/// Tangle-specific Channel Author type.
-pub use author::Author;
+//mod author;
+// /// Tangle-specific Channel Author type.
+//pub use author::Author;
 
-mod subscriber;
-/// Tangle-specific Channel Subscriber type.
-pub use subscriber::Subscriber;
+//mod subscriber;
+// /// Tangle-specific Channel Subscriber type.
+//pub use subscriber::Subscriber;
 
-pub mod test;
+//pub mod test;
+
+mod user_builder;
+pub use user_builder::*;

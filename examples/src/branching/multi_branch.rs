@@ -1,12 +1,13 @@
 use iota_streams::{
-    app::message::HasLink,
+    app::{
+        message::HasLink,
+        id::Identity,
+    },
     app_channels::api::{
         psk_from_seed,
         pskid_from_psk,
         tangle::{
-            Author,
-            ChannelType,
-            Subscriber,
+            UserBuilder,
             Transport,
         },
     },
@@ -23,13 +24,28 @@ use iota_streams::{
 
 use super::utils;
 
-pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, channel_type, transport.clone());
-    println!("Author multi branching?: {}", author.is_multi_branching());
+pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
+    // Generate a simple PSK for storage by users
+    let psk = psk_from_seed("A pre shared key".as_bytes());
+    let pskid = pskid_from_psk(&psk);
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport);
+    let mut author = UserBuilder::new()
+        .with_identity(Identity::new(seed))
+        .with_transport(transport.clone())
+        .build();
+
+    let mut subscriberA = UserBuilder::new()
+        .with_identity(Identity::new("SUBSCRIBERA9SEED"))
+        .with_transport(transport.clone())
+        .build();
+    let mut subscriberB = UserBuilder::new()
+        .with_identity(Identity::new("SUBSCRIBERB9SEED"))
+        .with_transport(transport.clone())
+        .build();
+    let mut subscriberC = UserBuilder::new()
+        .with_identity(Identity::new_from_psk(pskid, psk))
+        .with_transport(transport.clone())
+        .build();
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -69,17 +85,9 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
                 .map_or(false, |appinst| appinst == announcement_link.base()),
             ApplicationInstanceAnnouncementMismatch(String::from("C"))
         )?;
-        try_or!(
-            subscriberA.is_multi_branching() == author.is_multi_branching(),
-            BranchingFlagMismatch(String::from("A"))
-        )?;
     }
 
-    // Generate a simple PSK for storage by users
-    let psk = psk_from_seed("A pre shared key".as_bytes());
-    let pskid = pskid_from_psk(&psk);
     author.store_psk(pskid, psk)?;
-    subscriberC.store_psk(pskid, psk)?;
 
     // Fetch state of subscriber for comparison after reset
     let sub_a_start_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
@@ -98,7 +106,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         print!("  Author     : {}", author);
     }
 
-    println!("\nShare keyload for everyone [SubscriberA]");
+    println!("\nShare keyload for everyone [SubscriberA, PSK]");
     let (keyload_link, keyload_seq) = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         let seq = seq.unwrap();
@@ -126,7 +134,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await;
 
     println!("\nTagged packet 1 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -171,7 +179,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await;
 
     println!("\nSigned packet");
     let (_signed_packet_link, signed_packet_seq) = {
@@ -238,7 +246,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await;
 
     println!("\nTagged packet 2 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -279,7 +287,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber B fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberB).await;
+    utils::fetch_next_messages(&mut subscriberB).await;
 
     println!("\nTagged packet 3 - SubscriberB");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -296,10 +304,8 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nHandle Tagged packet 3 - SubscriberB");
     {
         let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq).await?;
+        let (unwrapped_public, unwrapped_masked) = subscriberA.receive_tagged_packet(&msg_tag).await?;
         print!("  SubscriberA: {}", subscriberA);
-
-        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag).await?;
-        print!("  Author     : {}", author);
         try_or!(
             public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
@@ -321,7 +327,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber C fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberC).await;
+    utils::fetch_next_messages(&mut subscriberC).await;
 
     println!("\nTagged packet 4 - SubscriberC");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -335,12 +341,13 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         (msg, seq)
     };
 
+    println!("Author fetching transactions...");
+    utils::fetch_next_messages(&mut author).await;
+
     println!("\nHandle Tagged packet 4 - SubscriberC");
     {
         let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq).await?;
-        print!("  SubscriberA: {}", subscriberA);
-
-        let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag).await?;
+        let (unwrapped_public, unwrapped_masked) = subscriberA.receive_tagged_packet(&msg_tag).await?;
         print!("  Author     : {}", author);
         try_or!(
             public_payload == unwrapped_public,
@@ -363,7 +370,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await;
 
     println!("\nSigned packet");
     let (signed_packet_link, signed_packet_seq) = {
@@ -380,15 +387,14 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nHandle Signed packet");
     {
         let msg_tag = subscriberA.receive_sequence(&signed_packet_seq).await?;
-        print!("  Author     : {}", author);
-
-        println!("\nSubscriber A fetching transactions...");
-        utils::s_fetch_next_messages(&mut subscriberA).await;
-        println!("\nSubscriber B fetching transactions...");
-        utils::s_fetch_next_messages(&mut subscriberB).await;
-
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag).await?;
         print!("  SubscriberA: {}", subscriberA);
+
+        println!("\nSubscriber A fetching transactions...");
+        utils::fetch_next_messages(&mut subscriberA).await;
+        println!("\nSubscriber B fetching transactions...");
+        utils::fetch_next_messages(&mut subscriberB).await;
+
         try_or!(
             public_payload == unwrapped_public,
             PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())

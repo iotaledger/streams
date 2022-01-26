@@ -129,7 +129,12 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 Ok(())
             }
             Identifier::PskId(_id) => {
-                self.psks.insert(id, (None, info));
+                let psk = match self.psks.get(&id) {
+                    Some((psk, _info)) => *psk,
+                    None => None,
+                };
+
+                self.psks.insert(id, (psk, info));
                 Ok(())
             }
         }

@@ -1,8 +1,8 @@
 use iota_streams::{
+    app::id::Identity,
     app_channels::api::tangle::{
-        Author,
-        ChannelType,
-        Subscriber,
+        UserBuilder,
+        User,
         Transport,
     },
     core::{
@@ -19,11 +19,16 @@ use std::{
     time::Duration,
 };
 
-pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, channel_type.clone(), transport.clone());
-    println!("Author multi branching?: {}", author.is_multi_branching());
+pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
+    let mut author = UserBuilder::new()
+        .with_identity(Identity::new(seed))
+        .with_transport(transport.clone())
+        .build();
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
+    let mut subscriberA = UserBuilder::new()
+        .with_identity(Identity::new("SUBSCRIBERA9SEED"))
+        .with_transport(transport.clone())
+        .build();
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -51,48 +56,41 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
 
     println!("\nShare keyload");
     let mut previous_msg_link = {
-        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
+        let (msg, _seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-        panic_if_not(seq.is_none());
         msg
     };
 
     for i in 1..6 {
         println!("Signed packet {} - Author", i);
         previous_msg_link = {
-            let (msg, seq) = author
+            let (msg, _seq) = author
                 .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
                 .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-            panic_if_not(seq.is_none());
             msg
         };
     }
 
-    println!("\nWait a moment for messages to propogate...");
-    sleep(Duration::from_secs(3));
-    println!("Subscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    println!("\nSubscriber A fetching transactions...");
+    utils::fetch_next_messages(&mut subscriberA).await;
 
     for i in 6..11 {
         println!("Tagged packet {} - SubscriberA", i);
         previous_msg_link = {
-            let (msg, seq) = subscriberA
+            let (msg, _seq) = subscriberA
                 .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
                 .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-            panic_if_not(seq.is_none());
             msg
         };
     }
 
-    println!("\nWait a moment for messages to propogate...");
-    sleep(Duration::from_secs(3));
-    println!("Author fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    println!("\nAuthor fetching transactions...");
+    utils::fetch_next_messages(&mut author).await;
 
     println!("\n\nTime to try to recover the instance...");
-    let mut new_author = Author::recover(seed, &announcement_link, channel_type, transport.clone()).await?;
+    let mut new_author = User::recover(seed, &announcement_link, transport.clone()).await?;
     new_author.sync_state().await;
 
     let state = new_author.fetch_state()?;
@@ -137,7 +135,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nTesting export/import");
     let exported = author.export("Password").await?;
     println!("Author exported...");
-    let new_auth = Author::import(&exported, "Password", transport).await?;
+    let new_auth = User::import(&exported, "Password", transport).await?;
     println!("Author imported...");
     let retrieved_announcement = new_auth.announcement_link().unwrap();
     panic_if_not!(retrieved_announcement == announcement_link);

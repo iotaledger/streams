@@ -81,7 +81,7 @@ where
     pub nonce: NBytes<U16>,
     pub key: NBytes<U32>,
     pub(crate) keys: Vec<(&'a Identifier, Vec<u8>)>,
-    pub(crate) user_id: &'a Identity,
+    pub(crate) user_id: &'a Identity<F>,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -194,7 +194,7 @@ where
     pub(crate) ke_sk_store: KeSkStore,
     pub(crate) key_ids: Vec<Identifier>,
     pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
-    pub(crate) author_id: Identity,
+    pub(crate) author_id: Identity<F>,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -204,7 +204,7 @@ where
     Link: HasLink,
     Link::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, author_id: Identity) -> Self {
+    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, author_id: Identity<F>) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NBytes::default(),

@@ -9,7 +9,7 @@ use iota_streams_core::{ensure, prelude::string::ToString, println, Result};
 use super::*;
 
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
-    let mut author = Author::new("AUTHOR9SEED", ChannelType::SingleBranch, transport.clone());
+    let mut author = Author::new("AUTHOR9SEED", transport.clone());
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
 

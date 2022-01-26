@@ -28,19 +28,17 @@ use iota_streams_app::message;
 use iota_streams_app::message::{ContentSign, ContentVerify};
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
-use iota_streams_ddml::{command::*, io, types::*};
+use iota_streams_ddml::{command::*, io};
 
 pub struct ContentWrap<'a, F> {
-    user_id: &'a Identity,
-    flags: Uint8,
+    user_id: &'a Identity<F>,
     _phantom: core::marker::PhantomData<F>,
 }
 
 impl<'a, F> ContentWrap<'a, F> {
-    pub fn new(user_id: &'a Identity, flags: u8) -> Self {
+    pub fn new(user_id: &'a Identity<F>) -> Self {
         Self {
             user_id,
-            flags: Uint8(flags),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -50,7 +48,6 @@ impl<'a, F> ContentWrap<'a, F> {
 impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         self.user_id.id.sizeof(ctx).await?;
-        ctx.absorb(&self.flags)?;
         let ctx = self.user_id.sizeof(ctx).await?;
         Ok(ctx)
     }
@@ -64,17 +61,15 @@ impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         self.user_id.id.wrap(_store, ctx).await?;
-        ctx.absorb(&self.flags)?;
         let ctx = self.user_id.sign(ctx).await?;
         Ok(ctx)
     }
 }
 
 pub struct ContentUnwrap<F> {
-    pub(crate) author_id: Identity,
+    pub(crate) author_id: Identity<F>,
     #[allow(dead_code)]
     pub(crate) ke_pk: x25519::PublicKey,
-    pub(crate) flags: Uint8,
     _phantom: core::marker::PhantomData<F>,
 }
 
@@ -84,18 +79,16 @@ impl<F> Default for ContentUnwrap<F> {
         // No need to worry about unwrap since it's operating from default input
         let ke_pk = x25519::public_from_ed25519(&sig_pk).unwrap();
         let user_id = Identity::default();
-        let flags = Uint8(0);
         Self {
             author_id: user_id,
             ke_pk,
-            flags,
             _phantom: core::marker::PhantomData,
         }
     }
 }
 
 impl<F> ContentUnwrap<F> {
-    pub fn new(user_id: Identity) -> Self {
+    pub fn new(user_id: Identity<F>) -> Self {
         Self {
             author_id: user_id,
             ..Default::default()
@@ -115,7 +108,6 @@ where
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         self.author_id.id.unwrap(_store, ctx).await?;
         //self.ke_pk = x25519::public_from_ed25519(&self.sig_pk)?;
-        ctx.absorb(&mut self.flags)?;
         let ctx = self.author_id.verify(ctx).await?;
         Ok(ctx)
     }

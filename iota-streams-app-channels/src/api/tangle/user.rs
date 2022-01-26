@@ -1,23 +1,15 @@
+use core::fmt;
 use iota_streams_app::{
     id::{Identifier, Identity},
     message::{HasLink as _, LinkGenerator},
 };
-use iota_streams_core::{
-    err,
-    prelude::{ToString, Vec},
-    psk::{Psk, PskId},
-    try_or, unwrap_or_break,
-    Errors::{ChannelDuplication, ChannelNotSingleDepth, NoPreviousMessage, UnknownMsgType, UserNotRegistered},
-    Result,
-};
+use iota_streams_core::{err, prelude::{ToString, Vec}, psk::{Psk, PskId}, try_or, unwrap_or_break, Errors::{ChannelDuplication, NoPreviousMessage, UnknownMsgType, UserNotRegistered}, Result, panic_if_not};
 
 use super::*;
 use crate::{api, message};
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
 
-const ENCODING: &str = "utf-8";
-const PAYLOAD_LENGTH: usize = 32_000;
 
 /// Baseline User api object. Contains the api user implementation as well as the transport object
 pub struct User<Trans> {
@@ -30,11 +22,10 @@ impl<Trans> User<Trans> {
     ///
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
-    /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let id = Identity::new::<DefaultF>(seed);
-        let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
+    pub fn new(seed: &str, transport: Trans) -> Self {
+        let id = Identity::new(seed);
+        let user = UserImp::gen(id, None, true);
         Self { user, transport }
     }
 
@@ -59,16 +50,6 @@ impl<Trans> User<Trans> {
         self.user.author_id()
     }
 
-    /// Return boolean representing the sequencing nature of the channel
-    pub fn is_multi_branching(&self) -> bool {
-        self.user.is_multi_branching()
-    }
-
-    /// Return boolean representing whether the implementation type is single depth
-    pub fn is_single_depth(&self) -> bool {
-        self.user.is_single_depth()
-    }
-
     /// Fetch the user public Id
     pub fn get_id(&self) -> &Identifier {
         &self.user.user_id.id
@@ -86,7 +67,6 @@ impl<Trans> User<Trans> {
     // Utility
 
     /// Stores the provided link to the internal sequencing state for the provided participant
-    /// [Used for multi-branching sequence state updates]
     /// [Author, Subscriber]
     ///
     ///   # Arguments
@@ -95,18 +75,6 @@ impl<Trans> User<Trans> {
     pub fn store_state(&mut self, id: Identifier, link: &Address) -> Result<()> {
         // TODO: assert!(link.appinst == self.appinst.unwrap());
         self.user.store_state(id, link.msgid)
-    }
-
-    /// Stores the provided link and sequence number to the internal sequencing state for all participants
-    /// [Used for single-branching sequence state updates]
-    /// [Author, Subscriber]
-    ///
-    ///   # Arguments
-    ///   * `link` - Address link to be stored in internal sequence state mapping
-    ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
-        // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state_for_all(link.msgid, seq_num)
     }
 
     /// Fetches the latest PublicKey -> Cursor state mapping from the implementation, allowing the
@@ -126,11 +94,8 @@ impl<Trans> User<Trans> {
     /// Generate a vector containing the next sequenced message identifier for each publishing
     /// participant in the channel
     /// [Author, Subscriber]
-    ///
-    ///   # Arguments
-    ///   * `branching` - Boolean representing the sequencing nature of the channel
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(Identifier, Cursor<Address>)> {
-        self.user.gen_next_msg_ids(branching)
+    pub fn gen_next_msg_ids(&mut self) -> Vec<(Identifier, Cursor<Address>)> {
+        self.user.gen_next_msg_ids()
     }
 
     /// Commit to state a wrapped message and type
@@ -143,11 +108,11 @@ impl<Trans> User<Trans> {
         self.user.commit_wrapped(wrapped, info)
     }
 
-    pub async fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
-        self.user.export(flag, pwd).await
+    pub async fn export(&self, pwd: &str) -> Result<Vec<u8>> {
+        self.user.export(pwd).await
     }
-    pub async fn import(bytes: &[u8], flag: u8, pwd: &str, tsp: Trans) -> Result<Self> {
-        UserImp::import(bytes, flag, pwd).await.map(|u| Self {
+    pub async fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
+        UserImp::import(bytes, pwd).await.map(|u| Self {
             user: u,
             transport: tsp,
         })
@@ -158,8 +123,8 @@ impl<Trans> User<Trans> {
     ///   # Arguments
     ///   * `pskid` - An identifier representing a pre shared key
     ///   * `psk` - A pre shared key
-    pub fn store_psk(&mut self, pskid: PskId, psk: Psk, use_psk: bool) -> Result<()> {
-        self.user.store_psk(pskid, psk, use_psk)
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
+        self.user.store_psk(pskid, psk)
     }
 
     /// Remove a PSK from the user instance
@@ -198,6 +163,30 @@ impl<Trans> User<Trans> {
 }
 
 impl<Trans: Transport + Clone> User<Trans> {
+    /// Generates a new User implementation from input. If the announcement message generated by
+    /// this instance matches that of an existing (and provided) announcement link, the user will
+    /// sync to the latest state
+    ///
+    ///  # Arguements
+    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
+    /// * `announcement` - An existing announcement message link for validation of ownership
+    /// * `transport` - Transport object used for sending and receiving
+    pub async fn recover(
+        seed: &str,
+        announcement: &Address,
+        transport: Trans,
+    ) -> Result<Self> {
+        let mut auth = User::new(seed, transport);
+        auth.user.create_channel(0)?;
+
+        let ann = auth.user.announce().await?;
+        let retrieved: Message = auth.transport.recv_message(announcement).await?;
+        panic_if_not(retrieved.binary == ann.message);
+
+        auth.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
+        Ok(auth)
+    }
+
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
     /// sequence message is sent and None is returned for the address.
     ///
@@ -214,14 +203,6 @@ impl<Trans: Transport + Clone> User<Trans> {
             ) => {
                 self.transport.send_message(&Message::new(message)).await?;
                 self.user.commit_sequence(cursor, wrapped_state, MsgInfo::Sequence)
-            }
-            WrappedSequence::SingleBranch(cursor) => {
-                self.user.commit_sequence_to_all(cursor)?;
-                Ok(None)
-            }
-            WrappedSequence::SingleDepth(cursor) => {
-                self.user.commit_sequence_to_all(cursor)?;
-                Ok(None)
             }
             WrappedSequence::None => Ok(None),
         }
@@ -257,6 +238,8 @@ impl<Trans: Transport + Clone> User<Trans> {
 
     /// Send an announcement message, generating a channel [Author].
     pub async fn send_announce(&mut self) -> Result<Address> {
+        //TODO: Implement channel id inclusion for multiple channel ownership
+        self.user.create_channel(0)?;
         let msg = self.user.announce().await?;
         try_or!(
             self.transport.recv_message(&msg.message.link).await.is_err(),
@@ -441,9 +424,17 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.handle_message(msg, true).await
     }
 
+    /// Iteratively fetches next messages until internal state has caught up
+    pub async fn sync_state(&mut self) {
+        let mut exists = true;
+        while exists {
+            exists = !self.fetch_next_msgs().await.is_empty()
+        }
+    }
+
     /// Retrieves the next message for each user (if present in transport layer) and returns them [Author, Subscriber]
     pub async fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
-        let ids = self.user.gen_next_msg_ids(self.user.is_multi_branching());
+        let ids = self.user.gen_next_msg_ids();
         let mut msgs = Vec::new();
 
         for (
@@ -579,9 +570,6 @@ impl<Trans: Transport + Clone> User<Trans> {
         anchor_link: &Address,
         msg_num: u32,
     ) -> Result<UnwrappedMessage> {
-        if !self.is_single_depth() {
-            return err(ChannelNotSingleDepth);
-        }
         match self.author_id() {
             Some(pk) => {
                 let seq_no = self.user.fetch_anchor()?.seq_no;
@@ -594,3 +582,10 @@ impl<Trans: Transport + Clone> User<Trans> {
         }
     }
 }
+
+impl<Trans: Clone> fmt::Display for User<Trans> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<{}>\n{}", self.get_id().to_string(), self.user.key_store)
+    }
+}
+
