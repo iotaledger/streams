@@ -91,7 +91,7 @@ impl TangleMessage {
     pub fn new(msg: BinaryMessage<TangleAddress>) -> Self {
         Self {
             binary: msg,
-            timestamp: chrono::Utc::now().timestamp_millis() as u64,
+            timestamp: 0, // timestamp attribute removed in commit #54b7410
         }
     }
 }

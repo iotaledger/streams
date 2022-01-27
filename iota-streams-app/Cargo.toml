@@ -11,14 +11,14 @@ description = "A rust implementation of the IOTA Streams applications"
 [features]
 default = ["std", "client"]
 # Enable `std` feature in dependencies
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "chrono/std", "chrono/clock", "hex/std"]
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "hex/std"]
 # rust doesn't support async traits, `async-trait` crate emulates `async` keyword
 # `async` implies `std` for now
-tangle = ["chrono", "num_cpus", "futures"]
+tangle = ["num_cpus", "futures"]
 client = ["iota-client/default", "tangle", "std"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-wasm-client = ["iota-client/wasm", "chrono/wasmbind", "tangle", "std"]
+wasm-client = ["iota-client/wasm", "tangle", "std"]
 sync-parking-lot = ["iota-streams-core/sync-parking-lot"]
 sync-spin = ["iota-streams-core/sync-spin"]
 
@@ -27,7 +27,6 @@ iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-
 iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-features = false }
 
-chrono = { version = "0.4.11", default-features = false, optional = true }
 hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
