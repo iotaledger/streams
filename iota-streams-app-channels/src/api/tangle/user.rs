@@ -33,7 +33,7 @@ impl<Trans> User<Trans> {
     /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
     pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let id = Identity::new::<DefaultF>(seed);
+        let id = Identity::new(seed);
         let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
         Self { user, transport }
     }

@@ -57,7 +57,7 @@ use iota_streams_ddml::{
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
-    pub(crate) subscriber_id: &'a Identity,
+    pub(crate) subscriber_id: &'a Identity<F>,
     pub(crate) author_ke_pk: &'a x25519::PublicKey,
     pub(crate) _phantom: core::marker::PhantomData<(Link, F)>,
 }
@@ -103,7 +103,7 @@ where
 pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
-    pub subscriber_id: Identity,
+    pub subscriber_id: Identity<F>,
     author_ke_sk: &'a x25519::StaticSecret,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }

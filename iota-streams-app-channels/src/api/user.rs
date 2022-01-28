@@ -88,7 +88,7 @@ where
     _phantom: PhantomData<F>,
 
     /// Users' Identity information, contains keys and logic for signing and verification
-    pub(crate) user_id: Identity,
+    pub(crate) user_id: Identity<F>,
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     pub(crate) key_store: Keys,
@@ -158,7 +158,7 @@ where
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
     pub fn gen(
-        user_id: Identity,
+        user_id: Identity<F>,
         channel_type: ChannelType,
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
@@ -358,7 +358,7 @@ where
         // TODO: check content type
 
         let content = self
-            .unwrap_subscribe(preparsed, &self.user_id.get_ke_kp().0)
+            .unwrap_subscribe(preparsed, &self.user_id.get_ke_kp()?.0)
             .await?
             .commit(&mut self.link_store, info)?;
         // TODO: trust content.subscriber_sig_pk
@@ -524,9 +524,9 @@ where
         &self,
         preparsed: PreparsedMessage<'_, F, Link>,
         keys_lookup: KeysLookup<'a, F, Link, Keys>,
-        own_keys: OwnKeys<'a>,
-        author_id: Identity,
-    ) -> Result<UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>>
+        own_keys: OwnKeys<'a, F>,
+        author_id: Identity<F>,
+    ) -> Result<UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a, F>>>>
     {
         self.ensure_appinst(&preparsed)?;
         let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_id);
@@ -1044,7 +1044,7 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.mask(<&NBytes<U32>>::from(&self.user_id.get_sig_kp().secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(&self.user_id.get_sig_kp()?.secret.as_bytes()[..]))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1104,7 +1104,7 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.mask(<&NBytes<U32>>::from(&self.user_id.get_sig_kp().secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(&self.user_id.get_sig_kp()?.secret.as_bytes()[..]))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1349,14 +1349,16 @@ where
     }
 }
 
-pub struct OwnKeys<'a>(&'a Identity);
+pub struct OwnKeys<'a, F>(&'a Identity<F>);
 
-impl<'a> Lookup<&Identifier, &'a x25519::StaticSecret> for OwnKeys<'a> {
+impl<'a, F: PRP> Lookup<&Identifier, &'a x25519::StaticSecret> for OwnKeys<'a, F> {
     fn lookup(&self, id: &Identifier) -> Option<&'a x25519::StaticSecret> {
         let Self(Identity { id: self_id, .. }) = self;
         if id == self_id {
-            let secret = &self.0.get_ke_kp().0;
-            Some(secret)
+            match self.0.get_ke_kp() {
+                Ok(secret) => Some(&secret.0),
+                Err(_) => None,
+            }
         } else {
             None
         }

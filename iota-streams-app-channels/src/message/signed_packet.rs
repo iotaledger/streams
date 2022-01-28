@@ -48,7 +48,7 @@ where
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) public_payload: &'a Bytes,
     pub(crate) masked_payload: &'a Bytes,
-    pub(crate) user_id: &'a Identity,
+    pub(crate) user_id: &'a Identity<F>,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -103,7 +103,7 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) public_payload: Bytes,
     pub(crate) masked_payload: Bytes,
-    pub(crate) user_id: Identity,
+    pub(crate) user_id: Identity<F>,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 

@@ -31,13 +31,13 @@ use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
 use iota_streams_ddml::{command::*, io, types::*};
 
 pub struct ContentWrap<'a, F> {
-    user_id: &'a Identity,
+    user_id: &'a Identity<F>,
     flags: Uint8,
     _phantom: core::marker::PhantomData<F>,
 }
 
 impl<'a, F> ContentWrap<'a, F> {
-    pub fn new(user_id: &'a Identity, flags: u8) -> Self {
+    pub fn new(user_id: &'a Identity<F>, flags: u8) -> Self {
         Self {
             user_id,
             flags: Uint8(flags),
@@ -71,7 +71,7 @@ impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
 }
 
 pub struct ContentUnwrap<F> {
-    pub(crate) author_id: Identity,
+    pub(crate) author_id: Identity<F>,
     #[allow(dead_code)]
     pub(crate) ke_pk: x25519::PublicKey,
     pub(crate) flags: Uint8,
@@ -95,7 +95,7 @@ impl<F> Default for ContentUnwrap<F> {
 }
 
 impl<F> ContentUnwrap<F> {
-    pub fn new(user_id: Identity) -> Self {
+    pub fn new(user_id: Identity<F>) -> Self {
         Self {
             author_id: user_id,
             ..Default::default()

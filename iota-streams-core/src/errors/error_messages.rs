@@ -164,6 +164,10 @@ pub enum Errors {
     ChannelNotSingleDepth,
     /// Message '{0}' does not have a previous message
     NoPreviousMessage(String),
+    /// No signature key pair found in User instance
+    NoSignatureKeyPair,
+    /// User Identity is not a PSK user
+    NotAPskUser,
 
     //////////
     // User Recovery
