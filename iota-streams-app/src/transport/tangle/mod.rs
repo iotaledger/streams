@@ -65,17 +65,17 @@ use crate::message::{
 pub const PAYLOAD_BYTES: usize = 1090;
 
 /// Wrapper for a tangle formatted message
-#[derive(Clone)]
-pub struct TangleMessage<F> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TangleMessage {
     /// Encapsulated binary encoded message.
-    pub binary: BinaryMessage<F, TangleAddress>,
+    pub binary: BinaryMessage<TangleAddress>,
 
     /// Timestamp is not an intrinsic part of Streams message; it's a part of the bundle.
     /// Timestamp is checked with Kerl as part of bundle essense trits.
     pub timestamp: u64,
 }
 
-impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
+impl LinkedMessage<TangleAddress> for TangleMessage {
     fn link(&self) -> &TangleAddress {
         self.binary.link()
     }
@@ -86,18 +86,18 @@ impl<F> LinkedMessage<TangleAddress> for TangleMessage<F> {
 
 // TODO: Use better feature to detect `chrono::Utc::new()`.
 #[cfg(feature = "std")]
-impl<F> TangleMessage<F> {
+impl TangleMessage {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
-    pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
+    pub fn new(msg: BinaryMessage<TangleAddress>) -> Self {
         Self {
             binary: msg,
-            timestamp: chrono::Utc::now().timestamp_millis() as u64,
+            timestamp: 0, // timestamp attribute removed in commit #54b7410
         }
     }
 }
 
 #[cfg(not(feature = "std"))]
-impl<F> TangleMessage<F> {
+impl TangleMessage {
     /// Create TangleMessage from BinaryMessage and add the current timestamp.
     pub fn new(msg: BinaryMessage<F, TangleAddress>) -> Self {
         Self {
@@ -107,9 +107,9 @@ impl<F> TangleMessage<F> {
     }
 }
 
-impl<F> TangleMessage<F> {
+impl TangleMessage {
     /// Create TangleMessage from BinaryMessage and an explicit timestamp.
-    pub fn with_timestamp(msg: BinaryMessage<F, TangleAddress>, timestamp: u64) -> Self {
+    pub fn with_timestamp(msg: BinaryMessage<TangleAddress>, timestamp: u64) -> Self {
         Self { binary: msg, timestamp }
     }
 }

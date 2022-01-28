@@ -16,7 +16,6 @@ std = ["rand/std", "iota-streams-core/std", "iota-streams-core-edsig/std"]
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
 iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsig", default-features = false }
-# anyhow version is kept in sync with iota-client
 rand = { version = "0.7", default-features = false }
 hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }
 
