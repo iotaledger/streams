@@ -11,14 +11,14 @@ description = "A rust implementation of the IOTA Streams applications"
 [features]
 default = ["std", "client"]
 # Enable `std` feature in dependencies
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "chrono/std", "chrono/clock", "hex/std"]
+std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "hex/std"]
 # rust doesn't support async traits, `async-trait` crate emulates `async` keyword
 # `async` implies `std` for now
-tangle = ["chrono", "num_cpus", "futures"]
+tangle = ["num_cpus", "futures"]
 client = ["iota-client/default", "tangle", "std"]
 # `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
 # implement Transport for iota_client::Client.
-wasm-client = ["iota-client/wasm", "chrono/wasmbind", "tangle", "std"]
+wasm-client = ["iota-client/wasm", "tangle", "std"]
 sync-parking-lot = ["iota-streams-core/sync-parking-lot"]
 sync-spin = ["iota-streams-core/sync-spin"]
 
@@ -27,15 +27,16 @@ iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-
 iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-features = false }
 
-# anyhow and chrono are kept in sync with versions used in iota-client
-anyhow = { version = "1.0.26", default-features = false }
-chrono = { version = "0.4.11", default-features = false, optional = true }
 hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
 # Dependencies for "client" feature
-iota-client = { git = "https://github.com/iotaledger/iota.rs", rev  = "98fef08", default-features = false, optional = true }
+iota-client = { version = "1.1.1", default-features = false, optional = true }
 num_cpus = { version = "1.10", optional = true }
 
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 cty = { version = "0.2.1" }
+
+[dev-dependencies]
+# anyhow is used in doctests
+anyhow = { version = "1.0", default-features = false, features = ["std"] }

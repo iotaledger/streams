@@ -1,6 +1,12 @@
+use core::cell::RefCell;
+
 use iota_streams_core::{
     async_trait,
-    prelude::{Box, Rc, RefCell, Vec},
+    prelude::{
+        Box,
+        Rc,
+        Vec,
+    },
     Result,
 };
 

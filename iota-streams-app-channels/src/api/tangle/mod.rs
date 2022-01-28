@@ -36,7 +36,7 @@ pub type Address = TangleAddress;
 pub type ChannelAddress = AppInst;
 
 /// Binary encoded message type.
-pub type Message = TangleMessage<DefaultF>;
+pub type Message = TangleMessage;
 // Details for a message on our tangle transport
 #[cfg(any(feature = "sync-client", feature = "async-client", feature = "wasm-client"))]
 pub type Details = ClientDetails;
@@ -82,6 +82,7 @@ pub use msginfo::MsgInfo;
 // enough performance improvement to justify the ergonomic drawback of re-enabling this lint
 #[allow(clippy::large_enum_variant)]
 /// Message body returned as part of handle message routine.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MessageContent {
     Announce,
     Keyload,
@@ -133,7 +134,7 @@ impl MessageContent {
 pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
 
 /// Generic binary message type for sequence handling
-pub type BinaryMessage = message::GenericMessage<Address, BinaryBody<DefaultF>>;
+pub type BinaryMessage = message::GenericMessage<Address, BinaryBody>;
 
 mod user;
 /// User object storing the Auth/Sub implementation as well as the transport instance

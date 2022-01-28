@@ -6,7 +6,7 @@ use iota_streams::{
         Transport,
     },
     core::{
-        panic_if_not,
+        assert,
         println,
         Result,
     },
@@ -53,7 +53,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     let mut previous_msg_link = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-        panic_if_not(seq.is_none());
+        assert!(seq.is_none());
         msg
     };
 
@@ -64,7 +64,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
                 .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
                 .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-            panic_if_not(seq.is_none());
+            assert!(seq.is_none());
             msg
         };
     }
@@ -81,7 +81,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
                 .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
                 .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-            panic_if_not(seq.is_none());
+            assert!(seq.is_none());
             msg
         };
     }
@@ -109,7 +109,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
                 exists = true
             }
         }
-        panic_if_not!(exists);
+        assert!(exists);
     }
 
     println!("States match...\nSending next sequenced message...");
@@ -122,7 +122,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     sleep(Duration::from_secs(1));
     println!("\nSubscriber A fetching transactions...");
     let msgs = subscriberA.fetch_next_msgs().await;
-    panic_if_not!(!msgs.is_empty());
+    assert!(!msgs.is_empty());
 
     let mut matches = false;
     for msg in msgs {
@@ -130,7 +130,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
             matches = true
         }
     }
-    panic_if_not!(matches);
+    assert!(matches);
 
     println!("Last message matches, recovery, sync and send successful");
 
@@ -140,7 +140,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     let new_auth = Author::import(&exported, "Password", transport).await?;
     println!("Author imported...");
     let retrieved_announcement = new_auth.announcement_link().unwrap();
-    panic_if_not!(retrieved_announcement == announcement_link);
+    assert!(retrieved_announcement == announcement_link);
     println!("Imported Author announcement message matches original\n");
 
     Ok(())

@@ -5,10 +5,11 @@ use core::fmt::Debug;
 #[macro_export]
 macro_rules! try_or {
     ($cond:expr, $err:expr) => {{
-        if $crate::LOCATION_LOG && !$cond {
+        let condition_result = $cond;
+        if $crate::LOCATION_LOG && !condition_result {
             $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
-        try_or($cond, $err)
+        try_or(condition_result, $err)
     }};
 }
 
@@ -23,12 +24,20 @@ macro_rules! err {
 }
 
 #[macro_export]
-macro_rules! panic_if_not {
-    ($cond:expr) => {{
-        if $crate::LOCATION_LOG && !$cond {
+macro_rules! assert{
+    ($cond:expr $(,)?) => {{
+        let condition_result = $cond;
+        if $crate::LOCATION_LOG && !condition_result {
             $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
-        panic_if_not($cond)
+        ::core::assert!($cond)
+    }};
+    ($cond:expr, $($arg:tt)+) => {{
+        let condition_result = $cond;
+        if $crate::LOCATION_LOG && !condition_result {
+            $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
+        }
+        ::core::assert!($cond, $($arg)+)
     }};
 }
 
@@ -64,10 +73,6 @@ pub fn try_or(cond: bool, err: Errors) -> Result<(), anyhow::Error> {
 
 pub fn err<T>(err: Errors) -> Result<T, anyhow::Error> {
     bail!(err)
-}
-
-pub fn panic_if_not(cond: bool) {
-    assert!(cond)
 }
 
 pub fn wrapped_err<T: Debug>(err: Errors, src: WrappedError<T>) -> anyhow::Error {

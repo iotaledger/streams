@@ -34,7 +34,6 @@ where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F> + Clone + Default,
     Link::Rel: Eq + SkipFallback<F>,
-    // Store: LinkStore<F, <Link as HasLink>::Rel>,
 {
     pub async fn wrap<Store>(&self, store: &Store) -> Result<WrappedMessage<F, Link>>
     where

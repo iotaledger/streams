@@ -46,6 +46,8 @@ pub const LOCATION_LOG: bool = true;
 
 pub use anyhow::{anyhow, bail, ensure, Error, Result};
 
+pub use rustversion;
+
 pub mod errors;
 pub mod prelude;
 pub mod prng;

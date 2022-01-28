@@ -270,7 +270,7 @@ where
     /// in the message.
     pub async fn handle_announcement(
         &mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<()> {
         let preparsed = msg.parse_header().await?;
@@ -353,7 +353,7 @@ where
     }
 
     /// Get public payload, decrypt masked payload and verify MAC.
-    pub async fn handle_subscribe(&mut self, msg: BinaryMessage<F, Link>, info: LS::Info) -> Result<()> {
+    pub async fn handle_subscribe(&mut self, msg: BinaryMessage<Link>, info: LS::Info) -> Result<()> {
         let preparsed = msg.parse_header().await?;
         // TODO: check content type
 
@@ -419,7 +419,7 @@ where
     }
 
     /// Confirm unsubscription request ownership and remove subscriber.
-    pub async fn handle_unsubscribe(&mut self, msg: BinaryMessage<F, Link>, info: LS::Info) -> Result<()> {
+    pub async fn handle_unsubscribe(&mut self, msg: BinaryMessage<Link>, info: LS::Info) -> Result<()> {
         let preparsed = msg.parse_header().await?;
         let content = self
             .unwrap_unsubscribe(preparsed)
@@ -536,7 +536,7 @@ where
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or Ed25519 private key (if any).
     pub async fn handle_keyload(
         &mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, bool>> {
         match &self.author_id {
@@ -654,7 +654,7 @@ where
     /// Verify new Author's MSS public key and update Author's MSS public key.
     pub async fn handle_signed_packet(
         &'_ mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, (Identifier, Bytes, Bytes)>> {
         // TODO: pass author_pk to unwrap
@@ -690,7 +690,7 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(identifier.to_bytes(), Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(identifier, Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(TAGGED_PACKET)?
@@ -745,7 +745,7 @@ where
     /// Get public payload, decrypt masked payload and verify MAC.
     pub async fn handle_tagged_packet(
         &mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
     ) -> Result<GenericMessage<Link, (Bytes, Bytes)>> {
         let preparsed = msg.parse_header().await?;
@@ -777,7 +777,7 @@ where
         let identifier = self.get_identifier()?;
         let msg_link = self
             .link_gen
-            .link_from(identifier.to_bytes(), Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
+            .link_from(identifier, Cursor::new_at(link_to.rel(), 0, SEQ_MESSAGE_NUM));
         let header = HDF::new(msg_link)
             .with_previous_msg_link(Bytes(link_to.to_bytes()))
             .with_content_type(SEQUENCE)?
@@ -803,7 +803,7 @@ where
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
                     let msg_link = self
                         .link_gen
-                        .link_from(identifier.to_bytes(), Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
+                        .link_from(identifier, Cursor::new_at(&cursor.link, 0, SEQ_MESSAGE_NUM));
                     let previous_msg_link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), &cursor.link);
                     let header = HDF::new(msg_link)
                         .with_previous_msg_link(Bytes(previous_msg_link.to_bytes()))
@@ -870,7 +870,7 @@ where
     // Fetch unwrapped sequence message to fetch referenced message
     pub async fn handle_sequence(
         &mut self,
-        msg: BinaryMessage<F, Link>,
+        msg: BinaryMessage<Link>,
         info: <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info,
         store: bool,
     ) -> Result<GenericMessage<Link, sequence::ContentUnwrap<Link>>> {
@@ -955,17 +955,17 @@ where
         let (
             id,
             Cursor {
-                link: seq_link,
+                link: last_link,
                 branch_no: _,
                 seq_no,
             },
         ) = pk_info;
 
         if branching {
-            let msg_id = link_gen.link_from(id.to_bytes(), Cursor::new_at(&*seq_link, 0, 1));
+            let msg_id = link_gen.link_from(id, Cursor::new_at(&*last_link, 0, 1));
             ids.push((*id, Cursor::new_at(msg_id, 0, 1)));
         } else {
-            let msg_id = link_gen.link_from(id.to_bytes(), Cursor::new_at(&*seq_link, 0, *seq_no));
+            let msg_id = link_gen.link_from(id, Cursor::new_at(&*last_link, 0, *seq_no));
             ids.push((*id, Cursor::new_at(msg_id, 0, *seq_no)));
         }
     }

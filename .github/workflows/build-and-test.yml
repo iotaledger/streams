@@ -146,8 +146,13 @@ jobs:
             ${{ runner.os }}-node-
       - name: Install wasm-pack
         uses: jetli/wasm-pack-action@v0.3.0
+        if: matrix.os == 'windows-latest'
         with:
-          # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
+          version: 'v0.10.1'  # Wasm-pack v0.10.2 is broken in windows https://github.com/rustwasm/wasm-pack/issues/1097
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.3.0
+        if: matrix.os != 'windows-latest'
+        with:
           version: 'latest'
       - name: Build nodejs binding
         run: npm run build:nodejs
