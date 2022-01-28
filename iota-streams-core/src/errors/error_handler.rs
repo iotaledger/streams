@@ -9,10 +9,11 @@ use core::fmt::Debug;
 #[macro_export]
 macro_rules! try_or {
     ($cond:expr, $err:expr) => {{
-        if $crate::LOCATION_LOG && !$cond {
+        let condition_result = $cond;
+        if $crate::LOCATION_LOG && !condition_result {
             $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
-        try_or($cond, $err)
+        try_or(condition_result, $err)
     }};
 }
 
@@ -29,13 +30,15 @@ macro_rules! err {
 #[macro_export]
 macro_rules! assert{
     ($cond:expr $(,)?) => {{
-        if $crate::LOCATION_LOG && !$cond {
+        let condition_result = $cond;
+        if $crate::LOCATION_LOG && !condition_result {
             $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
         ::core::assert!($cond)
     }};
     ($cond:expr, $($arg:tt)+) => {{
-        if $crate::LOCATION_LOG && !$cond {
+        let condition_result = $cond;
+        if $crate::LOCATION_LOG && !condition_result {
             $crate::println!("\n!!! Error occurred @ {}, {}", file!(), line!())
         }
         ::core::assert!($cond, $($arg)+)

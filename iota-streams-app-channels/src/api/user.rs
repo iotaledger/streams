@@ -955,7 +955,7 @@ where
     }
 
     /// Generate the link of a message
-    /// 
+    ///
     /// The link is generated from the link of the last message sent by the publishing user and its sequence number
     ///
     /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information
