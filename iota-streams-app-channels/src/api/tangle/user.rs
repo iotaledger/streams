@@ -216,7 +216,7 @@ impl<Trans> User<Trans> {
     async fn process_sequence(&mut self, msg: BinaryMessage, store: bool) -> Result<Address> {
         let unwrapped = self.user.handle_sequence(msg, MsgInfo::Sequence, store).await?;
         let msg_link = self.user.link_gen.link_from(
-            unwrapped.body.id.to_bytes(),
+            unwrapped.body.id,
             Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
         );
         Ok(msg_link)
@@ -376,7 +376,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         if let Some(_addr) = &self.user.appinst {
             let seq_msg = self.user.handle_sequence(msg, MsgInfo::Sequence, true).await?.body;
             let msg_id = self.user.link_gen.link_from(
-                seq_msg.id.to_bytes(),
+                seq_msg.id,
                 Cursor::new_at(&seq_msg.ref_link, 0, seq_msg.seq_num.0 as u32),
             );
 
@@ -459,15 +459,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         let ids = self.user.gen_next_msg_ids(self.user.is_multi_branching());
         let mut msgs = Vec::new();
 
-        for (
-            _pk,
-            Cursor {
-                link,
-                branch_no: _,
-                seq_no: _,
-            },
-        ) in ids
-        {
+        for (_pk, Cursor { link, .. }) in ids {
             let msg = self.transport.recv_message(&link).await;
 
             if let Ok(msg) = msg {
@@ -486,7 +478,8 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// * `link` - Address of message to act as root of previous message fetching
     pub async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
-        let header = msg.parse_header().await?.header;
+        let preparsed: Preparsed = msg.parse_header().await?;
+        let header = preparsed.header;
         let prev_msg_link = Address::try_from_bytes(&header.previous_msg_link.0)
             .or_else(|_| err!(NoPreviousMessage(link.to_string())))?;
         let prev_msg = self.transport.recv_message(&prev_msg_link).await?;
@@ -529,8 +522,9 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub async fn handle_message(&mut self, mut msg0: Message, store: bool) -> Result<UnwrappedMessage> {
         let mut sequenced = false;
         loop {
+            // Forget TangleMessage and timestamp
             let msg = msg0;
-            let preparsed = msg.parse_header().await?;
+            let preparsed: Preparsed = msg.parse_header().await?;
             let link = preparsed.header.link;
             let prev_link = Address::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
             match preparsed.header.content_type {
@@ -574,7 +568,8 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// the message itself
     async fn parse_msg_info(&mut self, link: &Address) -> Result<(Address, u8, Message)> {
         let msg = self.transport.recv_message(link).await?;
-        let header = msg.parse_header().await?.header;
+        let preparsed: Preparsed = msg.parse_header().await?;
+        let header = preparsed.header;
         let link = Address::try_from_bytes(&header.previous_msg_link.0)
             .or_else(|_| err!(NoPreviousMessage(link.to_string())))?;
         Ok((link, header.content_type, msg))
@@ -598,7 +593,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             Some(pk) => {
                 let seq_no = self.user.fetch_anchor()?.seq_no;
                 let cursor = Cursor::new_at(anchor_link.rel(), 0, msg_num + seq_no);
-                let link = self.user.link_gen.link_from(pk.as_ref(), cursor);
+                let link = self.user.link_gen.link_from(pk, cursor);
                 let msg = self.transport.recv_message(&link).await?;
                 self.handle_message(msg, false).await
             }

@@ -32,17 +32,23 @@ use iota_streams_ddml::{
 use crate::message::*;
 use iota_streams_core::Errors::PublicKeyGenerationFailure;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum Identifier {
     EdPubKey(ed25519::PublicKeyWrap),
     PskId(PskId),
 }
 
 impl Identifier {
+    /// Owned vector of the underlying Bytes array of the identifier
     pub fn to_bytes(self) -> Vec<u8> {
+        self.as_bytes().to_vec()
+    }
+
+    /// View into the underlying Byte array of the identifier
+    pub fn as_bytes(&self) -> &[u8] {
         match self {
-            Identifier::EdPubKey(id) => id.0.as_bytes().to_vec(),
-            Identifier::PskId(id) => id.to_vec(),
+            Identifier::EdPubKey(id) => id.0.as_bytes(),
+            Identifier::PskId(id) => id,
         }
     }
 
@@ -75,6 +81,24 @@ impl From<ed25519::PublicKey> for Identifier {
 impl From<PskId> for Identifier {
     fn from(pskid: PskId) -> Self {
         Identifier::PskId(pskid)
+    }
+}
+
+impl AsRef<[u8]> for Identifier {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+impl core::fmt::LowerHex for Identifier {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "{}", hex::encode(self))
+    }
+}
+
+impl core::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        core::fmt::LowerHex::fmt(self, f)
     }
 }
 

@@ -78,7 +78,7 @@ pub fn filter_ke_pks<'a>(allowed_pks: &'a Pks, target_pks: &'a [PublicKey]) -> V
         .collect::<Vec<IPk<'a>>>()
 }
 
-#[cfg(test)]
+#[cfg(feature = "deprecated")]
 mod tests {
     struct FixedRng(Vec<u8>);
     impl rand::RngCore for FixedRng {

@@ -60,7 +60,7 @@ use crate::message::{
     LinkGenerator,
 };
 
-pub type TangleMessage<F> = BinaryMessage<F, TangleAddress>;
+pub type TangleMessage = BinaryMessage<TangleAddress>;
 
 /// Tangle representation of a Message Link
 ///
