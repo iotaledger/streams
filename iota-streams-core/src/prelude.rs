@@ -4,10 +4,6 @@ pub use alloc::{
         self,
         Box,
     },
-    cell::{
-        self,
-        RefCell,
-    },
     format,
     rc::{
         self,
@@ -33,10 +29,6 @@ pub use std::{
     boxed::{
         self,
         Box,
-    },
-    cell::{
-        self,
-        RefCell,
     },
     format,
     rc::{
