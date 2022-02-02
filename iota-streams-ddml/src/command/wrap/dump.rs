@@ -13,11 +13,7 @@ use iota_streams_core::{
 impl<F: PRP, OS: io::OStream> Dump for Context<F, OS> {
     #[allow(unused_variables)]
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {
-        //#[cfg(not(test))]
-        // println!("dump: {}", args,);
-
-        //#[cfg(test)]
-        iota_streams_core::println!(
+        println!(
             "dump: {}: ostream=[{}] spongos=[{:?}]",
             args,
             self.stream.dump(),
