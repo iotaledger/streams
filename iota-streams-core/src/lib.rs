@@ -65,6 +65,8 @@ pub use anyhow::{
     Result,
 };
 
+pub use rustversion;
+
 pub mod errors;
 pub mod prelude;
 pub mod prng;

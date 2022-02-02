@@ -12,7 +12,6 @@ use crate::api::tangle::{
 
 use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
-    panic_if_not,
     prelude::{
         String,
         Vec,
@@ -195,7 +194,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
         let ann = author.user.user.announce().await?;
         let retrieved: Message = author.user.transport.recv_message(announcement).await?;
-        panic_if_not(retrieved.binary == ann.message);
+        assert!(retrieved == ann.message);
 
         author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
 
@@ -306,15 +305,14 @@ impl<Trans: Transport + Clone> Author<Trans> {
         self.user.fetch_next_msgs().await
     }
 
-    /// Iteratively fetches next message until no new messages can be found, and return a vector
+    /// Iteratively fetches next messages until no new messages can be found, and return a vector
     /// containing all of them.
     pub async fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
-        let mut exists = true;
         let mut msgs = Vec::new();
-        while exists {
+        loop {
             let next_msgs = self.fetch_next_msgs().await;
             if next_msgs.is_empty() {
-                exists = false
+                break;
             } else {
                 msgs.extend(next_msgs)
             }
@@ -334,9 +332,11 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
     /// Iteratively fetches next messages until internal state has caught up
     pub async fn sync_state(&mut self) {
-        let mut exists = true;
-        while exists {
-            exists = !self.fetch_next_msgs().await.is_empty()
+        loop {
+            let next_msgs = self.fetch_next_msgs().await;
+            if next_msgs.is_empty() {
+                break;
+            }
         }
     }
 

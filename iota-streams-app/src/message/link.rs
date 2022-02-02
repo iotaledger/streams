@@ -36,7 +36,7 @@ pub trait HasLink: Sized + Default + Clone + Eq {
 
 /// Represents an input state for message identifier generation.
 /// Contains an Address and sequencing states.
-#[derive(Clone, Default)]
+#[derive(Clone, Copy, Hash, Default)]
 pub struct Cursor<Link> {
     pub link: Link,
     pub branch_no: u32,
@@ -156,7 +156,7 @@ pub trait LinkGenerator<Link: HasLink>: Default {
         previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
         HDF::new_with_fields(
-            self.link_from(id.to_bytes(), cursor),
+            self.link_from(id, cursor),
             Bytes(previous_msg_link.to_bytes()),
             content_type,
             payload_length,
