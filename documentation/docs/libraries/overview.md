@@ -1,6 +1,6 @@
 # IOTA Streams libraries
 
-There are currently available the following official bindings to `streams`:
+The following bindings to the Streams libraries are currently available:
 
 - [Rust](rust/overview) 
 - [Wasm](wasm/overview) 
@@ -8,6 +8,6 @@ There are currently available the following official bindings to `streams`:
 
 ## Getting Started
 
-It is a recommended approach to start your interactions with IOTA on a `testnet` network. API load balancer: [https://api.lb-0.testnet.chrysalis2.com:443](https://api.lb-0.testnet.chrysalis2.com:443)
+The recommended approach to start your interactions with IOTA is to use a test network. A public API load balancer is provided here: [https://api.lb-0.testnet.chrysalis2.com:443](https://api.lb-0.testnet.chrysalis2.com:443)
 
-Network explorer is available at [IOTA Tangle Explorer](https://explorer.iota.org/testnet).
+The test network explorer is available at the [IOTA Tangle explorer](https://explorer.iota.org/testnet).
