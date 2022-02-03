@@ -4,6 +4,11 @@ pub use alloc::{
         self,
         Box,
     },
+    cell::{
+        self,
+        RefCell,
+    },
+    collections::vec_deque::VecDeque,
     format,
     rc::{self, Rc},
     string::{self, String, ToString},
@@ -17,6 +22,11 @@ pub use std::{
         self,
         Box,
     },
+    cell::{
+        self,
+        RefCell,
+    },
+    collections::vec_deque::VecDeque,
     format,
     rc::{self, Rc},
     string::{self, String, ToString},

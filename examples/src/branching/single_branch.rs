@@ -150,9 +150,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await?;
     println!("\nSubscriber C fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberC).await;
+    utils::fetch_next_messages(&mut subscriberC).await?;
 
     println!("\nTagged packet 1 - SubscriberA");
     let previous_msg_link = {
@@ -213,9 +213,9 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     };
 
     println!("\nSubscriber B fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberB).await;
+    utils::fetch_next_messages(&mut subscriberB).await?;
     println!("\nSubscriber C fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberC).await;
+    utils::fetch_next_messages(&mut subscriberC).await?;
 
     println!("\nTagged packet 4 - SubscriberB");
     let previous_msg_link = {
@@ -255,7 +255,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     }
 
     println!("\nSubscriber fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberC).await;
+    utils::fetch_next_messages(&mut subscriberC).await?;
 
     println!("\nTagged packet 5 - SubscriberC");
     let previous_msg_link = {
@@ -294,7 +294,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\nSigned packet");
     let signed_packet_link = {

@@ -12,14 +12,16 @@ description = "A rust implementation of the IOTA Streams applications"
 default = ["std", "client"]
 # Enable `std` feature in dependencies
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "hex/std"]
-# rust doesn't support async traits, `async-trait` crate emulates `async` keyword
-# `async` implies `std` for now
+
+# Enable Tangle-specific transport abstractions
 tangle = []
-client = ["iota-client/default", "futures", "tangle", "std"]
-# `iota-client` support is implemented as a feature (as opposed to a separate crate) in order to
-# implement Transport for iota_client::Client.
+# Enable Tangle transport client implementation (implies `tangle` and `std` features)
+client = ["iota-client/async", "futures", "tangle", "std"]
+# Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
 wasm-client = ["iota-client/wasm", "futures", "tangle", "std"]
+# Enable synchronized transports using parking-lot
 sync-parking-lot = ["iota-streams-core/sync-parking-lot"]
+# Enable synchronized transports using spin 
 sync-spin = ["iota-streams-core/sync-spin"]
 
 [dependencies]

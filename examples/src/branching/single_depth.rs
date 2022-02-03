@@ -119,14 +119,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     print!("  Author     : {}", author);
 
     println!("\nSubscriber A fetching all messages");
-    let mut unwrapped = Vec::new();
-    loop {
-        let msgs = subscriberA.fetch_next_msgs().await;
-        if msgs.is_empty() {
-            break;
-        }
-        unwrapped.extend(msgs);
-    }
+    let unwrapped = subscriberA.fetch_next_msgs().await?;
 
     assert_eq!(unwrapped.len(), 10);
     for msg in unwrapped {

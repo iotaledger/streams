@@ -43,6 +43,8 @@ pub mod id;
 
 pub use cstr_core;
 pub use cty;
+#[cfg(any(feature = "client", feature = "wasm-client"))]
+pub use futures;
 // pub trait TrustProvider<PublicKey> {
 // fn check_trusted(pk: &PublicKey) -> Result<()>;
 // }

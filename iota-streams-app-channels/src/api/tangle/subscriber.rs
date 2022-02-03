@@ -4,7 +4,12 @@ use core::fmt;
 use iota_streams_core::{err, Result};
 
 use super::*;
-use crate::api::tangle::{ChannelType::SingleBranch, UnwrappedMessage, User};
+use crate::api::tangle::{
+    ChannelType::SingleBranch,
+    Messages,
+    UnwrappedMessage,
+    User,
+};
 
 use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
@@ -130,13 +135,19 @@ impl<Trans> Subscriber<Trans> {
         self.user.reset_state()
     }
 
-    /// Generate a vector containing the next sequenced message identifier for each publishing
-    /// participant in the channel
+    /// Generate the next batch of message [`Address`] to poll
     ///
-    ///   # Arguments
-    ///   * `branching` - Boolean representing the sequencing nature of the channel
-    pub fn gen_next_msg_ids(&mut self, branching: bool) -> Vec<(Identifier, Cursor<Address>)> {
-        self.user.gen_next_msg_ids(branching)
+    /// Given the set of users registered as participants of the channel and their current registered
+    /// sequencing position, this method generates a set of new [`Address`] to poll for new messages
+    /// (one for each user, represented by its [`Identifier`]). However, beware that it is not recommended to
+    /// use this method as a means to implement message traversal, as there's no guarantee that the addresses
+    /// returned are the immediately next addresses to be processed. use [`Subscriber::messages()`] instead.
+    ///
+    /// Keep in mind that in multi-branch channels, the link returned corresponds to the next sequence message.
+    ///
+    /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information
+    pub fn gen_next_msg_addresses(&self) -> Vec<(Identifier, Cursor<Address>)> {
+        self.user.gen_next_msg_addresses()
     }
 
     /// Serialize user state and encrypt it with password.
@@ -255,9 +266,11 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
         self.user.receive_sequence(link).await
     }
 
-    /// Retrieves the next message for each user (if present in transport layer) and returns them
-    pub async fn fetch_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
-        self.user.fetch_next_msgs().await
+    /// Start a [`Messages`] stream to traverse the channel messages
+    ///
+    /// See the documentation in [`Messages`] for more details and examples.
+    pub fn messages(&mut self) -> Messages<'_, Trans> {
+        self.user.messages()
     }
 
     /// Retrieves the previous message from the message specified (provided the user has access to it)
@@ -270,29 +283,20 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
         self.user.fetch_prev_msgs(link, max).await
     }
 
-    /// Iteratively fetches next message until no new messages can be found, and return a vector
-    /// containing all of them.
-    pub async fn fetch_all_next_msgs(&mut self) -> Vec<UnwrappedMessage> {
-        let mut msgs = Vec::new();
-        loop {
-            let next_msgs = self.fetch_next_msgs().await;
-            if next_msgs.is_empty() {
-                break;
-            } else {
-                msgs.extend(next_msgs)
-            }
-        }
-        msgs
+    /// Iteratively fetches all the pending messages from the transport
+    ///
+    /// Return a vector with all the messages collected. This is a convenience
+    /// method around the [`Messages`] stream. Check out its docs for more
+    /// advanced usages.
+    pub async fn fetch_next_msgs(&mut self) -> Result<Vec<UnwrappedMessage>> {
+        self.user.fetch_next_msgs().await
     }
 
-    /// Iteratively fetches next messages until internal state has caught up
-    pub async fn sync_state(&mut self) {
-        loop {
-            let next_msgs = self.fetch_next_msgs().await;
-            if next_msgs.is_empty() {
-                break;
-            }
-        }
+    /// Iteratively fetches all the next messages until internal state has caught up
+    ///
+    /// If succeeded, returns the number of messages advanced.
+    pub async fn sync_state(&mut self) -> Result<usize> {
+        self.user.sync_state().await
     }
 
     /// Receive and process a message of unknown type. Message will be handled appropriately and
@@ -323,5 +327,14 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
 impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "<{}>\n{}", self.get_id().to_string(), self.user.user.key_store)
+    }
+}
+
+impl<Trans> IntoMessages<Trans> for Subscriber<Trans> {
+    fn messages(&mut self) -> Messages<'_, Trans>
+    where
+        Trans: Transport,
+    {
+        IntoMessages::messages(&mut self.user)
     }
 }

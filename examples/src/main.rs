@@ -1,6 +1,4 @@
 #![allow(non_snake_case)]
-#![allow(dead_code)]
-//#![no_std]
 
 use core::cell::RefCell;
 
@@ -25,11 +23,20 @@ use iota_streams::{
 
 mod branching;
 
-async fn run_recovery_test<T: Transport>(transport: T, seed: &str) {
-    println!("\tRunning Recovery Test, seed: {}", seed);
+async fn run_recovery_single_branch_test<T: Transport>(transport: T, seed: &str) {
+    println!("\tRunning Recovery Test (single-branch), seed: {}", seed);
     match branching::recovery::example(transport, ChannelType::SingleBranch, seed).await {
-        Err(err) => println!("Error in recovery test: {:?}", err),
-        Ok(_) => println!("\tRecovery test completed!!"),
+        Err(err) => println!("Error in recovery (single-branch) test: {:?}", err),
+        Ok(_) => println!("\tRecovery test (single-branch) completed!!"),
+    }
+    println!("#######################################");
+}
+
+async fn run_recovery_multi_branch_test<T: Transport>(transport: T, seed: &str) {
+    println!("\tRunning Recovery Test (multi-branch), seed: {}", seed);
+    match branching::recovery::example(transport, ChannelType::MultiBranch, seed).await {
+        Err(err) => println!("Error in recovery (multi-branch) test: {:?}", err),
+        Ok(_) => println!("\tRecovery test (multi-branch) completed!!"),
     }
     println!("#######################################");
 }
@@ -61,21 +68,6 @@ async fn run_multi_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("#######################################");
 }
 
-async fn run_main<T: Transport>(transport: T) -> Result<()> {
-    let seed1: &str = "SEEDSINGLE";
-    let seed2: &str = "SEEDSIGNLEDEPTH";
-    let seed3: &str = "SEEDMULTI9";
-    let seed4: &str = "SEEDRECOVERY";
-
-    run_single_branch_test(transport.clone(), seed1).await;
-    run_single_depth_test(transport.clone(), seed2).await;
-    run_multi_branch_test(transport.clone(), seed3).await;
-    run_recovery_test(transport, seed4).await;
-
-    Ok(())
-}
-
-#[allow(dead_code)]
 async fn main_pure() {
     let transport = iota_streams::app_channels::api::tangle::BucketTransport::new();
 
@@ -91,12 +83,12 @@ async fn main_pure() {
     run_single_branch_test(transport.clone(), "PURESEEDA").await;
     run_single_depth_test(transport.clone(), "PURESEEDB").await;
     run_multi_branch_test(transport.clone(), "PURESEEDC").await;
-    run_recovery_test(transport, "PURESEEDD").await;
+    run_recovery_single_branch_test(transport.clone(), "PURESEEDD").await;
+    run_recovery_multi_branch_test(transport.clone(), "PURESEEDF").await;
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }
 
-#[allow(dead_code)]
 async fn main_client() {
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
@@ -111,7 +103,8 @@ async fn main_client() {
     run_single_branch_test(transport.clone(), &new_seed()).await;
     run_single_depth_test(transport.clone(), &new_seed()).await;
     run_multi_branch_test(transport.clone(), &new_seed()).await;
-    run_recovery_test(transport, &new_seed()).await;
+    run_recovery_single_branch_test(transport.clone(), &new_seed()).await;
+    run_recovery_multi_branch_test(transport.clone(), &new_seed()).await;
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

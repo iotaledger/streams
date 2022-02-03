@@ -51,20 +51,18 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
 
     println!("\nShare keyload");
     let mut previous_msg_link = {
-        let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
+        let (msg, _seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-        assert!(seq.is_none());
         msg
     };
 
     for i in 1..6 {
         println!("Signed packet {} - Author", i);
         previous_msg_link = {
-            let (msg, seq) = author
+            let (msg, _seq) = author
                 .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
                 .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-            assert!(seq.is_none());
             msg
         };
     }
@@ -72,16 +70,15 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nWait a moment for messages to propogate...");
     sleep(Duration::from_secs(3));
     println!("Subscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
     for i in 6..11 {
         println!("Tagged packet {} - SubscriberA", i);
         previous_msg_link = {
-            let (msg, seq) = subscriberA
+            let (msg, _seq) = subscriberA
                 .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
                 .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-            assert!(seq.is_none());
             msg
         };
     }
@@ -89,27 +86,31 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nWait a moment for messages to propogate...");
     sleep(Duration::from_secs(3));
     println!("Author fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\n\nTime to try to recover the instance...");
     let mut new_author = Author::recover(seed, &announcement_link, channel_type, transport.clone()).await?;
-    new_author.sync_state().await;
+    new_author.sync_state().await?;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;
 
     let mut latest_link = &announcement_link;
 
-    for (pk, cursor) in state.iter() {
+    for (pk, cursor) in old_state.iter() {
         let mut exists = false;
-        for (p, c) in old_state.iter() {
+        for (p, c) in state.iter() {
             if pk == p && cursor.link == c.link && cursor.branch_no == c.branch_no && cursor.seq_no == c.seq_no {
                 // Set latest link for sequencing later
                 latest_link = &cursor.link;
                 exists = true
             }
         }
-        assert!(exists);
+        assert!(
+            exists,
+            "cursor '{}' present in the original state but not in the new",
+            cursor
+        );
     }
 
     println!("States match...\nSending next sequenced message...");
@@ -121,7 +122,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     // Wait a second for message to propagate
     sleep(Duration::from_secs(1));
     println!("\nSubscriber A fetching transactions...");
-    let msgs = subscriberA.fetch_next_msgs().await;
+    let msgs = subscriberA.fetch_next_msgs().await?;
     assert!(!msgs.is_empty());
 
     let mut matches = false;
