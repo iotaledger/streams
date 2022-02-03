@@ -1,3 +1,4 @@
+use futures::executor::block_on;
 use wasm_bindgen::prelude::*;
 
 use crate::{
@@ -11,11 +12,17 @@ use core::cell::RefCell;
 /// Streams imports
 use iota_streams::{
     app::{
-        futures::executor::block_on,
         id::Identifier,
-        transport::{tangle::client::Client as ApiClient, TransportOptions},
+        transport::{
+            tangle::client::Client as ApiClient,
+            TransportOptions
+        },
     },
-    app_channels::api::{psk_from_seed, pskid_from_psk, tangle::Author as ApiAuthor},
+    app_channels::api::{
+        psk_from_seed,
+        pskid_from_psk,
+        tangle::Author as ApiAuthor
+    },
     core::{
         prelude::{Rc, String, ToString},
         psk::pskid_from_hex_str,

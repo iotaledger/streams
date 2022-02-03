@@ -10,7 +10,7 @@ use iota_streams_core::{
 
 use iota_streams_core::{async_trait, prelude::Box, Errors::MessageNotUnique};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
 }

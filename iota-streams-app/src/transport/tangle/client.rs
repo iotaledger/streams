@@ -1,5 +1,14 @@
 use core::fmt;
-use iota_streams_core::{async_trait, prelude::Box};
+
+use futures::{
+    executor::block_on,
+    future::join_all,
+};
+
+use iota_streams_core::{
+    async_trait,
+    prelude::Box,
+};
 
 pub use iota_client;
 
@@ -10,7 +19,6 @@ use iota_client::bee_message::{payload::Payload, Message};
 use iota_streams_core::{err, prelude::Vec, try_or, wrapped_err, Errors::*, Result, WrappedError};
 
 use crate::{
-    futures::{executor::block_on, future::join_all},
     message::BinaryMessage,
     transport::{tangle::*, *},
 };
@@ -61,10 +69,7 @@ pub fn msg_from_tangle_message(message: &Message, link: &TangleAddress) -> Resul
         }
 
         let binary = BinaryMessage::new(*link, TangleAddress::default(), bytes.into());
-        // TODO get timestamp
-        let timestamp: u64 = 0;
-
-        Ok(TangleMessage { binary, timestamp })
+        Ok(binary)
     } else {
         err!(BadMessagePayload)
     }
@@ -90,13 +95,13 @@ async fn get_messages(client: &iota_client::Client, link: &TangleAddress) -> Res
 
 /// Send a message to the Tangle using a node client
 pub async fn async_send_message_with_options(client: &iota_client::Client, msg: &TangleMessage) -> Result<()> {
-    let hash = msg.binary.link.to_msg_index();
+    let hash = msg.link.to_msg_index();
 
     // TODO: Get rid of copy caused by to_owned
     client
         .message()
         .with_index(hash)
-        .with_data(msg.binary.body.to_bytes())
+        .with_data(msg.body.to_bytes())
         .finish()
         .await?;
     Ok(())
@@ -214,7 +219,7 @@ impl TransportOptions for Client {
 
 #[async_trait(?Send)]
 impl Transport<TangleAddress, TangleMessage> for Client {
-    /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
+    /// Send a Streams message over the Tangle with default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage) -> Result<()> {
         async_send_message_with_options(&self.client, msg).await
     }

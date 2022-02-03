@@ -1,7 +1,9 @@
 #[cfg(not(feature = "std"))]
 pub use alloc::{
-    boxed::{self, Box},
-    cell::{self, RefCell},
+    boxed::{
+        self,
+        Box,
+    },
     format,
     rc::{self, Rc},
     string::{self, String, ToString},
@@ -11,8 +13,10 @@ pub use alloc::{
 
 #[cfg(feature = "std")]
 pub use std::{
-    boxed::{self, Box},
-    cell::{self, RefCell},
+    boxed::{
+        self,
+        Box,
+    },
     format,
     rc::{self, Rc},
     string::{self, String, ToString},
