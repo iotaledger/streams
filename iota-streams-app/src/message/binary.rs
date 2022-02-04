@@ -2,7 +2,6 @@ use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
-use core::fmt::Debug;
 use iota_streams_core::{
     prelude::Vec,
     sponge::prp::PRP,
@@ -62,7 +61,7 @@ impl<AbsLink> BinaryMessage<AbsLink> {
     pub async fn parse_header<F>(&self) -> Result<PreparsedMessage<'_, F, AbsLink>>
     where
         F: PRP,
-        AbsLink: Clone + AbsorbExternalFallback<F> + HasLink + Debug,
+        AbsLink: Clone + AbsorbExternalFallback<F> + HasLink,
     {
         let mut ctx = unwrap::Context::new(self.body.as_bytes());
         let mut header =

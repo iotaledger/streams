@@ -1,6 +1,11 @@
-use core::fmt;
+use core::{
+    borrow::BorrowMut,
+    convert::TryInto,
+    fmt,
+};
 
-use core::borrow::BorrowMut;
+use crypto::keys::x25519;
+
 use iota_streams_app::identifier::Identifier;
 use iota_streams_core::{
     err,
@@ -13,7 +18,6 @@ use iota_streams_core::{
     Errors::BadIdentifier,
     Result,
 };
-use iota_streams_core_edsig::key_exchange::x25519;
 
 pub trait KeyStore<Info, F: PRP>: Default {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
@@ -67,7 +71,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 Identifier::EdPubKey(_id) => self
                     .ke_pks
                     .get_key_value(id)
-                    .map(|(e, (x, _))| (e, x.as_bytes().to_vec())),
+                    .map(|(e, (x, _))| (e, x.as_slice().to_vec())),
                 Identifier::PskId(_id) => self
                     .psks
                     .get_key_value(id)
@@ -127,12 +131,18 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
     fn insert_cursor(&mut self, id: Identifier, info: Info) -> Result<()> {
         match &id {
             Identifier::EdPubKey(pk) => {
-                let store_id = x25519::public_from_ed25519(&pk.0)?;
+                let store_id = pk.try_into()?;
                 self.ke_pks.insert(id, (store_id, info));
                 Ok(())
             }
             Identifier::PskId(_id) => {
-                self.psks.insert(id, (None, info));
+                // not using the entry API to avoid having to pull the Default bound on Info
+                // We cannot just use insert, as we don't have the Option<Psk>
+                if let Some((_, old_info)) = self.psks.get_mut(&id) {
+                    *old_info = info;
+                } else {
+                    self.psks.insert(id, (None, info));
+                }
                 Ok(())
             }
         }
@@ -152,7 +162,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
         let mut keys: Vec<(&Identifier, Vec<u8>)> = self
             .ke_pks
             .iter()
-            .map(|(k, (x, _i))| (k, x.as_bytes().to_vec()))
+            .map(|(k, (x, _i))| (k, x.as_slice().to_vec()))
             .collect();
 
         let psks: Vec<(&Identifier, Vec<u8>)> = self

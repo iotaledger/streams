@@ -11,7 +11,7 @@ description = "A rust implementation of the IOTA Streams applications"
 [features]
 default = ["std", "client"]
 # Enable `std` feature in dependencies
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "hex/std"]
+std = ["iota-streams-core/std", "iota-streams-ddml/std", "hex/std"]
 # rust doesn't support async traits, `async-trait` crate emulates `async` keyword
 # `async` implies `std` for now
 tangle = ["num_cpus", "futures"]
@@ -24,11 +24,12 @@ sync-spin = ["iota-streams-core/sync-spin"]
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
-iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-features = false }
 
 hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
+
+iota-crypto = { version = "0.9.1", default-features = false }
 
 # Dependencies for "client" feature
 iota-client = { version = "1.1.1", default-features = false, optional = true }

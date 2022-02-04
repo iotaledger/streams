@@ -12,6 +12,6 @@ description = "A rust implementation of the IOTA Streams"
 # run with features = ["err-location-log"] for err location logging
 iota-streams = { path = ".." }
 anyhow = { version = "1.0", default-features = false }
-rand = "0.7.3"
+rand = "0.8"
 dotenv = {version = "0.15.0"}
 tokio = {version = "1.1"}

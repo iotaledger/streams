@@ -9,12 +9,18 @@ use core::{
     str::FromStr,
 };
 
-use iota_streams_core::{
-    anyhow,
-    crypto::hashes::{
+use crypto::{
+    hashes::{
         blake2b,
         Digest,
     },
+    signatures::ed25519,
+};
+use cstr_core::CStr;
+use cty::c_char;
+
+use iota_streams_core::{
+    anyhow,
     err,
     prelude::{
         typenum::{
@@ -43,15 +49,11 @@ use iota_streams_core::{
     Result,
     WrappedError,
 };
-use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
     types::*,
 };
-
-use cstr_core::CStr;
-use cty::c_char;
 
 use crate::message::{
     BinaryMessage,
@@ -385,7 +387,7 @@ pub struct AppInst {
 impl AppInst {
     pub fn new(pk: &ed25519::PublicKey, channel_idx: u64) -> Self {
         let mut id = [0_u8; APPINST_SIZE];
-        id[..32].copy_from_slice(pk.as_bytes());
+        id[..32].copy_from_slice(pk.as_slice());
         id[32..].copy_from_slice(&channel_idx.to_be_bytes());
         Self {
             id: unsafe { core::mem::transmute(id) },

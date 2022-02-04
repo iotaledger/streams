@@ -122,7 +122,7 @@ where
     Content: ContentSizeof<F>,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.absorb(&self.frame_type)?.skip(&self.payload_frame_num)?;
+        ctx.absorb(self.frame_type)?.skip(&self.payload_frame_num)?;
         self.content.sizeof(ctx).await?;
         Ok(ctx)
     }
@@ -139,7 +139,7 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.absorb(&self.frame_type)?.skip(&self.payload_frame_num)?;
+        ctx.absorb(self.frame_type)?.skip(&self.payload_frame_num)?;
         self.content.wrap(store, ctx).await?;
         Ok(ctx)
     }

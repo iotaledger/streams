@@ -1,25 +1,17 @@
-#![allow(clippy::derivable_impls)]
-
-use iota_streams_core::{
-    prelude::{
-        generic_array::GenericArray,
+use crate::{
+    prelude::generic_array::{
         typenum::{
             U168,
             U32,
         },
+        GenericArray,
     },
     sponge::prp::PRP,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct KeccakF1600 {
     state: [u64; 25],
-}
-
-impl Default for KeccakF1600 {
-    fn default() -> Self {
-        Self { state: [0u64; 25] }
-    }
 }
 
 impl KeccakF1600 {

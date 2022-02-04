@@ -49,10 +49,13 @@
 //! 1) Keys identities are not encrypted and may be linked to recipients identities.
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
-
-use crate::Lookup;
-
 use core::convert::TryFrom;
+
+use crypto::{
+    keys::x25519,
+    signatures::ed25519,
+};
+
 use iota_streams_app::{
     identifier::Identifier,
     message::{
@@ -78,10 +81,6 @@ use iota_streams_core::{
     Result,
     WrappedError,
 };
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -92,6 +91,8 @@ use iota_streams_ddml::{
     types::*,
 };
 
+use crate::Lookup;
+
 pub struct ContentWrap<'a, F, Link>
 where
     Link: HasLink,
@@ -100,7 +101,7 @@ where
     pub nonce: NBytes<U16>,
     pub key: NBytes<U32>,
     pub(crate) keys: Vec<(&'a Identifier, Vec<u8>)>,
-    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) author_private_key: &'a ed25519::SecretKey,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -141,7 +142,7 @@ where
 
         ctx.absorb(External(&self.key))?;
         // Fork for signing
-        ctx.ed25519(self.sig_kp, HashSig)?;
+        ctx.ed25519(self.author_private_key, HashSig)?;
         ctx.commit()?;
         Ok(ctx)
     }
@@ -196,7 +197,7 @@ where
         ctx.absorb(External(&self.key))?;
         // Fork the context to sign
         let signature_fork = ctx.spongos.fork();
-        ctx.absorb(&id_hash)?.ed25519(self.sig_kp, HashSig)?;
+        ctx.absorb(&id_hash)?.ed25519(self.author_private_key, HashSig)?;
         ctx.spongos = signature_fork;
         ctx.commit()?;
         Ok(ctx)
@@ -225,7 +226,7 @@ where
 {
     pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, sig_pk: &'a ed25519::PublicKey) -> Self {
         Self {
-            link: <<Link as HasLink>::Rel as Default>::default(),
+            link: Default::default(),
             nonce: NBytes::default(),
             psk_store,
             ke_sk_store,
@@ -246,7 +247,7 @@ where
     Link::Rel: Eq + Default + SkipFallback<F>,
     LStore: LinkStore<F, Link::Rel>,
     PskStore: for<'c> Lookup<&'c Identifier, psk::Psk>,
-    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b,
+    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::SecretKey> + 'b,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,

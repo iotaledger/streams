@@ -35,7 +35,7 @@ use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
 
-use iota_streams_core_edsig::signature::ed25519;
+use crypto::signatures::ed25519;
 
 /// Identifiers for Pre-Shared Keys
 pub type PskIds = psk::PskIds;
@@ -59,6 +59,7 @@ pub type WrapState = message::WrapState<DefaultF, Address>;
 pub type WrappedSequence = super::user::WrappedSequence<DefaultF, Address>;
 /// Ed25519 Public Key
 pub type PublicKey = ed25519::PublicKey;
+pub const PUBLIC_KEY_LENGTH: usize = ed25519::PUBLIC_KEY_LENGTH;
 
 /// Message type with parsed header.
 pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;

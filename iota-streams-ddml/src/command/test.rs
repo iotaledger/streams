@@ -1,3 +1,8 @@
+use crypto::{
+    keys::x25519,
+    signatures::ed25519,
+};
+
 use iota_streams_core::{
     prelude::{
         string::ToString,
@@ -8,16 +13,14 @@ use iota_streams_core::{
         Vec,
     },
     prng,
-    sponge::prp::PRP,
+    sponge::prp::{
+        keccak::KeccakF1600,
+        PRP,
+    },
     try_or,
     Errors::*,
     Result,
 };
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
-use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 
 use crate::{
     command::*,
@@ -32,13 +35,13 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
     for t in 0_u8..10_u8 {
         let t = Uint8(t);
         let buf_size = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.get_size();
-        let buf_size2 = sizeof::Context::<F>::new().absorb(&t)?.mask(&t)?.get_size();
+        let buf_size2 = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.get_size();
         try_or!(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
         try_or!(buf_size == 2, ValueMismatch(2, buf_size))?;
 
         {
             let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-            ctx.commit()?.absorb(&t)?.mask(&t)?.commit()?.squeeze(&mut tag_wrap)?;
+            ctx.commit()?.absorb(t)?.mask(t)?.commit()?.squeeze(&mut tag_wrap)?;
             try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
@@ -78,14 +81,14 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
     for n in ns.iter() {
         let s = Size(*n);
         let buf_size = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.get_size();
-        let buf_size2 = sizeof::Context::<F>::new().absorb(&s)?.mask(&s)?.get_size();
+        let buf_size2 = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.get_size();
         try_or!(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
 
         let mut buf = vec![0_u8; buf_size];
 
         {
             let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-            ctx.commit()?.absorb(&s)?.mask(&s)?.commit()?.squeeze(&mut tag_wrap)?;
+            ctx.commit()?.absorb(s)?.mask(s)?.commit()?.squeeze(&mut tag_wrap)?;
             try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
@@ -220,9 +223,7 @@ fn bytes() {
 }
 
 fn absorb_ed25519<F: PRP>() -> Result<()> {
-    let secret = ed25519::SecretKey::from_bytes(&[7; ed25519::SECRET_KEY_LENGTH]).unwrap();
-    let public = ed25519::PublicKey::from(&secret);
-    let kp = ed25519::Keypair { secret, public };
+    let secret = ed25519::SecretKey::from_bytes([7; ed25519::SECRET_KEY_LENGTH]);
 
     let ta = Bytes([3_u8; 17].to_vec());
     let mut uta = Bytes(Vec::new());
@@ -234,8 +235,8 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
         ctx.absorb(&ta)?
             .commit()?
             .squeeze(&hash)?
-            .ed25519(&kp, &hash)?
-            .ed25519(&kp, HashSig)?;
+            .ed25519(&secret, &hash)?
+            .ed25519(&secret, HashSig)?;
         ctx.get_size()
     };
 
@@ -246,8 +247,8 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
         ctx.absorb(&ta)?
             .commit()?
             .squeeze(&mut hash)?
-            .ed25519(&kp, &hash)?
-            .ed25519(&kp, HashSig)?;
+            .ed25519(&secret, &hash)?
+            .ed25519(&secret, HashSig)?;
         try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
@@ -256,8 +257,8 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
         ctx.absorb(&mut uta)?
             .commit()?
             .squeeze(&mut uhash)?
-            .ed25519(&public, &uhash)?
-            .ed25519(&public, HashSig)?;
+            .ed25519(&secret.public_key(), &uhash)?
+            .ed25519(&secret.public_key(), HashSig)?;
         try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 
@@ -275,19 +276,17 @@ fn test_ed25519() {
 }
 
 fn x25519_static<F: PRP>() -> Result<()> {
-    let secret_a = x25519::StaticSecret::from([11; 32]);
-    let secret_b = x25519::StaticSecret::from([13; 32]);
-    let public_a = x25519::PublicKey::from(&secret_a);
-    let public_b = x25519::PublicKey::from(&secret_b);
-    let mut public_b2 = x25519::PublicKey::from([0_u8; 32]);
+    let secret_a = x25519::SecretKey::from_bytes([11; 32]);
+    let secret_b = x25519::SecretKey::from_bytes([13; 32]);
+    let mut public_b2 = x25519::PublicKey::from_bytes([0_u8; 32]);
 
     let ta = Bytes([3_u8; 17].to_vec());
     let mut uta = Bytes(Vec::new());
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
-        ctx.absorb(&public_b)?
-            .x25519(&secret_b, &public_a)?
+        ctx.absorb(&secret_b.public_key())?
+            .x25519(&secret_b, &secret_a.public_key())?
             .commit()?
             .mask(&ta)?;
         ctx.get_size()
@@ -297,8 +296,8 @@ fn x25519_static<F: PRP>() -> Result<()> {
 
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-        ctx.absorb(&public_b)?
-            .x25519(&secret_b, &public_a)?
+        ctx.absorb(&secret_b.public_key())?
+            .x25519(&secret_b, &secret_a.public_key())?
             .commit()?
             .mask(&ta)?;
         try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
@@ -319,19 +318,17 @@ fn x25519_static<F: PRP>() -> Result<()> {
 }
 
 fn x25519_ephemeral<F: PRP>() -> Result<()> {
-    let secret_a = x25519::EphemeralSecret::new(&mut rand::thread_rng());
-    let secret_b = x25519::EphemeralSecret::new(&mut rand::thread_rng());
-    let public_a = x25519::PublicKey::from(&secret_a);
-    let public_b = x25519::PublicKey::from(&secret_b);
-    let mut public_b2 = x25519::PublicKey::from([0_u8; 32]);
+    let secret_a = x25519::SecretKey::generate_with(&mut rand::thread_rng());
+    let secret_b = x25519::SecretKey::generate_with(&mut rand::thread_rng());
+    let mut public_b2 = x25519::PublicKey::from_bytes([0_u8; 32]);
 
     let ta = Bytes([3_u8; 17].to_vec());
     let mut uta = Bytes(Vec::new());
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
-        ctx.absorb(&public_b)?
-            .x25519(&secret_b, &public_a)?
+        ctx.absorb(&secret_b.public_key())?
+            .x25519(&secret_b, &secret_a.public_key())?
             .commit()?
             .mask(&ta)?;
         ctx.get_size()
@@ -341,8 +338,8 @@ fn x25519_ephemeral<F: PRP>() -> Result<()> {
 
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-        ctx.absorb(&public_b)?
-            .x25519(secret_b, &public_a)?
+        ctx.absorb(&secret_b.public_key())?
+            .x25519(&secret_b, &secret_a.public_key())?
             .commit()?
             .mask(&ta)?;
         try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
@@ -351,7 +348,7 @@ fn x25519_ephemeral<F: PRP>() -> Result<()> {
     {
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
         ctx.absorb(&mut public_b2)?
-            .x25519(secret_a, &public_b2)?
+            .x25519(&secret_a, &public_b2)?
             .commit()?
             .mask(&mut uta)?;
         try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
@@ -363,15 +360,14 @@ fn x25519_ephemeral<F: PRP>() -> Result<()> {
 }
 
 fn x25519_transport<F: PRP>() -> Result<()> {
-    let secret_a = x25519::StaticSecret::new(&mut rand::thread_rng());
-    let public_a = x25519::PublicKey::from(&secret_a);
+    let secret_a = x25519::SecretKey::generate_with(&mut rand::thread_rng());
 
     let key = NBytes::<U32>::default();
     let mut ukey = NBytes::<U32>::default();
 
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
-        ctx.x25519(&public_a, &key)?;
+        ctx.x25519(&secret_a.public_key(), &key)?;
         ctx.get_size()
     };
 
@@ -379,7 +375,7 @@ fn x25519_transport<F: PRP>() -> Result<()> {
 
     {
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-        ctx.x25519(&public_a, &key)?;
+        ctx.x25519(&secret_a.public_key(), &key)?;
         try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
     }
 

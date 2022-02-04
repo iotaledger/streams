@@ -22,6 +22,7 @@ use iota_streams::{
         MsgId as ApiMsgId,
         PublicKey,
         UnwrappedMessage,
+        PUBLIC_KEY_LENGTH,
     },
     core::{
         prelude::{
@@ -453,12 +454,15 @@ pub(crate) fn identifier_to_string(id: &Identifier) -> String {
 }
 
 pub(crate) fn public_key_to_string(pk: &PublicKey) -> String {
-    hex::encode(pk.as_bytes())
+    hex::encode(pk)
 }
 
 pub(crate) fn public_key_from_string(hex_str: &str) -> Result<PublicKey> {
     let bytes = hex::decode(hex_str).into_js_result()?;
-    PublicKey::from_bytes(&bytes).into_js_result()
+    // TODO: implement try_from_slice in crypto.rs
+    let mut byte_array = [0; PUBLIC_KEY_LENGTH];
+    byte_array.copy_from_slice(&bytes);
+    PublicKey::try_from_bytes(byte_array).into_js_result()
 }
 
 /// Collection of PublicKeys representing a set of users
@@ -517,7 +521,7 @@ mod public_keys_tests {
     #[wasm_bindgen_test]
     fn test_add_public_key() {
         let mut expected = PublicKeys::new();
-        let key = public_key_to_string(&PublicKey::default());
+        let key = public_key_to_string(&PublicKey::try_from_bytes([0; 32]).unwrap());
         expected.add(key.clone()).expect("preparing expected PublicKeys");
         let actual = public_keys_with(&key).expect("adding key to PublicKeys in Javascript");
         assert_eq!(actual, expected);
@@ -641,10 +645,7 @@ impl From<ApiDetails> for Details {
     fn from(details: ApiDetails) -> Self {
         Self {
             metadata: details.metadata.into(),
-            milestone: match details.milestone {
-                Some(ms) => Some(ms.into()),
-                None => None,
-            },
+            milestone: details.milestone.map(Into::into),
         }
     }
 }
@@ -718,10 +719,7 @@ impl From<ApiMessageMetadata> for MessageMetadata {
             is_solid: metadata.is_solid,
             referenced_by_milestone_index: metadata.referenced_by_milestone_index,
             milestone_index: metadata.milestone_index,
-            ledger_inclusion_state: match metadata.ledger_inclusion_state {
-                None => None,
-                Some(inc) => Some(inc.into()),
-            },
+            ledger_inclusion_state: metadata.ledger_inclusion_state.map(Into::into),
             conflict_reason: metadata.conflict_reason,
             should_promote: metadata.should_promote,
             should_reattach: metadata.should_reattach,

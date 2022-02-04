@@ -141,9 +141,9 @@ impl Author {
         Ok(pskid_str)
     }
 
-    #[wasm_bindgen(catch)]
-    pub fn get_public_key(&self) -> Result<String> {
-        Ok(public_key_to_string(self.author.borrow_mut().get_public_key()))
+    #[wasm_bindgen(getter, js_name = "publicKey")]
+    pub fn get_public_key(&self) -> String {
+        public_key_to_string(self.author.borrow_mut().public_key())
     }
 
     #[wasm_bindgen(catch)]
@@ -386,7 +386,7 @@ impl Author {
 
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
         pskid_from_hex_str(&pskid_str)
-            .and_then(|pskid| self.author.borrow_mut().remove_psk(pskid).into())
+            .and_then(|pskid| self.author.borrow_mut().remove_psk(pskid))
             .into_js_result()
     }
 }
