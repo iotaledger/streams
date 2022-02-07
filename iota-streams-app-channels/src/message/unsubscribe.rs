@@ -22,6 +22,8 @@
 //! * `sig` -- message signature generated with the senders private key.
 use crypto::signatures::ed25519;
 
+use core::marker::PhantomData;
+
 use iota_streams_app::message::{
     self,
     HasLink,
@@ -45,7 +47,7 @@ use iota_streams_ddml::{
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) subscriber_private_key: &'a ed25519::SecretKey,
-    pub(crate) _phantom: std::marker::PhantomData<(F, Link)>,
+    pub(crate) _phantom: PhantomData<(F, Link)>,
 }
 
 #[async_trait(?Send)]
@@ -89,7 +91,7 @@ where
 pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: Link::Rel,
     pub(crate) subscriber_public_key: ed25519::PublicKey,
-    _phantom: std::marker::PhantomData<(F, Link)>,
+    _phantom: PhantomData<(F, Link)>,
 }
 
 impl<F, Link: HasLink> Default for ContentUnwrap<F, Link> {

@@ -2,6 +2,8 @@
 #![allow(dead_code)]
 //#![no_std]
 
+use core::cell::RefCell;
+
 use std::env;
 
 use rand::Rng;
@@ -15,7 +17,6 @@ use iota_streams::{
     core::{
         prelude::{
             Rc,
-            RefCell,
             String,
         },
         Result,

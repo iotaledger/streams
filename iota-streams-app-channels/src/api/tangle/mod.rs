@@ -92,8 +92,8 @@ pub use msginfo::MsgInfo;
 // However, chances are it is the most frequent variant, therefore a profile must confirm there's
 // enough performance improvement to justify the ergonomic drawback of re-enabling this lint
 #[allow(clippy::large_enum_variant)]
-/// Message body returned as part of handle message routine.
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Message body returned as part of handle message routine.
 pub enum MessageContent {
     Announce,
     Keyload,

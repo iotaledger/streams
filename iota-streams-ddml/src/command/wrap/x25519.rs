@@ -1,5 +1,7 @@
 use crypto::keys::x25519;
 
+#[cfg(feature = "std")]
+use iota_streams_core::prng::rng;
 #[cfg(not(feature = "std"))]
 use iota_streams_core::{
     err,
@@ -42,7 +44,7 @@ impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::SecretKey, &'a x25519::Publ
 #[cfg(feature = "std")]
 impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F, OS> {
     fn x25519(&mut self, remote_public_key: &x25519::PublicKey, key: &NBytes<N>) -> Result<&mut Self> {
-        let ephemeral_secret_key = x25519::SecretKey::generate_with(&mut rand::thread_rng());
+        let ephemeral_secret_key = x25519::SecretKey::generate_with(&mut rng());
         self.absorb(&ephemeral_secret_key.public_key())?
             .x25519(&ephemeral_secret_key, remote_public_key)?
             .commit()?

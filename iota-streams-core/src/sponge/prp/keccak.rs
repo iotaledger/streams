@@ -9,7 +9,7 @@ use crate::{
     sponge::prp::PRP,
 };
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct KeccakF1600 {
     state: [u64; 25],
 }

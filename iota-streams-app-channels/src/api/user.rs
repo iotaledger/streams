@@ -292,7 +292,11 @@ where
                     key_store.insert_cursor(*id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
                 }
                 self.key_store = key_store;
-                self.link_store = LS::default();
+
+                let mut link_store = LS::default();
+                let ann_state = self.link_store.lookup(appinst.rel())?;
+                link_store.update(appinst.rel(), ann_state.0, ann_state.1)?;
+                self.link_store = link_store;
 
                 self.link_gen.reset(appinst.clone());
                 Ok(())
