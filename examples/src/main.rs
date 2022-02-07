@@ -118,7 +118,7 @@ async fn main_client() {
 fn new_seed() -> String {
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
     (0..10)
-        .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
+        .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0..27)).unwrap())
         .collect::<String>()
 }
 
