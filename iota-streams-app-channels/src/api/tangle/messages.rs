@@ -222,6 +222,7 @@ pub trait IntoMessages<Trans> {
 ///
 /// ### Author
 /// ```
+/// # use core::cell::RefCell;
 /// use iota_streams_app_channels::{
 ///     api::tangle::futures::TryStreamExt,
 ///     Author,
@@ -231,7 +232,7 @@ pub trait IntoMessages<Trans> {
 ///     Tangle,
 /// };
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
-/// # use iota_streams_core::{prelude::{Rc, RefCell}, Result};
+/// # use iota_streams_core::{prelude::Rc, Result};
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
@@ -313,6 +314,7 @@ pub trait IntoMessages<Trans> {
 ///
 /// # Subscriber
 /// ```
+/// # use core::cell::RefCell;
 /// use iota_streams_app_channels::{
 ///     api::tangle::futures::TryStreamExt,
 ///     Author,
@@ -322,7 +324,7 @@ pub trait IntoMessages<Trans> {
 ///     Tangle,
 /// };
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
-/// # use iota_streams_core::{prelude::{Rc, RefCell}, Result};
+/// # use iota_streams_core::{prelude::Rc, Result};
 /// #
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
@@ -653,7 +655,7 @@ impl<'a, Trans> MessagesState<'a, Trans> {
             };
             match self.user.transport.recv_message(&link).await {
                 Ok(msg) => {
-                    self.stage.push_back(msg.binary);
+                    self.stage.push_back(msg);
                     self.successful_round = true;
                     self.next().await
                 }

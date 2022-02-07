@@ -1,3 +1,4 @@
+use futures::executor::block_on;
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
@@ -8,12 +9,9 @@ use crate::{
 
 use core::cell::RefCell;
 use iota_streams::{
-    app::{
-        futures::executor::block_on,
-        transport::{
-            tangle::client::Client as ApiClient,
-            TransportOptions,
-        },
+    app::transport::{
+        tangle::client::Client as ApiClient,
+        TransportOptions,
     },
     app_channels::api::{
         psk_from_seed,

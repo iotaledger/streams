@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use core::cell::RefCell;
+
 use std::env;
 
 use rand::Rng;
@@ -12,7 +14,6 @@ use iota_streams::{
     },
     core::prelude::{
         Rc,
-        RefCell,
         String,
     },
 };

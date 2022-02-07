@@ -13,7 +13,7 @@ default = ["std", "client"]
 # Enable `std` feature in dependencies
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "hex/std"]
 # Enable Tangle-specific transport abstractions
-tangle = ["num_cpus"]
+tangle = []
 # Enable Tangle transport client implementation (implies `tangle` and `std` features)
 client = ["iota-client/async", "futures", "tangle", "std"]
 # Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
@@ -29,11 +29,10 @@ iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsi
 iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-features = false }
 
 hex = { version = "0.4", default-features = false, optional = false }
-futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
 # Dependencies for "client" feature
 iota-client = { version = "1.1.1", default-features = false, optional = true }
-num_cpus = { version = "1.10", optional = true }
+futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 cty = { version = "0.2.1" }

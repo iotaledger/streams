@@ -203,7 +203,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
         let ann = author.user.user.announce().await?;
         let retrieved: Message = author.user.transport.recv_message(announcement).await?;
-        assert!(retrieved.binary == ann.message);
+        assert!(retrieved == ann.message);
 
         author.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
 
