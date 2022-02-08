@@ -375,11 +375,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub async fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         let msg = self.transport.recv_message(link).await?;
         if let Some(_addr) = &self.user.appinst {
-            let seq_msg = self
-                .user
-                .handle_sequence(&msg, MsgInfo::Sequence, true)
-                .await?
-                .body;
+            let seq_msg = self.user.handle_sequence(&msg, MsgInfo::Sequence, true).await?.body;
             let msg_cursor = self
                 .user
                 .gen_link(seq_msg.id, &seq_msg.ref_link, seq_msg.seq_num.0 as u32);
@@ -395,11 +391,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link` - Address of the message to be processed
     pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
-        // TODO: msg.timestamp is lost
-        let m = self
-            .user
-            .handle_signed_packet(&msg, MsgInfo::SignedPacket)
-            .await?;
+        let m = self.user.handle_signed_packet(&msg, MsgInfo::SignedPacket).await?;
         Ok(m.body)
     }
 
@@ -409,10 +401,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link` - Address of the message to be processed
     pub async fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
-        let m = self
-            .user
-            .handle_tagged_packet(&msg, MsgInfo::TaggedPacket)
-            .await?;
+        let m = self.user.handle_tagged_packet(&msg, MsgInfo::TaggedPacket).await?;
         Ok(m.body)
     }
 
@@ -422,7 +411,6 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link` - Address of the message to be processed
     pub async fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
         let msg = self.transport.recv_message(link).await?;
-        // TODO: Timestamp is lost.
         self.user.handle_subscribe(&msg, MsgInfo::Subscribe).await
     }
 
@@ -446,7 +434,7 @@ impl<Trans: Transport + Clone> User<Trans> {
 
     /// Receive and process a keyload message [Subscriber].
     ///
-    ///  # Arguments
+    ///  # Argument&s
     ///  * `link` - Address of the message to be processed
     pub async fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         let msg = self.transport.recv_message(link).await?;

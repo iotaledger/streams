@@ -12,12 +12,9 @@ use iota_streams::{
         ChannelType,
         Transport,
     },
-    core::{
-        prelude::{
-            Rc,
-            String,
-        },
-        Result,
+    core::prelude::{
+        Rc,
+        String,
     },
 };
 

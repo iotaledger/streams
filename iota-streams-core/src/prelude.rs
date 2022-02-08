@@ -4,10 +4,6 @@ pub use alloc::{
         self,
         Box,
     },
-    cell::{
-        self,
-        RefCell,
-    },
     collections::vec_deque::VecDeque,
     format,
     rc::{self, Rc},
@@ -21,10 +17,6 @@ pub use std::{
     boxed::{
         self,
         Box,
-    },
-    cell::{
-        self,
-        RefCell,
     },
     collections::vec_deque::VecDeque,
     format,
