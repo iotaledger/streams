@@ -58,7 +58,7 @@ async function main() {
   console.log("Keyload message index: " + keyload_link.toMsgIndexHex());
 
   console.log("Subscriber syncing...");
-  await sub.clone().sync_state();
+  await sub.clone().syncState();
 
   let public_payload = to_bytes("Public");
   let masked_payload = to_bytes("Masked");
@@ -84,23 +84,14 @@ async function main() {
   }
 
   console.log("\nAuthor fetching next messages");
-  let exists = true;
-  while (exists) {
-    let next_msgs = await auth.clone().fetch_next_msgs();
-
-    if (next_msgs.length === 0) {
-      exists = false;
-    }
-
-    for (var i = 0; i < next_msgs.length; i++) {
-      console.log("Found a message...");
-      console.log(
-        "Public: ",
-        from_bytes(next_msgs[i].message.get_public_payload()),
-        "\tMasked: ",
-        from_bytes(next_msgs[i].message.get_masked_payload())
-      );
-    }
+  for (const msg of await auth.clone().fetchNextMsgs()) {
+    console.log("Found a message...");
+    console.log(
+      "Public: ",
+      from_bytes(msg.message.get_public_payload()),
+      "\tMasked: ",
+      from_bytes(msg.message.get_masked_payload())
+    );
   }
 
   console.log("\nSub sending unsubscribe message");

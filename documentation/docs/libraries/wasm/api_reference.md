@@ -286,8 +286,7 @@ to ensure the user state matches all other publishers.
 
 
 #### _async -_ fetch_next_msgs(): Array&lt;[UserResponse](#UserResponse)>
-
-Fetch the next message sent by each publisher (empty array if none are present).
+Fetch all the next messages pending to be received by the user (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
@@ -316,16 +315,6 @@ Fetch a defined number of previous messages in a channel.
 | max             | `number`                      | Max number of messages to fetch     |
 
 **Returns:** An array of User Response wrappers around the retrieved messages.
-
-
-Array&lt;_async -_ gen_next_msg_ids(): Array&lt;[NextMsgId](#NextMsgId)>
-Fetch the next message sent by each publisher (empty array if none are present).
-
-| Param           | Type                          | Description                         |
-| --------------- | ----------------------------- | ----------------------------------- |
-
-**Returns:** An array of NextMsgId wrappers for each publisher in the channel.
-
 
 #### store_psk(psk): String 
 
@@ -653,7 +642,7 @@ to ensure the user state matches all other publishers.
 
 #### _async -_ fetch_next_msgs(): Array&lt;[UserResponse](#UserResponse)>
 
-Fetch the next message sent by each publisher (empty array if none are present).
+Fetch all the next messages pending to be received by the user (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
