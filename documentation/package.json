@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "private": "true",
   "scripts": {
-    "start": "iota-wiki-cli start",
-    "clean": "iota-wiki-cli clean",
-    "setup": "iota-wiki-cli setup",
+    "start": "\"iota-wiki-cli start\"",
+    "clean": "\"iota-wiki-cli clean\"",
+    "setup": "\"iota-wiki-cli setup\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "license": "UNLICENSED",
@@ -13,6 +13,6 @@
     "node": ">=14.14.0"
   },
   "dependencies": {
-    "iota-wiki-cli": "npm:@iota-community/iota-wiki-cli@^1.7.0"
+    "iota-wiki-cli": "git+https://github.com/iota-community/iota-wiki-cli#39b71bcfe5ae9c1b017196a674bf5a6d91b663ee"
   }
 }
