@@ -5,7 +5,6 @@ keywords:
 - bindings
 - library
 - rust
-- java
 - wasm
 - c
 ---

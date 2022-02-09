@@ -3,7 +3,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 module.exports = {
-  title: 'iota.rs',
+  title: 'streams',
   tagline: 'Official IOTA Streams library',
   url: 'https://wiki.iota.org/streams/welcome/',
   baseUrl: '/',
