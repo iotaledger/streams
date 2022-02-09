@@ -1,5 +1,5 @@
 /**
- * Creating a sidebar enables you to:
+ * * Creating a sidebar enables you to:
  - create an ordered group of docs
  - render a sidebar for each doc of that group
  - provide next/previous navigation
@@ -10,130 +10,106 @@
  */
 
 module.exports = {
-  docs: [
-    {
-      type: "doc",
-      id: "welcome",
+  docs: [{
+    type: 'doc',
+    id: 'welcome',
+  },
+  {
+    type: 'doc',
+    id: 'overview',
+  },
+  {
+    type: 'doc',
+    id: 'getting_started',
+  },
+  {
+    type: 'category',
+    label: 'Libraries',
+    collapsed: false,
+    items: [{
+      type: 'doc',
+      id: 'libraries/overview',
+      label: 'Overview',
     },
     {
-      type: "doc",
-      id: "overview/overview",
-      label: "Overview",
-    },
-    {
-      type: "category",
-      label: "Libraries",
-      collapsed: false,
+      type: 'category',
+      label: 'Rust',
       items: [
         {
           type: 'doc',
-          label: 'Overview',
-          id: 'libraries/overview'
+          id: 'libraries/rust/getting_started',
+          label: 'Getting Started',
         },
         {
-          type: "category",
-          label: "Rust",
-          items: [
-            {
-              type: "doc",
-              id: "libraries/rust/overview",
-              label: "Overview",
-            },
-            {
-              type: "doc",
-              id: "libraries/rust/examples",
-              label: "Examples",
-            },
-            {
-              type: "doc",
-              id: "libraries/rust/getting_started",
-              label: "Getting Started",
-            },
-            {
-              type: "doc",
-              id: "libraries/rust/api_reference",
-              label: "API Reference",
-            },
-            {
-              type: "doc",
-              id: "libraries/rust/troubleshooting",
-              label: "Troubleshooting",
-            },
-          ],
+          type: 'doc',
+          id: 'libraries/rust/examples',
+          label: 'Examples'
         },
         {
-          type: "category",
-          label: "WASM",
-          items: [
-            {
-              type: "doc",
-              id: "libraries/wasm/overview",
-              label: "Overview",
-            },
-            {
-              type: "doc",
-              id: "libraries/wasm/examples",
-              label: "Examples",
-            },
-            {
-              type: "doc",
-              id: "libraries/wasm/getting_started",
-              label: "Getting Started",
-            },
-            {
-              type: "doc",
-              id: "libraries/wasm/api_reference",
-              label: "API Reference",
-            },
-            {
-              type: "doc",
-              id: "libraries/wasm/troubleshooting",
-              label: "Troubleshooting",
-            },
-          ],
+          type: 'doc',
+          id: 'libraries/rust/api_reference',
+          label: 'API Reference'
         },
-        {
-          type: "category",
-          label: "C",
-          items: [
-            {
-              type: "doc",
-              id: "libraries/c/overview",
-              label: "Overview",
-            },
-            {
-              type: "doc",
-              id: "libraries/c/examples",
-              label: "Examples",
-            },
-            {
-              type: "doc",
-              id: "libraries/c/getting_started",
-              label: "Getting Started",
-            },
-            {
-              type: "doc",
-              id: "libraries/c/api_reference",
-              label: "API Reference",
-            },
-            {
-              type: "doc",
-              id: "libraries/c/troubleshooting",
-              label: "Troubleshooting",
-            },
-          ],
-        },
-      ],
+      ]
     },
     {
-      type: "doc",
-      id: "specs",
-      label: "Specification",
+      type: 'category',
+      label: 'Wasm',
+      items: [
+        {
+          type: 'doc',
+          id: 'libraries/wasm/getting_started',
+          label: 'Getting Started'
+        },
+        {
+          type: 'doc',
+          id: 'libraries/wasm/examples',
+          label: 'Examples'
+        },
+        {
+          type: 'doc',
+          id: 'libraries/wasm/api_reference',
+          label: 'API Reference'
+        },
+      ]
     },
     {
-      type: "doc",
-      id: "contribute",
-      label: "Contribute",
-    },
-  ],
+      type: 'category',
+      label: 'C',
+      items: [
+        {
+          type: 'doc',
+          id: 'libraries/c/getting_started',
+          label: 'Getting Started'
+        },
+        {
+          type: 'doc',
+          id: 'libraries/c/examples',
+          label: 'Examples'
+        },
+        {
+          type: 'doc',
+          id: 'libraries/c/api_reference',
+          label: 'API Reference'
+        },
+      ]
+    }
+    ]
+  },
+  {
+    type: 'doc',
+    id: 'specs',
+    label: 'Specification',
+  },
+  {
+    type: 'doc',
+    id: 'troubleshooting',
+    label: 'Troubleshooting'
+  },
+  {
+    type: 'doc',
+    id: 'contribute',
+    label: 'Contribute',
+  }
+  ]
 };

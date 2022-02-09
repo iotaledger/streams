@@ -1,3 +1,11 @@
+---
+description: Official IOTA Streams Rust API examples.
+image: /img/logo/iota_mark_light.png
+keywords:
+- api
+- Rust
+- examples
+---
 # Examples
 A list of example implementations can be found [here](https://github.com/iotaledger/streams-examples)
 

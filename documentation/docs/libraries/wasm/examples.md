@@ -1,3 +1,14 @@
+---
+description: Official IOTA Streams Wasm API examples.
+image: /img/logo/iota_mark_light.png
+keywords:
+- api
+- wasm
+- js
+- javascript
+- node
+- examples
+---
 # Examples
 An overview example of the available api tools can be found [here](../../../../bindings/wasm/examples/node.js).
 The general API is simply an abstraction over the rust library, so the examples found 

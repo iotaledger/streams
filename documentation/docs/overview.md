@@ -1,3 +1,17 @@
+---
+description: "The Streams framework is intended to be a secure message verification and protection protocol 
+for sending data over a given transport layer"
+image: /img/overview/layered_overview.svg
+keywords:
+- layered overview
+- high level
+- low level
+- stronghold
+- channels
+- author
+- subscriber
+- value transactions
+---
 # Overview
 The IOTA Streams framework is intended to be a secure message verification and protection protocol 
 for sending data over a given transport layer. 
