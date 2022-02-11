@@ -11,17 +11,26 @@ license = "MIT"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = { version = "0.2" }
+# wasm-bindgen version 0.2.77 adds support for From<usize> for JsValue,
+# and proper async return types for Typescript and documentation
+wasm-bindgen = "0.2.77"
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1.6"
-js-sys = "0.3.46"
+# js-sys version 0.3.55 implements `Extend<A: AsRef<JsValue>> for Array` which we need to build one the `Messages` stream.
+js-sys = "0.3.55"
 
 serde = { version = "1.0", features = ["derive"] }
 iota-streams = {path = "../../", default-features = false, features = ["tangle", "wasm-client"]}
-client-wasm = { git = "https://github.com/iotaledger/iota.rs", rev  = "ee19ec4", default-features = false }
+client-wasm = { git = "https://github.com/iotaledger/iota.rs", rev  = "250ed55", default-features = false }
+futures = { version = "0.3.8", default-features = false, features = ["executor"]}
 
 # Needed to specify the js/wasm feature for a sub-crate
 getrandom = {version = "0.2.2", features = ["js"]}
+rand = { version = "0.7", default-features = false, features = ["wasm-bindgen"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.28"
+
+[patch.crates-io]
+# the iota-client used by iota-streams needs to match the iota-client used by client-wasm
+iota-client = { git = "https://github.com/iotaledger/iota.rs", rev  = "250ed55" }

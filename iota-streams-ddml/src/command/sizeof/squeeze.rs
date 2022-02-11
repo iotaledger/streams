@@ -1,7 +1,10 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{command::Squeeze, types::Mac};
+use crate::{
+    command::Squeeze,
+    types::Mac,
+};
 
 /// Mac is just like NBytes.
 impl<F> Squeeze<&Mac> for Context<F> {

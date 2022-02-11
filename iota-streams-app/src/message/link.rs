@@ -1,6 +1,9 @@
 use core::fmt;
 
-use iota_streams_core::{prelude::Vec, Result};
+use iota_streams_core::{
+    prelude::Vec,
+    Result,
+};
 
 use super::hdf::HDF;
 use crate::id::identifier::Identifier;
@@ -32,7 +35,7 @@ pub trait HasLink: Sized + Default + Clone + Eq {
 
 /// Represents an input state for message identifier generation.
 /// Contains an Address and sequencing states.
-#[derive(Clone, Default)]
+#[derive(Clone, Copy, Hash, Default)]
 pub struct Cursor<Link> {
     pub link: Link,
     pub branch_no: u32,
@@ -116,16 +119,16 @@ pub trait LinkGenerator<Link: HasLink>: Default {
     fn reset(&mut self, seed: Link);
 
     /// Used by users to pseudo-randomly generate a new uniform message link from a cursor
-    fn uniform_link_from(&self, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
+    fn uniform_link_from(&self, cursor: Cursor<&Link::Rel>) -> Link;
 
     /// Used by users to pseudo-randomly generate a new message link from a cursor
-    fn link_from<T: AsRef<[u8]>>(&self, id: T, cursor: Cursor<&<Link as HasLink>::Rel>) -> Link;
+    fn link_from<T: AsRef<[u8]>>(&self, id: T, cursor: Cursor<&Link::Rel>) -> Link;
 
     /// Derive a new link and construct a header with given content type.
     fn uniform_header_from(
         &self,
         id: &Identifier,
-        cursor: Cursor<&<Link as HasLink>::Rel>,
+        cursor: Cursor<&Link::Rel>,
         content_type: u8,
         payload_length: usize,
         seq_num: u64,
@@ -145,14 +148,14 @@ pub trait LinkGenerator<Link: HasLink>: Default {
     fn header_from(
         &self,
         id: &Identifier,
-        cursor: Cursor<&<Link as HasLink>::Rel>,
+        cursor: Cursor<&Link::Rel>,
         content_type: u8,
         payload_length: usize,
         seq_num: u64,
         previous_msg_link: &Link,
     ) -> Result<HDF<Link>> {
         HDF::new_with_fields(
-            self.link_from(id.to_bytes(), cursor),
+            self.link_from(id, cursor),
             Bytes(previous_msg_link.to_bytes()),
             content_type,
             payload_length,

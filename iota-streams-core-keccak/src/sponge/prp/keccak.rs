@@ -1,12 +1,17 @@
+#![allow(clippy::derivable_impls)]
+
 use iota_streams_core::{
     prelude::{
         generic_array::GenericArray,
-        typenum::{U168, U32},
+        typenum::{
+            U168,
+            U32,
+        },
     },
     sponge::prp::PRP,
 };
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct KeccakF1600 {
     state: [u64; 25],
 }

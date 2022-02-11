@@ -1,12 +1,12 @@
 use std::mem::take;
-use iota_streams_app::id::{Identifier, Identity};
+use iota_streams_app::id::{Identifier, UserIdentity};
 use iota_streams_app::transport::tangle::client::Client;
 use crate::api::DefaultF;
 use crate::api::tangle::{Transport, User};
 
 pub struct UserBuilder<Trans: Transport, F> {
-    id: Identity<F>,
-    alias: Option<Identity<F>>,
+    id: UserIdentity<F>,
+    alias: Option<UserIdentity<F>>,
     transport: Trans,
     auto_sync: bool
 }
@@ -14,7 +14,7 @@ pub struct UserBuilder<Trans: Transport, F> {
 impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
     fn default() -> Self {
         UserBuilder {
-            id: Identity::default(),
+            id: UserIdentity::default(),
             alias: None,
             transport: Trans::default(),
             auto_sync: true,
@@ -34,12 +34,12 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
         Self::default()
     }
 
-    pub fn with_identity(&mut self, id: Identity<DefaultF>) -> &mut Self {
+    pub fn with_identity(&mut self, id: UserIdentity<DefaultF>) -> &mut Self {
         self.id = id;
         self
     }
 
-    pub fn with_alias(&mut self, alias: Identity<DefaultF>) -> &mut Self {
+    pub fn with_alias(&mut self, alias: UserIdentity<DefaultF>) -> &mut Self {
         self.alias = Some(alias);
         self
     }

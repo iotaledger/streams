@@ -1,21 +1,20 @@
 #![allow(non_snake_case)]
-#![allow(dead_code)]
-//#![no_std]
+
+use core::cell::RefCell;
 
 use std::env;
 
 use rand::Rng;
 
 use iota_streams::{
-    app::transport::tangle::client::Client,
+    app::transport::{
+        tangle::client::Client,
+        IdentityClient,
+    },
     app_channels::api::tangle::Transport,
-    core::{
-        prelude::{
-            Rc,
-            RefCell,
-            String,
-        },
-        Result,
+    core::prelude::{
+        Rc,
+        String,
     },
 };
 
@@ -30,6 +29,15 @@ async fn run_recovery_test<T: Transport>(transport: T, seed: &str) {
     println!("#######################################");
 }
 
+async fn run_did_author_test<T: Transport + IdentityClient>(transport: T) {
+    println!("\tRunning DID Test");
+    match branching::did_author::example(transport).await {
+        Err(err) => println!("Error in DID test: {:?}", err),
+        Ok(_) => println!("\tDID test completed!!"),
+    }
+    println!("#######################################");
+}
+
 async fn run_multi_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Multi Branch Test, seed: {}", seed);
     match branching::multi_branch::example(transport, seed).await {
@@ -39,17 +47,6 @@ async fn run_multi_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("#######################################");
 }
 
-async fn run_main<T: Transport>(transport: T) -> Result<()> {
-    let seed3: &str = "SEEDMULTI9";
-    let seed4: &str = "SEEDRECOVERY";
-
-    run_multi_branch_test(transport.clone(), seed3).await;
-    run_recovery_test(transport, seed4).await;
-
-    Ok(())
-}
-
-#[allow(dead_code)]
 async fn main_pure() {
     let transport = iota_streams::app_channels::api::tangle::BucketTransport::new();
 
@@ -68,7 +65,6 @@ async fn main_pure() {
     println!("#######################################");
 }
 
-#[allow(dead_code)]
 async fn main_client() {
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
@@ -81,7 +77,8 @@ async fn main_client() {
     println!("\n");
 
     run_multi_branch_test(transport.clone(), &new_seed()).await;
-    run_recovery_test(transport, &new_seed()).await;
+    run_recovery_test(transport.clone(), &new_seed()).await;
+    run_did_author_test(transport).await;
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

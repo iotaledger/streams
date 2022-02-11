@@ -1,19 +1,30 @@
 #![allow(non_snake_case)]
-use crate::api::tangle::{Author, Subscriber};
+use crate::api::tangle::{
+    Author,
+    Subscriber,
+};
 use iota_streams_app::message::HasLink;
 
-use iota_streams_core::{try_or, Errors::*};
+use iota_streams_core::{
+    try_or,
+    Errors::*,
+};
 
-use iota_streams_core::{ensure, prelude::string::ToString, println, Result};
+use iota_streams_core::{
+    ensure,
+    prelude::string::ToString,
+    println,
+    Result,
+};
 
 use super::*;
 
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
-    let mut author = Author::new("AUTHOR9SEED", transport.clone());
+    let mut author = Author::new("AUTHOR9SEED", transport.clone()).await;
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
 
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone()).await;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -130,8 +141,13 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn run_basic_scenario() {
-    let transport = iota_streams_app::transport::new_shared_transport(crate::api::tangle::BucketTransport::new());
-    assert!(dbg!(smol::block_on(example(transport)).is_ok()));
+#[cfg(test)]
+#[tokio::test]
+async fn run_basic_scenario() {
+    use core::cell::RefCell;
+
+    use iota_streams_core::prelude::Rc;
+
+    let transport = Rc::new(RefCell::new(crate::api::tangle::BucketTransport::new()));
+    example(transport).await.unwrap();
 }

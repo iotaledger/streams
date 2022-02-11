@@ -459,8 +459,8 @@ cleanup6:
   {
     unwrapped_messages_t const *message_returns = NULL;
 
-    printf("SubA syncing state... ");
-    e = sub_sync_state(&message_returns, subA);
+    printf("SubA fetching pending messages... ");
+    e = sub_fetch_next_msgs(&message_returns, subA);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup;
 
@@ -494,7 +494,7 @@ cleanup7:
     if(e) goto cleanup8;
 
     printf("Syncing author... ");
-    e = auth_sync_state(&sync_returns, recovered_auth);
+    e = auth_sync_state(recovered_auth);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
 
@@ -567,28 +567,6 @@ cleanup8:
   if(e) goto cleanup;
 
   {
-    printf("Resetting subscriber state... ");
-    e = sub_reset_state(subA);
-    if(e) goto cleanup;
-    printf("Fetching subscriber state... ");
-    e = sub_fetch_state(&reset_sub_state, subA);
-    if(e) goto cleanup10;
-    reset_sub_state_link = get_link_from_state(reset_sub_state, sub_a_pk);
-
-    char const *reset_state_link_id = get_address_id_str(reset_sub_state_link);
-    char const *original_state_link_id = get_address_id_str(original_sub_state_link);
-
-    printf("  reset sub state link: '%s'\n", reset_state_link_id);
-    printf("  original  state link: '%s'\n", original_state_link_id);
-
-    cleanup10:
-      drop_user_state(reset_sub_state);
-      drop_address(reset_sub_state_link);
-  }
-  printf("\n");
-  if(e) goto cleanup;
-
-  {
     address_t const *unsubscribe = NULL;
     subscriber_t *subD = NULL;
     public_key_t const *sub_d_pk = NULL;
@@ -636,6 +614,29 @@ cleanup8:
   }
   printf("\n");
   if(e) goto cleanup;
+
+  {
+    printf("Resetting subscriber state... ");
+    e = sub_reset_state(subA);
+    if(e) goto cleanup;
+    printf("Fetching subscriber state... ");
+    e = sub_fetch_state(&reset_sub_state, subA);
+    if(e) goto cleanup10;
+    reset_sub_state_link = get_link_from_state(reset_sub_state, sub_a_pk);
+
+    char const *reset_state_link_id = get_address_id_str(reset_sub_state_link);
+    char const *original_state_link_id = get_address_id_str(original_sub_state_link);
+
+    printf("  reset sub state link: '%s'\n", reset_state_link_id);
+    printf("  original  state link: '%s'\n", original_state_link_id);
+
+    cleanup10:
+      drop_user_state(reset_sub_state);
+      drop_address(reset_sub_state_link);
+  }
+  printf("\n");
+  if(e) goto cleanup;
+
 
 cleanup:
   printf("Error code: %d\n", e);

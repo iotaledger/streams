@@ -3,7 +3,11 @@ use iota_streams_core::Result;
 use super::Context;
 use crate::{
     command::Squeeze,
-    types::{ArrayLength, External, NBytes},
+    types::{
+        ArrayLength,
+        External,
+        NBytes,
+    },
 };
 use iota_streams_core::sponge::prp::PRP;
 

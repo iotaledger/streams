@@ -58,7 +58,7 @@ async function main() {
     console.log("Keyload message index: " + keyload_link.toMsgIndexHex());
 
     console.log("Subscriber syncing...");
-    await sub.clone().sync_state();
+    await sub.clone().syncState();
 
     let public_payload = to_bytes("Public");
     let masked_payload = to_bytes("Masked");
@@ -84,23 +84,28 @@ async function main() {
     }
 
     console.log("\nAuthor fetching next messages");
-    let exists = true;
-    while (exists) {
-        let next_msgs = await auth.clone().fetch_next_msgs();
+    for (const msg of await auth.clone().fetchNextMsgs()) {
+        console.log("Found a message...");
+        console.log(
+            "Public: ",
+            from_bytes(msg.message.get_public_payload()),
+            "\tMasked: ",
+            from_bytes(msg.message.get_masked_payload())
+        );
+    }
 
-        if (next_msgs.length === 0) {
-            exists = false;
-        }
+    console.log("\nSub sending unsubscribe message");
+    response = await sub.clone().send_unsubscribe(sub_link);
+    await auth.clone().receive_unsubscribe(response.link);
+    console.log("Author received unsubscribe and processed it");
 
-        for (var i = 0; i < next_msgs.length; i++) {
-            console.log("Found a message...");
-            console.log(
-                "Public: ",
-                from_bytes(next_msgs[i].message.get_public_payload()),
-                "\tMasked: ",
-                from_bytes(next_msgs[i].message.get_masked_payload())
-            );
-        }
+    // Check that the subscriber is no longer included in keyloads following the unsubscription
+    console.log("\nAuthor sending new keyload to all subscribers");
+    response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
+    if (await sub.clone().receive_keyload(response.link)) {
+        console.log("unsubscription unsuccessful");
+    } else {
+        console.log("unsubscription successful");
     }
 
     console.log("\nSubscriber resetting state");
@@ -152,21 +157,6 @@ async function main() {
         console.log("recovery failed")
     } else {
         console.log("recovery succesfull")
-    }
-
-
-    console.log("\nSub sending unsubscribe message");
-    response = await sub.clone().send_unsubscribe(sub_link);
-    await auth.clone().receive_unsubscribe(response.link);
-    console.log("Author received unsubscribe and processed it");
-
-    // Check that the subscriber is no longer included in keyloads following the unsubscription
-    console.log("\nAuthor sending new keyload to all subscribers");
-    response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
-    if (await sub.receive_keyload(response.link)) {
-        console.log("unsubscription unsuccessful");
-    } else {
-        console.log("unsubscription successful");
     }
 
     let seed3 = make_seed(81);

@@ -1,25 +1,22 @@
 use iota_streams::{
-    app::message::HasLink as _,
+    app::message::HasLink,
     app_channels::api::tangle::{
-        User,
+        futures::TryStreamExt,
+        IntoMessages,
         Transport,
     },
+    core::Result,
 };
 
-pub async fn fetch_next_messages<T: Transport>(user: &mut User<T>) {
-    let mut exists = true;
-
-    while exists {
-        let msgs = user.fetch_next_msgs().await;
-        exists = false;
-
-        for msg in msgs {
-            println!("Message exists at {}... ", &msg.link.rel());
-            exists = true;
-        }
-
-        if !exists {
-            println!("No more messages in sequence.");
-        }
+pub async fn fetch_next_messages<T, S>(streamable: &mut S) -> Result<()>
+where
+    T: Transport,
+    S: IntoMessages<T>,
+{
+    let mut msgs = streamable.messages();
+    while let Some(msg) = msgs.try_next().await? {
+        println!("Message exists at {}... ", &msg.link.rel());
     }
+    println!("No more messages in sequence.");
+    Ok(())
 }

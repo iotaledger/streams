@@ -1,21 +1,52 @@
 use core::fmt;
-use iota_streams_core::{async_trait, prelude::Box};
+
+use futures::{
+    executor::block_on,
+    future::join_all,
+};
+
+use iota_streams_core::{
+    async_trait,
+    prelude::Box,
+};
 
 pub use iota_client;
 
-use iota_client::{bee_rest_api::types::responses::MessageMetadataResponse, MilestoneResponse};
+use iota_client::{
+    bee_rest_api::types::responses::MessageMetadataResponse,
+    MilestoneResponse,
+};
 
-use iota_client::bee_message::{payload::Payload, Message};
+use iota_client::bee_message::{
+    payload::Payload,
+    Message,
+};
 
-use iota_streams_core::{err, prelude::Vec, try_or, wrapped_err, Errors::*, Result, WrappedError};
+use iota_streams_core::{
+    err,
+    prelude::Vec,
+    try_or,
+    wrapped_err,
+    Errors::*,
+    Result,
+    WrappedError,
+};
 
 use crate::{
-    futures::{executor::block_on, future::join_all},
     message::BinaryMessage,
-    transport::{tangle::*, *},
+    transport::{
+        tangle::*,
+        *,
+    },
 };
 
 use iota_streams_core::prelude::String;
+
+#[cfg(feature = "did")]
+use identity::iota::{
+    Client as DIDClient,
+    Network,
+};
 
 /// Options for the user Client
 #[derive(Clone)]
@@ -53,7 +84,7 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
 ///
 /// The input bundle is not checked (for validity of the hash, consistency of indices, etc.).
 /// Checked bundles are returned by `client.get_message().index`.
-pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Result<TangleMessage<F>> {
+pub fn msg_from_tangle_message(message: &Message, link: &TangleAddress) -> Result<TangleMessage> {
     if let Some(Payload::Indexation(i)) = message.payload().as_ref() {
         let mut bytes = Vec::<u8>::new();
         for b in i.data() {
@@ -61,10 +92,7 @@ pub fn msg_from_tangle_message<F>(message: &Message, link: &TangleAddress) -> Re
         }
 
         let binary = BinaryMessage::new(*link, TangleAddress::default(), bytes.into());
-        // TODO get timestamp
-        let timestamp: u64 = 0;
-
-        Ok(TangleMessage { binary, timestamp })
+        Ok(binary)
     } else {
         err!(BadMessagePayload)
     }
@@ -89,28 +117,21 @@ async fn get_messages(client: &iota_client::Client, link: &TangleAddress) -> Res
 }
 
 /// Send a message to the Tangle using a node client
-pub async fn async_send_message_with_options<F>(client: &iota_client::Client, msg: &TangleMessage<F>) -> Result<()> {
-    let hash = msg.binary.link.to_msg_index();
+pub async fn async_send_message_with_options(client: &iota_client::Client, msg: &TangleMessage) -> Result<()> {
+    let hash = msg.link.to_msg_index();
 
     // TODO: Get rid of copy caused by to_owned
-    try_or!(
-        client
-            .message()
-            .with_index(hash)
-            .with_data(msg.binary.body.bytes.clone())
-            .finish()
-            .await
-            .is_ok(),
-        ClientOperationFailure
-    )?;
+    client
+        .message()
+        .with_index(hash)
+        .with_data(msg.body.to_bytes())
+        .finish()
+        .await?;
     Ok(())
 }
 
 /// Retrieve a message from the tangle using a node client
-pub async fn async_recv_messages<F>(
-    client: &iota_client::Client,
-    link: &TangleAddress,
-) -> Result<Vec<TangleMessage<F>>> {
+pub async fn async_recv_messages(client: &iota_client::Client, link: &TangleAddress) -> Result<Vec<TangleMessage>> {
     match get_messages(client, link).await {
         Ok(txs) => Ok(txs
             .iter()
@@ -220,21 +241,18 @@ impl TransportOptions for Client {
 }
 
 #[async_trait(?Send)]
-impl<F> Transport<TangleAddress, TangleMessage<F>> for Client
-where
-    F: 'static + core::marker::Send + core::marker::Sync,
-{
-    /// Send a Streams message over the Tangle with the current timestamp and default SendOptions.
-    async fn send_message(&mut self, msg: &TangleMessage<F>) -> Result<()> {
+impl Transport<TangleAddress, TangleMessage> for Client {
+    /// Send a Streams message over the Tangle with default SendOptions.
+    async fn send_message(&mut self, msg: &TangleMessage) -> Result<()> {
         async_send_message_with_options(&self.client, msg).await
     }
 
     /// Receive a message.
-    async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage<F>>> {
+    async fn recv_messages(&mut self, link: &TangleAddress) -> Result<Vec<TangleMessage>> {
         async_recv_messages(&self.client, link).await
     }
 
-    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage<F>> {
+    async fn recv_message(&mut self, link: &TangleAddress) -> Result<TangleMessage> {
         let mut msgs = self.recv_messages(link).await?;
         if let Some(msg) = msgs.pop() {
             try_or!(msgs.is_empty(), MessageNotUnique(link.to_string()))?;
@@ -251,4 +269,23 @@ impl TransportDetails<TangleAddress> for Client {
     async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
         async_get_link_details(&self.client, link).await
     }
+}
+
+#[cfg(feature = "did")]
+#[async_trait(?Send)]
+impl IdentityClient for Client {
+    async fn to_identity_client(&self) -> Result<DIDClient> {
+        client_to_did_client(self).await
+    }
+}
+
+#[cfg(feature = "did")]
+pub async fn client_to_did_client(client: &Client) -> Result<DIDClient> {
+    let did_client = DIDClient::builder()
+        .network(Network::Mainnet)
+        .primary_node(&client.send_opt.url, None, None)?
+        .local_pow(client.send_opt.local_pow)
+        .build()
+        .await?;
+    Ok(did_client)
 }

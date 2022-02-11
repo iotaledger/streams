@@ -1,8 +1,16 @@
+use core::cell::RefCell;
 use iota_streams_core::{
     async_trait,
-    prelude::{Box, Rc, RefCell, Vec},
+    prelude::{
+        Box,
+        Rc,
+        Vec,
+    },
     Result,
 };
+
+#[cfg(feature = "did")]
+use identity::iota::Client as DIDClient;
 
 #[async_trait(?Send)]
 pub trait TransportDetails<Link> {
@@ -81,10 +89,24 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
 
 #[cfg(any(feature = "sync-spin", feature = "sync-parking-lot"))]
 mod sync {
-    use super::{Transport, TransportDetails, TransportOptions};
+    #[cfg(feature = "did")]
+    use super::{
+        DIDClient,
+        IdentityClient,
+    };
+    use super::{
+        Transport,
+        TransportDetails,
+        TransportOptions,
+    };
     use iota_streams_core::{
         async_trait,
-        prelude::{Arc, Box, Mutex, Vec},
+        prelude::{
+            Arc,
+            Box,
+            Mutex,
+            Vec,
+        },
         Result,
     };
 
@@ -131,6 +153,14 @@ mod sync {
             self.lock().recv_message(link).await
         }
     }
+
+    #[cfg(feature = "did")]
+    #[async_trait(?Send)]
+    impl<Link, Msg> IdentityClient for Arc<Mutex<dyn Transport<Link, Msg>>> {
+        async fn to_identity_client(&self) -> Result<DIDClient> {
+            self.lock().to_identity_client().await
+        }
+    }
 }
 
 mod bucket;
@@ -139,3 +169,9 @@ use iota_streams_core::try_or;
 
 #[cfg(feature = "tangle")]
 pub mod tangle;
+
+#[cfg(feature = "did")]
+#[async_trait(?Send)]
+pub trait IdentityClient {
+    async fn to_identity_client(&self) -> Result<DIDClient>;
+}

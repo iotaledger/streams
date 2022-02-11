@@ -2,7 +2,10 @@ use core::iter;
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{command::Repeated, io};
+use crate::{
+    command::Repeated,
+    io,
+};
 use iota_streams_core::sponge::prp::PRP;
 
 impl<I, C, F: PRP, OS: io::OStream> Repeated<I, C> for Context<F, OS>

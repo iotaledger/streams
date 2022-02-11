@@ -1,21 +1,28 @@
-use std::str::FromStr;
-
 use iota_streams_core::{
     prelude::{
         string::ToString,
-        typenum::{U32, U64},
+        typenum::{
+            U32,
+            U64,
+        },
         Vec,
     },
     prng,
-    sponge::{prp::PRP, spongos::Spongos},
+    sponge::prp::PRP,
     try_or,
     Errors::*,
     Result,
 };
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 use iota_streams_core_keccak::sponge::prp::keccak::KeccakF1600;
 
-use crate::{command::*, types::*};
+use crate::{
+    command::*,
+    types::*,
+};
 
 fn absorb_mask_u8<F: PRP>() -> Result<()> {
     let mut buf = vec![0_u8; 2];
@@ -47,11 +54,11 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
             try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
         }
 
-        try_or!(t == t2, ValueMismatch(t as usize, t2 as usize))?;
-        try_or!(t == t3, ValueMismatch(t as usize, t3 as usize))?;
+        try_or!(t == t2, ValueMismatch(t.0.into(), t2.0.into()))?;
+        try_or!(t == t3, ValueMismatch(t.0.into(), t3.0.into()))?;
         try_or!(
             tag_wrap == tag_unwrap,
-            InvalidTagSqueeze(tag_wrap.to_string(), tag_unwrap.to_string())
+            InvalidTagSqueeze(tag_wrap.0.to_string(), tag_unwrap.0.to_string())
         )?;
     }
     Ok(())
@@ -98,7 +105,7 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
         try_or!(s == s3, ValueMismatch(s.0, s3.0))?;
         try_or!(
             tag_wrap == tag_unwrap,
-            InvalidTagSqueeze(tag_wrap.to_string(), tag_unwrap.to_string())
+            InvalidTagSqueeze(tag_wrap.0.to_string(), tag_unwrap.0.to_string())
         )?;
     }
     Ok(())
@@ -116,7 +123,7 @@ fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
     let mut tag_unwrap = External(NBytes::<U32>::default());
 
     let prng = prng::dbg_init_str::<F>("TESTPRNGKEY");
-    let mut nonce = "TESTPRNGNONCE".as_bytes().to_vec();
+    let nonce = "TESTPRNGNONCE".as_bytes().to_vec();
 
     for n in NS.iter() {
         let ta = Bytes(prng.gen_n(&nonce, *n));
@@ -200,7 +207,7 @@ fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
         // try_or!(ents == ents2, "Invalid unwrapped ents value: {:?} != {:?}", ents, ents2);
         try_or!(
             tag_wrap == tag_unwrap,
-            InvalidTagSqueeze(tag_wrap.to_string(), tag_unwrap.to_string())
+            InvalidTagSqueeze(tag_wrap.0.to_string(), tag_unwrap.0.to_string())
         )?;
     }
 
@@ -213,7 +220,6 @@ fn bytes() {
 }
 
 fn absorb_ed25519<F: PRP>() -> Result<()> {
-    type N = U64;
     let secret = ed25519::SecretKey::from_bytes(&[7; ed25519::SECRET_KEY_LENGTH]).unwrap();
     let public = ed25519::PublicKey::from(&secret);
     let kp = ed25519::Keypair { secret, public };

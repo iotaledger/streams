@@ -40,24 +40,35 @@
 //! thus is not additionally `absorb`ed in this message.
 
 use iota_streams_app::{
-    id::Identity,
-    message::{self, ContentSign, ContentVerify, HasLink},
+    id::UserIdentity,
+    message::{
+        self,
+        ContentSign,
+        ContentVerify,
+        HasLink,
+    },
 };
 use iota_streams_core::{
-    async_trait, prelude::Box, sponge::prp::PRP, Result,
+    async_trait,
+    prelude::Box,
+    sponge::prp::PRP,
+    Result,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
-    pub(crate) subscriber_id: &'a Identity<F>,
+    pub(crate) subscriber_id: &'a UserIdentity<F>,
     pub(crate) author_ke_pk: &'a x25519::PublicKey,
     pub(crate) _phantom: core::marker::PhantomData<(Link, F)>,
 }
@@ -104,7 +115,7 @@ where
 pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
-    pub subscriber_id: Identity<F>,
+    pub subscriber_id: UserIdentity<F>,
     author_ke_sk: &'a x25519::StaticSecret,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
@@ -119,7 +130,7 @@ where
         Ok(Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             unsubscribe_key: NBytes::<U32>::default(),
-            subscriber_id: Identity::default(),
+            subscriber_id: UserIdentity::default(),
             author_ke_sk,
             _phantom: core::marker::PhantomData,
         })

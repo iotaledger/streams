@@ -26,26 +26,42 @@ members = [
     "iota-streams-ddml",
     "iota-streams-app",
     "iota-streams-app-channels",
-    "iota-streams-app-channels-example",
-    #"iota-streams-app-channels-js",
-    "bindings/wasm",
 ]
-exclude = [
-    "bindings/c",
-    "examples",
+
+# Members selected by default by Cargo commands like `test`
+default-members = [
+    "iota-streams-core",
+    "iota-streams-ddml",
+    "iota-streams-app",
+    "iota-streams-app-channels",
+    # TODO: Fix clippy warnings in wasm bindings
     # "bindings/wasm",
 ]
 
+exclude = [
+    "bindings/c",
+    "bindings/wasm",
+    "examples",
+]
+
 [features]
-default = ["std", "client"]
-# Enable `std` feature in dependencies
+default = ["std", "tangle", "client"]
+# Enable `std` feature in the subpackages
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "iota-streams-app-channels/std"]
+# Enable Tangle-specific abstractions and API in iota-streams-app and iota-streams-app-channels
 tangle = ["iota-streams-app/tangle", "iota-streams-app-channels/tangle"]
-client = ["iota-streams-app/client", "tangle"]
-wasm-client = ["iota-streams-app/wasm-client", "iota-streams-app-channels/wasm-client", "tangle"]
+# Enable Tangle transport client implementation (implies `tangle` feature)
+client = ["iota-streams-app/client", "iota-streams-app-channels/client", "tangle"]
+# Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
+wasm-client = ["iota-streams-app/wasm-client", "iota-streams-app-channels/wasm-client"]
+# Enable debug logging when fallible functions return Result::Err
 err-location-log = ["iota-streams-core/err-location-log"]
+# Enable synchronized transports using spin
 sync-spin = ["iota-streams-app/sync-spin", "iota-streams-core/sync-spin"]
-sync-parking-lot = ["iota-streams-app/sync-parking-lot", "std", "iota-streams-core/sync-parking-lot"]
+# Enable synchronized transports using parking-lot (implies `std`)
+sync-parking-lot = ["iota-streams-app/sync-parking-lot", "iota-streams-core/sync-parking-lot", "std"]
+# Enable Iota Identity logic for User identification/authentication
+did = ["iota-streams-app/did", "iota-streams-app-channels/did"]
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "iota-streams-core", default-features = false }

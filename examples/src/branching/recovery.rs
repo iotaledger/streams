@@ -1,12 +1,12 @@
 use iota_streams::{
-    app::id::Identity,
+    app::id::UserIdentity,
     app_channels::api::tangle::{
         UserBuilder,
         User,
         Transport,
     },
     core::{
-        panic_if_not,
+        assert,
         println,
         Result,
     },
@@ -21,12 +21,12 @@ use std::{
 
 pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     let mut author = UserBuilder::new()
-        .with_identity(Identity::new(seed))
+        .with_identity(UserIdentity::new(seed).await)
         .with_transport(transport.clone())
         .build();
 
     let mut subscriberA = UserBuilder::new()
-        .with_identity(Identity::new("SUBSCRIBERA9SEED"))
+        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED").await)
         .with_transport(transport.clone())
         .build();
 
@@ -72,8 +72,8 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         };
     }
 
-    println!("\nSubscriber A fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberA).await;
+    println!("Subscriber A fetching transactions...");
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
     for i in 6..11 {
         println!("Tagged packet {} - SubscriberA", i);
@@ -86,28 +86,37 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         };
     }
 
-    println!("\nAuthor fetching transactions...");
-    utils::fetch_next_messages(&mut author).await;
+    println!("Author fetching transactions...");
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\n\nTime to try to recover the instance...");
-    let mut new_author = User::recover(seed, &announcement_link, transport.clone()).await?;
-    new_author.sync_state().await;
+    let mut new_author = User::recover(
+        UserIdentity::new(seed).await,
+        None,
+        &announcement_link,
+        transport.clone()
+    ).await?;
+    new_author.sync_state().await?;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;
 
     let mut latest_link = &announcement_link;
 
-    for (pk, cursor) in state.iter() {
+    for (pk, cursor) in old_state.iter() {
         let mut exists = false;
-        for (p, c) in old_state.iter() {
+        for (p, c) in state.iter() {
             if pk == p && cursor.link == c.link && cursor.branch_no == c.branch_no && cursor.seq_no == c.seq_no {
                 // Set latest link for sequencing later
                 latest_link = &cursor.link;
                 exists = true
             }
         }
-        panic_if_not!(exists);
+        assert!(
+            exists,
+            "cursor '{}' present in the original state but not in the new",
+            cursor
+        );
     }
 
     println!("States match...\nSending next sequenced message...");
@@ -119,8 +128,8 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     // Wait a second for message to propagate
     sleep(Duration::from_secs(1));
     println!("\nSubscriber A fetching transactions...");
-    let msgs = subscriberA.fetch_next_msgs().await;
-    panic_if_not!(!msgs.is_empty());
+    let msgs = subscriberA.fetch_next_msgs().await?;
+    assert!(!msgs.is_empty());
 
     let mut matches = false;
     for msg in msgs {
@@ -128,7 +137,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
             matches = true
         }
     }
-    panic_if_not!(matches);
+    assert!(matches);
 
     println!("Last message matches, recovery, sync and send successful");
 
@@ -138,7 +147,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     let new_auth = User::import(&exported, "Password", transport).await?;
     println!("Author imported...");
     let retrieved_announcement = new_auth.announcement_link().unwrap();
-    panic_if_not!(retrieved_announcement == announcement_link);
+    assert!(retrieved_announcement == announcement_link);
     println!("Imported Author announcement message matches original\n");
 
     Ok(())

@@ -3,7 +3,19 @@ use iota_streams_core::Result;
 use super::Context;
 use crate::{
     command::Skip,
-    types::{sizeof_sizet, ArrayLength, Bytes, Fallback, NBytes, Size, SkipFallback, Uint16, Uint32, Uint64, Uint8},
+    types::{
+        sizeof_sizet,
+        ArrayLength,
+        Bytes,
+        Fallback,
+        NBytes,
+        Size,
+        SkipFallback,
+        Uint16,
+        Uint32,
+        Uint64,
+        Uint8,
+    },
 };
 
 /// Skipped values are just encoded.

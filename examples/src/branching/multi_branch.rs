@@ -1,7 +1,7 @@
 use iota_streams::{
     app::{
         message::HasLink,
-        id::Identity,
+        id::UserIdentity,
     },
     app_channels::api::{
         psk_from_seed,
@@ -30,20 +30,20 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     let pskid = pskid_from_psk(&psk);
 
     let mut author = UserBuilder::new()
-        .with_identity(Identity::new(seed))
+        .with_identity(UserIdentity::new(seed).await)
         .with_transport(transport.clone())
         .build();
 
     let mut subscriberA = UserBuilder::new()
-        .with_identity(Identity::new("SUBSCRIBERA9SEED"))
+        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED").await)
         .with_transport(transport.clone())
         .build();
     let mut subscriberB = UserBuilder::new()
-        .with_identity(Identity::new("SUBSCRIBERB9SEED"))
+        .with_identity(UserIdentity::new("SUBSCRIBERB9SEED").await)
         .with_transport(transport.clone())
         .build();
     let mut subscriberC = UserBuilder::new()
-        .with_identity(Identity::new_from_psk(pskid, psk))
+        .with_identity(UserIdentity::new_from_psk(pskid, psk).await)
         .with_transport(transport.clone())
         .build();
 
@@ -134,7 +134,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
     println!("\nTagged packet 1 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -179,7 +179,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\nSigned packet");
     let (_signed_packet_link, signed_packet_seq) = {
@@ -246,7 +246,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
     println!("\nTagged packet 2 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -287,7 +287,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     }
 
     println!("\nSubscriber B fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberB).await;
+    utils::fetch_next_messages(&mut subscriberB).await?;
 
     println!("\nTagged packet 3 - SubscriberB");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -327,50 +327,17 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     }
 
     println!("\nSubscriber C fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberC).await;
+    utils::fetch_next_messages(&mut subscriberC).await?;
 
-    println!("\nTagged packet 4 - SubscriberC");
-    let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberC
-            .send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)
-            .await?;
-        let seq = seq.unwrap();
-        println!("  msg => <{}> {}", msg.msgid, msg);
-        println!("  seq => <{}> {}", seq.msgid, seq);
-        print!("  SubscriberC: {}", subscriberC);
-        (msg, seq)
-    };
-
-    println!("Author fetching transactions...");
-    utils::fetch_next_messages(&mut author).await;
-
-    println!("\nHandle Tagged packet 4 - SubscriberC");
-    {
-        let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq).await?;
-        let (unwrapped_public, unwrapped_masked) = subscriberA.receive_tagged_packet(&msg_tag).await?;
-        print!("  Author     : {}", author);
-        try_or!(
-            public_payload == unwrapped_public,
-            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
-        )?;
-        try_or!(
-            masked_payload == unwrapped_masked,
-            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
-        )?;
-        let (unwrapped_public, unwrapped_masked) = subscriberB.receive_tagged_packet(&msg_tag).await?;
-        print!("  SubscriberB: {}", subscriberB);
-        try_or!(
-            public_payload == unwrapped_public,
-            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
-        )?;
-        try_or!(
-            masked_payload == unwrapped_masked,
-            MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
-        )?;
-    }
+    println!("\nAttempt Tagged packet 4 - SubscriberC");
+    let tp = subscriberC
+        .send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)
+        .await;
+    assert!(tp.is_err(), "Subscriber C is a PSK user and should not be able to send messages");
+    println!("SubscriberC was not able to send tagged packet, as expected");
 
     println!("\nAuthor fetching transactions...");
-    utils::fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\nSigned packet");
     let (signed_packet_link, signed_packet_seq) = {
@@ -391,9 +358,9 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         print!("  SubscriberA: {}", subscriberA);
 
         println!("\nSubscriber A fetching transactions...");
-        utils::fetch_next_messages(&mut subscriberA).await;
+        utils::fetch_next_messages(&mut subscriberA).await?;
         println!("\nSubscriber B fetching transactions...");
-        utils::fetch_next_messages(&mut subscriberB).await;
+        utils::fetch_next_messages(&mut subscriberB).await?;
 
         try_or!(
             public_payload == unwrapped_public,

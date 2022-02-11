@@ -1,7 +1,11 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{command::Squeeze, io, types::Mac};
+use crate::{
+    command::Squeeze,
+    io,
+    types::Mac,
+};
 use iota_streams_core::sponge::prp::PRP;
 
 /// External values are not encoded.

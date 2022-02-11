@@ -2,12 +2,32 @@ use core::mem;
 
 use super::Context;
 use crate::{
-    command::{wrap::Wrap, Absorb},
+    command::{
+        wrap::Wrap,
+        Absorb,
+    },
     io,
-    types::{AbsorbExternalFallback, ArrayLength, External, Fallback, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
+    types::{
+        AbsorbExternalFallback,
+        ArrayLength,
+        External,
+        Fallback,
+        NBytes,
+        Size,
+        Uint16,
+        Uint32,
+        Uint64,
+        Uint8,
+    },
 };
-use iota_streams_core::{sponge::prp::PRP, Result};
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core::{
+    sponge::prp::PRP,
+    Result,
+};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 
 struct AbsorbExternalContext<F, IS> {
     ctx: Context<F, IS>,

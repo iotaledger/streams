@@ -1,4 +1,8 @@
-use crate::command::{sizeof, unwrap, wrap};
+use crate::command::{
+    sizeof,
+    unwrap,
+    wrap,
+};
 use iota_streams_core::Result;
 
 use crate::io;

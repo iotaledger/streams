@@ -4,13 +4,23 @@ use iota_streams_core::Result;
 use core::fmt::Display;
 use iota_streams_core::{
     err,
-    prelude::{string::ToString, HashMap, Vec},
+    prelude::{
+        string::ToString,
+        HashMap,
+        Vec,
+    },
     sponge::{
-        prp::{Inner, PRP},
+        prp::{
+            Inner,
+            PRP,
+        },
         spongos::Spongos,
     },
     try_or,
-    Errors::{GenericLinkNotFound, MessageLinkNotFoundInStore},
+    Errors::{
+        GenericLinkNotFound,
+        MessageLinkNotFoundInStore,
+    },
 };
 
 /// The `link` type is generic and transport-specific. Links can be address+tag pair

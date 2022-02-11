@@ -1,6 +1,9 @@
 use iota_streams_core::Result;
 
-use crate::types::{size_bytes, Size};
+use crate::types::{
+    size_bytes,
+    Size,
+};
 
 /// Helper trait for wrapping (encoding/absorbing) trint3s.
 pub(crate) trait Wrap {

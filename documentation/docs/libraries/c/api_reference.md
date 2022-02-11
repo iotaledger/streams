@@ -224,13 +224,20 @@ Receive a message by its msg number in an anchored single depth channel.
 | msg_num         | `size_t`                                         | Message number                       |
 **Returns:** Error code.
 
-#### auth_sync_state(umsgs, author): [err_t](#Err)
-Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
-to ensure the user state matches all other publishers.
+#### auth_sync_state(author): [err_t](#Err)
+Synchronise a publishers state prior to sending another message, to ensure the user state matches all other publishers.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| umsgs           | `unwrapped_messages_t const *` | Placeholder for resulting UnwrappedMessages wrapper for retrieved publisher messages |
+| author          | `author_t *`                  | Author instance                     |
+**Returns:** Error code.
+
+#### auth_fetch_next_msg(umsg, author): [err_t](#Err)
+Fetch the next message sent by each publisher (empty array if none are present).
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| umsg            | `unwrapped_message_t const *` | Placeholder for resulting UnwrappedMessage wrapper for the retrieved message. Null if there are no more messages to fetch |
 | author          | `author_t *`                  | Author instance                     |
 **Returns:** Error code.
 
@@ -562,18 +569,24 @@ Receive a message by its msg number in an anchored single depth channel.
 | msg_num         | `size_t`                                         | Message number                       |
 **Returns:** Error code.
 
-#### sub_sync_state(umsgs, subscriber): [err_t](#Err)
-Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
-to ensure the subscriber state matches all other publishers.
+#### sub_sync_state(subscriber): [err_t](#Err)
+Synchronise a publishers state prior to sending another message to ensure the subscriber state matches all other publishers.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| umsgs           | [`unwrapped_messages_t const **`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
-| subscriber      | `subscriber_t *`             | Subscriber instance                 |
+| subscriber      | `subscriber_t *`              | Subscriber instance                 |
 **Returns:** Error code.
 
+#### sub_fetch_next_msg(umsg, author): [err_t](#Err)
+Fetch the next message sent by each publisher (null if there are no more messages to fetch).
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| umsg            | `unwrapped_message_t const *` | Placeholder for resulting UnwrappedMessage wrapper for the retrieved message. Null if there are no more messages to fetch |
+| subscriber      | `subscriber_t *`              | Subscriber instance                 |
+**Returns:** Error code.
 #### sub_fetch_next_msgs(umsgs, subscriber): [err_t](#Err)
-Fetch the next message sent by each publisher (empty array if none are present).
+Fetch the next messages sent by other publishers (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
