@@ -2,17 +2,20 @@ use core::fmt;
 
 use core::borrow::BorrowMut;
 use iota_streams_app::id::identifier::Identifier;
+#[cfg(feature = "did")]
+use iota_streams_core::Errors::UnsupportedIdentifier;
 use iota_streams_core::{
     err,
-    prelude::{HashMap, Vec},
+    prelude::{
+        HashMap,
+        Vec,
+    },
     psk::Psk,
     sponge::prp::PRP,
     Errors::BadIdentifier,
     Result,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
-#[cfg(feature = "did")]
-use iota_streams_core::Errors::UnsupportedIdentifier;
 
 pub trait KeyStore<Info: Clone, F: PRP>: Default {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
@@ -94,7 +97,7 @@ impl<Info: Clone, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
     fn get_ke_pk(&self, id: &Identifier) -> Option<&x25519::PublicKey> {
         match id {
             Identifier::PskId(_) => None,
-            _ => self.ke_pks.get(id).map(|(x, _i)| x)
+            _ => self.ke_pks.get(id).map(|(x, _i)| x),
         }
     }
 
@@ -138,7 +141,7 @@ impl<Info: Clone, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 Ok(())
             }
             #[cfg(feature = "did")]
-            _ => err(UnsupportedIdentifier)
+            _ => err(UnsupportedIdentifier),
         }
     }
 
@@ -160,7 +163,7 @@ impl<Info: Clone, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 self.ke_pks.insert(id, (xkey, info));
                 Ok(())
             }
-            _ => err(UnsupportedIdentifier)
+            _ => err(UnsupportedIdentifier),
         }
     }
 

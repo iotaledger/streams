@@ -6,10 +6,23 @@ pub use alloc::{
     },
     collections::vec_deque::VecDeque,
     format,
-    rc::{self, Rc},
-    string::{self, String, ToString},
-    sync::{self, Arc},
-    vec::{self, Vec},
+    rc::{
+        self,
+        Rc,
+    },
+    string::{
+        self,
+        String,
+        ToString,
+    },
+    sync::{
+        self,
+        Arc,
+    },
+    vec::{
+        self,
+        Vec,
+    },
 };
 
 #[cfg(feature = "std")]
@@ -20,10 +33,23 @@ pub use std::{
     },
     collections::vec_deque::VecDeque,
     format,
-    rc::{self, Rc},
-    string::{self, String, ToString},
-    sync::{self, Arc},
-    vec::{self, Vec},
+    rc::{
+        self,
+        Rc,
+    },
+    string::{
+        self,
+        String,
+        ToString,
+    },
+    sync::{
+        self,
+        Arc,
+    },
+    vec::{
+        self,
+        Vec,
+    },
 };
 
 // Arc<Mutex<Transport>> blanket impl is provided only behind the "sync-spin" or "sync-parking-lot" features,
@@ -38,12 +64,20 @@ pub use spin::Mutex;
 #[cfg(feature = "sync-parking-lot")]
 pub use parking_lot::Mutex;
 
-pub use hashbrown::{hash_map, hash_set, HashMap, HashSet};
+pub use hashbrown::{
+    hash_map,
+    hash_set,
+    HashMap,
+    HashSet,
+};
 
 // Reexport digest and generic_array and typenum crates here in order to simplify their import in other dependencies.
 pub use digest::{
     self,
-    generic_array::{self, typenum},
+    generic_array::{
+        self,
+        typenum,
+    },
 };
 
 pub use hex;

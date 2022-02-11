@@ -7,7 +7,10 @@ use std::env;
 use rand::Rng;
 
 use iota_streams::{
-    app::transport::tangle::client::Client,
+    app::transport::{
+        tangle::client::Client,
+        IdentityClient,
+    },
     app_channels::api::tangle::{
         ChannelType,
         Transport,
@@ -17,7 +20,6 @@ use iota_streams::{
         String,
     },
 };
-use iota_streams::app::transport::IdentityClient;
 
 mod branching;
 
@@ -29,7 +31,6 @@ async fn run_did_author_test<T: Transport + IdentityClient>(transport: T) {
     }
     println!("#######################################");
 }
-
 
 async fn run_recovery_single_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Recovery Test (single-branch), seed: {}", seed);

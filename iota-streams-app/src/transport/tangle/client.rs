@@ -12,15 +12,32 @@ use iota_streams_core::{
 
 pub use iota_client;
 
-use iota_client::{bee_rest_api::types::responses::MessageMetadataResponse, MilestoneResponse};
+use iota_client::{
+    bee_rest_api::types::responses::MessageMetadataResponse,
+    MilestoneResponse,
+};
 
-use iota_client::bee_message::{payload::Payload, Message};
+use iota_client::bee_message::{
+    payload::Payload,
+    Message,
+};
 
-use iota_streams_core::{err, prelude::Vec, try_or, wrapped_err, Errors::*, Result, WrappedError};
+use iota_streams_core::{
+    err,
+    prelude::Vec,
+    try_or,
+    wrapped_err,
+    Errors::*,
+    Result,
+    WrappedError,
+};
 
 use crate::{
     message::BinaryMessage,
-    transport::{tangle::*, *},
+    transport::{
+        tangle::*,
+        *,
+    },
 };
 
 use iota_streams_core::prelude::String;

@@ -1,5 +1,9 @@
 use super::error_messages::*;
-use crate::{anyhow, bail, ensure};
+use crate::{
+    anyhow,
+    bail,
+    ensure,
+};
 use core::fmt::Debug;
 
 #[macro_export]

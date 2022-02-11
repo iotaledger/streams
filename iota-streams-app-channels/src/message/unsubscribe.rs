@@ -25,13 +25,26 @@ use core::marker::PhantomData;
 
 use iota_streams_app::{
     id::UserIdentity,
-    message::{self, ContentSign, ContentVerify, HasLink},
+    message::{
+        self,
+        ContentSign,
+        ContentVerify,
+        HasLink,
+    },
 };
-use iota_streams_core::{async_trait, prelude::Box, sponge::prp::PRP, Result};
+use iota_streams_core::{
+    async_trait,
+    prelude::Box,
+    sponge::prp::PRP,
+    Result,
+};
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 

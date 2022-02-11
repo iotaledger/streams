@@ -1,7 +1,19 @@
-use core::convert::{TryFrom, TryInto};
+use core::convert::{
+    TryFrom,
+    TryInto,
+};
 
-use iota_streams_core::{err, sponge::prp::PRP, Errors::BadMessageInfo, Result};
-use iota_streams_ddml::{command::*, io, types::*};
+use iota_streams_core::{
+    err,
+    sponge::prp::PRP,
+    Errors::BadMessageInfo,
+    Result,
+};
+use iota_streams_ddml::{
+    command::*,
+    io,
+    types::*,
+};
 
 /// Message associated info stored internally in User context, just message type indicator.
 #[derive(Copy, Clone)]

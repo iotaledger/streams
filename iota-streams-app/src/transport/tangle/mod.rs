@@ -1,6 +1,9 @@
 //! Tangle-specific transport definitions.
 use core::{
-    convert::{AsMut, AsRef},
+    convert::{
+        AsMut,
+        AsRef,
+    },
     fmt,
     ptr::null,
     str::FromStr,
@@ -8,18 +11,43 @@ use core::{
 
 use iota_streams_core::{
     anyhow,
-    crypto::hashes::{blake2b, Digest},
+    crypto::hashes::{
+        blake2b,
+        Digest,
+    },
     err,
     prelude::{
-        typenum::{U12, U32, U40},
-        Box, String, ToString, Vec,
+        typenum::{
+            U12,
+            U32,
+            U40,
+        },
+        Box,
+        String,
+        ToString,
+        Vec,
     },
-    sponge::{prp::PRP, spongos::Spongos},
-    wrapped_err, Error,
-    Errors::{BadHexFormat, InvalidChannelAddress, InvalidMessageAddress, InvalidMsgId, MalformedAddressString},
-    Result, WrappedError,
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
+    wrapped_err,
+    Error,
+    Errors::{
+        BadHexFormat,
+        InvalidChannelAddress,
+        InvalidMessageAddress,
+        InvalidMsgId,
+        MalformedAddressString,
+    },
+    Result,
+    WrappedError,
 };
-use iota_streams_ddml::{command::*, io, types::*};
+use iota_streams_ddml::{
+    command::*,
+    io,
+    types::*,
+};
 
 use crate::id::Identifier;
 use cstr_core::CStr;

@@ -6,7 +6,10 @@ use futures::{
 };
 
 use iota_streams_app::{
-    id::{Identifier, UserIdentity},
+    id::{
+        Identifier,
+        UserIdentity,
+    },
     message::HasLink,
 };
 use iota_streams_core::{
@@ -36,7 +39,10 @@ use iota_streams_core::{
 use iota_streams_app::id::DIDInfo;
 
 use super::*;
-use crate::{api, message};
+use crate::{
+    api,
+    message,
+};
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
 
@@ -238,11 +244,15 @@ impl<Trans: IdentityClient + Transport + Clone> User<Trans> {
         Self { user, transport }
     }
 
-
     pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
         let did_client = transport.to_identity_client().await?;
         let id = UserIdentity::new_with_did_private_key(did_info, did_client).await?;
-        let user = UserImp::gen(id, ChannelType::MultiBranch, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
+        let user = UserImp::gen(
+            id,
+            ChannelType::MultiBranch,
+            ENCODING.as_bytes().to_vec(),
+            PAYLOAD_LENGTH,
+        );
         Ok(User { user, transport })
     }
 }

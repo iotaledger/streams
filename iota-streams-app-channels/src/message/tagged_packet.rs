@@ -24,17 +24,29 @@
 //!
 //! * `mac` -- MAC of the message.
 
-use iota_streams_app::message::{self, HasLink};
+use iota_streams_app::message::{
+    self,
+    HasLink,
+};
 use iota_streams_core::{
     async_trait,
-    prelude::{typenum::Unsigned as _, Box},
-    sponge::{prp::PRP, spongos},
+    prelude::{
+        typenum::Unsigned as _,
+        Box,
+    },
+    sponge::{
+        prp::PRP,
+        spongos,
+    },
     Result,
 };
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 

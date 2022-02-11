@@ -1,7 +1,10 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 
 use core::fmt;
-use iota_streams_core::{err, Result};
+use iota_streams_core::{
+    err,
+    Result,
+};
 
 use super::*;
 use crate::api::tangle::{
@@ -13,8 +16,15 @@ use crate::api::tangle::{
 
 use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
-    prelude::{String, ToString, Vec},
-    psk::{Psk, PskId},
+    prelude::{
+        String,
+        ToString,
+        Vec,
+    },
+    psk::{
+        Psk,
+        PskId,
+    },
     Errors::SingleDepthOperationFailure,
 };
 

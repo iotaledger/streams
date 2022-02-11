@@ -4,13 +4,20 @@ use core::hash;
 
 use iota_streams_core::{
     err,
-    prelude::{string::ToString, HashMap},
+    prelude::{
+        string::ToString,
+        HashMap,
+    },
     Errors::MessageLinkNotFoundInBucket,
 };
 
-use iota_streams_core::{async_trait, prelude::Box, Errors::MessageNotUnique};
 #[cfg(feature = "did")]
 use iota_streams_core::Errors::ClientConversionFailure;
+use iota_streams_core::{
+    async_trait,
+    prelude::Box,
+    Errors::MessageNotUnique,
+};
 
 #[derive(Clone, Debug)]
 pub struct BucketTransport<Link, Msg> {
@@ -90,7 +97,6 @@ where
         Ok(())
     }
 }
-
 
 #[cfg(feature = "did")]
 #[async_trait(?Send)]

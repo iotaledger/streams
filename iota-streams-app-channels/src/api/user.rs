@@ -1,36 +1,67 @@
 use core::{
     borrow::Borrow,
-    fmt::{self, Debug},
+    fmt::{
+        self,
+        Debug,
+    },
     marker::PhantomData,
 };
 
 use iota_streams_app::{
-    id::{Identifier, UserIdentity},
+    id::{
+        Identifier,
+        UserIdentity,
+    },
     message::{
-        hdf::{FLAG_BRANCHING_MASK, HDF},
+        hdf::{
+            FLAG_BRANCHING_MASK,
+            HDF,
+        },
         *,
     },
 };
 use iota_streams_core::{
-    async_trait, err,
-    prelude::{string::ToString, typenum::U32, Box, Vec},
+    async_trait,
+    err,
+    prelude::{
+        string::ToString,
+        typenum::U32,
+        Box,
+        Vec,
+    },
     prng,
-    psk::{self, Psk, PskId},
-    sponge::prp::{Inner, PRP},
+    psk::{
+        self,
+        Psk,
+        PskId,
+    },
+    sponge::prp::{
+        Inner,
+        PRP,
+    },
     try_or,
     Errors::*,
     Result,
 };
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 
 use crate::{
-    api::{key_store::*, ChannelType},
+    api::{
+        key_store::*,
+        ChannelType,
+    },
     message::*,
     Lookup,
 };
@@ -216,7 +247,8 @@ where
     pub fn reset_state(&mut self) -> Result<()> {
         match &self.appinst {
             Some(appinst) => {
-                self.key_store.replace_cursors(Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
+                self.key_store
+                    .replace_cursors(Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
 
                 let mut link_store = LS::default();
                 let ann_state = self.link_store.lookup(appinst.rel())?;
@@ -587,8 +619,10 @@ where
                     for identifier in keys {
                         if !self.key_store.contains(&identifier) {
                             // Store at state 2 since 0 and 1 are reserved states
-                            self.key_store
-                                .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
+                            self.key_store.insert_cursor(
+                                identifier,
+                                Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM),
+                            )?;
                         }
                     }
                 }
@@ -1018,7 +1052,12 @@ where
     }
 
     /// Store cursor in key store
-    fn store_cursor(&mut self, id: Identifier, cursor: Cursor<<Link as HasLink>::Rel>, _xkey: Option<x25519::PublicKey>) -> Result<()> {
+    fn store_cursor(
+        &mut self,
+        id: Identifier,
+        cursor: Cursor<<Link as HasLink>::Rel>,
+        _xkey: Option<x25519::PublicKey>,
+    ) -> Result<()> {
         match &id {
             #[cfg(feature = "did")]
             Identifier::DID(_did) => {
@@ -1028,8 +1067,8 @@ where
                     self.user_id.get_ke_kp()?.1
                 };
                 self.key_store.insert_did(id, xkey, cursor)?
-            },
-            _ => self.key_store.insert_cursor(id, cursor)?
+            }
+            _ => self.key_store.insert_cursor(id, cursor)?,
         }
         Ok(())
     }
@@ -1359,9 +1398,7 @@ impl<'a, F: PRP> Lookup<&Identifier, x25519::StaticSecret> for OwnKeys<'a, F> {
     fn lookup(&self, id: &Identifier) -> Option<x25519::StaticSecret> {
         let Self(UserIdentity { id: self_id, .. }) = self;
         if id == self_id {
-            self.0.get_ke_kp().map_or(None, |(secret, _public)| {
-                    Some(secret)
-            })
+            self.0.get_ke_kp().map_or(None, |(secret, _public)| Some(secret))
         } else {
             None
         }

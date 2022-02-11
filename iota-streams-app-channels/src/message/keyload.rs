@@ -53,23 +53,44 @@
 use crate::Lookup;
 
 use core::convert::TryFrom;
-use iota_streams_app::id::{Identifier, UserIdentity};
-use iota_streams_app::message::{self, ContentUnwrapNew, HasLink};
-use iota_streams_app::message::{ContentSign, ContentVerify};
+use iota_streams_app::{
+    id::{
+        Identifier,
+        UserIdentity,
+    },
+    message::{
+        self,
+        ContentSign,
+        ContentUnwrapNew,
+        ContentVerify,
+        HasLink,
+    },
+};
 use iota_streams_core::{
     async_trait,
-    prelude::{typenum::Unsigned as _, Box, Vec},
+    prelude::{
+        typenum::Unsigned as _,
+        Box,
+        Vec,
+    },
     psk,
-    sponge::{prp::PRP, spongos},
+    sponge::{
+        prp::PRP,
+        spongos,
+    },
     wrapped_err,
     Errors::BadIdentifier,
-    Result, WrappedError,
+    Result,
+    WrappedError,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 

@@ -4,8 +4,14 @@ use iota_streams_core::Result;
 
 use core::fmt;
 
-use crate::{io, types::Size};
-use iota_streams_core::sponge::{prp::PRP, spongos::*};
+use crate::{
+    io,
+    types::Size,
+};
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos::*,
+};
 
 pub struct Context<F, IS> {
     pub spongos: Spongos<F>,

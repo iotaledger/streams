@@ -6,10 +6,18 @@ use super::key_store::KeyMap;
 pub use iota_streams_app::transport::tangle::MsgId;
 use iota_streams_app::{
     id::Identifier,
-    message::{self, BinaryBody},
+    message::{
+        self,
+        BinaryBody,
+    },
     transport::{
         self,
-        tangle::{AppInst, DefaultTangleLinkGenerator, TangleAddress, TangleMessage},
+        tangle::{
+            AppInst,
+            DefaultTangleLinkGenerator,
+            TangleAddress,
+            TangleMessage,
+        },
     },
 };
 

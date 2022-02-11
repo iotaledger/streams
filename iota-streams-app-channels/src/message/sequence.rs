@@ -21,17 +21,27 @@
 
 use iota_streams_app::{
     id::Identifier,
-    message::{self, HasLink},
+    message::{
+        self,
+        HasLink,
+    },
 };
 
-use iota_streams_core::{async_trait, prelude::Box, Result};
+use iota_streams_core::{
+    async_trait,
+    prelude::Box,
+    Result,
+};
 
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
-    link_store::{EmptyLinkStore, LinkStore},
+    link_store::{
+        EmptyLinkStore,
+        LinkStore,
+    },
     types::*,
 };
 

@@ -1,7 +1,14 @@
 use iota_streams_core::{
-    async_trait, err,
-    prelude::{Box, Vec},
-    psk::{self, PskId},
+    async_trait,
+    err,
+    prelude::{
+        Box,
+        Vec,
+    },
+    psk::{
+        self,
+        PskId,
+    },
     sponge::prp::PRP,
     Errors::BadOneof,
     Result,
@@ -9,19 +16,29 @@ use iota_streams_core::{
 
 use iota_streams_core_edsig::signature::ed25519;
 
-use iota_streams_ddml::{command::*, io, types::*};
+use iota_streams_ddml::{
+    command::*,
+    io,
+    types::*,
+};
 
 #[cfg(feature = "did")]
-use crate::id::{DIDWrap, DIDSize, DID_CORE};
+use crate::id::{
+    DIDSize,
+    DIDWrap,
+    DID_CORE,
+};
 #[cfg(feature = "did")]
 use identity::{
-    core::{decode_b58, encode_b58},
+    core::{
+        decode_b58,
+        encode_b58,
+    },
     did::DID,
     iota::IotaDID,
 };
 #[cfg(feature = "did")]
 use iota_streams_core::prelude::ToString;
-
 
 use crate::message::*;
 
@@ -30,7 +47,7 @@ pub enum Identifier {
     EdPubKey(ed25519::PublicKeyWrap),
     PskId(PskId),
     #[cfg(feature = "did")]
-    DID(DIDWrap)
+    DID(DIDWrap),
 }
 
 impl Identifier {
@@ -80,11 +97,10 @@ impl From<PskId> for Identifier {
 impl From<&IotaDID> for Identifier {
     fn from(did: &IotaDID) -> Self {
         Identifier::DID(DIDWrap::clone_from_slice(
-            &decode_b58(did.method_id()).unwrap_or_default()
+            &decode_b58(did.method_id()).unwrap_or_default(),
         ))
     }
 }
-
 
 impl AsRef<[u8]> for Identifier {
     fn as_ref(&self) -> &[u8] {

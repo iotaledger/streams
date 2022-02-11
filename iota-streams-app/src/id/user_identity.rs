@@ -1,40 +1,110 @@
-use crate::id::Identifier;
-use crate::message::{ContentSign, ContentSizeof, ContentVerify};
-use std::marker::PhantomData;
-use iota_streams_core::{async_trait, err, Errors::{BadIdentifier, BadOneof, NoSignatureKeyPair}, prelude::Box, psk::{Psk, PskId}, prng, Result, sponge::prp::PRP};
+use crate::{
+    id::Identifier,
+    message::{
+        ContentSign,
+        ContentSizeof,
+        ContentVerify,
+    },
+};
+use iota_streams_core::{
+    async_trait,
+    err,
+    prelude::Box,
+    prng,
+    psk::{
+        Psk,
+        PskId,
+    },
+    sponge::prp::PRP,
+    Errors::{
+        BadIdentifier,
+        BadOneof,
+        NoSignatureKeyPair,
+    },
+    Result,
+};
 use iota_streams_core_edsig::{
-    key_exchange::x25519::{self, keypair_from_ed25519},
-    signature::ed25519::{self, Keypair},
+    key_exchange::x25519::{
+        self,
+        keypair_from_ed25519,
+    },
+    signature::ed25519::{
+        self,
+        Keypair,
+    },
 };
 use iota_streams_ddml::{
-    command::{sizeof, unwrap, wrap, Absorb, Ed25519, Commit, Squeeze},
+    command::{
+        sizeof,
+        unwrap,
+        wrap,
+        Absorb,
+        Commit,
+        Ed25519,
+        Squeeze,
+    },
     io,
-    types::{External, HashSig, NBytes, Uint8, U64},
+    types::{
+        External,
+        HashSig,
+        NBytes,
+        Uint8,
+        U64,
+    },
 };
+use std::marker::PhantomData;
 
 #[cfg(feature = "did")]
-use identity::{
-    core::{decode_b58, encode_b58},
-    crypto::{JcsEd25519, Named, Signature, SignatureValue, Signer, Ed25519 as DIDEd25519},
-    did::DID,
-    iota::{Client, IotaDID}
-};
-#[cfg(feature = "did")]
-use iota_streams_core::{
-    Errors::{SignatureFailure, NotDIDUser, DIDMissing},
-    prelude::{String, ToString, Vec},
-    wrapped_err,
-    WrappedError
-};
-#[cfg(feature = "did")]
-use iota_streams_ddml::types::Bytes;
-#[cfg(feature = "did")]
 use crate::{
-    id::{DID_CORE, DIDSize, DataWrapper},
-    transport::{IdentityClient, tangle::client::Client as StreamsClient},
+    id::{
+        DIDSize,
+        DataWrapper,
+        DID_CORE,
+    },
+    transport::{
+        tangle::client::Client as StreamsClient,
+        IdentityClient,
+    },
 };
 #[cfg(feature = "did")]
 use futures::executor::block_on;
+#[cfg(feature = "did")]
+use identity::{
+    core::{
+        decode_b58,
+        encode_b58,
+    },
+    crypto::{
+        Ed25519 as DIDEd25519,
+        JcsEd25519,
+        Named,
+        Signature,
+        SignatureValue,
+        Signer,
+    },
+    did::DID,
+    iota::{
+        Client,
+        IotaDID,
+    },
+};
+#[cfg(feature = "did")]
+use iota_streams_core::{
+    prelude::{
+        String,
+        ToString,
+        Vec,
+    },
+    wrapped_err,
+    Errors::{
+        DIDMissing,
+        NotDIDUser,
+        SignatureFailure,
+    },
+    WrappedError,
+};
+#[cfg(feature = "did")]
+use iota_streams_ddml::types::Bytes;
 
 pub struct KeyPairs {
     sig: ed25519::Keypair,
@@ -45,7 +115,7 @@ pub enum Keys {
     Keypair(KeyPairs),
     Psk(Psk),
     #[cfg(feature = "did")]
-    DID(DIDImpl)
+    DID(DIDImpl),
 }
 
 #[cfg(feature = "did")]
@@ -55,11 +125,10 @@ pub struct DIDInfo {
     pub did_keypair: identity::crypto::KeyPair,
 }
 
-
 #[cfg(feature = "did")]
 pub enum DIDImpl {
-    //TODO: Add DID Account implementation
-    PrivateKey(DIDInfo)
+    // TODO: Add DID Account implementation
+    PrivateKey(DIDInfo),
 }
 
 pub struct UserIdentity<F> {
@@ -67,12 +136,12 @@ pub struct UserIdentity<F> {
     keys: Keys,
     #[cfg(feature = "did")]
     client: Client,
-    _phantom: PhantomData<F>
+    _phantom: PhantomData<F>,
 }
 
 impl<F> Default for UserIdentity<F> {
     fn default() -> Self {
-        //unwrap is fine because we are using default
+        // unwrap is fine because we are using default
         let sig_kp = ed25519::Keypair::from_bytes(&[0; 64]).unwrap();
         let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
 
@@ -84,7 +153,7 @@ impl<F> Default for UserIdentity<F> {
             }),
             #[cfg(feature = "did")]
             client: block_on(StreamsClient::default().to_identity_client()).unwrap(),
-            _phantom: Default::default()
+            _phantom: Default::default(),
         }
     }
 }
@@ -105,7 +174,7 @@ impl<F: PRP> UserIdentity<F> {
             }),
             #[cfg(feature = "did")]
             client: StreamsClient::default().to_identity_client().await.unwrap(),
-            _phantom: Default::default()
+            _phantom: Default::default(),
         }
     }
 
@@ -115,9 +184,8 @@ impl<F: PRP> UserIdentity<F> {
             keys: Keys::Psk(psk),
             #[cfg(feature = "did")]
             client: StreamsClient::default().to_identity_client().await.unwrap(),
-            _phantom: Default::default()
+            _phantom: Default::default(),
         }
-
     }
 
     #[cfg(feature = "did")]
@@ -127,29 +195,26 @@ impl<F: PRP> UserIdentity<F> {
             id: (&did).into(),
             keys: Keys::DID(DIDImpl::PrivateKey(did_info)),
             client,
-            _phantom: Default::default()
+            _phantom: Default::default(),
         })
-
     }
 
     #[cfg(feature = "did")]
     pub fn insert_did_client(&mut self, client: Client) {
         self.client = client;
     }
-    //TODO: Implement new_from_account implementation
+    // TODO: Implement new_from_account implementation
 
     /// Retrieve the key exchange keypair for encryption while sending packets
     pub fn get_ke_kp(&self) -> Result<(x25519::StaticSecret, x25519::PublicKey)> {
         match &self.keys {
-            Keys::Keypair(keypairs) => {
-                Ok(keypairs.key_exchange.clone())
-            },
+            Keys::Keypair(keypairs) => Ok(keypairs.key_exchange.clone()),
             Keys::Psk(_) => err(NoSignatureKeyPair),
             #[cfg(feature = "did")]
-            Keys::DID(did) => match did{
+            Keys::DID(did) => match did {
                 DIDImpl::PrivateKey(info) => Ok(info.get_ke_kp()),
-                //TODO: Account implementation
-            }
+                // TODO: Account implementation
+            },
         }
     }
 
@@ -159,16 +224,15 @@ impl<F: PRP> UserIdentity<F> {
             Keys::Keypair(keypairs) => {
                 let sk_bytes = keypairs.sig.secret.as_bytes();
                 Ok(ed25519::SecretKey::from_bytes(sk_bytes)?)
-            },
+            }
             Keys::Psk(_) => err(NoSignatureKeyPair),
             #[cfg(feature = "did")]
-            Keys::DID(did) => match did{
+            Keys::DID(did) => match did {
                 DIDImpl::PrivateKey(info) => {
                     let sig_kp = info.get_sig_kp();
                     Ok(ed25519::SecretKey::from_bytes(sig_kp.secret.as_bytes())?)
-                }
-                //TODO: Account implementation
-            }
+                } // TODO: Account implementation
+            },
         }
     }
 
@@ -186,7 +250,11 @@ impl<F: PRP> UserIdentity<F> {
                         let fragment = "#".to_string() + &info.key_fragment;
                         // Join the DID identifier with the key fragment of the verification method
                         let method = did.join(&fragment)?;
-                        JcsEd25519::<DIDEd25519>::create_signature(data, method.to_string(), info.did_keypair.private().as_ref())?;
+                        JcsEd25519::<DIDEd25519>::create_signature(
+                            data,
+                            method.to_string(),
+                            info.did_keypair.private().as_ref(),
+                        )?;
                     }
                 }
                 // Ensure that data signature was set
@@ -195,7 +263,7 @@ impl<F: PRP> UserIdentity<F> {
                     None => err(SignatureFailure),
                 }
             }
-            _ => err(NotDIDUser)
+            _ => err(NotDIDUser),
         }
     }
 
@@ -222,7 +290,7 @@ impl DIDInfo {
     fn get_did(&self) -> Result<IotaDID> {
         match &self.did {
             Some(did) => Ok(did.clone()),
-            None => err(DIDMissing)
+            None => err(DIDMissing),
         }
     }
 
@@ -270,17 +338,15 @@ impl<F: PRP> ContentSizeof<F> for UserIdentity<F> {
                             ctx.absorb(Uint8(1))?;
                             ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
                             ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
-
                         }
-                    },
-                    //TODO: Implement Account logic
+                    }
+                    // TODO: Implement Account logic
                 }
                 // Absorb the size of a did based ed25519 signature
                 let bytes = [0_u8; ed25519::SIGNATURE_LENGTH].to_vec();
                 ctx.absorb(&Bytes(bytes))?;
                 return Ok(ctx);
             }
-
         }
     }
 }
@@ -305,8 +371,7 @@ impl<F: PRP, OS: io::OStream> ContentSign<F, OS> for UserIdentity<F> {
                             ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
                             ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
                         }
-                    }
-                    //TODO: Implement Account logic
+                    } // TODO: Implement Account logic
                 }
                 // Get the hash of the message
                 let mut hash = External(NBytes::<U64>::default());
@@ -344,7 +409,7 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
                     ctx.commit()?.squeeze(&mut hash)?.ed25519(&pub_key_wrap.0, &hash)?;
                     Ok(ctx)
                 }
-                _ => err!(BadIdentifier)
+                _ => err!(BadIdentifier),
             },
             #[cfg(feature = "did")]
             1 => {
@@ -381,7 +446,7 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
                     true => Ok(ctx),
                     false => err(SignatureFailure),
                 }
-            },
+            }
             _ => err(BadOneof),
         }
     }
@@ -393,4 +458,3 @@ fn did_from_bytes(bytes: &[u8]) -> Result<IotaDID> {
     did.push_str(&encode_b58(bytes));
     Ok(IotaDID::parse(did)?)
 }
-

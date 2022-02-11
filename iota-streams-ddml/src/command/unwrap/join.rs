@@ -1,7 +1,12 @@
 use iota_streams_core::Result;
 
 use super::Context;
-use crate::{command::Join, io, link_store::LinkStore, types::SkipFallback};
+use crate::{
+    command::Join,
+    io,
+    link_store::LinkStore,
+    types::SkipFallback,
+};
 use iota_streams_core::sponge::prp::PRP;
 
 impl<'a, F: PRP, L: SkipFallback<F>, S: LinkStore<F, L>, IS: io::IStream> Join<&'a mut L, &S> for Context<F, IS> {

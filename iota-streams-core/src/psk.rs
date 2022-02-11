@@ -4,14 +4,26 @@
 use crate::{
     prelude::{
         generic_array::{
-            typenum::{U16, U32},
+            typenum::{
+                U16,
+                U32,
+            },
             GenericArray,
         },
-        HashMap, String, Vec,
+        HashMap,
+        String,
+        Vec,
     },
     prng,
-    sponge::{prp::PRP, spongos::Spongos},
-    try_or, wrapped_err, Errors, Result, WrappedError,
+    sponge::{
+        prp::PRP,
+        spongos::Spongos,
+    },
+    try_or,
+    wrapped_err,
+    Errors,
+    Result,
+    WrappedError,
 };
 
 /// Size of pre-shared key identifier.

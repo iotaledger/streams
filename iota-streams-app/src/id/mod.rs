@@ -10,7 +10,10 @@ pub mod data_wrapper;
 pub use data_wrapper::*;
 
 #[cfg(feature = "did")]
-use iota_streams_core::prelude::digest::generic_array::{GenericArray, typenum::U32};
+use iota_streams_core::prelude::digest::generic_array::{
+    typenum::U32,
+    GenericArray,
+};
 
 #[cfg(feature = "did")]
 pub type DIDSize = U32;

@@ -1,5 +1,8 @@
 use iota_streams_app::transport::{
-    tangle::client::{Client, SendOptions},
+    tangle::client::{
+        Client,
+        SendOptions,
+    },
     TransportOptions,
 };
 use iota_streams_app_channels::api::tangle::test::example;

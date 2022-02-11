@@ -3,7 +3,10 @@
 use iota_streams_core::{
     prelude::{
         generic_array::GenericArray,
-        typenum::{U168, U32},
+        typenum::{
+            U168,
+            U32,
+        },
     },
     sponge::prp::PRP,
 };

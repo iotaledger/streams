@@ -1,14 +1,34 @@
 use core::mem;
 use iota_streams_core::Result;
 
-use super::{unwrap::*, Context};
+use super::{
+    unwrap::*,
+    Context,
+};
 use crate::{
     command::Mask,
     io,
-    types::{ArrayLength, Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
+    types::{
+        ArrayLength,
+        Bytes,
+        NBytes,
+        Size,
+        Uint16,
+        Uint32,
+        Uint64,
+        Uint8,
+    },
 };
-use iota_streams_core::{sponge::prp::PRP, wrapped_err, Errors::PublicKeyGenerationFailure, WrappedError};
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
+use iota_streams_core::{
+    sponge::prp::PRP,
+    wrapped_err,
+    Errors::PublicKeyGenerationFailure,
+    WrappedError,
+};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
 
 struct MaskContext<F, IS> {
     ctx: Context<F, IS>,

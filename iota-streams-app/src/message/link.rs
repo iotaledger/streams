@@ -1,6 +1,9 @@
 use core::fmt;
 
-use iota_streams_core::{prelude::Vec, Result};
+use iota_streams_core::{
+    prelude::Vec,
+    Result,
+};
 
 use super::hdf::HDF;
 use crate::id::identifier::Identifier;

@@ -1,19 +1,33 @@
 use anyhow::anyhow;
-use identity::core::{encode_b58, Timestamp};
-use identity::iota::{IotaDID, IotaDocument, IotaVerificationMethod};
+use identity::{
+    core::{
+        encode_b58,
+        Timestamp,
+    },
+    crypto::KeyPair as DIDKeyPair,
+    did::MethodScope,
+    iota::{
+        IotaDID,
+        IotaDocument,
+        IotaVerificationMethod,
+    },
+};
 use iota_streams::{
     app::{
         id::DIDInfo,
-        transport::IdentityClient
+        transport::IdentityClient,
     },
-    app_channels::api::{
-        psk_from_seed,
-        pskid_from_psk,
-        tangle::{
-            Author,
-            Subscriber,
-            Transport,
+    app_channels::{
+        api::{
+            psk_from_seed,
+            pskid_from_psk,
+            tangle::{
+                Author,
+                Subscriber,
+                Transport,
+            },
         },
+        Address,
     },
     core::{
         println,
@@ -23,9 +37,6 @@ use iota_streams::{
     },
     ddml::types::*,
 };
-use identity::crypto::KeyPair as DIDKeyPair;
-use identity::did::MethodScope;
-use iota_streams::app_channels::Address;
 
 use super::utils;
 
@@ -55,18 +66,17 @@ pub async fn example<T: Transport + IdentityClient>(transport: T) -> Result<()> 
 
                 let update_receipt = client.publish_document(&document).await?;
                 println!("Document updated: {}", update_receipt.message_id());
-
             } else {
-                return Err(anyhow!("Failed to update method"))
+                return Err(anyhow!("Failed to update method"));
             }
-        },
-        Err(e) => return Err(anyhow!("DID Client could not be created from transport: {}", e))
+        }
+        Err(e) => return Err(anyhow!("DID Client could not be created from transport: {}", e)),
     }
 
     let did_info = DIDInfo {
         did: Some(did),
         key_fragment: "demo_key".to_string(),
-        did_keypair: streams_method_keys
+        did_keypair: streams_method_keys,
     };
 
     println!("Making Author...");
@@ -92,7 +102,6 @@ pub async fn example<T: Transport + IdentityClient>(transport: T) -> Result<()> 
     subscriberA.receive_announcement(&announcement_link).await?;
     subscriberB.receive_announcement(&announcement_link).await?;
     subscriberC.receive_announcement(&announcement_link).await?;
-
 
     // Predefine Subscriber A
     println!("\nAuthor Predefines Subscriber A");
@@ -201,7 +210,7 @@ pub async fn example<T: Transport + IdentityClient>(transport: T) -> Result<()> 
     println!("\nSigned packet");
     let (msg, seq) = author
         .send_signed_packet(&prev_link, &public_payload, &masked_payload)
-            .await?;
+        .await?;
     seq_link = seq.unwrap();
     println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
     println!("  seq => <{}> <{:x}>", seq_link.msgid, seq_link.to_msg_index());

@@ -89,14 +89,26 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
 
 #[cfg(any(feature = "sync-spin", feature = "sync-parking-lot"))]
 mod sync {
-    use super::{Transport, TransportDetails, TransportOptions};
+    #[cfg(feature = "did")]
+    use super::{
+        DIDClient,
+        IdentityClient,
+    };
+    use super::{
+        Transport,
+        TransportDetails,
+        TransportOptions,
+    };
     use iota_streams_core::{
         async_trait,
-        prelude::{Arc, Box, Mutex, Vec},
+        prelude::{
+            Arc,
+            Box,
+            Mutex,
+            Vec,
+        },
         Result,
     };
-    #[cfg(feature = "did")]
-    use super::{IdentityClient, DIDClient};
 
     impl<Tsp: TransportOptions> TransportOptions for Arc<Mutex<Tsp>> {
         type SendOptions = <Tsp as TransportOptions>::SendOptions;

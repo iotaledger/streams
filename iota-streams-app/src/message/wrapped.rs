@@ -2,7 +2,10 @@ use core::fmt;
 use iota_streams_core::Result;
 
 use super::*;
-use iota_streams_core::sponge::{prp::PRP, spongos::Spongos};
+use iota_streams_core::sponge::{
+    prp::PRP,
+    spongos::Spongos,
+};
 use iota_streams_ddml::link_store::LinkStore;
 
 /// Spongos state and representative Link identifier

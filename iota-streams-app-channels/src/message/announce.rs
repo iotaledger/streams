@@ -22,13 +22,29 @@
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
 
 use iota_streams_app::id::UserIdentity;
-use iota_streams_core::{async_trait, prelude::Box, Result};
+use iota_streams_core::{
+    async_trait,
+    prelude::Box,
+    Result,
+};
 
-use iota_streams_app::message;
-use iota_streams_app::message::{ContentSign, ContentVerify};
+use iota_streams_app::{
+    message,
+    message::{
+        ContentSign,
+        ContentVerify,
+    },
+};
 use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core_edsig::{key_exchange::x25519, signature::ed25519};
-use iota_streams_ddml::{command::*, io, types::*};
+use iota_streams_core_edsig::{
+    key_exchange::x25519,
+    signature::ed25519,
+};
+use iota_streams_ddml::{
+    command::*,
+    io,
+    types::*,
+};
 
 pub struct ContentWrap<'a, F> {
     user_id: &'a UserIdentity<F>,
@@ -49,7 +65,11 @@ impl<'a, F> ContentWrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let mut ctx = self.user_id.id.sizeof(ctx).await?
+        let mut ctx = self
+            .user_id
+            .id
+            .sizeof(ctx)
+            .await?
             .absorb(&self.user_id.get_ke_kp()?.1)?
             .absorb(&self.flags)?;
         ctx = self.user_id.sizeof(ctx).await?;
@@ -64,7 +84,11 @@ impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        let mut ctx = self.user_id.id.wrap(_store, ctx).await?
+        let mut ctx = self
+            .user_id
+            .id
+            .wrap(_store, ctx)
+            .await?
             .absorb(&self.user_id.get_ke_kp()?.1)?
             .absorb(&self.flags)?;
         ctx = self.user_id.sign(ctx).await?;
@@ -115,7 +139,11 @@ where
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mut ctx = self.author_id.id.unwrap(_store, ctx).await?
+        let mut ctx = self
+            .author_id
+            .id
+            .unwrap(_store, ctx)
+            .await?
             .absorb(&mut self.ke_pk)?
             .absorb(&mut self.flags)?;
         ctx = self.author_id.verify(ctx).await?;

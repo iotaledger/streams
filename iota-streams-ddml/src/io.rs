@@ -6,7 +6,10 @@ use iota_streams_core::{
         String,
     },
     try_or,
-    Errors::{StreamAllocationExceededIn, StreamAllocationExceededOut},
+    Errors::{
+        StreamAllocationExceededIn,
+        StreamAllocationExceededOut,
+    },
     Result,
 };
 
