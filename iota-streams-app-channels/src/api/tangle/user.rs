@@ -6,7 +6,7 @@ use futures::{
 };
 
 use iota_streams_app::{
-    id::{Identifier, Identity},
+    id::{Identifier, UserIdentity},
     message::HasLink,
 };
 use iota_streams_core::{
@@ -32,6 +32,9 @@ use iota_streams_core::{
     Result,
 };
 
+#[cfg(feature = "did")]
+use iota_streams_app::id::DIDInfo;
+
 use super::*;
 use crate::{api, message};
 
@@ -53,8 +56,9 @@ impl<Trans> User<Trans> {
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
     /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let id = Identity::new(seed);
+    #[cfg(not(feature = "did"))]
+    pub async fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
+        let id = UserIdentity::new(seed).await;
         let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
         Self { user, transport }
     }
@@ -221,6 +225,25 @@ impl<Trans> User<Trans> {
             unwrapped.body.seq_num.0 as u32,
         );
         Ok(msg_cursor.link)
+    }
+}
+
+#[cfg(feature = "did")]
+impl<Trans: IdentityClient + Transport + Clone> User<Trans> {
+    pub async fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
+        let mut id = UserIdentity::new(seed).await;
+        let client = transport.to_identity_client().await.unwrap();
+        id.insert_did_client(client);
+        let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
+        Self { user, transport }
+    }
+
+
+    pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
+        let did_client = transport.to_identity_client().await?;
+        let id = UserIdentity::new_with_did_private_key(did_info, did_client).await?;
+        let user = UserImp::gen(id, ChannelType::MultiBranch, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
+        Ok(User { user, transport })
     }
 }
 

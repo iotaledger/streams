@@ -60,6 +60,8 @@ err-location-log = ["iota-streams-core/err-location-log"]
 sync-spin = ["iota-streams-app/sync-spin", "iota-streams-core/sync-spin"]
 # Enable synchronized transports using parking-lot (implies `std`)
 sync-parking-lot = ["iota-streams-app/sync-parking-lot", "iota-streams-core/sync-parking-lot", "std"]
+# Enable Iota Identity logic for User identification/authentication
+did = ["iota-streams-app/did", "iota-streams-app-channels/did"]
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "iota-streams-core", default-features = false }

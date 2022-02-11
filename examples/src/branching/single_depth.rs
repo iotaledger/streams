@@ -23,12 +23,12 @@ use iota_streams::{
 };
 
 pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, channel_impl, transport.clone());
+    let mut author = Author::new(seed, channel_impl, transport.clone()).await;
     println!("Author single depth?: {}", author.is_single_depth());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport);
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone()).await;
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport).await;
 
     let empty_payload = Bytes(Vec::new());
 

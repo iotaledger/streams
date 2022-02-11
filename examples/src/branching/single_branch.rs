@@ -25,12 +25,12 @@ use iota_streams::{
 use super::utils;
 
 pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, channel_impl, transport.clone());
+    let mut author = Author::new(seed, channel_impl, transport.clone()).await;
     println!("Author multi branching?: {}", author.is_multi_branching());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport);
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone()).await;
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport).await;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());

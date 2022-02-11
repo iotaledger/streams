@@ -17,8 +17,19 @@ use iota_streams::{
         String,
     },
 };
+use iota_streams::app::transport::IdentityClient;
 
 mod branching;
+
+async fn run_did_author_test<T: Transport + IdentityClient>(transport: T) {
+    println!("\tRunning DID Test");
+    match branching::did_author::example(transport).await {
+        Err(err) => println!("Error in DID test: {:?}", err),
+        Ok(_) => println!("\tDID test completed!!"),
+    }
+    println!("#######################################");
+}
+
 
 async fn run_recovery_single_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Recovery Test (single-branch), seed: {}", seed);
@@ -82,6 +93,7 @@ async fn main_pure() {
     run_multi_branch_test(transport.clone(), "PURESEEDC").await;
     run_recovery_single_branch_test(transport.clone(), "PURESEEDD").await;
     run_recovery_multi_branch_test(transport.clone(), "PURESEEDF").await;
+    run_did_author_test(transport.clone()).await;
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }
@@ -102,6 +114,7 @@ async fn main_client() {
     run_multi_branch_test(transport.clone(), &new_seed()).await;
     run_recovery_single_branch_test(transport.clone(), &new_seed()).await;
     run_recovery_multi_branch_test(transport.clone(), &new_seed()).await;
+    run_did_author_test(transport.clone()).await;
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

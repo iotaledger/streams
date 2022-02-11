@@ -3,3 +3,4 @@ pub mod recovery;
 pub mod single_branch;
 pub mod single_depth;
 pub mod utils;
+pub mod did_author;

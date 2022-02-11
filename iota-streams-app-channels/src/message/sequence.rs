@@ -21,7 +21,7 @@
 
 use iota_streams_app::{
     id::Identifier,
-    message::{self, ContentUnwrapNew, HasLink},
+    message::{self, HasLink},
 };
 
 use iota_streams_core::{async_trait, prelude::Box, Result};
@@ -122,8 +122,7 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?;
-        let (id, ctx) = Identifier::unwrap_new(store, ctx).await?;
-        self.id = id;
+        let ctx = self.id.unwrap(store, ctx).await?;
         ctx.skip(&mut self.seq_num)?
             .absorb(<&mut Fallback<<Link as HasLink>::Rel>>::from(&mut self.ref_link))?
             .commit()?;

@@ -11,8 +11,10 @@ use iota_streams_core::{
     Result,
 };
 use iota_streams_core_edsig::key_exchange::x25519;
+#[cfg(feature = "did")]
+use iota_streams_core::Errors::UnsupportedIdentifier;
 
-pub trait KeyStore<Info, F: PRP>: Default {
+pub trait KeyStore<Info: Clone, F: PRP>: Default {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
     where
         I: IntoIterator<Item = &'a Identifier>;
@@ -24,6 +26,9 @@ pub trait KeyStore<Info, F: PRP>: Default {
     fn get_psk(&self, id: &Identifier) -> Option<Psk>;
     fn contains(&self, id: &Identifier) -> bool;
     fn insert_cursor(&mut self, id: Identifier, info: Info) -> Result<()>;
+    fn replace_cursors(&mut self, info: Info) -> Result<()>;
+    #[cfg(feature = "did")]
+    fn insert_did(&mut self, id: Identifier, xkey: x25519::PublicKey, info: Info) -> Result<()>;
     fn insert_psk(&mut self, id: Identifier, psk: Option<Psk>, info: Info) -> Result<()>;
     fn get_next_pskid(&self) -> Option<&Identifier>;
     fn keys(&self) -> Vec<(&Identifier, Vec<u8>)>;
@@ -54,42 +59,42 @@ impl<Info> Default for KeyMap<Info> {
     }
 }
 
-impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
+impl<Info: Clone, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
     fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
     where
         I: IntoIterator<Item = &'a Identifier>,
     {
         ids.into_iter()
             .filter_map(|id| match &id {
-                Identifier::EdPubKey(_id) => self
-                    .ke_pks
-                    .get_key_value(id)
-                    .map(|(e, (x, _))| (e, x.as_bytes().to_vec())),
                 Identifier::PskId(_id) => self
                     .psks
                     .get_key_value(id)
                     .map(|(e, (x, _))| x.map(|xx| (e, xx.to_vec())))
                     .flatten(),
+                _ => self
+                    .ke_pks
+                    .get_key_value(id)
+                    .map(|(e, (x, _))| (e, x.as_bytes().to_vec())),
             })
             .collect()
     }
 
     fn get(&self, id: &Identifier) -> Option<&Info> {
         match id {
-            Identifier::EdPubKey(_pk) => self.ke_pks.get(id).map(|(_x, i)| i),
             Identifier::PskId(_id) => self.psks.get(id).map(|(_x, i)| i),
+            _ => self.ke_pks.get(id).map(|(_x, i)| i),
         }
     }
     fn get_mut(&mut self, id: &Identifier) -> Option<&mut Info> {
         match id {
-            Identifier::EdPubKey(_pk) => self.ke_pks.get_mut(id).map(|(_x, i)| i),
             Identifier::PskId(_id) => self.psks.get_mut(id).map(|(_x, i)| i),
+            _ => self.ke_pks.get_mut(id).map(|(_x, i)| i),
         }
     }
     fn get_ke_pk(&self, id: &Identifier) -> Option<&x25519::PublicKey> {
         match id {
-            Identifier::EdPubKey(_pk) => self.ke_pks.get(id).map(|(x, _i)| x),
-            _ => None,
+            Identifier::PskId(_) => None,
+            _ => self.ke_pks.get(id).map(|(x, _i)| x)
         }
     }
 
@@ -132,6 +137,30 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 self.psks.insert(id, (None, info));
                 Ok(())
             }
+            #[cfg(feature = "did")]
+            _ => err(UnsupportedIdentifier)
+        }
+    }
+
+    fn replace_cursors(&mut self, info: Info) -> Result<()> {
+        for (_id, cursor) in self.ke_pks.iter_mut() {
+            cursor.1 = info.clone()
+        }
+
+        for (_pskid, cursor) in self.psks.iter_mut() {
+            cursor.1 = info.clone()
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "did")]
+    fn insert_did(&mut self, id: Identifier, xkey: x25519::PublicKey, info: Info) -> Result<()> {
+        match &id {
+            Identifier::DID(_id) => {
+                self.ke_pks.insert(id, (xkey, info));
+                Ok(())
+            }
+            _ => err(UnsupportedIdentifier)
         }
     }
 

@@ -18,6 +18,9 @@ use iota_streams_core::{
     Errors::SingleDepthOperationFailure,
 };
 
+#[cfg(feature = "did")]
+use iota_streams_app::id::DIDInfo;
+
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
     user: User<T>,
@@ -29,8 +32,9 @@ impl<Trans> Subscriber<Trans> {
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, transport: Trans) -> Self {
-        let user = User::new(seed, SingleBranch, transport);
+    #[cfg(not(feature = "did"))]
+    pub async fn new(seed: &str, transport: Trans) -> Self {
+        let user = User::new(seed, SingleBranch, transport).await;
         Self { user }
     }
 
@@ -172,6 +176,18 @@ impl<Trans> Subscriber<Trans> {
 }
 
 impl<Trans: Transport + Clone> Subscriber<Trans> {
+    #[cfg(feature = "did")]
+    pub async fn new(seed: &str, transport: Trans) -> Self {
+        let user = User::new(seed, SingleBranch, transport).await;
+        Self { user }
+    }
+
+    #[cfg(feature = "did")]
+    pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
+        let user = User::new_with_did(did_info, transport).await?;
+        Ok(Subscriber { user })
+    }
+
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments

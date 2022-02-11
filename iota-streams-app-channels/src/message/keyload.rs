@@ -53,7 +53,7 @@
 use crate::Lookup;
 
 use core::convert::TryFrom;
-use iota_streams_app::id::{Identifier, Identity};
+use iota_streams_app::id::{Identifier, UserIdentity};
 use iota_streams_app::message::{self, ContentUnwrapNew, HasLink};
 use iota_streams_app::message::{ContentSign, ContentVerify};
 use iota_streams_core::{
@@ -81,7 +81,7 @@ where
     pub nonce: NBytes<U16>,
     pub key: NBytes<U32>,
     pub(crate) keys: Vec<(&'a Identifier, Vec<u8>)>,
-    pub(crate) user_id: &'a Identity<F>,
+    pub(crate) user_id: &'a UserIdentity<F>,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -111,7 +111,7 @@ where
                             .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(&store_id))))?
                             .commit()?
                             .mask(&self.key)?,
-                        Identifier::EdPubKey(_pk) => match <[u8; 32]>::try_from(store_id.as_ref()) {
+                        _ => match <[u8; 32]>::try_from(store_id.as_ref()) {
                             Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &self.key)?,
                             Err(e) => return Err(wrapped_err(BadIdentifier, WrappedError(e))),
                         },
@@ -162,7 +162,7 @@ where
                             .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(&store_id))))?
                             .commit()?
                             .mask(&self.key)?,
-                        Identifier::EdPubKey(_pk) => match <[u8; 32]>::try_from(store_id.as_ref()) {
+                        _ => match <[u8; 32]>::try_from(store_id.as_ref()) {
                             Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &self.key)?,
                             Err(e) => return Err(wrapped_err(BadIdentifier, WrappedError(e))),
                         },
@@ -194,7 +194,7 @@ where
     pub(crate) ke_sk_store: KeSkStore,
     pub(crate) key_ids: Vec<Identifier>,
     pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
-    pub(crate) author_id: Identity<F>,
+    pub(crate) author_id: UserIdentity<F>,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -204,7 +204,7 @@ where
     Link: HasLink,
     Link::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, author_id: Identity<F>) -> Self {
+    pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, author_id: UserIdentity<F>) -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             nonce: NBytes::default(),
@@ -227,7 +227,7 @@ where
     Link::Rel: Eq + Default + SkipFallback<F>,
     LStore: LinkStore<F, Link::Rel>,
     PskStore: for<'c> Lookup<&'c Identifier, psk::Psk>,
-    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b,
+    KeSkStore: for<'c> Lookup<&'c Identifier, x25519::StaticSecret> + 'b,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
@@ -269,10 +269,10 @@ where
                                 ctx.drop(n)?;
                             }
                         }
-                        Identifier::EdPubKey(_ke_pk) => {
+                        _ => {
                             if let Some(ke_sk) = self.ke_sk_store.lookup(&id) {
                                 let mut key = NBytes::<U32>::default();
-                                ctx.x25519(ke_sk, &mut key)?;
+                                ctx.x25519(&ke_sk, &mut key)?;
                                 self.key = Some(key);
                                 // Save the relevant public key
                                 self.key_ids.push(id);

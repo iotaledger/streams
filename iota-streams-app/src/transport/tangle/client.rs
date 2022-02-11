@@ -25,6 +25,12 @@ use crate::{
 
 use iota_streams_core::prelude::String;
 
+#[cfg(feature = "did")]
+use identity::iota::{
+    Client as DIDClient,
+    Network,
+};
+
 /// Options for the user Client
 #[derive(Clone)]
 pub struct SendOptions {
@@ -246,4 +252,23 @@ impl TransportDetails<TangleAddress> for Client {
     async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
         async_get_link_details(&self.client, link).await
     }
+}
+
+#[cfg(feature = "did")]
+#[async_trait(?Send)]
+impl IdentityClient for Client {
+    async fn to_identity_client(&self) -> Result<DIDClient> {
+        client_to_did_client(self).await
+    }
+}
+
+#[cfg(feature = "did")]
+pub async fn client_to_did_client(client: &Client) -> Result<DIDClient> {
+    let did_client = DIDClient::builder()
+        .network(Network::Mainnet)
+        .primary_node(&client.send_opt.url, None, None)?
+        .local_pow(client.send_opt.local_pow)
+        .build()
+        .await?;
+    Ok(did_client)
 }

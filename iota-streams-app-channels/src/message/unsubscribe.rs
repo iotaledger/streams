@@ -24,7 +24,7 @@
 use core::marker::PhantomData;
 
 use iota_streams_app::{
-    id::Identity,
+    id::UserIdentity,
     message::{self, ContentSign, ContentVerify, HasLink},
 };
 use iota_streams_core::{async_trait, prelude::Box, sponge::prp::PRP, Result};
@@ -37,7 +37,7 @@ use iota_streams_ddml::{
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) subscriber_id: &'a Identity<F>,
+    pub(crate) subscriber_id: &'a UserIdentity<F>,
     pub(crate) _phantom: PhantomData<(F, Link)>,
 }
 
@@ -80,7 +80,7 @@ where
 #[derive(Default)]
 pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) subscriber_id: Identity<F>,
+    pub(crate) subscriber_id: UserIdentity<F>,
     _phantom: PhantomData<(F, Link)>,
 }
 
