@@ -259,7 +259,7 @@ where
     }
 
     /// User's signing private key
-    pub fn signing_private_key(&self) -> &ed25519::SecretKey {
+    fn signing_private_key(&self) -> &ed25519::SecretKey {
         &self.sig_kp.0
     }
 
@@ -269,7 +269,7 @@ where
     }
 
     /// User's key exchange private key
-    pub fn key_exchange_private_key(&self) -> &x25519::SecretKey {
+    fn _key_exchange_private_key(&self) -> &x25519::SecretKey {
         &self.ke_kp.0
     }
 
