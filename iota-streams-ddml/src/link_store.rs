@@ -1,7 +1,10 @@
 use core::hash;
 use iota_streams_core::Result;
 
-use core::fmt::Display;
+use core::fmt::{
+    Debug,
+    Display,
+};
 use iota_streams_core::{
     err,
     prelude::{
@@ -164,7 +167,7 @@ where
 
 impl<F: PRP, Link, Info> LinkStore<F, Link> for DefaultLinkStore<F, Link, Info>
 where
-    Link: Eq + hash::Hash + Clone + Display,
+    Link: Eq + hash::Hash + Clone + Display + Debug,
     Info: Clone,
 {
     type Info = Info;

@@ -459,8 +459,8 @@ cleanup6:
   {
     unwrapped_messages_t const *message_returns = NULL;
 
-    printf("SubA syncing state... ");
-    e = sub_sync_state(&message_returns, subA);
+    printf("SubA fetching pending messages... ");
+    e = sub_fetch_next_msgs(&message_returns, subA);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup;
 
@@ -494,7 +494,7 @@ cleanup7:
     if(e) goto cleanup8;
 
     printf("Syncing author... ");
-    e = auth_sync_state(&sync_returns, recovered_auth);
+    e = auth_sync_state(recovered_auth);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
 
