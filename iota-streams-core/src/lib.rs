@@ -34,7 +34,7 @@ pub use web_sys;
 #[macro_export]
 macro_rules! println {
     ( $( $arg:tt )* ) => {
-        $crate::web_sys::console::log_1(&$crate::format!( $( $arg )* ).into());
+        $crate::web_sys::console::log_1(&$crate::format!( $( $arg )* ).into())
     }
 }
 
