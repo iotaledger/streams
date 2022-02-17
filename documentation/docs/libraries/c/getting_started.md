@@ -1,5 +1,5 @@
 ---
-description: Getting started with the official IOTA Client Library Java binding.
+description: Getting started with the official IOTA Client Library C binding.
 image: /img/logo/iota_mark_light.png
 keywords:
 - C
