@@ -196,11 +196,7 @@ pub trait IntoMessages<Trans> {
 ///         UnwrappedMessage::new(
 ///             first_packet_link,
 ///             keyload_link,
-///             MessageContent::new_signed_packet(
-///                 author.public_key().clone(),
-///                 b"public payload",
-///                 b"masked payload"
-///             )
+///             MessageContent::new_signed_packet(author.public_key().clone(), b"public payload", b"masked payload")
 ///         ),
 ///         UnwrappedMessage::new(
 ///             second_packet_link,
