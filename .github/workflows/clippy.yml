@@ -5,12 +5,12 @@ on:
     branches:
       - master
       - develop
-      - chrysalis-2
+      - v2.0-dev
   pull_request:
     branches:
       - master
       - develop
-      - chrysalis-2
+      - v2.0-dev
     paths-ignore:
       - "docs/**"
       - "specification/**"
