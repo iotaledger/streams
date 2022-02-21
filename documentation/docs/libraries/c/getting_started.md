@@ -1,3 +1,11 @@
+---
+description: Getting started with the official IOTA Client Library C binding.
+image: /img/logo/iota_mark_light.png
+keywords:
+- C
+- cmake
+- std
+---
 # Getting Started
 The C bindings allow for you to build a Streams API which can be pulled into other languages. 
 The streams instance underlying the bindings is built with the `sync-client` flag to 

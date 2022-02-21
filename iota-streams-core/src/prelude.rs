@@ -4,6 +4,7 @@ pub use alloc::{
         self,
         Box,
     },
+    collections::vec_deque::VecDeque,
     format,
     rc::{
         self,
@@ -30,6 +31,7 @@ pub use std::{
         self,
         Box,
     },
+    collections::vec_deque::VecDeque,
     format,
     rc::{
         self,

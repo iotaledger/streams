@@ -12,8 +12,12 @@ description = "A rust implementation of the IOTA Streams Channels Application"
 default = ["std", "tangle"]
 # Enable `std` feature in dependencies
 std = ["iota-streams-core/std", "iota-streams-ddml/std", "iota-streams-app/std", "hex/std"]
-tangle = ["iota-streams-app/tangle"]
-wasm-client = ["iota-streams-app/wasm-client", "tangle", "std"]
+# Enable the tangle-specific API (implies `tangle` feature of iota-streams-app, but not necessarily `client`)
+tangle = ["iota-streams-app/tangle", "futures", "async-recursion"]
+# Enable re-export of Tangle client from iota-streams-app 
+client = ["iota-streams-app/client"]
+# Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
+wasm-client = ["iota-streams-app/wasm-client"]
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
@@ -23,7 +27,9 @@ iota-streams-app = { version = "0.1.2", path = "../iota-streams-app", default-fe
 iota-crypto = { version = "0.9.1", default-features = false, features = ["x25519"] }
 
 hex = { version = "0.4", default-features = false, optional = false }
+futures = { version = "0.3.8", default-features = false, optional = true }
+async-recursion = { version = "0.3.2", default-features = false, optional = true }
 
 
 [dev-dependencies]
-smol = { version = "1.2.5" }
+tokio = { version = "1.15", default-features = false }

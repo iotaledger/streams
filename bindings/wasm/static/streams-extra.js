@@ -133,7 +133,7 @@ async function fetch_messages() {
   console.log("Fetching...");
   busy = true;
 
-  let next_msgs = await auth.clone().fetch_next_msgs()
+  let next_msgs = await auth.clone().fetchNextMsgs()
   if(next_msgs.length === 0) {
       exists = false;
       busy = false;
@@ -256,12 +256,11 @@ async function send_message() {
   for(var x=0;x<subs.length;x++) {
     if (subs[x].name === sender_id) {
       let sub = subs[x].user;
-      await sub.clone().sync_state();
+      await sub.clone().syncState();
       response = await sub.clone().send_signed_packet(link, public_msg, masked_msg);
       last_link = response.get_link();
     }
   }
-
 }
 
 function _update_last(link){

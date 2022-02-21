@@ -126,7 +126,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
     println!("\nTagged packet 1 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -171,7 +171,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\nSigned packet");
     let (_signed_packet_link, signed_packet_seq) = {
@@ -238,7 +238,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
     println!("\nTagged packet 2 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -279,7 +279,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber B fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberB).await;
+    utils::fetch_next_messages(&mut subscriberB).await?;
 
     println!("\nTagged packet 3 - SubscriberB");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -321,7 +321,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber C fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberC).await;
+    utils::fetch_next_messages(&mut subscriberC).await?;
 
     println!("\nTagged packet 4 - SubscriberC");
     let (tagged_packet_link, tagged_packet_seq) = {
@@ -363,7 +363,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\nSigned packet");
     let (signed_packet_link, signed_packet_seq) = {
@@ -383,9 +383,9 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         print!("  Author     : {}", author);
 
         println!("\nSubscriber A fetching transactions...");
-        utils::s_fetch_next_messages(&mut subscriberA).await;
+        utils::fetch_next_messages(&mut subscriberA).await?;
         println!("\nSubscriber B fetching transactions...");
-        utils::s_fetch_next_messages(&mut subscriberB).await;
+        utils::fetch_next_messages(&mut subscriberB).await?;
 
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag).await?;
         print!("  SubscriberA: {}", subscriberA);

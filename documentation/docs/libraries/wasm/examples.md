@@ -1,3 +1,14 @@
+---
+description: Official IOTA Streams Wasm API examples.
+image: /img/logo/iota_mark_light.png
+keywords:
+- api
+- wasm
+- js
+- javascript
+- node
+- examples
+---
 # Examples
 An overview example of the available api tools can be found [here](../../../../bindings/wasm/examples/node.js).
 The general API is simply an abstraction over the rust library, so the examples found 
@@ -71,7 +82,7 @@ it is required that each publisher make sure to sync their state before publishi
 that the instance stays in sync with the other publishers*
 
 ```javascript
-await sub.clone().sync_state();
+await sub.clone().syncState();
 let masked_payload = to_bytes("Masked Payload") <- Payloads must be converted to bytes
 let public_payload = to_bytes("Public Payload")
 
@@ -89,16 +100,16 @@ console.log("New message sent by Sub A at: ", msg_link.to_string());
 When new messages are available to retrieve from the channel, you can fetch the next 
 message sent by each publisher like so:
 ```javascript
-let next_msgs = sub.clone().fetch_next_msgs();
+let next_msgs = await sub.clone().fetchNextMsgs();
 
-for (var i = 0; i < next_msgs.length; i++) {
-    console.log("Found a message...");
-    console.log(
-      "Public: ",
-      from_bytes(next_msgs[i].get_message().get_public_payload()),
-      "\tMasked: ",
-      from_bytes(next_msgs[i].get_message().get_masked_payload())
-    );
+for (const msg of next_msgs) {
+  console.log("Found a message...");
+  console.log(
+    "Public: ",
+    from_bytes(next_msgs[i].get_message().get_public_payload()),
+    "\tMasked: ",
+    from_bytes(next_msgs[i].get_message().get_masked_payload())
+  );
 }
 ```
 

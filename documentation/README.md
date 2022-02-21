@@ -6,6 +6,7 @@ The documentation is built using [Docusaurus 2](https://docusaurus.io/). The dep
 
 - [Node.js v14.14+](https://nodejs.org/en/)
 - [yarn](https://yarnpkg.com/getting-started/install)
+- `IOTA WIKI CLI` installed with npm
 
 ## Installation
 
