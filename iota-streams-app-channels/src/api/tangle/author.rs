@@ -1,16 +1,7 @@
 //! Customize Author with default implementation for use over the Tangle.
-
 use core::fmt;
-use iota_streams_core::Result;
 
-use super::*;
-use crate::api::tangle::{
-    ChannelType,
-    IntoMessages,
-    Messages,
-    UnwrappedMessage,
-    User,
-};
+use crypto::signatures::ed25519;
 
 use iota_streams_app::identifier::Identifier;
 
@@ -23,8 +14,17 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
+    Result,
 };
-use iota_streams_core_edsig::signature::ed25519;
+
+use super::*;
+use crate::api::tangle::{
+    ChannelType,
+    IntoMessages,
+    Messages,
+    UnwrappedMessage,
+    User,
+};
 
 /// Author Object. Contains User API.
 pub struct Author<Trans> {
@@ -73,8 +73,8 @@ impl<Trans> Author<Trans> {
     }
 
     /// Fetch the user ed25519 public key
-    pub fn get_public_key(&self) -> &ed25519::PublicKey {
-        self.user.get_public_key()
+    pub fn public_key(&self) -> &ed25519::PublicKey {
+        self.user.public_key()
     }
 
     /// Store a PSK in the user instance
@@ -374,12 +374,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
 impl<Trans: Clone> fmt::Display for Author<Trans> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "<{}>\n{}",
-            hex::encode(self.user.user.sig_kp.public.as_bytes()),
-            self.user.user.key_store
-        )
+        write!(f, "<{}>\n{}", hex::encode(self.public_key()), self.user.user.key_store)
     }
 }
 

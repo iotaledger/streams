@@ -27,6 +27,7 @@
 //! * `hash` -- hash value to be signed.
 //!
 //! * `sig` -- message signature generated with the senders private key.
+use crypto::signatures::ed25519;
 
 use iota_streams_app::message::{
     self,
@@ -38,7 +39,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     Result,
 };
-use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -57,7 +57,7 @@ where
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) public_payload: &'a Bytes,
     pub(crate) masked_payload: &'a Bytes,
-    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) publisher_private_key: &'a ed25519::SecretKey,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -71,10 +71,10 @@ where
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
-            .absorb(&self.sig_kp.public)?
+            .absorb(&self.publisher_private_key.public_key())?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            .ed25519(self.sig_kp, HashSig)?;
+            .ed25519(self.publisher_private_key, HashSig)?;
         // TODO: Is both public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
@@ -94,10 +94,10 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
-            .absorb(&self.sig_kp.public)?
+            .absorb(&self.publisher_private_key.public_key())?
             .absorb(self.public_payload)?
             .mask(self.masked_payload)?
-            .ed25519(self.sig_kp, HashSig)?;
+            .ed25519(self.publisher_private_key, HashSig)?;
         Ok(ctx)
     }
 }
@@ -106,7 +106,7 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) public_payload: Bytes,
     pub(crate) masked_payload: Bytes,
-    pub(crate) sig_pk: ed25519::PublicKey,
+    pub(crate) publisher_public_key: ed25519::PublicKey,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -120,7 +120,7 @@ where
             link: <<Link as HasLink>::Rel as Default>::default(),
             public_payload: Bytes::default(),
             masked_payload: Bytes::default(),
-            sig_pk: ed25519::PublicKey::default(),
+            publisher_public_key: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap(),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -140,10 +140,10 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
-            .absorb(&mut self.sig_pk)?
+            .absorb(&mut self.publisher_public_key)?
             .absorb(&mut self.public_payload)?
             .mask(&mut self.masked_payload)?
-            .ed25519(&self.sig_pk, HashSig)?;
+            .ed25519(&self.publisher_public_key, HashSig)?;
         Ok(ctx)
     }
 }

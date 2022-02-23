@@ -7,14 +7,12 @@ on:
     branches:
       - master
       - develop
-    paths:
-      - "**/Cargo.toml"
+      - v2.0-dev
   pull_request:
     branches:
       - master
       - develop
-    paths:
-      - "**/Cargo.toml"
+      - v2.0-dev
 
 jobs:
   audit:

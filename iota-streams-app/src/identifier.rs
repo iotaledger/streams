@@ -1,27 +1,20 @@
+use crypto::signatures::ed25519;
+
 use iota_streams_core::{
     async_trait,
     err,
     prelude::{
-        digest::generic_array::GenericArray,
         Box,
         Vec,
     },
     psk::{
         self,
         PskId,
-        PSKID_SIZE,
     },
     sponge::prp::PRP,
-    wrapped_err,
-    Errors::{
-        BadOneof,
-        IdentifierGenerationFailure,
-    },
+    Errors::BadOneof,
     Result,
-    WrappedError,
 };
-
-use iota_streams_core_edsig::signature::ed25519;
 
 use iota_streams_ddml::{
     command::*,
@@ -30,11 +23,10 @@ use iota_streams_ddml::{
 };
 
 use crate::message::*;
-use iota_streams_core::Errors::PublicKeyGenerationFailure;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum Identifier {
-    EdPubKey(ed25519::PublicKeyWrap),
+    EdPubKey(ed25519::PublicKey),
     PskId(PskId),
 }
 
@@ -47,34 +39,31 @@ impl Identifier {
     /// View into the underlying Byte array of the identifier
     pub fn as_bytes(&self) -> &[u8] {
         match self {
-            Identifier::EdPubKey(id) => id.0.as_bytes(),
+            Identifier::EdPubKey(public_key) => public_key.as_slice(),
             Identifier::PskId(id) => id,
-        }
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> iota_streams_core::Result<Self> {
-        match bytes.len() {
-            ed25519::PUBLIC_KEY_LENGTH => match ed25519::PublicKey::from_bytes(bytes) {
-                Ok(pk) => Ok(Identifier::EdPubKey(pk.into())),
-                Err(e) => Err(wrapped_err(PublicKeyGenerationFailure, WrappedError(e))),
-            },
-            PSKID_SIZE => Ok(Identifier::PskId(GenericArray::clone_from_slice(bytes))),
-            _ => err(IdentifierGenerationFailure),
         }
     }
 
     pub fn get_pk(&self) -> Option<&ed25519::PublicKey> {
         if let Identifier::EdPubKey(pk) = self {
-            Some(&pk.0)
+            Some(pk)
         } else {
             None
         }
+    }
+
+    pub fn is_pub_key(&self) -> bool {
+        matches!(self, Self::EdPubKey(_))
+    }
+
+    pub fn is_psk(&self) -> bool {
+        matches!(self, Self::PskId(_))
     }
 }
 
 impl From<ed25519::PublicKey> for Identifier {
     fn from(pk: ed25519::PublicKey) -> Self {
-        Identifier::EdPubKey(pk.into())
+        Identifier::EdPubKey(pk)
     }
 }
 
@@ -105,15 +94,15 @@ impl core::fmt::Display for Identifier {
 #[async_trait(?Send)]
 impl<F: PRP> ContentSizeof<F> for Identifier {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        match *self {
+        match self {
             Identifier::EdPubKey(pk) => {
                 let oneof = Uint8(0);
-                ctx.mask(&oneof)?.mask(&pk.0)?;
+                ctx.mask(oneof)?.mask(pk)?;
                 Ok(ctx)
             }
             Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
-                ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
+                ctx.mask(oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?;
                 Ok(ctx)
             }
         }
@@ -127,15 +116,15 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        match *self {
+        match self {
             Identifier::EdPubKey(pk) => {
                 let oneof = Uint8(0);
-                ctx.mask(&oneof)?.mask(&pk.0)?;
+                ctx.mask(oneof)?.mask(pk)?;
                 Ok(ctx)
             }
             Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
-                ctx.mask(&oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(&pskid))?;
+                ctx.mask(oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?;
                 Ok(ctx)
             }
         }
@@ -165,9 +154,9 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
         ctx.mask(&mut oneof)?;
         match oneof.0 {
             0 => {
-                let mut pk = ed25519::PublicKey::default();
+                let mut pk = ed25519::PublicKey::try_from_bytes([0; 32]).unwrap();
                 ctx.mask(&mut pk)?;
-                let id = Identifier::EdPubKey(ed25519::PublicKeyWrap(pk));
+                let id = Identifier::EdPubKey(pk);
                 Ok((id, ctx))
             }
             1 => {

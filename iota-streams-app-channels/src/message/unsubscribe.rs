@@ -20,6 +20,7 @@
 //! * `hash` -- hash value to be signed.
 //!
 //! * `sig` -- message signature generated with the senders private key.
+use crypto::signatures::ed25519;
 
 use core::marker::PhantomData;
 
@@ -33,7 +34,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     Result,
 };
-use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -46,7 +46,7 @@ use iota_streams_ddml::{
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) sig_kp: &'a ed25519::Keypair,
+    pub(crate) subscriber_private_key: &'a ed25519::SecretKey,
     pub(crate) _phantom: PhantomData<(F, Link)>,
 }
 
@@ -55,14 +55,14 @@ impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Link::Rel: 'a + Eq + SkipFallback<F>,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
+        let store = EmptyLinkStore::<F, Link::Rel, ()>::default();
         ctx.join(&store, self.link)?
-            .absorb(&self.sig_kp.public)?
+            .absorb(&self.subscriber_private_key.public_key())?
             .commit()?
-            .ed25519(self.sig_kp, HashSig)?;
+            .ed25519(self.subscriber_private_key, HashSig)?;
         Ok(ctx)
     }
 }
@@ -72,8 +72,8 @@ impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, L
 where
     F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    Link::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, Link::Rel>,
 {
     async fn wrap<'c, OS: io::OStream>(
         &self,
@@ -81,18 +81,27 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
-            .absorb(&self.sig_kp.public)?
+            .absorb(&self.subscriber_private_key.public_key())?
             .commit()?
-            .ed25519(self.sig_kp, HashSig)?;
+            .ed25519(self.subscriber_private_key, HashSig)?;
         Ok(ctx)
     }
 }
 
-#[derive(Default)]
 pub struct ContentUnwrap<F, Link: HasLink> {
-    pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) sig_pk: ed25519::PublicKey,
+    pub(crate) link: Link::Rel,
+    pub(crate) subscriber_public_key: ed25519::PublicKey,
     _phantom: PhantomData<(F, Link)>,
+}
+
+impl<F, Link: HasLink> Default for ContentUnwrap<F, Link> {
+    fn default() -> Self {
+        Self {
+            link: Default::default(),
+            subscriber_public_key: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap(),
+            _phantom: Default::default(),
+        }
+    }
 }
 
 #[async_trait(?Send)]
@@ -109,9 +118,9 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
-            .absorb(&mut self.sig_pk)?
+            .absorb(&mut self.subscriber_public_key)?
             .commit()?
-            .ed25519(&self.sig_pk, HashSig)?;
+            .ed25519(&self.subscriber_public_key, HashSig)?;
         Ok(ctx)
     }
 }

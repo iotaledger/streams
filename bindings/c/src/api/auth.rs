@@ -143,7 +143,7 @@ pub unsafe extern "C" fn auth_is_multi_branching(flag: *mut uint8_t, user: *cons
 pub unsafe extern "C" fn auth_get_public_key(pk: *mut *const PublicKey, user: *const Author) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {
         pk.as_mut().map_or(Err::NullArgument, |pk| {
-            *pk = user.get_public_key() as *const PublicKey;
+            *pk = user.public_key() as *const PublicKey;
             Err::Ok
         })
     })

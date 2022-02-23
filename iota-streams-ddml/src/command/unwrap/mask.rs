@@ -1,8 +1,18 @@
-use core::mem;
-use iota_streams_core::Result;
+use crypto::{
+    keys::x25519,
+    signatures::ed25519,
+};
+
+use iota_streams_core::{
+    sponge::prp::PRP,
+    wrapped_err,
+    Errors::PublicKeyGenerationFailure,
+    Result,
+    WrappedError,
+};
 
 use super::{
-    unwrap::*,
+    unwrap::Unwrap,
     Context,
 };
 use crate::{
@@ -19,39 +29,18 @@ use crate::{
         Uint8,
     },
 };
-use iota_streams_core::{
-    sponge::prp::PRP,
-    wrapped_err,
-    Errors::PublicKeyGenerationFailure,
-    WrappedError,
-};
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
 
-struct MaskContext<F, IS> {
-    ctx: Context<F, IS>,
+struct MaskContext<'a, F, IS> {
+    ctx: &'a mut Context<F, IS>,
 }
-impl<F, IS> AsMut<MaskContext<F, IS>> for Context<F, IS> {
-    fn as_mut<'a>(&'a mut self) -> &'a mut MaskContext<F, IS> {
-        unsafe { mem::transmute::<&'a mut Context<F, IS>, &'a mut MaskContext<F, IS>>(self) }
-    }
-}
-impl<F, IS> AsMut<Context<F, IS>> for MaskContext<F, IS> {
-    fn as_mut<'a>(&'a mut self) -> &'a mut Context<F, IS> {
-        unsafe { mem::transmute::<&'a mut MaskContext<F, IS>, &'a mut Context<F, IS>>(self) }
+
+impl<'a, F, IS> MaskContext<'a, F, IS> {
+    fn new(ctx: &'a mut Context<F, IS>) -> Self {
+        Self { ctx }
     }
 }
 
-impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<F, IS> {
-    fn unwrap_u8(&mut self, u: &mut u8) -> Result<&mut Self> {
-        let y = self.ctx.stream.try_advance(1)?;
-        let mut x = [0_u8; 1];
-        self.ctx.spongos.decrypt(y, &mut x)?;
-        *u = x[0];
-        Ok(self)
-    }
+impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<'_, F, IS> {
     fn unwrapn(&mut self, bytes: &mut [u8]) -> Result<&mut Self> {
         let y = self.ctx.stream.try_advance(bytes.len())?;
         self.ctx.spongos.decrypt(y, bytes)?;
@@ -59,76 +48,45 @@ impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<F, IS> {
     }
 }
 
-fn unwrap_mask_u8<'a, F: PRP, IS: io::IStream>(
-    ctx: &'a mut MaskContext<F, IS>,
-    u: &mut Uint8,
-) -> Result<&'a mut MaskContext<F, IS>> {
-    ctx.unwrap_u8(&mut u.0)
-}
-fn unwrap_mask_u16<'a, F: PRP, IS: io::IStream>(
-    ctx: &'a mut MaskContext<F, IS>,
-    u: &mut Uint16,
-) -> Result<&'a mut MaskContext<F, IS>> {
-    ctx.unwrap_u16(&mut u.0)
-}
-fn unwrap_mask_u32<'a, F: PRP, IS: io::IStream>(
-    ctx: &'a mut MaskContext<F, IS>,
-    u: &mut Uint32,
-) -> Result<&'a mut MaskContext<F, IS>> {
-    ctx.unwrap_u32(&mut u.0)
-}
-fn unwrap_mask_u64<'a, F: PRP, IS: io::IStream>(
-    ctx: &'a mut MaskContext<F, IS>,
-    u: &mut Uint64,
-) -> Result<&'a mut MaskContext<F, IS>> {
-    ctx.unwrap_u64(&mut u.0)
-}
-fn unwrap_mask_size<'a, F: PRP, IS: io::IStream>(
-    ctx: &'a mut MaskContext<F, IS>,
-    size: &mut Size,
-) -> Result<&'a mut MaskContext<F, IS>> {
-    ctx.unwrap_size(size)
-}
-fn unwrap_mask_bytes<'a, F: PRP, IS: io::IStream>(
-    ctx: &'a mut MaskContext<F, IS>,
-    bytes: &mut [u8],
-) -> Result<&'a mut MaskContext<F, IS>> {
-    ctx.unwrapn(bytes)
-}
-
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint8> for Context<F, IS> {
     fn mask(&mut self, u: &'a mut Uint8) -> Result<&mut Self> {
-        Ok(unwrap_mask_u8(self.as_mut(), u)?.as_mut())
+        MaskContext::new(self).unwrap_u8(u)?;
+        Ok(self)
     }
 }
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint16> for Context<F, IS> {
     fn mask(&mut self, u: &'a mut Uint16) -> Result<&mut Self> {
-        Ok(unwrap_mask_u16(self.as_mut(), u)?.as_mut())
+        MaskContext::new(self).unwrap_u16(u)?;
+        Ok(self)
     }
 }
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint32> for Context<F, IS> {
     fn mask(&mut self, u: &'a mut Uint32) -> Result<&mut Self> {
-        Ok(unwrap_mask_u32(self.as_mut(), u)?.as_mut())
+        MaskContext::new(self).unwrap_u32(u)?;
+        Ok(self)
     }
 }
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Uint64> for Context<F, IS> {
     fn mask(&mut self, u: &'a mut Uint64) -> Result<&mut Self> {
-        Ok(unwrap_mask_u64(self.as_mut(), u)?.as_mut())
+        MaskContext::new(self).unwrap_u64(u)?;
+        Ok(self)
     }
 }
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Size> for Context<F, IS> {
     fn mask(&mut self, size: &'a mut Size) -> Result<&mut Self> {
-        Ok(unwrap_mask_size(self.as_mut(), size)?.as_mut())
+        MaskContext::new(self).unwrap_size(size)?;
+        Ok(self)
     }
 }
 
 impl<'a, F: PRP, N: ArrayLength<u8>, IS: io::IStream> Mask<&'a mut NBytes<N>> for Context<F, IS> {
     fn mask(&mut self, nbytes: &'a mut NBytes<N>) -> Result<&mut Self> {
-        Ok(unwrap_mask_bytes(self.as_mut(), nbytes.as_mut_slice())?.as_mut())
+        MaskContext::new(self).unwrapn(nbytes.as_mut_slice())?;
+        Ok(self)
     }
 }
 
@@ -137,26 +95,27 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes> for Context<F, IS> {
         let mut size = Size(0);
         self.mask(&mut size)?;
         (bytes.0).resize(size.0, 0);
-        Ok(unwrap_mask_bytes(self.as_mut(), &mut (bytes.0)[..])?.as_mut())
+        MaskContext::new(self).unwrapn(bytes.as_mut_slice())?;
+        Ok(self)
     }
 }
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut x25519::PublicKey> for Context<F, IS> {
-    fn mask(&mut self, pk: &'a mut x25519::PublicKey) -> Result<&mut Self> {
-        let mut bytes = [0_u8; 32];
-        unwrap_mask_bytes(self.as_mut(), &mut bytes)?;
-        *pk = x25519::PublicKey::from(bytes);
+    fn mask(&mut self, public_key: &'a mut x25519::PublicKey) -> Result<&mut Self> {
+        let mut bytes = [0_u8; x25519::PUBLIC_KEY_LENGTH];
+        MaskContext::new(self).unwrapn(bytes.as_mut_slice())?;
+        *public_key = x25519::PublicKey::from(bytes);
         Ok(self)
     }
 }
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F, IS> {
-    fn mask(&mut self, pk: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
-        let mut bytes = [0_u8; 32];
-        unwrap_mask_bytes(self.as_mut(), &mut bytes)?;
-        match ed25519::PublicKey::from_bytes(&bytes[..]) {
-            Ok(apk) => {
-                *pk = apk;
+    fn mask(&mut self, public_key: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
+        let mut bytes = [0_u8; ed25519::PUBLIC_KEY_LENGTH];
+        MaskContext::new(self).unwrapn(bytes.as_mut_slice())?;
+        match ed25519::PublicKey::try_from_bytes(bytes) {
+            Ok(pk) => {
+                *public_key = pk;
                 Ok(self)
             }
             Err(e) => Err(wrapped_err!(PublicKeyGenerationFailure, WrappedError(e))),

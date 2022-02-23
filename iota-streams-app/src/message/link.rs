@@ -1,14 +1,15 @@
 use core::fmt;
 
+use crypto::signatures::ed25519;
+
 use iota_streams_core::{
     prelude::Vec,
     Result,
 };
-use iota_streams_core_edsig::signature::ed25519;
+use iota_streams_ddml::types::Bytes;
 
 use super::hdf::HDF;
 use crate::identifier::Identifier;
-use iota_streams_ddml::types::Bytes;
 
 /// Type of "absolute" links. For http it's the absolute URL.
 pub trait HasLink: Sized + Default + Clone + Eq {

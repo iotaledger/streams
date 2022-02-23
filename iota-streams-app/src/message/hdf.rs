@@ -1,16 +1,15 @@
 use core::fmt;
+
+use crypto::signatures::ed25519;
+
 use iota_streams_core::{
     async_trait,
     prelude::Box,
-    Result,
-};
-
-use iota_streams_core::{
     sponge::prp::PRP,
     try_or,
     Errors::*,
+    Result,
 };
-use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -46,7 +45,7 @@ pub struct HDF<Link> {
     pub sender_id: Identifier,
 }
 
-impl<Link: Default> HDF<Link> {
+impl<Link> HDF<Link> {
     pub fn new(link: Link) -> Self {
         Self {
             link,
@@ -58,7 +57,7 @@ impl<Link: Default> HDF<Link> {
             payload_frame_count: 0,
             previous_msg_link: Bytes::default(),
             seq_num: Uint64(0),
-            sender_id: Identifier::EdPubKey(ed25519::PublicKey::default().into()),
+            sender_id: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap().into(),
         }
     }
 
@@ -147,26 +146,9 @@ impl<Link: Default> HDF<Link> {
     }
 }
 
-impl<Link: Default> Default for HDF<Link> {
-    fn default() -> Self {
-        Self {
-            encoding: UTF8,
-            version: STREAMS_1_VER,
-            content_type: 0,
-            payload_length: 0,
-            frame_type: HDF_ID,
-            payload_frame_count: 0,
-            previous_msg_link: Bytes::default(),
-            link: Link::default(),
-            seq_num: Uint64(0),
-            sender_id: Identifier::EdPubKey(ed25519::PublicKey::default().into()),
-        }
-    }
-}
-
 impl<Link> fmt::Debug for HDF<Link>
 where
-    Link: fmt::Debug + Default,
+    Link: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -253,7 +235,7 @@ where
 impl<F, Link, Store> ContentUnwrap<F, Store> for HDF<Link>
 where
     F: PRP,
-    Link: AbsorbExternalFallback<F> + fmt::Debug + Clone,
+    Link: AbsorbExternalFallback<F> + Clone,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,

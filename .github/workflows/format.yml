@@ -5,12 +5,12 @@ on:
     branches:
       - master
       - develop
-      - chrysalis-2
+      - v2.0-dev
   pull_request:
     branches:
       - master
       - develop
-      - chrysalis-2
+      - v2.0-dev
     paths-ignore:
       - "docs/**"
       - "specification/**"
@@ -21,16 +21,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project:
-          [
-            "iota-streams-core",
-            "iota-streams-core-edsig",
-            "iota-streams-core-keccak",
-            "iota-streams-ddml",
-            "iota-streams-app",
-            "iota-streams-app-channels",
-          ]
-
+        package:
+          - "."
+          - "examples"
+          - "bindings/wasm"
     steps:
       - uses: actions/checkout@v2
       - name: Install rustfmt with nightly toolchain
@@ -43,4 +37,4 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --manifest-path=${{ matrix.project }}/Cargo.toml --all -- --check
+          args: --manifest-path=${{ matrix.package }}/Cargo.toml --check

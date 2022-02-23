@@ -96,7 +96,7 @@ pub unsafe extern "C" fn address_from_string(c_addr: *const c_char) -> *const Ad
 pub unsafe extern "C" fn public_key_to_string(pubkey: *const PublicKey) -> *const c_char {
     pubkey
         .as_ref()
-        .map_or(null(), |pk| string_into_raw_unchecked(hex::encode(pk.as_bytes())))
+        .map_or(null(), |pk| string_into_raw_unchecked(hex::encode(pk.as_slice())))
 }
 
 #[no_mangle]
@@ -136,7 +136,7 @@ pub extern "C" fn drop_user_state(s: *const UserState) {
 pub unsafe extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
     state.as_ref().map_or(null(), |state_ref| {
         pub_key.as_ref().map_or(null(), |pub_key| {
-            let pk_str = hex::encode(pub_key.as_bytes());
+            let pk_str = hex::encode(pub_key.as_slice());
             for (pk, cursor) in state_ref {
                 if pk == &pk_str {
                     return safe_into_ptr(cursor.link.clone());

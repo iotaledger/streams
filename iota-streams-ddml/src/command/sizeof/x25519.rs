@@ -1,3 +1,5 @@
+use crypto::keys::x25519;
+
 use iota_streams_core::Result;
 
 use super::Context;
@@ -8,19 +10,10 @@ use crate::{
         NBytes,
     },
 };
-use iota_streams_core_edsig::key_exchange::x25519;
 
-impl<'a, F> X25519<&'a x25519::StaticSecret, &'a x25519::PublicKey> for Context<F> {
-    fn x25519(&mut self, _sk: &x25519::StaticSecret, _pk: &x25519::PublicKey) -> Result<&mut Self> {
+impl<'a, F> X25519<&'a x25519::SecretKey, &'a x25519::PublicKey> for Context<F> {
+    fn x25519(&mut self, _sk: &x25519::SecretKey, _pk: &x25519::PublicKey) -> Result<&mut Self> {
         // Only shared secret is absorbed externally.
-        self.size += 0;
-        Ok(self)
-    }
-}
-
-impl<'a, F> X25519<&'a x25519::EphemeralSecret, &'a x25519::PublicKey> for Context<F> {
-    fn x25519(&mut self, _sk: &x25519::EphemeralSecret, _pk: &x25519::PublicKey) -> Result<&mut Self> {
-        // Shared secret is absorbed externally.
         self.size += 0;
         Ok(self)
     }

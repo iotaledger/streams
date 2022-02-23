@@ -11,15 +11,15 @@ description = "A rust implementation of the IOTA Streams core utils"
 [features]
 default = ["std"]
 # enable std
-std = ["rand/std", "digest/std", "hex/std"]
+std = ["rand/std", "rand/std_rng", "digest/std", "hex/std"]
 err-location-log = []
 sync-spin = ["spin"]
 sync-parking-lot = ["parking_lot"]
 
 [dependencies]
-# digest version should correspond to curve25519-dalek's version
 digest = { version = "0.9", default-features = false }
-rand = { version = "0.7", default-features = false}
+rand = { version = "0.8", default-features = false }
+keccak = { version = "0.1", default-features = false }
 hashbrown = { version = "0.11.2", default-features = false, optional = false, features = ["ahash"] }
 hex = { version = "0.4", default-features = false, optional = false, features = ["alloc"] }
 anyhow = { version = "1.0", default-features = false, features = ["std"], optional = false }

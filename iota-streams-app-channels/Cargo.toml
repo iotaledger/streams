@@ -11,7 +11,7 @@ description = "A rust implementation of the IOTA Streams Channels Application"
 [features]
 default = ["std", "tangle"]
 # Enable `std` feature in dependencies
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "hex/std"]
+std = ["iota-streams-core/std", "iota-streams-ddml/std", "iota-streams-app/std", "hex/std"]
 # Enable the tangle-specific API (implies `tangle` feature of iota-streams-app, but not necessarily `client`)
 tangle = ["iota-streams-app/tangle", "futures", "async-recursion"]
 # Enable re-export of Tangle client from iota-streams-app 
@@ -21,14 +21,15 @@ wasm-client = ["iota-streams-app/wasm-client"]
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
-iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsig", default-features = false }
-iota-streams-core-keccak = { version = "0.1.2", path = "../iota-streams-core-keccak", default-features = false }
 iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-features = false }
 iota-streams-app = { version = "0.1.2", path = "../iota-streams-app", default-features = false }
+
+iota-crypto = { version = "0.9.1", default-features = false, features = ["x25519"] }
 
 hex = { version = "0.4", default-features = false, optional = false }
 futures = { version = "0.3.8", default-features = false, optional = true }
 async-recursion = { version = "0.3.2", default-features = false, optional = true }
+
 
 [dev-dependencies]
 tokio = { version = "1.15", default-features = false }
