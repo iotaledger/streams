@@ -1,13 +1,23 @@
+---
+description: The `streams` library is written in Rust. You can also find bindings written for wasm and C.
+image: /img/overview/layered_overview.svg
+keywords:
+- bindings
+- library
+- rust
+- wasm
+- c
+---
 # IOTA Streams libraries
 
-There are currently available the following official bindings to `streams`:
+The `streams` library is currently available in the following languages:
 
-- [Rust](rust/overview) 
-- [Wasm](wasm/overview) 
-- [C](c/overview) 
+- [Rust](rust/getting_started) 
+- [Wasm](wasm/getting_started) 
+- [C](c/getting_started) 
 
 ## Getting Started
 
-It is a recommended approach to start your interactions with IOTA on a `testnet` network. API load balancer: [https://api.lb-0.testnet.chrysalis2.com:443](https://api.lb-0.testnet.chrysalis2.com:443)
+The recommended approach to start your interactions with IOTA is to use a developer network. A public API load balancer is provided here: [api.lb-0.h.chrysalis-devnet.iota.cafe](api.lb-0.h.chrysalis-devnet.iota.cafe)
 
-Network explorer is available at [IOTA Tangle Explorer](https://explorer.iota.org/testnet).
+The test network explorer is available at the [IOTA Tangle explorer](https://explorer.iota.org/devnet/).

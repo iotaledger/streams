@@ -18,10 +18,6 @@ impl<F: PRP, OS> Context<F, OS> {
         }
     }
 }
-#[allow(clippy::module_inception)]
-mod wrap;
-pub(crate) use wrap::*;
-
 mod absorb;
 mod absorb_external;
 mod commit;
@@ -34,6 +30,8 @@ mod repeated;
 mod skip;
 mod squeeze;
 mod squeeze_external;
+#[allow(clippy::module_inception)]
+mod wrap;
 
 mod ed25519;
 mod x25519;

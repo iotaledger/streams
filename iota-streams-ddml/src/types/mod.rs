@@ -25,8 +25,6 @@ mod mac;
 pub use mac::*;
 mod nbytes;
 pub use nbytes::*;
-mod prehashed;
-pub(crate) use prehashed::*;
 mod size;
 pub use size::*;
 mod uint;

@@ -38,6 +38,7 @@
 //!
 //! Note, the `unsubscribe_key` is masked and verified in the `x25519` operation and
 //! thus is not additionally `absorb`ed in this message.
+use crypto::keys::x25519;
 
 use iota_streams_app::{
     id::UserIdentity,
@@ -54,7 +55,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     Result,
 };
-use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -115,7 +115,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
     pub subscriber_id: UserIdentity<F>,
-    author_ke_sk: &'a x25519::StaticSecret,
+    author_ke_sk: &'a x25519::SecretKey,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -125,7 +125,7 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Result<Self> {
+    pub fn new(author_ke_sk: &'a x25519::SecretKey) -> Result<Self> {
         Ok(Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             unsubscribe_key: NBytes::<U32>::default(),

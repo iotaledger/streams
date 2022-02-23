@@ -23,15 +23,9 @@ use iota_streams_core::{
     },
     Result,
 };
-use iota_streams_core_edsig::{
-    key_exchange::x25519::{
-        self,
-        keypair_from_ed25519,
-    },
-    signature::ed25519::{
-        self,
-        Keypair,
-    },
+use crypto::{
+    signatures::ed25519,
+    keys::x25519
 };
 use iota_streams_ddml::{
     command::{
@@ -107,8 +101,8 @@ use iota_streams_core::{
 use iota_streams_ddml::types::Bytes;
 
 pub struct KeyPairs {
-    sig: ed25519::Keypair,
-    key_exchange: (x25519::StaticSecret, x25519::PublicKey),
+    sig: (ed25519::SecretKey, ed25519::PublicKey),
+    key_exchange: (x25519::SecretKey, x25519::PublicKey),
 }
 
 pub enum Keys {
@@ -142,14 +136,16 @@ pub struct UserIdentity<F> {
 impl<F> Default for UserIdentity<F> {
     fn default() -> Self {
         // unwrap is fine because we are using default
-        let sig_kp = ed25519::Keypair::from_bytes(&[0; 64]).unwrap();
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+        let signing_private_key = ed25519::SecretKey::from_bytes([0; ed25519::SECRET_KEY_LENGTH]);
+        let signing_public_key = signing_private_key.public_key();
+        let key_exchange_private_key = x25519::SecretKey::from(&signing_private_key);
+        let key_exchange_public_key = key_exchange_private_key.public_key();
 
         UserIdentity {
-            id: sig_kp.public.into(),
+            id: signing_public_key.into(),
             keys: Keys::Keypair(KeyPairs {
-                sig: sig_kp,
-                key_exchange: ke_kp,
+                sig: (signing_private_key, signing_public_key),
+                key_exchange: (key_exchange_private_key, key_exchange_public_key),
             }),
             #[cfg(feature = "did")]
             client: block_on(StreamsClient::default().to_identity_client()).unwrap(),
@@ -163,14 +159,16 @@ impl<F: PRP> UserIdentity<F> {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
         let prng = prng::from_seed::<F>("IOTA Streams Channels user sig keypair", seed);
 
-        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+        let signing_private_key = ed25519::SecretKey::generate_with(&mut prng::Rng::new(prng, nonce));
+        let signing_public_key = signing_private_key.public_key();
+        let key_exchange_private_key = x25519::SecretKey::from(&signing_private_key);
+        let key_exchange_public_key = key_exchange_private_key.public_key();
 
         UserIdentity {
-            id: sig_kp.public.into(),
+            id: signing_public_key.into(),
             keys: Keys::Keypair(KeyPairs {
-                sig: sig_kp,
-                key_exchange: ke_kp,
+                sig: (signing_private_key, signing_public_key),
+                key_exchange: (key_exchange_private_key, key_exchange_public_key),
             }),
             #[cfg(feature = "did")]
             client: StreamsClient::default().to_identity_client().await.unwrap(),
@@ -206,9 +204,13 @@ impl<F: PRP> UserIdentity<F> {
     // TODO: Implement new_from_account implementation
 
     /// Retrieve the key exchange keypair for encryption while sending packets
-    pub fn get_ke_kp(&self) -> Result<(x25519::StaticSecret, x25519::PublicKey)> {
+    pub fn get_ke_kp(&self) -> Result<(x25519::SecretKey, x25519::PublicKey)> {
         match &self.keys {
-            Keys::Keypair(keypairs) => Ok(keypairs.key_exchange.clone()),
+            Keys::Keypair(keypairs) => {
+                let secret_key = x25519::SecretKey::from_bytes(keypairs.key_exchange.0.to_bytes());
+                let public_key = secret_key.public_key();
+                Ok((secret_key, public_key))
+            },
             Keys::Psk(_) => err(NoSignatureKeyPair),
             #[cfg(feature = "did")]
             Keys::DID(did) => match did {
@@ -222,15 +224,15 @@ impl<F: PRP> UserIdentity<F> {
     pub fn get_sig_sk(&self) -> Result<ed25519::SecretKey> {
         match &self.keys {
             Keys::Keypair(keypairs) => {
-                let sk_bytes = keypairs.sig.secret.as_bytes();
-                Ok(ed25519::SecretKey::from_bytes(sk_bytes)?)
+                let sk_bytes = keypairs.sig.0.to_bytes();
+                Ok(ed25519::SecretKey::from_bytes(sk_bytes))
             }
             Keys::Psk(_) => err(NoSignatureKeyPair),
             #[cfg(feature = "did")]
             Keys::DID(did) => match did {
                 DIDImpl::PrivateKey(info) => {
                     let sig_kp = info.get_sig_kp();
-                    Ok(ed25519::SecretKey::from_bytes(sig_kp.secret.as_bytes())?)
+                    Ok(ed25519::SecretKey::from_bytes(sig_kp.0.to_bytes()))
                 } // TODO: Account implementation
             },
         }
@@ -294,26 +296,31 @@ impl DIDInfo {
         }
     }
 
-    fn get_sig_kp(&self) -> ed25519::Keypair {
-        let mut key_bytes = Vec::from(self.did_keypair.private().as_ref());
-        key_bytes.extend(self.did_keypair.public().as_ref());
-        ed25519::Keypair::from_bytes(&key_bytes).unwrap()
+    fn get_sig_kp(&self) -> (ed25519::SecretKey, ed25519::PublicKey) {
+        let mut key_bytes = [0_u8 ;ed25519::SECRET_KEY_LENGTH];
+        key_bytes.clone_from_slice(self.did_keypair.private().as_ref());
+        let signing_secret_key = ed25519::SecretKey::from_bytes(key_bytes);
+        let signing_public_key = signing_secret_key.public_key();
+        (signing_secret_key, signing_public_key)
     }
 
-    fn get_ke_kp(&self) -> (x25519::StaticSecret, x25519::PublicKey) {
+    fn get_ke_kp(&self) -> (x25519::SecretKey, x25519::PublicKey) {
         let kp = self.get_sig_kp();
-        x25519::keypair_from_ed25519(&kp)
+        let key_exchange_secret_key = x25519::SecretKey::from(&kp.0);
+        let key_exchange_public_key = key_exchange_secret_key.public_key();
+        (key_exchange_secret_key, key_exchange_public_key)
     }
 }
 
-impl<F> From<ed25519::Keypair> for UserIdentity<F> {
-    fn from(kp: Keypair) -> Self {
-        let ke_kp = keypair_from_ed25519(&kp);
+impl<F> From<(ed25519::SecretKey, ed25519::PublicKey)> for UserIdentity<F> {
+    fn from(kp: (ed25519::SecretKey, ed25519::PublicKey)) -> Self {
+        let ke_sk = x25519::SecretKey::from(&kp.0);
+        let ke_pk = ke_sk.public_key();
         UserIdentity {
-            id: Identifier::EdPubKey(kp.public.into()),
+            id: Identifier::EdPubKey(kp.1.into()),
             keys: Keys::Keypair(KeyPairs {
                 sig: kp,
-                key_exchange: ke_kp,
+                key_exchange: (ke_sk, ke_pk),
             }),
             ..Default::default()
         }
@@ -326,7 +333,7 @@ impl<F: PRP> ContentSizeof<F> for UserIdentity<F> {
         match &self.keys {
             Keys::Keypair(keys) => {
                 ctx.absorb(Uint8(0))?;
-                ctx.ed25519(&keys.sig, HashSig)?;
+                ctx.ed25519(&keys.sig.0, HashSig)?;
                 return Ok(ctx);
             }
             Keys::Psk(_) => err(NoSignatureKeyPair),
@@ -358,7 +365,7 @@ impl<F: PRP, OS: io::OStream> ContentSign<F, OS> for UserIdentity<F> {
             Keys::Keypair(keys) => {
                 ctx.absorb(Uint8(0))?;
                 let mut hash = External(NBytes::<U64>::default());
-                ctx.commit()?.squeeze(&mut hash)?.ed25519(&keys.sig, &hash)?;
+                ctx.commit()?.squeeze(&mut hash)?.ed25519(&keys.sig.0, &hash)?;
                 Ok(ctx)
             }
             Keys::Psk(_) => err(NoSignatureKeyPair),
@@ -404,9 +411,9 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
         ctx.absorb(&mut oneof)?;
         match oneof.0 {
             0 => match &self.id {
-                Identifier::EdPubKey(pub_key_wrap) => {
+                Identifier::EdPubKey(pub_key) => {
                     let mut hash = External(NBytes::<U64>::default());
-                    ctx.commit()?.squeeze(&mut hash)?.ed25519(&pub_key_wrap.0, &hash)?;
+                    ctx.commit()?.squeeze(&mut hash)?.ed25519(pub_key, &hash)?;
                     Ok(ctx)
                 }
                 _ => err!(BadIdentifier),

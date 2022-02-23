@@ -9,6 +9,12 @@ use crate::io;
 
 pub struct Fallback<T>(pub T);
 
+impl<T> Fallback<T> {
+    pub(crate) fn into_inner(self) -> T {
+        self.0
+    }
+}
+
 impl<T> From<T> for Fallback<T> {
     fn from(t: T) -> Self {
         Self(t)

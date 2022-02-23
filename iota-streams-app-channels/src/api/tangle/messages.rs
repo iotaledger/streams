@@ -196,17 +196,13 @@ pub trait IntoMessages<Trans> {
 ///         UnwrappedMessage::new(
 ///             first_packet_link,
 ///             keyload_link,
-///             MessageContent::new_signed_packet(
-///                 author.get_public_key().clone(),
-///                 b"public payload",
-///                 b"masked payload"
-///             )
+///             MessageContent::new_signed_packet(author.public_key().clone(), b"public payload", b"masked payload")
 ///         ),
 ///         UnwrappedMessage::new(
 ///             second_packet_link,
 ///             first_packet_link,
 ///             MessageContent::new_signed_packet(
-///                 author.get_public_key().clone(),
+///                 author.public_key().clone(),
 ///                 b"another public payload",
 ///                 b"another masked payload"
 ///             )
@@ -512,13 +508,13 @@ pub trait IntoMessages<Trans> {
 ///         UnwrappedMessage::new(
 ///             first_packet_second_branch_link,
 ///             tag_second_branch_link,
-///             MessageContent::new_signed_packet(author.get_public_key().clone(), b"", b"masked payload in branch 2")
+///             MessageContent::new_signed_packet(author.public_key().clone(), b"", b"masked payload in branch 2")
 ///         ),
 ///         UnwrappedMessage::new(
 ///             second_packet_second_branch_link,
 ///             first_packet_second_branch_link,
 ///             MessageContent::new_signed_packet(
-///                 author.get_public_key().clone(),
+///                 author.public_key().clone(),
 ///                 b"",
 ///                 b"another masked payload in branch 2"
 ///             )

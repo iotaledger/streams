@@ -1,21 +1,8 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
-
 use core::fmt;
-use iota_streams_core::{
-    err,
-    Result,
-};
-
-use super::*;
-use crate::api::tangle::{
-    ChannelType::SingleBranch,
-    Messages,
-    UnwrappedMessage,
-    User,
-};
-
 use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
+    err,
     prelude::{
         String,
         ToString,
@@ -26,6 +13,15 @@ use iota_streams_core::{
         PskId,
     },
     Errors::SingleDepthOperationFailure,
+    Result,
+};
+
+use super::*;
+use crate::api::tangle::{
+    ChannelType::SingleBranch,
+    Messages,
+    UnwrappedMessage,
+    User,
 };
 
 #[cfg(feature = "did")]

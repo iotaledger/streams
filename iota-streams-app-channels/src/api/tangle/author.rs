@@ -1,16 +1,7 @@
 //! Customize Author with default implementation for use over the Tangle.
-
 use core::fmt;
-use iota_streams_core::Result;
 
 use super::*;
-use crate::api::tangle::{
-    ChannelType,
-    IntoMessages,
-    Messages,
-    UnwrappedMessage,
-    User,
-};
 use iota_streams_app::id::identifier::Identifier;
 
 use iota_streams_core::{
@@ -22,6 +13,15 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
+    Result,
+};
+
+use crate::api::tangle::{
+    ChannelType,
+    IntoMessages,
+    Messages,
+    UnwrappedMessage,
+    User,
 };
 
 #[cfg(feature = "did")]

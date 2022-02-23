@@ -1,3 +1,11 @@
+---
+description: Official IOTA Streams C API examples.
+image: /img/logo/iota_mark_light.png
+keywords:
+- api
+- C
+- examples
+---
 # Examples
 An overview example of the available api tools can be found [here](../../../../bindings/c/main.c).
 The general API is simply an abstraction over the rust library, so the examples found 

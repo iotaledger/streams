@@ -18,6 +18,7 @@
 //! * `seqNum` -- Sequencing state of published message.
 //!
 //! * `reflink` -- The msgid for the preceding message referenced by the sequenced message
+use crypto::signatures::ed25519;
 
 use iota_streams_app::{
     id::Identifier,
@@ -30,11 +31,10 @@ use iota_streams_app::{
 use iota_streams_core::{
     async_trait,
     prelude::Box,
+    sponge::prp::PRP,
     Result,
 };
 
-use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -111,7 +111,7 @@ where
     fn default() -> Self {
         Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
-            id: ed25519::PublicKey::default().into(),
+            id: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap().into(),
             seq_num: Uint64(0),
             ref_link: <<Link as HasLink>::Rel as Default>::default(),
         }

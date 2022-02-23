@@ -20,6 +20,10 @@
 //! * `tag` -- hash-value to be signed.
 //!
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
+use crypto::{
+    signatures::ed25519,
+    keys::x25519,
+};
 
 use iota_streams_app::id::UserIdentity;
 use iota_streams_core::{
@@ -36,10 +40,6 @@ use iota_streams_app::{
     },
 };
 use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -71,7 +71,7 @@ impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
             .sizeof(ctx)
             .await?
             .absorb(&self.user_id.get_ke_kp()?.1)?
-            .absorb(&self.flags)?;
+            .absorb(self.flags)?;
         ctx = self.user_id.sizeof(ctx).await?;
         Ok(ctx)
     }
@@ -90,7 +90,7 @@ impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
             .wrap(_store, ctx)
             .await?
             .absorb(&self.user_id.get_ke_kp()?.1)?
-            .absorb(&self.flags)?;
+            .absorb(self.flags)?;
         ctx = self.user_id.sign(ctx).await?;
         Ok(ctx)
     }
@@ -106,9 +106,9 @@ pub struct ContentUnwrap<F> {
 
 impl<F> Default for ContentUnwrap<F> {
     fn default() -> Self {
-        let sig_pk = ed25519::PublicKey::default();
+        let sig_pk = ed25519::PublicKey::try_from_bytes([0;ed25519::PUBLIC_KEY_LENGTH]).unwrap();
         // No need to worry about unwrap since it's operating from default input
-        let ke_pk = x25519::public_from_ed25519(&sig_pk).unwrap();
+        let ke_pk = x25519::PublicKey::from_bytes(sig_pk.to_bytes());
         let user_id = UserIdentity::default();
         let flags = Uint8(0);
         Self {

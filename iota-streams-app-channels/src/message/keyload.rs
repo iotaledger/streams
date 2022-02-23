@@ -49,10 +49,8 @@
 //! 1) Keys identities are not encrypted and may be linked to recipients identities.
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
-
-use crate::Lookup;
-
 use core::convert::TryFrom;
+use crypto::keys::x25519;
 use iota_streams_app::{
     id::{
         Identifier,
@@ -83,7 +81,6 @@ use iota_streams_core::{
     Result,
     WrappedError,
 };
-use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -93,6 +90,8 @@ use iota_streams_ddml::{
     },
     types::*,
 };
+
+use crate::Lookup;
 
 pub struct ContentWrap<'a, F, Link>
 where
@@ -227,7 +226,7 @@ where
 {
     pub fn new(psk_store: PskStore, ke_sk_store: KeSkStore, author_id: UserIdentity<F>) -> Self {
         Self {
-            link: <<Link as HasLink>::Rel as Default>::default(),
+            link: Default::default(),
             nonce: NBytes::default(),
             psk_store,
             ke_sk_store,
@@ -248,7 +247,7 @@ where
     Link::Rel: Eq + Default + SkipFallback<F>,
     LStore: LinkStore<F, Link::Rel>,
     PskStore: for<'c> Lookup<&'c Identifier, psk::Psk>,
-    KeSkStore: for<'c> Lookup<&'c Identifier, x25519::StaticSecret> + 'b,
+    KeSkStore: for<'c> Lookup<&'c Identifier, x25519::SecretKey> + 'b,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
