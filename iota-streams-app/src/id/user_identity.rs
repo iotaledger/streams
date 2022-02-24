@@ -428,7 +428,7 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
                 // Get key fragment
                 let mut bytes = Bytes(Vec::new());
                 ctx.absorb(&mut bytes)?;
-                let fragment = "#".to_string() + &bytes.to_string();
+                let fragment = "#".to_string() + &String::from_utf8(bytes.0)?;
 
                 // Join fragment to did
                 let did_url = did.join(fragment)?;
