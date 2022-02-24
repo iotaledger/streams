@@ -18,7 +18,7 @@ impl<'a, F, Link: Default + Clone> PreparsedMessage<'a, F, Link> {
     }
 
     pub fn content_type(&self) -> u8 {
-        self.header.get_content_type()
+        self.header.content_type()
     }
 
     pub async fn unwrap<Store, Content>(

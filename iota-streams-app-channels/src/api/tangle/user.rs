@@ -34,6 +34,7 @@ use iota_streams_core::{
     },
     Result,
 };
+use crypto::keys::x25519;
 
 #[cfg(feature = "did")]
 use iota_streams_app::id::DIDInfo;
@@ -69,7 +70,7 @@ impl<Trans> User<Trans> {
         Self { user, transport }
     }
 
-    pub fn get_transport(&self) -> &Trans {
+    pub fn transport(&self) -> &Trans {
         &self.transport
     }
 
@@ -101,8 +102,13 @@ impl<Trans> User<Trans> {
     }
 
     /// Fetch the user public Id
-    pub fn get_id(&self) -> &Identifier {
-        &self.user.user_id.id
+    pub fn id(&self) -> &Identifier {
+        &self.user.id()
+    }
+
+    /// Fetch the user key exchange public key
+    pub fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
+        self.user.key_exchange_public_key()
     }
 
     pub fn is_registered(&self) -> bool {
@@ -210,8 +216,9 @@ impl<Trans> User<Trans> {
     ///
     ///   # Arguments
     ///   * `id` - Identifier of known subscriber
-    pub fn store_new_subscriber(&mut self, id: Identifier) -> Result<()> {
-        self.user.insert_subscriber(id)
+    ///   * `xkey` - Public exchange key for decryption
+    pub fn store_new_subscriber(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
+        self.user.insert_subscriber(id, xkey)
     }
 
     /// Remove a Subscriber from the user instance

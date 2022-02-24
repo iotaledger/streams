@@ -70,7 +70,7 @@ impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
             .id
             .sizeof(ctx)
             .await?
-            .absorb(&self.user_id.get_ke_kp()?.1)?
+            .absorb(&self.user_id.ke_kp()?.1)?
             .absorb(self.flags)?;
         ctx = self.user_id.sizeof(ctx).await?;
         Ok(ctx)
@@ -89,7 +89,7 @@ impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
             .id
             .wrap(_store, ctx)
             .await?
-            .absorb(&self.user_id.get_ke_kp()?.1)?
+            .absorb(&self.user_id.ke_kp()?.1)?
             .absorb(self.flags)?;
         ctx = self.user_id.sign(ctx).await?;
         Ok(ctx)

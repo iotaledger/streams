@@ -24,6 +24,8 @@ use crate::api::tangle::{
     User,
 };
 
+use crypto::keys::x25519;
+
 #[cfg(feature = "did")]
 use iota_streams_app::id::DIDInfo;
 
@@ -50,8 +52,8 @@ impl<Trans> Author<Trans> {
     }
 
     /// Returns a clone of the transport object
-    pub fn get_transport(&self) -> &Trans {
-        self.user.get_transport()
+    pub fn transport(&self) -> &Trans {
+        self.user.transport()
     }
 
     /// Return boolean representing the sequencing nature of the channel
@@ -75,8 +77,13 @@ impl<Trans> Author<Trans> {
     }
 
     /// Fetch the user public Id
-    pub fn get_id(&self) -> &Identifier {
-        self.user.get_id()
+    pub fn id(&self) -> &Identifier {
+        self.user.id()
+    }
+
+    /// Fetch the user key exchange public key
+    pub fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
+        self.user.key_exchange_public_key()
     }
 
     /// Store a PSK in the user instance
@@ -100,8 +107,9 @@ impl<Trans> Author<Trans> {
     ///
     ///   # Arguments
     ///   * `id` - Public Id of known subscriber
-    pub fn store_new_subscriber(&mut self, id: Identifier) -> Result<()> {
-        self.user.store_new_subscriber(id)
+    ///   * `xkey` - Public exchange key for decryption
+    pub fn store_new_subscriber(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
+        self.user.store_new_subscriber(id, xkey)
     }
 
     /// Remove a Subscriber from the user instance
@@ -393,7 +401,7 @@ impl<Trans: Transport + Clone> Author<Trans> {
 
 impl<Trans: Clone> fmt::Display for Author<Trans> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{}>\n{}", self.get_id(), self.user.user.key_store)
+        write!(f, "<{}>\n{}", self.id(), self.user.user.key_store)
     }
 }
 

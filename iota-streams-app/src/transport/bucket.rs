@@ -44,11 +44,11 @@ where
 
 impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
     type SendOptions = ();
-    fn get_send_options(&self) {}
+    fn send_options(&self) {}
     fn set_send_options(&mut self, _opt: ()) {}
 
     type RecvOptions = ();
-    fn get_recv_options(&self) {}
+    fn recv_options(&self) {}
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 

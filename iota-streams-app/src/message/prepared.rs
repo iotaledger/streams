@@ -51,7 +51,7 @@ where
             let mut ctx = sizeof::Context::<F>::new();
             self.header.sizeof(&mut ctx).await?;
             self.content.sizeof(&mut ctx).await?;
-            ctx.get_size()
+            ctx.size()
         };
 
         let mut buf = vec![0; buf_size];

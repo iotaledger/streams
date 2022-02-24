@@ -100,7 +100,7 @@ where
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub nonce: NBytes<U16>,
     pub key: NBytes<U32>,
-    pub(crate) keys: Vec<(&'a Identifier, Vec<u8>)>,
+    pub(crate) keys: Vec<(Identifier, Vec<u8>)>,
     pub(crate) user_id: &'a UserIdentity<F>,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }

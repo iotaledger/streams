@@ -225,7 +225,7 @@ impl Clone for Client {
 
 impl TransportOptions for Client {
     type SendOptions = SendOptions;
-    fn get_send_options(&self) -> SendOptions {
+    fn send_options(&self) -> SendOptions {
         self.send_opt.clone()
     }
     fn set_send_options(&mut self, opt: SendOptions) {
@@ -236,7 +236,7 @@ impl TransportOptions for Client {
     }
 
     type RecvOptions = ();
-    fn get_recv_options(&self) {}
+    fn recv_options(&self) {}
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 

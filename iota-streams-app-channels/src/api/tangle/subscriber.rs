@@ -23,6 +23,7 @@ use crate::api::tangle::{
     UnwrappedMessage,
     User,
 };
+use crypto::keys::x25519;
 
 #[cfg(feature = "did")]
 use iota_streams_app::id::DIDInfo;
@@ -45,8 +46,8 @@ impl<Trans> Subscriber<Trans> {
     }
 
     /// Returns a clone of the transport object
-    pub fn get_transport(&self) -> &Trans {
-        self.user.get_transport()
+    pub fn transport(&self) -> &Trans {
+        self.user.transport()
     }
 
     /// Returns a boolean representing whether an Announcement message has been processed
@@ -60,8 +61,13 @@ impl<Trans> Subscriber<Trans> {
     }
 
     /// Fetch the user public Id
-    pub fn get_id(&self) -> &Identifier {
-        self.user.get_id()
+    pub fn id(&self) -> &Identifier {
+        self.user.id()
+    }
+
+    /// Fetch the user key exchange public key
+    pub fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
+        self.user.key_exchange_public_key()
     }
 
     /// Channel Author's public Id
@@ -348,7 +354,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
 
 impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{}>\n{}", self.get_id().to_string(), self.user.user.key_store)
+        write!(f, "<{}>\n{}", self.id().to_string(), self.user.user.key_store)
     }
 }
 

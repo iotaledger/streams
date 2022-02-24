@@ -85,6 +85,7 @@ where
         ctx.join(&store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?;
         self.subscriber_id.id.sizeof(ctx).await?;
+        ctx.absorb(&self.subscriber_id.ke_kp()?.1)?;
         let ctx = self.subscriber_id.sizeof(ctx).await?;
         Ok(ctx)
     }
@@ -106,6 +107,7 @@ where
         ctx.join(store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?;
         self.subscriber_id.id.wrap(store, ctx).await?;
+        ctx.absorb(&self.subscriber_id.ke_kp()?.1)?;
         let ctx = self.subscriber_id.sign(ctx).await?;
         Ok(ctx)
     }
@@ -115,6 +117,7 @@ pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
     pub subscriber_id: UserIdentity<F>,
+    pub subscriber_xkey: x25519::PublicKey,
     author_ke_sk: &'a x25519::SecretKey,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
@@ -130,6 +133,7 @@ where
             link: <<Link as HasLink>::Rel as Default>::default(),
             unsubscribe_key: NBytes::<U32>::default(),
             subscriber_id: UserIdentity::default(),
+            subscriber_xkey: x25519::PublicKey::from_bytes([0;x25519::PUBLIC_KEY_LENGTH]),
             author_ke_sk,
             _phantom: core::marker::PhantomData,
         })
@@ -152,6 +156,7 @@ where
         ctx.join(store, &mut self.link)?
             .x25519(self.author_ke_sk, &mut self.unsubscribe_key)?;
         self.subscriber_id.id.unwrap(store, ctx).await?;
+        ctx.absorb(&mut self.subscriber_xkey)?;
         let ctx = self.subscriber_id.verify(ctx).await?;
         Ok(ctx)
     }

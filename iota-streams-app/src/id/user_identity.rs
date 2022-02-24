@@ -94,6 +94,7 @@ use iota_streams_core::{
         DIDMissing,
         NotDIDUser,
         SignatureFailure,
+        SignatureMismatch
     },
     WrappedError,
 };
@@ -188,7 +189,7 @@ impl<F: PRP> UserIdentity<F> {
 
     #[cfg(feature = "did")]
     pub async fn new_with_did_private_key(did_info: DIDInfo, client: Client) -> Result<UserIdentity<F>> {
-        let did = did_info.get_did()?;
+        let did = did_info.did()?;
         Ok(UserIdentity {
             id: (&did).into(),
             keys: Keys::DID(DIDImpl::PrivateKey(did_info)),
@@ -204,7 +205,7 @@ impl<F: PRP> UserIdentity<F> {
     // TODO: Implement new_from_account implementation
 
     /// Retrieve the key exchange keypair for encryption while sending packets
-    pub fn get_ke_kp(&self) -> Result<(x25519::SecretKey, x25519::PublicKey)> {
+    pub fn ke_kp(&self) -> Result<(x25519::SecretKey, x25519::PublicKey)> {
         match &self.keys {
             Keys::Keypair(keypairs) => {
                 let secret_key = x25519::SecretKey::from_bytes(keypairs.key_exchange.0.to_bytes());
@@ -214,14 +215,14 @@ impl<F: PRP> UserIdentity<F> {
             Keys::Psk(_) => err(NoSignatureKeyPair),
             #[cfg(feature = "did")]
             Keys::DID(did) => match did {
-                DIDImpl::PrivateKey(info) => Ok(info.get_ke_kp()),
+                DIDImpl::PrivateKey(info) => Ok(info.ke_kp()),
                 // TODO: Account implementation
             },
         }
     }
 
     /// Retrieve the signature secret key for user encryption while exporting and importing
-    pub fn get_sig_sk(&self) -> Result<ed25519::SecretKey> {
+    pub fn sig_sk(&self) -> Result<ed25519::SecretKey> {
         match &self.keys {
             Keys::Keypair(keypairs) => {
                 let sk_bytes = keypairs.sig.0.to_bytes();
@@ -231,7 +232,7 @@ impl<F: PRP> UserIdentity<F> {
             #[cfg(feature = "did")]
             Keys::DID(did) => match did {
                 DIDImpl::PrivateKey(info) => {
-                    let sig_kp = info.get_sig_kp();
+                    let sig_kp = info.sig_kp();
                     Ok(ed25519::SecretKey::from_bytes(sig_kp.0.to_bytes()))
                 } // TODO: Account implementation
             },
@@ -248,7 +249,7 @@ impl<F: PRP> UserIdentity<F> {
             Keys::DID(did_impl) => {
                 match did_impl {
                     DIDImpl::PrivateKey(info) => {
-                        let did = info.get_did()?;
+                        let did = info.did()?;
                         let fragment = "#".to_string() + &info.key_fragment;
                         // Join the DID identifier with the key fragment of the verification method
                         let method = did.join(&fragment)?;
@@ -289,14 +290,14 @@ impl<F: PRP> UserIdentity<F> {
 
 #[cfg(feature = "did")]
 impl DIDInfo {
-    fn get_did(&self) -> Result<IotaDID> {
+    fn did(&self) -> Result<IotaDID> {
         match &self.did {
             Some(did) => Ok(did.clone()),
             None => err(DIDMissing),
         }
     }
 
-    fn get_sig_kp(&self) -> (ed25519::SecretKey, ed25519::PublicKey) {
+    fn sig_kp(&self) -> (ed25519::SecretKey, ed25519::PublicKey) {
         let mut key_bytes = [0_u8 ;ed25519::SECRET_KEY_LENGTH];
         key_bytes.clone_from_slice(self.did_keypair.private().as_ref());
         let signing_secret_key = ed25519::SecretKey::from_bytes(key_bytes);
@@ -304,8 +305,8 @@ impl DIDInfo {
         (signing_secret_key, signing_public_key)
     }
 
-    fn get_ke_kp(&self) -> (x25519::SecretKey, x25519::PublicKey) {
-        let kp = self.get_sig_kp();
+    fn ke_kp(&self) -> (x25519::SecretKey, x25519::PublicKey) {
+        let kp = self.sig_kp();
         let key_exchange_secret_key = x25519::SecretKey::from(&kp.0);
         let key_exchange_public_key = key_exchange_secret_key.public_key();
         (key_exchange_secret_key, key_exchange_public_key)
@@ -451,7 +452,7 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
                 };
                 match self.verify_data(did_url.as_ref(), wrapper).await? {
                     true => Ok(ctx),
-                    false => err(SignatureFailure),
+                    false => err(SignatureMismatch),
                 }
             }
             _ => err(BadOneof),

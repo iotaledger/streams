@@ -20,11 +20,11 @@ pub trait TransportDetails<Link> {
 
 pub trait TransportOptions {
     type SendOptions;
-    fn get_send_options(&self) -> Self::SendOptions;
+    fn send_options(&self) -> Self::SendOptions;
     fn set_send_options(&mut self, opt: Self::SendOptions);
 
     type RecvOptions;
-    fn get_recv_options(&self) -> Self::RecvOptions;
+    fn recv_options(&self) -> Self::RecvOptions;
     fn set_recv_options(&mut self, opt: Self::RecvOptions);
 }
 
@@ -45,16 +45,16 @@ pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link> {
 
 impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
     type SendOptions = <Tsp as TransportOptions>::SendOptions;
-    fn get_send_options(&self) -> Self::SendOptions {
-        self.borrow_mut().get_send_options()
+    fn send_options(&self) -> Self::SendOptions {
+        self.borrow_mut().send_options()
     }
     fn set_send_options(&mut self, opt: Self::SendOptions) {
         self.borrow_mut().set_send_options(opt)
     }
 
     type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
-    fn get_recv_options(&self) -> Self::RecvOptions {
-        self.borrow_mut().get_recv_options()
+    fn recv_options(&self) -> Self::RecvOptions {
+        self.borrow_mut().recv_options()
     }
     fn set_recv_options(&mut self, opt: Self::RecvOptions) {
         self.borrow_mut().set_recv_options(opt)
@@ -112,16 +112,16 @@ mod sync {
 
     impl<Tsp: TransportOptions> TransportOptions for Arc<Mutex<Tsp>> {
         type SendOptions = <Tsp as TransportOptions>::SendOptions;
-        fn get_send_options(&self) -> Self::SendOptions {
-            self.lock().get_send_options()
+        fn send_options(&self) -> Self::SendOptions {
+            self.lock().send_options()
         }
         fn set_send_options(&mut self, opt: Self::SendOptions) {
             self.lock().set_send_options(opt)
         }
 
         type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
-        fn get_recv_options(&self) -> Self::RecvOptions {
-            self.lock().get_recv_options()
+        fn recv_options(&self) -> Self::RecvOptions {
+            self.lock().recv_options()
         }
         fn set_recv_options(&mut self, opt: Self::RecvOptions) {
             self.lock().set_recv_options(opt)

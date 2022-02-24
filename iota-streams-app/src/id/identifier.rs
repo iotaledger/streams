@@ -66,7 +66,7 @@ impl Identifier {
         }
     }
 
-    pub fn get_pk(&self) -> Option<&ed25519::PublicKey> {
+    pub fn pk(&self) -> Option<&ed25519::PublicKey> {
         if let Identifier::EdPubKey(pk) = self {
             Some(pk)
         } else {

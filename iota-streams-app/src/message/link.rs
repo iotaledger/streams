@@ -69,7 +69,7 @@ impl<Link> Cursor<Link> {
         self.seq_no += 1;
     }
 
-    pub fn get_seq_num(&self) -> u64 {
+    pub fn seq_num(&self) -> u64 {
         (self.branch_no as u64) << 32 | (self.seq_no as u64)
     }
 
