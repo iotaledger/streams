@@ -6,6 +6,10 @@ use crate::{
         ContentVerify,
     },
 };
+use crypto::{
+    keys::x25519,
+    signatures::ed25519,
+};
 use iota_streams_core::{
     async_trait,
     err,
@@ -22,10 +26,6 @@ use iota_streams_core::{
         NoSignatureKeyPair,
     },
     Result,
-};
-use crypto::{
-    signatures::ed25519,
-    keys::x25519
 };
 use iota_streams_ddml::{
     command::{
@@ -94,7 +94,7 @@ use iota_streams_core::{
         DIDMissing,
         NotDIDUser,
         SignatureFailure,
-        SignatureMismatch
+        SignatureMismatch,
     },
     WrappedError,
 };
@@ -211,7 +211,7 @@ impl<F: PRP> UserIdentity<F> {
                 let secret_key = x25519::SecretKey::from_bytes(keypairs.key_exchange.0.to_bytes());
                 let public_key = secret_key.public_key();
                 Ok((secret_key, public_key))
-            },
+            }
             Keys::Psk(_) => err(NoSignatureKeyPair),
             #[cfg(feature = "did")]
             Keys::DID(did) => match did {
@@ -298,7 +298,7 @@ impl DIDInfo {
     }
 
     fn sig_kp(&self) -> (ed25519::SecretKey, ed25519::PublicKey) {
-        let mut key_bytes = [0_u8 ;ed25519::SECRET_KEY_LENGTH];
+        let mut key_bytes = [0_u8; ed25519::SECRET_KEY_LENGTH];
         key_bytes.clone_from_slice(self.did_keypair.private().as_ref());
         let signing_secret_key = ed25519::SecretKey::from_bytes(key_bytes);
         let signing_public_key = signing_secret_key.public_key();
@@ -347,8 +347,7 @@ impl<F: PRP> ContentSizeof<F> for UserIdentity<F> {
                             ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
                             ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
                         }
-                    }
-                    // TODO: Implement Account logic
+                    } // TODO: Implement Account logic
                 }
                 // Absorb the size of a did based ed25519 signature
                 let bytes = [0_u8; ed25519::SIGNATURE_LENGTH].to_vec();
@@ -429,7 +428,7 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
                 // Get key fragment
                 let mut bytes = Bytes(Vec::new());
                 ctx.absorb(&mut bytes)?;
-                let fragment = "#".to_string() + &String::from_utf8(bytes.0)?;
+                let fragment = "#".to_string() + &bytes.to_string();
 
                 // Join fragment to did
                 let did_url = did.join(fragment)?;

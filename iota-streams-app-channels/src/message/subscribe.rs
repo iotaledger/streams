@@ -133,7 +133,7 @@ where
             link: <<Link as HasLink>::Rel as Default>::default(),
             unsubscribe_key: NBytes::<U32>::default(),
             subscriber_id: UserIdentity::default(),
-            subscriber_xkey: x25519::PublicKey::from_bytes([0;x25519::PUBLIC_KEY_LENGTH]),
+            subscriber_xkey: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             author_ke_sk,
             _phantom: core::marker::PhantomData,
         })

@@ -43,7 +43,6 @@ impl<Trans> Author<Trans> {
     /// * `payload_length` - Maximum size in bytes of payload per message chunk [1-1024],
     /// * `multi_branching` - Boolean representing use of multi-branch or single-branch sequencing
     /// * `transport` - Transport object used for sending and receiving
-    #[cfg(not(feature = "did"))]
     pub async fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
         let mut user = User::new(seed, channel_type, transport).await;
         let channel_idx = 0_u64;
@@ -195,13 +194,6 @@ impl<Trans> Author<Trans> {
 
 #[cfg(feature = "did")]
 impl<Trans: Transport> Author<Trans> {
-    pub async fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let mut user = User::new(seed, channel_type, transport).await;
-        let channel_idx = 0_u64;
-        let _ = user.user.create_channel(channel_idx);
-        Self { user }
-    }
-
     pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
         let mut user = User::new_with_did(did_info, transport).await?;
         let channel_idx = 0_u64;

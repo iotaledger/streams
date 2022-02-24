@@ -132,7 +132,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             println!(
                 "  Msg => <{}>: {}",
                 msg.link.msgid,
-                String::from_utf8(masked_payload.0.to_vec()).unwrap()
+                masked_payload.to_string()
             );
         } else {
             panic!("Packet found was not a signed packet from author")
@@ -151,7 +151,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         println!(
             "  Msg => <{}>: {}",
             msg.link.msgid,
-            String::from_utf8(masked_payload.0.to_vec()).unwrap()
+            masked_payload.to_string()
         );
         assert_eq!(masked_payload.0, "Message 4".as_bytes().to_vec());
     } else {

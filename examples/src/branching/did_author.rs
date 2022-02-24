@@ -4,11 +4,11 @@ use identity::{
     crypto::KeyPair as DIDKeyPair,
     did::MethodScope,
     iota::{
+        Client,
         IotaDocument,
         IotaVerificationMethod,
     },
 };
-use identity::iota::Client;
 use iota_streams::{
     app::{
         id::DIDInfo,
@@ -36,7 +36,6 @@ use iota_streams::{
 };
 
 use super::utils;
-
 
 async fn make_did_info(client: &Client, fragment: &str) -> Result<DIDInfo> {
     // Create Keypair to act as base of identity

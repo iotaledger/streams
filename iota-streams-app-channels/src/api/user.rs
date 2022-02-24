@@ -169,7 +169,7 @@ where
 
             key_store: Keys::default(),
             author_id: None,
-            author_ke_pk: x25519::PublicKey::from_bytes([0;x25519::PUBLIC_KEY_LENGTH]),
+            author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             link_gen: LG::default(),
             link_store: LS::default(),
             appinst: None,
@@ -211,7 +211,7 @@ where
 
             key_store: Keys::default(),
             author_id: None,
-            author_ke_pk: x25519::PublicKey::from_bytes([0;x25519::PUBLIC_KEY_LENGTH]),
+            author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             link_gen: LG::default(),
             link_store: LS::default(),
             appinst: None,
@@ -236,9 +236,11 @@ where
         match &self.user_id.id {
             Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
             _ => {
-                self.key_store.cursors_mut().insert(self.user_id.id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32));
+                self.key_store
+                    .cursors_mut()
+                    .insert(self.user_id.id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32));
                 self.key_store.insert_keys(self.user_id.id, self.user_id.ke_kp()?.1)?;
-            },
+            }
         }
         self.author_id = Some(self.user_id.id);
         self.anchor = Some(Cursor::new_at(appinst.clone(), 0, 2_u32));
@@ -252,7 +254,9 @@ where
     }
 
     /// Author's key exchange public key
-    fn author_key_exchange_public_key(&self) -> &x25519::PublicKey { &self.author_ke_pk }
+    fn author_key_exchange_public_key(&self) -> &x25519::PublicKey {
+        &self.author_ke_pk
+    }
 
     /// User's key exchange public key
     pub fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
@@ -372,24 +376,24 @@ where
         &'a self,
         link_to: &'a Link,
     ) -> Result<PreparedMessage<F, Link, subscribe::ContentWrap<'a, F, Link>>> {
-        //TODO: Remove need for get_ke_pk, store author ke pk as part of user
+        // TODO: Remove need for get_ke_pk, store author ke pk as part of user
         if let Some(_) = &self.author_id {
             let msg_cursor = self.gen_link(self.user_id.id, link_to.rel(), SUB_MESSAGE_NUM);
-                let header = HDF::new(msg_cursor.link)
-                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
-                    .with_content_type(SUBSCRIBE)?
-                    .with_payload_length(1)?
-                    .with_seq_num(msg_cursor.seq_no)
-                    .with_identifier(&self.user_id.id);
-                let unsubscribe_key = NBytes::from(prng::random_key());
-                let content = subscribe::ContentWrap {
-                    link: link_to.rel(),
-                    unsubscribe_key,
-                    subscriber_id: &self.user_id,
-                    author_ke_pk: self.author_key_exchange_public_key(),
-                    _phantom: PhantomData,
-                };
-                Ok(PreparedMessage::new(header, content))
+            let header = HDF::new(msg_cursor.link)
+                .with_previous_msg_link(Bytes(link_to.to_bytes()))
+                .with_content_type(SUBSCRIBE)?
+                .with_payload_length(1)?
+                .with_seq_num(msg_cursor.seq_no)
+                .with_identifier(&self.user_id.id);
+            let unsubscribe_key = NBytes::from(prng::random_key());
+            let content = subscribe::ContentWrap {
+                link: link_to.rel(),
+                unsubscribe_key,
+                subscriber_id: &self.user_id,
+                author_ke_pk: self.author_key_exchange_public_key(),
+                _phantom: PhantomData,
+            };
+            Ok(PreparedMessage::new(header, content))
         } else {
             err!(AuthorIdNotFound)
         }
@@ -431,9 +435,11 @@ where
         match (!self.key_store.cursors().contains_key(&id), &self.appinst) {
             (_, None) => err!(UserNotRegistered),
             (true, Some(ref_link)) => {
-                self.key_store.cursors_mut().insert(id, Cursor::new_at(ref_link.rel().clone(), 0, INIT_MESSAGE_NUM));
+                self.key_store
+                    .cursors_mut()
+                    .insert(id, Cursor::new_at(ref_link.rel().clone(), 0, INIT_MESSAGE_NUM));
                 self.key_store.insert_keys(id, subscriber_xkey)
-            },
+            }
             (false, Some(ref_link)) => err!(UserAlreadyRegistered(id.to_string(), ref_link.base().to_string())),
         }
     }
@@ -633,10 +639,9 @@ where
                     for identifier in keys {
                         if !self.key_store.cursors().contains_key(&identifier) {
                             // Store at state 2 since 0 and 1 are reserved states
-                            self.key_store.cursors_mut().insert(
-                                identifier,
-                                Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM),
-                            );
+                            self.key_store
+                                .cursors_mut()
+                                .insert(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
                         }
                     }
                 }
@@ -729,11 +734,7 @@ where
             self.store_state_for_all(link, seq_no.0 as u32 + 1)?;
         }
 
-        let body = (
-            content.user_id.id,
-            content.public_payload,
-            content.masked_payload
-        );
+        let body = (content.user_id.id, content.public_payload, content.masked_payload);
         Ok(GenericMessage::new(msg.link.clone(), prev_link, body))
     }
 
@@ -911,7 +912,10 @@ where
 
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn seq_no(&self) -> Option<u32> {
-        self.key_store.cursors().get(&self.user_id.id).map(|cursor| cursor.seq_no)
+        self.key_store
+            .cursors()
+            .get(&self.user_id.id)
+            .map(|cursor| cursor.seq_no)
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -1020,7 +1024,9 @@ where
 
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.seq_no().as_ref().unwrap_or(&0) {
-            self.key_store.cursors_mut().insert(self.user_id.id, Cursor::new_at(link.clone(), 0, seq_no));
+            self.key_store
+                .cursors_mut()
+                .insert(self.user_id.id, Cursor::new_at(link.clone(), 0, seq_no));
             for (_pk, cursor) in self.key_store.iter_mut() {
                 cursor.link = link.clone();
                 cursor.seq_no = seq_no;
@@ -1244,7 +1250,9 @@ where
             let mut seq_no = Uint32(0);
             let (id, ctx) = Identifier::unwrap_new(store, ctx).await?;
             ctx.absorb(&mut link)?.absorb(&mut branch_no)?.absorb(&mut seq_no)?;
-            key_store.cursors_mut().insert(id, Cursor::new_at(link.0, branch_no.0, seq_no.0));
+            key_store
+                .cursors_mut()
+                .insert(id, Cursor::new_at(link.0, branch_no.0, seq_no.0));
         }
 
         ctx.commit()?.squeeze(Mac(32))?;

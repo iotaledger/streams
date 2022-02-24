@@ -21,8 +21,8 @@
 //!
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
 use crypto::{
-    signatures::ed25519,
     keys::x25519,
+    signatures::ed25519,
 };
 
 use iota_streams_app::id::UserIdentity;
@@ -106,7 +106,7 @@ pub struct ContentUnwrap<F> {
 
 impl<F> Default for ContentUnwrap<F> {
     fn default() -> Self {
-        let sig_pk = ed25519::PublicKey::try_from_bytes([0;ed25519::PUBLIC_KEY_LENGTH]).unwrap();
+        let sig_pk = ed25519::PublicKey::try_from_bytes([0; ed25519::PUBLIC_KEY_LENGTH]).unwrap();
         // No need to worry about unwrap since it's operating from default input
         let ke_pk = x25519::PublicKey::from_bytes(sig_pk.to_bytes());
         let user_id = UserIdentity::default();
