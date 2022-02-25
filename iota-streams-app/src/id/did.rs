@@ -9,26 +9,26 @@ use identity::{
         MethodUriType,
         TryMethod,
     },
-    iota::IotaDID
+    iota::IotaDID,
 };
 
 use iota_streams_core::{
     err,
-    Errors::DIDMissing,
     prelude::{
         generic_array::{
+            typenum::U32,
             GenericArray,
-            typenum::U32
         },
         String,
         Vec,
     },
-    Result
+    Errors::DIDMissing,
+    Result,
 };
 
 use crypto::{
-    signatures::ed25519,
     keys::x25519,
+    signatures::ed25519,
 };
 
 use serde::Serialize;
@@ -38,8 +38,6 @@ pub type DIDWrap = GenericArray<u8, DIDSize>;
 pub type DIDClient = identity::iota::Client;
 
 pub const DID_CORE: &str = "did:iota:";
-
-
 
 #[derive(Serialize)]
 pub struct DataWrapper {

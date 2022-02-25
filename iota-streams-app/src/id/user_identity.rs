@@ -51,11 +51,11 @@ use std::marker::PhantomData;
 #[cfg(feature = "did")]
 use crate::{
     id::{
+        DIDImpl,
+        DIDInfo,
         DIDSize,
         DataWrapper,
         DID_CORE,
-        DIDImpl,
-        DIDInfo,
     },
     transport::{
         tangle::client::Client as StreamsClient,

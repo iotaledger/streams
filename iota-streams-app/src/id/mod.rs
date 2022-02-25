@@ -9,11 +9,11 @@ pub mod did;
 
 #[cfg(feature = "did")]
 pub use did::{
-    DataWrapper,
-    DID_CORE,
-    DIDInfo,
-    DIDImpl,
     DIDClient,
+    DIDImpl,
+    DIDInfo,
     DIDSize,
     DIDWrap,
+    DataWrapper,
+    DID_CORE,
 };
