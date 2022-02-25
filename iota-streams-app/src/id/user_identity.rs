@@ -54,6 +54,8 @@ use crate::{
         DIDSize,
         DataWrapper,
         DID_CORE,
+        DIDImpl,
+        DIDInfo,
     },
     transport::{
         tangle::client::Client as StreamsClient,
@@ -91,7 +93,6 @@ use iota_streams_core::{
     },
     wrapped_err,
     Errors::{
-        DIDMissing,
         NotDIDUser,
         SignatureFailure,
         SignatureMismatch,
@@ -111,19 +112,6 @@ pub enum Keys {
     Psk(Psk),
     #[cfg(feature = "did")]
     DID(DIDImpl),
-}
-
-#[cfg(feature = "did")]
-pub struct DIDInfo {
-    pub did: Option<IotaDID>,
-    pub key_fragment: String,
-    pub did_keypair: identity::crypto::KeyPair,
-}
-
-#[cfg(feature = "did")]
-pub enum DIDImpl {
-    // TODO: Add DID Account implementation
-    PrivateKey(DIDInfo),
 }
 
 pub struct UserIdentity<F> {
@@ -288,31 +276,6 @@ impl<F: PRP> UserIdentity<F> {
     }
 }
 
-#[cfg(feature = "did")]
-impl DIDInfo {
-    fn did(&self) -> Result<IotaDID> {
-        match &self.did {
-            Some(did) => Ok(did.clone()),
-            None => err(DIDMissing),
-        }
-    }
-
-    fn sig_kp(&self) -> (ed25519::SecretKey, ed25519::PublicKey) {
-        let mut key_bytes = [0_u8; ed25519::SECRET_KEY_LENGTH];
-        key_bytes.clone_from_slice(self.did_keypair.private().as_ref());
-        let signing_secret_key = ed25519::SecretKey::from_bytes(key_bytes);
-        let signing_public_key = signing_secret_key.public_key();
-        (signing_secret_key, signing_public_key)
-    }
-
-    fn ke_kp(&self) -> (x25519::SecretKey, x25519::PublicKey) {
-        let kp = self.sig_kp();
-        let key_exchange_secret_key = x25519::SecretKey::from(&kp.0);
-        let key_exchange_public_key = key_exchange_secret_key.public_key();
-        (key_exchange_secret_key, key_exchange_public_key)
-    }
-}
-
 impl<F> From<(ed25519::SecretKey, ed25519::PublicKey)> for UserIdentity<F> {
     fn from(kp: (ed25519::SecretKey, ed25519::PublicKey)) -> Self {
         let ke_sk = x25519::SecretKey::from(&kp.0);
@@ -342,11 +305,10 @@ impl<F: PRP> ContentSizeof<F> for UserIdentity<F> {
             Keys::DID(did_impl) => {
                 match did_impl {
                     DIDImpl::PrivateKey(info) => {
-                        if let Some(did) = &info.did {
-                            ctx.absorb(Uint8(1))?;
-                            ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
-                            ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
-                        }
+                        let did = info.did()?;
+                        ctx.absorb(Uint8(1))?;
+                        ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
+                        ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
                     } // TODO: Implement Account logic
                 }
                 // Absorb the size of a did based ed25519 signature
@@ -373,11 +335,10 @@ impl<F: PRP, OS: io::OStream> ContentSign<F, OS> for UserIdentity<F> {
             Keys::DID(did_impl) => {
                 match did_impl {
                     DIDImpl::PrivateKey(info) => {
-                        if let Some(did) = &info.did {
-                            ctx.absorb(Uint8(1))?;
-                            ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
-                            ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
-                        }
+                        let did = info.did()?;
+                        ctx.absorb(Uint8(1))?;
+                        ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
+                        ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
                     } // TODO: Implement Account logic
                 }
                 // Get the hash of the message
