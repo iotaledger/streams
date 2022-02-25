@@ -63,7 +63,6 @@ impl StreamsClient {
 }
 
 impl StreamsClient {
-    #[allow(clippy::wrong_self_convention)]
     pub fn into_inner(self) -> Rc<RefCell<ApiClient>> {
         self.0
     }

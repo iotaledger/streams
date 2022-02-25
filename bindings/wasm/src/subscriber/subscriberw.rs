@@ -400,7 +400,7 @@ impl Subscriber {
 
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
         pskid_from_hex_str(&pskid_str)
-            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid).into())
+            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid))
             .into_js_result()
     }
 }

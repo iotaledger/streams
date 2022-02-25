@@ -630,10 +630,7 @@ impl From<ApiDetails> for Details {
     fn from(details: ApiDetails) -> Self {
         Self {
             metadata: details.metadata.into(),
-            milestone: match details.milestone {
-                Some(ms) => Some(ms.into()),
-                None => None,
-            },
+            milestone: details.milestone.map(|ms| ms.into()),
         }
     }
 }
@@ -707,10 +704,7 @@ impl From<ApiMessageMetadata> for MessageMetadata {
             is_solid: metadata.is_solid,
             referenced_by_milestone_index: metadata.referenced_by_milestone_index,
             milestone_index: metadata.milestone_index,
-            ledger_inclusion_state: match metadata.ledger_inclusion_state {
-                None => None,
-                Some(inc) => Some(inc.into()),
-            },
+            ledger_inclusion_state: metadata.ledger_inclusion_state.map(|inc| inc.into()),
             conflict_reason: metadata.conflict_reason,
             should_promote: metadata.should_promote,
             should_reattach: metadata.should_reattach,
