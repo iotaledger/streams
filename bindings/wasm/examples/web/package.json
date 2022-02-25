@@ -1,0 +1,22 @@
+{
+  "name": "@iota/streams-web-example",
+  "version": "0.1.2",
+  "description": "WASM binding for the IOTA streams library",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iotaledger/streams.git"
+  },
+  "scripts": {
+    "build": "rimraf dist pkg && webpack",
+    "start": "rimraf dist pkg && webpack-dev-server --open",
+    "test": "cargo test && wasm-pack test --headless"
+  },
+  "devDependencies": {
+    "@wasm-tool/wasm-pack-plugin": "^1.1.0",
+    "copy-webpack-plugin": "^10.2.4",
+    "rimraf": "^3.0.0",
+    "webpack": "^5",
+    "webpack-cli": "^4.9.2",
+    "webpack-dev-server": "^4.7.4"
+  }
+}
