@@ -2,7 +2,10 @@ use futures::executor::block_on;
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
-use crate::{types::*, user::userw::*};
+use crate::{
+    types::*,
+    user::userw::*,
+};
 
 use core::cell::RefCell;
 use iota_streams::{
@@ -19,8 +22,14 @@ use iota_streams::{
         },
     },
     core::{
-        prelude::{Rc, String},
-        psk::{pskid_from_hex_str, pskid_to_hex_string},
+        prelude::{
+            Rc,
+            String,
+        },
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
     },
     ddml::types::*,
 };

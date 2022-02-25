@@ -2,7 +2,11 @@ use futures::executor::block_on;
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    types::{PskIds as PskIdsW, PublicKeys as PublicKeysW, *},
+    types::{
+        PskIds as PskIdsW,
+        PublicKeys as PublicKeysW,
+        *,
+    },
     user::userw::*,
 };
 use js_sys::Array;
@@ -15,7 +19,7 @@ use iota_streams::{
         id::Identifier,
         transport::{
             tangle::client::Client as ApiClient,
-            TransportOptions
+            TransportOptions,
         },
     },
     app_channels::api::{
@@ -27,7 +31,11 @@ use iota_streams::{
         },
     },
     core::{
-        prelude::{Rc, String, ToString},
+        prelude::{
+            Rc,
+            String,
+            ToString,
+        },
         psk::pskid_from_hex_str,
         psk::pskid_to_hex_string,
     },

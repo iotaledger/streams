@@ -6,11 +6,13 @@ use iota_streams::{
         transport::tangle::client::{
             iota_client::{
                 bee_rest_api::types::{
-                    dtos::LedgerInclusionStateDto, responses::MessageMetadataResponse as ApiMessageMetadata,
+                    dtos::LedgerInclusionStateDto,
+                    responses::MessageMetadataResponse as ApiMessageMetadata,
                 },
                 MilestoneResponse as ApiMilestoneResponse,
             },
-            Details as ApiDetails, SendOptions as ApiSendOptions,
+            Details as ApiDetails,
+            SendOptions as ApiSendOptions,
         },
     },
     app_channels::api::tangle::{
@@ -24,8 +26,14 @@ use iota_streams::{
         PUBLIC_KEY_LENGTH,
     },
     core::{
-        prelude::{String, ToString},
-        psk::{pskid_from_hex_str, pskid_to_hex_string},
+        prelude::{
+            String,
+            ToString,
+        },
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
         Error as ApiError,
     },
     ddml::types::hex,
@@ -494,7 +502,10 @@ mod public_keys_tests {
 
     use iota_streams::app_channels::api::tangle::PublicKey;
 
-    use super::{public_key_to_string, PublicKeys};
+    use super::{
+        public_key_to_string,
+        PublicKeys,
+    };
 
     pub type Result<T> = core::result::Result<T, JsValue>;
 
