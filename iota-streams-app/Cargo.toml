@@ -23,7 +23,7 @@ sync-parking-lot = ["iota-streams-core/sync-parking-lot"]
 # Enable synchronized transports using spin 
 sync-spin = ["iota-streams-core/sync-spin"]
 # Enable Iota Identity for use with Streams
-did = ["identity"]
+did = ["identity", "serde"]
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
@@ -38,7 +38,7 @@ iota-client = { version = "1.1.1", default-features = false, optional = true }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
 identity = { git = "https://github.com/iotaledger/identity.rs", branch = "main", default-features = false, optional = true  }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"], optional = true }
 
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
 cty = { version = "0.2.1" }
