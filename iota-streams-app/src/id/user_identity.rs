@@ -18,14 +18,17 @@ use iota_streams_core::{
     psk::{
         Psk,
         PskId,
+        PskSize,
     },
     sponge::prp::PRP,
+    wrapped_err,
     Errors::{
         BadIdentifier,
         BadOneof,
         NoSignatureKeyPair,
     },
     Result,
+    WrappedError,
 };
 use iota_streams_ddml::{
     command::{
@@ -46,8 +49,16 @@ use iota_streams_ddml::{
         U64,
     },
 };
-use std::marker::PhantomData;
+use std::{
+    convert::TryFrom,
+    marker::PhantomData,
+};
 
+use crate::message::{
+    ContentDecrypt,
+    ContentEncrypt,
+    ContentEncryptSizeOf,
+};
 #[cfg(feature = "did")]
 use crate::{
     id::{
@@ -91,16 +102,21 @@ use iota_streams_core::{
         ToString,
         Vec,
     },
-    wrapped_err,
     Errors::{
         NotDIDUser,
         SignatureFailure,
         SignatureMismatch,
     },
-    WrappedError,
 };
 #[cfg(feature = "did")]
 use iota_streams_ddml::types::Bytes;
+use iota_streams_ddml::{
+    command::{
+        Mask,
+        X25519,
+    },
+    types::ArrayLength,
+};
 
 pub struct KeyPairs {
     sig: (ed25519::SecretKey, ed25519::PublicKey),
@@ -291,6 +307,17 @@ impl<F> From<(ed25519::SecretKey, ed25519::PublicKey)> for UserIdentity<F> {
     }
 }
 
+impl<F> From<Identifier> for UserIdentity<F> {
+    fn from(id: Identifier) -> Self {
+        UserIdentity {
+            id,
+            ..Default::default()
+        }
+    }
+}
+
+// Signature Toolset
+
 #[async_trait(?Send)]
 impl<F: PRP> ContentSizeof<F> for UserIdentity<F> {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
@@ -416,6 +443,75 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
                 }
             }
             _ => err(BadOneof),
+        }
+    }
+}
+
+// Encryption Toolset
+
+// TODO: Find a better way to represent this logic without the need for an additional trait
+#[async_trait(?Send)]
+impl<F: PRP> ContentEncryptSizeOf<F> for UserIdentity<F> {
+    async fn encrypt_sizeof<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut sizeof::Context<F>,
+        exchange_key: &'c [u8],
+        key: &'c NBytes<N>,
+    ) -> Result<&'c mut sizeof::Context<F>> {
+        match &self.id {
+            Identifier::PskId(_) => ctx
+                .absorb(External(<&NBytes<PskSize>>::from(exchange_key)))?
+                .commit()?
+                .mask(key),
+            // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
+            _ => match <[u8; 32]>::try_from(exchange_key.as_ref()) {
+                Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), key),
+                Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
+            },
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl<F: PRP, OS: io::OStream> ContentEncrypt<F, OS> for UserIdentity<F> {
+    async fn encrypt<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut wrap::Context<F, OS>,
+        exchange_key: &'c [u8],
+        key: &'c NBytes<N>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
+        match &self.id {
+            Identifier::PskId(_) => ctx
+                .absorb(External(<&NBytes<PskSize>>::from(exchange_key)))?
+                .commit()?
+                .mask(key),
+            // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
+            _ => match <[u8; 32]>::try_from(exchange_key.as_ref()) {
+                Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), key),
+                Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
+            },
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl<F: PRP, OS: io::IStream> ContentDecrypt<F, OS> for UserIdentity<F> {
+    async fn decrypt<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut unwrap::Context<F, OS>,
+        exchange_key: &'c [u8],
+        key: &'c mut NBytes<N>,
+    ) -> Result<&'c mut unwrap::Context<F, OS>> {
+        match &self.id {
+            Identifier::PskId(_) => ctx
+                .absorb(External(<&NBytes<PskSize>>::from(exchange_key)))?
+                .commit()?
+                .mask(key),
+            // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
+            _ => match <[u8; 32]>::try_from(exchange_key.as_ref()) {
+                Ok(slice) => ctx.x25519(&x25519::SecretKey::from_bytes(slice), key),
+                Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
+            },
         }
     }
 }

@@ -49,7 +49,6 @@
 //! 1) Keys identities are not encrypted and may be linked to recipients identities.
 //! 2) Keyload is not authenticated (signed). It can later be implicitly authenticated
 //!     via `SignedPacket`.
-use core::convert::TryFrom;
 use crypto::keys::x25519;
 use iota_streams_app::{
     id::{
@@ -58,6 +57,9 @@ use iota_streams_app::{
     },
     message::{
         self,
+        ContentDecrypt,
+        ContentEncrypt,
+        ContentEncryptSizeOf,
         ContentSign,
         ContentUnwrapNew,
         ContentVerify,
@@ -76,10 +78,7 @@ use iota_streams_core::{
         prp::PRP,
         spongos,
     },
-    wrapped_err,
-    Errors::BadIdentifier,
     Result,
-    WrappedError,
 };
 use iota_streams_ddml::{
     command::*,
@@ -122,21 +121,11 @@ where
             ctx.absorb(repeated_keys)?;
             // Loop through provided identifiers, masking the shared key for each one
             for key_pair in self.keys.clone().into_iter() {
-                let (id, store_id) = key_pair;
-                let ctx = id.sizeof(ctx).await?;
+                let (id, exchange_key) = key_pair;
+                let receiver_id = UserIdentity::from(id);
+                let mut ctx = receiver_id.id.sizeof(ctx).await?;
                 // fork in order to skip the actual keyload data which may be unavailable to all recipients
-                {
-                    match &id {
-                        Identifier::PskId(_pskid) => ctx
-                            .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(&store_id))))?
-                            .commit()?
-                            .mask(&self.key)?,
-                        _ => match <[u8; 32]>::try_from(store_id.as_ref()) {
-                            Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &self.key)?,
-                            Err(e) => return Err(wrapped_err(BadIdentifier, WrappedError(e))),
-                        },
-                    };
-                }
+                receiver_id.encrypt_sizeof(&mut ctx, &exchange_key, &self.key).await?;
             }
         }
 
@@ -171,23 +160,13 @@ where
             ctx.absorb(repeated_keys)?;
             // Loop through provided identifiers, masking the shared key for each one
             for key_pair in self.keys.clone().into_iter() {
-                let (id, store_id) = key_pair;
-                let ctx = id.wrap(store, ctx).await?;
+                let (id, exchange_key) = key_pair;
+                let receiver_id = UserIdentity::from(id);
+                let ctx = receiver_id.id.wrap(store, ctx).await?;
 
                 // fork in order to skip the actual keyload data which may be unavailable to all recipients
                 let inner_fork = ctx.spongos.fork();
-                {
-                    match &id {
-                        Identifier::PskId(_pskid) => ctx
-                            .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(&store_id))))?
-                            .commit()?
-                            .mask(&self.key)?,
-                        _ => match <[u8; 32]>::try_from(store_id.as_ref()) {
-                            Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &self.key)?,
-                            Err(e) => return Err(wrapped_err(BadIdentifier, WrappedError(e))),
-                        },
-                    };
-                }
+                receiver_id.encrypt(ctx, &exchange_key, &self.key).await?;
                 ctx.spongos = inner_fork;
             }
             ctx.commit()?.squeeze(&mut id_hash)?;
@@ -272,18 +251,14 @@ where
                 // Fork in order to recover key that is meant for the recipient id
                 {
                     let internal_fork = ctx.spongos.fork();
-                    match &id {
+                    let sender_id = UserIdentity::from(id);
+                    let mut key = NBytes::<U32>::default();
+                    match &sender_id.id {
                         Identifier::PskId(_id) => {
-                            if let Some(psk) = self.psk_store.lookup(&id) {
-                                let mut key = NBytes::<U32>::default();
-                                ctx.absorb(External(<&NBytes<psk::PskSize>>::from(&psk)))?
-                                    .commit()?
-                                    .mask(&mut key)?;
+                            if let Some(psk) = self.psk_store.lookup(&sender_id.id) {
+                                sender_id.decrypt(ctx, &psk, &mut key).await?;
                                 self.key = Some(key);
-                                self.key_ids.push(id);
-                                // Ok(ctx)
                             } else {
-                                self.key_ids.push(id);
                                 // Just drop the rest of the forked message so not to waste Spongos operations
                                 let n = Size(spongos::KeySize::<F>::USIZE);
                                 ctx.drop(n)?;
@@ -291,13 +266,9 @@ where
                         }
                         _ => {
                             if let Some(ke_sk) = self.ke_sk_store.lookup(&id) {
-                                let mut key = NBytes::<U32>::default();
-                                ctx.x25519(&ke_sk, &mut key)?;
+                                sender_id.decrypt(ctx, &ke_sk.to_bytes(), &mut key).await?;
                                 self.key = Some(key);
-                                // Save the relevant public key
-                                self.key_ids.push(id);
                             } else {
-                                self.key_ids.push(id);
                                 // Just drop the rest of the forked message so not to waste Spongos operations
                                 // TODO: key length
                                 let n = Size(64);
@@ -305,6 +276,8 @@ where
                             }
                         }
                     }
+                    // Save the relevant identifier
+                    self.key_ids.push(sender_id.id);
                     ctx.spongos = internal_fork;
                 }
             }
