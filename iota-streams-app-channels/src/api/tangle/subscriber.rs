@@ -26,7 +26,10 @@ use crate::api::tangle::{
 use crypto::keys::x25519;
 
 #[cfg(feature = "did")]
-use iota_streams_app::id::DIDInfo;
+use iota_streams_app::id::{
+    DIDClient,
+    DIDInfo
+};
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
@@ -191,6 +194,10 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
     pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
         let user = User::new_with_did(did_info, transport).await?;
         Ok(Subscriber { user })
+    }
+
+    pub fn insert_did_client(&mut self, client: DIDClient) {
+        self.user.insert_did_client(client);
     }
 
     /// Create and Send a Subscribe message to a Channel app instance.

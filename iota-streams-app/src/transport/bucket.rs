@@ -11,8 +11,6 @@ use iota_streams_core::{
     Errors::MessageLinkNotFoundInBucket,
 };
 
-#[cfg(feature = "did")]
-use iota_streams_core::Errors::ClientConversionFailure;
 use iota_streams_core::{
     async_trait,
     prelude::Box,
@@ -95,21 +93,5 @@ where
     type Details = ();
     async fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details> {
         Ok(())
-    }
-}
-
-#[cfg(feature = "did")]
-#[async_trait(?Send)]
-impl<'a, Link, Msg> IdentityClient for BucketTransport<Link, Msg> {
-    async fn to_identity_client(&self) -> Result<DIDClient> {
-        err!(ClientConversionFailure)
-    }
-}
-
-#[cfg(feature = "did")]
-#[async_trait(?Send)]
-impl<Link, Msg> IdentityClient for Rc<RefCell<BucketTransport<Link, Msg>>> {
-    async fn to_identity_client(&self) -> Result<DIDClient> {
-        self.borrow().to_identity_client().await
     }
 }

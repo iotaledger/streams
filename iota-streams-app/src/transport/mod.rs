@@ -9,9 +9,6 @@ use iota_streams_core::{
     Result,
 };
 
-#[cfg(feature = "did")]
-use identity::iota::Client as DIDClient;
-
 #[async_trait(?Send)]
 pub trait TransportDetails<Link> {
     type Details;
@@ -153,14 +150,6 @@ mod sync {
             self.lock().recv_message(link).await
         }
     }
-
-    #[cfg(feature = "did")]
-    #[async_trait(?Send)]
-    impl<Link, Msg> IdentityClient for Arc<Mutex<dyn Transport<Link, Msg>>> {
-        async fn to_identity_client(&self) -> Result<DIDClient> {
-            self.lock().to_identity_client().await
-        }
-    }
 }
 
 mod bucket;
@@ -170,8 +159,3 @@ use iota_streams_core::try_or;
 #[cfg(feature = "tangle")]
 pub mod tangle;
 
-#[cfg(feature = "did")]
-#[async_trait(?Send)]
-pub trait IdentityClient {
-    async fn to_identity_client(&self) -> Result<DIDClient>;
-}

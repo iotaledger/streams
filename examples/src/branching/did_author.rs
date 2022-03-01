@@ -4,7 +4,7 @@ use identity::{
     crypto::KeyPair as DIDKeyPair,
     did::MethodScope,
     iota::{
-        Client,
+        Client as DIDClient,
         IotaDocument,
         IotaVerificationMethod,
     },
@@ -12,7 +12,7 @@ use identity::{
 use iota_streams::{
     app::{
         id::DIDInfo,
-        transport::IdentityClient,
+        transport::tangle::client::Client,
     },
     app_channels::{
         api::{
@@ -21,7 +21,6 @@ use iota_streams::{
             tangle::{
                 Author,
                 Subscriber,
-                Transport,
             },
         },
         Address,
@@ -37,7 +36,7 @@ use iota_streams::{
 
 use super::utils;
 
-async fn make_did_info(client: &Client, fragment: &str) -> Result<DIDInfo> {
+async fn make_did_info(client: &DIDClient, fragment: &str) -> Result<DIDInfo> {
     // Create Keypair to act as base of identity
     let keypair = DIDKeyPair::new_ed25519()?;
     // Generate original DID document
@@ -69,10 +68,10 @@ async fn make_did_info(client: &Client, fragment: &str) -> Result<DIDInfo> {
     })
 }
 
-pub async fn example<T: Transport + IdentityClient>(transport: T) -> Result<()> {
+pub async fn example(transport: Client) -> Result<()> {
     println!("Creating new DID instance...");
 
-    let (did_info, sub_did_info) = match transport.to_identity_client().await {
+    let (did_info, sub_did_info) = match transport.to_did_client().await {
         Ok(client) => {
             println!("Making DID with method for Author");
             let did_info = make_did_info(&client, "auth_key").await?;

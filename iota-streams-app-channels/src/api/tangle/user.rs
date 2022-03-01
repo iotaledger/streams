@@ -13,6 +13,7 @@ use iota_streams_app::{
     },
     message::HasLink,
 };
+use iota_streams_app::id::DIDClient;
 use iota_streams_core::{
     err,
     prelude::{
@@ -241,17 +242,20 @@ impl<Trans> User<Trans> {
 }
 
 #[cfg(feature = "did")]
-impl<Trans: IdentityClient + Transport + Clone> User<Trans> {
+impl<Trans: Transport + Clone> User<Trans> {
     pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
-        let did_client = transport.to_identity_client().await?;
-        let id = UserIdentity::new_with_did_private_key(did_info, did_client).await?;
+        let id = UserIdentity::new_with_did_private_key(did_info).await?;
         let user = UserImp::gen(
             id,
             ChannelType::MultiBranch,
             ENCODING.as_bytes().to_vec(),
             PAYLOAD_LENGTH,
         );
-        Ok(User { user, transport })
+        Ok(User { user, transport: transport as Trans })
+    }
+
+    pub fn insert_did_client(&mut self, client: DIDClient) {
+        self.user.user_id.insert_did_client(client)
     }
 }
 

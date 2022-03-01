@@ -76,17 +76,8 @@ pub type BucketTransport = transport::BucketTransport<Address, Message>;
 
 /// Transportation trait for Tangle Client implementation
 // TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
-#[cfg(not(feature = "did"))]
 pub trait Transport: transport::Transport<Address, Message> + Clone {}
-#[cfg(not(feature = "did"))]
 impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone {}
-
-#[cfg(feature = "did")]
-use iota_streams_app::transport::IdentityClient;
-#[cfg(feature = "did")]
-pub trait Transport: transport::Transport<Address, Message> + IdentityClient + Clone {}
-#[cfg(feature = "did")]
-impl<T> Transport for T where T: transport::Transport<Address, Message> + IdentityClient + Clone {}
 
 mod msginfo;
 pub use msginfo::MsgInfo;

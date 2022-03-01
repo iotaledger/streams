@@ -115,8 +115,15 @@ impl<Link> KeyStore<Link> {
     }
 
     pub fn exchange_keys(&self) -> Vec<(Identifier, Vec<u8>)> {
-        self.keys.iter().zip(self.psks.iter())
-            .map(|(keys, psks)| vec![(*keys.0, keys.1.as_slice().to_vec()), ((*psks.0).into(), psks.1.to_vec())])
+        self.keys
+            .iter()
+            .zip(self.psks.iter())
+            .map(|(keys, psks)| {
+                vec![
+                    (*keys.0, keys.1.as_slice().to_vec()),
+                    ((*psks.0).into(), psks.1.to_vec()),
+                ]
+            })
             .flatten()
             .collect()
     }

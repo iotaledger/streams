@@ -68,10 +68,7 @@ use crate::{
         DataWrapper,
         DID_CORE,
     },
-    transport::{
-        tangle::client::Client as StreamsClient,
-        IdentityClient,
-    },
+    transport::tangle::client::Client as StreamsClient,
 };
 #[cfg(feature = "did")]
 use futures::executor::block_on;
@@ -153,7 +150,7 @@ impl<F> Default for UserIdentity<F> {
                 key_exchange: (key_exchange_private_key, key_exchange_public_key),
             }),
             #[cfg(feature = "did")]
-            client: block_on(StreamsClient::default().to_identity_client()).unwrap(),
+            client: block_on(StreamsClient::default().to_did_client()).unwrap(),
             _phantom: Default::default(),
         }
     }
@@ -176,7 +173,7 @@ impl<F: PRP> UserIdentity<F> {
                 key_exchange: (key_exchange_private_key, key_exchange_public_key),
             }),
             #[cfg(feature = "did")]
-            client: StreamsClient::default().to_identity_client().await.unwrap(),
+            client: StreamsClient::default().to_did_client().await.unwrap(),
             _phantom: Default::default(),
         }
     }
@@ -186,18 +183,18 @@ impl<F: PRP> UserIdentity<F> {
             id: pskid.into(),
             keys: Keys::Psk(psk),
             #[cfg(feature = "did")]
-            client: StreamsClient::default().to_identity_client().await.unwrap(),
+            client: StreamsClient::default().to_did_client().await.unwrap(),
             _phantom: Default::default(),
         }
     }
 
     #[cfg(feature = "did")]
-    pub async fn new_with_did_private_key(did_info: DIDInfo, client: Client) -> Result<UserIdentity<F>> {
+    pub async fn new_with_did_private_key(did_info: DIDInfo) -> Result<UserIdentity<F>> {
         let did = did_info.did()?;
         Ok(UserIdentity {
             id: (&did).into(),
             keys: Keys::DID(DIDImpl::PrivateKey(did_info)),
-            client,
+            client: StreamsClient::default().to_did_client().await?,
             _phantom: Default::default(),
         })
     }

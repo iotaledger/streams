@@ -27,7 +27,10 @@ use crate::api::tangle::{
 use crypto::keys::x25519;
 
 #[cfg(feature = "did")]
-use iota_streams_app::id::DIDInfo;
+use iota_streams_app::id::{
+    DIDClient,
+    DIDInfo
+};
 
 /// Author Object. Contains User API.
 pub struct Author<Trans> {
@@ -199,6 +202,10 @@ impl<Trans: Transport> Author<Trans> {
         let channel_idx = 0_u64;
         let _ = user.user.create_channel(channel_idx)?;
         Ok(Author { user })
+    }
+
+    pub fn insert_did_client(&mut self, client: DIDClient) {
+        self.user.insert_did_client(client);
     }
 }
 
