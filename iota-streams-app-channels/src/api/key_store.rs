@@ -124,12 +124,16 @@ impl<Link> KeyStore<Link> {
         keys
     }
 
-    pub fn cursors(&self) -> Vec<(&Identifier, &Cursor<Link>)> {
-        self.cursors.iter().map(|(id, cursor)| (id, cursor)).collect()
+    pub fn cursors(&self) -> impl Iterator<Item = (&Identifier, &Cursor<Link>)> {
+        self.cursors.iter()
     }
 
-    pub fn cursors_mut(&mut self) -> Vec<(&Identifier, &mut Cursor<Link>)> {
-        self.cursors.iter_mut().map(|(id, cursor)| (id, cursor)).collect()
+    pub fn cursors_mut(&mut self) -> impl Iterator<Item = (&Identifier, &mut Cursor<Link>)> {
+        self.cursors.iter_mut()
+    }
+
+    pub fn cursors_size(&self) -> usize {
+        self.cursors.len()
     }
 
     pub fn remove(&mut self, id: &Identifier) {

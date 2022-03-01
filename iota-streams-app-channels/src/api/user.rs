@@ -1085,7 +1085,7 @@ where
 
         let repeated_links = Size(self.link_store.len());
         let keys = self.key_store.cursors();
-        let repeated_keys = Size(keys.len());
+        let repeated_keys = Size(self.key_store.cursors_size());
 
         ctx.absorb(repeated_links)?;
         for (link, (s, info)) in self.link_store.iter() {
@@ -1144,7 +1144,7 @@ where
 
         let repeated_links = Size(self.link_store.len());
         let keys = self.key_store.cursors();
-        let repeated_keys = Size(keys.len());
+        let repeated_keys = Size(self.key_store.cursors_size());
 
         ctx.absorb(repeated_links)?;
         for (link, (s, info)) in self.link_store.iter() {
