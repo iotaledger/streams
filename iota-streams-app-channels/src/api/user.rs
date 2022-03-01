@@ -355,7 +355,7 @@ where
             _ => self.key_store.insert_cursor(self.user_id.id, cursor),
         };
 
-        self.key_store.insert_keys(author_id.id, author_ke_pk.clone())?;
+        self.key_store.insert_keys(author_id.id, author_ke_pk)?;
         self.key_store.insert_keys(self.user_id.id, self.user_id.ke_kp()?.1)?;
 
         // Reset link_gen
@@ -374,7 +374,7 @@ where
         link_to: &'a Link,
     ) -> Result<PreparedMessage<F, Link, subscribe::ContentWrap<'a, F, Link>>> {
         // TODO: Remove need for get_ke_pk, store author ke pk as part of user
-        if let Some(_) = &self.author_id {
+        if self.author_id.is_some() {
             let msg_cursor = self.gen_link(self.user_id.id, link_to.rel(), SUB_MESSAGE_NUM);
             let header = HDF::new(msg_cursor.link)
                 .with_previous_msg_link(Bytes(link_to.to_bytes()))
@@ -1352,7 +1352,7 @@ where
 {
     fn lookup(&self, id: &Identifier) -> Option<psk::Psk> {
         if let Identifier::PskId(pskid) = id {
-            self.0.get_psk(pskid).map(|psk| *psk)
+            self.0.get_psk(pskid).copied()
         } else {
             None
         }

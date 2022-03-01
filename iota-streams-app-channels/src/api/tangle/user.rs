@@ -6,6 +6,8 @@ use futures::{
 };
 
 use crypto::keys::x25519;
+#[cfg(feature = "did")]
+use iota_streams_app::id::DIDClient;
 use iota_streams_app::{
     id::{
         Identifier,
@@ -13,8 +15,6 @@ use iota_streams_app::{
     },
     message::HasLink,
 };
-#[cfg(feature = "did")]
-use iota_streams_app::id::DIDClient;
 use iota_streams_core::{
     err,
     prelude::{
@@ -104,7 +104,7 @@ impl<Trans> User<Trans> {
 
     /// Fetch the user public Id
     pub fn id(&self) -> &Identifier {
-        &self.user.id()
+        self.user.id()
     }
 
     /// Fetch the user key exchange public key
@@ -252,7 +252,10 @@ impl<Trans: Transport + Clone> User<Trans> {
             ENCODING.as_bytes().to_vec(),
             PAYLOAD_LENGTH,
         );
-        Ok(User { user, transport: transport as Trans })
+        Ok(User {
+            user,
+            transport: transport as Trans,
+        })
     }
 
     pub fn insert_did_client(&mut self, client: DIDClient) {

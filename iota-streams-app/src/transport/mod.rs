@@ -88,10 +88,6 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
 mod sync {
     #[cfg(feature = "did")]
     use super::{
-        DIDClient,
-        IdentityClient,
-    };
-    use super::{
         Transport,
         TransportDetails,
         TransportOptions,
@@ -158,4 +154,3 @@ use iota_streams_core::try_or;
 
 #[cfg(feature = "tangle")]
 pub mod tangle;
-

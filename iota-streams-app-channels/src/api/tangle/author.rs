@@ -29,7 +29,7 @@ use crypto::keys::x25519;
 #[cfg(feature = "did")]
 use iota_streams_app::id::{
     DIDClient,
-    DIDInfo
+    DIDInfo,
 };
 
 /// Author Object. Contains User API.
@@ -196,9 +196,7 @@ impl<Trans> Author<Trans> {
 }
 
 #[cfg(feature = "did")]
-impl<Trans: Transport> Author<Trans> {
-
-}
+impl<Trans: Transport> Author<Trans> {}
 
 impl<Trans: Transport + Clone> Author<Trans> {
     #[cfg(feature = "did")]

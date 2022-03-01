@@ -62,7 +62,7 @@ impl Identifier {
             Identifier::EdPubKey(public_key) => public_key.as_slice(),
             Identifier::PskId(id) => id,
             #[cfg(feature = "did")]
-            Identifier::DID(did) => &did,
+            Identifier::DID(did) => did,
         }
     }
 

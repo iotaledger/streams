@@ -120,6 +120,7 @@ pub struct KeyPairs {
     key_exchange: (x25519::SecretKey, x25519::PublicKey),
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum Keys {
     Keypair(KeyPairs),
     Psk(Psk),
@@ -294,7 +295,7 @@ impl<F> From<(ed25519::SecretKey, ed25519::PublicKey)> for UserIdentity<F> {
         let ke_sk = x25519::SecretKey::from(&kp.0);
         let ke_pk = ke_sk.public_key();
         UserIdentity {
-            id: Identifier::EdPubKey(kp.1.into()),
+            id: Identifier::EdPubKey(kp.1),
             keys: Keys::Keypair(KeyPairs {
                 sig: kp,
                 key_exchange: (ke_sk, ke_pk),
@@ -461,7 +462,7 @@ impl<F: PRP> ContentEncryptSizeOf<F> for UserIdentity<F> {
                 .commit()?
                 .mask(key),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
-            _ => match <[u8; 32]>::try_from(exchange_key.as_ref()) {
+            _ => match <[u8; 32]>::try_from(exchange_key) {
                 Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), key),
                 Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
             },
@@ -483,7 +484,7 @@ impl<F: PRP, OS: io::OStream> ContentEncrypt<F, OS> for UserIdentity<F> {
                 .commit()?
                 .mask(key),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
-            _ => match <[u8; 32]>::try_from(exchange_key.as_ref()) {
+            _ => match <[u8; 32]>::try_from(exchange_key) {
                 Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), key),
                 Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
             },
@@ -505,7 +506,7 @@ impl<F: PRP, OS: io::IStream> ContentDecrypt<F, OS> for UserIdentity<F> {
                 .commit()?
                 .mask(key),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
-            _ => match <[u8; 32]>::try_from(exchange_key.as_ref()) {
+            _ => match <[u8; 32]>::try_from(exchange_key) {
                 Ok(slice) => ctx.x25519(&x25519::SecretKey::from_bytes(slice), key),
                 Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
             },

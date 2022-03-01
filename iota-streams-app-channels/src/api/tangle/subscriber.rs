@@ -5,7 +5,6 @@ use iota_streams_core::{
     err,
     prelude::{
         String,
-        ToString,
         Vec,
     },
     psk::{
@@ -28,7 +27,7 @@ use crypto::keys::x25519;
 #[cfg(feature = "did")]
 use iota_streams_app::id::{
     DIDClient,
-    DIDInfo
+    DIDInfo,
 };
 
 /// Subscriber Object. Contains User API.
@@ -355,7 +354,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
 
 impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{}>\n{}", self.id().to_string(), self.user.user.key_store)
+        write!(f, "<{}>\n{}", self.id(), self.user.user.key_store)
     }
 }
 

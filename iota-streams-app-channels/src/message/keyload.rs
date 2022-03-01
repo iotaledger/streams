@@ -123,9 +123,9 @@ where
             for key_pair in self.keys.clone().into_iter() {
                 let (id, exchange_key) = key_pair;
                 let receiver_id = UserIdentity::from(id);
-                let mut ctx = receiver_id.id.sizeof(ctx).await?;
+                let ctx = receiver_id.id.sizeof(ctx).await?;
                 // fork in order to skip the actual keyload data which may be unavailable to all recipients
-                receiver_id.encrypt_sizeof(&mut ctx, &exchange_key, &self.key).await?;
+                receiver_id.encrypt_sizeof(ctx, &exchange_key, &self.key).await?;
             }
         }
 

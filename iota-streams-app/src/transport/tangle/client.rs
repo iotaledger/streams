@@ -281,4 +281,3 @@ impl TransportDetails<TangleAddress> for Client {
         async_get_link_details(&self.client, link).await
     }
 }
-

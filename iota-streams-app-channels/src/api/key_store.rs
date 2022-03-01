@@ -118,11 +118,7 @@ impl<Link> KeyStore<Link> {
         self.keys
             .iter()
             .map(|(id, pk)| (*id, pk.as_slice().to_vec()))
-            .chain(self
-                .psks
-                .iter()
-                .map(|(pskid, psk)| ((*pskid).into(), psk.to_vec()))
-            )
+            .chain(self.psks.iter().map(|(pskid, psk)| ((*pskid).into(), psk.to_vec())))
             .collect()
     }
 
