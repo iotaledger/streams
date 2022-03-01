@@ -45,7 +45,7 @@ use crate::{
     message,
 };
 
-type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
+type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore>;
 
 const ENCODING: &str = "utf-8";
 const PAYLOAD_LENGTH: usize = 32_000;

@@ -8,7 +8,10 @@ use crypto::keys::{
     x25519::PublicKey,
 };
 
-use iota_streams_app::id::identifier::Identifier;
+use iota_streams_app::{
+    id::identifier::Identifier,
+    message::Cursor,
+};
 use iota_streams_core::{
     err,
     prelude::{
@@ -19,41 +22,19 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
-    sponge::prp::PRP,
     Errors::BadIdentifier,
     Result,
 };
 
-pub trait KeyStore<Cursor, F: PRP>: Default {
-    fn filter<'a, I>(&self, ids: I) -> Vec<(Identifier, Vec<u8>)>
-    where
-        I: IntoIterator<Item = &'a Identifier>;
-
-    fn cursors(&self) -> &HashMap<Identifier, Cursor>;
-    fn cursors_mut(&mut self) -> &mut HashMap<Identifier, Cursor>;
-    fn psks(&self) -> &HashMap<PskId, Psk>;
-
-    fn replace_cursors(&mut self, cursor: Cursor) -> Result<()>
-    where
-        Cursor: Clone;
-    fn insert_psk(&mut self, id: Identifier, psk: Psk) -> Result<()>;
-    fn insert_keys(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()>;
-
-    fn keys(&self) -> Vec<(Identifier, Vec<u8>)>;
-    fn iter(&self) -> Vec<(&Identifier, &Cursor)>;
-    fn iter_mut(&mut self) -> Vec<(&Identifier, &mut Cursor)>;
-    fn remove(&mut self, id: &Identifier);
-}
-
-pub struct KeyMap<Cursor> {
+pub struct KeyStore<Link> {
     /// Map from user identity -- ed25519 pk -- to
     /// a precalculated corresponding x25519 pk and some additional Cursor.
-    cursors: HashMap<Identifier, Cursor>,
+    cursors: HashMap<Identifier, Cursor<Link>>,
     keys: HashMap<Identifier, x25519::PublicKey>,
     psks: HashMap<PskId, Psk>,
 }
 
-impl<Cursor> KeyMap<Cursor> {
+impl<Link> KeyStore<Link> {
     pub fn new() -> Self {
         Self {
             cursors: HashMap::new(),
@@ -63,14 +44,8 @@ impl<Cursor> KeyMap<Cursor> {
     }
 }
 
-impl<Cursor> Default for KeyMap<Cursor> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<Cursor, F: PRP> KeyStore<Cursor, F> for KeyMap<Cursor> {
-    fn filter<'a, I>(&self, ids: I) -> Vec<(Identifier, Vec<u8>)>
+impl<Link> KeyStore<Link> {
+    pub fn filter<'a, I>(&self, ids: I) -> Vec<(Identifier, Vec<u8>)>
     where
         I: IntoIterator<Item = &'a Identifier>,
     {
@@ -88,21 +63,25 @@ impl<Cursor, F: PRP> KeyStore<Cursor, F> for KeyMap<Cursor> {
             .collect()
     }
 
-    fn cursors(&self) -> &HashMap<Identifier, Cursor> {
-        &self.cursors
+    pub fn contains_subscriber(&self, id: &Identifier) -> bool {
+        self.cursors.contains_key(id)
     }
 
-    fn cursors_mut(&mut self) -> &mut HashMap<Identifier, Cursor> {
-        &mut self.cursors
+    pub fn get_cursor(&self, id: &Identifier) -> Option<&Cursor<Link>> {
+        self.cursors.get(id)
     }
 
-    fn psks(&self) -> &HashMap<PskId, Psk> {
-        &self.psks
+    pub fn get_cursor_mut(&mut self, id: &Identifier) -> Option<&mut Cursor<Link>> {
+        self.cursors.get_mut(id)
     }
 
-    fn replace_cursors(&mut self, new_cursor: Cursor) -> Result<()>
+    pub fn insert_cursor(&mut self, id: Identifier, cursor: Cursor<Link>) {
+        self.cursors.insert(id, cursor);
+    }
+
+    pub fn replace_cursors(&mut self, new_cursor: Cursor<Link>) -> Result<()>
     where
-        Cursor: Clone,
+        Link: Clone,
     {
         for (_id, cursor) in self.cursors.iter_mut() {
             *cursor = new_cursor.clone()
@@ -110,7 +89,15 @@ impl<Cursor, F: PRP> KeyStore<Cursor, F> for KeyMap<Cursor> {
         Ok(())
     }
 
-    fn insert_psk(&mut self, id: Identifier, psk: Psk) -> Result<()> {
+    pub fn contains_psk(&self, pskid: &PskId) -> bool {
+        self.psks.contains_key(pskid)
+    }
+
+    pub fn get_psk(&self, pskid: &PskId) -> Option<&Psk> {
+        self.psks.get(pskid)
+    }
+
+    pub fn insert_psk(&mut self, id: Identifier, psk: Psk) -> Result<()> {
         match &id {
             Identifier::PskId(pskid) => {
                 self.psks.insert(*pskid, psk);
@@ -120,14 +107,14 @@ impl<Cursor, F: PRP> KeyStore<Cursor, F> for KeyMap<Cursor> {
         }
     }
 
-    fn insert_keys(&mut self, id: Identifier, xkey: PublicKey) -> Result<()> {
+    pub fn insert_keys(&mut self, id: Identifier, xkey: PublicKey) -> Result<()> {
         if !self.keys.contains_key(&id) {
             self.keys.insert(id, xkey);
         }
         Ok(())
     }
 
-    fn keys(&self) -> Vec<(Identifier, Vec<u8>)> {
+    pub fn exchange_keys(&self) -> Vec<(Identifier, Vec<u8>)> {
         let mut keys: Vec<(Identifier, Vec<u8>)> =
             self.keys.iter().map(|(id, pk)| (*id, pk.as_slice().to_vec())).collect();
 
@@ -137,14 +124,15 @@ impl<Cursor, F: PRP> KeyStore<Cursor, F> for KeyMap<Cursor> {
         keys
     }
 
-    fn iter(&self) -> Vec<(&Identifier, &Cursor)> {
+    pub fn cursors(&self) -> Vec<(&Identifier, &Cursor<Link>)> {
         self.cursors.iter().map(|(id, cursor)| (id, cursor)).collect()
     }
-    fn iter_mut(&mut self) -> Vec<(&Identifier, &mut Cursor)> {
+
+    pub fn cursors_mut(&mut self) -> Vec<(&Identifier, &mut Cursor<Link>)> {
         self.cursors.iter_mut().map(|(id, cursor)| (id, cursor)).collect()
     }
 
-    fn remove(&mut self, id: &Identifier) {
+    pub fn remove(&mut self, id: &Identifier) {
         self.cursors.borrow_mut().remove(id);
         self.keys.borrow_mut().remove(id);
         if let Identifier::PskId(pskid) = id {
@@ -153,7 +141,13 @@ impl<Cursor, F: PRP> KeyStore<Cursor, F> for KeyMap<Cursor> {
     }
 }
 
-impl<Cursor: fmt::Display> fmt::Display for KeyMap<Cursor> {
+impl<Link> Default for KeyStore<Link> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Link: fmt::Display> fmt::Display for KeyStore<Link> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (id, cursor) in self.cursors.iter() {
             writeln!(f, "    <{}> => {}", hex::encode(&id.to_bytes()), cursor)?;

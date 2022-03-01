@@ -2,7 +2,6 @@
 
 pub use futures;
 
-use super::key_store::KeyMap;
 pub use iota_streams_app::transport::tangle::MsgId;
 use iota_streams_app::{
     id::Identifier,
@@ -65,8 +64,6 @@ pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
 /// Sequence State information
 pub type SeqState = Cursor<MsgId>;
-/// Identifier Key Mapping for sequence states
-pub type KeyStore = KeyMap<SeqState>;
 
 /// Link Generator specifies algorithm for generating new message addressed.
 pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;

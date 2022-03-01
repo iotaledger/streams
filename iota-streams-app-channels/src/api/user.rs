@@ -110,7 +110,7 @@ where
     }
 }
 
-pub struct User<F, Link, LG, LS, Keys>
+pub struct User<F, Link, LG, LS>
 where
     F: PRP,
     Link: HasLink,
@@ -123,7 +123,7 @@ where
     pub(crate) user_id: UserIdentity<F>,
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
-    pub(crate) key_store: Keys,
+    pub(crate) key_store: KeyStore<Link::Rel>,
 
     /// Author's public Id.
     pub(crate) author_id: Option<Identifier>,
@@ -154,20 +154,19 @@ where
     pub anchor: Option<Cursor<Link>>,
 }
 
-impl<F, Link, LG, LS, Keys> Default for User<F, Link, LG, LS, Keys>
+impl<F, Link, LG, LS> Default for User<F, Link, LG, LS>
 where
     F: PRP,
     Link: HasLink,
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     fn default() -> Self {
         Self {
             _phantom: PhantomData,
             user_id: UserIdentity::default(),
 
-            key_store: Keys::default(),
+            key_store: KeyStore::default(),
             author_id: None,
             author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             link_gen: LG::default(),
@@ -182,15 +181,14 @@ where
     }
 }
 
-impl<F, Link, LG, LS, Keys> User<F, Link, LG, LS, Keys>
+impl<F, Link, LG, LS> User<F, Link, LG, LS>
 where
     F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + Default,
+    Link: HasLink + AbsorbExternalFallback<F> + Default + Clone,
     Link::Base: Eq + ToString,
     Link::Rel: Eq + SkipFallback<F> + AbsorbFallback<F>,
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, Link::Rel> + Default,
-    Keys: KeyStore<Cursor<Link::Rel>, F>,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
     pub fn gen(
@@ -209,7 +207,7 @@ where
             _phantom: PhantomData,
             user_id,
 
-            key_store: Keys::default(),
+            key_store: KeyStore::default(),
             author_id: None,
             author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             link_gen: LG::default(),
@@ -237,8 +235,7 @@ where
             Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
             _ => {
                 self.key_store
-                    .cursors_mut()
-                    .insert(self.user_id.id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32));
+                    .insert_cursor(self.user_id.id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32));
                 self.key_store.insert_keys(self.user_id.id, self.user_id.ke_kp()?.1)?;
             }
         }
@@ -351,11 +348,11 @@ where
         let cursor = Cursor::new_at(link.rel().clone(), 0, INIT_MESSAGE_NUM);
         match &author_id.id {
             Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
-            _ => self.key_store.cursors_mut().insert(author_id.id, cursor.clone()),
+            _ => self.key_store.insert_cursor(author_id.id, cursor.clone()),
         };
         match &self.user_id.id {
             Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
-            _ => self.key_store.cursors_mut().insert(self.user_id.id, cursor),
+            _ => self.key_store.insert_cursor(self.user_id.id, cursor),
         };
 
         self.key_store.insert_keys(author_id.id, author_ke_pk.clone())?;
@@ -432,12 +429,11 @@ where
     }
 
     pub fn insert_subscriber(&mut self, id: Identifier, subscriber_xkey: x25519::PublicKey) -> Result<()> {
-        match (!self.key_store.cursors().contains_key(&id), &self.appinst) {
+        match (!self.key_store.contains_subscriber(&id), &self.appinst) {
             (_, None) => err!(UserNotRegistered),
             (true, Some(ref_link)) => {
                 self.key_store
-                    .cursors_mut()
-                    .insert(id, Cursor::new_at(ref_link.rel().clone(), 0, INIT_MESSAGE_NUM));
+                    .insert_cursor(id, Cursor::new_at(ref_link.rel().clone(), 0, INIT_MESSAGE_NUM));
                 self.key_store.insert_keys(id, subscriber_xkey)
             }
             (false, Some(ref_link)) => err!(UserAlreadyRegistered(id.to_string(), ref_link.base().to_string())),
@@ -494,7 +490,7 @@ where
     }
 
     pub fn remove_subscriber(&mut self, id: Identifier) -> Result<()> {
-        match self.key_store.cursors().contains_key(&id) {
+        match self.key_store.contains_subscriber(&id) {
             true => {
                 self.key_store.remove(&id);
                 Ok(())
@@ -559,7 +555,7 @@ where
                     .with_payload_length(1)?
                     .with_seq_num(msg_cursor.seq_no)
                     .with_identifier(&self.user_id.id);
-                let keys = self.key_store.keys();
+                let keys = self.key_store.exchange_keys();
                 self.do_prepare_keyload(header, link_to.rel(), keys)
             }
             None => err!(SeqNumRetrievalFailure),
@@ -584,10 +580,10 @@ where
     pub async fn unwrap_keyload<'a>(
         &self,
         preparsed: PreparsedMessage<'_, F, Link>,
-        keys_lookup: KeysLookup<'a, F, Link, Keys>,
+        keys_lookup: KeysLookup<'a, F, Link>,
         own_keys: OwnKeys<'a, F>,
         author_id: UserIdentity<F>,
-    ) -> Result<UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a, F>>>>
+    ) -> Result<UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link>, OwnKeys<'a, F>>>>
     {
         self.ensure_appinst(&preparsed)?;
         let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_id);
@@ -637,11 +633,10 @@ where
                 // Store any unknown publishers
                 if let Some(appinst) = &self.appinst {
                     for identifier in keys {
-                        if !self.key_store.cursors().contains_key(&identifier) {
+                        if !self.key_store.contains_subscriber(&identifier) {
                             // Store at state 2 since 0 and 1 are reserved states
                             self.key_store
-                                .cursors_mut()
-                                .insert(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
+                                .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
                         }
                     }
                 }
@@ -815,7 +810,7 @@ where
     }
 
     pub async fn wrap_sequence(&mut self, ref_link: &Link::Rel) -> Result<WrappedSequence<F, Link>> {
-        match self.key_store.cursors().get(self.id()) {
+        match self.key_store.get_cursor(self.id()) {
             Some(original_cursor) => {
                 if (self.flags & FLAG_BRANCHING_MASK) != 0 {
                     let previous_msg_link =
@@ -862,7 +857,7 @@ where
         cursor.link = wrapped_state.link.rel().clone();
         cursor.next_seq();
         let id = *self.id();
-        self.key_store.cursors_mut().insert(id, cursor);
+        self.key_store.insert_cursor(id, cursor);
         let link = wrapped_state.link.clone();
         wrapped_state.commit(&mut self.link_store, info)?;
         Ok(Some(link))
@@ -912,10 +907,7 @@ where
 
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn seq_no(&self) -> Option<u32> {
-        self.key_store
-            .cursors()
-            .get(&self.user_id.id)
-            .map(|cursor| cursor.seq_no)
+        self.key_store.get_cursor(&self.user_id.id).map(|cursor| cursor.seq_no)
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -937,12 +929,12 @@ where
                 if use_psk && self.id().is_psk() {
                     return err(StateStoreFailure);
                 }
-                if self.key_store.psks().contains_key(&pskid) {
+                if self.key_store.contains_psk(&pskid) {
                     return err(PskAlreadyStored);
                 }
 
                 self.key_store.insert_psk(pskid_as_identifier, psk)?;
-                self.key_store.cursors_mut().insert(
+                self.key_store.insert_cursor(
                     pskid_as_identifier,
                     Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM),
                 );
@@ -956,7 +948,7 @@ where
     }
 
     pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
-        match self.key_store.psks().contains_key(&pskid) {
+        match self.key_store.contains_psk(&pskid) {
             true => {
                 self.key_store.remove(&pskid.into());
                 Ok(())
@@ -1004,7 +996,7 @@ where
         let mut ids = Vec::new();
 
         // TODO: Do the same for self.user_id.id
-        for (id, cursor) in self.key_store.iter() {
+        for (id, cursor) in self.key_store.cursors() {
             if self.is_multi_branching() {
                 ids.push((*id, self.gen_seq_link(&id, &cursor.link)));
             } else {
@@ -1015,7 +1007,7 @@ where
     }
 
     pub fn store_state(&mut self, id: Identifier, link: Link::Rel) -> Result<()> {
-        if let Some(cursor) = self.key_store.cursors_mut().get_mut(&id) {
+        if let Some(cursor) = self.key_store.get_cursor_mut(&id) {
             cursor.link = link;
             cursor.next_seq();
         }
@@ -1025,9 +1017,8 @@ where
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.seq_no().as_ref().unwrap_or(&0) {
             self.key_store
-                .cursors_mut()
-                .insert(self.user_id.id, Cursor::new_at(link.clone(), 0, seq_no));
-            for (_pk, cursor) in self.key_store.iter_mut() {
+                .insert_cursor(self.user_id.id, Cursor::new_at(link.clone(), 0, seq_no));
+            for (_pk, cursor) in self.key_store.cursors_mut() {
                 cursor.link = link.clone();
                 cursor.seq_no = seq_no;
             }
@@ -1046,7 +1037,7 @@ where
                 branch_no,
                 seq_no,
             },
-        ) in self.key_store.iter()
+        ) in self.key_store.cursors()
         {
             let link = Link::from_base_rel(self.appinst.as_ref().unwrap().base(), link);
             state.push((*pk, Cursor::new_at(link, *branch_no, *seq_no)))
@@ -1064,7 +1055,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, Link, LG, LS, Keys> ContentSizeof<F> for User<F, Link, LG, LS, Keys>
+impl<F, Link, LG, LS> ContentSizeof<F> for User<F, Link, LG, LS>
 where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
@@ -1073,7 +1064,6 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, Link::Rel> + Default,
     LS::Info: AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<Link::Rel>, F>,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.mask(<&NBytes<U32>>::from(&self.user_id.sig_sk()?.to_bytes()[..]))?
@@ -1094,7 +1084,7 @@ where
         }
 
         let repeated_links = Size(self.link_store.len());
-        let keys = self.key_store.iter();
+        let keys = self.key_store.cursors();
         let repeated_keys = Size(keys.len());
 
         ctx.absorb(repeated_links)?;
@@ -1119,7 +1109,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, Link, Store, LG, LS, Keys> ContentWrap<F, Store> for User<F, Link, LG, LS, Keys>
+impl<F, Link, Store, LG, LS> ContentWrap<F, Store> for User<F, Link, LG, LS>
 where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
@@ -1129,7 +1119,6 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, Link::Rel> + Default,
     LS::Info: AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<Link::Rel>, F>,
 {
     async fn wrap<'c, OS: io::OStream>(
         &self,
@@ -1154,7 +1143,7 @@ where
         }
 
         let repeated_links = Size(self.link_store.len());
-        let keys = self.key_store.iter();
+        let keys = self.key_store.cursors();
         let repeated_keys = Size(keys.len());
 
         ctx.absorb(repeated_links)?;
@@ -1179,7 +1168,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, Link, Store, LG, LS, Keys> ContentUnwrap<F, Store> for User<F, Link, LG, LS, Keys>
+impl<F, Link, Store, LG, LS> ContentUnwrap<F, Store> for User<F, Link, LG, LS>
 where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
@@ -1188,7 +1177,6 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, Link::Rel> + Default,
     LS::Info: Default + AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<Link::Rel>, F> + Default,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
@@ -1242,7 +1230,7 @@ where
         }
 
         let mut repeated_keys = Size(0);
-        let mut key_store = Keys::default();
+        let mut key_store = KeyStore::default();
         ctx.absorb(&mut repeated_keys)?;
         for _ in 0..repeated_keys.0 {
             let mut link = Fallback(<Link as HasLink>::Rel::default());
@@ -1250,9 +1238,7 @@ where
             let mut seq_no = Uint32(0);
             let (id, ctx) = Identifier::unwrap_new(store, ctx).await?;
             ctx.absorb(&mut link)?.absorb(&mut branch_no)?.absorb(&mut seq_no)?;
-            key_store
-                .cursors_mut()
-                .insert(id, Cursor::new_at(link.0, branch_no.0, seq_no.0));
+            key_store.insert_cursor(id, Cursor::new_at(link.0, branch_no.0, seq_no.0));
         }
 
         ctx.commit()?.squeeze(Mac(32))?;
@@ -1275,7 +1261,7 @@ where
     }
 }
 
-impl<F, Link, LG, LS, Keys> User<F, Link, LG, LS, Keys>
+impl<F, Link, LG, LS> User<F, Link, LG, LS>
 where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
@@ -1284,7 +1270,6 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, Link::Rel> + Default,
     LS::Info: AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<Link::Rel>, F>,
 {
     pub async fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
         const VERSION: u8 = 0;
@@ -1313,7 +1298,7 @@ where
     }
 }
 
-impl<F, Link, LG, LS, Keys> User<F, Link, LG, LS, Keys>
+impl<F, Link, LG, LS> User<F, Link, LG, LS>
 where
     F: PRP,
     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
@@ -1321,7 +1306,6 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, Link::Rel> + Default,
     LS::Info: Default + AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<Link::Rel>, F> + Default,
 {
     pub async fn import(bytes: &[u8], flag: u8, pwd: &str) -> Result<Self> {
         const VERSION: u8 = 0;
@@ -1347,32 +1331,28 @@ where
 
 // Newtype wrapper around KeyStore reference to be able to implement Lookup on it
 // Direct implementation is not possible due to KeyStore trait having type parameters itself
-pub struct KeysLookup<'a, F, Link, KStore>(&'a KStore, PhantomData<F>, PhantomData<Link>)
+pub struct KeysLookup<'a, F, Link>(&'a KeyStore<Link::Rel>, PhantomData<F>, PhantomData<Link>)
+where
+    F: PRP,
+    Link: HasLink;
+impl<'a, F, Link> KeysLookup<'a, F, Link>
 where
     F: PRP,
     Link: HasLink,
-    KStore: KeyStore<Cursor<Link::Rel>, F>;
-
-impl<'a, F, Link, KStore> KeysLookup<'a, F, Link, KStore>
-where
-    F: PRP,
-    Link: HasLink,
-    KStore: KeyStore<Cursor<Link::Rel>, F>,
 {
-    fn new(key_store: &'a KStore) -> Self {
+    fn new(key_store: &'a KeyStore<Link::Rel>) -> Self {
         Self(key_store, PhantomData, PhantomData)
     }
 }
 
-impl<F, Link, KStore> Lookup<&Identifier, psk::Psk> for KeysLookup<'_, F, Link, KStore>
+impl<F, Link> Lookup<&Identifier, psk::Psk> for KeysLookup<'_, F, Link>
 where
     F: PRP,
     Link: HasLink,
-    KStore: KeyStore<Cursor<Link::Rel>, F>,
 {
     fn lookup(&self, id: &Identifier) -> Option<psk::Psk> {
         if let Identifier::PskId(pskid) = id {
-            self.0.psks().get(pskid).map(|psk| *psk)
+            self.0.get_psk(pskid).map(|psk| *psk)
         } else {
             None
         }
