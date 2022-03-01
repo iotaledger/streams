@@ -7,10 +7,7 @@ use std::env;
 use rand::Rng;
 
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client,
-        IdentityClient,
-    },
+    app::transport::tangle::client::Client,
     app_channels::api::tangle::{
         ChannelType,
         Transport,
@@ -23,7 +20,7 @@ use iota_streams::{
 
 mod branching;
 
-async fn run_did_author_test<T: Transport + IdentityClient>(transport: T) {
+async fn run_did_author_test(transport: Client) {
     println!("\tRunning DID Test");
     match branching::did_author::example(transport).await {
         Err(err) => println!("Error in DID test: {:?}", err),
@@ -94,7 +91,6 @@ async fn main_pure() {
     run_multi_branch_test(transport.clone(), "PURESEEDC").await;
     run_recovery_single_branch_test(transport.clone(), "PURESEEDD").await;
     run_recovery_multi_branch_test(transport.clone(), "PURESEEDF").await;
-    run_did_author_test(transport.clone()).await;
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }

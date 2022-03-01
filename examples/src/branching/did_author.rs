@@ -84,10 +84,12 @@ pub async fn example(transport: Client) -> Result<()> {
 
     println!("\nMaking Author...");
     let mut author = Author::new_with_did(did_info, transport.clone()).await?;
+    author.insert_did_client(transport.to_did_client().await?);
 
     println!("Making Subscribers...");
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
     let mut subscriberB = Subscriber::new_with_did(sub_did_info, transport.clone()).await?;
+    subscriberB.insert_did_client(transport.to_did_client().await?);
     let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport).await;
 
     let subA_xkey = subscriberA.key_exchange_public_key()?;

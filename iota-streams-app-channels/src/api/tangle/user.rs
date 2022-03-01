@@ -13,6 +13,7 @@ use iota_streams_app::{
     },
     message::HasLink,
 };
+#[cfg(feature = "did")]
 use iota_streams_app::id::DIDClient;
 use iota_streams_core::{
     err,

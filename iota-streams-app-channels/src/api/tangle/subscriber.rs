@@ -196,6 +196,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
         Ok(Subscriber { user })
     }
 
+    #[cfg(feature = "did")]
     pub fn insert_did_client(&mut self, client: DIDClient) {
         self.user.insert_did_client(client);
     }
