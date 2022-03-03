@@ -2,7 +2,7 @@
 use core::fmt;
 
 use super::*;
-use iota_streams_app::id::identifier::Identifier;
+use iota_streams_app::id::Identifier;
 
 use iota_streams_core::{
     prelude::{

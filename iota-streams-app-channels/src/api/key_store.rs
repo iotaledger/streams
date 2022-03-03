@@ -3,13 +3,10 @@ use core::{
     fmt,
 };
 
-use crypto::keys::{
-    x25519,
-    x25519::PublicKey,
-};
+use crypto::keys::x25519;
 
 use iota_streams_app::{
-    id::identifier::Identifier,
+    id::Identifier,
     message::Cursor,
 };
 use iota_streams_core::{
@@ -107,7 +104,7 @@ impl<Link> KeyStore<Link> {
         }
     }
 
-    pub fn insert_keys(&mut self, id: Identifier, xkey: PublicKey) -> Result<()> {
+    pub fn insert_keys(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
         if !self.keys.contains_key(&id) {
             self.keys.insert(id, xkey);
         }

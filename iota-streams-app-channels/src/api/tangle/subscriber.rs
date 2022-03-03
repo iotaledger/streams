@@ -1,6 +1,6 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 use core::fmt;
-use iota_streams_app::id::identifier::Identifier;
+use iota_streams_app::id::Identifier;
 use iota_streams_core::{
     err,
     prelude::{

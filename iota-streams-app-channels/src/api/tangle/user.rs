@@ -7,7 +7,10 @@ use futures::{
 
 use crypto::keys::x25519;
 #[cfg(feature = "did")]
-use iota_streams_app::id::DIDClient;
+use iota_streams_app::id::{
+    DIDClient,
+    DIDInfo,
+};
 use iota_streams_app::{
     id::{
         Identifier,
@@ -37,9 +40,6 @@ use iota_streams_core::{
     },
     Result,
 };
-
-#[cfg(feature = "did")]
-use iota_streams_app::id::DIDInfo;
 
 use super::*;
 use crate::{
