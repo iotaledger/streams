@@ -83,6 +83,7 @@ use identity::{
         JcsEd25519,
         Named,
         Signature,
+        SignatureOptions,
         SignatureValue,
         Signer,
     },
@@ -92,6 +93,7 @@ use identity::{
         IotaDID,
     },
 };
+use identity::did::verifiable::VerifierOptions;
 #[cfg(feature = "did")]
 use iota_streams_core::{
     prelude::{
@@ -259,6 +261,7 @@ impl<F: PRP> UserIdentity<F> {
                             data,
                             method.to_string(),
                             info.did_keypair.private().as_ref(),
+                            SignatureOptions::new()
                         )?;
                     }
                 }
@@ -280,7 +283,7 @@ impl<F: PRP> UserIdentity<F> {
     #[cfg(feature = "did")]
     async fn verify_data(&self, did: &IotaDID, data: DataWrapper) -> Result<bool> {
         let doc = self.client.read_document(did).await?;
-        match doc.verify_data(&data) {
+        match doc.document.verify_data(&data, &VerifierOptions::new()) {
             Ok(_) => Ok(true),
             Err(e) => {
                 println!("Verification Error: {:?}", e);

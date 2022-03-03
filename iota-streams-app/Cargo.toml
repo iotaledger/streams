@@ -37,7 +37,7 @@ iota-crypto = { version = "0.9.1", default-features = false }
 iota-client = { version = "1.1.1", default-features = false, optional = true }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
-identity = { git = "https://github.com/iotaledger/identity.rs", branch = "main", default-features = false, optional = true  }
+identity = { git = "https://github.com/iotaledger/identity.rs", rev = "86edaad", optional = true  }
 serde = { version = "1.0", features = ["derive"], optional = true }
 
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }

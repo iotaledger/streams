@@ -1,12 +1,12 @@
 use anyhow::anyhow;
 use identity::{
     core::Timestamp,
-    crypto::KeyPair as DIDKeyPair,
     did::MethodScope,
-    iota::{
-        Client as DIDClient,
+    iota::IotaVerificationMethod,
+    prelude::{
+        KeyPair as DIDKeyPair,
         IotaDocument,
-        IotaVerificationMethod,
+        Client as DIDClient,
     },
 };
 use iota_streams::{
@@ -42,18 +42,18 @@ async fn make_did_info(client: &DIDClient, fragment: &str) -> Result<DIDInfo> {
     // Generate original DID document
     let mut document = IotaDocument::new(&keypair)?;
     // Sign document and publish to the tangle
-    document.sign(keypair.private())?;
+    document.sign_self(keypair.private(), document.default_signing_method()?.id().clone())?;
     let receipt = client.publish_document(&document).await?;
     let did = document.id().clone();
     println!("Document published: {}", receipt.message_id());
 
     println!("Creating new method...");
     let streams_method_keys = DIDKeyPair::new_ed25519()?;
-    let method = IotaVerificationMethod::from_did(did.clone(), &streams_method_keys, fragment)?;
-    if document.insert_method(MethodScope::VerificationMethod, method) {
-        document.set_previous_message_id(*receipt.message_id());
-        document.set_updated(Timestamp::now_utc());
-        document.sign(keypair.private())?;
+    let method = IotaVerificationMethod::new(did.clone(), streams_method_keys.type_(), streams_method_keys.public(), fragment)?;
+    if document.insert_method(method, MethodScope::VerificationMethod).is_ok() {
+        document.metadata.previous_message_id = *receipt.message_id();
+        document.metadata.updated = Timestamp::now_utc();
+        document.sign_self(keypair.private(), document.default_signing_method()?.id().clone())?;
 
         let update_receipt = client.publish_document(&document).await?;
         println!("Document updated: {}", update_receipt.message_id());
