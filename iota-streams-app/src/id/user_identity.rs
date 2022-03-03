@@ -72,7 +72,6 @@ use crate::{
 };
 #[cfg(feature = "did")]
 use futures::executor::block_on;
-use identity::did::verifiable::VerifierOptions;
 #[cfg(feature = "did")]
 use identity::{
     core::{
@@ -88,7 +87,10 @@ use identity::{
         SignatureValue,
         Signer,
     },
-    did::DID,
+    did::{
+        DID,
+        verifiable::VerifierOptions,
+    },
     iota::{
         Client,
         IotaDID,

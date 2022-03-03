@@ -828,7 +828,7 @@ mod tests {
     /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport
     async fn author_subscriber_fixture() -> Result<(Author<Transport>, Subscriber<Transport>, Address, Transport)> {
         let transport = Rc::new(RefCell::new(BucketTransport::new()));
-        let mut author = Author::new("author", ChannelType::MultiBranch, transport.clone());
+        let mut author = Author::new("author", ChannelType::MultiBranch, transport.clone()).await;
         let announcement_link = author.send_announce().await?;
         let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, transport.clone()).await?;
         Ok((author, subscriber, announcement_link, transport))
@@ -840,7 +840,7 @@ mod tests {
         announcement_link: &Address,
         transport: Transport,
     ) -> Result<Subscriber<Transport>> {
-        let mut subscriber = Subscriber::new(seed, transport);
+        let mut subscriber = Subscriber::new(seed, transport).await;
         subscriber.receive_announcement(announcement_link).await?;
         let subscription = subscriber.send_subscribe(announcement_link).await?;
         author.receive_subscribe(&subscription).await?;
