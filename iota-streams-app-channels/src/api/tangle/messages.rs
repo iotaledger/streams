@@ -784,7 +784,7 @@ mod tests {
             .await?;
 
         // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
-        let mut subscriber = Subscriber::new("subscriber", transport);
+        let mut subscriber = Subscriber::new("subscriber", transport).await;
         subscriber.receive_announcement(&announcement_link).await?;
         let n_msgs = subscriber.sync_state().await?;
         assert_eq!(n_msgs, 4); // keyload, 2 signed packets from author, and last signed-packet from herself

@@ -53,7 +53,7 @@ async fn make_did_info(client: &DIDClient, fragment: &str) -> Result<DIDInfo> {
         did.clone(),
         streams_method_keys.type_(),
         streams_method_keys.public(),
-        fragment
+        fragment,
     )?;
     if document.insert_method(method, MethodScope::VerificationMethod).is_ok() {
         document.metadata.previous_message_id = *receipt.message_id();
