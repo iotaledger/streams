@@ -195,9 +195,6 @@ impl<Trans> Author<Trans> {
     }
 }
 
-#[cfg(feature = "did")]
-impl<Trans: Transport> Author<Trans> {}
-
 impl<Trans: Transport + Clone> Author<Trans> {
     #[cfg(feature = "did")]
     pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {

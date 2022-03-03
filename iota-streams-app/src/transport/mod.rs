@@ -86,7 +86,6 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
 
 #[cfg(any(feature = "sync-spin", feature = "sync-parking-lot"))]
 mod sync {
-    #[cfg(feature = "did")]
     use super::{
         Transport,
         TransportDetails,
