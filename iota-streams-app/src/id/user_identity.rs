@@ -72,6 +72,7 @@ use crate::{
 };
 #[cfg(feature = "did")]
 use futures::executor::block_on;
+use identity::did::verifiable::VerifierOptions;
 #[cfg(feature = "did")]
 use identity::{
     core::{
@@ -93,7 +94,6 @@ use identity::{
         IotaDID,
     },
 };
-use identity::did::verifiable::VerifierOptions;
 #[cfg(feature = "did")]
 use iota_streams_core::{
     prelude::{
@@ -261,7 +261,7 @@ impl<F: PRP> UserIdentity<F> {
                             data,
                             method.to_string(),
                             info.did_keypair.private().as_ref(),
-                            SignatureOptions::new()
+                            SignatureOptions::new(),
                         )?;
                     }
                 }

@@ -4,9 +4,9 @@ use identity::{
     did::MethodScope,
     iota::IotaVerificationMethod,
     prelude::{
-        KeyPair as DIDKeyPair,
-        IotaDocument,
         Client as DIDClient,
+        IotaDocument,
+        KeyPair as DIDKeyPair,
     },
 };
 use iota_streams::{
@@ -49,7 +49,12 @@ async fn make_did_info(client: &DIDClient, fragment: &str) -> Result<DIDInfo> {
 
     println!("Creating new method...");
     let streams_method_keys = DIDKeyPair::new_ed25519()?;
-    let method = IotaVerificationMethod::new(did.clone(), streams_method_keys.type_(), streams_method_keys.public(), fragment)?;
+    let method = IotaVerificationMethod::new(
+        did.clone(),
+        streams_method_keys.type_(),
+        streams_method_keys.public(),
+        fragment
+    )?;
     if document.insert_method(method, MethodScope::VerificationMethod).is_ok() {
         document.metadata.previous_message_id = *receipt.message_id();
         document.metadata.updated = Timestamp::now_utc();
