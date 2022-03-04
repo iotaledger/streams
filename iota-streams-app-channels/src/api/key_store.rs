@@ -76,14 +76,13 @@ impl<Link> KeyStore<Link> {
         self.cursors.insert(id, cursor);
     }
 
-    pub fn replace_cursors(&mut self, new_cursor: Cursor<Link>) -> Result<()>
+    pub fn replace_cursors(&mut self, new_cursor: Cursor<Link>)
     where
         Link: Clone,
     {
         for (_id, cursor) in self.cursors.iter_mut() {
             *cursor = new_cursor.clone()
         }
-        Ok(())
     }
 
     pub fn contains_psk(&self, pskid: &PskId) -> bool {

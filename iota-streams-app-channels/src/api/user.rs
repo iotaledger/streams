@@ -270,7 +270,7 @@ where
         match &self.appinst {
             Some(appinst) => {
                 self.key_store
-                    .replace_cursors(Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
+                    .replace_cursors(Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
 
                 let mut link_store = LS::default();
                 let ann_state = self.link_store.lookup(appinst.rel())?;

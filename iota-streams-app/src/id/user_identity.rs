@@ -88,8 +88,8 @@ use identity::{
         Signer,
     },
     did::{
-        DID,
         verifiable::VerifierOptions,
+        DID,
     },
     iota::{
         Client,
