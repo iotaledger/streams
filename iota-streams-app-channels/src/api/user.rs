@@ -228,19 +228,19 @@ where
                 self.appinst.as_ref().unwrap().base().to_string()
             ));
         }
-        self.link_gen.gen(&self.user_id.id, channel_idx);
+        self.link_gen.gen(self.id(), channel_idx);
         let appinst = self.link_gen.get();
 
-        match &self.user_id.id {
+        match self.id() {
             Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
             _ => {
                 self.key_store
-                    .insert_cursor(self.user_id.id, Cursor::new_at(appinst.rel().clone(), 0, 2_u32));
-                self.key_store.insert_keys(self.user_id.id, self.user_id.ke_kp()?.1)?;
+                    .insert_cursor(*self.id(), Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
+                self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
             }
         }
-        self.author_id = Some(self.user_id.id);
-        self.anchor = Some(Cursor::new_at(appinst.clone(), 0, 2_u32));
+        self.author_id = Some(*self.id());
+        self.anchor = Some(Cursor::new_at(appinst.clone(), 0, INIT_MESSAGE_NUM));
         self.appinst = Some(appinst);
         Ok(())
     }
@@ -297,7 +297,7 @@ where
             .with_content_type(ANNOUNCE)?
             .with_payload_length(1)?
             .with_seq_num(ANN_MESSAGE_NUM)
-            .with_identifier(&self.user_id.id);
+            .with_identifier(self.id());
         let content = announce::ContentWrap::new(&self.user_id, self.flags);
         Ok(PreparedMessage::new(header, content))
     }
@@ -314,7 +314,7 @@ where
         if let Some(appinst) = &self.appinst {
             try_or!(
                 appinst == &preparsed.header.link,
-                UserAlreadyRegistered(self.user_id.id.to_string(), appinst.base().to_string())
+                UserAlreadyRegistered(self.id().to_string(), appinst.base().to_string())
             )?;
         }
 
@@ -350,13 +350,13 @@ where
             Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
             _ => self.key_store.insert_cursor(author_id.id, cursor.clone()),
         };
-        match &self.user_id.id {
+        match self.id() {
             Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
-            _ => self.key_store.insert_cursor(self.user_id.id, cursor),
+            _ => self.key_store.insert_cursor(*self.id(), cursor),
         };
 
         self.key_store.insert_keys(author_id.id, author_ke_pk)?;
-        self.key_store.insert_keys(self.user_id.id, self.user_id.ke_kp()?.1)?;
+        self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
 
         // Reset link_gen
         self.link_gen.reset(link.clone());
@@ -375,13 +375,13 @@ where
     ) -> Result<PreparedMessage<F, Link, subscribe::ContentWrap<'a, F, Link>>> {
         // TODO: Remove need for get_ke_pk, store author ke pk as part of user
         if self.author_id.is_some() {
-            let msg_cursor = self.gen_link(self.user_id.id, link_to.rel(), SUB_MESSAGE_NUM);
+            let msg_cursor = self.gen_link(self.id(), link_to.rel(), SUB_MESSAGE_NUM);
             let header = HDF::new(msg_cursor.link)
                 .with_previous_msg_link(Bytes(link_to.to_bytes()))
                 .with_content_type(SUBSCRIBE)?
                 .with_payload_length(1)?
                 .with_seq_num(msg_cursor.seq_no)
-                .with_identifier(&self.user_id.id);
+                .with_identifier(self.id());
             let unsubscribe_key = NBytes::from(prng::random_key());
             let content = subscribe::ContentWrap {
                 link: link_to.rel(),
@@ -447,13 +447,13 @@ where
     ) -> Result<PreparedMessage<F, Link, unsubscribe::ContentWrap<'a, F, Link>>> {
         match self.seq_no() {
             Some(seq_no) => {
-                let msg_cursor = self.gen_link(self.user_id.id, link_to.rel(), seq_no);
+                let msg_cursor = self.gen_link(self.id(), link_to.rel(), seq_no);
                 let header = HDF::new(msg_cursor.link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(UNSUBSCRIBE)?
                     .with_payload_length(1)?
                     .with_seq_num(msg_cursor.seq_no)
-                    .with_identifier(&self.user_id.id);
+                    .with_identifier(self.id());
                 let content = unsubscribe::ContentWrap {
                     link: link_to.rel(),
                     subscriber_id: &self.user_id,
@@ -528,13 +528,13 @@ where
     {
         match self.seq_no() {
             Some(seq_no) => {
-                let msg_cursor = self.gen_link(self.user_id.id, link_to.rel(), seq_no);
+                let msg_cursor = self.gen_link(self.id(), link_to.rel(), seq_no);
                 let header = HDF::new(msg_cursor.link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
                     .with_payload_length(1)?
                     .with_seq_num(msg_cursor.seq_no)
-                    .with_identifier(&self.user_id.id);
+                    .with_identifier(self.id());
                 let filtered_keys = self.key_store.filter(keys);
                 self.do_prepare_keyload(header, link_to.rel(), filtered_keys)
             }
@@ -548,13 +548,13 @@ where
     ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>> {
         match self.seq_no() {
             Some(seq_no) => {
-                let msg_cursor = self.gen_link(self.user_id.id, link_to.rel(), seq_no);
+                let msg_cursor = self.gen_link(self.id(), link_to.rel(), seq_no);
                 let header = hdf::HDF::new(msg_cursor.link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
                     .with_payload_length(1)?
                     .with_seq_num(msg_cursor.seq_no)
-                    .with_identifier(&self.user_id.id);
+                    .with_identifier(self.id());
                 let keys = self.key_store.exchange_keys();
                 self.do_prepare_keyload(header, link_to.rel(), keys)
             }
@@ -665,13 +665,13 @@ where
         }
         match self.seq_no() {
             Some(seq_no) => {
-                let msg_cursor = self.gen_link(self.user_id.id, link_to.rel(), seq_no);
+                let msg_cursor = self.gen_link(self.id(), link_to.rel(), seq_no);
                 let header = HDF::new(msg_cursor.link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SIGNED_PACKET)?
                     .with_payload_length(1)?
                     .with_seq_num(msg_cursor.seq_no)
-                    .with_identifier(&self.user_id.id);
+                    .with_identifier(self.id());
                 let content = signed_packet::ContentWrap {
                     link: link_to.rel(),
                     public_payload,
@@ -839,7 +839,7 @@ where
                 } else if self.is_single_depth() {
                     Ok(WrappedSequence::SingleDepth(original_cursor.clone()))
                 } else {
-                    let full_cursor = self.gen_link(self.user_id.id, ref_link, original_cursor.seq_no);
+                    let full_cursor = self.gen_link(self.id(), ref_link, original_cursor.seq_no);
                     let rel_cursor = Cursor::new_at(full_cursor.link.rel().clone(), 0, full_cursor.seq_no);
                     Ok(WrappedSequence::single_branch(rel_cursor))
                 }
@@ -907,7 +907,7 @@ where
 
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn seq_no(&self) -> Option<u32> {
-        self.key_store.get_cursor(&self.user_id.id).map(|cursor| cursor.seq_no)
+        self.key_store.get_cursor(self.id()).map(|cursor| cursor.seq_no)
     }
 
     pub fn ensure_appinst<'a>(&self, preparsed: &PreparsedMessage<'a, F, Link>) -> Result<()> {
@@ -1017,7 +1017,7 @@ where
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.seq_no().as_ref().unwrap_or(&0) {
             self.key_store
-                .insert_cursor(self.user_id.id, Cursor::new_at(link.clone(), 0, seq_no));
+                .insert_cursor(*self.id(), Cursor::new_at(link.clone(), 0, seq_no));
             for (_pk, cursor) in self.key_store.cursors_mut() {
                 cursor.link = link.clone();
                 cursor.seq_no = seq_no;
