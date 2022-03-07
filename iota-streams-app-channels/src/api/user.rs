@@ -228,7 +228,7 @@ where
                 self.appinst.as_ref().unwrap().base().to_string()
             ));
         }
-        self.link_gen.gen(self.id(), channel_idx);
+        self.link_gen.gen(&self.id().clone(), channel_idx);
         let appinst = self.link_gen.get();
 
         match self.id() {
