@@ -1,0 +1,37 @@
+[package]
+name = "iota-streams"
+version = "0.1.2"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org>"]
+edition = "2018"
+license = "Apache-2.0/MIT"
+readme = "README.md"
+keywords = ["iota", "streams", "app", "channels", "pub-sub", "communication protocol"]
+description = "A rust implementation of the IOTA Streams protocol"
+
+[features]
+default = ["std", "duh"]
+# Enable `std` feature in dependencies
+std = ["spongos/std", "LETS/std", "hex/std"]
+# TODO: REMOVE FEATURE AND MAKE ABSTRACT
+# Enable the tangle-specific API (implies `tangle` feature of iota-streams-app, but not necessarily `client`)
+duh = ["LETS/duh", "futures", "async-recursion"]
+# Enable re-export of IOTA-Tangle transport client from LETS
+tangle-client = ["LETS/tangle-client"]
+# Enable re-export of wasm-compatible IOTA-Tangle transport client from LETS (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`)
+tangle-client-wasm = ["LETS/tangle-client-wasm"]
+
+[dependencies]
+# Local dependencies
+spongos = { path = "../spongos", default-features = false }
+LETS = { path = "../LETS", default-features = false }
+
+# IOTA dependencies
+iota-crypto = { version = "0.9.1", default-features = false, features = ["x25519"] }
+
+# 3rd-party dependencies
+hex = { version = "0.4", default-features = false, optional = false }
+futures = { version = "0.3.8", default-features = false, optional = true }
+async-recursion = { version = "0.3.2", default-features = false, optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.15", default-features = false }

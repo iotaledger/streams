@@ -1,0 +1,142 @@
+//! `TaggedPacket` message content. The message has a plain and masked payload and is authenticated
+//! with MAC.
+//!
+//! The message may be linked to any other message in the channel and can be published by any
+//! participant in a channel.
+//!
+//! ```ddml
+//! message TaggedPacket {
+//!     join link msgid;
+//!     absorb bytes public_payload;
+//!     mask bytes masked_payload;
+//!     commit;
+//!     squeeze byte mac[32];
+//! }
+//! ```
+use core::marker::PhantomData;
+
+use lets::message::{
+    self,
+    HasLink,
+};
+use spongos::sponge::prp::PRP;
+// use iota_streams_core::{
+//     async_trait,
+//     prelude::{
+//         typenum::Unsigned as _,
+//         Box,
+//     },
+//     sponge::{
+//         prp::PRP,
+//         spongos,
+//     },
+//     Result,
+// };
+// use iota_streams_ddml::{
+//     command::*,
+//     io,
+//     link_store::{
+//         EmptyLinkStore,
+//         LinkStore,
+//     },
+//     types::*,
+// };
+
+pub struct ContentWrap<'a, F, Link>
+where
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a,
+{
+    pub(crate) link: &'a <Link as HasLink>::Rel,
+    pub(crate) public_payload: &'a Bytes,
+    pub(crate) masked_payload: &'a Bytes,
+    pub(crate) _phantom: PhantomData<(F, Link)>,
+}
+
+#[async_trait(?Send)]
+impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
+where
+    F: PRP,
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+{
+    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
+        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
+        let mac = Mac(spongos::MacSize::<F>::USIZE);
+        ctx.join(&store, self.link)?
+            .absorb(self.public_payload)?
+            .mask(self.masked_payload)?
+            .commit()?
+            .squeeze(&mac)?;
+        // TODO: Is bot public and masked payloads are ok? Leave public only or masked only?
+        Ok(ctx)
+    }
+}
+
+#[async_trait(?Send)]
+impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+where
+    F: PRP,
+    Link: HasLink,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+{
+    async fn wrap<'c, OS: io::OStream>(
+        &self,
+        store: &Store,
+        ctx: &'c mut wrap::Context<F, OS>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
+        let mac = Mac(spongos::MacSize::<F>::USIZE);
+        ctx.join(store, self.link)?
+            .absorb(self.public_payload)?
+            .mask(self.masked_payload)?
+            .commit()?
+            .squeeze(&mac)?;
+        Ok(ctx)
+    }
+}
+
+// TODO: factor out `public_payload` and `masked_payload` into `pub struct Content`
+pub struct ContentUnwrap<F, Link: HasLink> {
+    pub(crate) link: <Link as HasLink>::Rel,
+    pub(crate) public_payload: Bytes,
+    pub(crate) masked_payload: Bytes,
+    pub(crate) _phantom: PhantomData<(F, Link)>,
+}
+
+impl<F, Link> Default for ContentUnwrap<F, Link>
+where
+    Link: HasLink,
+{
+    fn default() -> Self {
+        Self {
+            link: Link::Rel::default(),
+            public_payload: Bytes::default(),
+            masked_payload: Bytes::default(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
+where
+    F: PRP,
+    Link: HasLink,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
+    Store: LinkStore<F, <Link as HasLink>::Rel>,
+{
+    async fn unwrap<'c, IS: io::IStream>(
+        &mut self,
+        store: &Store,
+        ctx: &'c mut unwrap::Context<F, IS>,
+    ) -> Result<&'c mut unwrap::Context<F, IS>> {
+        let mac = Mac(spongos::MacSize::<F>::USIZE);
+        ctx.join(store, &mut self.link)?
+            .absorb(&mut self.public_payload)?
+            .mask(&mut self.masked_payload)?
+            .commit()?
+            .squeeze(&mac)?;
+        Ok(ctx)
+    }
+}
