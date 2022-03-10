@@ -12,6 +12,7 @@
     "test": "cargo test && wasm-pack test --headless"
   },
   "devDependencies": {
+    "wasm-pack": "^0.10.0",
     "@wasm-tool/wasm-pack-plugin": "^1.1.0",
     "copy-webpack-plugin": "^10.2.4",
     "rimraf": "^3.0.0",

@@ -20,7 +20,7 @@
     "serve": "webpack serve",
     "example:nodejs": "node examples/node.js",
     "example:nodets": "ts-node examples/node.ts",
-    "example:web": "cd examples/web && npm run start",
+    "example:web": "cd examples/web && npm i && npm run start",
     "doc:nodejs": "jsdoc -d node/jsdoc -c jsdoc-conf.json node"
   },
   "contributors": [
