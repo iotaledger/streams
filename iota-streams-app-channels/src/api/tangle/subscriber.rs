@@ -22,7 +22,6 @@ use crate::api::tangle::{
     UnwrappedMessage,
     User,
 };
-use crypto::keys::x25519;
 
 #[cfg(feature = "did")]
 use iota_streams_app::id::{
@@ -67,7 +66,7 @@ impl<Trans> Subscriber<Trans> {
     }
 
     /// Fetch the user key exchange public key
-    pub fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
+    pub fn key_exchange_public_key(&self) -> Result<ExchangeKey> {
         self.user.key_exchange_public_key()
     }
 
