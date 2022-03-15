@@ -1,7 +1,15 @@
 use core::str::FromStr;
+use identity::{
+    core::decode_b58,
+    did::DID,
+    iota::IotaDID,
+};
 use iota_streams::{
     app::{
-        id::Identifier,
+        id::{
+            DIDWrap,
+            Identifier,
+        },
         message::Cursor as ApiCursor,
         transport::tangle::client::{
             iota_client::{
@@ -19,6 +27,7 @@ use iota_streams::{
         Address as ApiAddress,
         ChannelAddress as ApiChannelAddress,
         ChannelType as ApiChannelType,
+        ExchangeKey,
         MessageContent,
         MsgId as ApiMsgId,
         PublicKey,
@@ -315,13 +324,13 @@ impl MsgId {
 pub fn get_message_content(msg: UnwrappedMessage) -> UserResponse {
     match msg.body {
         MessageContent::SignedPacket {
-            pk,
+            id,
             public_payload: p,
             masked_payload: m,
         } => UserResponse::new(
             msg.link.into(),
             None,
-            Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
+            Some(Message::new(Some(hex::encode(id.to_bytes())), p.0, m.0)),
         ),
         MessageContent::TaggedPacket {
             public_payload: p,
@@ -450,6 +459,16 @@ pub(crate) fn identifier_to_string(id: &Identifier) -> String {
     hex::encode(&id.to_bytes())
 }
 
+pub(crate) fn identifier_from_string(id_str: &str) -> Result<Identifier> {
+    match IotaDID::from_str(id_str) {
+        Ok(did) => {
+            let bytes = decode_b58(did.method_id()).into_js_result()?;
+            Ok(Identifier::DID(DIDWrap::clone_from_slice(&bytes)))
+        },
+        Err(_) => Ok(Identifier::EdPubKey(public_key_from_string(id_str)?))
+    }
+}
+
 pub(crate) fn public_key_to_string(pk: &PublicKey) -> String {
     hex::encode(pk)
 }
@@ -461,6 +480,19 @@ pub(crate) fn public_key_from_string(hex_str: &str) -> Result<PublicKey> {
     byte_array.copy_from_slice(&bytes);
     PublicKey::try_from_bytes(byte_array).into_js_result()
 }
+
+pub(crate) fn exchange_key_to_string(pk: &ExchangeKey) -> String {
+    hex::encode(pk)
+}
+
+pub(crate) fn exchange_key_from_string(hex_str: &str) -> Result<ExchangeKey> {
+    let bytes = hex::decode(hex_str).into_js_result()?;
+    let mut byte_array = [0; PUBLIC_KEY_LENGTH];
+    byte_array.copy_from_slice(&bytes);
+    ExchangeKey::try_from_slice(&byte_array).into_js_result()
+}
+
+
 
 /// Collection of PublicKeys representing a set of users
 #[wasm_bindgen]
