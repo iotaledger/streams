@@ -16,6 +16,7 @@ use iota_streams_app::{
         Identifier,
         UserIdentity,
     },
+    permission::Permission,
     message::HasLink,
 };
 use iota_streams_core::{
@@ -386,6 +387,14 @@ impl<Trans: Transport + Clone> User<Trans> {
         let msg = self.user.share_keyload_for_everyone(link_to).await?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
+    
+    pub async fn send_keyload_permissioned<'a, P>(&mut self, link_to: &Address, permissions: P) -> Result<(Address, Option<Address>)>
+    where
+        P: IntoIterator<Item = &'a Permission>,
+    {
+        let msg = self.user.share_keyload_permissioned(link_to, permissions).await?;
+        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
+    }
 
     /// Create and Send a Subscribe message to a Channel app instance [Subscriber].
     ///
@@ -478,6 +487,12 @@ impl<Trans: Transport + Clone> User<Trans> {
     pub async fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         let msg = self.transport.recv_message(link).await?;
         let m = self.user.handle_keyload(&msg, MsgInfo::Keyload).await?;
+        Ok(m.body)
+    }
+
+    pub async fn receive_keyload_permissions(&mut self, link: &Address) -> Result<bool> {
+        let msg = self.transport.recv_message(link).await?;
+        let m = self.user.handle_keyload_permisisons(&msg, MsgInfo::Keyload).await?;
         Ok(m.body)
     }
 

@@ -12,7 +12,7 @@ use iota_streams_core::{
         PskId,
     },
     sponge::prp::PRP,
-    Errors::BadOneof,
+    Errors,
     Result,
 };
 
@@ -87,6 +87,23 @@ impl Default for Identifier {
     fn default() -> Self {
         let default_public_key = ed25519::PublicKey::try_from_bytes([0; ed25519::PUBLIC_KEY_LENGTH]).unwrap();
         Identifier::from(default_public_key)
+    }
+}
+
+impl core::convert::TryFrom<Vec<u8>> for Identifier {
+    type Error = Errors;
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        match bytes[0] {
+            0 => {
+                let pk = ed25519::PublicKey::try_from_bytes([0; 32]).unwrap();
+                Ok(Identifier::EdPubKey(pk))
+            }
+            1 => {
+                let pskid = PskId::clone_from_slice(&bytes[1..bytes.len()]);
+                Ok(Identifier::PskId(pskid))
+            }
+            _ => Err(Errors::BadOneof)
+        }
     }
 }
 
@@ -223,7 +240,7 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
                 let did = IotaDID::parse(did_str)?;
                 Ok(((&did).into(), ctx))
             }
-            _ => err(BadOneof),
+            _ => err(Errors::BadOneof),
         }
     }
 }

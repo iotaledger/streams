@@ -17,6 +17,7 @@ use iota_streams_app::{
         Identifier,
         UserIdentity,
     },
+    permission::Permission,
     message::{
         hdf::{
             FLAG_BRANCHING_MASK,
@@ -542,6 +543,39 @@ where
         }
     }
 
+    pub fn prepare_keyload_permissioned<'a, 'b, P>(
+        &'a self,
+        link_to: &'a Link,
+        permissions: P,
+    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>>
+    where
+        P: IntoIterator<Item = &'b Permission>,
+    {
+        match self.get_seq_no() {
+            Some(seq_no) => {
+                let msg_cursor = self.gen_link(self.signing_public_key(), link_to.rel(), seq_no);
+                let header = HDF::new(msg_cursor.link)
+                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
+                    .with_content_type(KEYLOAD)?
+                    .with_payload_length(1)?
+                    .with_seq_num(msg_cursor.seq_no)
+                    .with_identifier(self.identifier());
+
+                let ids: Vec<(&Identifier, Vec<u8>)> = permissions.into_iter().map(|p| (p.identifier(), p.to_bytes())).collect();
+                let mut id_iter = ids.clone().into_iter();
+                let filtered_permissions = self.key_store.filter(ids.clone().into_iter().map(|v| v.0).collect::<Vec<&Identifier>>())
+                    .into_iter().map(|v| {
+                    
+                        let mut total_bytes = id_iter.find(|i| i.0 == v.0).unwrap().1;
+                        total_bytes.append(&mut v.1.clone());
+                        (v.0, total_bytes)
+                }).collect();
+                self.do_prepare_keyload(header, link_to.rel(), filtered_permissions)
+            }
+            None => err!(SeqNumRetrievalFailure),
+        }
+    }
+
     pub fn prepare_keyload_for_everyone<'a>(
         &'a self,
         link_to: &'a Link,
@@ -571,6 +605,14 @@ where
         self.prepare_keyload(link_to, keys)?.wrap(&self.link_store).await
     }
 
+    pub async fn share_keyload_permissioned<'a, P>(&mut self, link_to: &Link, permissions: P) -> Result<WrappedMessage<F, Link>>
+    where
+        P: IntoIterator<Item = &'a Permission>,
+    {
+        self.prepare_keyload_permissioned(link_to, permissions)?.wrap(&self.link_store).await
+    }
+    
+
     /// Create keyload message with a new session key shared with all Subscribers
     /// known to Author.
     pub async fn share_keyload_for_everyone(&mut self, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
@@ -588,6 +630,24 @@ where
         self.ensure_appinst(&preparsed)?;
         let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_id);
         preparsed.unwrap(&self.link_store, content).await
+    }
+    
+    pub async fn unwrap_keyload_permissions<'a>(
+        &self,
+        preparsed: PreparsedMessage<'_, F, Link>,
+        keys_lookup: KeysLookup<'a, F, Link, Keys>,
+        own_keys: OwnKeys<'a>,
+        author_sig_pk: Option<&'a ed25519::PublicKey>,
+    ) -> Result<
+        UnwrappedMessage<F, Link, keyload::ContentUnwrap<'a, F, Link, KeysLookup<'a, F, Link, Keys>, OwnKeys<'a>>>,
+    > {
+        self.ensure_appinst(&preparsed)?;
+        if let Some(author_sig_pk) = author_sig_pk {
+            let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_sig_pk);
+            preparsed.unwrap(&self.link_store, content).await
+        } else {
+            err!(AuthorSigKeyNotFound)
+        }
     }
 
     /// Try unwrapping session key from keyload using Subscriber's pre-shared key or Ed25519 private key (if any).
@@ -651,6 +711,60 @@ where
             }
             None => err!(AuthorIdNotFound),
         }
+    }
+
+    pub async fn handle_keyload_permissions(
+        &mut self,
+        msg: &BinaryMessage<Link>,
+        info: LS::Info,
+    ) -> Result<GenericMessage<Link, bool>> {
+        let preparsed = msg.parse_header().await?;
+        let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
+        let seq_no = preparsed.header.seq_num;
+        // We need to borrow self.key_store, self.sig_kp and self.ke_kp at this scope
+        // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
+        let keys_lookup = KeysLookup::new(&self.key_store);
+        let own_keys = OwnKeys(&self.sig_kp, &self.ke_kp);
+        let unwrapped = self
+            .unwrap_keyload_permissions(preparsed, keys_lookup, own_keys, self.author_sig_pk.as_ref())
+            .await?;
+
+        // Process a generic message containing the access right bool, also return the list of identifiers
+        // to be stored.
+        let (processed, keys) = if unwrapped.pcf.content.key.is_some() {
+            // Do not commit if key not found hence spongos state is invalid
+
+            // Presence of the key indicates the user is allowed
+            // Unwrapped nonce and key in content are not used explicitly.
+            // The resulting spongos state is joined into a protected message state.
+            let content = unwrapped.commit(&mut self.link_store, info)?;
+            (GenericMessage::new(msg.link.clone(), prev_link, true), content.key_ids)
+        } else {
+            (
+                GenericMessage::new(msg.link.clone(), prev_link, false),
+                unwrapped.pcf.content.key_ids,
+            )
+        };
+
+        // Store any unknown publishers
+        if let Some(appinst) = &self.appinst {
+            for identifier in keys {
+                if !self.key_store.contains(&identifier) {
+                    // Store at state 2 since 0 and 1 are reserved states
+                    self.key_store
+                        .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM))?;
+                }
+            }
+        }
+
+        if !self.is_multi_branching() {
+            self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
+            if self.is_single_depth() {
+                self.anchor = Some(Cursor::new_at(msg.link.clone(), 0, seq_no.0 as u32 + 1));
+            }
+        }
+
+        Ok(processed)
     }
 
     /// Prepare SignedPacket message.
