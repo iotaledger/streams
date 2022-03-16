@@ -133,12 +133,12 @@ pub extern "C" fn drop_user_state(s: *const UserState) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
+pub unsafe extern "C" fn get_link_from_state(state: *const UserState, id: *const Identifier) -> *const Address {
     state.as_ref().map_or(null(), |state_ref| {
-        pub_key.as_ref().map_or(null(), |pub_key| {
-            let pk_str = hex::encode(pub_key.as_slice());
-            for (pk, cursor) in state_ref {
-                if pk == &pk_str {
+        id.as_ref().map_or(null(), |id| {
+            let id_str = hex::encode(id.as_bytes());
+            for (id, cursor) in state_ref {
+                if id == &id_str {
                     return safe_into_ptr(cursor.link.clone());
                 }
             }
@@ -528,8 +528,8 @@ impl<'a> From<(&'a Bytes, &'a Bytes)> for PacketPayloads {
     }
 }
 
-impl From<(PublicKey, Bytes, Bytes)> for PacketPayloads {
-    fn from(signed_payloads: (PublicKey, Bytes, Bytes)) -> Self {
+impl From<(Identifier, Bytes, Bytes)> for PacketPayloads {
+    fn from(signed_payloads: (Identifier, Bytes, Bytes)) -> Self {
         let payloads = (signed_payloads.1, signed_payloads.2);
         PacketPayloads::from(payloads)
     }

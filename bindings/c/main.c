@@ -49,9 +49,9 @@ int main()
   user_state_t const *original_sub_state = NULL;
   user_state_t const *reset_sub_state = NULL;
 
-  public_key_t const *recovered_auth_pk = NULL;
-  public_key_t const *original_auth_pk = NULL;
-  public_key_t const *sub_a_pk = NULL;
+  identifier_t const *recovered_auth_id = NULL;
+  identifier_t const *original_auth_id = NULL;
+  identifier_t const *sub_a_id = NULL;
   char const *recovered_link_id = NULL;
   char const *original_link_id = NULL;
   address_t const *subA_link = NULL;
@@ -80,7 +80,7 @@ int main()
   // Fetch Application instance
   {
     channel_address_t const *appinst = NULL;
-    public_key_t const *auth_pk = NULL;
+    identifier_t const *auth_id = NULL;
     e = auth_channel_address(&appinst, auth);
     if(e) goto cleanup;
     // `auth_channel_address` does not allocate, no need to drop `appinst`
@@ -90,7 +90,7 @@ int main()
     uint8_t flag = 0;
     e = auth_is_multi_branching(&flag, auth);
     if(e) goto cleanup;
-    e = auth_get_public_key(&auth_pk, auth);
+    e = auth_get_id(&auth_id, auth);
     if(e) goto cleanup;
   }
   printf("\n");
@@ -199,8 +199,8 @@ cleanup0:
     printf("Retrieving link from subscriber A state for later comparison");
     e = sub_fetch_state(&original_sub_state, subA);
     if(e) goto cleanup;
-    e = sub_get_public_key(&sub_a_pk, subA);
-    original_sub_state_link = get_link_from_state(original_sub_state, sub_a_pk);
+    e = sub_get_id(&sub_a_id, subA);
+    original_sub_state_link = get_link_from_state(original_sub_state, sub_a_id);
   }
   printf("\n");
   if(e) goto cleanup;
@@ -503,15 +503,15 @@ cleanup7:
     e = auth_fetch_state(&original_auth_state, auth);
     if(e) goto cleanup8;
 
-    public_key_t const *recovered_auth_pk = NULL;
-    e = auth_get_public_key(&recovered_auth_pk, recovered_auth);
+    identifier_t const *recovered_auth_id = NULL;
+    e = auth_get_id(&recovered_auth_id, recovered_auth);
     if(e) goto cleanup8;
-    public_key_t const *original_auth_pk = NULL;
-    e = auth_get_public_key(&original_auth_pk, auth);
+    identifier_t const *original_auth_id = NULL;
+    e = auth_get_id(&original_auth_id, auth);
     if(e) goto cleanup8;
 
-    recovered_state_link = get_link_from_state(recovered_auth_state, recovered_auth_pk);
-    original_state_link = get_link_from_state(original_auth_state, original_auth_pk);
+    recovered_state_link = get_link_from_state(recovered_auth_state, recovered_auth_id);
+    original_state_link = get_link_from_state(original_auth_state, original_auth_id);
 
     char const *recovered_link_id = get_address_id_str(recovered_state_link);
     char const *original_link_id = get_address_id_str(original_state_link);
@@ -569,7 +569,8 @@ cleanup8:
   {
     address_t const *unsubscribe = NULL;
     subscriber_t *subD = NULL;
-    public_key_t const *sub_d_pk = NULL;
+    identifier_t const *sub_d_id = NULL;
+    exchange_key_t const *sub_d_ek = NULL;
     message_links_t new_keyload_links = { NULL, NULL };
     uint8_t const *access = NULL;
 
@@ -584,14 +585,17 @@ cleanup8:
     char const subD_seed[] = "SUBSCRIBERD9SEED";
     e = sub_new(&subD, subD_seed, tsp);
     if(e) goto cleanup11;
-    e = sub_get_public_key(&sub_d_pk, subD);
+    e = sub_get_id(&sub_d_id, subD);
+    if(e) goto cleanup11;
+    e = sub_get_exchange_key(&sub_d_ek, subD);
     if(e) goto cleanup11;
 
+
     printf("Author manually subscribing sub D...\n");
-    e = auth_store_new_subscriber(auth, sub_d_pk);
+    e = auth_store_new_subscriber(auth, sub_d_id, sub_d_ek);
     if(e) goto cleanup11;
     printf("Author manually unsubscribing sub D...\n");
-    e = auth_remove_subscriber(auth, sub_d_pk);
+    e = auth_remove_subscriber(auth, sub_d_id);
     if(e) goto cleanup11;
 
     printf("Author sends new keyload to all current subscribers...\n");
@@ -622,7 +626,7 @@ cleanup8:
     printf("Fetching subscriber state... ");
     e = sub_fetch_state(&reset_sub_state, subA);
     if(e) goto cleanup10;
-    reset_sub_state_link = get_link_from_state(reset_sub_state, sub_a_pk);
+    reset_sub_state_link = get_link_from_state(reset_sub_state, sub_a_id);
 
     char const *reset_state_link_id = get_address_id_str(reset_sub_state_link);
     char const *original_state_link_id = get_address_id_str(original_sub_state_link);

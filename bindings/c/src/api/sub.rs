@@ -18,7 +18,7 @@ pub unsafe extern "C" fn sub_new(
     CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
         transport.as_ref().map_or(Err::NullArgument, |tsp| {
             c_sub.as_mut().map_or(Err::NullArgument, |sub| {
-                let user = Subscriber::new(seed, tsp.clone());
+                let user = run_async(Subscriber::new(seed, tsp.clone()));
                 *sub = safe_into_mut_ptr(user);
                 Err::Ok
             })
@@ -111,21 +111,33 @@ pub unsafe extern "C" fn sub_is_multi_branching(flag: *mut uint8_t, user: *const
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_get_public_key(pk: *mut *const PublicKey, user: *const Subscriber) -> Err {
+pub unsafe extern "C" fn sub_get_id(id: *mut *const Identifier, user: *const Subscriber) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {
-        pk.as_mut().map_or(Err::NullArgument, |pk| {
-            *pk = user.public_key() as *const PublicKey;
+        id.as_mut().map_or(Err::NullArgument, |id| {
+            *id = user.id() as *const Identifier;
             Err::Ok
         })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_author_public_key(pk: *mut *const PublicKey, user: *const Subscriber) -> Err {
+pub unsafe extern "C" fn sub_get_exchange_key(ek: *mut *const ExchangeKey, user: *const Subscriber) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {
-        pk.as_mut().map_or(Err::NullArgument, |pk| {
-            user.author_public_key().map_or(Err::OperationFailed, |public_key| {
-                *pk = public_key as *const PublicKey;
+        ek.as_mut().map_or(Err::NullArgument, |ek| {
+            user.key_exchange_public_key().map_or(Err::OperationFailed, |key_exchange_key| {
+                *ek = safe_into_ptr(key_exchange_key);
+                Err::Ok
+            })
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sub_author_id(id: *mut *const Identifier, user: *const Subscriber) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        id.as_mut().map_or(Err::NullArgument, |id| {
+            user.author_id().map_or(Err::OperationFailed, |identifier| {
+                *id = identifier as *const Identifier;
                 Err::Ok
             })
         })
