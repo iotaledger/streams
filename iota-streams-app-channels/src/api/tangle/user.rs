@@ -370,10 +370,10 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
-    ///  * `keys`  - Iterable of [`Identifier`] to be included in message
+    ///  * `keys`  - Iterable of [`Permission`] to be included in message
     pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
     where
-        I: IntoIterator<Item = &'a Identifier>,
+        I: IntoIterator<Item = &'a Permission>,
     {
         let msg = self.user.share_keyload(link_to, keys).await?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
@@ -385,14 +385,6 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub async fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload_for_everyone(link_to).await?;
-        self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
-    }
-    
-    pub async fn send_keyload_permissioned<'a, P>(&mut self, link_to: &Address, permissions: P) -> Result<(Address, Option<Address>)>
-    where
-        P: IntoIterator<Item = &'a Permission>,
-    {
-        let msg = self.user.share_keyload_permissioned(link_to, permissions).await?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
@@ -490,18 +482,12 @@ impl<Trans: Transport + Clone> User<Trans> {
         Ok(m.body)
     }
 
-    pub async fn receive_keyload_permissions(&mut self, link: &Address) -> Result<bool> {
-        let msg = self.transport.recv_message(link).await?;
-        let m = self.user.handle_keyload_permisisons(&msg, MsgInfo::Keyload).await?;
-        Ok(m.body)
-    }
-
     /// Receive and process a message of unknown type. Message will be handled appropriately and
     /// the unwrapped contents returned [Author, Subscriber].
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
-    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
+    ///   * `pk` - Optional ed25519 Public Key of the sending participwe still on for friday?ant. None if unknown
     pub async fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
         self.handle_message(msg, true).await

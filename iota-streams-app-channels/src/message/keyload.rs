@@ -51,6 +51,7 @@
 //!     via `SignedPacket`.
 use crypto::keys::x25519;
 use iota_streams_app::{
+    permission::Permission,
     id::{
         Identifier,
         UserIdentity,
@@ -99,7 +100,7 @@ where
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub nonce: NBytes<U16>,
     pub key: NBytes<U32>,
-    pub(crate) keys: Vec<(Identifier, Vec<u8>)>,
+    pub(crate) keys: Vec<(Permission, Vec<u8>)>,
     pub(crate) user_id: &'a UserIdentity<F>,
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
@@ -123,7 +124,7 @@ where
             for key_pair in self.keys.clone().into_iter() {
                 let (id, exchange_key) = key_pair;
                 let receiver_id = UserIdentity::from(id);
-                let ctx = receiver_id.id.sizeof(ctx).await?;
+                let ctx = id.sizeof(ctx).await?;
                 // fork in order to skip the actual keyload data which may be unavailable to all recipients
                 receiver_id.encrypt_sizeof(ctx, &exchange_key, &self.key).await?;
             }
@@ -162,7 +163,7 @@ where
             for key_pair in self.keys.clone().into_iter() {
                 let (id, exchange_key) = key_pair;
                 let receiver_id = UserIdentity::from(id);
-                let ctx = receiver_id.id.wrap(store, ctx).await?;
+                let ctx = id.wrap(store, ctx).await?;
 
                 // fork in order to skip the actual keyload data which may be unavailable to all recipients
                 let inner_fork = ctx.spongos.fork();
@@ -191,7 +192,7 @@ where
     pub nonce: NBytes<U16>, // TODO: unify with spongos::Spongos::<F>::NONCE_SIZE)
     pub(crate) psk_store: PskStore,
     pub(crate) ke_sk_store: KeSkStore,
-    pub(crate) key_ids: Vec<Identifier>,
+    pub(crate) key_ids: Vec<Permission>,
     pub key: Option<NBytes<U32>>, // TODO: unify with spongos::Spongos::<F>::KEY_SIZE
     pub(crate) author_id: UserIdentity<F>,
     _phantom: core::marker::PhantomData<(F, Link)>,
@@ -246,7 +247,7 @@ where
             ctx.absorb(&mut repeated_keys)?;
             // Loop through provided number of identifiers and subsequent keys
             for _ in 0..repeated_keys.0 {
-                let (id, ctx) = Identifier::unwrap_new(store, ctx).await?;
+                let (id, ctx) = Permission::unwrap_new(store, ctx).await?;
 
                 // Fork in order to recover key that is meant for the recipient id
                 {
@@ -265,7 +266,7 @@ where
                             }
                         }
                         _ => {
-                            if let Some(ke_sk) = self.ke_sk_store.lookup(&id) {
+                            if let Some(ke_sk) = self.ke_sk_store.lookup(id.identifier()) {
                                 sender_id.decrypt(ctx, &ke_sk.to_bytes(), &mut key).await?;
                                 self.key = Some(key);
                             } else {
@@ -277,7 +278,7 @@ where
                         }
                     }
                     // Save the relevant identifier
-                    self.key_ids.push(sender_id.id);
+                    self.key_ids.push(id);
                     ctx.spongos = internal_fork;
                 }
             }

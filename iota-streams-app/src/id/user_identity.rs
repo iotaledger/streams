@@ -1,4 +1,5 @@
 use crate::{
+    permission::Permission,
     id::Identifier,
     message::{
         ContentSign,
@@ -314,6 +315,16 @@ impl<F> From<Identifier> for UserIdentity<F> {
     fn from(id: Identifier) -> Self {
         UserIdentity {
             id,
+            ..Default::default()
+        }
+    }
+}
+
+impl<F> From<Permission> for UserIdentity<F> {
+    fn from(permission: Permission) -> Self {
+        UserIdentity {
+            // TODO FIX CLONE
+            id: permission.identifier().clone(),
             ..Default::default()
         }
     }

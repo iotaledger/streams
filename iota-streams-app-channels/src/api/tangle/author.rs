@@ -3,8 +3,6 @@ use core::fmt;
 
 use super::*;
 
-use crypto::signatures::ed25519;
-
 use iota_streams_app::{
     permission::Permission,
     id::Identifier,
@@ -248,10 +246,10 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
-    ///  * `keys`  - Iterable of [`Identifier`] to be included in message
+    ///  * `keys`  - Iterable of [`Permission`] to be included in message
     pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
     where
-        I: IntoIterator<Item = &'a Identifier>,
+        I: IntoIterator<Item = &'a Permission>,
     {
         self.user.send_keyload(link_to, keys).await
     }
@@ -262,13 +260,6 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///  * `link_to` - Address of the message the keyload will be attached to
     pub async fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
         self.user.send_keyload_for_everyone(link_to).await
-    }
-
-    pub async fn send_keyload_permissioned<'a, P>(&mut self, link_to: &Address, permissions: P) -> Result<(Address, Option<Address>)>
-    where
-        P: IntoIterator<Item = &'a Permission>,
-    {
-        self.user.send_keyload_permissioned(link_to, permissions).await
     }
 
     /// Create and send a signed packet.
