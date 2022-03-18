@@ -135,9 +135,6 @@ where
 
     pub uniform_payload_length: usize,
 
-    /// Anchor message for the channel (can either be an announcement or keyload) - For single depth
-    pub anchor: Option<Cursor<Link>>,
-
     pub auto_sync: bool,
 }
 
@@ -161,7 +158,6 @@ where
             appinst: None,
             message_encoding: ENCODING.as_bytes().to_vec(),
             uniform_payload_length: PAYLOAD_LENGTH,
-            anchor: None,
             auto_sync: false,
         }
     }
@@ -197,7 +193,6 @@ where
             appinst: None,
             message_encoding,
             uniform_payload_length: PAYLOAD_LENGTH,
-            anchor: None,
             auto_sync,
         }
     }
@@ -221,7 +216,6 @@ where
             }
         }
         self.author_id = Some(*self.id());
-        self.anchor = Some(Cursor::new_at(appinst.clone(), 0, INIT_MESSAGE_NUM));
         self.appinst = Some(appinst);
         Ok(())
     }
@@ -329,19 +323,19 @@ where
         let cursor = Cursor::new_at(link.rel().clone(), 0, INIT_MESSAGE_NUM);
         match &author_id.id {
             Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
-            _ => self.key_store.insert_cursor(author_id.id, cursor.clone()),
-        };
-        match self.id() {
-            Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
-            _ => self.key_store.insert_cursor(*self.id(), cursor),
+            _ => {
+                self.key_store.insert_cursor(author_id.id, cursor.clone());
+                self.key_store.insert_keys(author_id.id, author_ke_pk)?;
+            },
         };
 
-        self.key_store.insert_keys(author_id.id, author_ke_pk)?;
-        self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
+        if !self.id().is_psk() {
+            self.key_store.insert_cursor(*self.id(), cursor);
+            self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
+        };
 
         // Reset link_gen
         self.link_gen.reset(link.clone());
-        self.anchor = Some(Cursor::new_at(link.clone(), 0, INIT_MESSAGE_NUM));
         self.appinst = Some(link);
         self.author_id = Some(author_id.id);
         self.author_ke_pk = author_ke_pk;
@@ -611,7 +605,7 @@ where
                 // Store any unknown publishers
                 if let Some(appinst) = &self.appinst {
                     for identifier in keys {
-                        if !self.key_store.contains_subscriber(&identifier) {
+                        if !identifier.is_psk() && !self.key_store.contains_subscriber(&identifier) {
                             // Store at state 2 since 0 and 1 are reserved states
                             self.key_store
                                 .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
@@ -856,21 +850,15 @@ where
 
     pub fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
         match &self.appinst {
-            Some(appinst) => {
+            Some(_) => {
                 if self.key_store.contains_psk(&pskid) {
                     return err(PskAlreadyStored);
                 }
-
-                let pskid_as_identifier = pskid.into();
-                self.key_store.insert_psk(pskid_as_identifier, psk)?;
-                self.key_store.insert_cursor(
-                    pskid_as_identifier,
-                    Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM),
-                );
+                self.key_store.insert_psk(pskid.into(), psk)?;
                 Ok(())
             }
             None => {
-                if let Identifier::PskId(_) = self.get_identifier() {
+                if let Identifier::PskId(_) = self.id() {
                     self.key_store.insert_psk(pskid.into(), psk)
                 } else {
                     err(UserNotRegistered)
@@ -928,7 +916,7 @@ where
         let mut ids = Vec::new();
 
         // TODO: Do the same for self.user_id.id
-        for (id, cursor) in self.key_store.iter() {
+        for (id, cursor) in self.key_store.cursors() {
             ids.push((*id, self.gen_seq_link(&id, &cursor.link)));
         }
         ids

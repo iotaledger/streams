@@ -18,10 +18,7 @@ use iota_streams::{
         api::{
             psk_from_seed,
             pskid_from_psk,
-            tangle::{
-                UserBuilder,
-                Transport,
-            },
+            tangle::UserBuilder,
         },
         Address,
     },
@@ -93,15 +90,17 @@ pub async fn example(transport: Client) -> Result<()> {
     let pskid = pskid_from_psk(&psk);
 
     println!("Making Author...");
-    let author_id = UserIdentity::new_with_did_private_key(did_info, transport.to_identity_client().await?).await?;
+    let author_id = UserIdentity::new_with_did_private_key(did_info).await?;
     let mut author = UserBuilder::new()
         .with_identity(author_id)
         .with_transport(transport.clone())
         .build();
+    author.insert_did_client(transport.clone().to_did_client().await?);
 
     println!("Making Subscribers...");
+    let subscriberA_id = UserIdentity::new_with_did_private_key(sub_did_info).await?;
     let mut subscriberA = UserBuilder::new()
-        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED").await)
+        .with_identity(subscriberA_id)
         .with_transport(transport.clone())
         .build();
     let mut subscriberB = UserBuilder::new()
