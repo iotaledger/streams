@@ -42,6 +42,12 @@ use crate::{
 
 use iota_streams_core::prelude::String;
 
+#[cfg(feature = "did")]
+use identity::iota::{
+    Client as DIDClient,
+    Network,
+};
+
 /// Options for the user Client
 #[derive(Clone)]
 pub struct SendOptions {
@@ -199,6 +205,17 @@ impl Client {
             .unwrap(),
         }
     }
+
+    #[cfg(feature = "did")]
+    pub async fn to_did_client(&self) -> Result<DIDClient> {
+        let did_client = DIDClient::builder()
+            .network(Network::Mainnet)
+            .primary_node(&self.send_opt.url, None, None)?
+            .local_pow(self.send_opt.local_pow)
+            .build()
+            .await?;
+        Ok(did_client)
+    }
 }
 
 impl Clone for Client {
@@ -219,7 +236,7 @@ impl Clone for Client {
 
 impl TransportOptions for Client {
     type SendOptions = SendOptions;
-    fn get_send_options(&self) -> SendOptions {
+    fn send_options(&self) -> SendOptions {
         self.send_opt.clone()
     }
     fn set_send_options(&mut self, opt: SendOptions) {
@@ -230,7 +247,7 @@ impl TransportOptions for Client {
     }
 
     type RecvOptions = ();
-    fn get_recv_options(&self) {}
+    fn recv_options(&self) {}
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 

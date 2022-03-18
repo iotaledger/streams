@@ -5,8 +5,17 @@ use futures::{
     TryStreamExt,
 };
 
+use crypto::keys::x25519;
+#[cfg(feature = "did")]
+use iota_streams_app::id::{
+    DIDClient,
+    DIDInfo,
+};
 use iota_streams_app::{
-    identifier::Identifier,
+    id::{
+        Identifier,
+        UserIdentity,
+    },
     message::HasLink,
 };
 use iota_streams_core::{
@@ -16,7 +25,6 @@ use iota_streams_core::{
         ToString,
         Vec,
     },
-    prng,
     psk::{
         Psk,
         PskId,
@@ -39,7 +47,7 @@ use crate::{
     message,
 };
 
-type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
+type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore>;
 
 const ENCODING: &str = "utf-8";
 const PAYLOAD_LENGTH: usize = 32_000;
@@ -57,19 +65,13 @@ impl<Trans> User<Trans> {
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
     /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
-        let user = UserImp::gen(
-            prng::from_seed("IOTA Streams Channels user sig keypair", seed),
-            nonce,
-            channel_type,
-            ENCODING.as_bytes().to_vec(),
-            PAYLOAD_LENGTH,
-        );
+    pub async fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
+        let id = UserIdentity::new(seed).await;
+        let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
         Self { user, transport }
     }
 
-    pub fn get_transport(&self) -> &Trans {
+    pub fn transport(&self) -> &Trans {
         &self.transport
     }
 
@@ -85,9 +87,9 @@ impl<Trans> User<Trans> {
         &self.user.appinst
     }
 
-    /// Channel Author's signature public key
-    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
-        self.user.author_public_key()
+    /// Channel Author's public Id
+    pub fn author_id(&self) -> Option<&Identifier> {
+        self.user.author_id()
     }
 
     /// Return boolean representing the sequencing nature of the channel
@@ -100,9 +102,14 @@ impl<Trans> User<Trans> {
         self.user.is_single_depth()
     }
 
-    /// Fetch the user ed25519 public key
-    pub fn public_key(&self) -> &PublicKey {
-        self.user.signing_public_key()
+    /// Fetch the user public Id
+    pub fn id(&self) -> &Identifier {
+        self.user.id()
+    }
+
+    /// Fetch the user key exchange public key
+    pub fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
+        self.user.key_exchange_public_key()
     }
 
     pub fn is_registered(&self) -> bool {
@@ -111,7 +118,7 @@ impl<Trans> User<Trans> {
 
     pub fn unregister(&mut self) {
         self.user.appinst = None;
-        self.user.author_sig_pk = None;
+        self.user.author_id = None;
     }
 
     // Utility
@@ -209,17 +216,18 @@ impl<Trans> User<Trans> {
     /// Store a predefined Subscriber by their public key
     ///
     ///   # Arguments
-    ///   * `pk` - ed25519 public key of known subscriber
-    pub fn store_new_subscriber(&mut self, pk: PublicKey) -> Result<()> {
-        self.user.insert_subscriber(pk)
+    ///   * `id` - Identifier of known subscriber
+    ///   * `xkey` - Public exchange key for decryption
+    pub fn store_new_subscriber(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
+        self.user.insert_subscriber(id, xkey)
     }
 
     /// Remove a Subscriber from the user instance
     ///
     ///   # Arguments
-    ///   * `pk` - ed25519 public key of known subscriber
-    pub fn remove_subscriber(&mut self, pk: PublicKey) -> Result<()> {
-        self.user.remove_subscriber(pk)
+    ///   * `id` - Identifier of known subscriber
+    pub fn remove_subscriber(&mut self, id: Identifier) -> Result<()> {
+        self.user.remove_subscriber(id)
     }
 
     /// Consume a binary sequence message and return the derived message link
@@ -231,6 +239,27 @@ impl<Trans> User<Trans> {
             unwrapped.body.seq_num.0 as u32,
         );
         Ok(msg_cursor.link)
+    }
+}
+
+#[cfg(feature = "did")]
+impl<Trans: Transport + Clone> User<Trans> {
+    pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
+        let id = UserIdentity::new_with_did_private_key(did_info).await?;
+        let user = UserImp::gen(
+            id,
+            ChannelType::MultiBranch,
+            ENCODING.as_bytes().to_vec(),
+            PAYLOAD_LENGTH,
+        );
+        Ok(User {
+            user,
+            transport: transport as Trans,
+        })
+    }
+
+    pub fn insert_did_client(&mut self, client: DIDClient) {
+        self.user.user_id.insert_did_client(client)
     }
 }
 
@@ -399,7 +428,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(PublicKey, Bytes, Bytes)> {
+    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
         let m = self.user.handle_signed_packet(&msg, MsgInfo::SignedPacket).await?;
         Ok(m.body)
@@ -614,7 +643,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         if !self.is_single_depth() {
             return err(ChannelNotSingleDepth);
         }
-        match self.author_public_key() {
+        match self.author_id() {
             Some(pk) => {
                 let seq_no = self.user.fetch_anchor()?.seq_no;
                 let msg_cursor = self.user.gen_link(pk, anchor_link.rel(), seq_no + msg_num);

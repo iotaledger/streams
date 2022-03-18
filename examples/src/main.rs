@@ -20,6 +20,15 @@ use iota_streams::{
 
 mod branching;
 
+async fn run_did_author_test(transport: Client) {
+    println!("\tRunning DID Test");
+    match branching::did_author::example(transport).await {
+        Err(err) => println!("Error in DID test: {:?}", err),
+        Ok(_) => println!("\tDID test completed!!"),
+    }
+    println!("#######################################");
+}
+
 async fn run_recovery_single_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Recovery Test (single-branch), seed: {}", seed);
     match branching::recovery::example(transport, ChannelType::SingleBranch, seed).await {
@@ -102,6 +111,7 @@ async fn main_client() {
     run_multi_branch_test(transport.clone(), &new_seed()).await;
     run_recovery_single_branch_test(transport.clone(), &new_seed()).await;
     run_recovery_multi_branch_test(transport.clone(), &new_seed()).await;
+    run_did_author_test(transport.clone()).await;
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

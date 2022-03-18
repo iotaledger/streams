@@ -110,7 +110,7 @@ impl<Content> PCF<Content> {
         }
     }
 
-    pub fn get_payload_frame_num(&self) -> u32 {
+    pub fn payload_frame_num(&self) -> u32 {
         payload_frame_num_to(&self.payload_frame_num)
     }
 }

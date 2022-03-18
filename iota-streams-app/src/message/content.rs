@@ -11,6 +11,10 @@ use iota_streams_ddml::{
         wrap,
     },
     io,
+    types::{
+        ArrayLength,
+        NBytes,
+    },
 };
 
 #[async_trait(?Send)]
@@ -28,12 +32,52 @@ pub trait ContentWrap<F, Store>: ContentSizeof<F> {
 }
 
 #[async_trait(?Send)]
+pub trait ContentSign<F, OS: io::OStream> {
+    async fn sign<'c>(&self, ctx: &'c mut wrap::Context<F, OS>) -> Result<&'c mut wrap::Context<F, OS>>;
+}
+
+#[async_trait(?Send)]
+pub trait ContentEncryptSizeOf<F> {
+    async fn encrypt_sizeof<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut sizeof::Context<F>,
+        exchange_key: &'c [u8],
+        key: &'c NBytes<N>,
+    ) -> Result<&'c mut sizeof::Context<F>>;
+}
+
+#[async_trait(?Send)]
+pub trait ContentEncrypt<F, OS: io::OStream> {
+    async fn encrypt<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut wrap::Context<F, OS>,
+        exchange_key: &'c [u8],
+        key: &'c NBytes<N>,
+    ) -> Result<&'c mut wrap::Context<F, OS>>;
+}
+
+#[async_trait(?Send)]
 pub trait ContentUnwrap<F, Store> {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>>;
+}
+
+#[async_trait(?Send)]
+pub trait ContentVerify<'a, F, IS: io::IStream> {
+    async fn verify<'c>(&self, ctx: &'c mut unwrap::Context<F, IS>) -> Result<&'c mut unwrap::Context<F, IS>>;
+}
+
+#[async_trait(?Send)]
+pub trait ContentDecrypt<F, OS: io::IStream> {
+    async fn decrypt<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut unwrap::Context<F, OS>,
+        exchange_key: &'c [u8],
+        key: &'c mut NBytes<N>,
+    ) -> Result<&'c mut unwrap::Context<F, OS>>;
 }
 
 #[async_trait(?Send)]

@@ -114,6 +114,8 @@ pub enum Errors {
     MessageBuildFailure,
     /// Iota Client failed to perform operation.
     ClientOperationFailure,
+    /// Bucket Transport cannot be converted to DID Client
+    ClientConversionFailure,
 
     //////////
     // Messages
@@ -134,6 +136,8 @@ pub enum Errors {
     MessageCreationFailure,
     /// Identifier could not be generated with given bytes. Must be an ed25519 Public Key or a PskId
     IdentifierGenerationFailure,
+    /// Identifier type is not supported for this operation
+    UnsupportedIdentifier,
 
     //////////
     // Users
@@ -148,8 +152,8 @@ pub enum Errors {
     MessageAppInstMismatch(String, String),
     /// Author public x25519 exchange key not found in user instance
     AuthorExchangeKeyNotFound,
-    /// Author public ed25519 signature key not found in user instance
-    AuthorSigKeyNotFound,
+    /// Author public id not found in user instance
+    AuthorIdNotFound,
     /// Error retrieving sequence number for message preparation: No sequence number generated
     SeqNumRetrievalFailure,
     /// State store has failed to retrieve
@@ -164,6 +168,14 @@ pub enum Errors {
     ChannelNotSingleDepth,
     /// Message '{0}' does not have a previous message
     NoPreviousMessage(String),
+    /// No signature key pair found in User instance
+    NoSignatureKeyPair,
+    /// User failed to sign data
+    SignatureError,
+    /// DID not present
+    DIDMissing,
+    /// User is not a DID user
+    NotDIDUser,
 
     //////////
     // User Recovery

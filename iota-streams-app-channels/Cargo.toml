@@ -18,6 +18,8 @@ tangle = ["iota-streams-app/tangle", "futures", "async-recursion"]
 client = ["iota-streams-app/client"]
 # Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
 wasm-client = ["iota-streams-app/wasm-client"]
+# Enable Iota Identity for use with Streams
+did = []
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }

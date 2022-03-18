@@ -1,9 +1,6 @@
 //! Customize Subscriber with default parameters for use over the Tangle.
 use core::fmt;
-
-use crypto::signatures::ed25519;
-
-use iota_streams_app::identifier::Identifier;
+use iota_streams_app::id::Identifier;
 use iota_streams_core::{
     err,
     prelude::{
@@ -26,6 +23,12 @@ use crate::api::tangle::{
     User,
 };
 
+#[cfg(feature = "did")]
+use iota_streams_app::id::{
+    DIDClient,
+    DIDInfo,
+};
+
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
     user: User<T>,
@@ -37,14 +40,14 @@ impl<Trans> Subscriber<Trans> {
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
     /// * `transport` - Transport object used for sending and receiving
-    pub fn new(seed: &str, transport: Trans) -> Self {
-        let user = User::new(seed, SingleBranch, transport);
+    pub async fn new(seed: &str, transport: Trans) -> Self {
+        let user = User::new(seed, SingleBranch, transport).await;
         Self { user }
     }
 
     /// Returns a clone of the transport object
-    pub fn get_transport(&self) -> &Trans {
-        self.user.get_transport()
+    pub fn transport(&self) -> &Trans {
+        self.user.transport()
     }
 
     /// Returns a boolean representing whether an Announcement message has been processed
@@ -57,14 +60,19 @@ impl<Trans> Subscriber<Trans> {
         self.user.unregister()
     }
 
-    /// Fetch the user ed25519 public key
-    pub fn public_key(&self) -> &ed25519::PublicKey {
-        self.user.public_key()
+    /// Fetch the user public Id
+    pub fn id(&self) -> &Identifier {
+        self.user.id()
     }
 
-    /// Channel Author's signature public key
-    pub fn author_public_key(&self) -> Option<&ed25519::PublicKey> {
-        self.user.author_public_key()
+    /// Fetch the user key exchange public key
+    pub fn key_exchange_public_key(&self) -> Result<ExchangeKey> {
+        self.user.key_exchange_public_key()
+    }
+
+    /// Channel Author's public Id
+    pub fn author_id(&self) -> Option<&Identifier> {
+        self.user.author_id()
     }
 
     /// Store a PSK in the user instance
@@ -180,6 +188,17 @@ impl<Trans> Subscriber<Trans> {
 }
 
 impl<Trans: Transport + Clone> Subscriber<Trans> {
+    #[cfg(feature = "did")]
+    pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
+        let user = User::new_with_did(did_info, transport).await?;
+        Ok(Subscriber { user })
+    }
+
+    #[cfg(feature = "did")]
+    pub fn insert_did_client(&mut self, client: DIDClient) {
+        self.user.insert_did_client(client);
+    }
+
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments
@@ -254,7 +273,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(ed25519::PublicKey, Bytes, Bytes)> {
+    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
         self.user.receive_signed_packet(link).await
     }
 
@@ -334,7 +353,7 @@ impl<Trans: Transport + Clone> Subscriber<Trans> {
 
 impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{}>\n{}", hex::encode(self.public_key()), self.user.user.key_store)
+        write!(f, "<{}>\n{}", self.id(), self.user.user.key_store)
     }
 }
 

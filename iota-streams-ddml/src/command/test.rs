@@ -34,8 +34,8 @@ fn absorb_mask_u8<F: PRP>() -> Result<()> {
 
     for t in 0_u8..10_u8 {
         let t = Uint8(t);
-        let buf_size = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.get_size();
-        let buf_size2 = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.get_size();
+        let buf_size = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.size();
+        let buf_size2 = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.size();
         try_or!(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
         try_or!(buf_size == 2, ValueMismatch(2, buf_size))?;
 
@@ -80,8 +80,8 @@ fn absorb_mask_size<F: PRP>() -> Result<()> {
 
     for n in ns.iter() {
         let s = Size(*n);
-        let buf_size = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.get_size();
-        let buf_size2 = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.get_size();
+        let buf_size = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.size();
+        let buf_size2 = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.size();
         try_or!(buf_size == buf_size2, ValueMismatch(buf_size, buf_size2))?;
 
         let mut buf = vec![0_u8; buf_size];
@@ -158,7 +158,7 @@ fn absorb_mask_squeeze_bytes_mac<F: PRP>() -> Result<()> {
                 //
                 .commit()?
                 .squeeze(&tag_wrap)?;
-            ctx.get_size()
+            ctx.size()
         };
         let mut buf = vec![0_u8; buf_size];
 
@@ -237,7 +237,7 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
             .squeeze(&hash)?
             .ed25519(&secret, &hash)?
             .ed25519(&secret, HashSig)?;
-        ctx.get_size()
+        ctx.size()
     };
 
     let mut buf = vec![0_u8; buf_size];
@@ -289,7 +289,7 @@ fn x25519_static<F: PRP>() -> Result<()> {
             .x25519(&secret_b, &secret_a.public_key())?
             .commit()?
             .mask(&ta)?;
-        ctx.get_size()
+        ctx.size()
     };
 
     let mut buf = vec![0_u8; buf_size];
@@ -331,7 +331,7 @@ fn x25519_ephemeral<F: PRP>() -> Result<()> {
             .x25519(&secret_b, &secret_a.public_key())?
             .commit()?
             .mask(&ta)?;
-        ctx.get_size()
+        ctx.size()
     };
 
     let mut buf = vec![0_u8; buf_size];
@@ -368,7 +368,7 @@ fn x25519_transport<F: PRP>() -> Result<()> {
     let buf_size = {
         let mut ctx = sizeof::Context::<F>::new();
         ctx.x25519(&secret_a.public_key(), &key)?;
-        ctx.get_size()
+        ctx.size()
     };
 
     let mut buf = vec![0_u8; buf_size];

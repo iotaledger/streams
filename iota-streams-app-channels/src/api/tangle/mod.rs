@@ -2,9 +2,9 @@
 
 pub use futures;
 
-use super::key_store::KeyMap;
 pub use iota_streams_app::transport::tangle::MsgId;
 use iota_streams_app::{
+    id::Identifier,
     message::{
         self,
         BinaryBody,
@@ -33,7 +33,10 @@ use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
 
-use crypto::signatures::ed25519;
+use crypto::{
+    keys::x25519,
+    signatures::ed25519,
+};
 
 /// Identifiers for Pre-Shared Keys
 pub type PskIds = psk::PskIds;
@@ -57,6 +60,7 @@ pub type WrapState = message::WrapState<DefaultF, Address>;
 pub type WrappedSequence = super::user::WrappedSequence<DefaultF, Address>;
 /// Ed25519 Public Key
 pub type PublicKey = ed25519::PublicKey;
+pub type ExchangeKey = x25519::PublicKey;
 pub const PUBLIC_KEY_LENGTH: usize = ed25519::PUBLIC_KEY_LENGTH;
 
 /// Message type with parsed header.
@@ -64,8 +68,6 @@ pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
 /// Sequence State information
 pub type SeqState = Cursor<MsgId>;
-/// Identifier Key Mapping for sequence states
-pub type KeyStore = KeyMap<SeqState>;
 
 /// Link Generator specifies algorithm for generating new message addressed.
 pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
@@ -96,7 +98,7 @@ pub enum MessageContent {
     Announce,
     Keyload,
     SignedPacket {
-        pk: PublicKey,
+        id: Identifier,
         public_payload: Bytes,
         masked_payload: Bytes,
     },
@@ -119,13 +121,13 @@ impl MessageContent {
         Self::Keyload
     }
 
-    pub fn new_signed_packet<P, M>(pk: PublicKey, public_payload: P, masked_payload: M) -> Self
+    pub fn new_signed_packet<P, M>(id: Identifier, public_payload: P, masked_payload: M) -> Self
     where
         P: Into<Bytes>,
         M: Into<Bytes>,
     {
         Self::SignedPacket {
-            pk,
+            id,
             public_payload: public_payload.into(),
             masked_payload: masked_payload.into(),
         }

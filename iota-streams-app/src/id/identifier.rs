@@ -22,12 +22,32 @@ use iota_streams_ddml::{
     types::*,
 };
 
+#[cfg(feature = "did")]
+use crate::id::{
+    DIDSize,
+    DIDWrap,
+    DID_CORE,
+};
+#[cfg(feature = "did")]
+use identity::{
+    core::{
+        decode_b58,
+        encode_b58,
+    },
+    did::DID,
+    iota::IotaDID,
+};
+#[cfg(feature = "did")]
+use iota_streams_core::prelude::ToString;
+
 use crate::message::*;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum Identifier {
     EdPubKey(ed25519::PublicKey),
     PskId(PskId),
+    #[cfg(feature = "did")]
+    DID(DIDWrap),
 }
 
 impl Identifier {
@@ -41,10 +61,12 @@ impl Identifier {
         match self {
             Identifier::EdPubKey(public_key) => public_key.as_slice(),
             Identifier::PskId(id) => id,
+            #[cfg(feature = "did")]
+            Identifier::DID(did) => did,
         }
     }
 
-    pub fn get_pk(&self) -> Option<&ed25519::PublicKey> {
+    pub fn pk(&self) -> Option<&ed25519::PublicKey> {
         if let Identifier::EdPubKey(pk) = self {
             Some(pk)
         } else {
@@ -61,6 +83,13 @@ impl Identifier {
     }
 }
 
+impl Default for Identifier {
+    fn default() -> Self {
+        let default_public_key = ed25519::PublicKey::try_from_bytes([0; ed25519::PUBLIC_KEY_LENGTH]).unwrap();
+        Identifier::from(default_public_key)
+    }
+}
+
 impl From<ed25519::PublicKey> for Identifier {
     fn from(pk: ed25519::PublicKey) -> Self {
         Identifier::EdPubKey(pk)
@@ -70,6 +99,15 @@ impl From<ed25519::PublicKey> for Identifier {
 impl From<PskId> for Identifier {
     fn from(pskid: PskId) -> Self {
         Identifier::PskId(pskid)
+    }
+}
+
+#[cfg(feature = "did")]
+impl From<&IotaDID> for Identifier {
+    fn from(did: &IotaDID) -> Self {
+        Identifier::DID(DIDWrap::clone_from_slice(
+            &decode_b58(did.method_id()).unwrap_or_default(),
+        ))
     }
 }
 
@@ -105,6 +143,12 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
                 ctx.mask(oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?;
                 Ok(ctx)
             }
+            #[cfg(feature = "did")]
+            Identifier::DID(did) => {
+                let oneof = Uint8(2);
+                ctx.mask(oneof)?.mask(<&NBytes<DIDSize>>::from(did))?;
+                Ok(ctx)
+            }
         }
     }
 }
@@ -125,6 +169,12 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
             Identifier::PskId(pskid) => {
                 let oneof = Uint8(1);
                 ctx.mask(oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?;
+                Ok(ctx)
+            }
+            #[cfg(feature = "did")]
+            Identifier::DID(did) => {
+                let oneof = Uint8(2);
+                ctx.mask(oneof)?.mask(<&NBytes<DIDSize>>::from(did))?;
                 Ok(ctx)
             }
         }
@@ -164,6 +214,14 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
                 ctx.mask(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
                 let id = Identifier::PskId(pskid);
                 Ok((id, ctx))
+            }
+            #[cfg(feature = "did")]
+            2 => {
+                let mut did_bytes = NBytes::<DIDSize>::default();
+                ctx.mask(&mut did_bytes)?;
+                let did_str = DID_CORE.to_string() + &encode_b58(&did_bytes.0);
+                let did = IotaDID::parse(did_str)?;
+                Ok(((&did).into(), ctx))
             }
             _ => err(BadOneof),
         }

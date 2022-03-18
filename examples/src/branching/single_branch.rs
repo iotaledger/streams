@@ -25,12 +25,12 @@ use iota_streams::{
 use super::utils;
 
 pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, channel_impl, transport.clone());
+    let mut author = Author::new(seed, channel_impl, transport.clone()).await;
     println!("Author multi branching?: {}", author.is_multi_branching());
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport);
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone()).await;
+    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport).await;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -79,7 +79,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     // Predefine Subscriber A
     println!("\nAuthor Predefines Subscriber A");
-    author.store_new_subscriber(*subscriberA.public_key())?;
+    author.store_new_subscriber(*subscriberA.id(), subscriberA.key_exchange_public_key()?)?;
 
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
@@ -367,7 +367,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     println!("Subscriber states matched");
 
     println!("\nAuthor unsubscribes Subscriber A");
-    author.remove_subscriber(*subscriberA.public_key())?;
+    author.remove_subscriber(*subscriberA.id())?;
 
     println!("\nSubscriber B sending unsubscribe message");
     let unsub_link = subscriberB.send_unsubscribe(&subscribeB_link).await?;

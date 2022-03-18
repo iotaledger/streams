@@ -16,7 +16,7 @@ use core::cell::RefCell;
 /// Streams imports
 use iota_streams::{
     app::{
-        identifier::Identifier,
+        id::Identifier,
         transport::{
             tangle::client::Client as ApiClient,
             TransportOptions,
@@ -55,18 +55,18 @@ impl Author {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-        let author = Rc::new(RefCell::new(ApiAuthor::new(&seed, implementation.into(), transport)));
-        Author { author }
+        let author = block_on(ApiAuthor::new(&seed, implementation.into(), transport));
+        Author { author: Rc::new(RefCell::new(author)) }
     }
 
     #[wasm_bindgen(catch, js_name = "fromClient")]
     pub fn from_client(client: StreamsClient, seed: String, implementation: ChannelType) -> Author {
-        let author = Rc::new(RefCell::new(ApiAuthor::new(
+        let author = block_on(ApiAuthor::new(
             &seed,
             implementation.into(),
             client.into_inner(),
-        )));
-        Author { author }
+        ));
+        Author { author: Rc::new(RefCell::new(author)) }
     }
 
     #[wasm_bindgen(catch)]
@@ -132,7 +132,7 @@ impl Author {
 
     #[wasm_bindgen(catch)]
     pub fn get_client(&self) -> StreamsClient {
-        StreamsClient(self.author.borrow_mut().get_transport().clone())
+        StreamsClient(self.author.borrow_mut().transport().clone())
     }
 
     #[wasm_bindgen(catch)]
@@ -144,9 +144,15 @@ impl Author {
         Ok(pskid_str)
     }
 
-    #[wasm_bindgen(getter, js_name = "publicKey")]
-    pub fn get_public_key(&self) -> String {
-        public_key_to_string(self.author.borrow_mut().public_key())
+    #[wasm_bindgen(getter, js_name = "id")]
+    pub fn id(&self) -> String {
+        identifier_to_string(self.author.borrow_mut().id())
+    }
+
+    #[wasm_bindgen(getter, catch, js_name = "exchangeKey")]
+    pub fn exchange_key(&self) -> Result<String> {
+        let ek = self.author.borrow_mut().key_exchange_public_key().into_js_result()?;
+        Ok(exchange_key_to_string(&ek))
     }
 
     #[wasm_bindgen(catch)]
@@ -252,12 +258,12 @@ impl Author {
             .borrow_mut()
             .receive_signed_packet(link.as_inner())
             .await
-            .map(|(pk, pub_bytes, masked_bytes)| {
+            .map(|(id, pub_bytes, masked_bytes)| {
                 UserResponse::new(
                     link,
                     None,
                     Some(Message::new(
-                        Some(public_key_to_string(&pk)),
+                        Some(identifier_to_string(&id)),
                         pub_bytes.0,
                         masked_bytes.0,
                     )),
@@ -424,15 +430,20 @@ impl Author {
         self.author.borrow_mut().reset_state().into_js_result()
     }
 
-    pub fn store_new_subscriber(&self, pk_str: String) -> Result<()> {
-        public_key_from_string(&pk_str)
-            .and_then(|pk| self.author.borrow_mut().store_new_subscriber(pk).into_js_result())
+    #[wasm_bindgen(catch)]
+    pub fn store_new_subscriber(&self, id_str: String, ek_str: String) -> Result<()> {
+        identifier_from_string(&id_str)
+            .and_then(|id| exchange_key_from_string(&ek_str)
+                .and_then(|ek| self.author.borrow_mut().store_new_subscriber(id, ek).into_js_result())
+            )
     }
 
-    pub fn remove_subscriber(&self, pk_str: String) -> Result<()> {
-        public_key_from_string(&pk_str).and_then(|pk| self.author.borrow_mut().remove_subscriber(pk).into_js_result())
+    #[wasm_bindgen(catch)]
+    pub fn remove_subscriber(&self, id_str: String) -> Result<()> {
+        identifier_from_string(&id_str).and_then(|id| self.author.borrow_mut().remove_subscriber(id).into_js_result())
     }
 
+    #[wasm_bindgen(catch)]
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
         pskid_from_hex_str(&pskid_str)
             .and_then(|pskid| self.author.borrow_mut().remove_psk(pskid))
