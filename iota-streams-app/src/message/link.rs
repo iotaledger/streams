@@ -6,7 +6,7 @@ use iota_streams_core::{
 };
 
 use super::hdf::HDF;
-use crate::id::identifier::Identifier;
+use crate::id::Identifier;
 use iota_streams_ddml::types::Bytes;
 
 /// Type of "absolute" links. For http it's the absolute URL.
@@ -69,7 +69,7 @@ impl<Link> Cursor<Link> {
         self.seq_no += 1;
     }
 
-    pub fn get_seq_num(&self) -> u64 {
+    pub fn seq_num(&self) -> u64 {
         (self.branch_no as u64) << 32 | (self.seq_no as u64)
     }
 

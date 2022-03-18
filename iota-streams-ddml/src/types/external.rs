@@ -7,6 +7,12 @@ use super::NBytes;
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Default)]
 pub struct External<T>(pub T);
 
+impl<T> External<T> {
+    pub(crate) fn into_inner(self) -> T {
+        self.0
+    }
+}
+
 impl<'a, T, N> From<T> for External<&'a NBytes<N>>
 where
     T: Into<&'a NBytes<N>>,

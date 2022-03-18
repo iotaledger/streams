@@ -1,25 +1,48 @@
 use core::str::FromStr;
+use identity::{
+    core::decode_b58,
+    did::DID,
+    iota::IotaDID,
+};
 use iota_streams::{
     app::{
-        id::Identifier,
+        id::{
+            DIDWrap,
+            Identifier,
+        },
         message::Cursor as ApiCursor,
         transport::tangle::client::{
             iota_client::{
                 bee_rest_api::types::{
-                    dtos::LedgerInclusionStateDto, responses::MessageMetadataResponse as ApiMessageMetadata,
+                    dtos::LedgerInclusionStateDto,
+                    responses::MessageMetadataResponse as ApiMessageMetadata,
                 },
                 MilestoneResponse as ApiMilestoneResponse,
             },
-            Details as ApiDetails, SendOptions as ApiSendOptions,
+            Details as ApiDetails,
+            SendOptions as ApiSendOptions,
         },
     },
     app_channels::api::tangle::{
-        Address as ApiAddress, ChannelAddress as ApiChannelAddress, ChannelType as ApiChannelType, MessageContent,
-        MsgId as ApiMsgId, PublicKey, UnwrappedMessage,
+        Address as ApiAddress,
+        ChannelAddress as ApiChannelAddress,
+        ChannelType as ApiChannelType,
+        ExchangeKey,
+        MessageContent,
+        MsgId as ApiMsgId,
+        PublicKey,
+        UnwrappedMessage,
+        PUBLIC_KEY_LENGTH,
     },
     core::{
-        prelude::{String, ToString},
-        psk::{pskid_from_hex_str, pskid_to_hex_string},
+        prelude::{
+            String,
+            ToString,
+        },
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
         Error as ApiError,
     },
     ddml::types::hex,
@@ -301,13 +324,13 @@ impl MsgId {
 pub fn get_message_content(msg: UnwrappedMessage) -> UserResponse {
     match msg.body {
         MessageContent::SignedPacket {
-            pk,
+            id,
             public_payload: p,
             masked_payload: m,
         } => UserResponse::new(
             msg.link.into(),
             None,
-            Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
+            Some(Message::new(Some(hex::encode(id.to_bytes())), p.0, m.0)),
         ),
         MessageContent::TaggedPacket {
             public_payload: p,
@@ -436,14 +459,40 @@ pub(crate) fn identifier_to_string(id: &Identifier) -> String {
     hex::encode(&id.to_bytes())
 }
 
+pub(crate) fn identifier_from_string(id_str: &str) -> Result<Identifier> {
+    match IotaDID::from_str(id_str) {
+        Ok(did) => {
+            let bytes = decode_b58(did.method_id()).into_js_result()?;
+            Ok(Identifier::DID(DIDWrap::clone_from_slice(&bytes)))
+        },
+        Err(_) => Ok(Identifier::EdPubKey(public_key_from_string(id_str)?))
+    }
+}
+
 pub(crate) fn public_key_to_string(pk: &PublicKey) -> String {
-    hex::encode(pk.as_bytes())
+    hex::encode(pk)
 }
 
 pub(crate) fn public_key_from_string(hex_str: &str) -> Result<PublicKey> {
     let bytes = hex::decode(hex_str).into_js_result()?;
-    PublicKey::from_bytes(&bytes).into_js_result()
+    // TODO: implement try_from_slice in crypto.rs
+    let mut byte_array = [0; PUBLIC_KEY_LENGTH];
+    byte_array.copy_from_slice(&bytes);
+    PublicKey::try_from_bytes(byte_array).into_js_result()
 }
+
+pub(crate) fn exchange_key_to_string(pk: &ExchangeKey) -> String {
+    hex::encode(pk)
+}
+
+pub(crate) fn exchange_key_from_string(hex_str: &str) -> Result<ExchangeKey> {
+    let bytes = hex::decode(hex_str).into_js_result()?;
+    let mut byte_array = [0; PUBLIC_KEY_LENGTH];
+    byte_array.copy_from_slice(&bytes);
+    ExchangeKey::try_from_slice(&byte_array).into_js_result()
+}
+
+
 
 /// Collection of PublicKeys representing a set of users
 #[wasm_bindgen]
@@ -485,7 +534,10 @@ mod public_keys_tests {
 
     use iota_streams::app_channels::api::tangle::PublicKey;
 
-    use super::{public_key_to_string, PublicKeys};
+    use super::{
+        public_key_to_string,
+        PublicKeys,
+    };
 
     pub type Result<T> = core::result::Result<T, JsValue>;
 
@@ -498,7 +550,7 @@ mod public_keys_tests {
     #[wasm_bindgen_test]
     fn test_add_public_key() {
         let mut expected = PublicKeys::new();
-        let key = public_key_to_string(&PublicKey::default());
+        let key = public_key_to_string(&PublicKey::try_from_bytes([0; 32]).unwrap());
         expected.add(key.clone()).expect("preparing expected PublicKeys");
         let actual = public_keys_with(&key).expect("adding key to PublicKeys in Javascript");
         assert_eq!(actual, expected);
@@ -612,10 +664,7 @@ impl From<ApiDetails> for Details {
     fn from(details: ApiDetails) -> Self {
         Self {
             metadata: details.metadata.into(),
-            milestone: match details.milestone {
-                Some(ms) => Some(ms.into()),
-                None => None,
-            },
+            milestone: details.milestone.map(Into::into),
         }
     }
 }
@@ -689,10 +738,7 @@ impl From<ApiMessageMetadata> for MessageMetadata {
             is_solid: metadata.is_solid,
             referenced_by_milestone_index: metadata.referenced_by_milestone_index,
             milestone_index: metadata.milestone_index,
-            ledger_inclusion_state: match metadata.ledger_inclusion_state {
-                None => None,
-                Some(inc) => Some(inc.into()),
-            },
+            ledger_inclusion_state: metadata.ledger_inclusion_state.map(Into::into),
             conflict_reason: metadata.conflict_reason,
             should_promote: metadata.should_promote,
             should_reattach: metadata.should_reattach,

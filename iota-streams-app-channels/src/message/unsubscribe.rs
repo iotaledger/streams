@@ -59,7 +59,7 @@ impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
     F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    Link::Rel: 'a + Eq + SkipFallback<F>,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -75,8 +75,8 @@ impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, L
 where
     F: PRP,
     Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    Link::Rel: 'a + Eq + SkipFallback<F>,
+    Store: LinkStore<F, Link::Rel>,
 {
     async fn wrap<'c, OS: io::OStream>(
         &self,
@@ -90,11 +90,20 @@ where
     }
 }
 
-#[derive(Default)]
 pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) subscriber_id: UserIdentity<F>,
     _phantom: PhantomData<(F, Link)>,
+}
+
+impl<F, Link: HasLink> Default for ContentUnwrap<F, Link> {
+    fn default() -> Self {
+        Self {
+            link: Default::default(),
+            subscriber_id: UserIdentity::default(),
+            _phantom: Default::default(),
+        }
+    }
 }
 
 #[async_trait(?Send)]

@@ -20,6 +20,10 @@
 //! * `tag` -- hash-value to be signed.
 //!
 //! * `sig` -- signature of `tag` field produced with the Ed25519 private key corresponding to ed25519pk`.
+use crypto::{
+    keys::x25519,
+    signatures::ed25519,
+};
 
 use iota_streams_app::id::UserIdentity;
 use iota_streams_core::{
@@ -36,11 +40,6 @@ use iota_streams_app::{
     },
 };
 use iota_streams_core::sponge::prp::PRP;
-
-use iota_streams_core_edsig::{
-    key_exchange::x25519,
-    signature::ed25519,
-};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -63,8 +62,12 @@ impl<'a, F> ContentWrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let mut ctx = self.user_id.id.sizeof(ctx).await?
-            .absorb(&self.user_id.get_ke_kp()?.1)?;
+        let mut ctx = self
+            .user_id
+            .id
+            .sizeof(ctx)
+            .await?
+            .absorb(&self.user_id.ke_kp()?.1)?;
         ctx = self.user_id.sizeof(ctx).await?;
         Ok(ctx)
     }
@@ -77,8 +80,12 @@ impl<'a, F: PRP, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F> {
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        let mut ctx = self.user_id.id.wrap(_store, ctx).await?
-            .absorb(&self.user_id.get_ke_kp()?.1)?;
+        let mut ctx = self
+            .user_id
+            .id
+            .wrap(_store, ctx)
+            .await?
+            .absorb(&self.user_id.ke_kp()?.1)?;
         ctx = self.user_id.sign(ctx).await?;
         Ok(ctx)
     }
@@ -93,9 +100,9 @@ pub struct ContentUnwrap<F> {
 
 impl<F> Default for ContentUnwrap<F> {
     fn default() -> Self {
-        let sig_pk = ed25519::PublicKey::default();
+        let sig_pk = ed25519::PublicKey::try_from_bytes([0; ed25519::PUBLIC_KEY_LENGTH]).unwrap();
         // No need to worry about unwrap since it's operating from default input
-        let ke_pk = x25519::public_from_ed25519(&sig_pk).unwrap();
+        let ke_pk = x25519::PublicKey::from_bytes(sig_pk.to_bytes());
         let user_id = UserIdentity::default();
         Self {
             author_id: user_id,
@@ -124,7 +131,11 @@ where
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mut ctx = self.author_id.id.unwrap(_store, ctx).await?
+        let mut ctx = self
+            .author_id
+            .id
+            .unwrap(_store, ctx)
+            .await?
             .absorb(&mut self.ke_pk)?;
         ctx = self.author_id.verify(ctx).await?;
         Ok(ctx)

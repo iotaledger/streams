@@ -21,8 +21,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [workspace]
 members = [
     "iota-streams-core",
-    "iota-streams-core-edsig",
-    "iota-streams-core-keccak",
     "iota-streams-ddml",
     "iota-streams-app",
     "iota-streams-app-channels",
@@ -34,8 +32,6 @@ default-members = [
     "iota-streams-ddml",
     "iota-streams-app",
     "iota-streams-app-channels",
-    # TODO: Fix clippy warnings in wasm bindings
-    # "bindings/wasm",
 ]
 
 exclude = [
@@ -47,7 +43,7 @@ exclude = [
 [features]
 default = ["std", "tangle", "client"]
 # Enable `std` feature in the subpackages
-std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "iota-streams-app-channels/std"]
+std = ["iota-streams-core/std", "iota-streams-ddml/std", "iota-streams-app/std", "iota-streams-app-channels/std"]
 # Enable Tangle-specific abstractions and API in iota-streams-app and iota-streams-app-channels
 tangle = ["iota-streams-app/tangle", "iota-streams-app-channels/tangle"]
 # Enable Tangle transport client implementation (implies `tangle` feature)
@@ -65,8 +61,6 @@ did = ["iota-streams-app/did", "iota-streams-app-channels/did"]
 
 [dependencies]
 iota-streams-core = { version = "0.1.2", path = "iota-streams-core", default-features = false }
-iota-streams-core-keccak = { version = "0.1.2", path = "iota-streams-core-keccak", default-features = false }
-iota-streams-core-edsig = { version = "0.1.2", path = "iota-streams-core-edsig", default-features = false }
 iota-streams-ddml = { version = "0.1.2", path = "iota-streams-ddml", default-features = false }
 iota-streams-app = { version = "0.1.2", path = "iota-streams-app", default-features = false }
 iota-streams-app-channels = { version = "0.1.2", path = "iota-streams-app-channels", default-features = false }

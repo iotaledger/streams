@@ -1,21 +1,18 @@
 use anyhow::anyhow;
 use identity::{
-    core::{
-        encode_b58,
-        Timestamp,
-    },
-    crypto::KeyPair as DIDKeyPair,
+    core::Timestamp,
     did::MethodScope,
-    iota::{
-        IotaDID,
+    iota::IotaVerificationMethod,
+    prelude::{
+        Client as DIDClient,
         IotaDocument,
-        IotaVerificationMethod,
+        KeyPair as DIDKeyPair,
     },
 };
 use iota_streams::{
     app::{
         id::DIDInfo,
-        transport::IdentityClient,
+        transport::tangle::client::Client,
     },
     app_channels::{
         api::{
@@ -40,43 +37,55 @@ use iota_streams::app::id::UserIdentity;
 
 use super::utils;
 
-pub async fn example<T: Transport + IdentityClient>(transport: T) -> Result<()> {
-    println!("Creating new DID instance...");
-    let did: IotaDID;
+async fn make_did_info(client: &DIDClient, fragment: &str) -> Result<DIDInfo> {
+    // Create Keypair to act as base of identity
+    let keypair = DIDKeyPair::new_ed25519()?;
+    // Generate original DID document
+    let mut document = IotaDocument::new(&keypair)?;
+    // Sign document and publish to the tangle
+    document.sign_self(keypair.private(), document.default_signing_method()?.id().clone())?;
+    let receipt = client.publish_document(&document).await?;
+    let did = document.id().clone();
+    println!("Document published: {}", receipt.message_id());
+
+    println!("Creating new method...");
     let streams_method_keys = DIDKeyPair::new_ed25519()?;
-    match transport.to_identity_client().await {
-        Ok(client) => {
-            // Create Keypair to act as base of identity
-            let keypair = DIDKeyPair::new_ed25519()?;
-            // Generate original DID document
-            let mut document = IotaDocument::new(&keypair)?;
-            // Sign document and publish to the tangle
-            document.sign(keypair.private())?;
-            let receipt = client.publish_document(&document).await?;
-            did = document.id().clone();
-            println!("Document published: {}", receipt.message_id());
+    let method = IotaVerificationMethod::new(
+        did.clone(),
+        streams_method_keys.type_(),
+        streams_method_keys.public(),
+        fragment,
+    )?;
+    if document.insert_method(method, MethodScope::VerificationMethod).is_ok() {
+        document.metadata.previous_message_id = *receipt.message_id();
+        document.metadata.updated = Timestamp::now_utc();
+        document.sign_self(keypair.private(), document.default_signing_method()?.id().clone())?;
 
-            println!("Creating new method...");
-            println!("Private Key: {}", encode_b58(streams_method_keys.private().as_ref()));
-            let method = IotaVerificationMethod::from_did(did.clone(), &streams_method_keys, "demo_key")?;
-            if document.insert_method(MethodScope::VerificationMethod, method) {
-                document.set_previous_message_id(*receipt.message_id());
-                document.set_updated(Timestamp::now_utc());
-                document.sign(keypair.private())?;
-
-                let update_receipt = client.publish_document(&document).await?;
-                println!("Document updated: {}", update_receipt.message_id());
-            } else {
-                return Err(anyhow!("Failed to update method"));
-            }
-        }
-        Err(e) => return Err(anyhow!("DID Client could not be created from transport: {}", e)),
+        let update_receipt = client.publish_document(&document).await?;
+        println!("Document updated: {}", update_receipt.message_id());
+    } else {
+        return Err(anyhow!("Failed to update method"));
     }
 
-    let did_info = DIDInfo {
+    Ok(DIDInfo {
         did: Some(did),
-        key_fragment: "demo_key".to_string(),
+        key_fragment: fragment.to_string(),
         did_keypair: streams_method_keys,
+    })
+}
+
+pub async fn example(transport: Client) -> Result<()> {
+    println!("Creating new DID instance...");
+
+    let (did_info, sub_did_info) = match transport.to_did_client().await {
+        Ok(client) => {
+            println!("Making DID with method for Author");
+            let did_info = make_did_info(&client, "auth_key").await?;
+            println!("\nMaking another DID with method for a Subscriber");
+            let sub_did_info = make_did_info(&client, "sub_key").await?;
+            (did_info, sub_did_info)
+        }
+        Err(e) => return Err(anyhow!("DID Client could not be created from transport: {}", e)),
     };
 
     // Generate a simple PSK for storage by users
@@ -104,6 +113,8 @@ pub async fn example<T: Transport + IdentityClient>(transport: T) -> Result<()> 
         .with_transport(transport.clone())
         .build();
 
+    let subA_xkey = subscriberA.key_exchange_public_key()?;
+
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
 
@@ -122,7 +133,11 @@ pub async fn example<T: Transport + IdentityClient>(transport: T) -> Result<()> 
 
     // Predefine Subscriber A
     println!("\nAuthor Predefines Subscriber A and Psk");
-    author.store_new_subscriber(*subscriberA.get_id())?;
+    author.store_new_subscriber(*subscriberA.id(), subA_xkey)?;
+
+    // Generate a simple PSK for storage by users
+    let psk = psk_from_seed("A pre shared key".as_bytes());
+    let pskid = pskid_from_psk(&psk);
     author.store_psk(pskid, psk)?;
 
     println!("\nShare keyload for [SubscriberA, PSK]");

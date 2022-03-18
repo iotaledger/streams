@@ -9,9 +9,6 @@ use iota_streams_core::{
     Result,
 };
 
-#[cfg(feature = "did")]
-use identity::iota::Client as DIDClient;
-
 #[async_trait(?Send)]
 pub trait TransportDetails<Link> {
     type Details;
@@ -20,11 +17,11 @@ pub trait TransportDetails<Link> {
 
 pub trait TransportOptions {
     type SendOptions;
-    fn get_send_options(&self) -> Self::SendOptions;
+    fn send_options(&self) -> Self::SendOptions;
     fn set_send_options(&mut self, opt: Self::SendOptions);
 
     type RecvOptions;
-    fn get_recv_options(&self) -> Self::RecvOptions;
+    fn recv_options(&self) -> Self::RecvOptions;
     fn set_recv_options(&mut self, opt: Self::RecvOptions);
 }
 
@@ -45,16 +42,16 @@ pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link> + Defa
 
 impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
     type SendOptions = <Tsp as TransportOptions>::SendOptions;
-    fn get_send_options(&self) -> Self::SendOptions {
-        self.borrow_mut().get_send_options()
+    fn send_options(&self) -> Self::SendOptions {
+        self.borrow_mut().send_options()
     }
     fn set_send_options(&mut self, opt: Self::SendOptions) {
         self.borrow_mut().set_send_options(opt)
     }
 
     type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
-    fn get_recv_options(&self) -> Self::RecvOptions {
-        self.borrow_mut().get_recv_options()
+    fn recv_options(&self) -> Self::RecvOptions {
+        self.borrow_mut().recv_options()
     }
     fn set_recv_options(&mut self, opt: Self::RecvOptions) {
         self.borrow_mut().set_recv_options(opt)
@@ -89,11 +86,6 @@ impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<T
 
 #[cfg(any(feature = "sync-spin", feature = "sync-parking-lot"))]
 mod sync {
-    #[cfg(feature = "did")]
-    use super::{
-        DIDClient,
-        IdentityClient,
-    };
     use super::{
         Transport,
         TransportDetails,
@@ -112,16 +104,16 @@ mod sync {
 
     impl<Tsp: TransportOptions> TransportOptions for Arc<Mutex<Tsp>> {
         type SendOptions = <Tsp as TransportOptions>::SendOptions;
-        fn get_send_options(&self) -> Self::SendOptions {
-            self.lock().get_send_options()
+        fn send_options(&self) -> Self::SendOptions {
+            self.lock().send_options()
         }
         fn set_send_options(&mut self, opt: Self::SendOptions) {
             self.lock().set_send_options(opt)
         }
 
         type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
-        fn get_recv_options(&self) -> Self::RecvOptions {
-            self.lock().get_recv_options()
+        fn recv_options(&self) -> Self::RecvOptions {
+            self.lock().recv_options()
         }
         fn set_recv_options(&mut self, opt: Self::RecvOptions) {
             self.lock().set_recv_options(opt)
@@ -153,14 +145,6 @@ mod sync {
             self.lock().recv_message(link).await
         }
     }
-
-    #[cfg(feature = "did")]
-    #[async_trait(?Send)]
-    impl<Link, Msg> IdentityClient for Arc<Mutex<dyn Transport<Link, Msg>>> {
-        async fn to_identity_client(&self) -> Result<DIDClient> {
-            self.lock().to_identity_client().await
-        }
-    }
 }
 
 mod bucket;
@@ -169,9 +153,3 @@ use iota_streams_core::try_or;
 
 #[cfg(feature = "tangle")]
 pub mod tangle;
-
-#[cfg(feature = "did")]
-#[async_trait(?Send)]
-pub trait IdentityClient {
-    async fn to_identity_client(&self) -> Result<DIDClient>;
-}

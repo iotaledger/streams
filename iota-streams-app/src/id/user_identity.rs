@@ -6,6 +6,10 @@ use crate::{
         ContentVerify,
     },
 };
+use crypto::{
+    keys::x25519,
+    signatures::ed25519,
+};
 use iota_streams_core::{
     async_trait,
     err,
@@ -14,24 +18,17 @@ use iota_streams_core::{
     psk::{
         Psk,
         PskId,
+        PskSize,
     },
     sponge::prp::PRP,
+    wrapped_err,
     Errors::{
         BadIdentifier,
         BadOneof,
         NoSignatureKeyPair,
     },
     Result,
-};
-use iota_streams_core_edsig::{
-    key_exchange::x25519::{
-        self,
-        keypair_from_ed25519,
-    },
-    signature::ed25519::{
-        self,
-        Keypair,
-    },
+    WrappedError,
 };
 use iota_streams_ddml::{
     command::{
@@ -52,19 +49,26 @@ use iota_streams_ddml::{
         U64,
     },
 };
-use std::marker::PhantomData;
+use std::{
+    convert::TryFrom,
+    marker::PhantomData,
+};
 
+use crate::message::{
+    ContentDecrypt,
+    ContentEncrypt,
+    ContentEncryptSizeOf,
+};
 #[cfg(feature = "did")]
 use crate::{
     id::{
+        DIDImpl,
+        DIDInfo,
         DIDSize,
         DataWrapper,
         DID_CORE,
     },
-    transport::{
-        tangle::client::Client as StreamsClient,
-        IdentityClient,
-    },
+    transport::tangle::client::Client as StreamsClient,
 };
 #[cfg(feature = "did")]
 use futures::executor::block_on;
@@ -79,10 +83,14 @@ use identity::{
         JcsEd25519,
         Named,
         Signature,
+        SignatureOptions,
         SignatureValue,
         Signer,
     },
-    did::DID,
+    did::{
+        verifiable::VerifierOptions,
+        DID,
+    },
     iota::{
         Client,
         IotaDID,
@@ -95,41 +103,34 @@ use iota_streams_core::{
         ToString,
         Vec,
     },
-    wrapped_err,
     Errors::{
-        DIDMissing,
         NotDIDUser,
         SignatureFailure,
+        SignatureMismatch,
     },
-    WrappedError,
 };
 use iota_streams_core::Errors::NotAPskUser;
 #[cfg(feature = "did")]
 use iota_streams_ddml::types::Bytes;
+use iota_streams_ddml::{
+    command::{
+        Mask,
+        X25519,
+    },
+    types::ArrayLength,
+};
 
 pub struct KeyPairs {
-    sig: ed25519::Keypair,
-    key_exchange: (x25519::StaticSecret, x25519::PublicKey),
+    sig: (ed25519::SecretKey, ed25519::PublicKey),
+    key_exchange: (x25519::SecretKey, x25519::PublicKey),
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum Keys {
     Keypair(KeyPairs),
     Psk(Psk),
     #[cfg(feature = "did")]
     DID(DIDImpl),
-}
-
-#[cfg(feature = "did")]
-pub struct DIDInfo {
-    pub did: Option<IotaDID>,
-    pub key_fragment: String,
-    pub did_keypair: identity::crypto::KeyPair,
-}
-
-#[cfg(feature = "did")]
-pub enum DIDImpl {
-    // TODO: Add DID Account implementation
-    PrivateKey(DIDInfo),
 }
 
 pub struct UserIdentity<F> {
@@ -143,17 +144,19 @@ pub struct UserIdentity<F> {
 impl<F> Default for UserIdentity<F> {
     fn default() -> Self {
         // unwrap is fine because we are using default
-        let sig_kp = ed25519::Keypair::from_bytes(&[0; 64]).unwrap();
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+        let signing_private_key = ed25519::SecretKey::from_bytes([0; ed25519::SECRET_KEY_LENGTH]);
+        let signing_public_key = signing_private_key.public_key();
+        let key_exchange_private_key = x25519::SecretKey::from(&signing_private_key);
+        let key_exchange_public_key = key_exchange_private_key.public_key();
 
         UserIdentity {
-            id: sig_kp.public.into(),
+            id: signing_public_key.into(),
             keys: Keys::Keypair(KeyPairs {
-                sig: sig_kp,
-                key_exchange: ke_kp,
+                sig: (signing_private_key, signing_public_key),
+                key_exchange: (key_exchange_private_key, key_exchange_public_key),
             }),
             #[cfg(feature = "did")]
-            client: block_on(StreamsClient::default().to_identity_client()).unwrap(),
+            client: block_on(StreamsClient::default().to_did_client()).unwrap(),
             _phantom: Default::default(),
         }
     }
@@ -164,17 +167,19 @@ impl<F: PRP> UserIdentity<F> {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
         let prng = prng::from_seed::<F>("IOTA Streams Channels user sig keypair", seed);
 
-        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+        let signing_private_key = ed25519::SecretKey::generate_with(&mut prng::Rng::new(prng, nonce));
+        let signing_public_key = signing_private_key.public_key();
+        let key_exchange_private_key = x25519::SecretKey::from(&signing_private_key);
+        let key_exchange_public_key = key_exchange_private_key.public_key();
 
         UserIdentity {
-            id: sig_kp.public.into(),
+            id: signing_public_key.into(),
             keys: Keys::Keypair(KeyPairs {
-                sig: sig_kp,
-                key_exchange: ke_kp,
+                sig: (signing_private_key, signing_public_key),
+                key_exchange: (key_exchange_private_key, key_exchange_public_key),
             }),
             #[cfg(feature = "did")]
-            client: StreamsClient::default().to_identity_client().await.unwrap(),
+            client: StreamsClient::default().to_did_client().await.unwrap(),
             _phantom: Default::default(),
         }
     }
@@ -184,18 +189,18 @@ impl<F: PRP> UserIdentity<F> {
             id: pskid.into(),
             keys: Keys::Psk(psk),
             #[cfg(feature = "did")]
-            client: StreamsClient::default().to_identity_client().await.unwrap(),
+            client: StreamsClient::default().to_did_client().await.unwrap(),
             _phantom: Default::default(),
         }
     }
 
     #[cfg(feature = "did")]
-    pub async fn new_with_did_private_key(did_info: DIDInfo, client: Client) -> Result<UserIdentity<F>> {
-        let did = did_info.get_did()?;
+    pub async fn new_with_did_private_key(did_info: DIDInfo) -> Result<UserIdentity<F>> {
+        let did = did_info.did()?;
         Ok(UserIdentity {
             id: (&did).into(),
             keys: Keys::DID(DIDImpl::PrivateKey(did_info)),
-            client,
+            client: StreamsClient::default().to_did_client().await?,
             _phantom: Default::default(),
         })
     }
@@ -207,31 +212,35 @@ impl<F: PRP> UserIdentity<F> {
     // TODO: Implement new_from_account implementation
 
     /// Retrieve the key exchange keypair for encryption while sending packets
-    pub fn get_ke_kp(&self) -> Result<(x25519::StaticSecret, x25519::PublicKey)> {
+    pub fn ke_kp(&self) -> Result<(x25519::SecretKey, x25519::PublicKey)> {
         match &self.keys {
-            Keys::Keypair(keypairs) => Ok(keypairs.key_exchange.clone()),
+            Keys::Keypair(keypairs) => {
+                let secret_key = x25519::SecretKey::from_bytes(keypairs.key_exchange.0.to_bytes());
+                let public_key = secret_key.public_key();
+                Ok((secret_key, public_key))
+            }
             Keys::Psk(_) => err(NoSignatureKeyPair),
             #[cfg(feature = "did")]
             Keys::DID(did) => match did {
-                DIDImpl::PrivateKey(info) => Ok(info.get_ke_kp()),
+                DIDImpl::PrivateKey(info) => Ok(info.ke_kp()),
                 // TODO: Account implementation
             },
         }
     }
 
     /// Retrieve the signature secret key for user encryption while exporting and importing
-    pub fn get_sig_sk(&self) -> Result<ed25519::SecretKey> {
+    pub fn sig_sk(&self) -> Result<ed25519::SecretKey> {
         match &self.keys {
             Keys::Keypair(keypairs) => {
-                let sk_bytes = keypairs.sig.secret.as_bytes();
-                Ok(ed25519::SecretKey::from_bytes(sk_bytes)?)
+                let sk_bytes = keypairs.sig.0.to_bytes();
+                Ok(ed25519::SecretKey::from_bytes(sk_bytes))
             }
             Keys::Psk(_) => err(NoSignatureKeyPair),
             #[cfg(feature = "did")]
             Keys::DID(did) => match did {
                 DIDImpl::PrivateKey(info) => {
-                    let sig_kp = info.get_sig_kp();
-                    Ok(ed25519::SecretKey::from_bytes(sig_kp.secret.as_bytes())?)
+                    let sig_kp = info.sig_kp();
+                    Ok(ed25519::SecretKey::from_bytes(sig_kp.0.to_bytes()))
                 } // TODO: Account implementation
             },
         }
@@ -255,7 +264,7 @@ impl<F: PRP> UserIdentity<F> {
             Keys::DID(did_impl) => {
                 match did_impl {
                     DIDImpl::PrivateKey(info) => {
-                        let did = info.get_did()?;
+                        let did = info.did()?;
                         let fragment = "#".to_string() + &info.key_fragment;
                         // Join the DID identifier with the key fragment of the verification method
                         let method = did.join(&fragment)?;
@@ -263,6 +272,7 @@ impl<F: PRP> UserIdentity<F> {
                             data,
                             method.to_string(),
                             info.did_keypair.private().as_ref(),
+                            SignatureOptions::new(),
                         )?;
                     }
                 }
@@ -284,7 +294,7 @@ impl<F: PRP> UserIdentity<F> {
     #[cfg(feature = "did")]
     async fn verify_data(&self, did: &IotaDID, data: DataWrapper) -> Result<bool> {
         let doc = self.client.read_document(did).await?;
-        match doc.verify_data(&data) {
+        match doc.document.verify_data(&data, &VerifierOptions::new()) {
             Ok(_) => Ok(true),
             Err(e) => {
                 println!("Verification Error: {:?}", e);
@@ -294,40 +304,31 @@ impl<F: PRP> UserIdentity<F> {
     }
 }
 
-#[cfg(feature = "did")]
-impl DIDInfo {
-    fn get_did(&self) -> Result<IotaDID> {
-        match &self.did {
-            Some(did) => Ok(did.clone()),
-            None => err(DIDMissing),
-        }
-    }
-
-    fn get_sig_kp(&self) -> ed25519::Keypair {
-        let mut key_bytes = Vec::from(self.did_keypair.private().as_ref());
-        key_bytes.extend(self.did_keypair.public().as_ref());
-        ed25519::Keypair::from_bytes(&key_bytes).unwrap()
-    }
-
-    fn get_ke_kp(&self) -> (x25519::StaticSecret, x25519::PublicKey) {
-        let kp = self.get_sig_kp();
-        x25519::keypair_from_ed25519(&kp)
-    }
-}
-
-impl<F> From<ed25519::Keypair> for UserIdentity<F> {
-    fn from(kp: Keypair) -> Self {
-        let ke_kp = keypair_from_ed25519(&kp);
+impl<F> From<(ed25519::SecretKey, ed25519::PublicKey)> for UserIdentity<F> {
+    fn from(kp: (ed25519::SecretKey, ed25519::PublicKey)) -> Self {
+        let ke_sk = x25519::SecretKey::from(&kp.0);
+        let ke_pk = ke_sk.public_key();
         UserIdentity {
-            id: Identifier::EdPubKey(kp.public.into()),
+            id: Identifier::EdPubKey(kp.1),
             keys: Keys::Keypair(KeyPairs {
                 sig: kp,
-                key_exchange: ke_kp,
+                key_exchange: (ke_sk, ke_pk),
             }),
             ..Default::default()
         }
     }
 }
+
+impl<F> From<Identifier> for UserIdentity<F> {
+    fn from(id: Identifier) -> Self {
+        UserIdentity {
+            id,
+            ..Default::default()
+        }
+    }
+}
+
+// Signature Toolset
 
 #[async_trait(?Send)]
 impl<F: PRP> ContentSizeof<F> for UserIdentity<F> {
@@ -335,7 +336,7 @@ impl<F: PRP> ContentSizeof<F> for UserIdentity<F> {
         match &self.keys {
             Keys::Keypair(keys) => {
                 ctx.absorb(Uint8(0))?;
-                ctx.ed25519(&keys.sig, HashSig)?;
+                ctx.ed25519(&keys.sig.0, HashSig)?;
                 return Ok(ctx);
             }
             Keys::Psk(_) => err(NoSignatureKeyPair),
@@ -343,13 +344,11 @@ impl<F: PRP> ContentSizeof<F> for UserIdentity<F> {
             Keys::DID(did_impl) => {
                 match did_impl {
                     DIDImpl::PrivateKey(info) => {
-                        if let Some(did) = &info.did {
-                            ctx.absorb(Uint8(1))?;
-                            ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
-                            ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
-                        }
-                    }
-                    // TODO: Implement Account logic
+                        let did = info.did()?;
+                        ctx.absorb(Uint8(1))?;
+                        ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
+                        ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
+                    } // TODO: Implement Account logic
                 }
                 // Absorb the size of a did based ed25519 signature
                 let bytes = [0_u8; ed25519::SIGNATURE_LENGTH].to_vec();
@@ -367,7 +366,7 @@ impl<F: PRP, OS: io::OStream> ContentSign<F, OS> for UserIdentity<F> {
             Keys::Keypair(keys) => {
                 ctx.absorb(Uint8(0))?;
                 let mut hash = External(NBytes::<U64>::default());
-                ctx.commit()?.squeeze(&mut hash)?.ed25519(&keys.sig, &hash)?;
+                ctx.commit()?.squeeze(&mut hash)?.ed25519(&keys.sig.0, &hash)?;
                 Ok(ctx)
             }
             Keys::Psk(_) => err(NoSignatureKeyPair),
@@ -375,11 +374,10 @@ impl<F: PRP, OS: io::OStream> ContentSign<F, OS> for UserIdentity<F> {
             Keys::DID(did_impl) => {
                 match did_impl {
                     DIDImpl::PrivateKey(info) => {
-                        if let Some(did) = &info.did {
-                            ctx.absorb(Uint8(1))?;
-                            ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
-                            ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
-                        }
+                        let did = info.did()?;
+                        ctx.absorb(Uint8(1))?;
+                        ctx.absorb(<&NBytes<DIDSize>>::from(decode_b58(did.method_id())?.as_slice()))?;
+                        ctx.absorb(&Bytes(info.key_fragment.as_bytes().to_vec()))?;
                     } // TODO: Implement Account logic
                 }
                 // Get the hash of the message
@@ -413,9 +411,9 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
         ctx.absorb(&mut oneof)?;
         match oneof.0 {
             0 => match &self.id {
-                Identifier::EdPubKey(pub_key_wrap) => {
+                Identifier::EdPubKey(pub_key) => {
                     let mut hash = External(NBytes::<U64>::default());
-                    ctx.commit()?.squeeze(&mut hash)?.ed25519(&pub_key_wrap.0, &hash)?;
+                    ctx.commit()?.squeeze(&mut hash)?.ed25519(pub_key, &hash)?;
                     Ok(ctx)
                 }
                 _ => err!(BadIdentifier),
@@ -453,10 +451,79 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
                 };
                 match self.verify_data(did_url.as_ref(), wrapper).await? {
                     true => Ok(ctx),
-                    false => err(SignatureFailure),
+                    false => err(SignatureMismatch),
                 }
             }
             _ => err(BadOneof),
+        }
+    }
+}
+
+// Encryption Toolset
+
+// TODO: Find a better way to represent this logic without the need for an additional trait
+#[async_trait(?Send)]
+impl<F: PRP> ContentEncryptSizeOf<F> for UserIdentity<F> {
+    async fn encrypt_sizeof<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut sizeof::Context<F>,
+        exchange_key: &'c [u8],
+        key: &'c NBytes<N>,
+    ) -> Result<&'c mut sizeof::Context<F>> {
+        match &self.id {
+            Identifier::PskId(_) => ctx
+                .absorb(External(<&NBytes<PskSize>>::from(exchange_key)))?
+                .commit()?
+                .mask(key),
+            // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
+            _ => match <[u8; 32]>::try_from(exchange_key) {
+                Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), key),
+                Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
+            },
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl<F: PRP, OS: io::OStream> ContentEncrypt<F, OS> for UserIdentity<F> {
+    async fn encrypt<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut wrap::Context<F, OS>,
+        exchange_key: &'c [u8],
+        key: &'c NBytes<N>,
+    ) -> Result<&'c mut wrap::Context<F, OS>> {
+        match &self.id {
+            Identifier::PskId(_) => ctx
+                .absorb(External(<&NBytes<PskSize>>::from(exchange_key)))?
+                .commit()?
+                .mask(key),
+            // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
+            _ => match <[u8; 32]>::try_from(exchange_key) {
+                Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), key),
+                Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
+            },
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl<F: PRP, OS: io::IStream> ContentDecrypt<F, OS> for UserIdentity<F> {
+    async fn decrypt<'c, N: ArrayLength<u8>>(
+        &self,
+        ctx: &'c mut unwrap::Context<F, OS>,
+        exchange_key: &'c [u8],
+        key: &'c mut NBytes<N>,
+    ) -> Result<&'c mut unwrap::Context<F, OS>> {
+        match &self.id {
+            Identifier::PskId(_) => ctx
+                .absorb(External(<&NBytes<PskSize>>::from(exchange_key)))?
+                .commit()?
+                .mask(key),
+            // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
+            _ => match <[u8; 32]>::try_from(exchange_key) {
+                Ok(slice) => ctx.x25519(&x25519::SecretKey::from_bytes(slice), key),
+                Err(e) => Err(wrapped_err(BadIdentifier, WrappedError(e))),
+            },
         }
     }
 }

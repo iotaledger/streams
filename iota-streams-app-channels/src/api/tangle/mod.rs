@@ -2,7 +2,6 @@
 
 pub use futures;
 
-use super::key_store::KeyMap;
 pub use iota_streams_app::transport::tangle::MsgId;
 use iota_streams_app::{
     id::Identifier,
@@ -33,7 +32,10 @@ use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
 
-use iota_streams_core_edsig::signature::ed25519;
+use crypto::{
+    keys::x25519,
+    signatures::ed25519,
+};
 
 /// Identifiers for Pre-Shared Keys
 pub type PskIds = psk::PskIds;
@@ -57,14 +59,14 @@ pub type WrapState = message::WrapState<DefaultF, Address>;
 pub type WrappedSequence = super::user::WrappedSequence<DefaultF, Address>;
 /// Ed25519 Public Key
 pub type PublicKey = ed25519::PublicKey;
+pub type ExchangeKey = x25519::PublicKey;
+pub const PUBLIC_KEY_LENGTH: usize = ed25519::PUBLIC_KEY_LENGTH;
 
 /// Message type with parsed header.
 pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
 /// Sequence State information
 pub type SeqState = Cursor<MsgId>;
-/// Identifier Key Mapping for sequence states
-pub type KeyStore = KeyMap<SeqState>;
 
 /// Link Generator specifies algorithm for generating new message addressed.
 pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
@@ -77,17 +79,8 @@ pub type BucketTransport = transport::BucketTransport<Address, Message>;
 
 /// Transportation trait for Tangle Client implementation
 // TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
-#[cfg(not(feature = "did"))]
 pub trait Transport: transport::Transport<Address, Message> + Clone {}
-#[cfg(not(feature = "did"))]
 impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone {}
-
-#[cfg(feature = "did")]
-use iota_streams_app::transport::IdentityClient;
-#[cfg(feature = "did")]
-pub trait Transport: transport::Transport<Address, Message> + IdentityClient + Clone {}
-#[cfg(feature = "did")]
-impl<T> Transport for T where T: transport::Transport<Address, Message> + IdentityClient + Clone {}
 
 mod msginfo;
 pub use msginfo::MsgInfo;

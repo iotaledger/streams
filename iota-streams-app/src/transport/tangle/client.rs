@@ -205,6 +205,17 @@ impl Client {
             .unwrap(),
         }
     }
+
+    #[cfg(feature = "did")]
+    pub async fn to_did_client(&self) -> Result<DIDClient> {
+        let did_client = DIDClient::builder()
+            .network(Network::Mainnet)
+            .primary_node(&self.send_opt.url, None, None)?
+            .local_pow(self.send_opt.local_pow)
+            .build()
+            .await?;
+        Ok(did_client)
+    }
 }
 
 impl Clone for Client {
@@ -225,7 +236,7 @@ impl Clone for Client {
 
 impl TransportOptions for Client {
     type SendOptions = SendOptions;
-    fn get_send_options(&self) -> SendOptions {
+    fn send_options(&self) -> SendOptions {
         self.send_opt.clone()
     }
     fn set_send_options(&mut self, opt: SendOptions) {
@@ -236,7 +247,7 @@ impl TransportOptions for Client {
     }
 
     type RecvOptions = ();
-    fn get_recv_options(&self) {}
+    fn recv_options(&self) {}
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 
@@ -269,23 +280,4 @@ impl TransportDetails<TangleAddress> for Client {
     async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {
         async_get_link_details(&self.client, link).await
     }
-}
-
-#[cfg(feature = "did")]
-#[async_trait(?Send)]
-impl IdentityClient for Client {
-    async fn to_identity_client(&self) -> Result<DIDClient> {
-        client_to_did_client(self).await
-    }
-}
-
-#[cfg(feature = "did")]
-pub async fn client_to_did_client(client: &Client) -> Result<DIDClient> {
-    let did_client = DIDClient::builder()
-        .network(Network::Mainnet)
-        .primary_node(&client.send_opt.url, None, None)?
-        .local_pow(client.send_opt.local_pow)
-        .build()
-        .await?;
-    Ok(did_client)
 }

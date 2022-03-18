@@ -1,16 +1,15 @@
 use core::fmt;
+
+use crypto::signatures::ed25519;
+
 use iota_streams_core::{
     async_trait,
     prelude::Box,
-    Result,
-};
-
-use iota_streams_core::{
     sponge::prp::PRP,
     try_or,
     Errors::*,
+    Result,
 };
-use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -24,7 +23,7 @@ use iota_streams_ddml::{
 };
 
 use super::*;
-use crate::id::identifier::Identifier;
+use crate::id::Identifier;
 
 pub const FLAG_BRANCHING_MASK: u8 = 1;
 
@@ -46,7 +45,7 @@ pub struct HDF<Link> {
     pub sender_id: Identifier,
 }
 
-impl<Link: Default> HDF<Link> {
+impl<Link> HDF<Link> {
     pub fn new(link: Link) -> Self {
         Self {
             link,
@@ -58,7 +57,7 @@ impl<Link: Default> HDF<Link> {
             payload_frame_count: 0,
             previous_msg_link: Bytes::default(),
             seq_num: Uint64(0),
-            sender_id: Identifier::EdPubKey(ed25519::PublicKey::default().into()),
+            sender_id: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap().into(),
         }
     }
 
@@ -68,7 +67,7 @@ impl<Link: Default> HDF<Link> {
         Ok(self)
     }
 
-    pub fn get_content_type(&self) -> u8 {
+    pub fn content_type(&self) -> u8 {
         self.content_type
     }
 
@@ -78,7 +77,7 @@ impl<Link: Default> HDF<Link> {
         Ok(self)
     }
 
-    pub fn get_payload_length(&self) -> usize {
+    pub fn payload_length(&self) -> usize {
         self.payload_length
     }
 
@@ -91,7 +90,7 @@ impl<Link: Default> HDF<Link> {
         Ok(self)
     }
 
-    pub fn get_payload_frame_count(&self) -> u32 {
+    pub fn payload_frame_count(&self) -> u32 {
         self.payload_frame_count
     }
 
@@ -100,7 +99,7 @@ impl<Link: Default> HDF<Link> {
         self
     }
 
-    pub fn get_seq_num(&self) -> u64 {
+    pub fn seq_num(&self) -> u64 {
         self.seq_num.0
     }
 
@@ -109,7 +108,7 @@ impl<Link: Default> HDF<Link> {
         self
     }
 
-    pub fn get_identifier(&self) -> &Identifier {
+    pub fn identifier(&self) -> &Identifier {
         &self.sender_id
     }
 
@@ -118,7 +117,7 @@ impl<Link: Default> HDF<Link> {
         self
     }
 
-    pub fn get_previous_msg_link(&self) -> &Bytes {
+    pub fn previous_msg_link(&self) -> &Bytes {
         &self.previous_msg_link
     }
 
@@ -147,26 +146,9 @@ impl<Link: Default> HDF<Link> {
     }
 }
 
-impl<Link: Default> Default for HDF<Link> {
-    fn default() -> Self {
-        Self {
-            encoding: UTF8,
-            version: STREAMS_1_VER,
-            content_type: 0,
-            payload_length: 0,
-            frame_type: HDF_ID,
-            payload_frame_count: 0,
-            previous_msg_link: Bytes::default(),
-            link: Link::default(),
-            seq_num: Uint64(0),
-            sender_id: Identifier::EdPubKey(ed25519::PublicKey::default().into()),
-        }
-    }
-}
-
 impl<Link> fmt::Debug for HDF<Link>
 where
-    Link: fmt::Debug + Default,
+    Link: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -174,8 +156,8 @@ where
             "{{encoding: {:?}, version: {:?}, content_type: {:?}, payload_length: {:?}}}",
             self.encoding,
             self.version,
-            self.get_content_type(),
-            self.get_payload_length()
+            self.content_type(),
+            self.payload_length()
         )
     }
 }
@@ -253,7 +235,7 @@ where
 impl<F, Link, Store> ContentUnwrap<F, Store> for HDF<Link>
 where
     F: PRP,
-    Link: AbsorbExternalFallback<F> + fmt::Debug + Clone,
+    Link: AbsorbExternalFallback<F> + Clone,
 {
     async fn unwrap<'c, IS: io::IStream>(
         &mut self,

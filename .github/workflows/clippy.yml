@@ -5,12 +5,12 @@ on:
     branches:
       - master
       - develop
-      - chrysalis-2
+      - v2.0-dev
   pull_request:
     branches:
       - master
       - develop
-      - chrysalis-2
+      - v2.0-dev
     paths-ignore:
       - "docs/**"
       - "specification/**"
@@ -20,6 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      matrix:
+        package:
+          - "."
+          - "examples"
+          - "bindings/wasm"
+          # C bindings currently contains a bunch of warnings that need fixing
+          # - "bindings/c"  
 
     steps:
       - uses: actions/checkout@v2
@@ -33,5 +40,5 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all-features -- -D warnings
-          name: clippy-streams-rust
+          args: --all-targets --all-features --manifest-path=${{ matrix.package }}/Cargo.toml
+          name: clippy check (${{ matrix.package }})

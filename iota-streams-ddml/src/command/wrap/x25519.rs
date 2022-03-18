@@ -1,12 +1,17 @@
+use crypto::keys::x25519;
+
+#[cfg(feature = "std")]
+use iota_streams_core::prng::rng;
 #[cfg(not(feature = "std"))]
 use iota_streams_core::{
     err,
     Errors::NoStdRngMissing,
 };
 
-#[cfg(feature = "std")]
-use iota_streams_core::prng::rng;
-use iota_streams_core::Result;
+use iota_streams_core::{
+    sponge::prp::PRP,
+    Result,
+};
 
 use super::Context;
 #[cfg(feature = "std")]
@@ -24,32 +29,24 @@ use crate::{
     },
 };
 
-use iota_streams_core::sponge::prp::PRP;
-use iota_streams_core_edsig::key_exchange::x25519;
-
-impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::StaticSecret, &'a x25519::PublicKey> for Context<F, OS> {
-    fn x25519(&mut self, sk: &x25519::StaticSecret, pk: &x25519::PublicKey) -> Result<&mut Self> {
-        let shared = sk.diffie_hellman(pk);
-        self.spongos.absorb(shared.as_bytes());
-        Ok(self)
-    }
-}
-
-impl<'a, F: PRP, OS: io::OStream> X25519<x25519::EphemeralSecret, &'a x25519::PublicKey> for Context<F, OS> {
-    fn x25519(&mut self, sk: x25519::EphemeralSecret, pk: &x25519::PublicKey) -> Result<&mut Self> {
-        let shared = sk.diffie_hellman(pk);
-        self.spongos.absorb(shared.as_bytes());
+impl<'a, F: PRP, OS: io::OStream> X25519<&'a x25519::SecretKey, &'a x25519::PublicKey> for Context<F, OS> {
+    fn x25519(
+        &mut self,
+        local_secret_key: &x25519::SecretKey,
+        remote_public_key: &x25519::PublicKey,
+    ) -> Result<&mut Self> {
+        let shared_secret = local_secret_key.diffie_hellman(remote_public_key);
+        self.spongos.absorb(shared_secret.as_bytes());
         Ok(self)
     }
 }
 
 #[cfg(feature = "std")]
 impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F, OS> {
-    fn x25519(&mut self, pk: &x25519::PublicKey, key: &NBytes<N>) -> Result<&mut Self> {
-        let ephemeral_ke_sk = x25519::EphemeralSecret::new(&mut rng());
-        let ephemeral_ke_pk = x25519::PublicKey::from(&ephemeral_ke_sk);
-        self.absorb(&ephemeral_ke_pk)?
-            .x25519(ephemeral_ke_sk, pk)?
+    fn x25519(&mut self, remote_public_key: &x25519::PublicKey, key: &NBytes<N>) -> Result<&mut Self> {
+        let ephemeral_secret_key = x25519::SecretKey::generate_with(&mut rng());
+        self.absorb(&ephemeral_secret_key.public_key())?
+            .x25519(&ephemeral_secret_key, remote_public_key)?
             .commit()?
             .mask(key)
     }

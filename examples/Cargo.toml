@@ -11,8 +11,8 @@ description = "A rust implementation of the IOTA Streams"
 [dependencies]
 # run with features = ["err-location-log"] for err location logging
 iota-streams = { path = "..", features = ["tangle", "std", "client", "did"] }
-identity = { git = "https://github.com/iotaledger/identity.rs", branch = "main", default-features = false  }
+identity = { git = "https://github.com/iotaledger/identity.rs", rev = "86edaad" }
 anyhow = { version = "1.0", default-features = false }
-rand = "0.7.3"
+rand = "0.8"
 dotenv = {version = "0.15.0"}
 tokio = {version = "1.1"}

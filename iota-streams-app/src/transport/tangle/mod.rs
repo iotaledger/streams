@@ -9,12 +9,12 @@ use core::{
     str::FromStr,
 };
 
+use crypto::hashes::{
+    blake2b,
+    Digest,
+};
 use iota_streams_core::{
     anyhow,
-    crypto::hashes::{
-        blake2b,
-        Digest,
-    },
     err,
     prelude::{
         typenum::{

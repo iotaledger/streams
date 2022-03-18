@@ -1,12 +1,10 @@
-#![allow(clippy::derivable_impls)]
-
-use iota_streams_core::{
-    prelude::{
-        generic_array::GenericArray,
+use crate::{
+    prelude::generic_array::{
         typenum::{
             U168,
             U32,
         },
+        GenericArray,
     },
     sponge::prp::PRP,
 };

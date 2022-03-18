@@ -2,7 +2,10 @@ use futures::executor::block_on;
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
-use crate::{types::*, user::userw::*};
+use crate::{
+    types::*,
+    user::userw::*,
+};
 
 use core::cell::RefCell;
 use iota_streams::{
@@ -19,8 +22,14 @@ use iota_streams::{
         },
     },
     core::{
-        prelude::{Rc, String},
-        psk::{pskid_from_hex_str, pskid_to_hex_string},
+        prelude::{
+            Rc,
+            String,
+        },
+        psk::{
+            pskid_from_hex_str,
+            pskid_to_hex_string,
+        },
     },
     ddml::types::*,
 };
@@ -38,14 +47,14 @@ impl Subscriber {
         let mut client = ApiClient::new_from_url(&options.url());
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, transport)));
-        Subscriber { subscriber }
+        let subscriber = block_on(ApiSubscriber::new(&seed, transport));
+        Subscriber { subscriber: Rc::new(RefCell::new(subscriber)) }
     }
 
     #[wasm_bindgen(catch, js_name = "fromClient")]
     pub fn from_client(client: StreamsClient, seed: String) -> Subscriber {
-        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.into_inner())));
-        Subscriber { subscriber }
+        let subscriber = block_on(ApiSubscriber::new(&seed, client.into_inner()));
+        Subscriber { subscriber: Rc::new(RefCell::new(subscriber)) }
     }
 
     #[wasm_bindgen(catch)]
@@ -83,7 +92,7 @@ impl Subscriber {
 
     #[wasm_bindgen(catch)]
     pub fn get_client(&self) -> StreamsClient {
-        StreamsClient(self.subscriber.borrow_mut().get_transport().clone())
+        StreamsClient(self.subscriber.borrow_mut().transport().clone())
     }
 
     #[wasm_bindgen(catch)]
@@ -100,18 +109,24 @@ impl Subscriber {
         Ok(pskid_str)
     }
 
-    #[wasm_bindgen(catch)]
-    pub fn get_public_key(&self) -> Result<String> {
-        Ok(public_key_to_string(self.subscriber.borrow_mut().get_public_key()))
+    #[wasm_bindgen(getter, js_name = "id")]
+    pub fn id(&self) -> String {
+        identifier_to_string(self.subscriber.borrow_mut().id())
     }
 
-    #[wasm_bindgen(catch)]
-    pub fn author_public_key(&self) -> Result<String> {
+    #[wasm_bindgen(getter, catch, js_name = "exchangeKey")]
+    pub fn exchange_key(&self) -> Result<String> {
+        let ek = self.subscriber.borrow_mut().key_exchange_public_key().into_js_result()?;
+        Ok(exchange_key_to_string(&ek))
+    }
+
+    #[wasm_bindgen(getter, catch, js_name = "authorId")]
+    pub fn author_id(&self) -> Result<String> {
         self.subscriber
             .borrow_mut()
-            .author_public_key()
+            .author_id()
             .ok_or("channel not registered, author's public key not found")
-            .map(|author_pk| hex::encode(author_pk.to_bytes()))
+            .map(|author_id| hex::encode(author_id.to_bytes()))
             .into_js_result()
     }
 
@@ -167,12 +182,12 @@ impl Subscriber {
             .borrow_mut()
             .receive_signed_packet(link.as_inner())
             .await
-            .map(|(pk, pub_bytes, masked_bytes)| {
+            .map(|(id, pub_bytes, masked_bytes)| {
                 UserResponse::new(
                     link,
                     None,
                     Some(Message::new(
-                        Some(public_key_to_string(&pk)),
+                        Some(identifier_to_string(&id)),
                         pub_bytes.0,
                         masked_bytes.0,
                     )),
@@ -391,7 +406,7 @@ impl Subscriber {
 
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
         pskid_from_hex_str(&pskid_str)
-            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid).into())
+            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid))
             .into_js_result()
     }
 }

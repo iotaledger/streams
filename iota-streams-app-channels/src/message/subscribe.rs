@@ -38,6 +38,7 @@
 //!
 //! Note, the `unsubscribe_key` is masked and verified in the `x25519` operation and
 //! thus is not additionally `absorb`ed in this message.
+use crypto::keys::x25519;
 
 use iota_streams_app::{
     id::UserIdentity,
@@ -54,7 +55,6 @@ use iota_streams_core::{
     sponge::prp::PRP,
     Result,
 };
-use iota_streams_core_edsig::key_exchange::x25519;
 use iota_streams_ddml::{
     command::*,
     io,
@@ -86,6 +86,7 @@ where
         ctx.join(&store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?;
         self.subscriber_id.id.sizeof(ctx).await?;
+        ctx.absorb(&self.subscriber_id.ke_kp()?.1)?;
         let ctx = self.subscriber_id.sizeof(ctx).await?;
         Ok(ctx)
     }
@@ -107,6 +108,7 @@ where
         ctx.join(store, self.link)?
             .x25519(self.author_ke_pk, &self.unsubscribe_key)?;
         self.subscriber_id.id.wrap(store, ctx).await?;
+        ctx.absorb(&self.subscriber_id.ke_kp()?.1)?;
         let ctx = self.subscriber_id.sign(ctx).await?;
         Ok(ctx)
     }
@@ -116,7 +118,8 @@ pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
     pub subscriber_id: UserIdentity<F>,
-    author_ke_sk: &'a x25519::StaticSecret,
+    pub subscriber_xkey: x25519::PublicKey,
+    author_ke_sk: &'a x25519::SecretKey,
     _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
@@ -126,11 +129,12 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(author_ke_sk: &'a x25519::StaticSecret) -> Result<Self> {
+    pub fn new(author_ke_sk: &'a x25519::SecretKey) -> Result<Self> {
         Ok(Self {
             link: <<Link as HasLink>::Rel as Default>::default(),
             unsubscribe_key: NBytes::<U32>::default(),
             subscriber_id: UserIdentity::default(),
+            subscriber_xkey: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             author_ke_sk,
             _phantom: core::marker::PhantomData,
         })
@@ -153,6 +157,7 @@ where
         ctx.join(store, &mut self.link)?
             .x25519(self.author_ke_sk, &mut self.unsubscribe_key)?;
         self.subscriber_id.id.unwrap(store, ctx).await?;
+        ctx.absorb(&mut self.subscriber_xkey)?;
         let ctx = self.subscriber_id.verify(ctx).await?;
         Ok(ctx)
     }

@@ -90,14 +90,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport);
+/// let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport);
+/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -163,14 +163,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport);
+/// let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport);
+/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -196,17 +196,13 @@ pub trait IntoMessages<Trans> {
 ///         UnwrappedMessage::new(
 ///             first_packet_link,
 ///             keyload_link,
-///             MessageContent::new_signed_packet(
-///                 author.get_public_key().clone(),
-///                 b"public payload",
-///                 b"masked payload"
-///             )
+///             MessageContent::new_signed_packet(author.id().clone(), b"public payload", b"masked payload")
 ///         ),
 ///         UnwrappedMessage::new(
 ///             second_packet_link,
 ///             first_packet_link,
 ///             MessageContent::new_signed_packet(
-///                 author.get_public_key().clone(),
+///                 author.id().clone(),
 ///                 b"another public payload",
 ///                 b"another masked payload"
 ///             )
@@ -243,7 +239,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = Author::new(author_seed, ChannelType::MultiBranch, author_transport);
+/// let mut author = Author::new(author_seed, ChannelType::MultiBranch, author_transport).await;
 /// let announcement_link = author.send_announce().await?;
 /// let shareable_announcement_link = announcement_link.to_string();
 ///
@@ -252,7 +248,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// # let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport);
+/// # let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
 /// # let announcement_link = shareable_announcement_link.parse().expect("parsing announcement link");
 /// # subscriber.receive_announcement(&announcement_link).await?;
 /// # let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
@@ -335,7 +331,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// # let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport);
+/// # let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport).await;
 /// # let announcement_link = author.send_announce().await?;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
@@ -343,7 +339,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport);
+/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
 ///
 /// // Announcement link is provided by author
 /// let shareable_announcement_link = "<channel-announcement-link>";
@@ -439,14 +435,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = Author::new(author_seed, ChannelType::MultiBranch, author_transport);
+/// let mut author = Author::new(author_seed, ChannelType::MultiBranch, author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport);
+/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -512,13 +508,13 @@ pub trait IntoMessages<Trans> {
 ///         UnwrappedMessage::new(
 ///             first_packet_second_branch_link,
 ///             tag_second_branch_link,
-///             MessageContent::new_signed_packet(author.get_public_key().clone(), b"", b"masked payload in branch 2")
+///             MessageContent::new_signed_packet(author.id().clone(), b"", b"masked payload in branch 2")
 ///         ),
 ///         UnwrappedMessage::new(
 ///             second_packet_second_branch_link,
 ///             first_packet_second_branch_link,
 ///             MessageContent::new_signed_packet(
-///                 author.get_public_key().clone(),
+///                 author.id().clone(),
 ///                 b"",
 ///                 b"another masked payload in branch 2"
 ///             )
@@ -788,7 +784,7 @@ mod tests {
             .await?;
 
         // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
-        let mut subscriber = Subscriber::new("subscriber", transport);
+        let mut subscriber = Subscriber::new("subscriber", transport).await;
         subscriber.receive_announcement(&announcement_link).await?;
         let n_msgs = subscriber.sync_state().await?;
         assert_eq!(n_msgs, 4); // keyload, 2 signed packets from author, and last signed-packet from herself
@@ -832,7 +828,7 @@ mod tests {
     /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport
     async fn author_subscriber_fixture() -> Result<(Author<Transport>, Subscriber<Transport>, Address, Transport)> {
         let transport = Rc::new(RefCell::new(BucketTransport::new()));
-        let mut author = Author::new("author", ChannelType::MultiBranch, transport.clone());
+        let mut author = Author::new("author", ChannelType::MultiBranch, transport.clone()).await;
         let announcement_link = author.send_announce().await?;
         let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, transport.clone()).await?;
         Ok((author, subscriber, announcement_link, transport))
@@ -844,7 +840,7 @@ mod tests {
         announcement_link: &Address,
         transport: Transport,
     ) -> Result<Subscriber<Transport>> {
-        let mut subscriber = Subscriber::new(seed, transport);
+        let mut subscriber = Subscriber::new(seed, transport).await;
         subscriber.receive_announcement(announcement_link).await?;
         let subscription = subscriber.send_subscribe(announcement_link).await?;
         author.receive_subscribe(&subscription).await?;

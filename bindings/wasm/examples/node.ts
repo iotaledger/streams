@@ -163,11 +163,10 @@ async function main() {
     let sub2 = new streams.Subscriber(seed3, options.clone());
     await sub2.clone().receive_announcement(ann_link);
 
-    let sub2_pk = sub2.get_public_key();
-    auth.clone().store_new_subscriber(sub2_pk);
+    auth.clone().store_new_subscriber(sub2.publicKey);
     console.log("\nAuthor manually subscribed sub 2");
 
-    auth.clone().remove_subscriber(sub2_pk);
+    auth.clone().remove_subscriber(sub2.publicKey);
     console.log("Author manually unsubscribed sub 2");
 
     function to_bytes(str: String) {

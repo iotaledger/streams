@@ -6,6 +6,12 @@ use futures::{
     TryStreamExt,
 };
 
+use crypto::keys::x25519;
+#[cfg(feature = "did")]
+use iota_streams_app::id::{
+    DIDClient,
+    DIDInfo,
+};
 use iota_streams_app::{
     id::{
         Identifier,
@@ -35,16 +41,13 @@ use iota_streams_core::{
     Result,
 };
 
-#[cfg(feature = "did")]
-use iota_streams_app::id::DIDInfo;
-
 use super::*;
 use crate::{
     api,
     message,
 };
 
-type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
+type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore>;
 
 
 /// Baseline User api object. Contains the api user implementation as well as the transport object
@@ -59,14 +62,13 @@ impl<Trans> User<Trans> {
     /// # Arguments
     /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
     /// * `transport` - Transport object used for sending and receiving
-   #[cfg(not(feature = "did"))]
     pub async fn new(seed: &str, transport: Trans) -> Self {
         let id = UserIdentity::new(seed).await;
         let user = UserImp::gen(id, None, true);
         Self { user, transport }
     }
 
-    pub fn get_transport(&self) -> &Trans {
+    pub fn transport(&self) -> &Trans {
         &self.transport
     }
 
@@ -88,8 +90,13 @@ impl<Trans> User<Trans> {
     }
 
     /// Fetch the user public Id
-    pub fn get_id(&self) -> &Identifier {
-        &self.user.user_id.id
+    pub fn id(&self) -> &Identifier {
+        self.user.id()
+    }
+
+    /// Fetch the user key exchange public key
+    pub fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
+        self.user.key_exchange_public_key()
     }
 
     pub fn is_registered(&self) -> bool {
@@ -184,8 +191,9 @@ impl<Trans> User<Trans> {
     ///
     ///   # Arguments
     ///   * `id` - Identifier of known subscriber
-    pub fn store_new_subscriber(&mut self, id: Identifier) -> Result<()> {
-        self.user.insert_subscriber(id)
+    ///   * `xkey` - Public exchange key for decryption
+    pub fn store_new_subscriber(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
+        self.user.insert_subscriber(id, xkey)
     }
 
     /// Remove a Subscriber from the user instance
@@ -209,20 +217,15 @@ impl<Trans> User<Trans> {
 }
 
 #[cfg(feature = "did")]
-impl<Trans: IdentityClient + Transport + Clone> User<Trans> {
-    pub async fn new(seed: &str, transport: Trans) -> Self {
-        let mut id = UserIdentity::new(seed).await;
-        let client = transport.to_identity_client().await.unwrap();
-        id.insert_did_client(client);
+impl<Trans: Transport + Clone> User<Trans> {
+    pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
+        let id = UserIdentity::new_with_did_private_key(did_info).await?;
         let user = UserImp::gen(id, None, true);
-        Self { user, transport }
+        Ok(User { user, transport, })
     }
 
-    pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
-        let did_client = transport.to_identity_client().await?;
-        let id = UserIdentity::new_with_did_private_key(did_info, did_client).await?;
-        let user = UserImp::gen(id, None, true);
-        Ok(User { user, transport })
+    pub fn insert_did_client(&mut self, client: DIDClient) {
+        self.user.user_id.insert_did_client(client)
     }
 }
 
@@ -609,28 +612,6 @@ impl<Trans: Transport + Clone> User<Trans> {
         let link = Address::try_from_bytes(&header.previous_msg_link.0)
             .or_else(|_| err!(NoPreviousMessage(link.to_string())))?;
         Ok((link, header.content_type, msg))
-    }
-
-    /// Receive and process a message with a known anchor link and message number. This can only
-    /// be used if the channel is a single depth channel. [Author, Subscriber]
-    ///
-    ///   # Arguments
-    ///   * `anchor_link` - Address of the anchor message for the channel
-    ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
-    pub async fn receive_msg_by_sequence_number(
-        &mut self,
-        anchor_link: &Address,
-        msg_num: u32,
-    ) -> Result<UnwrappedMessage> {
-        match self.author_id() {
-            Some(pk) => {
-                let seq_no = self.user.fetch_anchor()?.seq_no;
-                let msg_cursor = self.user.gen_link(pk, anchor_link.rel(), seq_no + msg_num);
-                let msg = self.transport.recv_message(&msg_cursor.link).await?;
-                self.handle_message(msg, false).await
-            }
-            None => err(UserNotRegistered),
-        }
     }
 }
 

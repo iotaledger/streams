@@ -415,7 +415,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     println!("Subscriber states matched");
 
     println!("\nAuthor unsubscribes Subscriber A");
-    author.remove_subscriber(*subscriberA.get_id())?;
+    author.remove_subscriber(*subscriberA.id())?;
 
     println!("\nSubscriber B sending unsubscribe message");
     let unsub_link = subscriberB.send_unsubscribe(&subscribeB_link).await?;

@@ -7,10 +7,7 @@ use std::env;
 use rand::Rng;
 
 use iota_streams::{
-    app::transport::{
-        tangle::client::Client,
-        IdentityClient,
-    },
+    app::transport::tangle::client::Client,
     app_channels::api::tangle::Transport,
     core::prelude::{
         Rc,
@@ -29,7 +26,7 @@ async fn run_recovery_test<T: Transport>(transport: T, seed: &str) {
     println!("#######################################");
 }
 
-async fn run_did_author_test<T: Transport + IdentityClient>(transport: T) {
+async fn run_did_author_test(transport: Client) {
     println!("\tRunning DID Test");
     match branching::did_author::example(transport).await {
         Err(err) => println!("Error in DID test: {:?}", err),
@@ -86,7 +83,7 @@ async fn main_client() {
 fn new_seed() -> String {
     let alph9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
     (0..10)
-        .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0, 27)).unwrap())
+        .map(|_| alph9.chars().nth(rand::thread_rng().gen_range(0..27)).unwrap())
         .collect::<String>()
 }
 

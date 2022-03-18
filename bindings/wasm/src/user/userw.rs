@@ -2,7 +2,12 @@ use core::cell::RefCell;
 
 use wasm_bindgen::prelude::*;
 
-use crate::types::{Address, Details, ResultExt, SendOptions};
+use crate::types::{
+    Address,
+    Details,
+    ResultExt,
+    SendOptions,
+};
 
 use client_wasm::client::Client as RustWasmClient;
 

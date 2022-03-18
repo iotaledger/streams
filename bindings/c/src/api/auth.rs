@@ -20,7 +20,7 @@ pub unsafe extern "C" fn auth_new(
     CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
         transport.as_ref().map_or(Err::NullArgument, |tsp| {
             c_author.as_mut().map_or(Err::NullArgument, |author| {
-                let user = Author::new(seed, channel_impl, tsp.clone());
+                let user = run_async(Author::new(seed, channel_impl, tsp.clone()));
                 *author = safe_into_mut_ptr(user);
                 Err::Ok
             })
@@ -140,11 +140,23 @@ pub unsafe extern "C" fn auth_is_multi_branching(flag: *mut uint8_t, user: *cons
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_get_public_key(pk: *mut *const PublicKey, user: *const Author) -> Err {
+pub unsafe extern "C" fn auth_get_id(id: *mut *const Identifier, user: *const Author) -> Err {
     user.as_ref().map_or(Err::NullArgument, |user| {
-        pk.as_mut().map_or(Err::NullArgument, |pk| {
-            *pk = user.get_public_key() as *const PublicKey;
+        id.as_mut().map_or(Err::NullArgument, |id| {
+            *id = user.id() as *const Identifier;
             Err::Ok
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_get_exchange_key(ek: *mut *const ExchangeKey, user: *const Author) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        ek.as_mut().map_or(Err::NullArgument, |ek| {
+            user.key_exchange_public_key().map_or(Err::OperationFailed, |exchange_public_key| {
+                *ek = safe_into_ptr(exchange_public_key);
+                Err::Ok
+            })
         })
     })
 }
@@ -521,19 +533,21 @@ pub unsafe extern "C" fn auth_remove_psk(c_user: *mut Author, c_pskid: *const Ps
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_store_new_subscriber(c_user: *mut Author, c_pk: *const PublicKey) -> Err {
+pub unsafe extern "C" fn auth_store_new_subscriber(c_user: *mut Author, c_id: *const Identifier, c_ek: *const ExchangeKey) -> Err {
     c_user.as_mut().map_or(Err::NullArgument, |user| {
-        c_pk.as_ref().map_or(Err::NullArgument, |pk| {
-            user.store_new_subscriber(*pk).map_or(Err::OperationFailed, |_| Err::Ok)
+        c_id.as_ref().map_or(Err::NullArgument, |id| {
+            c_ek.as_ref().map_or(Err::NullArgument, |ek| {
+                user.store_new_subscriber(*id, *ek).map_or(Err::OperationFailed, |_| Err::Ok)
+            })
         })
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_remove_subscriber(c_user: *mut Author, c_pk: *const PublicKey) -> Err {
+pub unsafe extern "C" fn auth_remove_subscriber(c_user: *mut Author, c_id: *const Identifier) -> Err {
     c_user.as_mut().map_or(Err::NullArgument, |user| {
-        c_pk.as_ref().map_or(Err::NullArgument, |pk| {
-            user.remove_subscriber(*pk).map_or(Err::OperationFailed, |_| Err::Ok)
+        c_id.as_ref().map_or(Err::NullArgument, |id| {
+            user.remove_subscriber(*id).map_or(Err::OperationFailed, |_| Err::Ok)
         })
     })
 }

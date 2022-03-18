@@ -17,7 +17,7 @@ impl<F> Context<F> {
         }
     }
     /// Returns calculated message size.
-    pub fn get_size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.size
     }
 }

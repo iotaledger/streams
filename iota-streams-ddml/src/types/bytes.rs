@@ -36,6 +36,18 @@ impl Bytes {
     pub fn into_string(self) -> Option<String> {
         String::from_utf8(self.0).ok()
     }
+
+    pub fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        self.0.as_mut_slice()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 impl fmt::Display for Bytes {
@@ -104,6 +116,12 @@ impl<const N: usize> From<&[u8; N]> for Bytes {
 
 impl AsRef<[u8]> for Bytes {
     fn as_ref(&self) -> &[u8] {
-        self.0.as_slice()
+        self.as_slice()
+    }
+}
+
+impl AsMut<[u8]> for Bytes {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.as_mut_slice()
     }
 }
