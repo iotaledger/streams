@@ -9,16 +9,10 @@ use core::{
     str::FromStr,
 };
 
-use crypto::{
-    hashes::{
-        blake2b,
-        Digest,
-    },
-    signatures::ed25519,
+use crypto::hashes::{
+    blake2b,
+    Digest,
 };
-use cstr_core::CStr;
-use cty::c_char;
-
 use iota_streams_core::{
     anyhow,
     err,
@@ -54,6 +48,10 @@ use iota_streams_ddml::{
     io,
     types::*,
 };
+
+use crate::id::Identifier;
+use cstr_core::CStr;
+use cty::c_char;
 
 use crate::message::{
     BinaryMessage,
@@ -290,9 +288,9 @@ impl<F: PRP> DefaultTangleLinkGenerator<F> {
 
 impl<F: PRP> LinkGenerator<TangleAddress> for DefaultTangleLinkGenerator<F> {
     /// Used by Author to generate a new application instance: channels address and announcement message identifier
-    fn gen(&mut self, pk: &ed25519::PublicKey, channel_idx: u64) {
-        self.addr.appinst = AppInst::new(pk, channel_idx);
-        self.addr.msgid = self.gen_msgid(pk.as_ref(), Cursor::default().as_ref());
+    fn gen(&mut self, id: &Identifier, channel_idx: u64) {
+        self.addr.appinst = AppInst::new(id, channel_idx);
+        self.addr.msgid = self.gen_msgid(id.as_ref(), Cursor::default().as_ref());
     }
 
     /// Used by Author to get announcement message id, it's just stored internally by link generator
@@ -333,12 +331,12 @@ pub struct AppInst {
 }
 
 impl AppInst {
-    pub fn new(pk: &ed25519::PublicKey, channel_idx: u64) -> Self {
-        let mut id = [0_u8; APPINST_SIZE];
-        id[..32].copy_from_slice(pk.as_slice());
-        id[32..].copy_from_slice(&channel_idx.to_be_bytes());
+    pub fn new(id: &Identifier, channel_idx: u64) -> Self {
+        let mut app_id = [0_u8; APPINST_SIZE];
+        app_id[..32].copy_from_slice(id.as_bytes());
+        app_id[32..].copy_from_slice(&channel_idx.to_be_bytes());
         Self {
-            id: unsafe { core::mem::transmute(id) },
+            id: unsafe { core::mem::transmute(app_id) },
         }
     }
 

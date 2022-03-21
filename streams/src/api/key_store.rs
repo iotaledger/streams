@@ -1,12 +1,11 @@
 use core::{
     borrow::BorrowMut,
-    convert::TryInto,
     fmt,
 };
 
 use crypto::keys::x25519;
 
-use lets::identifier::Identifier;
+use lets::id::Identifier;
 use spongos::sponge::prp::PRP;
 // use iota_streams_core::{
 //     err,
@@ -20,177 +19,132 @@ use spongos::sponge::prp::PRP;
 //     Result,
 // };
 
-trait KeyStore<Info, F: PRP>: Default {
-    fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
-    where
-        I: IntoIterator<Item = &'a Identifier>;
-
-    /// Retrieve the sequence state for a given publisher
-    fn get(&self, id: &Identifier) -> Option<&Info>;
-    fn get_mut(&mut self, id: &Identifier) -> Option<&mut Info>;
-    fn get_ke_pk(&self, id: &Identifier) -> Option<&x25519::PublicKey>;
-    fn get_psk(&self, id: &Identifier) -> Option<Psk>;
-    fn contains(&self, id: &Identifier) -> bool;
-    fn insert_cursor(&mut self, id: Identifier, info: Info) -> Result<()>;
-    fn insert_psk(&mut self, id: Identifier, psk: Option<Psk>, info: Info) -> Result<()>;
-    fn keys(&self) -> Vec<(&Identifier, Vec<u8>)>;
-    fn iter(&self) -> Vec<(&Identifier, &Info)>;
-    fn iter_mut(&mut self) -> Vec<(&Identifier, &mut Info)>;
-    fn remove(&mut self, id: &Identifier);
-}
-
-struct KeyMap<Info> {
+pub struct KeyStore<Link> {
     /// Map from user identity -- ed25519 pk -- to
-    /// a precalculated corresponding x25519 pk and some additional info.
-    ke_pks: HashMap<Identifier, (x25519::PublicKey, Info)>,
-    psks: HashMap<Identifier, (Option<Psk>, Info)>,
+    /// a precalculated corresponding x25519 pk and some additional Cursor.
+    cursors: HashMap<Identifier, Cursor<Link>>,
+    keys: HashMap<Identifier, x25519::PublicKey>,
+    psks: HashMap<PskId, Psk>,
 }
 
-impl<Info> KeyMap<Info> {
+impl<Link> KeyStore<Link> {
     fn new() -> Self {
         Self {
-            ke_pks: HashMap::new(),
+            cursors: HashMap::new(),
+            keys: HashMap::new(),
             psks: HashMap::new(),
         }
     }
 }
 
-impl<Info> Default for KeyMap<Info> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
-    fn filter<'a, I>(&self, ids: I) -> Vec<(&Identifier, Vec<u8>)>
+impl<Link> KeyStore<Link> {
+    pub fn filter<'a, I>(&self, ids: I) -> Vec<(Identifier, Vec<u8>)>
     where
         I: IntoIterator<Item = &'a Identifier>,
     {
         ids.into_iter()
             .filter_map(|id| match &id {
-                Identifier::EdPubKey(_id) => self
-                    .ke_pks
-                    .get_key_value(id)
-                    .map(|(e, (x, _))| (e, x.as_slice().to_vec())),
-                Identifier::PskId(_id) => self
+                Identifier::PskId(pskid) => self
                     .psks
+                    .get_key_value(pskid)
+                    .map(|(pskid, psk)| ((*pskid).into(), psk.to_vec())),
+                _ => self
+                    .keys
                     .get_key_value(id)
-                    .map(|(e, (x, _))| x.map(|xx| (e, xx.to_vec())))
-                    .flatten(),
+                    .map(|(id, pk)| (*id, pk.as_slice().to_vec())),
             })
             .collect()
     }
 
-    fn get(&self, id: &Identifier) -> Option<&Info> {
-        match id {
-            Identifier::EdPubKey(_pk) => self.ke_pks.get(id).map(|(_x, i)| i),
-            Identifier::PskId(_id) => self.psks.get(id).map(|(_x, i)| i),
-        }
+    pub fn contains_subscriber(&self, id: &Identifier) -> bool {
+        self.cursors.contains_key(id)
     }
-    fn get_mut(&mut self, id: &Identifier) -> Option<&mut Info> {
-        match id {
-            Identifier::EdPubKey(_pk) => self.ke_pks.get_mut(id).map(|(_x, i)| i),
-            Identifier::PskId(_id) => self.psks.get_mut(id).map(|(_x, i)| i),
-        }
+
+    pub fn get_cursor(&self, id: &Identifier) -> Option<&Cursor<Link>> {
+        self.cursors.get(id)
     }
-    fn get_ke_pk(&self, id: &Identifier) -> Option<&x25519::PublicKey> {
-        match id {
-            Identifier::EdPubKey(_pk) => self.ke_pks.get(id).map(|(x, _i)| x),
-            _ => None,
+
+    pub fn get_cursor_mut(&mut self, id: &Identifier) -> Option<&mut Cursor<Link>> {
+        self.cursors.get_mut(id)
+    }
+
+    pub fn insert_cursor(&mut self, id: Identifier, cursor: Cursor<Link>) {
+        self.cursors.insert(id, cursor);
+    }
+
+    pub fn replace_cursors(&mut self, new_cursor: Cursor<Link>)
+    where
+        Link: Clone,
+    {
+        for (_id, cursor) in self.cursors.iter_mut() {
+            *cursor = new_cursor.clone()
         }
     }
 
-    fn get_psk(&self, id: &Identifier) -> Option<Psk> {
-        match id {
-            Identifier::PskId(_id) => match self.psks.get(id).map(|(x, _i)| *x) {
-                Some(psk) => psk,
-                None => None,
-            },
-            _ => None,
-        }
+    pub fn contains_psk(&self, pskid: &PskId) -> bool {
+        self.psks.contains_key(pskid)
     }
 
-    fn contains(&self, id: &Identifier) -> bool {
-        self.ke_pks.contains_key(id) || self.psks.contains_key(id)
+    pub fn get_psk(&self, pskid: &PskId) -> Option<&Psk> {
+        self.psks.get(pskid)
     }
 
-    fn insert_cursor(&mut self, id: Identifier, info: Info) -> Result<()> {
+    pub fn insert_psk(&mut self, id: Identifier, psk: Psk) -> Result<()> {
         match &id {
-            Identifier::EdPubKey(pk) => {
-                let store_id = pk.try_into()?;
-                self.ke_pks.insert(id, (store_id, info));
-                Ok(())
-            }
-            Identifier::PskId(_id) => {
-                // not using the entry API to avoid having to pull the Default bound on Info
-                // We cannot just use insert, as we don't have the Option<Psk>
-                if let Some((_, old_info)) = self.psks.get_mut(&id) {
-                    *old_info = info;
-                } else {
-                    self.psks.insert(id, (None, info));
-                }
-                Ok(())
-            }
-        }
-    }
-
-    fn insert_psk(&mut self, id: Identifier, psk: Option<Psk>, info: Info) -> Result<()> {
-        match &id {
-            Identifier::PskId(_id) => {
-                self.psks.insert(id, (psk, info));
+            Identifier::PskId(pskid) => {
+                self.psks.insert(*pskid, psk);
                 Ok(())
             }
             _ => err(BadIdentifier),
         }
     }
 
-    fn keys(&self) -> Vec<(&Identifier, Vec<u8>)> {
-        let mut keys: Vec<(&Identifier, Vec<u8>)> = self
-            .ke_pks
+    pub fn insert_keys(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
+        if !self.keys.contains_key(&id) {
+            self.keys.insert(id, xkey);
+        }
+        Ok(())
+    }
+
+    pub fn exchange_keys(&self) -> Vec<(Identifier, Vec<u8>)> {
+        self.keys
             .iter()
-            .map(|(k, (x, _i))| (k, x.as_slice().to_vec()))
-            .collect();
-
-        let psks: Vec<(&Identifier, Vec<u8>)> = self
-            .psks
-            .iter()
-            .filter_map(|(k, (x, _i))| x.map(|x| (k, x.to_vec())))
-            .collect();
-
-        keys.extend(psks);
-        keys
+            .map(|(id, pk)| (*id, pk.as_slice().to_vec()))
+            .chain(self.psks.iter().map(|(pskid, psk)| ((*pskid).into(), psk.to_vec())))
+            .collect()
     }
 
-    fn iter(&self) -> Vec<(&Identifier, &Info)> {
-        let mut keys: Vec<(&Identifier, &Info)> = self.ke_pks.iter().map(|(k, (_x, i))| (k, i)).collect();
-
-        let psks: Vec<(&Identifier, &Info)> = self.psks.iter().map(|(k, (_x, i))| (k, i)).collect();
-
-        keys.extend(psks);
-        keys
-    }
-    fn iter_mut(&mut self) -> Vec<(&Identifier, &mut Info)> {
-        let mut ke_pks: Vec<(&Identifier, &mut Info)> = self.ke_pks.iter_mut().map(|(k, (_x, i))| (k, i)).collect();
-
-        let psks: Vec<(&Identifier, &mut Info)> = self.psks.iter_mut().map(|(k, (_x, i))| (k, i)).collect();
-
-        ke_pks.extend(psks);
-        ke_pks
+    pub fn cursors(&self) -> impl Iterator<Item = (&Identifier, &Cursor<Link>)> {
+        self.cursors.iter()
     }
 
-    fn remove(&mut self, id: &Identifier) {
-        self.ke_pks.borrow_mut().remove(id);
-        self.psks.borrow_mut().remove(id);
+    pub fn cursors_mut(&mut self) -> impl Iterator<Item = (&Identifier, &mut Cursor<Link>)> {
+        self.cursors.iter_mut()
+    }
+
+    pub fn cursors_size(&self) -> usize {
+        self.cursors.len()
+    }
+
+    pub fn remove(&mut self, id: &Identifier) {
+        self.cursors.borrow_mut().remove(id);
+        self.keys.borrow_mut().remove(id);
+        if let Identifier::PskId(pskid) = id {
+            self.psks.borrow_mut().remove(pskid);
+        }
     }
 }
 
-impl<Info: fmt::Display> fmt::Display for KeyMap<Info> {
+impl<Link> Default for KeyStore<Link> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Link: fmt::Display> fmt::Display for KeyStore<Link> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (k, (_x, i)) in self.ke_pks.iter() {
-            writeln!(f, "    <{}> => {}", hex::encode(&k.to_bytes()), i)?;
-        }
-        for (k, (_x, i)) in self.psks.iter() {
-            writeln!(f, "    <{}> => {}", hex::encode(&k.to_bytes()), i)?;
+        for (id, cursor) in self.cursors.iter() {
+            writeln!(f, "    <{}> => {}", hex::encode(&id.to_bytes()), cursor)?;
         }
         Ok(())
     }

@@ -49,7 +49,7 @@ where
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub(crate) public_payload: &'a Bytes,
     pub(crate) masked_payload: &'a Bytes,
-    pub(crate) publisher_private_key: &'a ed25519::SecretKey,
+    pub(crate) user_id: &'a UserIdentity<F>,
     pub(crate) _phantom: PhantomData<(F, Link)>,
 }
 
@@ -62,11 +62,14 @@ where
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        ctx.join(&store, self.link)?
-            .absorb(&self.publisher_private_key.public_key())?
+        ctx.join(&store, self.link)?;
+        self.user_id
+            .id
+            .sizeof(ctx)
+            .await?
             .absorb(self.public_payload)?
-            .mask(self.masked_payload)?
-            .ed25519(self.publisher_private_key, HashSig)?;
+            .mask(self.masked_payload)?;
+        let ctx = self.user_id.sizeof(ctx).await?;
         // TODO: Is both public and masked payloads are ok? Leave public only or masked only?
         Ok(ctx)
     }
@@ -85,11 +88,14 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?
-            .absorb(&self.publisher_private_key.public_key())?
+        ctx.join(store, self.link)?;
+        self.user_id
+            .id
+            .wrap(store, ctx)
+            .await?
             .absorb(self.public_payload)?
-            .mask(self.masked_payload)?
-            .ed25519(self.publisher_private_key, HashSig)?;
+            .mask(self.masked_payload)?;
+        let ctx = self.user_id.sign(ctx).await?;
         Ok(ctx)
     }
 }
@@ -98,7 +104,7 @@ pub struct ContentUnwrap<F, Link: HasLink> {
     pub(crate) link: <Link as HasLink>::Rel,
     pub(crate) public_payload: Bytes,
     pub(crate) masked_payload: Bytes,
-    pub(crate) publisher_public_key: ed25519::PublicKey,
+    pub(crate) user_id: UserIdentity<F>,
     pub(crate) _phantom: PhantomData<(F, Link)>,
 }
 
@@ -112,7 +118,7 @@ where
             link: <<Link as HasLink>::Rel as Default>::default(),
             public_payload: Bytes::default(),
             masked_payload: Bytes::default(),
-            publisher_public_key: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap(),
+            user_id: UserIdentity::default(),
             _phantom: PhantomData,
         }
     }
@@ -131,11 +137,14 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.join(store, &mut self.link)?
-            .absorb(&mut self.publisher_public_key)?
+        ctx.join(store, &mut self.link)?;
+        self.user_id
+            .id
+            .unwrap(store, ctx)
+            .await?
             .absorb(&mut self.public_payload)?
-            .mask(&mut self.masked_payload)?
-            .ed25519(&self.publisher_public_key, HashSig)?;
+            .mask(&mut self.masked_payload)?;
+        let ctx = self.user_id.verify(ctx).await?;
         Ok(ctx)
     }
 }

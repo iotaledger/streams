@@ -28,8 +28,6 @@
 #[macro_use]
 extern crate std;
 
-// mod identifier;
-
 /// Streams Message definitions and utils for wrapping/unwrapping.
 // mod message;
 
@@ -39,3 +37,6 @@ extern crate std;
 // TODO: REMOVE
 // pub use cstr_core;
 // pub use cty;
+
+/// Identity based Signature/Verification utilities
+// mod id;

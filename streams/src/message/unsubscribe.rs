@@ -47,7 +47,7 @@ use spongos::sponge::prp::PRP;
 
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) subscriber_private_key: &'a ed25519::SecretKey,
+    pub(crate) subscriber_id: &'a UserIdentity<F>,
     pub(crate) _phantom: PhantomData<(F, Link)>,
 }
 
@@ -59,11 +59,10 @@ where
     Link::Rel: 'a + Eq + SkipFallback<F>,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let store = EmptyLinkStore::<F, Link::Rel, ()>::default();
-        ctx.join(&store, self.link)?
-            .absorb(&self.subscriber_private_key.public_key())?
-            .commit()?
-            .ed25519(self.subscriber_private_key, HashSig)?;
+        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
+        ctx.join(&store, self.link)?;
+        self.subscriber_id.id.sizeof(ctx).await?.commit()?;
+        let ctx = self.subscriber_id.sizeof(ctx).await?;
         Ok(ctx)
     }
 }
@@ -81,17 +80,16 @@ where
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?
-            .absorb(&self.subscriber_private_key.public_key())?
-            .commit()?
-            .ed25519(self.subscriber_private_key, HashSig)?;
+        ctx.join(store, self.link)?;
+        self.subscriber_id.id.wrap(store, ctx).await?.commit()?;
+        let ctx = self.subscriber_id.sign(ctx).await?;
         Ok(ctx)
     }
 }
 
 pub struct ContentUnwrap<F, Link: HasLink> {
-    pub(crate) link: Link::Rel,
-    pub(crate) subscriber_public_key: ed25519::PublicKey,
+    pub(crate) link: <Link as HasLink>::Rel,
+    pub(crate) subscriber_id: UserIdentity<F>,
     _phantom: PhantomData<(F, Link)>,
 }
 
@@ -99,7 +97,7 @@ impl<F, Link: HasLink> Default for ContentUnwrap<F, Link> {
     fn default() -> Self {
         Self {
             link: Default::default(),
-            subscriber_public_key: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap(),
+            subscriber_id: UserIdentity::default(),
             _phantom: Default::default(),
         }
     }
@@ -118,10 +116,9 @@ where
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.join(store, &mut self.link)?
-            .absorb(&mut self.subscriber_public_key)?
-            .commit()?
-            .ed25519(&self.subscriber_public_key, HashSig)?;
+        ctx.join(store, &mut self.link)?;
+        self.subscriber_id.id.unwrap(store, ctx).await?.commit()?;
+        self.subscriber_id.verify(ctx).await?;
         Ok(ctx)
     }
 }

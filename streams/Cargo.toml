@@ -19,6 +19,8 @@ duh = ["LETS/duh", "futures", "async-recursion"]
 tangle-client = ["LETS/tangle-client"]
 # Enable re-export of wasm-compatible IOTA-Tangle transport client from LETS (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`)
 tangle-client-wasm = ["LETS/tangle-client-wasm"]
+# Enable Iota Identity logic for User identification/authentication
+did = ["LETS/did"]
 
 [dependencies]
 # Local dependencies

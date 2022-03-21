@@ -56,8 +56,8 @@ use spongos::sponge::prp::PRP;
 pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) link: &'a <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
-    pub(crate) subscriber_private_key: &'a ed25519::SecretKey,
-    pub(crate) author_public_key: &'a ed25519::PublicKey,
+    pub(crate) subscriber_id: &'a UserIdentity<F>,
+    pub(crate) author_ke_pk: &'a x25519::PublicKey,
     pub(crate) _phantom: PhantomData<(Link, F)>,
 }
 
@@ -71,9 +71,10 @@ where
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
         ctx.join(&store, self.link)?
-            .x25519(&self.author_public_key.try_into()?, &self.unsubscribe_key)?
-            .mask(&self.subscriber_private_key.public_key())?
-            .ed25519(self.subscriber_private_key, HashSig)?;
+            .x25519(self.author_ke_pk, &self.unsubscribe_key)?;
+        self.subscriber_id.id.sizeof(ctx).await?;
+        ctx.absorb(&self.subscriber_id.ke_kp()?.1)?;
+        let ctx = self.subscriber_id.sizeof(ctx).await?;
         Ok(ctx)
     }
 }
@@ -92,9 +93,10 @@ where
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
         ctx.join(store, self.link)?
-            .x25519(&self.author_public_key.try_into()?, &self.unsubscribe_key)?
-            .mask(&self.subscriber_private_key.public_key())?
-            .ed25519(self.subscriber_private_key, HashSig)?;
+            .x25519(self.author_ke_pk, &self.unsubscribe_key)?;
+        self.subscriber_id.id.wrap(store, ctx).await?;
+        ctx.absorb(&self.subscriber_id.ke_kp()?.1)?;
+        let ctx = self.subscriber_id.sign(ctx).await?;
         Ok(ctx)
     }
 }
@@ -102,8 +104,9 @@ where
 pub struct ContentUnwrap<'a, F, Link: HasLink> {
     pub link: <Link as HasLink>::Rel,
     pub unsubscribe_key: NBytes<U32>,
-    pub subscriber_public_key: ed25519::PublicKey,
-    author_private_key: &'a ed25519::SecretKey,
+    pub subscriber_id: UserIdentity<F>,
+    pub subscriber_xkey: x25519::PublicKey,
+    author_ke_sk: &'a x25519::SecretKey,
     _phantom: PhantomData<(F, Link)>,
 }
 
@@ -113,14 +116,15 @@ where
     Link: HasLink,
     <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
 {
-    pub fn new(author_private_key: &'a ed25519::SecretKey) -> Self {
-        Self {
+    pub fn new(author_ke_sk: &'a x25519::SecretKey) -> Result<Self> {
+        Ok(Self {
             link: Default::default(),
             unsubscribe_key: Default::default(),
-            subscriber_public_key: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap(),
-            author_private_key,
+            subscriber_id: UserIdentity::default(),
+            subscriber_xkey: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
+            author_ke_sk,
             _phantom: PhantomData,
-        }
+        })
     }
 }
 
@@ -138,9 +142,10 @@ where
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
         ctx.join(store, &mut self.link)?
-            .x25519(&self.author_private_key.try_into()?, &mut self.unsubscribe_key)?
-            .mask(&mut self.subscriber_public_key)?
-            .ed25519(&self.subscriber_public_key, HashSig)?;
+            .x25519(self.author_ke_sk, &mut self.unsubscribe_key)?;
+        self.subscriber_id.id.unwrap(store, ctx).await?;
+        ctx.absorb(&mut self.subscriber_xkey)?;
+        let ctx = self.subscriber_id.verify(ctx).await?;
         Ok(ctx)
     }
 }

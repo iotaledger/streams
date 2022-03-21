@@ -9,7 +9,7 @@ use iota_streams::{
             size_t,
             uint8_t,
         },
-        identifier::Identifier,
+        id::Identifier,
         message::Cursor,
         transport::tangle::MsgId,
     },
@@ -133,12 +133,12 @@ pub extern "C" fn drop_user_state(s: *const UserState) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_link_from_state(state: *const UserState, pub_key: *const PublicKey) -> *const Address {
+pub unsafe extern "C" fn get_link_from_state(state: *const UserState, id: *const Identifier) -> *const Address {
     state.as_ref().map_or(null(), |state_ref| {
-        pub_key.as_ref().map_or(null(), |pub_key| {
-            let pk_str = hex::encode(pub_key.as_slice());
-            for (pk, cursor) in state_ref {
-                if pk == &pk_str {
+        id.as_ref().map_or(null(), |id| {
+            let id_str = hex::encode(id.as_bytes());
+            for (id, cursor) in state_ref {
+                if id == &id_str {
                     return safe_into_ptr(cursor.link.clone());
                 }
             }
@@ -193,6 +193,7 @@ mod client_details {
     use super::*;
     use iota_streams::app::transport::{
         tangle::client::{
+            Details as ApiDetails,
             iota_client::{
                 bee_rest_api::types::{
                     dtos::LedgerInclusionStateDto,
@@ -200,7 +201,6 @@ mod client_details {
                 },
                 MilestoneResponse,
             },
-            Details as ApiDetails,
         },
         TransportDetails as _,
     };
@@ -528,8 +528,8 @@ impl<'a> From<(&'a Bytes, &'a Bytes)> for PacketPayloads {
     }
 }
 
-impl From<(PublicKey, Bytes, Bytes)> for PacketPayloads {
-    fn from(signed_payloads: (PublicKey, Bytes, Bytes)) -> Self {
+impl From<(Identifier, Bytes, Bytes)> for PacketPayloads {
+    fn from(signed_payloads: (Identifier, Bytes, Bytes)) -> Self {
         let payloads = (signed_payloads.1, signed_payloads.2);
         PacketPayloads::from(payloads)
     }
@@ -613,7 +613,7 @@ fn handle_message_contents(m: &UnwrappedMessage) -> PacketPayloads {
         } => (p, m).into(),
 
         MessageContent::SignedPacket {
-            pk: _,
+            id: _,
             public_payload: p,
             masked_payload: m,
         } => (p, m).into(),

@@ -20,11 +20,11 @@ use iota_streams_core::{
 use super::*;
 
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
-    let mut author = Author::new("AUTHOR9SEED", ChannelType::SingleBranch, transport.clone());
+    let mut author = Author::new("AUTHOR9SEED", ChannelType::SingleBranch, transport.clone()).await;
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());
+    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
 
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone());
+    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone()).await;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
