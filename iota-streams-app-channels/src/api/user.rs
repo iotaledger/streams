@@ -71,30 +71,14 @@ const INIT_MESSAGE_NUM: u32 = 2; // First non-reserved message number
 
 /// Sequence wrapping object
 ///
-/// When using multibranch mode, this wrapping object contains the (wrapped) sequence message ([`WrappedMessage`]) to be
+/// This wrapping object contains the (wrapped) sequence message ([`WrappedMessage`]) to be
 /// sent and the [`Cursor`] of the user sending it.
-///
-/// When using single-branch mode, only the [`Cursor`] is needed, and no sequence message is sent.
-pub enum WrappedSequence<F, Link>
+pub struct WrappedSequence<F, Link>
 where
     Link: HasLink,
 {
-    MultiBranch(Cursor<Link::Rel>, WrappedMessage<F, Link>),
-    // Consider removing this option and returning Err instead
-    None,
-}
-
-impl<F, Link> WrappedSequence<F, Link>
-where
-    Link: HasLink,
-{
-    pub fn multi_branch(cursor: Cursor<Link::Rel>, wrapped_message: WrappedMessage<F, Link>) -> Self {
-        Self::MultiBranch(cursor, wrapped_message)
-    }
-
-    pub fn none() -> Self {
-        Self::None
-    }
+    pub cursor: Cursor<Link::Rel>,
+    pub wrapped_message: WrappedMessage<F, Link>,
 }
 
 pub struct User<F, Link, LG, LS>
@@ -781,9 +765,9 @@ where
                     prepared.wrap(&self.link_store).await?
                 };
 
-                Ok(WrappedSequence::multi_branch(original_cursor.clone(), wrapped))
-            }
-            None => Ok(WrappedSequence::none()),
+                Ok(WrappedSequence { cursor: original_cursor.clone(), wrapped_message: wrapped })
+            },
+            None => err(CursorNotFound)
         }
     }
 

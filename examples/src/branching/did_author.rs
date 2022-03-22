@@ -90,12 +90,12 @@ pub async fn example(transport: Client) -> Result<()> {
     let pskid = pskid_from_psk(&psk);
 
     println!("Making Author...");
-    let author_id = UserIdentity::new_with_did_private_key(did_info).await?;
+    let mut author_id = UserIdentity::new_with_did_private_key(did_info).await?;
+    author_id.insert_did_client(transport.clone().to_did_client().await?);
     let mut author = UserBuilder::new()
         .with_identity(author_id)
         .with_transport(transport.clone())
         .build();
-    author.insert_did_client(transport.clone().to_did_client().await?);
 
     println!("Making Subscribers...");
     let subscriberA_id = UserIdentity::new_with_did_private_key(sub_did_info).await?;

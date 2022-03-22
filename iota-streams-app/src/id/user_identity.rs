@@ -247,7 +247,7 @@ impl<F: PRP> UserIdentity<F> {
     }
 
     /// Retrieve the PSK from a user instance
-    pub fn get_psk(&self) -> Result<Psk> {
+    pub fn psk(&self) -> Result<Psk> {
         match &self.keys {
             Keys::Psk(psk) => Ok(*psk),
             _ => err(NotAPskUser)

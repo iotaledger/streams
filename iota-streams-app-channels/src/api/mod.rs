@@ -5,7 +5,9 @@ pub mod key_store;
 /// type_complexity to be determined in future issue
 
 /// Base level api for user implementation
-pub mod user;
+mod user;
+
+pub use user::User;
 
 /// Tangle-specific Channel API.
 #[cfg(all(feature = "tangle"))]

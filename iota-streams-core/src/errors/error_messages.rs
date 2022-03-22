@@ -178,6 +178,8 @@ pub enum Errors {
     DIDMissing,
     /// User is not a DID user
     NotDIDUser,
+    /// Cursor is not found in Key Store
+    CursorNotFound,
 
     //////////
     // User Recovery
