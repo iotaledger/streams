@@ -62,12 +62,7 @@ impl<'a, F> ContentWrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F: PRP> message::ContentSizeof<F> for ContentWrap<'a, F> {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let mut ctx = self
-            .user_id
-            .id
-            .sizeof(ctx)
-            .await?
-            .absorb(&self.user_id.ke_kp()?.1)?;
+        let mut ctx = self.user_id.id.sizeof(ctx).await?.absorb(&self.user_id.ke_kp()?.1)?;
         ctx = self.user_id.sizeof(ctx).await?;
         Ok(ctx)
     }
@@ -131,12 +126,7 @@ where
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mut ctx = self
-            .author_id
-            .id
-            .unwrap(_store, ctx)
-            .await?
-            .absorb(&mut self.ke_pk)?;
+        let mut ctx = self.author_id.id.unwrap(_store, ctx).await?.absorb(&mut self.ke_pk)?;
         ctx = self.author_id.verify(ctx).await?;
         Ok(ctx)
     }

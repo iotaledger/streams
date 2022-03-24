@@ -222,7 +222,7 @@ pub use messages::{
     Messages,
 };
 
-//pub mod test;
+// pub mod test;
 
 mod user_builder;
-pub use user_builder::*;
+pub use user_builder::UserBuilder;

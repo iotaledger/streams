@@ -1,9 +1,18 @@
+use crate::api::{
+    tangle::{
+        Transport,
+        User,
+    },
+    DefaultF,
+};
+use iota_streams_app::{
+    id::{
+        Identifier,
+        UserIdentity,
+    },
+    transport::tangle::client::Client,
+};
 use std::mem::take;
-use iota_streams_app::id::{Identifier, UserIdentity};
-use iota_streams_app::transport::tangle::client::Client;
-use crate::api::DefaultF;
-use crate::api::tangle::{Transport, User};
-
 
 /// Builder instance for a Streams User
 pub struct UserBuilder<Trans: Transport, F> {
@@ -14,7 +23,7 @@ pub struct UserBuilder<Trans: Transport, F> {
     /// Transport Client instance
     transport: Trans,
     /// Represents whether the User Instance will automatically sync before each message operation
-    auto_sync: bool
+    auto_sync: bool,
 }
 
 impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
@@ -85,7 +94,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     pub fn build(&mut self) -> User<Trans> {
         let mut user = User {
             user: crate::api::User::gen(take(&mut self.id), take(&mut self.alias), self.auto_sync),
-            transport: self.transport.clone()
+            transport: self.transport.clone(),
         };
         // If User is using a Psk as their base Identifier,
         if let Identifier::PskId(pskid) = *user.user.id() {
@@ -95,7 +104,3 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
         user
     }
 }
-
-
-
-

@@ -157,12 +157,8 @@ where
     LS: LinkStore<F, Link::Rel> + Default,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
-    pub fn gen(
-        user_id: UserIdentity<F>,
-        alias: Option<UserIdentity<F>>,
-        auto_sync: bool,
-    ) -> Self {
-        //TODO: Remove different channel types, encoding and uniform payload
+    pub fn gen(user_id: UserIdentity<F>, alias: Option<UserIdentity<F>>, auto_sync: bool) -> Self {
+        // TODO: Remove different channel types, encoding and uniform payload
         let message_encoding = ENCODING.as_bytes().to_vec();
 
         Self {
@@ -310,7 +306,7 @@ where
             _ => {
                 self.key_store.insert_cursor(author_id.id, cursor.clone());
                 self.key_store.insert_keys(author_id.id, author_ke_pk)?;
-            },
+            }
         };
 
         if !self.id().is_psk() {
@@ -765,9 +761,12 @@ where
                     prepared.wrap(&self.link_store).await?
                 };
 
-                Ok(WrappedSequence { cursor: original_cursor.clone(), wrapped_message: wrapped })
-            },
-            None => err(CursorNotFound)
+                Ok(WrappedSequence {
+                    cursor: original_cursor.clone(),
+                    wrapped_message: wrapped,
+                })
+            }
+            None => err(CursorNotFound),
         }
     }
 
@@ -847,7 +846,7 @@ where
                 } else {
                     err(UserNotRegistered)
                 }
-            },
+            }
         }
     }
 
@@ -1161,8 +1160,7 @@ where
             let mut ctx = wrap::Context::new(&mut buf[..]);
             let prng = prng::from_seed::<F>("IOTA Streams Channels app", pwd);
             let key = NBytes::<U32>(prng.gen_arr("user export key"));
-            ctx.absorb(Uint8(VERSION))?
-                .absorb(External(&key))?;
+            ctx.absorb(Uint8(VERSION))?.absorb(External(&key))?;
             let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
             self.wrap(&store, &mut ctx).await?;
             try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;

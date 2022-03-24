@@ -26,6 +26,7 @@ use iota_streams_core::{
         BadIdentifier,
         BadOneof,
         NoSignatureKeyPair,
+        NotAPskUser,
     },
     Result,
     WrappedError,
@@ -109,7 +110,6 @@ use iota_streams_core::{
         SignatureMismatch,
     },
 };
-use iota_streams_core::Errors::NotAPskUser;
 #[cfg(feature = "did")]
 use iota_streams_ddml::types::Bytes;
 use iota_streams_ddml::{
@@ -250,7 +250,7 @@ impl<F: PRP> UserIdentity<F> {
     pub fn psk(&self) -> Result<Psk> {
         match &self.keys {
             Keys::Psk(psk) => Ok(*psk),
-            _ => err(NotAPskUser)
+            _ => err(NotAPskUser),
         }
     }
 

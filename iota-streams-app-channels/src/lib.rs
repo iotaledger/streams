@@ -45,8 +45,8 @@ pub use api::tangle::{
     Address,
     MessageContent,
     UnwrappedMessage,
-    UserBuilder,
     User,
+    UserBuilder,
 };
 
 #[cfg(any(feature = "client", feature = "wasm-client"))]

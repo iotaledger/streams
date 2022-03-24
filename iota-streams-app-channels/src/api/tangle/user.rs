@@ -1,5 +1,5 @@
-use core::fmt;
 use async_recursion::async_recursion;
+use core::fmt;
 use futures::{
     future,
     TryFutureExt,
@@ -43,7 +43,6 @@ use crate::{
 };
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore>;
-
 
 /// Baseline User api object. Contains the api user implementation as well as the transport object
 pub struct User<Trans> {
@@ -205,7 +204,10 @@ impl<Trans: Transport + Clone> User<Trans> {
         announcement: &Address,
         transport: Trans,
     ) -> Result<Self> {
-        let mut user = User { user: UserImp::gen(id, alias, true), transport };
+        let mut user = User {
+            user: UserImp::gen(id, alias, true),
+            transport,
+        };
         user.user.create_channel(0)?;
 
         let ann = user.user.announce().await?;
@@ -223,12 +225,13 @@ impl<Trans: Transport + Clone> User<Trans> {
     async fn send_sequence(&mut self, wrapped_sequence: WrappedSequence) -> Result<Option<Address>> {
         let WrappedSequence {
             cursor,
-            wrapped_message: WrappedMessage {
-                message,
-                wrapped: wrapped_state
-            }
+            wrapped_message:
+                WrappedMessage {
+                    message,
+                    wrapped: wrapped_state,
+                },
         } = wrapped_sequence;
-        
+
         self.transport.send_message(&message).await?;
         self.user.commit_sequence(cursor, wrapped_state, MsgInfo::Sequence)
     }
@@ -263,7 +266,7 @@ impl<Trans: Transport + Clone> User<Trans> {
 
     /// Send an announcement message, generating a channel.
     pub async fn send_announce(&mut self) -> Result<Address> {
-        //TODO: Implement channel id inclusion for multiple channel ownership
+        // TODO: Implement channel id inclusion for multiple channel ownership
         self.user.create_channel(0)?;
         let msg = self.user.announce().await?;
         try_or!(
