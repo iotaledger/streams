@@ -24,9 +24,6 @@ jobs:
         package:
           - "."
           - "examples"
-          - "bindings/wasm"
-          # C bindings currently contains a bunch of warnings that need fixing
-          # - "bindings/c"  
 
     steps:
       - uses: actions/checkout@v2
