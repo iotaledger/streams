@@ -19,6 +19,6 @@ To check out our examples and write and test your own code, you will need an IDE
 If you need guidance or materials for your preferred programming language, you can use the following resources:
 
 - [Rust](https://www.rust-lang.org/learn/get-started).
-- [JavaScript](https://www.w3schools.com/js/).
+- [JavaScript](https://www.w3schools.com/js/). 
 - [Node.js](https://nodejs.org/en/docs/guides/). 
 - [MIT's introductory course to programming](https://ocw.mit.edu/courses/intro-programming/#general).

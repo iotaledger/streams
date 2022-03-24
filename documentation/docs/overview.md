@@ -104,7 +104,7 @@ issuing and retrieving messages from an incorrect sequencing combination (that i
 sends a message linked to that same Msg1 before seeing and registering the message from Sub1, thus forking the stream). 
 Multiple publishers can be used but it is important to ensure that they do not try to send messages in parallel to 
 avoid this conflict. In the future, this may be an enforced limitation on single branch implementations to remove the 
-possibility altogether.
+possibility altogether. 
 
 :::
 
