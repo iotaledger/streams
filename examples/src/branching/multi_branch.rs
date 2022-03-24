@@ -1,14 +1,14 @@
 use iota_streams::{
     app::{
-        message::HasLink,
         id::UserIdentity,
+        message::HasLink,
     },
     app_channels::api::{
         psk_from_seed,
         pskid_from_psk,
         tangle::{
-            UserBuilder,
             Transport,
+            UserBuilder,
         },
     },
     core::{
@@ -333,7 +333,10 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     let tp = subscriberC
         .send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)
         .await;
-    assert!(tp.is_err(), "Subscriber C is a PSK user and should not be able to send messages");
+    assert!(
+        tp.is_err(),
+        "Subscriber C is a PSK user and should not be able to send messages"
+    );
     println!("SubscriberC was not able to send tagged packet, as expected");
 
     println!("\nAuthor fetching transactions...");

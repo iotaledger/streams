@@ -1,9 +1,9 @@
 use iota_streams::{
     app::id::UserIdentity,
     app_channels::api::tangle::{
-        UserBuilder,
-        User,
         Transport,
+        User,
+        UserBuilder,
     },
     core::{
         assert,
@@ -94,8 +94,9 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         UserIdentity::new(seed).await,
         None,
         &announcement_link,
-        transport.clone()
-    ).await?;
+        transport.clone(),
+    )
+    .await?;
     new_author.sync_state().await?;
 
     let state = new_author.fetch_state()?;

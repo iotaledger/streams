@@ -11,7 +11,10 @@ use identity::{
 };
 use iota_streams::{
     app::{
-        id::DIDInfo,
+        id::{
+            DIDInfo,
+            UserIdentity,
+        },
         transport::tangle::client::Client,
     },
     app_channels::{
@@ -30,7 +33,6 @@ use iota_streams::{
     },
     ddml::types::*,
 };
-use iota_streams::app::id::UserIdentity;
 
 use super::utils;
 
