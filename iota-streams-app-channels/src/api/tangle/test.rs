@@ -1,8 +1,4 @@
 #![allow(non_snake_case)]
-use crate::api::tangle::{
-    Author,
-    Subscriber,
-};
 use iota_streams_app::message::HasLink;
 
 use iota_streams_core::{
@@ -20,11 +16,11 @@ use iota_streams_core::{
 use super::*;
 
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
-    let mut author = Author::new("AUTHOR9SEED", transport.clone()).await;
+    let mut author = User::new("AUTHOR9SEED", transport.clone()).await;
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
+    let mut subscriberA = User::new("SUBSCRIBERA9SEED", transport.clone()).await;
 
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone()).await;
+    let mut subscriberB = User::new("SUBSCRIBERB9SEED", transport.clone()).await;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -124,17 +120,17 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     }
 
     let subAdump = subscriberA.export("pwdSubA").await.unwrap();
-    let _subscriberA2 = Subscriber::import(subAdump.as_ref(), "pwdSubA", transport.clone())
+    let _subscriberA2 = User::import(subAdump.as_ref(), "pwdSubA", transport.clone())
         .await
         .unwrap();
 
     let subBdump = subscriberB.export("pwdSubB").await.unwrap();
-    let _subscriberB2 = Subscriber::import(subBdump.as_ref(), "pwdSubB", transport.clone())
+    let _subscriberB2 = User::import(subBdump.as_ref(), "pwdSubB", transport.clone())
         .await
         .unwrap();
 
     let authordump = author.export("pwdAuthor").await.unwrap();
-    let _author2 = Author::import(authordump.as_ref(), "pwdAuthor", transport)
+    let _author2 = User::import(authordump.as_ref(), "pwdAuthor", transport)
         .await
         .unwrap();
 

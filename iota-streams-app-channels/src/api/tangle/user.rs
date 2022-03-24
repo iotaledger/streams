@@ -577,7 +577,7 @@ impl<Trans: Transport + Clone> User<Trans> {
 
 impl<Trans: Clone> fmt::Display for User<Trans> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<{}>\n{}", self.id().to_string(), self.user.key_store)
+        write!(f, "<{}>\n{}", self.id(), self.user.key_store)
     }
 }
 

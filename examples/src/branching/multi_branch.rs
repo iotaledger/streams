@@ -8,6 +8,7 @@ use iota_streams::{
         pskid_from_psk,
         tangle::{
             Transport,
+            User,
             UserBuilder,
         },
     },
@@ -34,14 +35,8 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         .with_transport(transport.clone())
         .build();
 
-    let mut subscriberA = UserBuilder::new()
-        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED").await)
-        .with_transport(transport.clone())
-        .build();
-    let mut subscriberB = UserBuilder::new()
-        .with_identity(UserIdentity::new("SUBSCRIBERB9SEED").await)
-        .with_transport(transport.clone())
-        .build();
+    let mut subscriberA = User::new("SUBSCRIBERA9SEED", transport.clone()).await;
+    let mut subscriberB = User::new("SUBSCRIBERB9SEED", transport.clone()).await;
     let mut subscriberC = UserBuilder::new()
         .with_identity(UserIdentity::new_from_psk(pskid, psk).await)
         .with_transport(transport.clone())

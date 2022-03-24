@@ -752,13 +752,7 @@ mod tests {
         rc::Rc,
     };
 
-    use crate::{
-        api::tangle::BucketTransport,
-        Address,
-        Author,
-        ChannelType,
-        Subscriber,
-    };
+    use crate::{api::tangle::BucketTransport, Address, User};
     use iota_streams_core::Result;
 
     type Transport = Rc<RefCell<BucketTransport>>;
@@ -780,7 +774,7 @@ mod tests {
             .await?;
 
         // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
-        let mut subscriber = Subscriber::new("subscriber", transport).await;
+        let mut subscriber = User::new("subscriber", transport).await;
         subscriber.receive_announcement(&announcement_link).await?;
         let n_msgs = subscriber.sync_state().await?;
         assert_eq!(n_msgs, 4); // keyload, 2 signed packets from author, and last signed-packet from herself
@@ -822,9 +816,9 @@ mod tests {
     }
 
     /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport
-    async fn author_subscriber_fixture() -> Result<(Author<Transport>, Subscriber<Transport>, Address, Transport)> {
+    async fn author_subscriber_fixture() -> Result<(User<Transport>, User<Transport>, Address, Transport)> {
         let transport = Rc::new(RefCell::new(BucketTransport::new()));
-        let mut author = Author::new("author", ChannelType::MultiBranch, transport.clone()).await;
+        let mut author = User::new("author", transport.clone()).await;
         let announcement_link = author.send_announce().await?;
         let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, transport.clone()).await?;
         Ok((author, subscriber, announcement_link, transport))
@@ -832,11 +826,11 @@ mod tests {
 
     async fn subscriber_fixture(
         seed: &str,
-        author: &mut Author<Transport>,
+        author: &mut User<Transport>,
         announcement_link: &Address,
         transport: Transport,
-    ) -> Result<Subscriber<Transport>> {
-        let mut subscriber = Subscriber::new(seed, transport).await;
+    ) -> Result<User<Transport>> {
+        let mut subscriber = User::new(seed, transport).await;
         subscriber.receive_announcement(announcement_link).await?;
         let subscription = subscriber.send_subscribe(announcement_link).await?;
         author.receive_subscribe(&subscription).await?;
