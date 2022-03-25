@@ -371,9 +371,9 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `keys`  - Iterable of [`Permission`] to be included in message
-    pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
+    pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: &'a I) -> Result<(Address, Option<Address>)>
     where
-        I: IntoIterator<Item = &'a Permission>,
+        &'a I: IntoIterator<Item = &'a Permission>,
     {
         let msg = self.user.share_keyload(link_to, keys).await?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await

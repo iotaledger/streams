@@ -112,11 +112,11 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     let sub_a_perm = Permission::ReadWrite(subscriberA.id().clone(), PermissionDuration::Perpetual);
     let sub_b_perm = Permission::Read(subscriberB.id().clone());
     let psk_perm = Permission::Read(pskid.into());
-    let permissions = vec![&sub_a_perm, &sub_b_perm, &psk_perm];
+    let permissions = vec![sub_a_perm, sub_b_perm, psk_perm];
 
     println!("\nShare keyload for subscribers [SubscriberA, SubscriberB, PSK]");
     let previous_msg_link = {
-        let (msg, seq) = author.send_keyload(&announcement_link, permissions).await?;
+        let (msg, seq) = author.send_keyload(&announcement_link, &permissions).await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         assert!(seq.is_none());
         print!("  Author     : {}", author);

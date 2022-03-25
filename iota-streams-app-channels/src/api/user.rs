@@ -143,7 +143,7 @@ where
     // List of keyload links with their attached permisisons
     pub(crate) permissions: HashMap<Link, Vec<Permission> >,
 
-    // List of Keyloads linked to their current tip
+    // Current tip: Keyload link
     pub(crate) keyloads: HashMap<Link, Link>,
 }
 
@@ -524,10 +524,10 @@ where
     pub fn prepare_keyload<'a, 'b, I>(
         &'a self,
         link_to: &'a Link,
-        keys: I,
+        keys: &'b I,
     ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>>
     where
-        I: IntoIterator<Item = &'b Permission>,
+        &'b I: IntoIterator<Item = &'b Permission>,
     {
         match self.seq_no() {
             Some(seq_no) => {
@@ -581,29 +581,39 @@ where
 
     /// Create keyload message with a new session key shared with recipients
     /// identified by pre-shared key IDs and by Ed25519 public keys.
-    pub async fn share_keyload<'a, I>(&mut self, link_to: &Link, keys: I) -> Result<WrappedMessage<F, Link>>
+    pub async fn share_keyload<'a, I>(&mut self, link_to: &Link, keys: &'a I) -> Result<WrappedMessage<F, Link>>
     where
-        I: IntoIterator<Item = &'a Permission>,
+        &'a I: IntoIterator<Item = &'a Permission>,
     {
         let prep = self.prepare_keyload(link_to, keys)?;
         let res = prep.wrap(&self.link_store).await;
-        res
-        /* 
+
         match res {
             Ok(wm) => {
-                let prev_link = link_to;
                 let next_link = wm.wrapped.link.clone();
-                self.handle_permissions(&next_link, next_link, keys.into_iter().collect());
+                self.handle_permissions(link_to, next_link, keys.into_iter().map(|p| p.clone()).collect());
                 Ok(wm)
             }
             Err(e) => Err(e),
-        }*/
+        }
     }
     
     /// Create keyload message with a new session key shared with all Subscribers
     /// known to Author.
     pub async fn share_keyload_for_everyone(&mut self, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
-        self.prepare_keyload_for_everyone(link_to)?.wrap(&self.link_store).await
+        let keys = self.key_store.cursors();
+        let perms: Vec<Permission> = keys.into_iter().map(|k| Permission::Read(*k.0)).collect();
+        let prep = self.prepare_keyload(link_to, &perms)?;
+        let res = prep.wrap(&self.link_store).await;
+
+        match res {
+            Ok(wm) => {
+                let next_link = wm.wrapped.link.clone();
+                self.handle_permissions(link_to, next_link, perms);
+                Ok(wm)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     pub async fn unwrap_keyload<'a>(
@@ -741,8 +751,6 @@ where
         }
     }
 
-
-
     /// Prepare SignedPacket message.
     pub fn prepare_signed_packet<'a>(
         &'a self,
@@ -782,9 +790,18 @@ where
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<WrappedMessage<F, Link>> {
-        self.prepare_signed_packet(link_to, public_payload, masked_payload)?
+        let res = self.prepare_signed_packet(link_to, public_payload, masked_payload)?
             .wrap(&self.link_store)
-            .await
+            .await;
+        match res {
+            Ok(wm) => {
+                // New link
+                let next_link = wm.wrapped.link.clone();
+                self.update_permissions(link_to, next_link);
+                Ok(wm)
+            },
+            Err(e) => Err(e)
+        }
     }
 
     pub async fn unwrap_signed_packet<'a>(
@@ -829,7 +846,7 @@ where
         }
 
         // Update keyload permissions link
-        *self.keyloads.get_mut(&prev_link).unwrap() = msg.link.clone();
+        self.update_permissions(&prev_link, msg.link.clone());
 
         let body = (content.user_id.id, content.public_payload, content.masked_payload);
         Ok(GenericMessage::new(msg.link.clone(), prev_link, body))
@@ -866,14 +883,30 @@ where
     /// Create a tagged (ie. MACed) message with public and masked payload.
     /// Tagged messages must be linked to a secret spongos state, ie. keyload or a message linked to keyload.
     pub async fn tag_packet(
-        &self,
+        &mut self,
         link_to: &Link,
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<WrappedMessage<F, Link>> {
-        self.prepare_tagged_packet(link_to, public_payload, masked_payload)?
+        let res = self.prepare_tagged_packet(link_to, public_payload, masked_payload)?
             .wrap(&self.link_store)
-            .await
+            .await;
+        match res {
+            Ok(wm) => {
+                // New link
+                let next_link = wm.wrapped.link.clone();
+                self.update_permissions(link_to, next_link);
+                Ok(wm)
+            },
+            Err(e) => Err(e)
+        }
+    }
+
+    fn update_permissions(&mut self, old_link: &Link, next_link: Link) {
+        // Get old keyload assigned. Unwrap. If its None we couldnt do link_to anyway
+        let old_keyload_link = self.keyloads.remove(old_link).unwrap();
+        // Update keyload permissions link
+        self.keyloads.insert(next_link, old_keyload_link);
     }
 
     pub async fn unwrap_tagged_packet(
@@ -909,7 +942,7 @@ where
 
         // Always update permissions link regardless, we cannot check permissions
         // TODO: Doesnt exist in public branch?
-        *self.keyloads.get_mut(&prev_link).unwrap() = msg.link.clone();
+        self.update_permissions(&prev_link, msg.link.clone());
 
         let body = (content.public_payload, content.masked_payload);
         Ok(GenericMessage::new(msg.link.clone(), prev_link, body))
