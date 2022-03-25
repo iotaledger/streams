@@ -1,5 +1,5 @@
 ---
-description: "The Streams framework is intended to be a secure message verification and protection protocol for sending data over a given transport layer"
+description: The Streams framework is a secure message verification and protection protocol for sending data over a given transport layer.
 image: /img/overview/layered_overview.svg
 keywords:
 - layered overview
@@ -14,14 +14,14 @@ keywords:
 ---
 # Overview
 
-The IOTA Streams framework is intended to be a secure message verification and protection protocol for sending data over a given transport layer. 
+The IOTA Streams framework is a secure message verification and protection protocol for sending data over a given transport layer. 
 
-The Channels protocol is designed as a replacement for the MAM library. This was used for sending data using the Tangle as the primary transportation mechanism. The channels themselves can be structured in different ways with any arbitrary combination of publishers and subscribers (although each channel can only be hosted by a single author instance).
+The Channels protocol is designed as a replacement for the MAM library. This was used for sending data using the Tangle as the primary transport mechanism. You can structure the channels in different ways with any arbitrary combination of publishers and subscribers (although each channel can only be hosted by a single author instance).
 
 
-# Channels Protocol
+## Channels Protocol
 
-The Channels protocol provides the high-level API tools necessary for authors and subscribers to be generated and interact with the Tangle. 
+The Channels protocol provides the high-level API tools necessary for you to generate authors and subscribers and interact with the Tangle. 
 
 ## Authors
 
@@ -54,7 +54,7 @@ During the processing of subscription messages, public keys are masked and provi
 
 ### Pre-Shared Keys
 
-A pre-shared key is a predefined key shared between users using other means than the subscription process noted above. These keys can be used to provide access restrictions to a stream 
+A pre-shared key is a predefined key shared between users using other means than the [subscription process](#subscribers). These keys can be used to provide access restrictions to a stream 
 without the need for a subscription process. 
 
 :::note
@@ -63,7 +63,7 @@ The security and transportation of these pre-shared keys must be ensured by the 
 
 :::
 
-## Sequencing
+### Sequencing
 
 Sequencing is the methodology built within streams that allows message identifiers to be sequentially generated regardless of the shape of the channel. Messages are identified by an indexation position within the Tangle. They are generated using several pieces of collected information that includes:
 
@@ -108,7 +108,7 @@ possibility altogether.
 
 :::
 
-### Multi Branch Sequencing 
+#### Multi Branch Sequencing 
 
 In a multi-branch implementation, the sequencing state of each user will be updated independently after each message is sent. 
 To track the linking of messages of individual publishers within a tree-like structure, a secondary message is 

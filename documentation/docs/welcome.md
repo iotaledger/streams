@@ -1,5 +1,5 @@
 ---
-description: IOTA Streams can be used for the integration of an IOTA Wallet into your application. 
+description: You can use IOTA Streams to integrate the IOTA Wallet into your application. 
 image: /img/logo/wallet_light.png
 keywords:
 - requirements
