@@ -3,6 +3,7 @@ use core::{
         Borrow,
         BorrowMut,
     },
+    hash::Hash,
     convert::TryFrom,
     marker::PhantomData,
 };
@@ -26,28 +27,14 @@ use iota_streams_app::{
         *,
     },
 };
-use iota_streams_core::{
-    async_trait,
-    err,
-    prelude::{
-        string::ToString,
-        Box,
-        Vec,
-    },
-    prng,
-    psk::{
+use iota_streams_core::{Errors::*, Result, async_trait, err, prelude::{Box, HashMap, Vec, string::ToString}, prng, psk::{
         self,
         Psk,
         PskId,
-    },
-    sponge::prp::{
+    }, sponge::prp::{
         Inner,
         PRP,
-    },
-    try_or,
-    Errors::*,
-    Result,
-};
+    }, try_or};
 use iota_streams_ddml::{
     command::*,
     io,
@@ -152,6 +139,12 @@ where
 
     /// Anchor message for the channel (can either be an announcement or keyload) - For single depth
     pub anchor: Option<Cursor<Link>>,
+
+    // List of keyload links with their attached permisisons
+    pub(crate) permissions: HashMap<Link, Vec<Permission> >,
+
+    // List of Keyloads linked to their current tip
+    pub(crate) keyloads: HashMap<Link, Link>,
 }
 
 impl<F, Link, LG, LS> Default for User<F, Link, LG, LS>
@@ -177,6 +170,8 @@ where
             uniform_payload_length: 0,
             use_psk: false,
             anchor: None,
+            permissions: HashMap::default(),
+            keyloads: HashMap::default(),
         }
     }
 }
@@ -184,7 +179,7 @@ where
 impl<F, Link, LG, LS> User<F, Link, LG, LS>
 where
     F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + Default + Clone,
+    Link: HasLink + AbsorbExternalFallback<F> + Default + Clone + Hash,
     Link::Base: Eq + ToString,
     Link::Rel: Eq + SkipFallback<F> + AbsorbFallback<F>,
     LG: LinkGenerator<Link>,
@@ -218,6 +213,8 @@ where
             uniform_payload_length,
             use_psk: false,
             anchor: None,
+            permissions: HashMap::default(),
+            keyloads: HashMap::default(),
         }
     }
 
@@ -355,8 +352,13 @@ where
             _ => self.key_store.insert_cursor(*self.id(), cursor),
         };
 
-        self.key_store.insert_keys(author_id.id, author_ke_pk)?;
+        self.key_store.insert_keys(author_id.id.clone(), author_ke_pk)?;
         self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
+
+        // Hook up new permissions 
+        self.permissions.insert(link.clone(), vec![Permission::BranchAdmin(author_id.id)]);
+        // Insert link to permissions
+        self.keyloads.insert(link.clone(), link.clone());
 
         // Reset link_gen
         self.link_gen.reset(link.clone());
@@ -365,6 +367,7 @@ where
         self.author_id = Some(author_id.id);
         self.author_ke_pk = author_ke_pk;
         self.flags = content.flags.0;
+
         Ok(())
     }
 
@@ -511,7 +514,7 @@ where
             link: link_to,
             nonce,
             key,
-            keys,
+            keys: keys.clone(),
             user_id: &self.user_id,
             _phantom: PhantomData,
         };
@@ -535,8 +538,19 @@ where
                     .with_payload_length(1)?
                     .with_seq_num(msg_cursor.seq_no)
                     .with_identifier(self.id());
-                
-                let filtered_permissions = self.key_store.filter(keys);
+
+                let exchange_keys = self.key_store.exchange_keys();
+                let filtered_permissions = keys.into_iter()
+                    .filter_map(|p| {
+                        match exchange_keys
+                            .iter()
+                            .filter(|&ek| &ek.0 == p.identifier())
+                            .next() {
+                            Some(k) => Some((p.clone(), k.1.clone())),
+                            None => None
+                        }
+                        
+                    }).collect();
                 self.do_prepare_keyload(header, link_to.rel(), filtered_permissions)
             }
             None => err!(SeqNumRetrievalFailure),
@@ -572,7 +586,18 @@ where
         I: IntoIterator<Item = &'a Permission>,
     {
         let prep = self.prepare_keyload(link_to, keys)?;
-        prep.wrap(&self.link_store).await
+        let res = prep.wrap(&self.link_store).await;
+        res
+        /* 
+        match res {
+            Ok(wm) => {
+                let prev_link = link_to;
+                let next_link = wm.wrapped.link.clone();
+                self.handle_permissions(&next_link, next_link, keys.into_iter().collect());
+                Ok(wm)
+            }
+            Err(e) => Err(e),
+        }*/
     }
     
     /// Create keyload message with a new session key shared with all Subscribers
@@ -604,6 +629,15 @@ where
             Some(author_id) => {
                 let preparsed = msg.parse_header().await?;
                 let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
+
+                match self.check_permissions(&prev_link, &preparsed.header.sender_id) {
+                    Ok(true) => {
+                        // All good
+                    },
+                    Ok(false) => return err!(NoPermission),
+                    Err(e) => return Err(e),
+                }
+
                 let seq_no = preparsed.header.seq_num;
                 // We need to borrow self.key_store, self.sig_kp and self.ke_kp at this scope
                 // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
@@ -636,16 +670,17 @@ where
 
                 // Store any unknown publishers
                 if let Some(appinst) = &self.appinst {
-                    for permission in keys {
-                        println!("Found new permission: {}", &permission);
-                        if !self.key_store.contains_subscriber(&permission.identifier()) {
+                    for permission in &keys {
+                        if !self.key_store.contains_subscriber(permission.identifier()) {
                             // Store at state 2 since 0 and 1 are reserved states
                             self.key_store
-                                .insert_cursor(permission.identifier().clone(), Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
+                                .insert_cursor(*permission.identifier(), Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
                             
                         }
                     }
                 }
+
+                self.handle_permissions(&processed.prev_link, msg.link.clone(), keys);
 
                 if !self.is_multi_branching() {
                     self.store_state_for_all(msg.link.rel().clone(), seq_no.0 as u32 + 1)?;
@@ -658,6 +693,55 @@ where
             None => err!(AuthorIdNotFound),
         }
     }
+
+    fn check_permissions(&self, prev_link: &Link, sender: &Identifier) -> Result<bool> {
+        // Always allow author
+        // TODO: Should we allow someone to take author rights away in a sub-keyload?
+        if let Some(author) = self.author_id() {
+            if author == sender {
+                return Ok(true)
+            }
+        } else if sender == self.id() {
+            // Always allow your own permissions
+            // If you dont follow the rules, itll break either way
+            return Ok(true)
+        }
+
+        if !self.keyloads.contains_key(prev_link) {
+            return err!(GenericLinkNotFound)
+        }
+
+        match self.permissions.get(self.keyloads.get(prev_link).unwrap()).unwrap().iter().find(|&&p| {
+            println!("{:?} -> {:?}", p.identifier(), &sender);
+            p.identifier() == sender
+        }) {
+            
+            Some(permission) => {
+                match permission {
+                    Permission::Read(_) => Ok(false),
+                    Permission::ReadWrite(_, _) => Ok(true),
+                    Permission::BranchAdmin(_) => Ok(true),
+                }
+            }
+            // Identifier received which was not in keyload
+            None => err!(BadIdentifier),
+        }
+    }
+
+    fn handle_permissions(&mut self, prev_link: &Link, current_link: Link, permissions: Vec<Permission>){
+        // Hook up new permissions 
+        self.permissions.insert(current_link.clone(), permissions);
+        // Insert link to permissions
+        self.keyloads.insert(current_link.clone(), current_link);
+        // Remove old permissions if they exist and not the base link
+        if &prev_link != &self.appinst.as_ref().unwrap() {
+            if let Some(old_link) = self.keyloads.remove(&prev_link){
+                self.permissions.remove(&old_link);
+            }
+        }
+    }
+
+
 
     /// Prepare SignedPacket message.
     pub fn prepare_signed_packet<'a>(
@@ -721,6 +805,15 @@ where
         // TODO: pass author_pk to unwrap
         let preparsed = msg.parse_header().await?;
         let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
+
+        match self.check_permissions(&prev_link, &preparsed.header.sender_id) {
+            Ok(true) => {
+                // All good
+            },
+            Ok(false) => return err!(NoPermission),
+            Err(e) => return Err(e),
+        }
+
         let seq_no = preparsed.header.seq_num;
         let content = self
             .unwrap_signed_packet(preparsed)
@@ -734,6 +827,9 @@ where
             };
             self.store_state_for_all(link, seq_no.0 as u32 + 1)?;
         }
+
+        // Update keyload permissions link
+        *self.keyloads.get_mut(&prev_link).unwrap() = msg.link.clone();
 
         let body = (content.user_id.id, content.public_payload, content.masked_payload);
         Ok(GenericMessage::new(msg.link.clone(), prev_link, body))
@@ -810,6 +906,10 @@ where
             };
             self.store_state_for_all(link, seq_no.0 as u32 + 1)?;
         }
+
+        // Always update permissions link regardless, we cannot check permissions
+        // TODO: Doesnt exist in public branch?
+        *self.keyloads.get_mut(&prev_link).unwrap() = msg.link.clone();
 
         let body = (content.public_payload, content.masked_payload);
         Ok(GenericMessage::new(msg.link.clone(), prev_link, body))

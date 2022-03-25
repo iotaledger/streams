@@ -126,18 +126,18 @@ impl<F: PRP> ContentSizeof<F> for Permission {
         match self {
             Permission::Read(id) => {
                 let oneof = Uint8(0);
-                ctx.skip(oneof)?;
+                ctx.mask(oneof)?;
                 Ok(id.sizeof(ctx).await?)
             }
             Permission::ReadWrite(id, duration) => {
                 let oneof = Uint8(1);
-                ctx.skip(oneof)?;
+                ctx.mask(oneof)?;
                 duration.sizeof(ctx).await?;
                 Ok(id.sizeof(ctx).await?)
             }
             Permission::BranchAdmin(id) => {
                 let oneof = Uint8(2);
-                ctx.skip(oneof)?;
+                ctx.mask(oneof)?;
                 Ok(id.sizeof(ctx).await?)
             }
         }
@@ -154,17 +154,19 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Permission {
         match self {
             Permission::Read(id) => {
                 let oneof = Uint8(0);
-                Ok(id.wrap(_store, ctx.mask(oneof)?).await?)
+                ctx.mask(oneof)?;
+                Ok(id.wrap(_store, ctx).await?)
             }
             Permission::ReadWrite(id, duration) => {
                 let oneof = Uint8(1);
                 ctx.mask(oneof)?;
-                duration.wrap(_store, ctx).await?;
-                Ok(id.wrap(_store, ctx).await?)
+                id.wrap(_store, ctx).await?;
+                Ok(duration.wrap(_store, ctx).await?)
             }
             Permission::BranchAdmin(id) => {
                 let oneof = Uint8(2);
-                Ok(id.wrap(_store, ctx.mask(oneof)?).await?)
+                ctx.mask(oneof)?;
+                Ok(id.wrap(_store, ctx).await?)
             }
         }
     }
@@ -191,24 +193,24 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Permission {
     ) -> Result<(Self, &'c mut unwrap::Context<F, IS>)> {
         let mut oneof = Uint8(0);
         ctx.mask(&mut oneof)?;
+        let id = Identifier::unwrap_new(_store, ctx).await?;
         match oneof.0 {
             0 => {
-                let id = Identifier::unwrap_new(_store, ctx).await?;
                 let p = Permission::Read(id.0);
                 Ok((p, id.1))
             }
             1 => {
-                let id = Identifier::unwrap_new(_store, ctx).await?;
                 let duration = PermissionDuration::unwrap_new(_store, id.1).await?;
                 let p = Permission::ReadWrite(id.0, PermissionDuration::Perpetual);
                 Ok((p, duration.1))
             }
             2 => {
-                let id = Identifier::unwrap_new(_store, ctx).await?;
                 let p = Permission::BranchAdmin(id.0);
                 Ok((p, id.1))
             }
-            _ => err(Errors::BadOneof),
+            _ => {
+                err(Errors::BadOneof)
+            },
         }
     }
 }

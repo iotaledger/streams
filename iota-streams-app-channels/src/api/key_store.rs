@@ -107,8 +107,6 @@ impl<Link> KeyStore<Link> {
     }
 
     pub fn insert_keys(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
-    
-        println!("{:?}", &self.keys);
         if !self.keys.contains_key(&id) {
             self.keys.insert(id, xkey);
         }
@@ -156,5 +154,47 @@ impl<Link: fmt::Display> fmt::Display for KeyStore<Link> {
             writeln!(f, "    <{}> => {}", hex::encode(&id.to_bytes()), cursor)?;
         }
         Ok(())
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Key {
+    PK(x25519::PublicKey),
+    Psk(Psk)
+}
+
+impl From<x25519::PublicKey> for Key {
+    fn from(item: x25519::PublicKey) -> Self {
+        Self::PK(item)
+    }
+}
+
+impl From<Psk> for Key {
+    fn from(item: Psk) -> Self {
+        Self::Psk(item)
+    }
+}
+
+
+#[derive(Debug)]
+pub struct KeyStore2 {
+    keys: HashMap<Identifier, Key>,
+}
+
+impl KeyStore2 {
+    pub fn add_key(&mut self, identifier: Identifier, key: impl Into::<Key>) -> Result<()>{
+        let key_into = key.into();
+        match (identifier, &key_into) {
+            (Identifier::EdPubKey(_), &Key::PK(_)) | (Identifier::PskId(_), &Key::Psk(_)) => {
+                self.keys.insert(identifier,  key_into);
+                Ok(())
+            },
+            #[cfg(feature = "did")]
+            (Identifier::DID(_), &Key::PK(_)) => {
+                self.keys.insert(identifier,  key_into);
+                Ok(())
+            },
+            _ => err(BadIdentifier)
+        }
     }
 }
