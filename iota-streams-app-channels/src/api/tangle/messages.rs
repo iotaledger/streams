@@ -54,9 +54,9 @@ pub trait IntoMessages<Trans> {
 /// a [`Stream`] over the messages of the channel pending to be fetch from the transport
 ///
 /// Use this stream to preorderly traverse the messages of the channel. This stream is usually
-/// created from any type implementing [`IntoMessages`], calling its [`IntoMessages::messages()`] method (both
-/// [`Author`](struct.Author.html) and [`Subscriber`](struct.Subscriber.html) implement it). The main method is
-/// [`Messages::next()`], which returns the next message in the channel that is readable by the user.
+/// created from any type implementing [`IntoMessages`], calling its [`IntoMessages::messages()`] method.
+/// The main method is [`Messages::next()`], which returns the next message in the channel that is readable
+/// by the user.
 ///
 /// This type implements [`futures::Stream`] and [`futures::TryStream`], therefore it can be used with all the adapters
 /// provided by [`futures::StreamExt`] and [`futures::TryStreamExt`]:
@@ -66,13 +66,11 @@ pub trait IntoMessages<Trans> {
 /// use iota_streams_app_channels::{
 ///     api::tangle::futures::TryStreamExt,
 ///     Address,
-///     Author,
 ///     Bytes,
-///     ChannelType,
 ///     MessageContent,
-///     Subscriber,
 ///     Tangle,
 ///     UnwrappedMessage,
+///     User,
 /// };
 ///
 /// #
@@ -90,14 +88,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport).await;
+/// let mut author = User::new(author_seed, author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
+/// let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -140,12 +138,10 @@ pub trait IntoMessages<Trans> {
 /// use iota_streams_app_channels::{
 ///     api::tangle::futures::TryStreamExt,
 ///     Address,
-///     Author,
-///     ChannelType,
 ///     MessageContent,
-///     Subscriber,
 ///     Tangle,
 ///     UnwrappedMessage,
+///     User,
 /// };
 ///
 /// #
@@ -163,14 +159,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport).await;
+/// let mut author = User::new(author_seed, author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
+/// let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -221,11 +217,9 @@ pub trait IntoMessages<Trans> {
 /// # use core::cell::RefCell;
 /// use iota_streams_app_channels::{
 ///     api::tangle::futures::TryStreamExt,
-///     Author,
 ///     Bytes,
-///     ChannelType,
-///     Subscriber,
 ///     Tangle,
+///     User,
 /// };
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
 /// # use iota_streams_core::{prelude::Rc, Result};
@@ -239,7 +233,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = Author::new(author_seed, ChannelType::MultiBranch, author_transport).await;
+/// let mut author = User::new(author_seed, author_transport).await;
 /// let announcement_link = author.send_announce().await?;
 /// let shareable_announcement_link = announcement_link.to_string();
 ///
@@ -248,7 +242,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// # let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
+/// # let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
 /// # let announcement_link = shareable_announcement_link.parse().expect("parsing announcement link");
 /// # subscriber.receive_announcement(&announcement_link).await?;
 /// # let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
@@ -313,11 +307,9 @@ pub trait IntoMessages<Trans> {
 /// # use core::cell::RefCell;
 /// use iota_streams_app_channels::{
 ///     api::tangle::futures::TryStreamExt,
-///     Author,
 ///     Bytes,
-///     ChannelType,
-///     Subscriber,
 ///     Tangle,
+///     User,
 /// };
 /// # use iota_streams_app_channels::api::tangle::BucketTransport;
 /// # use iota_streams_core::{prelude::Rc, Result};
@@ -331,7 +323,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// # let mut author = Author::new(author_seed, ChannelType::SingleBranch, author_transport).await;
+/// # let mut author = User::new(author_seed, author_transport).await;
 /// # let announcement_link = author.send_announce().await?;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
@@ -339,7 +331,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
+/// let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
 ///
 /// // Announcement link is provided by author
 /// let shareable_announcement_link = "<channel-announcement-link>";
@@ -411,13 +403,11 @@ pub trait IntoMessages<Trans> {
 ///         TryStreamExt,
 ///     },
 ///     Address,
-///     Author,
 ///     Bytes,
-///     ChannelType,
 ///     MessageContent,
-///     Subscriber,
 ///     Tangle,
 ///     UnwrappedMessage,
+///     User,
 /// };
 ///
 /// #
@@ -435,14 +425,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = Author::new(author_seed, ChannelType::MultiBranch, author_transport).await;
+/// let mut author = User::new(author_seed, author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = Subscriber::new(subscriber_seed, subscriber_transport).await;
+/// let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;

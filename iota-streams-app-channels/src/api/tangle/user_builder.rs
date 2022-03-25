@@ -37,6 +37,88 @@ impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
     }
 }
 
+/// ## Author from Seed
+/// ```
+/// use iota_streams_app_channels::{
+///     UserBuilder,
+///     UserIdentity,
+///     User,
+/// };
+///
+/// #
+/// # use std::cell::RefCell;
+/// # use std::rc::Rc;
+/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_core::Result;
+/// #
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
+/// # let author_transport = Rc::new(RefCell::new(BucketTransport::new()));
+/// # let author_seed = "cryptographically-secure-random-author-seed";
+/// #
+/// # let author_identity = UserIdentity::new(author_seed).await;
+/// # let mut author = UserBuilder::new()
+///     .with_identity(author_identity)
+///     .with_transport(author_transport)
+///     .build();
+///
+/// # let announcement_link = author.send_announce().await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Subscriber from PskId
+/// ```
+/// use iota_streams_app_channels::{
+///     api::{
+///         psk_from_seed,
+///         pskid_from_psk,
+///    },
+///     UserBuilder,
+///     UserIdentity,
+///     User,
+/// };
+///
+/// #
+/// # use std::cell::RefCell;
+/// # use std::rc::Rc;
+/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_core::Result;
+/// #
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
+/// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
+/// # let author_seed = "cryptographically-secure-random-author-seed";
+/// #
+/// # let author_transport = test_transport.clone();
+/// # let author_identity = UserIdentity::new(author_seed).await;
+/// # let mut author = UserBuilder::new()
+///     .with_identity(author_identity)
+///     .with_transport(author_transport)
+///     .build();
+///
+/// # let psk_seed = "seed-for-pre-shared-key";
+/// # let psk = psk_from_seed(psk_seed.as_bytes());
+/// # let pskid = pskid_from_psk(&psk);
+///
+/// # let announcement_link = author.send_announce().await?;
+/// # author.store_psk(pskid, psk)?;
+///
+/// # let subscriber_transport = test_transport.clone();
+/// # let subscriber_identity = UserIdentity::new_from_psk(pskid, psk).await;
+/// # let mut subscriber = UserBuilder::new()
+///     .with_identity(subscriber_identity)
+///     .with_transport(subscriber_transport)
+///     .build();
+///
+/// # subscriber.receive_announcement(&announcement_link).await?;
+///
+/// # let (keyload_link, _sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
+/// # assert!(subscriber.receive_keyload(&keyload_link).await?, "Subscriber can't see Keyload");
+///
+/// # Ok(())
+/// # }
+/// ```
 impl UserBuilder<Client, DefaultF> {
     /// Inject Tangle Client instance into the User Builder by URL
     ///

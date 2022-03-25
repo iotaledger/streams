@@ -53,3 +53,5 @@ pub use api::tangle::{
 pub use iota_streams_app::transport::tangle::client::Client as Tangle;
 
 pub use iota_streams_ddml::types::Bytes;
+
+pub use iota_streams_app::id::UserIdentity;
