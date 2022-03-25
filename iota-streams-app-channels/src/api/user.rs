@@ -721,10 +721,7 @@ where
             return err!(GenericLinkNotFound)
         }
 
-        match self.permissions.get(self.keyloads.get(prev_link).unwrap()).unwrap().iter().find(|&&p| {
-            println!("{:?} -> {:?}", p.identifier(), &sender);
-            p.identifier() == sender
-        }) {
+        match self.permissions.get(self.keyloads.get(prev_link).unwrap()).unwrap().iter().find(|&&p| p.identifier() == sender) {
             
             Some(permission) => {
                 match permission {
@@ -823,13 +820,10 @@ where
         let preparsed = msg.parse_header().await?;
         let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
 
-        match self.check_permissions(&prev_link, &preparsed.header.sender_id) {
-            Ok(true) => {
-                // All good
-            },
-            Ok(false) => return err!(NoPermission),
+        let allowed = match self.check_permissions(&prev_link, &preparsed.header.sender_id) {
+            Ok(a) => a,
             Err(e) => return Err(e),
-        }
+        };
 
         let seq_no = preparsed.header.seq_num;
         let content = self
@@ -848,8 +842,13 @@ where
         // Update keyload permissions link
         self.update_permissions(&prev_link, msg.link.clone());
 
-        let body = (content.user_id.id, content.public_payload, content.masked_payload);
-        Ok(GenericMessage::new(msg.link.clone(), prev_link, body))
+        match allowed {
+            true => {
+                let body = (content.user_id.id, content.public_payload, content.masked_payload);
+                Ok(GenericMessage::new(msg.link.clone(), prev_link, body))
+            },
+            false => err!(NoPermission),
+        }
     }
 
     /// Prepare TaggedPacket message.

@@ -133,7 +133,6 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         print!("  SubscriberC: {}", subscriberC);
     }
 
-
     println!("\nSigned packet");
     let previous_msg_link = {
         let (msg, seq) = author
@@ -160,23 +159,22 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         )?;
     }
     
-    println!("\nSubscriber A fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberA).await?;
+    println!("\nSubscriber B fetching transactions...");
+    utils::fetch_next_messages(&mut subscriberB).await?;
     println!("\nSubscriber C fetching transactions...");
     utils::fetch_next_messages(&mut subscriberC).await?;
 
-    println!("\nTagged packet 1 - SubscriberA (tagged is always allowed)");
+    println!("\nTagged packet 1 - SubscriberB (tagged is always allowed)");
     let previous_msg_link = {
-        let (msg, seq) = subscriberA
+        let (msg, seq) = subscriberB
             .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         assert!(seq.is_none());
-        print!("  SubscriberA: {}", subscriberA);
+        print!("  SubscriberB: {}", subscriberB);
         msg
     };
 
-    // AH YES sender doesnt have keyload link or signed packet
     println!("\nHandle Tagged packet 1");
     {
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&previous_msg_link).await?;
@@ -189,23 +187,15 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             masked_payload == unwrapped_masked,
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
-
-        let (unwrapped_public, unwrapped_masked) = subscriberC.receive_tagged_packet(&previous_msg_link).await?;
-        print!("  SubscriberC: {}", subscriberC);
-        try_or!(
-            public_payload == unwrapped_public,
-            PublicPayloadMismatch(public_payload.to_string(), unwrapped_public.to_string())
-        )?;
-        try_or!(
-            masked_payload == unwrapped_masked,
-            PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
-        )?;
     }
+    
+    println!("\nSubscriber A fetching transactions...");
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
-    println!("\nTagged packet 2 - SubscriberA");
+    println!("\nSigned packet 1 - SubscriberA (subscriber A has Write permission");
     let previous_msg_link = {
         let (msg, seq) = subscriberA
-            .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         assert!(seq.is_none());
@@ -213,21 +203,49 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         msg
     };
 
-    println!("\nTagged packet 3 - SubscriberA");
-    let previous_msg_link = {
-        let (msg, seq) = subscriberA
-            .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
-            .await?;
-        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-        assert!(seq.is_none());
-        print!("  SubscriberA: {}", subscriberA);
-        msg
-    };
-
+    println!("\nAuthor fetching transactions...");
+    utils::fetch_next_messages(&mut author).await?;
     println!("\nSubscriber B fetching transactions...");
     utils::fetch_next_messages(&mut subscriberB).await?;
     println!("\nSubscriber C fetching transactions...");
     utils::fetch_next_messages(&mut subscriberC).await?;
 
-    Ok(())
+    println!("\nSigned packet 1 - SubscriberB (subscriber B does NOT has Write permission");
+    let previous_msg_link = {
+        let (msg, seq) = subscriberB
+            .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        assert!(seq.is_none());
+        print!("  SubscriberB: {}", subscriberB);
+        msg
+    };
+    println!("\nSubscriber A fetching Signed packet from Subscriber B...");
+    {
+        match subscriberA.receive_signed_packet(&previous_msg_link).await {
+            Ok((_signer_pk, unwrapped_public, unwrapped_masked)) => {
+                return Err(anyhow::anyhow!("\nSubscriber B message should have failed due to no permissions"))
+            },
+            Err(e) => {
+                println!("  SubscriberA: Did not accept Subscriber B message correctly");
+                print!("  SubscriberA: {}", subscriberA);
+            }
+            
+        }
+    }
+
+    println!("\nSigned packet 2 - SubscriberA (subscriber A has Write permission");
+    let previous_msg_link = {
+        let (msg, seq) = subscriberA
+            .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        assert!(seq.is_none());
+        print!("  SubscriberA: {}", subscriberA);
+        msg
+    };
+
+    // TODO this fails due to double messages in state because of the Illegal Mr. Subscriber B
+    println!("\nAuthor fetching transactions...");
+    utils::fetch_next_messages(&mut author).await
 }
