@@ -95,12 +95,12 @@ async fn main_pure() {
     // hence the Rc<RefCell<BucketTransport>>
     let transport = Rc::new(RefCell::new(transport));
 
-    //run_single_branch_test(transport.clone(), "PURESEEDA").await;
-    //run_single_depth_test(transport.clone(), "PURESEEDB").await;
-    //run_multi_branch_test(transport.clone(), "PURESEEDC").await;
-    //run_recovery_single_branch_test(transport.clone(), "PURESEEDD").await;
+    run_single_branch_test(transport.clone(), "PURESEEDA").await;
+    run_single_depth_test(transport.clone(), "PURESEEDB").await;
+    run_multi_branch_test(transport.clone(), "PURESEEDC").await;
+    run_recovery_single_branch_test(transport.clone(), "PURESEEDD").await;
     run_recovery_multi_branch_test(transport.clone(), "PURESEEDF").await;
-    //run_permissions_test(transport.clone(), "PURESEEDA").await;
+    run_permissions_test(transport.clone(), "PURESEEDG").await;
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }

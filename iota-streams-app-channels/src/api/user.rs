@@ -706,7 +706,6 @@ where
 
     /// Updates the permissions link related to old_link to the new_link
     fn update_permissions(&mut self, old_link: &Link, new_link: Link) {
-        dbg!("update_permissions");
         // Get old keyload assigned. Unwrap. If its None we couldnt do linking the message anyway
         let old_keyload_link = self.keyloads.get(old_link).unwrap().clone();
 
@@ -838,7 +837,6 @@ where
         msg: &BinaryMessage<Link>,
         info: LS::Info,
     ) -> Result<GenericMessage<Link, (Identifier, Bytes, Bytes)>> {
-        dbg!("handle_signed_packet");
         // TODO: pass author_pk to unwrap
         let preparsed = msg.parse_header().await?;
         let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;

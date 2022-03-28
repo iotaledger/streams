@@ -116,9 +116,14 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         );
     }
 
+    if author.is_multi_branching() {
+        previous_msg_link = author.receive_sequence(&latest_link).await?;
+        latest_link = &previous_msg_link;
+    }
+
     println!("States match...\nSending next sequenced message... {}", latest_link.msgid);
     let (last_msg, _seq) = new_author
-        .send_signed_packet(latest_link, &public_payload, &masked_payload)
+        .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
         .await?;
     println!("  msg => <{}> <{:x}>", last_msg.msgid, last_msg.to_msg_index());
 
