@@ -9,7 +9,7 @@ keywords:
 ---
 # Examples
 
-A list of example implementations can be found in the [stream examples](https://github.com/iotaledger/streams-examples).
+You can find a list of example implementations in the [stream examples](https://github.com/iotaledger/streams-examples).
 
 Additionally, there are a couple of local examples present in our [develop examples](https://github.com/iotaledger/streams/tree/develop/examples).
 To run these examples, update the `.env` file with the node url you would like to use, and run the command: 

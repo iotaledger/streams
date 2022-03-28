@@ -10,7 +10,7 @@ keywords:
 
 # Getting Started
 
-Streams requires an asynchronous runtime environment to be set, so we suggest using [tokio](https://docs.rs/tokio/latest/tokio/). Streams also uses [anyhow](https://docs.rs/anyhow/latest/anyhow/) for error handling, so projects can use `anyhow::Result` and `anyhow::Error` for easier integration.
+Streams requires that you set an asynchronous runtime environment to be set. We suggest using [tokio](https://docs.rs/tokio/latest/tokio/). Streams also uses [anyhow](https://docs.rs/anyhow/latest/anyhow/) for error handling, so projects can use `anyhow::Result` and `anyhow::Error` for easier integration.
 
 To create a new Rust project, run:
 
@@ -32,7 +32,7 @@ bee-rest-api = "=0.1.2"
 
 ## Basic Usage
 
-Now that the necessary projects and their dependencies are added, you can start using the Streams library. Below are two example scripts for both the author and the subscriber. The author script will announce a channel and print the announcement link. The subscriber script handles the announcement to let the subscriber know where to find the channel.
+After adding the necessary projects and their dependencies are added, you can start using the Streams library. Below are two example scripts for both the author and the subscriber. The author script will announce a channel and print the announcement link. The subscriber script handles the announcement to let subscribers know where to find the channel.
  
 ### Author
 
@@ -94,7 +94,7 @@ Now we can begin subscribing users to the channel and generating branches to spe
 
 ### Subscription
 
-To subscribe to a channel, subscribers create a subscribe message that is linked to the channel announcement message. The message link should then be provided to the author. This allows the author to handle the subscription message and use the public key of the subscriber for access control and validation purposes.
+To subscribe to a channel, subscribers create a subscribe message linked to the channel announcement message. The message link should then be provided to the author. This allows the author to handle the subscription message and use the subscriber's public key for access control and validation purposes.
 
 #### Subscriber
 
@@ -137,7 +137,7 @@ author.send_keyload_for_everyone(&ann_link).await?;
 
 ### Pre-shared Keys 
 
-As an alternative to subscribing via public key exchange using subscribe messages, an author may specify access control through the use of a pre-shared key (PSK). A PSK is a 32-byte array containing a secret key, shared outside of the Streams instance, that can be used to specify access through a keyload message. If an author issues a keyload with a PSK included, and a subscriber reads this message with the same PSK stored within itself, then the subscriber can participate in the proceeding branch without being subscribed to the channel. 
+As an alternative to subscribing via public key exchange using subscribe messages, an author may specify access control by uding a pre-shared key (PSK). A PSK is a 32-byte array containing a secret key, shared outside of the Streams instance, that can be used to specify access through a keyload message. Suppose an author issues a keyload with a PSK included, and a subscriber reads this message with the same PSK stored within itself. In that case, the subscriber can participate in the proceeding branch without being subscribed to the channel. 
 
 Example: 
 

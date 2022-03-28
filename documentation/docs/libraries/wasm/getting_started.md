@@ -12,7 +12,7 @@ keywords:
 
 Before building anything, you will need to make sure you have `npm` installed on your machine.
 
-### Install the library
+## Install the library
 
 To install the library, you can run:
 
