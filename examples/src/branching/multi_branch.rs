@@ -98,7 +98,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         print!("  Author     : {}", author);
     }
 
-    println!("\nShare keyload for everyone [SubscriberA]");
+    println!("\nShare keyload for everyone [SubscriberA, PSK]");
     let (keyload_link, keyload_seq) = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         let seq = seq.unwrap();
@@ -173,7 +173,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nAuthor fetching transactions...");
     utils::fetch_next_messages(&mut author).await?;
 
-    println!("\nSigned packet");
+    println!("\nSigned packet 1 - Author");
     let (_signed_packet_link, signed_packet_seq) = {
         let (msg, seq) = author
             .send_signed_packet(&tagged_packet_link, &public_payload, &masked_payload)
@@ -185,7 +185,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         (msg, seq)
     };
 
-    println!("\nHandle Signed packet");
+    println!("\nHandle Signed packet 1 - Author");
     {
         let msg_tag = subscriberA.receive_sequence(&signed_packet_seq).await?;
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag).await?;
@@ -214,7 +214,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         print!("  Author     : {}", author);
     }
 
-    println!("\nShare keyload for everyone [SubscriberA, SubscriberB]");
+    println!("\nShare keyload for everyone [SubscriberA, SubscriberB, PSK]");
     let (keyload_link, keyload_seq) = {
         let (msg, seq) = author.send_keyload_for_everyone(&announcement_link).await?;
         let seq = seq.unwrap();
@@ -224,7 +224,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         (msg, seq)
     };
 
-    println!("\nHandle Share keyload for everyone [SubscriberA, SubscriberB]");
+    println!("\nHandle Share keyload for everyone [SubscriberA, SubscriberB, PSK]");
     {
         let msg_tag = subscriberA.receive_sequence(&keyload_seq).await?;
         print!("  Author     : {}", author);
@@ -295,9 +295,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
 
     println!("\nHandle Tagged packet 3 - SubscriberB");
     {
-        let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq).await?;
-        print!("  SubscriberA: {}", subscriberA);
-
+        let msg_tag = author.receive_sequence(&tagged_packet_seq).await?;
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag).await?;
         print!("  Author     : {}", author);
         try_or!(
@@ -335,11 +333,12 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         (msg, seq)
     };
 
+    println!("\nSubscriber A fetching transactions...");
+    utils::fetch_next_messages(&mut subscriberA).await?;
+
     println!("\nHandle Tagged packet 4 - SubscriberC");
     {
-        let msg_tag = subscriberA.receive_sequence(&tagged_packet_seq).await?;
-        print!("  SubscriberA: {}", subscriberA);
-
+        let msg_tag = author.receive_sequence(&tagged_packet_seq).await?;
         let (unwrapped_public, unwrapped_masked) = author.receive_tagged_packet(&msg_tag).await?;
         print!("  Author     : {}", author);
         try_or!(
@@ -365,10 +364,10 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nAuthor fetching transactions...");
     utils::fetch_next_messages(&mut author).await?;
 
-    println!("\nSigned packet");
+    println!("\nSigned packet 2 - Author");
     let (signed_packet_link, signed_packet_seq) = {
         let (msg, seq) = author
-            .send_signed_packet(&tagged_packet_seq, &public_payload, &masked_payload)
+            .send_signed_packet(&tagged_packet_link, &public_payload, &masked_payload)
             .await?;
         let seq = seq.unwrap();
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
@@ -377,7 +376,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         (msg, seq)
     };
 
-    println!("\nHandle Signed packet");
+    println!("\nHandle Signed packet 2 - Author");
     {
         let msg_tag = subscriberA.receive_sequence(&signed_packet_seq).await?;
         print!("  Author     : {}", author);

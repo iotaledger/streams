@@ -227,7 +227,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
                 return Err(anyhow::anyhow!("\nSubscriber B message should have failed due to no permissions"))
             },
             Err(e) => {
-                println!("  SubscriberA: Did not accept Subscriber B message correctly");
+                println!("  SubscriberA: Did not accept Subscriber B message correctly: {:?}", e);
                 print!("  SubscriberA: {}", subscriberA);
             }
             

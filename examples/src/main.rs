@@ -99,8 +99,8 @@ async fn main_pure() {
     //run_single_depth_test(transport.clone(), "PURESEEDB").await;
     //run_multi_branch_test(transport.clone(), "PURESEEDC").await;
     //run_recovery_single_branch_test(transport.clone(), "PURESEEDD").await;
-    //run_recovery_multi_branch_test(transport.clone(), "PURESEEDF").await;
-    run_permissions_test(transport.clone(), "PURESEEDA").await;
+    run_recovery_multi_branch_test(transport.clone(), "PURESEEDF").await;
+    //run_permissions_test(transport.clone(), "PURESEEDA").await;
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }

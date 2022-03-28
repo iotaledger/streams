@@ -96,7 +96,6 @@ impl<Link> KeyStore<Link> {
     }
 
     pub fn insert_psk(&mut self, id: Identifier, psk: Psk) -> Result<()> {
-        println!("{:?}", &self.psks);
         match &id {
             Identifier::PskId(pskid) => {
                 self.psks.insert(*pskid, psk);

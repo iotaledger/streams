@@ -18,7 +18,7 @@ use iota_streams_app::{
         Identifier,
         UserIdentity,
     },
-    permission::Permission,
+    permission::{Permission, PermissionDuration},
     message::{
         hdf::{
             FLAG_BRANCHING_MASK,
@@ -704,6 +704,21 @@ where
         }
     }
 
+    /// Updates the permissions link related to old_link to the new_link
+    fn update_permissions(&mut self, old_link: &Link, new_link: Link) {
+        dbg!("update_permissions");
+        // Get old keyload assigned. Unwrap. If its None we couldnt do linking the message anyway
+        let old_keyload_link = self.keyloads.get(old_link).unwrap().clone();
+
+        // Remove old keyload in LEAN state only
+        //let old_keyload_link = self.keyloads.remove(old_link).unwrap();
+
+        // Update keyload permissions link
+        self.keyloads.insert(new_link, old_keyload_link);
+    }
+
+    /// Checks if the sender has permision to send a message.
+    /// prev_link is the link towards the last stored keyload
     fn check_permissions(&self, prev_link: &Link, sender: &Identifier) -> Result<bool> {
         // Always allow author
         // TODO: Should we allow someone to take author rights away in a sub-keyload?
@@ -715,6 +730,11 @@ where
             // Always allow your own permissions
             // If you dont follow the rules, itll break either way
             return Ok(true)
+        }
+
+        // Never allow Psk to send
+        if let &Identifier::PskId(_) = sender {
+            return Ok(false)
         }
 
         if !self.keyloads.contains_key(prev_link) {
@@ -735,6 +755,8 @@ where
         }
     }
 
+    /// Handles a permissions update (from a keyload message)
+    ///Will remove the prev_link keyload permisions as a new keyload indicates old branch is ended
     fn handle_permissions(&mut self, prev_link: &Link, current_link: Link, permissions: Vec<Permission>){
         // Hook up new permissions 
         self.permissions.insert(current_link.clone(), permissions);
@@ -816,6 +838,7 @@ where
         msg: &BinaryMessage<Link>,
         info: LS::Info,
     ) -> Result<GenericMessage<Link, (Identifier, Bytes, Bytes)>> {
+        dbg!("handle_signed_packet");
         // TODO: pass author_pk to unwrap
         let preparsed = msg.parse_header().await?;
         let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
@@ -847,7 +870,9 @@ where
                 let body = (content.user_id.id, content.public_payload, content.masked_payload);
                 Ok(GenericMessage::new(msg.link.clone(), prev_link, body))
             },
-            false => err!(NoPermission),
+            false => {
+                err!(NoPermission)
+            }
         }
     }
 
@@ -899,13 +924,6 @@ where
             },
             Err(e) => Err(e)
         }
-    }
-
-    fn update_permissions(&mut self, old_link: &Link, next_link: Link) {
-        // Get old keyload assigned. Unwrap. If its None we couldnt do link_to anyway
-        let old_keyload_link = self.keyloads.remove(old_link).unwrap();
-        // Update keyload permissions link
-        self.keyloads.insert(next_link, old_keyload_link);
     }
 
     pub async fn unwrap_tagged_packet(

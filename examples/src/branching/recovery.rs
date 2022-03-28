@@ -75,10 +75,13 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     for i in 6..11 {
         println!("Tagged packet {} - SubscriberA", i);
         previous_msg_link = {
-            let (msg, _seq) = subscriberA
+            let (msg, seq) = subscriberA
                 .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
                 .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+            if let Some(seq) = seq {
+                println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
+            }
             msg
         };
     }
@@ -113,7 +116,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         );
     }
 
-    println!("States match...\nSending next sequenced message...");
+    println!("States match...\nSending next sequenced message... {}", latest_link.msgid);
     let (last_msg, _seq) = new_author
         .send_signed_packet(latest_link, &public_payload, &masked_payload)
         .await?;
