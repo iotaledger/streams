@@ -633,8 +633,6 @@ impl<'a, Trans> MessagesState<'a, Trans> {
                 // message-Handling errors are a normal execution path, just skip them
                 Err(_e) => {
                     self.next().await
-                    // TODO Decide how to handle NO permission messages (Currently absorbed in state but not returned)
-                    // Some(Err(_e))
                 }
             }
         } else {

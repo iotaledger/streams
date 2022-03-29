@@ -242,7 +242,6 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         msg
     };
 
-    // TODO this fails due to double messages in state because of the Illegal Mr. Subscriber B
     println!("\nAuthor fetching transactions...");
     utils::fetch_next_messages(&mut author).await
 }
