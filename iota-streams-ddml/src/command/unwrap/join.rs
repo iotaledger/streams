@@ -1,5 +1,3 @@
-use std::backtrace::Backtrace;
-
 use iota_streams_core::Result;
 
 use super::Context;

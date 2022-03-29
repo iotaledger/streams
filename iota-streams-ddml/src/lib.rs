@@ -1,6 +1,5 @@
 //! DDML is a data description language extended with commands for cryptographic processing.
 //! DDML is implemented as an EDSL in rust.
-#![feature(backtrace)]
 #![no_std]
 
 #[cfg(not(feature = "std"))]
