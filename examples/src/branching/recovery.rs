@@ -150,7 +150,14 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("Author imported...");
     let retrieved_announcement = new_auth.announcement_link().unwrap();
     assert!(retrieved_announcement == announcement_link);
-    println!("Imported Author announcement message matches original\n");
+    println!("Imported Author announcement message matches original\nSending next sequence message");
 
+    let (last_msg, _seq) = new_author
+        .send_signed_packet(&last_msg, &public_payload, &masked_payload)
+        .await?;
+    println!("  msg => <{}> <{:x}>", last_msg.msgid, last_msg.to_msg_index());
+
+    println!("\nSubscriber A fetching transactions...");
+    let msgs = subscriberA.fetch_next_msgs().await?;
     Ok(())
 }

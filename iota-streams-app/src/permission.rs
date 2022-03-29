@@ -120,6 +120,12 @@ impl Permission {
     }
 }
 
+impl Default for Permission {
+    fn default() -> Self {
+        Permission::Read(Identifier::default())
+    }
+}
+
 #[async_trait(?Send)]
 impl<F: PRP> ContentSizeof<F> for Permission {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {

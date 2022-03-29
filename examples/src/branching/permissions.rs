@@ -92,9 +92,6 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     author.store_psk(pskid, psk)?;
     subscriberC.store_psk(pskid, psk)?;
 
-    // Fetch state of subscriber for comparison after reset
-    let sub_a_start_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
-
     println!("\nSubscribe B");
     let subscribeB_link = {
         let msg = subscriberB.send_subscribe(&announcement_link).await?;

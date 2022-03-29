@@ -1257,6 +1257,25 @@ where
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
         }
+
+        // TODO size can be reduced referercing identifiers from keys instead instead of putting em duplicate
+        let permissions_size = Size(self.permissions.len());
+        ctx.absorb(permissions_size)?;
+        for (link, permissions) in self.permissions.iter() {
+           link.sizeof_absorb(ctx)?;
+            ctx.absorb(Size(permissions.len()))?;
+            for p in permissions {
+                p.sizeof(ctx).await?;
+            }
+        }
+        // TODO size can be reduced referencing links in link_store, assuming theyre all there
+        let keyloads_size = Size(self.keyloads.len());
+        ctx.absorb(keyloads_size)?;
+        for (tip, kl) in self.keyloads.iter() {
+            tip.sizeof_absorb(ctx)?;
+            kl.sizeof_absorb(ctx)?;
+        }
+
         ctx.commit()?.squeeze(Mac(32))?;
         Ok(ctx)
     }
@@ -1316,6 +1335,25 @@ where
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
         }
+
+        let permissions_size = Size(self.permissions.len());
+        ctx.absorb(permissions_size)?;
+        for (link, permissions) in self.permissions.iter() {
+            link.wrap_absorb(ctx)?;
+            ctx.absorb(Size(permissions.len()))?;
+            for p in permissions {
+                p.wrap(store, ctx).await?;
+            }
+        }
+
+        // TODO size can be reduced referencing links in link_store, assuming theyre all there
+        let keyloads_size = Size(self.keyloads.len());
+        ctx.absorb(keyloads_size)?;
+        for (tip, kl) in self.keyloads.iter() {
+            tip.wrap_absorb(ctx)?;
+            kl.wrap_absorb(ctx)?;
+        }
+
         ctx.commit()?.squeeze(Mac(32))?;
         Ok(ctx)
     }
@@ -1395,6 +1433,35 @@ where
             key_store.insert_cursor(id, Cursor::new_at(link.0, branch_no.0, seq_no.0));
         }
 
+        let mut permissions_link_size = Size(0);
+        ctx.absorb(&mut permissions_link_size)?;
+        let mut permissions: HashMap<Link , Vec<Permission>> = HashMap::default();
+        for _ in 0..permissions_link_size.0 {
+            let mut link = Link::default();
+            link.unwrap_absorb(ctx)?;
+
+            let mut permissions_size = Size(0);
+            ctx.absorb(&mut permissions_size)?;
+            let mut permissions_ids: Vec<Permission> = Vec::default();
+            for _ in 0..permissions_size.0 {
+                let (permission, ctx)  = Permission::unwrap_new(store, ctx).await?;
+                permissions_ids.push(permission);
+            }
+            permissions.insert(link, permissions_ids);
+        }
+
+        let mut keyloads_size = Size(0);
+        ctx.absorb(&mut keyloads_size)?;
+        let mut keyloads: HashMap<Link, Link> = HashMap::default();
+        for _ in 0..keyloads_size.0 {
+            let mut tip = Link::default();
+            tip.unwrap_absorb(ctx)?;
+
+            let mut kl = Link::default();
+            kl.unwrap_absorb(ctx)?;
+            keyloads.insert(tip, kl);
+        }
+
         ctx.commit()?.squeeze(Mac(32))?;
 
         let sig_sk = ed25519::SecretKey::from_bytes(<[u8; 32]>::try_from(sig_sk_bytes.as_ref())?);
@@ -1411,6 +1478,9 @@ where
         self.flags = flags.0;
         self.message_encoding = message_encoding.0;
         self.uniform_payload_length = uniform_payload_length.0 as usize;
+
+        self.keyloads = keyloads;
+        //self.permissions = permissions;
         Ok(ctx)
     }
 }
