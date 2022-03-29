@@ -50,11 +50,11 @@ impl<Link> KeyStore<Link> {
     {
         ids.into_iter()
             .filter_map(|p| match p.identifier() {
-                Identifier::PskId(pskid) => self.psks.get_key_value(pskid).map(|(_, psk)| (p.clone(), psk.to_vec())),
+                Identifier::PskId(pskid) => self.psks.get_key_value(pskid).map(|(_, psk)| (*p, psk.to_vec())),
                 _ => self
                     .keys
                     .get_key_value(p.identifier())
-                    .map(|(_, pk)| (p.clone(), pk.as_slice().to_vec())),
+                    .map(|(_, pk)| (*p, pk.as_slice().to_vec())),
             })
             .collect()
     }

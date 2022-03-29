@@ -631,9 +631,7 @@ impl<'a, Trans> MessagesState<'a, Trans> {
                     Some(Ok(readable_msg))
                 }
                 // message-Handling errors are a normal execution path, just skip them
-                Err(_e) => {
-                    self.next().await
-                }
+                Err(_e) => self.next().await,
             }
         } else {
             // Stage is empty, populate it with some more messages

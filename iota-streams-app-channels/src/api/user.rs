@@ -25,10 +25,7 @@ use iota_streams_app::{
         },
         *,
     },
-    permission::{
-        Permission,
-        PermissionDuration,
-    },
+    permission::Permission,
 };
 use iota_streams_core::{
     async_trait,
@@ -370,7 +367,7 @@ where
             _ => self.key_store.insert_cursor(*self.id(), cursor),
         };
 
-        self.key_store.insert_keys(author_id.id.clone(), author_ke_pk)?;
+        self.key_store.insert_keys(author_id.id, author_ke_pk)?;
         self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
 
         // Hook up new permissions
@@ -533,7 +530,7 @@ where
             link: link_to,
             nonce,
             key,
-            keys: keys.clone(),
+            keys,
             user_id: &self.user_id,
             _phantom: PhantomData,
         };
@@ -561,12 +558,12 @@ where
                 let exchange_keys = self.key_store.exchange_keys();
                 let filtered_permissions = keys
                     .into_iter()
-                    .filter_map(
-                        |p| match exchange_keys.iter().filter(|&ek| &ek.0 == p.identifier()).next() {
-                            Some(k) => Some((p.clone(), k.1.clone())),
-                            None => None,
-                        },
-                    )
+                    .filter_map(|p| {
+                        exchange_keys
+                            .iter()
+                            .find(|&ek| &ek.0 == p.identifier())
+                            .map(|k| (*p, k.1.clone()))
+                    })
                     .collect();
                 self.do_prepare_keyload(header, link_to.rel(), filtered_permissions)
             }
@@ -611,7 +608,7 @@ where
         match res {
             Ok(wm) => {
                 let next_link = wm.wrapped.link.clone();
-                self.handle_permissions(link_to, next_link, keys.into_iter().map(|p| p.clone()).collect());
+                self.handle_permissions(link_to, next_link, keys.into_iter().copied().collect());
                 Ok(wm)
             }
             Err(e) => Err(e),
@@ -786,8 +783,8 @@ where
         // Insert link to permissions
         self.keyloads.insert(current_link.clone(), current_link);
         // Remove old permissions if they exist and not the base link
-        if &prev_link != &self.appinst.as_ref().unwrap() {
-            if let Some(old_link) = self.keyloads.remove(&prev_link) {
+        if prev_link != self.appinst.as_ref().unwrap() {
+            if let Some(old_link) = self.keyloads.remove(prev_link) {
                 self.permissions.remove(&old_link);
             }
         }
@@ -1470,7 +1467,7 @@ where
             ctx.absorb(&mut permissions_size)?;
             let mut permissions_ids: Vec<Permission> = Vec::default();
             for _ in 0..permissions_size.0 {
-                let (permission, ctx) = Permission::unwrap_new(store, ctx).await?;
+                let (permission, _ctx) = Permission::unwrap_new(store, ctx).await?;
                 permissions_ids.push(permission);
             }
             permissions.insert(link, permissions_ids);

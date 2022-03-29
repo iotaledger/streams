@@ -323,7 +323,7 @@ impl<F> From<Identifier> for UserIdentity<F> {
 impl<F> From<Permission> for UserIdentity<F> {
     fn from(permission: Permission) -> Self {
         UserIdentity {
-            id: permission.identifier().clone(),
+            id: *permission.identifier(),
             ..Default::default()
         }
     }
