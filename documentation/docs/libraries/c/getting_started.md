@@ -5,42 +5,45 @@ keywords:
 - C
 - cmake
 - std
+- reference
 ---
 # Getting Started
-The C bindings allow for you to build a Streams API which can be pulled into other languages. 
-The streams instance underlying the bindings is built with the `sync-client` flag to 
-ensure a compatible client interface using the `iota.rs iota-client` crate. 
 
-Before building anything you'll need to make sure you have `cmake` installed on your 
-machine.
+Using the C bindings, you can build a Streams API that is pulled into other languages. The streams instance used for the bindings is built with the `sync-client` flag to ensure a compatible client interface using the `iota.rs iota-client` crate. 
 
-To build the library, first make sure you're in the c directory:
+Before you build anything, make sure you have `cmake` installed on your machine.
+
+First, to build the library, make sure you are in the c directory:
 ```
 cd bindings/c
 ``` 
-Update the flags in the `CMakeLists.txt` and run ```cmake .``` to 
-prepare the installation files. 
+Then, update the flags in the `CMakeLists.txt` and run ```cmake .``` to prepare the installation files. 
 
-#### Options for CMakeLlists.txt
-- `NO_STD`: Enable no_std build, without iota_client (when ON, `SYNC_CLIENT` isnt supported)
-- `SYNC_CLIENT`: Enable sync transport via iota_client, otherwise it's going to be Bucket which can only be used for tests
-- `STATIC`: Build static library when ON, otherwise dynamic library
-- `RELEASE`: Build in release or debug mode (when ON, builds release, when OFF, build debug)
+## Options for CMakeLlists.txt
 
-To build the library run:
+- `NO_STD`: Enable no_std build, without iota_client (when ON, `SYNC_CLIENT` is not supported).
+- `SYNC_CLIENT`: Enable sync transport via iota_client, otherwise it isgoing to be Bucket which can only be used for tests.
+- `STATIC`: Build static library when ON, otherwise dynamic library.
+- `RELEASE`: Build in release or debug mode (when ON, builds release, when OFF, build debug).
+
+To build the library, you run:
+
 ```bash 
 make
 ```
 
-This generates a binary library to be included into a project. This can be either: 
-- `iota_streams_c_static`
-- `iota_streams_c.so` (Unix)
-- `iota_streams_c.dll` (Windows)
+This generates a binary library for inclusion into a project. This can either be: 
+
+- `iota_streams_c_static`.
+- `iota_streams_c.so` (Unix).
+- `iota_streams_c.dll` (Windows).
 
 An example of the header file can be found in `include/channels.h`.
 
-### Starting a Channel 
-Once the package has been built, you can pull it into a script file like so: 
+## Starting a Channel 
+
+Once the package has been built, you can pull it into a script file: 
+
 ```c
 #include "iota_streams/channels.h"
 #include <stdio.h>
