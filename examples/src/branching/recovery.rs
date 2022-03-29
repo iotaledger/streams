@@ -121,7 +121,10 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         latest_link = &previous_msg_link;
     }
 
-    println!("States match...\nSending next sequenced message... {}", latest_link.msgid);
+    println!(
+        "States match...\nSending next sequenced message... {}",
+        latest_link.msgid
+    );
     let (last_msg, _seq) = new_author
         .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
         .await?;

@@ -155,7 +155,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
     }
-    
+
     println!("\nSubscriber B fetching transactions...");
     utils::fetch_next_messages(&mut subscriberB).await?;
     println!("\nSubscriber C fetching transactions...");
@@ -185,7 +185,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
             PublicPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
     }
-    
+
     println!("\nSubscriber A fetching transactions...");
     utils::fetch_next_messages(&mut subscriberA).await?;
 
@@ -221,13 +221,14 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     {
         match subscriberA.receive_signed_packet(&previous_msg_link).await {
             Ok((_signer_pk, unwrapped_public, unwrapped_masked)) => {
-                return Err(anyhow::anyhow!("\nSubscriber B message should have failed due to no permissions"))
-            },
+                return Err(anyhow::anyhow!(
+                    "\nSubscriber B message should have failed due to no permissions"
+                ))
+            }
             Err(e) => {
                 println!("  SubscriberA: Did not accept Subscriber B message correctly: {:?}", e);
                 print!("  SubscriberA: {}", subscriberA);
             }
-            
         }
     }
 
