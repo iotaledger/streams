@@ -513,11 +513,7 @@ pub trait IntoMessages<Trans> {
 ///         UnwrappedMessage::new(
 ///             second_packet_second_branch_link,
 ///             first_packet_second_branch_link,
-///             MessageContent::new_signed_packet(
-///                 author.id().clone(),
-///                 b"",
-///                 b"another masked payload in branch 2"
-///             )
+///             MessageContent::new_signed_packet(author.id().clone(), b"", b"another masked payload in branch 2")
 ///         ),
 ///     ]
 /// );
@@ -639,7 +635,7 @@ impl<'a, Trans> MessagesState<'a, Trans> {
                     self.next().await
                     // TODO Decide how to handle NO permission messages (Currently absorbed in state but not returned)
                     // Some(Err(_e))
-                },
+                }
             }
         } else {
             // Stage is empty, populate it with some more messages

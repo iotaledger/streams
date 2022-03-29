@@ -16,8 +16,8 @@ use iota_streams_app::{
         Identifier,
         UserIdentity,
     },
-    permission::Permission,
     message::HasLink,
+    permission::Permission,
 };
 use iota_streams_core::{
     err,

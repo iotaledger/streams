@@ -6,12 +6,12 @@ use crate::{
 use iota_streams_core::{
     async_trait,
     err,
+    prelude::{
+        Box,
+        Vec,
+    },
     sponge::prp::PRP,
     Errors,
-    prelude::{
-        Vec,
-        Box,
-    },
     Result,
 };
 
@@ -28,7 +28,7 @@ pub enum PermissionDuration {
     Perpetual,
     Unix(u64),
     NumBranchMsgs(u32),
-    NumPublishedmsgs(u32)
+    NumPublishedmsgs(u32),
 }
 
 impl PermissionDuration {
@@ -83,9 +83,7 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for PermissionDuration {
         let mut oneof = Uint8(0);
         ctx.mask(&mut oneof)?;
         match oneof.0 {
-            _ => {
-                Ok((PermissionDuration::Perpetual, ctx))
-            }
+            _ => Ok((PermissionDuration::Perpetual, ctx)),
         }
     }
 }
@@ -95,7 +93,6 @@ pub enum Permission {
     Read(Identifier),
     ReadWrite(Identifier, PermissionDuration),
     BranchAdmin(Identifier),
-
 }
 
 impl Permission {
@@ -114,7 +111,7 @@ impl Permission {
                 let mut v = vec![1];
                 v.append(&mut d.to_bytes());
                 v
-            },
+            }
             Permission::BranchAdmin(_) => vec![2],
         }
     }
@@ -214,9 +211,7 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Permission {
                 let p = Permission::BranchAdmin(id.0);
                 Ok((p, id.1))
             }
-            _ => {
-                err(Errors::BadOneof)
-            },
+            _ => err(Errors::BadOneof),
         }
     }
 }
@@ -228,17 +223,15 @@ impl core::convert::TryFrom<Vec<u8>> for Permission {
             // Read
             0 => {
                 let id = bytes[1..bytes.len()].to_vec().try_into();
-                Ok( Self::Read( id? ) )
-            },
+                Ok(Self::Read(id?))
+            }
             // Write
             1 => {
                 let duration = PermissionDuration::Perpetual;
                 Ok(Self::ReadWrite(bytes[1..bytes.len()].to_vec().try_into()?, duration))
-            },
+            }
             // Admin
-            2 =>{
-                Ok(Self::BranchAdmin(bytes[1..bytes.len()].to_vec().try_into()?))
-            },
+            2 => Ok(Self::BranchAdmin(bytes[1..bytes.len()].to_vec().try_into()?)),
             _ => Err(Errors::BadOneof),
         }
     }

@@ -7,8 +7,8 @@ use crypto::keys::x25519;
 
 use iota_streams_app::{
     id::Identifier,
-    permission::Permission,
     message::Cursor,
+    permission::Permission,
 };
 use iota_streams_core::{
     err,
@@ -50,10 +50,7 @@ impl<Link> KeyStore<Link> {
     {
         ids.into_iter()
             .filter_map(|p| match p.identifier() {
-                Identifier::PskId(pskid) => self
-                    .psks
-                    .get_key_value(pskid)
-                    .map(|(_, psk)| (p.clone(), psk.to_vec())),
+                Identifier::PskId(pskid) => self.psks.get_key_value(pskid).map(|(_, psk)| (p.clone(), psk.to_vec())),
                 _ => self
                     .keys
                     .get_key_value(p.identifier())
@@ -159,7 +156,7 @@ impl<Link: fmt::Display> fmt::Display for KeyStore<Link> {
 #[derive(Debug, PartialEq)]
 pub enum Key {
     PK(x25519::PublicKey),
-    Psk(Psk)
+    Psk(Psk),
 }
 
 impl From<x25519::PublicKey> for Key {
@@ -174,26 +171,25 @@ impl From<Psk> for Key {
     }
 }
 
-
 #[derive(Debug)]
 pub struct KeyStore2 {
     keys: HashMap<Identifier, Key>,
 }
 
 impl KeyStore2 {
-    pub fn add_key(&mut self, identifier: Identifier, key: impl Into::<Key>) -> Result<()>{
+    pub fn add_key(&mut self, identifier: Identifier, key: impl Into<Key>) -> Result<()> {
         let key_into = key.into();
         match (identifier, &key_into) {
             (Identifier::EdPubKey(_), &Key::PK(_)) | (Identifier::PskId(_), &Key::Psk(_)) => {
-                self.keys.insert(identifier,  key_into);
+                self.keys.insert(identifier, key_into);
                 Ok(())
-            },
+            }
             #[cfg(feature = "did")]
             (Identifier::DID(_), &Key::PK(_)) => {
-                self.keys.insert(identifier,  key_into);
+                self.keys.insert(identifier, key_into);
                 Ok(())
-            },
-            _ => err(BadIdentifier)
+            }
+            _ => err(BadIdentifier),
         }
     }
 }

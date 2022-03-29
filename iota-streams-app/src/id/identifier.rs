@@ -102,7 +102,7 @@ impl core::convert::TryFrom<Vec<u8>> for Identifier {
                 let pskid = PskId::clone_from_slice(&bytes[1..bytes.len()]);
                 Ok(Identifier::PskId(pskid))
             }
-            _ => Err(Errors::BadOneof)
+            _ => Err(Errors::BadOneof),
         }
     }
 }

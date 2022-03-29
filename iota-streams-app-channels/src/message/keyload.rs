@@ -51,7 +51,6 @@
 //!     via `SignedPacket`.
 use crypto::keys::x25519;
 use iota_streams_app::{
-    permission::Permission,
     id::{
         Identifier,
         UserIdentity,
@@ -66,6 +65,7 @@ use iota_streams_app::{
         ContentVerify,
         HasLink,
     },
+    permission::Permission,
 };
 use iota_streams_core::{
     async_trait,

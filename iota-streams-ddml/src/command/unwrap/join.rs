@@ -1,4 +1,3 @@
-
 use std::backtrace::Backtrace;
 
 use iota_streams_core::Result;
@@ -11,7 +10,6 @@ use crate::{
     types::SkipFallback,
 };
 use iota_streams_core::sponge::prp::PRP;
-
 
 impl<'a, F: PRP, L: SkipFallback<F>, S: LinkStore<F, L>, IS: io::IStream> Join<&'a mut L, &S> for Context<F, IS> {
     fn join(&mut self, store: &S, link: &'a mut L) -> Result<&mut Self> {
