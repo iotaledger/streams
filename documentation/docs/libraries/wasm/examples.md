@@ -1,5 +1,5 @@
 ---
-description: Official IOTA Streams Wasm API examples.
+description: The official IOTA Streams Wasm API examples.
 image: /img/logo/iota_mark_light.png
 keywords:
 - api
@@ -8,16 +8,18 @@ keywords:
 - javascript
 - node
 - examples
+- reference
 ---
 # Examples
-An overview example of the available api tools can be found [here](../../../../bindings/wasm/examples/node.js).
-The general API is simply an abstraction over the rust library, so the examples found 
-[here](../rust/examples.md) still apply (with some minor modifications, see: [api_reference](api_reference.md))
+
+For overview examples of the available API tools, take a look at our [wasm examples](../../../../bindings/wasm/examples/node.js). The general API is an abstraction over the rust library, so the examples found [here](../rust/examples.md) still apply (with some minor modifications, see: [api_reference](api_reference.md))
 
 ## Core Functionality
 
 ### Author Generation
+
 Create an Author and generate a new channel:
+
 ```javascript
 let node = "https://chrysalis-nodes.iota.org/";
 let options = new streams.SendOptions(node, 3, true, 1);
@@ -31,7 +33,9 @@ console.log("Announced at: ", ann_link.to_string());
 ```
 
 ### Subscriber Generation
+
 Create a Subscriber and attach to a channel:
+
 ```javascript
 let node = "https://chrysalis-nodes.iota.org/";
 let options = new streams.SendOptions(node, 3, true, 1);
@@ -42,28 +46,34 @@ await sub.clone().receive_announcement();
 ```
 
 ### Subscription
-Subscriber sends a subscription message:
+
+The Subscriber sends a subscription message:
+
 ```javascript
 let response = sub.clone().send_subscribe(ann_link);
 let sub_link = response.get_link();
 // Link to be provided to the Author for subscription
 console.log("Subscription link: ", sub_link.to_string());
 ```
-Author accepts and processes subscription: 
+The Author accepts and processes subscription: 
+
 ```javascript
 let sub_link = streams.Address.from_str("SubLink:Here");
 await author.clone().receive_subscribe(sub_link);
 ```
 
 ### Keyload
-Author sends a keyload for all participants in the channel:
+
+The Author sends a keyload for all participants in the channel:
+
 ```javascript
 let response = author.clone().send_keyload_for_everyone(ann_link);
 let keyload_link = response.get_link();
 // Keyload message can now act as starting point for a protected branch
 console.log("Keyload link for everyone: ", keyload_link.to_string());
 ``` 
-Author sends a keyload for just one subscriber in the channel:
+The Author sends a keyload for just one subscriber in the channel:
+
 ```javascript
 let response = author.clone().send_keyload(ann_link, [], ["SubA_PublicKey"]);
 let sub_A_keyload_link = response.get_link();
@@ -72,14 +82,16 @@ console.log("Keyload link for SubA: ", sub_A_keyload_link.to_string());
 ``` 
 
 ### Sending Messages
-Messages are required to be linked to a previous message that the user had access to. 
-In a single branch implementation this means the latest message in the branch, in multi
-branch implementations, this can mean any message in a branch that they have had access 
-to.
 
-*Note: In a multi publisher implementation (i.e. multiple publishers in a single branch),
-it is required that each publisher make sure to sync their state before publishing to ensure 
-that the instance stays in sync with the other publishers*
+Messages are required to be linked to a previous message that the user had access to. In a single branch implementation, this means the latest message in the branch. In multi-branch implementations, this can mean any message in a branch that they have had access to.
+
+:::note 
+
+In a multi-publisher implementation (that is, multiple publishers in a single branch),
+publishers are required to make sure to sync their state before publishing to ensure 
+that the instance stays in sync with the other publishers.
+
+:::
 
 ```javascript
 await sub.clone().syncState();
@@ -97,8 +109,9 @@ console.log("New message sent by Sub A at: ", msg_link.to_string());
 
 ### Message Fetching 
 #### Forward
-When new messages are available to retrieve from the channel, you can fetch the next 
-message sent by each publisher like so:
+
+When new messages are available to retrieve from the channel, you can fetch the next message sent by each publisher:
+
 ```javascript
 let next_msgs = await sub.clone().fetchNextMsgs();
 
@@ -115,9 +128,10 @@ for (const msg of next_msgs) {
 
 If no new messages are present, the returned array will be empty.
 
-You can also fetch all previous messages:
+You can also fetch all previous messages.
 
 #### Backwards  
+
 ```javascript
 let num_messages = 10;
 let prev_msgs = sub.clone().fetch_prev_msgs(latest_msg_link, num_messages);

@@ -1,15 +1,27 @@
+---
+description: Getting started with Wasm in IOTA Streams.
+image: /img/logo/iota_mark_light.png
+keywords:
+- api
+- wasm
+- getting started
+- reference
+---
 # Getting Started
-Before building anything you'll need to make sure you have `npm` installed on your 
-machine.
 
-### Install the library
-To install the library, you could run:
+Before building anything, you will need to make sure you have `npm` installed on your machine.
+
+## Install the library
+
+To install the library, you run:
 
 ```npm i @iota/streams```
 
 
-### Starting a Channel 
-Once the package has been built, you can pull it into a script file like so: 
+## Starting a Channel 
+
+Once the package has been built, you can pull it into a script file: 
+
 ```javascript
 const streams = require("@iota/streams/node");
 
