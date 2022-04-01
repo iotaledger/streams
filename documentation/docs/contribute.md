@@ -12,7 +12,7 @@ keywords:
 ---
 # Contribute to the Project
 
-**Thanks for thinking about contributing to the project! Below are some ways that you can contribute.**
+Thanks for thinking about contributing to the project! Below are some ways that you can contribute.
 
 ## Join the IOTA Libraries Initiative
 
@@ -22,7 +22,7 @@ The [IOTA Libraries Initiative](https://github.com/iota-community/X-Team_IOTA_St
 - Documentation.
 - Code samples.
 
-If you would like to get involved, join the #experience channel on [Discord](https://discord.com/channels/397872799483428865/701857063923351582).
+If you would like to get involved, join the `#experience` channel on [Discord](https://discord.com/channels/397872799483428865/701857063923351582).
 
 ## Contribute to the Project's GitHub Repository
 
@@ -44,6 +44,6 @@ Helping others is an important part of any open source ecosystem.
 
 By sharing your knowledge with others, you can provide a lot of value to the community and maybe inspire someone else to learn and contribute.
 
-Take a look at what discussions are going on in the #experience channel on [Discord](https://discord.com/channels/397872799483428865/701857063923351582).
+Take a look at what discussions are going on in the [#experience channel on Discord](https://discord.com/channels/397872799483428865/701857063923351582).
 
 Thanks :heart:
