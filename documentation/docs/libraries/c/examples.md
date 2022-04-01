@@ -9,7 +9,7 @@ keywords:
 ---
 # Examples
 
-For reference, an overview example of the available api tools can be found in the [main C page](../../../../bindings/c/main.c). The general API is an abstraction over the rust library, so the [rust examples](../rust/examples.md) still apply (with some minor modifications, see: [api_reference](api_reference.md))
+You can find an overview example of the available API tools in the [main C file](https://github.com/iotaledger/streams/blob/develop/bindings/c/main.c). The general API is an abstraction of the rust library, so the [rust examples](../rust/examples.md) still apply with some minor modifications to reflect the differences between the [Rust API](../rust/api_reference.md) and the [C API](api_reference.md).
 
 ## Core Functionality
 
