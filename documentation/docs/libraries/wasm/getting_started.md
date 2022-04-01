@@ -9,16 +9,18 @@ keywords:
 ---
 # Getting Started
 
-Before building anything, you will need to make sure you have `npm` installed on your machine.
+Before building anything, you will need to make sure you have [`npm`](https://www.npmjs.com/) installed on your machine.
 
-## Install the library
+## Install the Library
 
-To install the library, run:
+To install a library, run:
 
-```npm i @iota/streams```
+```bash
+npm i @iota/streams
+```
 
 
-## Starting a Channel 
+## Start a Channel 
 
 Once the package has been built, you can pull it into a script file: 
 

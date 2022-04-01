@@ -11,8 +11,8 @@ keywords:
 - reference
 ---
 # Examples
-For overview examples of the available API tools, take a look at our [wasm examples](../../../../bindings/wasm/examples/node.js). The general API is an abstraction over the rust library, so the examples found [here](../rust/examples.md) still apply (with some minor modifications, see: [api_reference](api_reference.md))
 
+For overview examples of the available API tools, take a look at our [wasm examples](https://github.com/iotaledger/streams/tree/develop/bindings/wasm/examples). The general API is an abstraction of the rust library, so the [rust examples](../rust/examples.md) still apply with some minor modifications to reflect the differences between the [Rust API](../rust/api_reference.md) and the [Wasm API](api_reference.md).
 ## Core Functionality
 
 ### Author Generation
@@ -107,6 +107,7 @@ console.log("New message sent by Sub A at: ", msg_link.to_string());
 ```
 
 ### Message Fetching 
+
 #### Forward
 
 When new messages are available to retrieve from the channel, you can fetch the next message sent by each publisher:
