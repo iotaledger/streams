@@ -17,7 +17,7 @@ To create a new Rust project, run:
 cargo new PROJECT_NAME
 ```
 
-Create two of these Rust projects: one for the author and one for the subscriber, and add the following dependencies to both their `Cargo.toml` files:
+Create two Rust projects: one for the author and one for the subscriber, and add the following dependencies to both their `Cargo.toml` files:
 
 ```toml
 tokio = { version = "1.5.0", features = ["full"] }
