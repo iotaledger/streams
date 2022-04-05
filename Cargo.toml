@@ -35,8 +35,6 @@ default-members = [
 ]
 
 exclude = [
-    #"bindings/c",
-    #"bindings/wasm",
     "examples",
 ]
 
