@@ -50,7 +50,7 @@ impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
 /// #
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
-/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_app_channels::api::BucketTransport;
 /// # use iota_streams_core::Result;
 /// #
 /// # #[tokio::main]
@@ -84,7 +84,7 @@ impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
 /// #
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
-/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_app_channels::api::BucketTransport;
 /// # use iota_streams_core::Result;
 /// #
 /// # #[tokio::main]

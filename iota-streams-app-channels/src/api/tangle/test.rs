@@ -142,6 +142,6 @@ async fn run_basic_scenario() {
 
     use iota_streams_core::prelude::Rc;
 
-    let transport = Rc::new(RefCell::new(crate::api::tangle::BucketTransport::new()));
+    let transport = Rc::new(RefCell::new(crate::api::BucketTransport::new()));
     example(transport).await.unwrap();
 }

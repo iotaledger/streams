@@ -76,7 +76,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
-/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_app_channels::api::BucketTransport;
 /// # use iota_streams_core::Result;
 /// #
 /// # #[tokio::main]
@@ -88,14 +88,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = User::new(author_seed, author_transport).await;
+/// let mut author = User::new(author_seed, &author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
+/// let mut subscriber = User::new(subscriber_seed, &subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -147,7 +147,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
-/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_app_channels::api::BucketTransport;
 /// # use iota_streams_core::Result;
 /// #
 /// # #[tokio::main]
@@ -159,14 +159,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = User::new(author_seed, author_transport).await;
+/// let mut author = User::new(author_seed, &author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
+/// let mut subscriber = User::new(subscriber_seed, &subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -221,7 +221,7 @@ pub trait IntoMessages<Trans> {
 ///     Tangle,
 ///     User,
 /// };
-/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_app_channels::api::BucketTransport;
 /// # use iota_streams_core::{prelude::Rc, Result};
 ///
 /// # #[tokio::main]
@@ -230,19 +230,15 @@ pub trait IntoMessages<Trans> {
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
 /// let author_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let author_transport = test_transport.clone();
-/// #
-/// let mut author = User::new(author_seed, author_transport).await;
+///
+/// let mut author = User::new(author_seed, &test_transport).await;
 /// let announcement_link = author.send_announce().await?;
 /// let shareable_announcement_link = announcement_link.to_string();
 ///
 /// # let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// # let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let subscriber_transport = test_transport.clone();
-/// #
-/// # let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
+///
+/// # let mut subscriber = User::new(subscriber_seed, &test_transport).await;
 /// # let announcement_link = shareable_announcement_link.parse().expect("parsing announcement link");
 /// # subscriber.receive_announcement(&announcement_link).await?;
 /// # let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
@@ -311,7 +307,7 @@ pub trait IntoMessages<Trans> {
 ///     Tangle,
 ///     User,
 /// };
-/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_app_channels::api::BucketTransport;
 /// # use iota_streams_core::{prelude::Rc, Result};
 /// #
 /// # #[tokio::main]
@@ -323,7 +319,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// # let mut author = User::new(author_seed, author_transport).await;
+/// # let mut author = User::new(author_seed, &author_transport).await;
 /// # let announcement_link = author.send_announce().await?;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
@@ -331,7 +327,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
+/// let mut subscriber = User::new(subscriber_seed, &subscriber_transport).await;
 ///
 /// // Announcement link is provided by author
 /// let shareable_announcement_link = "<channel-announcement-link>";
@@ -413,7 +409,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
-/// # use iota_streams_app_channels::api::tangle::BucketTransport;
+/// # use iota_streams_app_channels::api::BucketTransport;
 /// # use iota_streams_core::Result;
 /// #
 /// # #[tokio::main]
@@ -425,14 +421,14 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let mut author = User::new(author_seed, author_transport).await;
+/// let mut author = User::new(author_seed, &author_transport).await;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = User::new(subscriber_seed, subscriber_transport).await;
+/// let mut subscriber = User::new(subscriber_seed, &subscriber_transport).await;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -743,7 +739,7 @@ mod tests {
     };
 
     use crate::{
-        api::tangle::BucketTransport,
+        api::BucketTransport,
         Address,
         User,
     };
@@ -768,7 +764,7 @@ mod tests {
             .await?;
 
         // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
-        let mut subscriber = User::new("subscriber", transport).await;
+        let mut subscriber = User::new("subscriber", &transport).await;
         subscriber.receive_announcement(&announcement_link).await?;
         let n_msgs = subscriber.sync_state().await?;
         assert_eq!(n_msgs, 4); // keyload, 2 signed packets from author, and last signed-packet from herself
@@ -788,7 +784,7 @@ mod tests {
         let (_, seq_link) = subscriber1.send_signed_packet(&packet_link, &p, &p).await?;
 
         let mut subscriber2 =
-            subscriber_fixture("subscriber2", &mut author, &announcement_link, transport.clone()).await?;
+            subscriber_fixture("subscriber2", &mut author, &announcement_link, &transport).await?;
 
         author.sync_state().await?;
         // This keyload link to announcement is necessary (for now) to "introduce" both subscribers
@@ -812,9 +808,9 @@ mod tests {
     /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport
     async fn author_subscriber_fixture() -> Result<(User<Transport>, User<Transport>, Address, Transport)> {
         let transport = Rc::new(RefCell::new(BucketTransport::new()));
-        let mut author = User::new("author", transport.clone()).await;
+        let mut author = User::new("author", &transport).await;
         let announcement_link = author.send_announce().await?;
-        let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, transport.clone()).await?;
+        let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, &transport).await?;
         Ok((author, subscriber, announcement_link, transport))
     }
 
@@ -822,7 +818,7 @@ mod tests {
         seed: &str,
         author: &mut User<Transport>,
         announcement_link: &Address,
-        transport: Transport,
+        transport: &Transport,
     ) -> Result<User<Transport>> {
         let mut subscriber = User::new(seed, transport).await;
         subscriber.receive_announcement(announcement_link).await?;
