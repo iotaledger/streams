@@ -742,7 +742,11 @@ mod tests {
         rc::Rc,
     };
 
-    use crate::{api::tangle::BucketTransport, Address, User};
+    use crate::{
+        api::tangle::BucketTransport,
+        Address,
+        User,
+    };
     use iota_streams_core::Result;
 
     type Transport = Rc<RefCell<BucketTransport>>;

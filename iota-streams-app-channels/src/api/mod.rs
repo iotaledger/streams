@@ -43,15 +43,12 @@ pub fn pskid_from_str(id: &str) -> PskId {
     psk::pskid_from_str::<DefaultF>(id)
 }
 
-
 use iota_streams_app::transport;
 
 /// Tangle Address Link type.
 pub type Address = transport::tangle::TangleAddress;
 /// Binary encoded message type.
 pub type Message = transport::tangle::TangleMessage;
-
-
 
 /// Test Transport.
 pub type BucketTransport = iota_streams_app::transport::BucketTransport<Address, Message>;

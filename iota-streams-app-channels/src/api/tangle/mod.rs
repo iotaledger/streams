@@ -25,9 +25,9 @@ pub use message::LinkGenerator;
 
 use super::{
     Address,
+    DefaultF,
     Message,
     Transport,
-    DefaultF
 };
 use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;

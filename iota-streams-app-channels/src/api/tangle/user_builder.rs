@@ -5,8 +5,8 @@ use crate::api::{
         User,
     },
     Address,
-    Message,
     DefaultF,
+    Message,
 };
 use iota_streams_app::id::{
     Identifier,
@@ -16,8 +16,7 @@ use iota_streams_core::Result;
 
 /// Builder instance for a Streams User
 pub struct UserBuilder<'a, Trans: Transport + Clone, F> {
-//pub struct UserBuilder<'a, F> {
-
+    // pub struct UserBuilder<'a, F> {
     /// Base Identity that will be used to Identifier a Streams User
     pub id: Option<UserIdentity<F>>,
     /// Alternate Identity that can be used to mask the direct Identity of a Streams User
@@ -29,7 +28,7 @@ pub struct UserBuilder<'a, Trans: Transport + Clone, F> {
 }
 
 impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
-//impl<'a, F> Default for UserBuilder<'a, F> {
+    // impl<'a, F> Default for UserBuilder<'a, F> {
     fn default() -> Self {
         UserBuilder {
             id: None,

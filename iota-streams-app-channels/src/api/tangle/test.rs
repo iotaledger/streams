@@ -130,9 +130,7 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
         .unwrap();
 
     let authordump = author.export("pwdAuthor").await.unwrap();
-    let _author2 = User::import(authordump.as_ref(), "pwdAuthor", transport)
-        .await
-        .unwrap();
+    let _author2 = User::import(authordump.as_ref(), "pwdAuthor", transport).await.unwrap();
 
     Ok(())
 }

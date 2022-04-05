@@ -161,7 +161,7 @@ where
     LS: LinkStore<F, Link::Rel> + Default,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
-    //pub fn gen(user_id: UserIdentity<F>, alias: Option<UserIdentity<F>>, auto_sync: bool) -> Self {
+    // pub fn gen(user_id: UserIdentity<F>, alias: Option<UserIdentity<F>>, auto_sync: bool) -> Self {
     pub fn gen<Trans: Transport>(builder: &mut UserBuilder<Trans, F>) -> Self {
         // TODO: Remove different channel types, encoding and uniform payload
         let message_encoding = ENCODING.as_bytes().to_vec();
