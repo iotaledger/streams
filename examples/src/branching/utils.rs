@@ -1,8 +1,10 @@
 use iota_streams::{
     app::message::HasLink,
-    app_channels::api::tangle::{
-        futures::TryStreamExt,
-        IntoMessages,
+    app_channels::api::{
+        tangle::{
+            futures::TryStreamExt,
+            IntoMessages,
+        },
         Transport,
     },
     core::Result,

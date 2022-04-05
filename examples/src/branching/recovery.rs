@@ -1,6 +1,6 @@
 use iota_streams::{
     app::id::UserIdentity,
-    app_channels::api::tangle::{
+    app_channels::api::{
         Transport,
         User,
         UserBuilder,
@@ -22,12 +22,12 @@ use std::{
 pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     let mut author = UserBuilder::new()
         .with_identity(UserIdentity::new(seed).await)
-        .with_transport(transport.clone())
+        .with_transport(&transport)
         .build();
 
     let mut subscriberA = UserBuilder::new()
         .with_identity(UserIdentity::new("SUBSCRIBERA9SEED").await)
-        .with_transport(transport.clone())
+        .with_transport(&transport)
         .build();
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
@@ -90,14 +90,11 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     utils::fetch_next_messages(&mut author).await?;
 
     println!("\n\nTime to try to recover the instance...");
-    let mut new_author = User::recover(
-        UserIdentity::new(seed).await,
-        None,
-        &announcement_link,
-        transport.clone(),
-    )
-    .await?;
-    new_author.sync_state().await?;
+    let mut new_author = UserBuilder::new()
+        .with_identity(UserIdentity::new(seed).await)
+        .with_transport(&transport)
+        .recover(&announcement_link)
+        .await?;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;

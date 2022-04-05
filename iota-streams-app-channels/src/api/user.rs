@@ -56,9 +56,13 @@ use iota_streams_ddml::{
 };
 
 use crate::{
-    api::key_store::*,
+    api::{
+        key_store::*,
+        Transport,
+    },
     message::*,
     Lookup,
+    UserBuilder,
 };
 
 const ENCODING: &str = "utf-8";
@@ -157,14 +161,16 @@ where
     LS: LinkStore<F, Link::Rel> + Default,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
-    pub fn gen(user_id: UserIdentity<F>, alias: Option<UserIdentity<F>>, auto_sync: bool) -> Self {
+    //pub fn gen(user_id: UserIdentity<F>, alias: Option<UserIdentity<F>>, auto_sync: bool) -> Self {
+    pub fn gen<Trans: Transport>(builder: &mut UserBuilder<Trans, F>) -> Self {
         // TODO: Remove different channel types, encoding and uniform payload
         let message_encoding = ENCODING.as_bytes().to_vec();
 
         Self {
             _phantom: PhantomData,
-            user_id,
-            alias,
+            // If UserId is None in builder, gen should panic
+            user_id: builder.id.take().unwrap(),
+            alias: builder.alias.take(),
             key_store: KeyStore::default(),
             author_id: None,
             author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
@@ -173,7 +179,7 @@ where
             appinst: None,
             message_encoding,
             uniform_payload_length: PAYLOAD_LENGTH,
-            auto_sync,
+            auto_sync: builder.auto_sync,
         }
     }
 

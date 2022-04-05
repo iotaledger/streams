@@ -16,11 +16,11 @@ use iota_streams_core::{
 use super::*;
 
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
-    let mut author = User::new("AUTHOR9SEED", transport.clone()).await;
+    let mut author = User::new("AUTHOR9SEED", &transport).await;
 
-    let mut subscriberA = User::new("SUBSCRIBERA9SEED", transport.clone()).await;
+    let mut subscriberA = User::new("SUBSCRIBERA9SEED", &transport).await;
 
-    let mut subscriberB = User::new("SUBSCRIBERB9SEED", transport.clone()).await;
+    let mut subscriberB = User::new("SUBSCRIBERB9SEED", &transport).await;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());

@@ -7,7 +7,7 @@ pub mod key_store;
 /// Base level api for user implementation
 mod user;
 
-pub use user::User;
+pub use user::User as ApiUser;
 
 /// Tangle-specific Channel API.
 #[cfg(all(feature = "tangle"))]
@@ -42,3 +42,28 @@ pub fn pskid_from_seed(seed_bytes: &[u8]) -> PskId {
 pub fn pskid_from_str(id: &str) -> PskId {
     psk::pskid_from_str::<DefaultF>(id)
 }
+
+
+use iota_streams_app::transport;
+
+/// Tangle Address Link type.
+pub type Address = transport::tangle::TangleAddress;
+/// Binary encoded message type.
+pub type Message = transport::tangle::TangleMessage;
+
+
+
+/// Test Transport.
+pub type BucketTransport = iota_streams_app::transport::BucketTransport<Address, Message>;
+
+/// Transportation trait for Tangle Client implementation
+// TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
+pub trait Transport: transport::Transport<Address, Message> + Clone {}
+impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone {}
+
+pub use tangle::{
+    MessageContent,
+    UnwrappedMessage,
+    User,
+    UserBuilder,
+};

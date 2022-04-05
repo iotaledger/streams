@@ -6,11 +6,9 @@ use iota_streams::{
     app_channels::api::{
         psk_from_seed,
         pskid_from_psk,
-        tangle::{
-            Transport,
-            User,
-            UserBuilder,
-        },
+        Transport,
+        User,
+        UserBuilder,
     },
     core::{
         prelude::HashMap,
@@ -32,14 +30,14 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
 
     let mut author = UserBuilder::new()
         .with_identity(UserIdentity::new(seed).await)
-        .with_transport(transport.clone())
+        .with_transport(&transport)
         .build();
 
-    let mut subscriberA = User::new("SUBSCRIBERA9SEED", transport.clone()).await;
-    let mut subscriberB = User::new("SUBSCRIBERB9SEED", transport.clone()).await;
+    let mut subscriberA = User::new("SUBSCRIBERA9SEED", &transport).await;
+    let mut subscriberB = User::new("SUBSCRIBERB9SEED", &transport).await;
     let mut subscriberC = UserBuilder::new()
         .with_identity(UserIdentity::new_from_psk(pskid, psk).await)
-        .with_transport(transport.clone())
+        .with_transport(&transport)
         .build();
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());

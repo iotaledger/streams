@@ -8,7 +8,7 @@ use rand::Rng;
 
 use iota_streams::{
     app::transport::tangle::client::Client,
-    app_channels::api::tangle::Transport,
+    app_channels::api::Transport,
     core::prelude::{
         Rc,
         String,
@@ -45,7 +45,7 @@ async fn run_multi_branch_test<T: Transport>(transport: T, seed: &str) {
 }
 
 async fn main_pure() {
-    let transport = iota_streams::app_channels::api::tangle::BucketTransport::new();
+    let transport = iota_streams::app_channels::api::BucketTransport::new();
 
     println!("#######################################");
     println!("Running pure tests without accessing Tangle");

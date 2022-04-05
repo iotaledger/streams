@@ -41,7 +41,7 @@ pub trait Lookup<Key, Value> {
 
 // Reexport the most frequently used types for an easier discoverability
 #[cfg(feature = "tangle")]
-pub use api::tangle::{
+pub use api::{
     Address,
     MessageContent,
     UnwrappedMessage,

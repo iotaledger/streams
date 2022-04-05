@@ -1,37 +1,40 @@
 use crate::api::{
     tangle::{
+        MsgInfo,
         Transport,
         User,
     },
+    Address,
+    Message,
     DefaultF,
 };
-use iota_streams_app::{
-    id::{
-        Identifier,
-        UserIdentity,
-    },
-    transport::tangle::client::Client,
+use iota_streams_app::id::{
+    Identifier,
+    UserIdentity,
 };
-use std::mem::take;
+use iota_streams_core::Result;
 
 /// Builder instance for a Streams User
-pub struct UserBuilder<Trans: Transport, F> {
+pub struct UserBuilder<'a, Trans: Transport + Clone, F> {
+//pub struct UserBuilder<'a, F> {
+
     /// Base Identity that will be used to Identifier a Streams User
-    id: UserIdentity<F>,
+    pub id: Option<UserIdentity<F>>,
     /// Alternate Identity that can be used to mask the direct Identity of a Streams User
-    alias: Option<UserIdentity<F>>,
+    pub alias: Option<UserIdentity<F>>,
     /// Transport Client instance
-    transport: Trans,
+    pub transport: Option<&'a Trans>,
     /// Represents whether the User Instance will automatically sync before each message operation
-    auto_sync: bool,
+    pub auto_sync: bool,
 }
 
-impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
+impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
+//impl<'a, F> Default for UserBuilder<'a, F> {
     fn default() -> Self {
         UserBuilder {
-            id: UserIdentity::default(),
+            id: None,
             alias: None,
-            transport: Trans::default(),
+            transport: None,
             auto_sync: true,
         }
     }
@@ -59,7 +62,7 @@ impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
 /// # let author_identity = UserIdentity::new(author_seed).await;
 /// # let mut author = UserBuilder::new()
 ///     .with_identity(author_identity)
-///     .with_transport(author_transport)
+///     .with_transport(&author_transport)
 ///     .build();
 ///
 /// # let announcement_link = author.send_announce().await?;
@@ -90,11 +93,10 @@ impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
 /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
 /// # let author_seed = "cryptographically-secure-random-author-seed";
 /// #
-/// # let author_transport = test_transport.clone();
 /// # let author_identity = UserIdentity::new(author_seed).await;
 /// # let mut author = UserBuilder::new()
 ///     .with_identity(author_identity)
-///     .with_transport(author_transport)
+///     .with_transport(&test_transport)
 ///     .build();
 ///
 /// # let psk_seed = "seed-for-pre-shared-key";
@@ -104,11 +106,10 @@ impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
 /// # let announcement_link = author.send_announce().await?;
 /// # author.store_psk(pskid, psk)?;
 ///
-/// # let subscriber_transport = test_transport.clone();
 /// # let subscriber_identity = UserIdentity::new_from_psk(pskid, psk).await;
 /// # let mut subscriber = UserBuilder::new()
 ///     .with_identity(subscriber_identity)
-///     .with_transport(subscriber_transport)
+///     .with_transport(&test_transport)
 ///     .build();
 ///
 /// # subscriber.receive_announcement(&announcement_link).await?;
@@ -119,18 +120,8 @@ impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
 /// # Ok(())
 /// # }
 /// ```
-impl UserBuilder<Client, DefaultF> {
-    /// Inject Tangle Client instance into the User Builder by URL
-    ///
-    /// # Arguments
-    /// * `url` - Tangle Node URL string
-    pub fn with_node_url(&mut self, url: &str) -> &mut Self {
-        self.transport = Client::new_from_url(url);
-        self
-    }
-}
 
-impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
+impl<'a, Trans: Transport> UserBuilder<'a, Trans, DefaultF> {
     /// Create a new User Builder instance
     pub fn new() -> Self {
         Self::default()
@@ -141,7 +132,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # Arguments
     /// * `id` - UserIdentity to be used for base identification of the Streams User
     pub fn with_identity(&mut self, id: UserIdentity<DefaultF>) -> &mut Self {
-        self.id = id;
+        self.id = Some(id);
         self
     }
 
@@ -158,8 +149,8 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     ///
     /// # Arguments
     /// * `transport` - Transport Client to be used by the Streams User
-    pub fn with_transport(&mut self, transport: Trans) -> &mut Self {
-        self.transport = transport;
+    pub fn with_transport(&mut self, transport: &'a Trans) -> &mut Self {
+        self.transport = Some(transport);
         self
     }
 
@@ -175,8 +166,8 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// Build a User instance using the Builder values.
     pub fn build(&mut self) -> User<Trans> {
         let mut user = User {
-            user: crate::api::User::gen(take(&mut self.id), take(&mut self.alias), self.auto_sync),
-            transport: self.transport.clone(),
+            user: crate::api::ApiUser::gen(self),
+            transport: self.transport.unwrap().clone(),
         };
         // If User is using a Psk as their base Identifier,
         if let Identifier::PskId(pskid) = *user.user.id() {
@@ -184,5 +175,24 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
             user.store_psk(pskid, user.user.user_id.psk().unwrap()).unwrap();
         }
         user
+    }
+
+    /// Generates a new User implementation from the builder. If the announcement message generated
+    /// by this instance matches that of an existing (and provided) announcement link, the user will
+    /// sync to the latest state
+    ///
+    ///  # Arguements
+    /// * `announcement` - An existing announcement message link for validation of ownership
+    pub async fn recover(&mut self, announcement: &Address) -> Result<User<Trans>> {
+        let mut user = self.build();
+        user.user.create_channel(0)?;
+
+        let ann = user.user.announce().await?;
+        let retrieved: Message = user.transport.recv_message(announcement).await?;
+        assert_eq!(retrieved, ann.message);
+
+        user.user.commit_wrapped(ann.wrapped, MsgInfo::Announce)?;
+        user.sync_state().await?;
+        Ok(user)
     }
 }
