@@ -540,10 +540,10 @@ where
     pub fn prepare_keyload<'a, 'b, I>(
         &'a self,
         link_to: &'a Link,
-        keys: &'b I,
+        keys: I,
     ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>>
     where
-        &'b I: IntoIterator<Item = &'b Permission>,
+        I: IntoIterator<Item = &'b Permission>,
     {
         match self.seq_no() {
             Some(seq_no) => {
@@ -598,17 +598,18 @@ where
 
     /// Create keyload message with a new session key shared with recipients
     /// identified by pre-shared key IDs and by Ed25519 public keys.
-    pub async fn share_keyload<'a, I>(&mut self, link_to: &Link, keys: &'a I) -> Result<WrappedMessage<F, Link>>
+    pub async fn share_keyload<'a, I>(&mut self, link_to: &Link, keys: I) -> Result<WrappedMessage<F, Link>>
     where
-        &'a I: IntoIterator<Item = &'a Permission>,
+        I: IntoIterator<Item = &'a Permission>,
     {
-        let prep = self.prepare_keyload(link_to, keys)?;
+        let perms = keys.into_iter().copied().collect();
+        let prep = self.prepare_keyload(link_to, &perms)?;
         let res = prep.wrap(&self.link_store).await;
 
         match res {
             Ok(wm) => {
                 let next_link = wm.wrapped.link.clone();
-                self.handle_permissions(link_to, next_link, keys.into_iter().copied().collect());
+                self.handle_permissions(link_to, next_link, perms);
                 Ok(wm)
             }
             Err(e) => Err(e),

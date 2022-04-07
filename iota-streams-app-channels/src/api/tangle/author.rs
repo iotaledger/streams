@@ -247,9 +247,9 @@ impl<Trans: Transport + Clone> Author<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `keys`  - Iterable of [`Permission`] to be included in message
-    pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: &'a I) -> Result<(Address, Option<Address>)>
+    pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
     where
-        &'a I: IntoIterator<Item = &'a Permission>,
+        I: IntoIterator<Item = &'a Permission>,
     {
         self.user.send_keyload(link_to, keys).await
     }
