@@ -555,17 +555,7 @@ where
                     .with_seq_num(msg_cursor.seq_no)
                     .with_identifier(self.id());
 
-                let exchange_keys = self.key_store.exchange_keys();
-                let filtered_permissions = keys
-                    .into_iter()
-                    .filter_map(|p| {
-                        exchange_keys
-                            .iter()
-                            .find(|&ek| &ek.0 == p.identifier())
-                            .map(|k| (*p, k.1.clone()))
-                    })
-                    .collect();
-                self.do_prepare_keyload(header, link_to.rel(), filtered_permissions)
+                self.do_prepare_keyload(header, link_to.rel(), self.key_store.filter(keys))
             }
             None => err!(SeqNumRetrievalFailure),
         }

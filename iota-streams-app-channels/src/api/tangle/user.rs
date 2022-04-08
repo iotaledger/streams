@@ -487,7 +487,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
-    ///   * `pk` - Optional ed25519 Public Key of the sending participwe still on for friday?ant. None if unknown
+    ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
     pub async fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
         self.handle_message(msg, true).await
