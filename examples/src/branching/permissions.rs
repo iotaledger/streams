@@ -1,7 +1,5 @@
 use iota_streams::{
-    app::{
-        permission::*,
-    },
+    app::permission::*,
     app_channels::api::{
         psk_from_seed,
         pskid_from_psk,
@@ -51,10 +49,10 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     {
         subscriberA.receive_msg(&announcement_link).await?;
         print!("  SubscriberA: {}", subscriberA);
-        
+
         subscriberB.receive_msg(&announcement_link).await?;
         print!("  SubscriberB: {}", subscriberB);
-        
+
         subscriberC.receive_msg(&announcement_link).await?;
         print!("  SubscriberC: {}", subscriberC);
     }

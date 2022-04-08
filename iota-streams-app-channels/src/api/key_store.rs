@@ -6,9 +6,11 @@ use core::{
 use crypto::keys::x25519;
 
 use iota_streams_app::{
-    id::Identifier,
+    id::{
+        permission::Permission,
+        Identifier,
+    },
     message::Cursor,
-    permission::Permission,
 };
 use iota_streams_core::{
     err,

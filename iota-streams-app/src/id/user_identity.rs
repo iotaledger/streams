@@ -1,11 +1,13 @@
 use crate::{
-    id::Identifier,
+    id::{
+        permission::Permission,
+        Identifier,
+    },
     message::{
         ContentSign,
         ContentSizeof,
         ContentVerify,
     },
-    permission::Permission,
 };
 use crypto::{
     keys::x25519,

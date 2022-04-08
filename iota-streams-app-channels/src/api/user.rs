@@ -15,6 +15,7 @@ use crypto::{
 
 use iota_streams_app::{
     id::{
+        permission::Permission,
         Identifier,
         UserIdentity,
     },
@@ -25,7 +26,6 @@ use iota_streams_app::{
         },
         *,
     },
-    permission::Permission,
 };
 use iota_streams_core::{
     async_trait,

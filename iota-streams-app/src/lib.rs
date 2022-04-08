@@ -32,9 +32,6 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
-/// Permissions wrapping for identifiers
-pub mod permission;
-
 /// Streams Message definitions and utils for wrapping/unwrapping.
 pub mod message;
 

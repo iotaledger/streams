@@ -3,9 +3,9 @@ use core::fmt;
 
 use super::*;
 
-use iota_streams_app::{
-    id::Identifier,
+use iota_streams_app::id::{
     permission::Permission,
+    Identifier,
 };
 
 use iota_streams_core::{

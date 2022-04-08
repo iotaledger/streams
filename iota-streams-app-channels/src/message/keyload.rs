@@ -52,6 +52,7 @@
 use crypto::keys::x25519;
 use iota_streams_app::{
     id::{
+        permission::Permission,
         Identifier,
         UserIdentity,
     },
@@ -65,7 +66,6 @@ use iota_streams_app::{
         ContentVerify,
         HasLink,
     },
-    permission::Permission,
 };
 use iota_streams_core::{
     async_trait,

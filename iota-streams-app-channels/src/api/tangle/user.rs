@@ -13,11 +13,11 @@ use iota_streams_app::id::{
 };
 use iota_streams_app::{
     id::{
+        permission::Permission,
         Identifier,
         UserIdentity,
     },
     message::HasLink,
-    permission::Permission,
 };
 use iota_streams_core::{
     err,
@@ -618,11 +618,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             message::ANNOUNCE => {
                 self.user.handle_announcement(&msg, MsgInfo::Announce).await?;
                 let link = preparsed.header.link;
-                Ok(UnwrappedMessage::new(
-                    link,
-                    link,
-                    MessageContent::new_announce(),
-                ))
+                Ok(UnwrappedMessage::new(link, link, MessageContent::new_announce()))
             }
             unknown_content => err!(UnknownMsgType(unknown_content)),
         }

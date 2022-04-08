@@ -6,10 +6,7 @@ use crate::{
 use iota_streams_core::{
     async_trait,
     err,
-    prelude::{
-        Box,
-        Vec,
-    },
+    prelude::Box,
     sponge::prp::PRP,
     Errors,
     Result,
@@ -21,26 +18,12 @@ use iota_streams_ddml::{
     types::*,
 };
 
-use core::convert::TryInto;
-
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum PermissionDuration {
     Perpetual,
     Unix(u64),
     NumBranchMsgs(u32),
     NumPublishedmsgs(u32),
-}
-
-impl PermissionDuration {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        match self {
-            // TODO impl real durations
-            PermissionDuration::Perpetual => vec![0],
-            PermissionDuration::Unix(_) => vec![1],
-            PermissionDuration::NumBranchMsgs(_) => vec![2],
-            PermissionDuration::NumPublishedmsgs(_) => vec![3],
-        }
-    }
 }
 
 #[async_trait(?Send)]
@@ -101,18 +84,6 @@ impl Permission {
             Permission::Read(id) => id,
             Permission::ReadWrite(id, _) => id,
             Permission::BranchAdmin(id) => id,
-        }
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        match self {
-            Permission::Read(_) => vec![0],
-            Permission::ReadWrite(_, d) => {
-                let mut v = vec![1];
-                v.append(&mut d.to_bytes());
-                v
-            }
-            Permission::BranchAdmin(_) => vec![2],
         }
     }
 }
@@ -212,27 +183,6 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Permission {
                 Ok((p, id.1))
             }
             _ => err(Errors::BadOneof),
-        }
-    }
-}
-
-impl core::convert::TryFrom<Vec<u8>> for Permission {
-    type Error = Errors;
-    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
-        match bytes[0] {
-            // Read
-            0 => {
-                let id = bytes[1..bytes.len()].to_vec().try_into();
-                Ok(Self::Read(id?))
-            }
-            // Write
-            1 => {
-                let duration = PermissionDuration::Perpetual;
-                Ok(Self::ReadWrite(bytes[1..bytes.len()].to_vec().try_into()?, duration))
-            }
-            // Admin
-            2 => Ok(Self::BranchAdmin(bytes[1..bytes.len()].to_vec().try_into()?)),
-            _ => Err(Errors::BadOneof),
         }
     }
 }
