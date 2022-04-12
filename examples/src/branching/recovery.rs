@@ -22,13 +22,13 @@ use std::{
 pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     let mut author = UserBuilder::new()
         .with_identity(UserIdentity::new(seed).await)
-        .with_transport(&transport)
-        .build();
+        .with_transport(transport.clone())
+        .build()?;
 
     let mut subscriberA = UserBuilder::new()
         .with_identity(UserIdentity::new("SUBSCRIBERA9SEED").await)
-        .with_transport(&transport)
-        .build();
+        .with_transport(transport.clone())
+        .build()?;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -92,7 +92,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     println!("\n\nTime to try to recover the instance...");
     let mut new_author = UserBuilder::new()
         .with_identity(UserIdentity::new(seed).await)
-        .with_transport(&transport)
+        .with_transport(transport.clone())
         .recover(&announcement_link)
         .await?;
 

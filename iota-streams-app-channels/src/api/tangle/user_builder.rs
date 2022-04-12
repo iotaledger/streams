@@ -12,23 +12,29 @@ use iota_streams_app::id::{
     Identifier,
     UserIdentity,
 };
-use iota_streams_core::Result;
+use iota_streams_core::{
+    err,
+    Errors::{
+        UserIdentityMissing,
+        UserTransportMissing,
+    },
+    Result,
+};
 
 /// Builder instance for a Streams User
-pub struct UserBuilder<'a, Trans: Transport + Clone, F> {
+pub struct UserBuilder<Trans: Transport + Clone, F> {
     // pub struct UserBuilder<'a, F> {
     /// Base Identity that will be used to Identifier a Streams User
     pub id: Option<UserIdentity<F>>,
     /// Alternate Identity that can be used to mask the direct Identity of a Streams User
     pub alias: Option<UserIdentity<F>>,
     /// Transport Client instance
-    pub transport: Option<&'a Trans>,
+    pub transport: Option<Trans>,
     /// Represents whether the User Instance will automatically sync before each message operation
     pub auto_sync: bool,
 }
 
-impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
-    // impl<'a, F> Default for UserBuilder<'a, F> {
+impl<Trans: Transport + Clone, F> Default for UserBuilder<Trans, F> {
     fn default() -> Self {
         UserBuilder {
             id: None,
@@ -61,8 +67,8 @@ impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
 /// # let author_identity = UserIdentity::new(author_seed).await;
 /// # let mut author = UserBuilder::new()
 ///     .with_identity(author_identity)
-///     .with_transport(&author_transport)
-///     .build();
+///     .with_transport(author_transport)
+///     .build()?;
 ///
 /// # let announcement_link = author.send_announce().await?;
 /// # Ok(())
@@ -95,8 +101,8 @@ impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
 /// # let author_identity = UserIdentity::new(author_seed).await;
 /// # let mut author = UserBuilder::new()
 ///     .with_identity(author_identity)
-///     .with_transport(&test_transport)
-///     .build();
+///     .with_transport(test_transport.clone())
+///     .build()?;
 ///
 /// # let psk_seed = "seed-for-pre-shared-key";
 /// # let psk = psk_from_seed(psk_seed.as_bytes());
@@ -108,8 +114,8 @@ impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
 /// # let subscriber_identity = UserIdentity::new_from_psk(pskid, psk).await;
 /// # let mut subscriber = UserBuilder::new()
 ///     .with_identity(subscriber_identity)
-///     .with_transport(&test_transport)
-///     .build();
+///     .with_transport(test_transport)
+///     .build()?;
 ///
 /// # subscriber.receive_announcement(&announcement_link).await?;
 ///
@@ -120,7 +126,7 @@ impl<'a, Trans: Transport + Clone, F> Default for UserBuilder<'a, Trans, F> {
 /// # }
 /// ```
 
-impl<'a, Trans: Transport> UserBuilder<'a, Trans, DefaultF> {
+impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// Create a new User Builder instance
     pub fn new() -> Self {
         Self::default()
@@ -130,7 +136,7 @@ impl<'a, Trans: Transport> UserBuilder<'a, Trans, DefaultF> {
     ///
     /// # Arguments
     /// * `id` - UserIdentity to be used for base identification of the Streams User
-    pub fn with_identity(&mut self, id: UserIdentity<DefaultF>) -> &mut Self {
+    pub fn with_identity(mut self, id: UserIdentity<DefaultF>) -> Self {
         self.id = Some(id);
         self
     }
@@ -139,7 +145,7 @@ impl<'a, Trans: Transport> UserBuilder<'a, Trans, DefaultF> {
     ///
     /// # Arguments
     /// * `alias` - UserIdentity to be used for alternate identification of the Streams User
-    pub fn with_alias(&mut self, alias: UserIdentity<DefaultF>) -> &mut Self {
+    pub fn with_alias(mut self, alias: UserIdentity<DefaultF>) -> Self {
         self.alias = Some(alias);
         self
     }
@@ -148,7 +154,7 @@ impl<'a, Trans: Transport> UserBuilder<'a, Trans, DefaultF> {
     ///
     /// # Arguments
     /// * `transport` - Transport Client to be used by the Streams User
-    pub fn with_transport(&mut self, transport: &'a Trans) -> &mut Self {
+    pub fn with_transport(mut self, transport: Trans) -> Self {
         self.transport = Some(transport);
         self
     }
@@ -157,23 +163,31 @@ impl<'a, Trans: Transport> UserBuilder<'a, Trans, DefaultF> {
     ///
     /// # Arguments
     /// * `auto_sync` - True if the User should automatically perform synchronisation before operations
-    pub fn with_auto_sync(&mut self, auto_sync: bool) -> &mut Self {
+    pub fn with_auto_sync(mut self, auto_sync: bool) -> Self {
         self.auto_sync = auto_sync;
         self
     }
 
     /// Build a User instance using the Builder values.
-    pub fn build(&mut self) -> User<Trans> {
+    pub fn build(self) -> Result<User<Trans>> {
+        if self.id.is_none() {
+            return err(UserIdentityMissing);
+        }
+
+        if self.transport.is_none() {
+            return err(UserTransportMissing);
+        }
+
         let mut user = User {
-            user: crate::api::ApiUser::gen(self),
-            transport: self.transport.unwrap().clone(),
+            user: crate::api::ApiUser::new(self.id.unwrap(), self.alias, self.auto_sync),
+            transport: self.transport.unwrap(),
         };
         // If User is using a Psk as their base Identifier,
         if let Identifier::PskId(pskid) = *user.user.id() {
             // Unwraps shouldn't fail here due to the user containing a PskId type
             user.store_psk(pskid, user.user.user_id.psk().unwrap()).unwrap();
         }
-        user
+        Ok(user)
     }
 
     /// Generates a new User implementation from the builder. If the announcement message generated
@@ -182,8 +196,8 @@ impl<'a, Trans: Transport> UserBuilder<'a, Trans, DefaultF> {
     ///
     ///  # Arguements
     /// * `announcement` - An existing announcement message link for validation of ownership
-    pub async fn recover(&mut self, announcement: &Address) -> Result<User<Trans>> {
-        let mut user = self.build();
+    pub async fn recover(self, announcement: &Address) -> Result<User<Trans>> {
+        let mut user = self.build()?;
         user.user.create_channel(0)?;
 
         let ann = user.user.announce().await?;

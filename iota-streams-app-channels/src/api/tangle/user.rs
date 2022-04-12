@@ -8,10 +8,7 @@ use futures::{
 
 use crypto::keys::x25519;
 use iota_streams_app::{
-    id::{
-        Identifier,
-        UserIdentity,
-    },
+    id::Identifier,
     message::HasLink,
 };
 use iota_streams_core::{
@@ -179,18 +176,6 @@ impl<Trans> User<Trans> {
 }
 
 impl<Trans: Transport + Clone> User<Trans> {
-    /// Create a new User instance with a seed based UserIdentity.
-    ///
-    /// # Arguments
-    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
-    /// * `transport` - Transport object used for sending and receiving
-    pub async fn new(seed: &str, transport: &Trans) -> Self {
-        UserBuilder::new()
-            .with_identity(UserIdentity::new(seed).await)
-            .with_transport(transport)
-            .build()
-    }
-
     /// Send a message with sequencing logic.
     ///
     /// # Arguments

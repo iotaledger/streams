@@ -182,6 +182,14 @@ pub enum Errors {
     CursorNotFound,
 
     //////////
+    // User Builder
+    //////////
+    /// UserIdentity not specified, cannot build User without Identity
+    UserIdentityMissing,
+    /// User Transport not specified, cannot build User without Transport
+    UserTransportMissing,
+
+    //////////
     // User Recovery
     //////////
     /// Application Instance recovery failed (expected: 0 | 1, found: {0})

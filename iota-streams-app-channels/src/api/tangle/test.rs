@@ -14,13 +14,23 @@ use iota_streams_core::{
 };
 
 use super::*;
+use crate::UserIdentity;
 
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
-    let mut author = User::new("AUTHOR9SEED", &transport).await;
+    let mut author = UserBuilder::new()
+        .with_identity(UserIdentity::new("AUTHOR9SEED").await)
+        .with_transport(transport.clone())
+        .build()?;
 
-    let mut subscriberA = User::new("SUBSCRIBERA9SEED", &transport).await;
+    let mut subscriberA = UserBuilder::new()
+        .with_identity(UserIdentity::new("SubscriberA9SEED").await)
+        .with_transport(transport.clone())
+        .build()?;
 
-    let mut subscriberB = User::new("SUBSCRIBERB9SEED", &transport).await;
+    let mut subscriberB = UserBuilder::new()
+        .with_identity(UserIdentity::new("SubscriberB9SEED").await)
+        .with_transport(transport.clone())
+        .build()?;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
