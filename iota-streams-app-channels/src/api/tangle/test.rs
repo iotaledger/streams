@@ -18,17 +18,17 @@ use crate::UserIdentity;
 
 pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     let mut author = UserBuilder::new()
-        .with_identity(UserIdentity::new("AUTHOR9SEED").await)
+        .with_identity(UserIdentity::new("AUTHOR9SEED"))
         .with_transport(transport.clone())
         .build()?;
 
     let mut subscriberA = UserBuilder::new()
-        .with_identity(UserIdentity::new("SubscriberA9SEED").await)
+        .with_identity(UserIdentity::new("SubscriberA9SEED"))
         .with_transport(transport.clone())
         .build()?;
 
     let mut subscriberB = UserBuilder::new()
-        .with_identity(UserIdentity::new("SubscriberB9SEED").await)
+        .with_identity(UserIdentity::new("SubscriberB9SEED"))
         .with_transport(transport.clone())
         .build()?;
 

@@ -91,7 +91,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// let author_transport = test_transport.clone();
 /// let mut author = UserBuilder::new()
-///     .with_identity(UserIdentity::new(author_seed).await)
+///     .with_identity(UserIdentity::new(author_seed))
 ///     .with_transport(author_transport)
 ///     .build()?;
 ///
@@ -101,7 +101,7 @@ pub trait IntoMessages<Trans> {
 /// # let subscriber_transport = test_transport.clone();
 /// #
 /// # let mut subscriber = UserBuilder::new()
-/// #    .with_identity(UserIdentity::new(subscriber_seed).await)
+/// #    .with_identity(UserIdentity::new(subscriber_seed))
 /// #    .with_transport(subscriber_transport)
 /// #    .build()?;
 ///
@@ -170,7 +170,7 @@ pub trait IntoMessages<Trans> {
 /// #
 /// let author_transport = test_transport.clone();
 /// let mut author = UserBuilder::new()
-///     .with_identity(UserIdentity::new(author_seed).await)
+///     .with_identity(UserIdentity::new(author_seed))
 ///     .with_transport(author_transport)
 ///     .build()?;
 ///
@@ -180,7 +180,7 @@ pub trait IntoMessages<Trans> {
 /// # let subscriber_transport = test_transport.clone();
 /// #
 /// # let mut subscriber = UserBuilder::new()
-/// #    .with_identity(UserIdentity::new(subscriber_seed).await)
+/// #    .with_identity(UserIdentity::new(subscriber_seed))
 /// #    .with_transport(subscriber_transport)
 /// #    .build()?;
 ///
@@ -251,7 +251,7 @@ pub trait IntoMessages<Trans> {
 /// ///
 /// let author_transport = test_transport.clone();
 /// let mut author = UserBuilder::new()
-///     .with_identity(UserIdentity::new(author_seed).await)
+///     .with_identity(UserIdentity::new(author_seed))
 ///     .with_transport(author_transport)
 ///     .build()?;
 ///
@@ -263,7 +263,7 @@ pub trait IntoMessages<Trans> {
 ///
 /// # let subscriber_transport = test_transport.clone();
 /// # let mut subscriber = UserBuilder::new()
-/// #    .with_identity(UserIdentity::new(subscriber_seed).await)
+/// #    .with_identity(UserIdentity::new(subscriber_seed))
 /// #    .with_transport(subscriber_transport)
 /// #    .build()?;
 ///
@@ -349,7 +349,7 @@ pub trait IntoMessages<Trans> {
 /// # let author_transport = test_transport.clone();
 /// #
 /// # let mut author = UserBuilder::new()
-/// #     .with_identity(UserIdentity::new(author_seed).await)
+/// #     .with_identity(UserIdentity::new(author_seed))
 /// #     .with_transport(author_transport)
 /// #     .build()?;
 /// # let announcement_link = author.send_announce().await?;
@@ -360,7 +360,7 @@ pub trait IntoMessages<Trans> {
 /// # let subscriber_transport = test_transport.clone();
 /// #
 /// let mut subscriber = UserBuilder::new()
-///     .with_identity(UserIdentity::new(subscriber_seed).await)
+///     .with_identity(UserIdentity::new(subscriber_seed))
 ///     .with_transport(subscriber_transport)
 ///     .build()?;
 ///
@@ -458,7 +458,7 @@ pub trait IntoMessages<Trans> {
 /// # let author_transport = test_transport.clone();
 /// #
 /// let mut author = UserBuilder::new()
-///     .with_identity(UserIdentity::new(author_seed).await)
+///     .with_identity(UserIdentity::new(author_seed))
 ///     .with_transport(author_transport)
 ///     .build()?;
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
@@ -467,7 +467,7 @@ pub trait IntoMessages<Trans> {
 /// # let subscriber_transport = test_transport.clone();
 /// #
 /// let mut subscriber = UserBuilder::new()
-///     .with_identity(UserIdentity::new(subscriber_seed).await)
+///     .with_identity(UserIdentity::new(subscriber_seed))
 ///     .with_transport(subscriber_transport)
 ///     .build()?;
 ///
@@ -808,7 +808,7 @@ mod tests {
 
         // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
         let mut subscriber = UserBuilder::new()
-            .with_identity(UserIdentity::new("subscriber").await)
+            .with_identity(UserIdentity::new("subscriber"))
             .with_transport(transport.clone())
             .build()?;
         subscriber.receive_announcement(&announcement_link).await?;
@@ -854,7 +854,7 @@ mod tests {
     async fn author_subscriber_fixture() -> Result<(User<Transport>, User<Transport>, Address, Transport)> {
         let transport = Rc::new(RefCell::new(BucketTransport::new()));
         let mut author = UserBuilder::new()
-            .with_identity(UserIdentity::new("author").await)
+            .with_identity(UserIdentity::new("author"))
             .with_transport(transport.clone())
             .build()?;
         let announcement_link = author.send_announce().await?;
@@ -869,7 +869,7 @@ mod tests {
         transport: &Transport,
     ) -> Result<User<Transport>> {
         let mut subscriber = UserBuilder::new()
-            .with_identity(UserIdentity::new(seed).await)
+            .with_identity(UserIdentity::new(seed))
             .with_transport(transport.clone())
             .build()?;
         subscriber.receive_announcement(announcement_link).await?;

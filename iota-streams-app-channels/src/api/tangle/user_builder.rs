@@ -114,7 +114,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # let transport = Rc::new(RefCell::new(BucketTransport::new()));
     ///
     /// let mut author = UserBuilder::new()
-    ///     .with_identity(UserIdentity::new(user_seed).await)
+    ///     .with_identity(UserIdentity::new(user_seed))
     ///     .with_transport(transport)
     ///     .build()?;
     ///
@@ -147,7 +147,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// let psk = psk_from_seed(psk_seed.as_bytes());
     /// let pskid = pskid_from_psk(&psk);
     ///
-    /// let user_identity = UserIdentity::new_from_psk(pskid, psk).await;
+    /// let user_identity = UserIdentity::new_from_psk(pskid, psk);
     /// let mut user = UserBuilder::new()
     ///     .with_identity(user_identity)
     ///     .with_transport(transport)
@@ -214,14 +214,14 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # let transport = test_transport.clone();
     ///
     /// # let mut author = UserBuilder::new()
-    /// #     .with_identity(UserIdentity::new(author_seed).await)
+    /// #     .with_identity(UserIdentity::new(author_seed))
     /// #     .with_transport(transport.clone())
     /// #     .build()?;
     ///
     /// # let announcement_link = author.send_announce().await?;
     ///
     /// let mut author = UserBuilder::new()
-    ///     .with_identity(UserIdentity::new(author_seed).await)
+    ///     .with_identity(UserIdentity::new(author_seed))
     ///     .with_transport(transport)
     ///     .recover(&announcement_link)
     ///     .await?;

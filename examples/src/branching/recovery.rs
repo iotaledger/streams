@@ -21,12 +21,12 @@ use std::{
 
 pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     let mut author = UserBuilder::new()
-        .with_identity(UserIdentity::new(seed).await)
+        .with_identity(UserIdentity::new(seed))
         .with_transport(transport.clone())
         .build()?;
 
     let mut subscriberA = UserBuilder::new()
-        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED").await)
+        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
         .build()?;
 
@@ -91,7 +91,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
 
     println!("\n\nTime to try to recover the instance...");
     let mut new_author = UserBuilder::new()
-        .with_identity(UserIdentity::new(seed).await)
+        .with_identity(UserIdentity::new(seed))
         .with_transport(transport.clone())
         .recover(&announcement_link)
         .await?;

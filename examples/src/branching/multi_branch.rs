@@ -28,20 +28,20 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     let pskid = pskid_from_psk(&psk);
 
     let mut author = UserBuilder::new()
-        .with_identity(UserIdentity::new(seed).await)
+        .with_identity(UserIdentity::new(seed))
         .with_transport(transport.clone())
         .build()?;
 
     let mut subscriberA = UserBuilder::new()
-        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED").await)
+        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
         .build()?;
     let mut subscriberB = UserBuilder::new()
-        .with_identity(UserIdentity::new("SUBSCRIBERB9SEED").await)
+        .with_identity(UserIdentity::new("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
         .build()?;
     let mut subscriberC = UserBuilder::new()
-        .with_identity(UserIdentity::new_from_psk(pskid, psk).await)
+        .with_identity(UserIdentity::new_from_psk(pskid, psk))
         .with_transport(transport.clone())
         .build()?;
 

@@ -207,13 +207,14 @@ impl Client {
     }
 
     #[cfg(feature = "did")]
-    pub async fn to_did_client(&self) -> Result<DIDClient> {
-        let did_client = DIDClient::builder()
-            .network(Network::Mainnet)
-            .primary_node(&self.send_opt.url, None, None)?
-            .local_pow(self.send_opt.local_pow)
-            .build()
-            .await?;
+    pub fn to_did_client(&self) -> Result<DIDClient> {
+        let did_client = block_on(
+            DIDClient::builder()
+                .network(Network::Mainnet)
+                .primary_node(&self.send_opt.url, None, None)?
+                .local_pow(self.send_opt.local_pow)
+                .build(),
+        )?;
         Ok(did_client)
     }
 }

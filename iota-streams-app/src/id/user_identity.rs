@@ -156,14 +156,14 @@ impl<F> Default for UserIdentity<F> {
                 key_exchange: (key_exchange_private_key, key_exchange_public_key),
             }),
             #[cfg(feature = "did")]
-            client: block_on(StreamsClient::default().to_did_client()).unwrap(),
+            client: StreamsClient::default().to_did_client().unwrap(),
             _phantom: Default::default(),
         }
     }
 }
 
 impl<F: PRP> UserIdentity<F> {
-    pub async fn new(seed: &str) -> UserIdentity<F> {
+    pub fn new(seed: &str) -> UserIdentity<F> {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
         let prng = prng::from_seed::<F>("IOTA Streams Channels user sig keypair", seed);
 
@@ -179,28 +179,28 @@ impl<F: PRP> UserIdentity<F> {
                 key_exchange: (key_exchange_private_key, key_exchange_public_key),
             }),
             #[cfg(feature = "did")]
-            client: StreamsClient::default().to_did_client().await.unwrap(),
+            client: StreamsClient::default().to_did_client().unwrap(),
             _phantom: Default::default(),
         }
     }
 
-    pub async fn new_from_psk(pskid: PskId, psk: Psk) -> UserIdentity<F> {
+    pub fn new_from_psk(pskid: PskId, psk: Psk) -> UserIdentity<F> {
         UserIdentity {
             id: pskid.into(),
             keys: Keys::Psk(psk),
             #[cfg(feature = "did")]
-            client: StreamsClient::default().to_did_client().await.unwrap(),
+            client: StreamsClient::default().to_did_client().unwrap(),
             _phantom: Default::default(),
         }
     }
 
     #[cfg(feature = "did")]
-    pub async fn new_with_did_private_key(did_info: DIDInfo) -> Result<UserIdentity<F>> {
+    pub fn new_with_did_private_key(did_info: DIDInfo) -> Result<UserIdentity<F>> {
         let did = did_info.did()?;
         Ok(UserIdentity {
             id: (&did).into(),
             keys: Keys::DID(DIDImpl::PrivateKey(did_info)),
-            client: StreamsClient::default().to_did_client().await?,
+            client: StreamsClient::default().to_did_client()?,
             _phantom: Default::default(),
         })
     }
