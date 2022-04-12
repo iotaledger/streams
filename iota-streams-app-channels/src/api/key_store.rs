@@ -71,8 +71,7 @@ impl<Info, F: PRP> KeyStore<Info, F> for KeyMap<Info> {
                 Identifier::PskId(_id) => self
                     .psks
                     .get_key_value(id)
-                    .map(|(e, (x, _))| x.map(|xx| (e, xx.to_vec())))
-                    .flatten(),
+                    .and_then(|(e, (x, _))| x.map(|xx| (e, xx.to_vec()))),
             })
             .collect()
     }
