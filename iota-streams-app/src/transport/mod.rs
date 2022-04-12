@@ -29,7 +29,7 @@ pub trait TransportOptions {
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[async_trait(?Send)]
-pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link> + Default {
+pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link> {
     /// Send a message with default options.
     async fn send_message(&mut self, msg: &Msg) -> Result<()>;
 
