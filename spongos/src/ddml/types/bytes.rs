@@ -9,10 +9,10 @@ use alloc::string::String;
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub(crate) struct Bytes(Vec<u8>);
+pub struct Bytes(Vec<u8>);
 
 impl Bytes {
-    pub(crate) fn new(bytes: Vec<u8>) -> Self {
+    pub fn new(bytes: Vec<u8>) -> Self {
         Self(bytes)
     }
 
@@ -32,12 +32,16 @@ impl Bytes {
         String::from_utf8(self.0).ok()
     }
 
-    fn as_slice(&self) -> &[u8] {
+    pub fn as_slice(&self) -> &[u8] {
         self.0.as_slice()
     }
 
     fn as_mut_slice(&mut self) -> &mut [u8] {
         self.0.as_mut_slice()
+    }
+
+    pub fn into_vec(self) -> Vec<u8> {
+        self.0
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -80,27 +84,28 @@ impl From<Bytes> for Vec<u8> {
     }
 }
 
-impl From<&[u8]> for Bytes {
-    fn from(s: &[u8]) -> Self {
-        Self(s.to_vec())
-    }
-}
+// TODO: REMOVE
+// impl From<&[u8]> for Bytes {
+//     fn from(s: &[u8]) -> Self {
+//         Self(s.to_vec())
+//     }
+// }
 
-/// Use `b"<content>".into()` as a convenient way to create new `Bytes`
-#[rustversion::since(1.51)]
-impl<const N: usize> From<[u8; N]> for Bytes {
-    fn from(v: [u8; N]) -> Self {
-        Self(v.to_vec())
-    }
-}
+// /// Use `b"<content>".into()` as a convenient way to create new `Bytes`
+// #[rustversion::since(1.51)]
+// impl<const N: usize> From<[u8; N]> for Bytes {
+//     fn from(v: [u8; N]) -> Self {
+//         Self(v.to_vec())
+//     }
+// }
 
-/// Use `b"<content>".into()` as a convenient way to create new `Bytes`
-#[rustversion::since(1.51)]
-impl<const N: usize> From<&[u8; N]> for Bytes {
-    fn from(v: &[u8; N]) -> Self {
-        Self(v.to_vec())
-    }
-}
+// /// Use `b"<content>".into()` as a convenient way to create new `Bytes`
+// #[rustversion::since(1.51)]
+// impl<const N: usize> From<&[u8; N]> for Bytes {
+//     fn from(v: &[u8; N]) -> Self {
+//         Self(v.to_vec())
+//     }
+// }
 
 impl AsRef<[u8]> for Bytes {
     fn as_ref(&self) -> &[u8] {

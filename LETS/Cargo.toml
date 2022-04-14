@@ -9,15 +9,13 @@ keywords = ["iota", "LETS Framework", "LETS", "Streams", "Communication Protocol
 description = "A Rust framework for developing cryptographic communication protocols"
 
 [features]
-default = ["std", "duh"]
+default = ["tangle-client", "did"]
 # Enable `std` feature in dependencies
-std = ["spongos/std", "hex/std"]
-# Enable Tangle-specific transport abstractions
-duh = []
+# std = ["hex/std"]  # TODO: REMOVE?
 # Enable the IOTA-Tangle transport client (implies `std` features)
-tangle-client = ["iota-client/async", "futures", "duh", "std"]
+tangle-client = ["iota-client/async", "futures"]
 # Enable the wasm-compatible IOTA-Tangle transport client (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`. Implies `std` feature)
-tangle-client-wasm = ["iota-client/wasm", "futures", "duh", "std"]
+tangle-client-wasm = ["iota-client/wasm", "futures"]
 # Enable Iota Identity for use with Streams
 did = ["identity", "serde"]
 # TODO: REMOVE
@@ -28,22 +26,19 @@ did = ["identity", "serde"]
 
 [dependencies]
 # Local dependencies
-spongos = { path = "../spongos", default-features = false }
+# TODO: remove osrng feature once x25519 is not performed here
+spongos = { path = "../spongos", default-features = false, features = ["osrng"] }
 
 # IOTA dependencies
-iota-crypto = { version = "0.9.1", default-features = false }
-iota-client = { version = "1.1.1", default-features = false, optional = true }
-## Dependencies for "client" feature
-futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
-identity = { git = "https://github.com/iotaledger/identity.rs", rev = "86edaad", optional = true  }
+iota-crypto = { version = "0.9.1", default-features = false, features = ["blake2b", "x25519", "ed25519", "sha"]}
 
 # 3rd-party dependencies
-# TODO: REMOVE UNNEDED
-hex = { version = "0.4", default-features = false, optional = false }
-serde = { version = "1.0", features = ["derive"], optional = true }
-cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
-cty = { version = "0.2.1" }
+async-trait = { version = "0.1", default-features = false }
+anyhow = {version = "1.0", default-features = false }
+hex = { version = "0.4", default-features = false }
 
-[dev-dependencies]
-# anyhow is used in doctests
-anyhow = { version = "1.0", default-features = false, features = ["std"] }
+# Optional
+iota-client = { version = "1.1.1", default-features = false, optional = true }
+futures = { version = "0.3.8", default-features = false, optional = true }
+identity = { git = "https://github.com/iotaledger/identity.rs", rev = "86edaad", default-features = false, features = ["async"], optional = true  }
+serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }

@@ -11,10 +11,10 @@ description = "A rust implementation of the IOTA Streams protocol"
 [features]
 default = ["std", "duh"]
 # Enable `std` feature in dependencies
-std = ["spongos/std", "LETS/std", "hex/std"]
+std = ["hex/std"]
 # TODO: REMOVE FEATURE AND MAKE ABSTRACT
 # Enable the tangle-specific API (implies `tangle` feature of iota-streams-app, but not necessarily `client`)
-duh = ["LETS/duh", "futures", "async-recursion"]
+duh = ["futures", "async-recursion"]
 # Enable re-export of IOTA-Tangle transport client from LETS
 tangle-client = ["LETS/tangle-client"]
 # Enable re-export of wasm-compatible IOTA-Tangle transport client from LETS (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`)

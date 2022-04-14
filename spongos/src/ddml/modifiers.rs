@@ -6,10 +6,10 @@
 /// DDML `external` modifier, it changes behaviour of commands in the following way.
 /// The external field is not encoded in trinary representation and the value is stored in the environment implicitly.
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Default)]
-pub(crate) struct External<T>(T);
+pub struct External<T>(T);
 
 impl<T> External<T> {
-    pub(crate) fn new(t: T) -> Self {
+    pub fn new(t: T) -> Self {
         Self(t)
     }
 

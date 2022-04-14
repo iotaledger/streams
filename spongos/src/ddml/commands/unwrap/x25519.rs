@@ -1,6 +1,6 @@
+use anyhow::Result;
 use crypto::keys::x25519;
 use generic_array::ArrayLength;
-use anyhow::Result;
 
 use crate::{
     core::prp::PRP,
@@ -10,14 +10,17 @@ use crate::{
                 Context,
                 Unwrap,
             },
+            Absorb,
+            Commit,
+            Mask,
             X25519,
         },
         io,
         modifiers::External,
         types::{
             Bytes,
-            NBytes,
             Mac,
+            NBytes,
             Size,
             Uint16,
             Uint32,
@@ -28,24 +31,14 @@ use crate::{
     error::Error::BadMac,
 };
 
-impl<'a, F: PRP, IS> X25519<&'a x25519::SecretKey, &'a x25519::PublicKey> for Context<F, IS> {
-    fn x25519(&mut self, sk: &x25519::SecretKey, pk: &x25519::PublicKey) -> Result<&mut Self> {
-        let shared = sk.diffie_hellman(pk);
-        self.spongos.absorb(shared.as_bytes());
+impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> X25519<&'a x25519::SecretKey, &'a mut NBytes<T>> for Context<F, IS> {
+    fn x25519(&mut self, secret_key: &x25519::SecretKey, encryption_key: &mut NBytes<T>) -> Result<&mut Self> {
+        let mut ephemeral_public_key = x25519::PublicKey::from([0_u8; x25519::PUBLIC_KEY_LENGTH]);
+        self.absorb(&mut ephemeral_public_key)?;
+        let shared_key = secret_key.diffie_hellman(&ephemeral_public_key);
+        self.absorb(External::new(&NBytes::new(shared_key.as_bytes())))?
+            .commit()?
+            .mask(encryption_key)?;
         Ok(self)
     }
 }
-
-// TODO: REMOVE
-// impl<'a, F: PRP, N: ArrayLength<u8>, IS: io::IStream> X25519<&'a x25519::SecretKey, &'a mut NBytes<N>>
-//     for Context<F, IS>
-// {
-//     fn x25519(&mut self, sk: &x25519::SecretKey, key: &mut NBytes<N>) -> Result<&mut Self> {
-//         let mut ephemeral_ke_pk = x25519::PublicKey::from([0_u8; 32]);
-//         (*self)
-//             .absorb(&mut ephemeral_ke_pk)?
-//             .x25519(sk, &ephemeral_ke_pk)?
-//             .commit()?
-//             .mask(key)
-//     }
-// }

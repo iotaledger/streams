@@ -6,7 +6,7 @@ use crate::ddml::commands::{
 };
 
 /// Forks cost nothing in the binary stream.
-impl<F, C> Fork<C> for Context<F>
+impl<C> Fork<C> for Context
 where
     C: for<'a> FnMut(&'a mut Self) -> Result<&'a mut Self>,
 {

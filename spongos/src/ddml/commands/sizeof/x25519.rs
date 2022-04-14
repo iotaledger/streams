@@ -10,17 +10,9 @@ use crate::ddml::{
     types::NBytes,
 };
 
-impl<'a, F> X25519<&'a x25519::SecretKey, &'a x25519::PublicKey> for Context<F> {
-    fn x25519(&mut self, _sk: &x25519::SecretKey, _pk: &x25519::PublicKey) -> Result<&mut Self> {
-        // Only shared secret is absorbed externally.
+impl<'a, T: AsRef<[u8]>> X25519<&'a x25519::PublicKey, &'a NBytes<T>> for Context {
+    fn x25519(&mut self, _pk: &x25519::PublicKey, encryption_key: &NBytes<T>) -> Result<&mut Self> {
+        self.size += x25519::PUBLIC_KEY_LENGTH + encryption_key.as_ref().len();
         Ok(self)
     }
 }
-
-// TODO: REMOVE
-// impl<'a, F, N: ArrayLength<u8>> X25519<&'a x25519::PublicKey, &'a NBytes<N>> for Context<F> {
-//     fn x25519(&mut self, _pk: &x25519::PublicKey, _key: &NBytes<N>) -> Result<&mut Self> {
-//         self.size += 32 + N::USIZE;
-//         Ok(self)
-//     }
-// }

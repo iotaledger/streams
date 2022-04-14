@@ -4,13 +4,18 @@ mod nbytes;
 mod size;
 mod uint;
 
-pub(crate) use uint::{
-    Uint8, Uint16, Uint32, Uint64
-};
-pub(crate) use bytes::Bytes;
+pub use bytes::Bytes;
 pub(crate) use mac::Mac;
-pub(crate) use nbytes::NBytes;
+pub use nbytes::NBytes;
 pub(crate) use size::Size;
+pub(crate) use uint::{
+    Uint16,
+    Uint32,
+};
+pub use uint::{
+    Uint64,
+    Uint8,
+};
 
 // TODO: REMOVE OR MOVE
 // mod external;

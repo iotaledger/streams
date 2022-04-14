@@ -9,7 +9,7 @@ use crate::ddml::commands::{
 
 /// Repeated modifier. The actual number of repetitions must be wrapped
 /// (absorbed/masked/skipped) explicitly.
-impl<F, I, C> Repeated<I, C> for Context<F>
+impl<I, C> Repeated<I, C> for Context
 where
     I: iter::Iterator,
     C: for<'a> FnMut(&'a mut Self, I::Item) -> Result<&'a mut Self>,

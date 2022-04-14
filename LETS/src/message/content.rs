@@ -1,92 +1,101 @@
-use iota_streams_core::{
-    async_trait,
-    prelude::Box,
-    Result,
-};
+// TODO: MOVE TO SPONGOS
+use alloc::boxed::Box;
 
-use iota_streams_ddml::{
-    command::{
+use anyhow::Result;
+use async_trait::async_trait;
+// TODO: REMOVE
+// use generic_array::ArrayLength;
+
+use spongos::ddml::{
+    commands::{
         sizeof,
         unwrap,
         wrap,
     },
     io,
-    types::{
-        ArrayLength,
-        NBytes,
-    },
+    types::NBytes,
 };
 
+// use iota_streams_core::{
+//     async_trait,
+//     prelude::Box,
+//     Result,
+// };
+
+// use iota_streams_ddml::{
+//     command::{
+//         sizeof,
+//         unwrap,
+//         wrap,
+//     },
+//     io,
+//     types::{
+//         ArrayLength,
+//         NBytes,
+//     },
+// };
+
 #[async_trait(?Send)]
-pub trait ContentSizeof<F> {
-    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>>;
+pub(crate) trait ContentSizeof<'a> {
+    async fn sizeof<'b>(&'a self, ctx: &'b mut sizeof::Context) -> Result<&'b mut sizeof::Context>;
 }
 
 #[async_trait(?Send)]
-pub trait ContentWrap<F, Store>: ContentSizeof<F> {
-    async fn wrap<'c, OS: io::OStream>(
+pub(crate) trait ContentWrap<'a, F, OS>: ContentSizeof<'a> {
+    async fn wrap<'b>(&'a self, ctx: &'b mut wrap::Context<F, OS>) -> Result<&'b mut wrap::Context<F, OS>>;
+}
+
+#[async_trait(?Send)]
+pub(crate) trait ContentSign<F, OS> {
+    async fn sign<'a>(&self, ctx: &'a mut wrap::Context<F, OS>) -> Result<&'a mut wrap::Context<F, OS>>;
+}
+
+#[async_trait(?Send)]
+pub(crate) trait ContentEncryptSizeOf<F> {
+    async fn encrypt_sizeof<'a>(
         &self,
-        store: &Store,
-        ctx: &'c mut wrap::Context<F, OS>,
-    ) -> Result<&'c mut wrap::Context<F, OS>>;
+        ctx: &'a mut sizeof::Context,
+        exchange_key: &'a [u8],
+        key: &'a [u8],
+    ) -> Result<&'a mut sizeof::Context>;
 }
 
 #[async_trait(?Send)]
-pub trait ContentSign<F, OS: io::OStream> {
-    async fn sign<'c>(&self, ctx: &'c mut wrap::Context<F, OS>) -> Result<&'c mut wrap::Context<F, OS>>;
-}
-
-#[async_trait(?Send)]
-pub trait ContentEncryptSizeOf<F> {
-    async fn encrypt_sizeof<'c, N: ArrayLength<u8>>(
+pub(crate) trait ContentEncrypt<F, OS> {
+    async fn encrypt<'a>(
         &self,
-        ctx: &'c mut sizeof::Context<F>,
-        exchange_key: &'c [u8],
-        key: &'c NBytes<N>,
-    ) -> Result<&'c mut sizeof::Context<F>>;
+        ctx: &'a mut wrap::Context<F, OS>,
+        exchange_key: &'a [u8],
+        key: &'a [u8],
+    ) -> Result<&'a mut wrap::Context<F, OS>>;
 }
 
 #[async_trait(?Send)]
-pub trait ContentEncrypt<F, OS: io::OStream> {
-    async fn encrypt<'c, N: ArrayLength<u8>>(
+pub(crate) trait ContentUnwrap<'a, F, IS> {
+    async fn unwrap<'b>(&'a mut self, ctx: &'b mut unwrap::Context<F, IS>) -> Result<&'b mut unwrap::Context<F, IS>>;
+}
+
+#[async_trait(?Send)]
+pub(crate) trait ContentVerify<F, IS> {
+    async fn verify<'a>(&self, ctx: &'a mut unwrap::Context<F, IS>) -> Result<&'a mut unwrap::Context<F, IS>>;
+}
+
+#[async_trait(?Send)]
+pub(crate) trait ContentDecrypt<F, IS> {
+    async fn decrypt<'a>(
         &self,
-        ctx: &'c mut wrap::Context<F, OS>,
-        exchange_key: &'c [u8],
-        key: &'c NBytes<N>,
-    ) -> Result<&'c mut wrap::Context<F, OS>>;
+        ctx: &'a mut unwrap::Context<F, IS>,
+        exchange_key: &'a [u8],
+        key: &'a mut [u8],
+    ) -> Result<&'a mut unwrap::Context<F, IS>>;
 }
 
 #[async_trait(?Send)]
-pub trait ContentUnwrap<F, Store> {
-    async fn unwrap<'c, IS: io::IStream>(
-        &mut self,
-        store: &Store,
-        ctx: &'c mut unwrap::Context<F, IS>,
-    ) -> Result<&'c mut unwrap::Context<F, IS>>;
-}
-
-#[async_trait(?Send)]
-pub trait ContentVerify<'a, F, IS: io::IStream> {
-    async fn verify<'c>(&self, ctx: &'c mut unwrap::Context<F, IS>) -> Result<&'c mut unwrap::Context<F, IS>>;
-}
-
-#[async_trait(?Send)]
-pub trait ContentDecrypt<F, OS: io::IStream> {
-    async fn decrypt<'c, N: ArrayLength<u8>>(
-        &self,
-        ctx: &'c mut unwrap::Context<F, OS>,
-        exchange_key: &'c [u8],
-        key: &'c mut NBytes<N>,
-    ) -> Result<&'c mut unwrap::Context<F, OS>>;
-}
-
-#[async_trait(?Send)]
-pub trait ContentUnwrapNew<F, Store>
+pub(crate) trait ContentUnwrapNew<F, IS>
 where
     Self: Sized,
 {
-    async fn unwrap_new<'c, IS: io::IStream>(
-        store: &Store,
-        ctx: &'c mut unwrap::Context<F, IS>,
-    ) -> Result<(Self, &'c mut unwrap::Context<F, IS>)>;
+    async fn unwrap_new<'a>(
+        ctx: &'a mut unwrap::Context<F, IS>,
+    ) -> Result<(Self, &'a mut unwrap::Context<F, IS>)>;
 }

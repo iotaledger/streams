@@ -1,87 +1,60 @@
+// Rust
+use core::fmt::Display;
 use core::cell::RefCell;
-use iota_streams_core::{
-    async_trait,
-    prelude::{
-        Box,
-        Rc,
-        Vec,
-    },
-    Result,
-};
+use alloc::{boxed::Box, vec::Vec, rc::Rc};
 
-#[async_trait(?Send)]
-pub trait TransportDetails<Link> {
-    type Details;
-    async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details>;
-}
+// 3rd-party
+use async_trait::async_trait;
+use anyhow::{ensure, anyhow, Result};
 
-pub trait TransportOptions {
-    type SendOptions;
-    fn send_options(&self) -> Self::SendOptions;
-    fn set_send_options(&mut self, opt: Self::SendOptions);
+// IOTA
 
-    type RecvOptions;
-    fn recv_options(&self) -> Self::RecvOptions;
-    fn set_recv_options(&mut self, opt: Self::RecvOptions);
-}
+// Streams
+
+// Local
 
 /// Network transport abstraction.
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[async_trait(?Send)]
-pub trait Transport<Link, Msg>: TransportOptions + TransportDetails<Link> {
-    /// Send a message with default options.
-    async fn send_message(&mut self, msg: &Msg) -> Result<()>;
+trait Transport<Link, Msg> {
+    /// Send a message
+    async fn send_message(&mut self, link: Link, msg: Msg) -> Result<()> where Msg: 'async_trait, Link: 'async_trait;
+    // 'async_trait is necessary when the type implementing transport has type parameters
+    // (see https://github.com/dtolnay/async-trait/issues/8#issuecomment-514812245)
 
-    /// Receive messages with default options.
-    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>>;
+    /// Receive messages
+    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> where Link: 'async_trait;
 
-    /// Receive a message with default options.
-    async fn recv_message(&mut self, link: &Link) -> Result<Msg>;
-}
-
-impl<Tsp: TransportOptions> TransportOptions for Rc<RefCell<Tsp>> {
-    type SendOptions = <Tsp as TransportOptions>::SendOptions;
-    fn send_options(&self) -> Self::SendOptions {
-        self.borrow_mut().send_options()
-    }
-    fn set_send_options(&mut self, opt: Self::SendOptions) {
-        self.borrow_mut().set_send_options(opt)
-    }
-
-    type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
-    fn recv_options(&self) -> Self::RecvOptions {
-        self.borrow_mut().recv_options()
-    }
-    fn set_recv_options(&mut self, opt: Self::RecvOptions) {
-        self.borrow_mut().set_recv_options(opt)
-    }
-}
-
-#[async_trait(?Send)]
-impl<Link, Tsp: TransportDetails<Link>> TransportDetails<Link> for Rc<RefCell<Tsp>> {
-    type Details = <Tsp as TransportDetails<Link>>::Details;
-    async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
-        self.borrow_mut().get_link_details(link).await
+    /// Receive a single message
+    async fn recv_message(&mut self, link: &Link) -> Result<Msg> where Link: Display + 'async_trait {
+        let mut msgs = self.recv_messages(link).await?;
+        if let Some(msg) = msgs.pop() {
+            ensure!(msgs.is_empty(), "More than one message found with address {}", link);
+            Ok(msg)
+        } else {
+            Err(anyhow!("Message at link {} not found in transport", link))
+        }
     }
 }
 
 #[async_trait(?Send)]
 impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Rc<RefCell<Tsp>> {
     // Send a message.
-    async fn send_message(&mut self, msg: &Msg) -> Result<()> {
-        self.borrow_mut().send_message(msg).await
+    async fn send_message(&mut self, link: Link, msg: Msg) -> Result<()> where Msg: 'async_trait, Link: 'async_trait {
+        self.borrow_mut().send_message(link, msg).await
     }
 
     // Receive messages with default options.
-    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
+    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> where Link: 'async_trait {
         self.borrow_mut().recv_messages(link).await
     }
 
-    // Receive a message with default options.
-    async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-        self.borrow_mut().recv_message(link).await
-    }
+    // TODO: REMOVE
+    // // Receive a message with default options.
+    // async fn recv_message(&mut self, link: Link) -> Result<Msg> where Link: 'async_trait {
+    //     self.borrow_mut().recv_message(link).await
+    // }
 }
 
 #[cfg(any(feature = "sync-spin", feature = "sync-parking-lot"))]
@@ -102,54 +75,30 @@ mod sync {
         Result,
     };
 
-    impl<Tsp: TransportOptions> TransportOptions for Arc<Mutex<Tsp>> {
-        type SendOptions = <Tsp as TransportOptions>::SendOptions;
-        fn send_options(&self) -> Self::SendOptions {
-            self.lock().send_options()
-        }
-        fn set_send_options(&mut self, opt: Self::SendOptions) {
-            self.lock().set_send_options(opt)
-        }
-
-        type RecvOptions = <Tsp as TransportOptions>::RecvOptions;
-        fn recv_options(&self) -> Self::RecvOptions {
-            self.lock().recv_options()
-        }
-        fn set_recv_options(&mut self, opt: Self::RecvOptions) {
-            self.lock().set_recv_options(opt)
-        }
-    }
-
-    #[async_trait(?Send)]
-    impl<Link, Tsp: TransportDetails<Link>> TransportDetails<Link> for Arc<Mutex<Tsp>> {
-        type Details = <Tsp as TransportDetails<Link>>::Details;
-        async fn get_link_details(&mut self, link: &Link) -> Result<Self::Details> {
-            self.lock().get_link_details(link).await
-        }
-    }
-
     #[async_trait(?Send)]
     impl<Link, Msg, Tsp: Transport<Link, Msg>> Transport<Link, Msg> for Arc<Mutex<Tsp>> {
         // Send a message.
-        async fn send_message(&mut self, msg: &Msg) -> Result<()> {
-            self.lock().send_message(msg).await
+        async fn send_message(&mut self, link: Link, msg: Msg) -> Result<()> where Msg: 'async_trait {
+            self.lock().send_message(link, msg).await
         }
 
         // Receive messages with default options.
-        async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
+        async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> where Link: 'async_trait {
             self.lock().recv_messages(link).await
         }
 
-        // Receive a message with default options.
-        async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-            self.lock().recv_message(link).await
-        }
+        // TODO: REMOVE
+        // // Receive a message with default options.
+        // async fn recv_message(&mut self, link: Link) -> Result<Msg> where Link: 'async_trait {
+        //     self.lock().recv_message(link).await
+        // }
     }
 }
 
 mod bucket;
-pub use bucket::BucketTransport;
-use iota_streams_core::try_or;
 
-#[cfg(feature = "tangle")]
-pub mod tangle;
+// TODO: REMOVE
+// use bucket::BucketTransport;
+
+#[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
+mod tangle;

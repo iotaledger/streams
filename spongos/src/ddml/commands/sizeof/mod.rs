@@ -1,23 +1,21 @@
 //! Implementation of command traits for calculating the size for output buffer in Wrap operation.
 
 /// Message size counting context.
-#[derive(Debug)]
-pub(crate) struct Context<F> {
-    /// The current message size in trits.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
+pub struct Context {
     size: usize,
-    _phantom: core::marker::PhantomData<F>,
 }
 
-impl<F> Context<F> {
+impl Context {
     /// Creates a new Context<F>.
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             size: 0,
-            _phantom: core::marker::PhantomData,
         }
     }
+
     /// Returns calculated message size.
-    pub(crate) fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.size
     }
 }

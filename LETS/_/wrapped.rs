@@ -9,8 +9,8 @@ use iota_streams_core::sponge::{
 use iota_streams_ddml::link_store::LinkStore;
 
 /// Spongos state and representative Link identifier
-pub struct WrapState<F, Link> {
-    pub link: Link,
+struct WrapState<F, Link> {
+    link: Link,
     pub(crate) spongos: Spongos<F>,
 }
 
@@ -20,7 +20,7 @@ where
     Link: HasLink,
 {
     /// Save link for the current wrapped message and associated info into the store.
-    pub fn commit<Store>(mut self, store: &mut Store, info: Store::Info) -> Result<Link>
+    fn commit<Store>(mut self, store: &mut Store, info: Store::Info) -> Result<Link>
     where
         Store: LinkStore<F, Link::Rel>,
     {
@@ -40,15 +40,16 @@ where
 }
 
 /// Result of wrapping the message.
-pub struct WrappedMessage<F, Link: HasLink> {
-    pub message: BinaryMessage<Link>,
-    pub wrapped: WrapState<F, Link>,
+struct WrappedMessage<F, Link: HasLink> {
+    message: BinaryMessage<Link>,
+    wrapped: WrapState<F, Link>,
 }
 
+// TODO: REMOVE
 // impl<F: PRP, Link: HasLink> WrappedMessage<F, Link>
 // {
 // Save link for the current wrapped message and accociated info into the store.
-// pub fn commit<Store>(
+// fn commit<Store>(
 // mut self,
 // mut store: RefMut<Store>,
 // info: <Store as LinkStore<F, <Link as HasLink>::Rel>>::Info,

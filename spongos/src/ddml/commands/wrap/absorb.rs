@@ -79,8 +79,8 @@ impl<F: PRP, OS: io::OStream> Absorb<Size> for Context<F, OS> {
     }
 }
 
-impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> Absorb<&'a NBytes<N>> for Context<F, OS> {
-    fn absorb(&mut self, nbytes: &'a NBytes<N>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> Absorb<&'a NBytes<T>> for Context<F, OS> {
+    fn absorb(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
         AbsorbContext::new(self).wrapn(nbytes)?;
         Ok(self)
     }

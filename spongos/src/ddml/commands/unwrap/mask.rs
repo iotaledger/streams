@@ -82,8 +82,8 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Size> for Context<F, IS> {
     }
 }
 
-impl<'a, F: PRP, N: ArrayLength<u8>, IS: io::IStream> Mask<&'a mut NBytes<N>> for Context<F, IS> {
-    fn mask(&mut self, nbytes: &'a mut NBytes<N>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Mask<&'a mut NBytes<T>> for Context<F, IS> {
+    fn mask(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
         MaskContext::new(self).unwrapn(nbytes)?;
         Ok(self)
     }
@@ -102,7 +102,7 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes> for Context<F, IS> {
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut x25519::PublicKey> for Context<F, IS> {
     fn mask(&mut self, public_key: &'a mut x25519::PublicKey) -> Result<&mut Self> {
         let mut bytes = [0_u8; x25519::PUBLIC_KEY_LENGTH];
-        MaskContext::new(self).unwrapn(bytes.as_mut_slice())?;
+        MaskContext::new(self).unwrapn(&mut bytes)?;
         *public_key = x25519::PublicKey::from(bytes);
         Ok(self)
     }
@@ -111,7 +111,7 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut x25519::PublicKey> for Context<F,
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F, IS> {
     fn mask(&mut self, public_key: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
         let mut bytes = [0_u8; ed25519::PUBLIC_KEY_LENGTH];
-        MaskContext::new(self).unwrapn(bytes.as_mut_slice())?;
+        MaskContext::new(self).unwrapn(&mut bytes)?;
         match ed25519::PublicKey::try_from_bytes(bytes) {
             Ok(pk) => {
                 *public_key = pk;

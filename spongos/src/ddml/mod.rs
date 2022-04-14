@@ -2,16 +2,16 @@
 //! DDML is implemented as an EDSL in rust.
 
 /// DDML commands.
-mod commands;
+pub mod commands;
 
 /// DDML command modifiers
-mod modifiers;
+pub mod modifiers;
 
 /// Abstractions for input/output buffers. It does not support the actual IO.
-mod io;
+pub mod io;
 
 /// DDML specific types.
-mod types;
+pub mod types;
 
 // TODO: REMOVE
 // /// LinkStore trait and impls.

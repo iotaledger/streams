@@ -4,11 +4,10 @@
 #[cfg_attr(not(feature = "std"), macro_use)]
 extern crate alloc;
 
-// Spongos requires std for the Dump DDML command 
+// Spongos requires the feature "std" for the Dump DDML command
 #[cfg(feature = "std")]
 #[macro_use]
 extern crate std;
-
 
 // TODO: REMOVE
 // // Stub used in tests & examples.
@@ -66,10 +65,17 @@ use error::Error;
 // TODO: MOVE TO LETS
 // mod psk;
 mod core;
-mod ddml;
+pub mod ddml;
 
 // TODO: REMOVE
 // pub use errors::{
 //     error_handler::*,
 //     error_messages::*,
 // };
+
+pub use crate::core::{
+    // prng::Prng,
+    spongos::Spongos,
+    prp::PRP,
+    prng::SpongosRng,
+};

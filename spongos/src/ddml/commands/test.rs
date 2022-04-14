@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use core::borrow::BorrowMut;
 
 use anyhow::{
     ensure,
@@ -8,14 +9,21 @@ use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
-use generic_array::typenum::{
-    U32,
-    U64,
+use generic_array::{
+    typenum::{
+        U32,
+        U64,
+    },
+    GenericArray,
+};
+use rand::{
+    distributions::Standard,
+    Rng,
 };
 
 use crate::{
     core::{
-        prng,
+        prng::SpongosRng,
         prp::{
             keccak::KeccakF1600,
             PRP,
@@ -49,13 +57,13 @@ where
     F: PRP,
 {
     let mut buf = vec![0_u8; 2];
-    let mut tag_wrap = External::new(NBytes::<U32>::default());
-    let mut tag_unwrap = External::new(NBytes::<U32>::default());
+    let mut tag_wrap = External::new(NBytes::<[u8; 32]>::default());
+    let mut tag_unwrap = External::new(NBytes::<[u8; 32]>::default());
 
     for t in 0_u8..10_u8 {
         let t = Uint8::new(t);
-        let buf_size = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.size();
-        let buf_size2 = sizeof::Context::<F>::new().absorb(t)?.mask(t)?.size();
+        let buf_size = sizeof::Context::new().absorb(t)?.mask(t)?.size();
+        let buf_size2 = sizeof::Context::new().absorb(t)?.mask(t)?.size();
         assert_eq!(buf_size, buf_size2, "Buffer sizes are not equal");
         assert_eq!(buf_size, 2);
 
@@ -93,22 +101,22 @@ where
 
 #[test]
 fn test_u8() {
-    assert!(dbg!(absorb_mask_u8::<KeccakF1600>()).is_ok());
+    assert!(absorb_mask_u8::<KeccakF1600>().is_ok());
 }
 
 fn absorb_mask_size<F>() -> Result<()>
 where
     F: PRP,
 {
-    let mut tag_wrap = External::new(NBytes::<U32>::default());
-    let mut tag_unwrap = External::new(NBytes::<U32>::default());
+    let mut tag_wrap = External::new(NBytes::<GenericArray<u8, U32>>::default());
+    let mut tag_unwrap = External::new(NBytes::<GenericArray<u8, U32>>::default());
 
     let ns = [0, 1, 13, 14, 25, 26, 27, 39, 40, 81, 9840, 9841, 9842, 19683];
 
     for n in ns.iter() {
         let s = Size::new(*n);
-        let buf_size = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.size();
-        let buf_size2 = sizeof::Context::<F>::new().absorb(s)?.mask(s)?.size();
+        let buf_size = sizeof::Context::new().absorb(s)?.mask(s)?.size();
+        let buf_size2 = sizeof::Context::new().absorb(s)?.mask(s)?.size();
         assert_eq!(buf_size, buf_size2);
 
         let mut buf = vec![0_u8; buf_size];
@@ -147,7 +155,7 @@ where
 
 #[test]
 fn size() {
-    assert!(dbg!(absorb_mask_size::<KeccakF1600>()).is_ok());
+    assert!(absorb_mask_size::<KeccakF1600>().is_ok());
 }
 
 fn absorb_mask_squeeze_bytes_mac<F>() -> Result<()>
@@ -156,28 +164,29 @@ where
 {
     const NS: [usize; 10] = [0, 3, 255, 256, 257, 483, 486, 489, 1002, 2001];
 
-    let mut tag_wrap = External::new(NBytes::<U32>::default());
-    let mut tag_unwrap = External::new(NBytes::<U32>::default());
+    let mut tag_wrap = External::new(NBytes::<[u8; 32]>::default());
+    let mut tag_unwrap = External::new(NBytes::<[u8; 32]>::default());
 
-    let prng = prng::from_seed::<F>("Spongos tests", "TESTPRNGKEY");
-    let nonce = "TESTPRNGNONCE".as_bytes().to_vec();
+    let mut prng = SpongosRng::<F>::new("Spongos tests");
+    // TODO: REMOVE
+    // let nonce = "TESTPRNGNONCE".as_bytes().to_vec();
 
     for &n in NS.iter() {
-        let ta = Bytes::new(prng.gen_n(&nonce, n));
+        let ta = Bytes::new(prng.borrow_mut().sample_iter(Standard).take(n).collect());
         // nonce.slice_mut().inc();
-        let nta: NBytes<U64> = prng.gen(&nonce);
+        let nta: NBytes<GenericArray<u8, U64>> = prng.gen();
         // nonce.slice_mut().inc();
-        let enta: NBytes<U64> = prng.gen(&nonce);
+        let enta: NBytes<GenericArray<u8, U64>> = prng.gen();
         // nonce.slice_mut().inc();
-        let tm = Bytes::new(prng.gen_n(&nonce, n));
+        let tm = Bytes::new(prng.borrow_mut().sample_iter(Standard).take(n).collect());
         // nonce.slice_mut().inc();
-        let ntm: NBytes<U64> = prng.gen(&nonce);
+        let ntm: NBytes<GenericArray<u8, U64>> = prng.gen();
         // nonce.slice_mut().inc();
-        let mut ents = External::new(NBytes::<U64>::default());
+        let mut ents = External::new(NBytes::<GenericArray<u8, U64>>::default());
         // nonce.slice_mut().inc();
         let mac = Mac::new(n);
 
-        let mut ctx = sizeof::Context::<F>::new();
+        let mut ctx = sizeof::Context::new();
         ctx.commit()?
             .absorb(&ta)?
             .absorb(&nta)?
@@ -215,10 +224,10 @@ where
         );
 
         let mut ta2 = Bytes::default();
-        let mut nta2 = NBytes::<U64>::default();
+        let mut nta2 = NBytes::<GenericArray<u8, U64>>::default();
         let mut tm2 = Bytes::default();
-        let mut ntm2 = NBytes::<U64>::default();
-        let mut ents2 = External::new(NBytes::<U64>::default());
+        let mut ntm2 = NBytes::<GenericArray<u8, U64>>::default();
+        let mut ents2 = External::new(NBytes::<GenericArray<u8, U64>>::default());
 
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
         ctx.commit()?
@@ -256,7 +265,7 @@ where
 
 #[test]
 fn bytes() {
-    assert!(dbg!(absorb_mask_squeeze_bytes_mac::<KeccakF1600>()).is_ok());
+    assert!(absorb_mask_squeeze_bytes_mac::<KeccakF1600>().is_ok());
 }
 
 fn absorb_ed25519<F: PRP>() -> Result<()> {
@@ -264,10 +273,10 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
 
     let tag_wrap = Bytes::new([3_u8; 17].to_vec());
     let mut tag_unwrap = Bytes::default();
-    let mut hash_wrap = External::new(NBytes::<U64>::default());
-    let mut hash_unwrap = External::new(NBytes::<U64>::default());
+    let mut hash_wrap = External::new(NBytes::<GenericArray<u8, U64>>::default());
+    let mut hash_unwrap = External::new(NBytes::<GenericArray<u8, U64>>::default());
 
-    let mut ctx = sizeof::Context::<F>::new();
+    let mut ctx = sizeof::Context::new();
     ctx.absorb(&tag_wrap)?
         .commit()?
         .squeeze(&hash_wrap)?
@@ -311,127 +320,123 @@ fn absorb_ed25519<F: PRP>() -> Result<()> {
 
 #[test]
 fn test_ed25519() {
-    assert!(dbg!(absorb_ed25519::<KeccakF1600>()).is_ok());
+    assert!(absorb_ed25519::<KeccakF1600>().is_ok());
 }
 
-fn x25519_static<F>() -> Result<()>
-where
-    F: PRP,
-{
-    let secret_a = x25519::SecretKey::from_bytes([11; 32]);
-    let secret_b = x25519::SecretKey::from_bytes([13; 32]);
-    let mut public_b2 = x25519::PublicKey::from_bytes([0_u8; 32]);
+// TODO: REMOVE
+// fn x25519_static<F>() -> Result<()>
+// where
+//     F: PRP,
+// {
+//     let secret_a = x25519::SecretKey::from_bytes([11; 32]);
+//     let secret_b = x25519::SecretKey::from_bytes([13; 32]);
+//     let mut public_b2 = x25519::PublicKey::from_bytes([0_u8; 32]);
 
-    let tag_wrap = Bytes::new([3_u8; 17].to_vec());
-    let mut tag_unwrap = Bytes::default();
+//     let tag_wrap = Bytes::new([3_u8; 17].to_vec());
+//     let mut tag_unwrap = Bytes::default();
 
-    let mut ctx = sizeof::Context::<F>::new();
-    ctx.absorb(&secret_b.public_key())?
-        .x25519(&secret_b, &secret_a.public_key())?
-        .commit()?
-        .mask(&tag_wrap)?;
-    let buf_size = ctx.size();
+//     let mut ctx = sizeof::Context::<F>::new();
+//     ctx.absorb(&secret_b.public_key())?
+//         .x25519(&secret_b, &secret_a.public_key())?
+//         .commit()?
+//         .mask(&tag_wrap)?;
+//     let buf_size = ctx.size();
 
-    let mut buf = vec![0_u8; buf_size];
+//     let mut buf = vec![0_u8; buf_size];
 
-    let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-    ctx.absorb(&secret_b.public_key())?
-        .x25519(&secret_b, &secret_a.public_key())?
-        .commit()?
-        .mask(&tag_wrap)?;
-    assert!(
-        ctx.stream().is_empty(),
-        "Output stream has not been exhausted. Remaining: {}",
-        ctx.stream().len()
-    );
+//     let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
+//     ctx.absorb(&secret_b.public_key())?
+//         .x25519(&secret_b, &secret_a.public_key())?
+//         .commit()?
+//         .mask(&tag_wrap)?;
+//     assert!(
+//         ctx.stream().is_empty(),
+//         "Output stream has not been exhausted. Remaining: {}",
+//         ctx.stream().len()
+//     );
 
-    let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-    ctx.absorb(&mut public_b2)?
-        .x25519(&secret_a, &public_b2)?
-        .commit()?
-        .mask(&mut tag_unwrap)?;
-    assert!(
-        ctx.stream().is_empty(),
-        "Input stream has not been exhausted. Remaining: {}",
-        ctx.stream().len()
-    );
+//     let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
+//     ctx.absorb(&mut public_b2)?
+//         .x25519(&secret_a, &public_b2)?
+//         .commit()?
+//         .mask(&mut tag_unwrap)?;
+//     assert!(
+//         ctx.stream().is_empty(),
+//         "Input stream has not been exhausted. Remaining: {}",
+//         ctx.stream().len()
+//     );
 
-    assert_eq!(
-        tag_wrap, tag_unwrap,
-        "Squeezed tag is invalid. Unwrapped tag doesn't match",
-    );
+//     assert_eq!(
+//         tag_wrap, tag_unwrap,
+//         "Squeezed tag is invalid. Unwrapped tag doesn't match",
+//     );
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-fn x25519_ephemeral<F: PRP>() -> Result<()> {
-    let secret_a = x25519::SecretKey::generate_with(&mut rand::thread_rng());
-    let secret_b = x25519::SecretKey::generate_with(&mut rand::thread_rng());
-    let mut public_b2 = x25519::PublicKey::from_bytes([0_u8; 32]);
+// fn x25519_ephemeral<F: PRP>() -> Result<()> {
+//     let secret_a = x25519::SecretKey::generate_with(&mut SpongosRng::<F>::new("secret_a"));
+//     let secret_b = x25519::SecretKey::generate_with(&mut SpongosRng::<F>::new("secret_b"));
+//     let mut public_b2 = x25519::PublicKey::from_bytes([0_u8; 32]);
 
-    let tag_wrap = Bytes::new([3_u8; 17].to_vec());
-    let mut tag_unwrap = Bytes::default();
+//     let tag_wrap = Bytes::new([3_u8; 17].to_vec());
+//     let mut tag_unwrap = Bytes::default();
 
-    let mut ctx = sizeof::Context::<F>::new();
-    ctx.absorb(&secret_b.public_key())?
-        .x25519(&secret_b, &secret_a.public_key())?
-        .commit()?
-        .mask(&tag_wrap)?;
-    let buf_size = ctx.size();
+//     let mut ctx = sizeof::Context::<F>::new();
+//     ctx.absorb(&secret_b.public_key())?
+//         .x25519(&secret_b, &secret_a.public_key())?
+//         .commit()?
+//         .mask(&tag_wrap)?;
+//     let buf_size = ctx.size();
 
-    let mut buf = vec![0_u8; buf_size];
+//     let mut buf = vec![0_u8; buf_size];
 
-    let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-    ctx.absorb(&secret_b.public_key())?
-        .x25519(&secret_b, &secret_a.public_key())?
-        .commit()?
-        .mask(&tag_wrap)?;
-    assert!(
-        ctx.stream().is_empty(),
-        "Output stream has not been exhausted. Remaining: {}",
-        ctx.stream().len()
-    );
+//     let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
+//     ctx.absorb(&secret_b.public_key())?
+//         .x25519(&secret_b, &secret_a.public_key())?
+//         .commit()?
+//         .mask(&tag_wrap)?;
+//     assert!(
+//         ctx.stream().is_empty(),
+//         "Output stream has not been exhausted. Remaining: {}",
+//         ctx.stream().len()
+//     );
 
-    let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-    ctx.absorb(&mut public_b2)?
-        .x25519(&secret_a, &public_b2)?
-        .commit()?
-        .mask(&mut tag_unwrap)?;
-    assert!(
-        ctx.stream().is_empty(),
-        "Input stream has not been exhausted. Remaining: {}",
-        ctx.stream().len()
-    );
+//     let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
+//     ctx.absorb(&mut public_b2)?
+//         .x25519(&secret_a, &public_b2)?
+//         .commit()?
+//         .mask(&mut tag_unwrap)?;
+//     assert!(
+//         ctx.stream().is_empty(),
+//         "Input stream has not been exhausted. Remaining: {}",
+//         ctx.stream().len()
+//     );
 
-    assert_eq!(
-        tag_wrap, tag_unwrap,
-        "Squeezed tag is invalid. Unwrapped tag doesn't match",
-    );
+//     assert_eq!(
+//         tag_wrap, tag_unwrap,
+//         "Squeezed tag is invalid. Unwrapped tag doesn't match",
+//     );
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn x25519_transport<F: PRP>() -> Result<()> {
-    let local_secret_key = x25519::SecretKey::generate_with(&mut rand::thread_rng());
-    let remote_secret_key = x25519::SecretKey::generate_with(&mut rand::thread_rng());
+    let mut prng = SpongosRng::<F>::new("seed for tests");
+    let local_secret_key = x25519::SecretKey::generate_with(&mut prng);
+    let remote_secret_key = x25519::SecretKey::generate_with(&mut prng);
 
-    let key_wrap = NBytes::<U32>::default();
-    let mut key_unwrap = NBytes::<U32>::default();
+    let key_wrap = NBytes::<[u8; 32]>::new(prng.gen());
+    let mut key_unwrap = NBytes::<[u8; 32]>::default();
 
-    let mut ctx = sizeof::Context::<F>::new();
-    ctx.absorb(&local_secret_key.public_key())?
-        .x25519(&local_secret_key, &remote_secret_key.public_key())?
-        .commit()?
-        .mask(&key_wrap);
+    let mut ctx = sizeof::Context::new();
+    ctx.x25519(&local_secret_key.public_key(), &key_wrap)?;
     let buf_size = ctx.size();
 
     let mut buf = vec![0_u8; buf_size];
 
     let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-    ctx.absorb(&local_secret_key.public_key())?
-        .x25519(&local_secret_key, &remote_secret_key.public_key())?
-        .commit()?
-        .mask(&key_wrap);
+    ctx.x25519(&local_secret_key.public_key(), &key_wrap)?;
     assert!(
         ctx.stream().is_empty(),
         "Output stream has not been exhausted. Remaining: {}",
@@ -439,27 +444,25 @@ fn x25519_transport<F: PRP>() -> Result<()> {
     );
 
     let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-    let mut unwrapped_public_key = x25519::PublicKey::from_bytes([0u8; 32]);  // Default
-    ctx.absorb(&mut unwrapped_public_key)?
-        .x25519(&remote_secret_key, &unwrapped_public_key)?
-        .commit()?
-        .mask(&mut key_unwrap);
+    let mut unwrapped_public_key = x25519::PublicKey::from_bytes([0u8; 32]); // Default
+    ctx.x25519(&remote_secret_key, &mut key_unwrap)?;
     assert!(
         ctx.stream().is_empty(),
         "Input stream has not been exhausted. Remaining: {}",
         ctx.stream().len()
     );
 
-    assert_eq!(key_wrap ,key_unwrap, "X25519 encryption key missmatch");
+    assert_eq!(key_wrap, key_unwrap, "X25519 encryption key missmatch");
 
     Ok(())
 }
 
 #[test]
 fn test_x25519() {
-    assert!(dbg!(x25519_static::<KeccakF1600>()).is_ok());
-    assert!(dbg!(x25519_ephemeral::<KeccakF1600>()).is_ok());
-    assert!(dbg!(x25519_transport::<KeccakF1600>()).is_ok());
+    // TODO: REMOVE
+    // assert!(x25519_static::<KeccakF1600>().is_ok());
+    // assert!(x25519_ephemeral::<KeccakF1600>().is_ok());
+    assert!(x25519_transport::<KeccakF1600>().is_ok());
 }
 
 // use crate::io;
@@ -668,5 +671,5 @@ fn test_x25519() {
 //
 // #[test]
 // fn join_link() {
-// assert!(dbg!(run_join_link()).is_ok());
+// assert!(run_join_link()).is_ok());
 // }

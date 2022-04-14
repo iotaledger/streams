@@ -20,22 +20,27 @@ use crate::{
     },
 };
 
-#[derive(Clone)]
-pub(crate) struct Context<F, IS> {
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Context<F, IS> {
     spongos: Spongos<F>,
     stream: IS,
 }
 
-impl<F, IS> Context<F, IS> where F: Default{
-    pub(crate) fn new(stream: IS) -> Self {
+impl<F, IS> Context<F, IS> {
+    pub fn new(stream: IS) -> Self where F: Default {
         Self {
             spongos: Spongos::<F>::init(),
             stream,
         }
     }
 
-    pub(crate) fn stream(&self) -> &IS {
+    pub fn stream(&self) -> &IS {
         &self.stream
+    }
+
+    pub fn finalize(mut self) -> Spongos<F> where F: PRP {
+        self.spongos.commit();
+        self.spongos
     }
 }
 

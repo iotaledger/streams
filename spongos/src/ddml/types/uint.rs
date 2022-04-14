@@ -1,10 +1,10 @@
 use core::fmt;
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(crate) struct Uint8(u8);
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct Uint8(u8);
 
 impl Uint8 {
-    pub(crate) fn new(u: u8) -> Self {
+    pub fn new(u: u8) -> Self {
         Self(u)
     }
 
@@ -16,7 +16,7 @@ impl Uint8 {
         Self(u8::from_be_bytes(bytes))
     }
 
-    pub(crate) fn inner(&self) -> u8 {
+    pub fn inner(&self) -> u8 {
         self.0
     }
 }
@@ -27,11 +27,17 @@ impl fmt::Display for Uint8 {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+impl From<Uint8> for u8 {
+    fn from(n: Uint8) -> Self {
+        n.inner()
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub(crate) struct Uint16(u16);
 
 impl Uint16 {
-    pub(crate) fn new(u: u16) -> Self {
+    pub fn new(u: u16) -> Self {
         Self(u)
     }
 
@@ -43,7 +49,7 @@ impl Uint16 {
         Self(u16::from_be_bytes(bytes))
     }
 
-    pub(crate) fn inner(&self) -> u16 {
+    pub fn inner(&self) -> u16 {
         self.0
     }
 }
@@ -54,11 +60,17 @@ impl fmt::Display for Uint16 {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+impl From<Uint16> for u16 {
+    fn from(n: Uint16) -> Self {
+        n.inner()
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub(crate) struct Uint32(u32);
 
 impl Uint32 {
-    pub(crate) fn new(u: u32) -> Self {
+    pub fn new(u: u32) -> Self {
         Self(u)
     }
 
@@ -70,7 +82,7 @@ impl Uint32 {
         Self(u32::from_be_bytes(bytes))
     }
 
-    pub(crate) fn inner(&self) -> u32 {
+    pub fn inner(&self) -> u32 {
         self.0
     }
 }
@@ -81,11 +93,17 @@ impl fmt::Display for Uint32 {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(crate) struct Uint64(u64);
+impl From<Uint32> for u32 {
+    fn from(n: Uint32) -> Self {
+        n.inner()
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct Uint64(u64);
 
 impl Uint64 {
-    pub(crate) fn new(u: u64) -> Self {
+    pub fn new(u: u64) -> Self {
         Self(u)
     }
 
@@ -97,7 +115,7 @@ impl Uint64 {
         Self(u64::from_be_bytes(bytes))
     }
 
-    pub(crate) fn inner(&self) -> u64 {
+    pub fn inner(&self) -> u64 {
         self.0
     }
 }
@@ -105,5 +123,11 @@ impl Uint64 {
 impl fmt::Display for Uint64 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl From<Uint64> for u64 {
+    fn from(n: Uint64) -> Self {
+        n.inner()
     }
 }

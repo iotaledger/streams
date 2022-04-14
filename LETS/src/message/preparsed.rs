@@ -1,56 +1,56 @@
-use iota_streams_core::Result;
-
+// Rust
 use core::fmt;
 
-use super::*;
-use iota_streams_core::sponge::prp::PRP;
-use iota_streams_ddml::command::unwrap;
+// 3rd-party
+use anyhow::Result;
+
+// IOTA
+
+// Streams
+use spongos::{
+    ddml::commands::unwrap,
+    Spongos,
+    PRP,
+};
+
+// local
+use crate::message::{
+    content::ContentUnwrap,
+    hdf::HDF,
+    pcf::PCF,
+    Message,
+};
 
 /// Message context preparsed for unwrapping.
-pub struct PreparsedMessage<'a, F, Link: Default> {
-    pub header: HDF<Link>,
-    pub(crate) ctx: unwrap::Context<F, &'a [u8]>,
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub(crate) struct PreparsedMessage<'a, F, Address> {
+    hdf: HDF<Address>,
+    ctx: unwrap::Context<F, &'a [u8]>,
 }
 
-impl<'a, F, Link: Default + Clone> PreparsedMessage<'a, F, Link> {
-    pub fn check_content_type(&self, content_type: u8) -> bool {
-        self.content_type() == content_type
+impl<'a, F, Address> PreparsedMessage<'a, F, Address> {
+    pub(crate) fn new(hdf: HDF<Address>, ctx: unwrap::Context<F, &'a [u8]>) -> Self {
+        Self { hdf, ctx }
     }
 
-    pub fn content_type(&self) -> u8 {
-        self.header.content_type()
+    fn is_content_type(&self, content_type: u8) -> bool {
+        self.header().content_type() == content_type
     }
 
-    pub async fn unwrap<Store, Content>(
-        mut self,
-        store: &Store,
-        content: Content,
-    ) -> Result<UnwrappedMessage<F, Link, Content>>
+    fn header(&self) -> &HDF<Address> {
+        &self.hdf
+    }
+
+    async fn unwrap<Content>(mut self, content: Content) -> Result<(Message<Address, Content>, Spongos<F>)>
     where
-        Content: ContentUnwrap<F, Store>,
+        Content: for<'b> ContentUnwrap<'b, F, &'a [u8]>,
         F: PRP,
     {
-        let mut pcf = pcf::PCF::default_with_content(content);
-        pcf.unwrap(store, &mut self.ctx).await?;
-        // Discard what's left of `self.ctx.stream`
-        Ok(UnwrappedMessage {
-            link: self.header.link,
-            pcf,
-            spongos: self.ctx.spongos,
-        })
-    }
-}
-
-impl<'a, F, Link> Clone for PreparsedMessage<'a, F, Link>
-where
-    F: Clone,
-    Link: Clone + Default,
-{
-    fn clone(&self) -> Self {
-        Self {
-            header: self.header.clone(),
-            ctx: self.ctx.clone(),
-        }
+        let mut pcf = PCF::<()>::default().with_content(content);
+        pcf.unwrap(&mut self.ctx).await?;
+        // Commit Spongos and discard `self.ctx.stream` that should be empty
+        let spongos = self.ctx.finalize();
+        Ok((Message::new(self.hdf, pcf), spongos))
     }
 }
 
@@ -59,6 +59,6 @@ where
     Link: fmt::Debug + Default + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{header: {:?}, ctx: {:?}}}", self.header, "self.ctx")
+        write!(f, "{{header: {:?}, ctx: {:?}}}", self.hdf, &self.ctx.stream()[..10])
     }
 }

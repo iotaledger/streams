@@ -63,8 +63,8 @@ impl<F: PRP, IS> Absorb<External<Size>> for Context<F, IS> {
     }
 }
 
-impl<'a, F: PRP, N: ArrayLength<u8>, IS> Absorb<External<&'a NBytes<N>>> for Context<F, IS> {
-    fn absorb(&mut self, bytes: External<&'a NBytes<N>>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsRef<[u8]>, IS> Absorb<External<&'a NBytes<T>>> for Context<F, IS> {
+    fn absorb(&mut self, bytes: External<&'a NBytes<T>>) -> Result<&mut Self> {
         self.spongos.absorb(bytes);
         Ok(self)
     }

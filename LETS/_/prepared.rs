@@ -15,14 +15,14 @@ use iota_streams_ddml::{
 };
 
 /// Message context prepared for wrapping.
-pub struct PreparedMessage<F, Link: Default, Content> {
-    pub header: HDF<Link>,
-    pub content: PCF<Content>,
+struct PreparedMessage<F, Link: Default, Content> {
+    header: HDF<Link>,
+    content: PCF<Content>,
     _phantom: core::marker::PhantomData<F>,
 }
 
 impl<F, Link: Default, Content> PreparedMessage<F, Link, Content> {
-    pub fn new(header: HDF<Link>, content: Content) -> Self {
+    fn new(header: HDF<Link>, content: Content) -> Self {
         let content = pcf::PCF::new_final_frame()
             .with_payload_frame_num(1)
             .unwrap()
@@ -42,7 +42,7 @@ where
     Link: HasLink + AbsorbExternalFallback<F> + Clone + Default,
     Link::Rel: Eq + SkipFallback<F>,
 {
-    pub async fn wrap<Store>(&self, store: &Store) -> Result<WrappedMessage<F, Link>>
+    async fn wrap<Store>(&self, store: &Store) -> Result<WrappedMessage<F, Link>>
     where
         HDF<Link>: ContentWrap<F, Store>,
         Content: ContentWrap<F, Store>,
@@ -60,7 +60,8 @@ where
             let mut ctx = wrap::Context::new(&mut buf[..]);
             self.header.wrap(store, &mut ctx).await?;
             self.content.wrap(store, &mut ctx).await?;
-            try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
+            assert!(
+                ctx.stream().is_empty(), "Missmatch between buffer size expected by SizeOf ({buf_size}) and actual size of Wrap {}", ctx.stream().len());
             ctx.spongos
         };
 

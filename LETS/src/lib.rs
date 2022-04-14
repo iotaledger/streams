@@ -24,19 +24,26 @@
 
 #![no_std]
 
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate std;
+// TODO: REMOVE
+// #[cfg(feature = "std")]
+// #[macro_use]
+// extern crate std;
 
-/// Streams Message definitions and utils for wrapping/unwrapping.
-// mod message;
+#[macro_use]
+extern crate alloc;
+
+/// Message definitions and utils for wrapping/unwrapping.
+mod message;
+
+/// Message addressing and linking
+mod link;
 
 /// Transport-related abstractions.
-// mod transport;
+mod transport;
 
 // TODO: REMOVE
-// pub use cstr_core;
-// pub use cty;
+// use cstr_core;
+// use cty;
 
 /// Identity based Signature/Verification utilities
-// mod id;
+mod id;

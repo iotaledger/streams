@@ -81,8 +81,8 @@ impl<'a, F, OS: io::OStream> Skip<Size> for Context<F, OS> {
     }
 }
 
-impl<'a, F, N: ArrayLength<u8>, OS: io::OStream> Skip<&'a NBytes<N>> for Context<F, OS> {
-    fn skip(&mut self, bytes: &'a NBytes<N>) -> Result<&mut Self> {
+impl<'a, F, T: AsRef<[u8]>, OS: io::OStream> Skip<&'a NBytes<T>> for Context<F, OS> {
+    fn skip(&mut self, bytes: &'a NBytes<T>) -> Result<&mut Self> {
         SkipContext::new(self).wrapn(bytes)?;
         Ok(self)
     }

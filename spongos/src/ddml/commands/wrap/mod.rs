@@ -2,7 +2,10 @@
 use anyhow::Result;
 
 use crate::{
-    core::spongos::Spongos,
+    core::{
+        prp::PRP,
+        spongos::Spongos,
+    },
     ddml::types::{
         Size,
         Uint16,
@@ -12,26 +15,39 @@ use crate::{
     },
 };
 
-pub(crate) struct Context<F, OS> {
+pub struct Context<F, OS> {
     spongos: Spongos<F>,
     stream: OS,
 }
 
-impl<F, OS> Context<F, OS> where F: Default {
-    pub(crate) fn new(stream: OS) -> Self {
+impl<F, OS> Context<F, OS>
+where
+    F: Default,
+{
+    pub fn new(stream: OS) -> Self {
         Self {
             spongos: Spongos::<F>::init(),
             stream,
         }
     }
 
-    pub(crate) fn stream(&self) -> &OS {
+    pub fn stream(&self) -> &OS {
         &self.stream
+    }
+
+    pub fn finalize(mut self) -> Spongos<F>
+    where
+        F: PRP,
+    {
+        self.spongos.commit();
+        self.spongos
     }
 }
 
 trait Wrap {
-    fn wrapn<T>(&mut self, v: T) -> Result<&mut Self> where T: AsRef<[u8]>;
+    fn wrapn<T>(&mut self, v: T) -> Result<&mut Self>
+    where
+        T: AsRef<[u8]>;
     fn wrap_u8(&mut self, u: Uint8) -> Result<&mut Self> {
         self.wrapn(&u.to_bytes())
     }

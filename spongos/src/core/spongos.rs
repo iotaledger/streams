@@ -1,19 +1,25 @@
 use alloc::vec::Vec;
 use core::{
-    fmt, ops::Mul,
+    fmt,
+    ops::Mul,
 };
 
-use anyhow::{Result, ensure};
+use anyhow::{
+    ensure,
+    Result,
+};
 use digest::Digest;
 use generic_array::{
+    typenum::{
+        Prod,
+        Unsigned,
+        U2,
+    },
     ArrayLength,
     GenericArray,
-    typenum::{Prod, U2, Unsigned}
 };
 
-use super::prp::{
-    PRP,
-};
+use super::prp::PRP;
 use crate::Error::{
     LengthMismatch,
     SpongosNotCommitted,
@@ -90,7 +96,7 @@ fn equals(s: &[u8], x: &[u8]) -> bool {
 }
 
 /// Sponge fixed key size in buf.
- type KeySize<F> = <F as PRP>::CapacitySize;
+type KeySize<F> = <F as PRP>::CapacitySize;
 pub(crate) type KeyType<F> = GenericArray<u8, KeySize<F>>;
 
 /// Sponge fixed nonce size in buf.
@@ -106,8 +112,8 @@ type MacSize<F> = <F as PRP>::CapacitySize;
 type Capacity<F> = GenericArray<u8, <F as PRP>::CapacitySize>;
 type Rate<F> = GenericArray<u8, <F as PRP>::RateSize>;
 
-#[derive(Clone, Default, Hash)]
-pub(crate) struct Spongos<F> {
+#[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct Spongos<F> {
     /// Spongos transform together with its internal state.
     s: F,
 
@@ -115,9 +121,12 @@ pub(crate) struct Spongos<F> {
     pos: usize,
 }
 
-impl<F> Spongos<F> where F: Default {
+impl<F> Spongos<F>
+where
+    F: Default,
+{
     /// Create a Spongos object, initialize state with zero trits.
-    pub(crate) fn init() -> Self {
+    pub fn init() -> Self {
         Self::init_with_state(F::default())
     }
 }
@@ -144,7 +153,10 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Absorb a slice into Spongos object.
-    pub(crate) fn absorb<T>(&mut self, xr: T) where T: AsRef<[u8]> {
+    pub fn absorb<T>(&mut self, xr: T)
+    where
+        T: AsRef<[u8]>,
+    {
         let mut x = xr.as_ref();
         while !x.is_empty() {
             let s = self.outer_min_mut(x.len());
@@ -156,7 +168,10 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Squeeze a byte slice from Spongos object.
-    pub(crate) fn squeeze_mut<T>(&mut self, mut yr: T) where T: AsMut<[u8]> {
+    pub(crate) fn squeeze_mut<T>(&mut self, mut yr: T)
+    where
+        T: AsMut<[u8]>,
+    {
         let mut y = yr.as_mut();
         while !y.is_empty() {
             let s = self.outer_min_mut(y.len());
@@ -168,7 +183,10 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Squeeze a trit slice from Spongos object and compare.
-    pub(crate) fn squeeze_eq<T>(&mut self, yr: T) -> bool where T: AsRef<[u8]> {
+    pub(crate) fn squeeze_eq<T>(&mut self, yr: T) -> bool
+    where
+        T: AsRef<[u8]>,
+    {
         let mut y = yr.as_ref();
         let mut eq = true;
         while !y.is_empty() {
@@ -181,7 +199,10 @@ impl<F: PRP> Spongos<F> {
         eq
     }
 
-    pub(crate) fn squeeze<R>(&mut self) -> R where R: AsMut<[u8]> + Default {
+    pub(crate) fn squeeze<R>(&mut self) -> R
+    where
+        R: AsMut<[u8]> + Default,
+    {
         let mut output = Default::default();
         self.squeeze_mut(&mut output);
         output
@@ -202,15 +223,42 @@ impl<F: PRP> Spongos<F> {
         v
     }
 
-    fn hash<T, R>(&mut self, data: T) -> R where T: AsRef<[u8]>, R: AsMut<[u8]> + Default {
+    pub fn sponge<T, R>(&mut self, data: T) -> R
+    where
+        T: AsRef<[u8]>,
+        R: AsMut<[u8]> + Default,
+    {
+        let mut r = Default::default();
+        self.sponge_mut(data, &mut r);
+        r
+    }
+
+    pub(crate) fn sponge_mut<T, R>(&mut self, data: T, r: R)
+    where
+        T: AsRef<[u8]>,
+        R: AsMut<[u8]>,
+    {
         self.absorb(data);
         self.commit();
-        self.squeeze()
+        self.squeeze_mut(r)
+    }
+
+    fn hash<T, R>(data: T) -> R
+    where
+        F: PRP,
+        T: AsRef<[u8]>,
+        R: AsMut<[u8]> + Default,
+    {
+        Self::init().sponge(data)
     }
 
     /// Encrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub(crate) fn encrypt_mut<P, C>(&mut self, plain: P, mut cipher: C) -> Result<()> where P: AsRef<[u8]>, C: AsMut<[u8]> {
+    pub(crate) fn encrypt_mut<P, C>(&mut self, plain: P, mut cipher: C) -> Result<()>
+    where
+        P: AsRef<[u8]>,
+        C: AsMut<[u8]>,
+    {
         let mut plain = plain.as_ref();
         let mut cipher = cipher.as_mut();
         ensure!(plain.len() == cipher.len(), LengthMismatch(plain.len(), cipher.len()));
@@ -226,7 +274,10 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Encrypt in-place a byte slice with Spongos object.
-    pub(crate) fn encrypt_inplace<T>(&mut self, mut xyr: T) where T: AsMut<[u8]> {
+    pub(crate) fn encrypt_inplace<T>(&mut self, mut xyr: T)
+    where
+        T: AsMut<[u8]>,
+    {
         let mut xy = xyr.as_mut();
         while !xy.is_empty() {
             let s = self.outer_min_mut(xy.len());
@@ -243,13 +294,20 @@ impl<F: PRP> Spongos<F> {
     //     self.encrypt(x, &mut y)?;
     //     Ok(y)
     // }
-    fn encrypt<T, R>(&mut self, plain: T) -> Result<R> where T: AsRef<[u8]>, R: AsMut<[u8]> + Default {
+    fn encrypt<T, R>(&mut self, plain: T) -> Result<R>
+    where
+        T: AsRef<[u8]>,
+        R: AsMut<[u8]> + Default,
+    {
         let mut cipher = Default::default();
         self.encrypt_mut(plain, &mut cipher)?;
         Ok(cipher)
     }
 
-    pub(crate) fn encrypt_n<T>(&mut self, x: T) -> Result<Vec<u8>> where T: AsRef<[u8]> {
+    pub(crate) fn encrypt_n<T>(&mut self, x: T) -> Result<Vec<u8>>
+    where
+        T: AsRef<[u8]>,
+    {
         let mut y = vec![0; x.as_ref().len()];
         self.encrypt_mut(x, &mut y)?;
         Ok(y)
@@ -257,7 +315,11 @@ impl<F: PRP> Spongos<F> {
 
     /// Decrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
-    pub(crate) fn decrypt_mut<C, P>(&mut self, cipher: C, mut plain: P) -> Result<()> where C: AsRef<[u8]>, P: AsMut<[u8]> {
+    pub(crate) fn decrypt_mut<C, P>(&mut self, cipher: C, mut plain: P) -> Result<()>
+    where
+        C: AsRef<[u8]>,
+        P: AsMut<[u8]>,
+    {
         let mut cipher = cipher.as_ref();
         let mut plain = plain.as_mut();
         ensure!(plain.len() == cipher.len(), LengthMismatch(plain.len(), cipher.len()));
@@ -273,7 +335,10 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Decrypt in-place a byte slice with Spongos object.
-    pub(crate) fn decrypt_inplace<T>(&mut self, mut xyr: T) where T: AsMut<[u8]> {
+    pub(crate) fn decrypt_inplace<T>(&mut self, mut xyr: T)
+    where
+        T: AsMut<[u8]>,
+    {
         let mut xy = xyr.as_mut();
         while !xy.is_empty() {
             let s = self.outer_min_mut(xy.len());
@@ -284,7 +349,11 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    fn decrypt<T, R>(&mut self, mut ciphertext: T) -> Result<R> where T: AsRef<[u8]>, R: AsMut<[u8]> + Default {
+    fn decrypt<T, R>(&mut self, mut ciphertext: T) -> Result<R>
+    where
+        T: AsRef<[u8]>,
+        R: AsMut<[u8]> + Default,
+    {
         let mut plaintext = Default::default();
         self.decrypt_mut(ciphertext, &mut plaintext)?;
         Ok(plaintext)
@@ -298,7 +367,10 @@ impl<F: PRP> Spongos<F> {
     //     Ok(x)
     // }
 
-    pub(crate) fn decrypt_n<T>(&mut self, y: T) -> Result<Vec<u8>> where T: AsRef<[u8]> {
+    pub(crate) fn decrypt_n<T>(&mut self, y: T) -> Result<Vec<u8>>
+    where
+        T: AsRef<[u8]>,
+    {
         let mut x = vec![0; y.as_ref().len()];
         self.decrypt_mut(y, &mut x)?;
         Ok(x)
@@ -344,7 +416,10 @@ impl<F: PRP> Spongos<F> {
     }
 }
 
-impl<F> Spongos<F> where F: Clone {
+impl<F> Spongos<F>
+where
+    F: Clone,
+{
     /// Fork Spongos object into another.
     /// Essentially this just creates a clone of self.
     fn fork_at(&self, fork: &mut Self) {
@@ -406,23 +481,23 @@ impl<F: PRP> fmt::Debug for Spongos<F> {
     }
 }
 
-/// Shortcut for `Spongos::init`.
-fn init<F>() -> Spongos<F>
-where
-    F: PRP + Default,
-{
-    Spongos::init()
-}
+// TODO: REMOVE
+// /// Shortcut for `Spongos::init`.
+// fn init<F>() -> Spongos<F>
+// where
+//     F: PRP + Default,
+// {
+//     Spongos::init()
+// }
 
 /// Hash data with Spongos.
-fn hash_data<F, T, R>(data: T) -> R
+fn hash<F, T, R>(data: T) -> R
 where
     F: PRP,
     T: AsRef<[u8]>,
-    R: AsMut<[u8]> + Default
+    R: AsMut<[u8]> + Default,
 {
-    let mut s = Spongos::<F>::init();
-    s.hash(data)
+    Spongos::<F>::hash(data)
 }
 
 impl<F> Digest for Spongos<F>
@@ -468,23 +543,23 @@ where
     }
 
     fn digest(data: &[u8]) -> GenericArray<u8, Self::OutputSize> {
-        Self::init().hash(data)
+        Self::init().sponge(data)
     }
 }
 
 /// Convenience wrapper for storing Spongos inner state.
-#[derive(Clone, PartialEq, Eq, Default, Hash )]
+#[derive(Clone, PartialEq, Eq, Default, Hash)]
 struct Inner<F: PRP> {
     /// Represents inner state of spongos automaton.
     inner: Capacity<F>,
 }
 
 impl<F: PRP> Inner<F> {
-    fn arr(&self) -> &Capacity<F>{
+    fn arr(&self) -> &Capacity<F> {
         &self.inner
     }
 
-    fn arr_mut(&mut self) -> &mut Capacity<F>{
+    fn arr_mut(&mut self) -> &mut Capacity<F> {
         &mut self.inner
     }
 }
@@ -503,13 +578,11 @@ impl<F: PRP> AsMut<[u8]> for Inner<F> {
 
 impl<F: PRP> From<Capacity<F>> for Inner<F> {
     fn from(bytes: Capacity<F>) -> Self {
-        Self {
-            inner: bytes,
-        }
+        Self { inner: bytes }
     }
 }
 
-impl<F: PRP> From<Inner<F>> for Capacity<F>{
+impl<F: PRP> From<Inner<F>> for Capacity<F> {
     fn from(inner: Inner<F>) -> Self {
         inner.inner
     }

@@ -75,8 +75,8 @@ impl<'a, F, IS: io::IStream> Skip<&'a mut Size> for Context<F, IS> {
     }
 }
 
-impl<'a, F, N: ArrayLength<u8>, IS: io::IStream> Skip<&'a mut NBytes<N>> for Context<F, IS> {
-    fn skip(&mut self, nbytes: &'a mut NBytes<N>) -> Result<&mut Self> {
+impl<'a, F, T: AsMut<[u8]>, IS: io::IStream> Skip<&'a mut NBytes<T>> for Context<F, IS> {
+    fn skip(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
         SkipContext::new(self).unwrapn(nbytes)?;
         Ok(self)
     }

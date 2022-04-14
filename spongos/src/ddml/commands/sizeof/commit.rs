@@ -6,7 +6,7 @@ use crate::ddml::commands::{
 };
 
 /// Commit costs nothing in the trinary stream.
-impl<F> Commit for Context<F> {
+impl Commit for Context {
     fn commit(&mut self) -> Result<&mut Self> {
         Ok(self)
     }

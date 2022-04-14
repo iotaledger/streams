@@ -86,8 +86,8 @@ impl<'a, F: PRP, OS: io::OStream> Mask<Size> for Context<F, OS> {
     }
 }
 
-impl<'a, F: PRP, N: ArrayLength<u8>, OS: io::OStream> Mask<&'a NBytes<N>> for Context<F, OS> {
-    fn mask(&mut self, bytes: &'a NBytes<N>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<&'a NBytes<T>> for Context<F, OS> {
+    fn mask(&mut self, bytes: &'a NBytes<T>) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(bytes)?;
         Ok(self)
     }
@@ -103,14 +103,14 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a Bytes> for Context<F, OS> {
 
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<F, OS> {
     fn mask(&mut self, public_key: &'a x25519::PublicKey) -> Result<&mut Self> {
-        MaskContext::new(self).wrapn(public_key.as_slice())?;
+        MaskContext::new(self).wrapn(public_key)?;
         Ok(self)
     }
 }
 
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS> {
     fn mask(&mut self, public_key: &'a ed25519::PublicKey) -> Result<&mut Self> {
-        MaskContext::new(self).wrapn(public_key.as_slice())?;
+        MaskContext::new(self).wrapn(public_key)?;
         Ok(self)
     }
 }

@@ -20,62 +20,57 @@
 //! the buffer needed to wrap a message is implemented this way (see `sizeof` module).
 //!
 //! Command traits are implemented in modules `sizeof`, `wrap`, `unwrap`.
-use core::fmt::{Display, Debug};
-
 use anyhow::Result;
 
-use crate::{
-    core::spongos::Spongos,
-    error::Error,
-};
+use crate::core::spongos::Spongos;
 
 /// Absorb command. Trinary representation of the field is absorbed into Spongos state.
 /// External fields are not encoded in the trinary stream. Non-trinary field is
 /// an input argument in Wrap command and an output argument in Unwrap command.
-trait Absorb<Type> {
+pub trait Absorb<Type> {
     fn absorb(&mut self, field: Type) -> Result<&mut Self>;
 }
 
 /// Squeeze command. Trinary representation of the field is squeezed from Spongos state.
 /// The command supports fields of `tryte [n]` type (`NTryte`) and is usually used as
 /// MAC or externally stored hash value to be signed.
-trait Squeeze<Type> {
+pub trait Squeeze<Type> {
     fn squeeze(&mut self, field: Type) -> Result<&mut Self>;
 }
 
 /// Mask command. Trinary representation is encrypted in Wrap command and decrypted
 /// in Unwrap command using Spongos.
 /// Formatted fields (eg. of `size_t` type or `oneof`) are checked after decryption.
-trait Mask<Type> {
+pub trait Mask<Type> {
     fn mask(&mut self, field: Type) -> Result<&mut Self>;
 }
 
 /// Skip command. Trinary representation is just encoded/decoded and is not processed with Spongos.
-trait Skip<Type> {
+pub trait Skip<Type> {
     fn skip(&mut self, field: Type) -> Result<&mut Self>;
 }
 
 /// Commit command. Commit Spongos state.
-trait Commit {
+pub trait Commit {
     fn commit(&mut self) -> Result<&mut Self>;
 }
 
 /// Ed25519 command. Sign/verify hash value. The signature is processed implicitly and is
 /// not returned.
-trait Ed25519<Key, Hash> {
+pub trait Ed25519<Key, Hash> {
     fn ed25519(&mut self, key: Key, hash: Hash) -> Result<&mut Self>;
 }
 
 /// X25519 command. Absorb Diffie-Hellman shared key.
-trait X25519<SK, PK> {
-    fn x25519(&mut self, sk: SK, pk: PK) -> Result<&mut Self>;
+pub trait X25519<ExchangeKey, EncryptionKey> {
+    fn x25519(&mut self, exchange_key: ExchangeKey, encryption_key: EncryptionKey) -> Result<&mut Self>;
 }
 
 /// Fork command. Fork Spongos state and continue processing `cont` commands.
 /// After the fork is finished the resulting Spongos state is discarded and
 /// field processing continues using the saved current Spongos state.
 /// The trait can be implemented for functions `Fn(&mut self) -> Result<&mut Self>`.
-trait Fork<F> {
+pub trait Fork<F> {
     fn fork(&mut self, cont: F) -> Result<&mut Self>;
 }
 
@@ -85,36 +80,38 @@ trait Fork<F> {
 /// Links are not absorbed and thus can be changed (even for different kinds of transport).
 /// Although it may be non-trivial to locate a link in the middle of a message,
 /// links are usually inserted at the start of message content (after header of course).
-trait Join<F> {
+pub trait Join<F> {
     fn join(&mut self, joinee: &mut Spongos<F>) -> Result<&mut Self>;
 }
 
 /// Repeated modifier.
-trait Repeated<I, F> {
+pub trait Repeated<I, F> {
     /// `values_iter` provides some iterated values or counter.
     /// `value_handler` handles one item.
     fn repeated(&mut self, values_iter: I, value_handle: F) -> Result<&mut Self>;
 }
 
 /// Condition guard.
-trait Guard {
-    fn guard<E>(&mut self, cond: bool, err: E) -> Result<&mut Self> where E: Into<anyhow::Error>;
+pub trait Guard {
+    fn guard<E>(&mut self, cond: bool, err: E) -> Result<&mut Self>
+    where
+        E: Into<anyhow::Error>;
 }
 
 /// Dump context info into stdout.
 /// Use it like this: `ctx.dump(format_args!("checkpoint"))`
-trait Dump {
+pub trait Dump {
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self>;
 }
 
 /// Implementation of command traits for message size calculation.
-mod sizeof;
+pub mod sizeof;
 
 /// Implementation of command traits for wrapping messages.
-mod unwrap;
+pub mod unwrap;
 
 /// Implementation of command traits for unwrapping messages.
-mod wrap;
+pub mod wrap;
 
 #[cfg(test)]
 mod test;

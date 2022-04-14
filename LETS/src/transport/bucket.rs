@@ -1,97 +1,84 @@
-use super::*;
-use crate::message::LinkedMessage;
-use core::hash;
-
-use iota_streams_core::{
-    err,
-    prelude::{
-        string::ToString,
-        HashMap,
-    },
-    Errors::MessageLinkNotFoundInBucket,
+// Rust
+use core::fmt::Display;
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap,
+    vec::Vec,
 };
 
-use iota_streams_core::{
-    async_trait,
-    prelude::Box,
-    Errors::MessageNotUnique,
+// 3rd-party
+use anyhow::{
+    anyhow,
+    ensure,
+    Result,
+};
+use async_trait::async_trait;
+
+// IOTA
+
+// Streams
+
+// Local
+use crate::{
+    link::link::Addressable,
+    transport::Transport,
 };
 
-#[derive(Clone, Debug)]
-pub struct BucketTransport<Link, Msg> {
-    bucket: HashMap<Link, Vec<Msg>>,
-}
-
-impl<Link, Msg> Default for BucketTransport<Link, Msg>
-where
-    Link: Eq + hash::Hash,
-{
-    fn default() -> Self {
-        Self { bucket: HashMap::new() }
-    }
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct BucketTransport<Address, Msg> {
+    // Use BTreeMap instead of HashMap to make BucketTransport nostd without pulling hashbrown
+    // (this transport is for hacking purposes only, performance is no concern)
+    bucket: BTreeMap<Address, Vec<Msg>>,
 }
 
 impl<Link, Msg> BucketTransport<Link, Msg>
-where
-    Link: Eq + hash::Hash,
+// where
+//     Link: Eq + hash::Hash,
 {
-    pub fn new() -> Self {
-        Self { bucket: HashMap::new() }
+    fn new() -> Self {
+        Self::default()
     }
 }
 
-impl<Link, Msg> TransportOptions for BucketTransport<Link, Msg> {
-    type SendOptions = ();
-    fn send_options(&self) {}
-    fn set_send_options(&mut self, _opt: ()) {}
-
-    type RecvOptions = ();
-    fn recv_options(&self) {}
-    fn set_recv_options(&mut self, _opt: ()) {}
-}
-
-#[async_trait(?Send)]
-impl<Link, Msg> Transport<Link, Msg> for BucketTransport<Link, Msg>
-where
-    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
-    Msg: LinkedMessage<Link> + Clone + core::marker::Send + core::marker::Sync,
-{
-    async fn send_message(&mut self, msg: &Msg) -> Result<()> {
-        if let Some(msgs) = self.bucket.get_mut(msg.link()) {
-            msgs.push(msg.clone());
-            Ok(())
-        } else {
-            self.bucket.insert(msg.link().clone(), vec![msg.clone()]);
-            Ok(())
-        }
-    }
-
-    async fn recv_messages(&mut self, link: &Link) -> Result<Vec<Msg>> {
-        if let Some(msgs) = self.bucket.get(link) {
-            Ok(msgs.clone())
-        } else {
-            err!(MessageLinkNotFoundInBucket(link.to_string()))
-        }
-    }
-
-    async fn recv_message(&mut self, link: &Link) -> Result<Msg> {
-        let mut msgs = self.recv_messages(link).await?;
-        if let Some(msg) = msgs.pop() {
-            try_or!(msgs.is_empty(), MessageNotUnique(link.to_string())).unwrap();
-            Ok(msg)
-        } else {
-            err!(MessageLinkNotFoundInBucket(link.to_string()))?
+impl<Link, Msg> Default for BucketTransport<Link, Msg> {
+    // Implement default manually because derive puts Default bounds in type parameters
+    fn default() -> Self {
+        Self {
+            bucket: BTreeMap::default(),
         }
     }
 }
 
 #[async_trait(?Send)]
-impl<Link, Msg> TransportDetails<Link> for BucketTransport<Link, Msg>
+impl<Address, Msg> Transport<Address, Msg> for BucketTransport<Address, Msg>
 where
-    Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync + core::fmt::Display,
+    Address: Ord + Display,
+    Msg: Clone,
+     /* where
+                                *     Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync +
+                                * core::fmt::Display,     Msg: LinkedMessage<Link> +
+                                * Clone + core::marker::Send + core::marker::Sync, */
 {
-    type Details = ();
-    async fn get_link_details(&mut self, _opt: &Link) -> Result<Self::Details> {
+    async fn send_message(&mut self, addr: Address, msg: Msg) -> Result<()> {
+        self.bucket.entry(addr).or_default().push(msg);
         Ok(())
     }
+
+    async fn recv_messages(&mut self, address: &Address) -> Result<Vec<Msg>> {
+        self.bucket
+            .get(address)
+            .cloned()
+            .ok_or_else(|| anyhow!("No messages found at address {}", address))
+    }
+
+    // TODO: REMOVE
+    // async fn recv_message(&mut self, address: &'a Address) -> Result<Msg> {
+    //     let mut msgs = self.recv_messages(address).await?;
+    //     if let Some(msg) = msgs.pop() {
+    //         ensure!(msgs.is_empty(), "More than one message found: with address {}", address);
+    //         Ok(msg)
+    //     } else {
+    //         Err(anyhow!("Message at link {} not found in Bucket transport", address))
+    //     }
+    // }
 }
