@@ -89,7 +89,6 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let author_transport = test_transport.clone();
 /// #
-/// let author_transport = test_transport.clone();
 /// let mut author = UserBuilder::new()
 ///     .with_identity(UserIdentity::new(author_seed))
 ///     .with_transport(author_transport)
@@ -100,10 +99,10 @@ pub trait IntoMessages<Trans> {
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// # let mut subscriber = UserBuilder::new()
-/// #    .with_identity(UserIdentity::new(subscriber_seed))
-/// #    .with_transport(subscriber_transport)
-/// #    .build()?;
+/// let mut subscriber = UserBuilder::new()
+///     .with_identity(UserIdentity::new(subscriber_seed))
+///     .with_transport(subscriber_transport)
+///     .build()?;
 ///
 /// let announcement_link = author.send_announce().await?;
 /// subscriber.receive_announcement(&announcement_link).await?;
@@ -243,13 +242,12 @@ pub trait IntoMessages<Trans> {
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
-/// # use iota_streams_app::id::UserIdentity;
-/// let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
+/// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
 /// let author_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// ///
-/// let author_transport = test_transport.clone();
+/// #
+/// # let author_transport = test_transport.clone();
 /// let mut author = UserBuilder::new()
 ///     .with_identity(UserIdentity::new(author_seed))
 ///     .with_transport(author_transport)
@@ -260,13 +258,13 @@ pub trait IntoMessages<Trans> {
 ///
 /// # let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// # let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-///
+/// #
 /// # let subscriber_transport = test_transport.clone();
 /// # let mut subscriber = UserBuilder::new()
 /// #    .with_identity(UserIdentity::new(subscriber_seed))
 /// #    .with_transport(subscriber_transport)
 /// #    .build()?;
-///
+/// #
 /// # let announcement_link = shareable_announcement_link.parse().expect("parsing announcement link");
 /// # subscriber.receive_announcement(&announcement_link).await?;
 /// # let subscription_link = subscriber.send_subscribe(&announcement_link).await?;

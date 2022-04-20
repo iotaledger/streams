@@ -161,7 +161,6 @@ where
 
         Self {
             _phantom: PhantomData,
-            // If UserId is None in builder, gen should panic
             user_id,
             alias,
             key_store: KeyStore::default(),

@@ -23,7 +23,6 @@ use iota_streams_core::{
 
 /// Builder instance for a Streams User
 pub struct UserBuilder<Trans: Transport + Clone, F> {
-    // pub struct UserBuilder<'a, F> {
     /// Base Identity that will be used to Identifier a Streams User
     pub id: Option<UserIdentity<F>>,
     /// Alternate Identity that can be used to mask the direct Identity of a Streams User
@@ -87,11 +86,11 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
         self
     }
 
-    /// Build a User instance using the Builder values.
+    /// Build a [`User`] instance using the Builder parameters.
     ///
     /// # Errors
-    /// This function will error out if the Transport or UserIdentity parameters are missing, as these
-    /// make up the essence of a User and are required for any use case.
+    /// This function will error out if the [`Transport`] or [`UserIdentity`] parameters are missing,
+    /// as these make up the essence of a [`User`] and are required for any use case.
     ///
     /// # Examples
     /// ## User from seed
@@ -110,10 +109,10 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # async fn main() -> Result<()> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
     /// let transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-    ///
+    /// #
     /// # let transport = Rc::new(RefCell::new(BucketTransport::new()));
     ///
-    /// let mut author = UserBuilder::new()
+    /// let mut user = UserBuilder::new()
     ///     .with_identity(UserIdentity::new(user_seed))
     ///     .with_transport(transport)
     ///     .build()?;
@@ -140,9 +139,9 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-    ///
+    /// #
     /// # let transport = Rc::new(RefCell::new(BucketTransport::new()));
-    ///
+    /// #
     /// let psk_seed = "seed-for-pre-shared-key";
     /// let psk = psk_from_seed(psk_seed.as_bytes());
     /// let pskid = pskid_from_psk(&psk);
@@ -177,7 +176,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
         Ok(user)
     }
 
-    /// Generates a new User implementation from the builder. If the announcement message generated
+    /// Generates a new [`User`] implementation from the builder. If the announcement message generated
     /// by this instance matches that of an existing (and provided) announcement link, the user will
     /// sync to the latest state
     ///
@@ -185,9 +184,9 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// * `announcement` - An existing announcement message link for validation of ownership
     ///
     ///  # Errors
-    /// This function can produce errors if the user tries to recover the instance without a proper
-    /// UserIdentity or Transport. It can also return an error if there is an issue creating a new
-    /// announcement message with the provided User configuration, or should the the provided
+    /// This function will produce errors if the [`User`] tries to recover their instance without a
+    /// proper [`UserIdentity`] or [`Transport`]. It can also return an error if there is an issue creating a new
+    /// announcement message with the provided User configuration, or should the provided
     /// announcement link not be present on the transport layer.
     ///
     ///  # Example
@@ -203,21 +202,21 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     ///     UserBuilder,
     ///     UserIdentity,
     /// };
-    ///
+    /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
     ///
     /// let author_seed = "author_secure_seed";
     /// let transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-    ///
+    /// #
     /// # let transport = test_transport.clone();
-    ///
+    /// #
     /// # let mut author = UserBuilder::new()
     /// #     .with_identity(UserIdentity::new(author_seed))
     /// #     .with_transport(transport.clone())
     /// #     .build()?;
-    ///
+    /// #
     /// # let announcement_link = author.send_announce().await?;
     ///
     /// let mut author = UserBuilder::new()
