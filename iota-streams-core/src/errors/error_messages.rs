@@ -186,8 +186,6 @@ pub enum Errors {
     //////////
     /// UserIdentity not specified, cannot build User without Identity
     UserIdentityMissing,
-    /// User Transport not specified, cannot build User without Transport
-    UserTransportMissing,
 
     //////////
     // User Recovery

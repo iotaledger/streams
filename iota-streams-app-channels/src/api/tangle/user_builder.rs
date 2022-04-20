@@ -12,6 +12,10 @@ use iota_streams_app::id::{
     Identifier,
     UserIdentity,
 };
+#[cfg(feature = "tangle")]
+use iota_streams_app::transport::tangle::client::Client;
+#[cfg(not(feature = "tangle"))]
+use crate::api::BucketTransport as Client;
 use iota_streams_core::{
     err,
     Errors::{
@@ -25,21 +29,15 @@ use iota_streams_core::{
 pub struct UserBuilder<Trans: Transport + Clone, F> {
     /// Base Identity that will be used to Identifier a Streams User
     pub id: Option<UserIdentity<F>>,
-    /// Alternate Identity that can be used to mask the direct Identity of a Streams User
-    pub alias: Option<UserIdentity<F>>,
     /// Transport Client instance
     pub transport: Option<Trans>,
-    /// Represents whether the User Instance will automatically sync before each message operation
-    pub auto_sync: bool,
 }
 
 impl<Trans: Transport + Clone, F> Default for UserBuilder<Trans, F> {
     fn default() -> Self {
         UserBuilder {
             id: None,
-            alias: None,
             transport: None,
-            auto_sync: true,
         }
     }
 }
@@ -59,15 +57,6 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
         self
     }
 
-    /// Inject Alternate Identity into the User Builder
-    ///
-    /// # Arguments
-    /// * `alias` - UserIdentity to be used for alternate identification of the Streams User
-    pub fn with_alias(mut self, alias: UserIdentity<DefaultF>) -> Self {
-        self.alias = Some(alias);
-        self
-    }
-
     /// Inject Transport Client instance into the User Builder
     ///
     /// # Arguments
@@ -77,20 +66,16 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
         self
     }
 
-    /// Set the auto-sync value of the User Builder
-    ///
-    /// # Arguments
-    /// * `auto_sync` - True if the User should automatically perform synchronisation before operations
-    pub fn with_auto_sync(mut self, auto_sync: bool) -> Self {
-        self.auto_sync = auto_sync;
-        self
-    }
-
     /// Build a [`User`] instance using the Builder parameters.
     ///
+    /// If a [`Transport`] is not provided the builder will use a default client
+    /// ([`Client`](iota_streams_app::transport::tangle::client::Client) at <https://chrysalis-nodes.iota.org>
+    /// if the `tangle` feature is enabled, [`BucketTransport`](iota_streams_app::transport::BucketTransport)
+    /// if not)
+    ///
     /// # Errors
-    /// This function will error out if the [`Transport`] or [`UserIdentity`] parameters are missing,
-    /// as these make up the essence of a [`User`] and are required for any use case.
+    /// This function will error out if the [`UserIdentity`] parameter is missing, as this makes up
+    /// the essence of a [`User`] and is required for any use case.
     ///
     /// # Examples
     /// ## User from seed
@@ -160,16 +145,15 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
             return err(UserIdentityMissing);
         }
 
-        if self.transport.is_none() {
-            return err(UserTransportMissing);
-        }
-
+        let transport = self.transport.unwrap_or(Client::default());
         Ok(User {
             user: crate::api::ApiUser::new(self.id.unwrap()),
-            transport: self.transport.unwrap(),
+            transport,
         })
     }
 
+    /// Recover a user instance from the builder parameters.
+    ///
     /// Generates a new [`User`] implementation from the builder. If the announcement message generated
     /// by this instance matches that of an existing (and provided) announcement link, the user will
     /// sync to the latest state
@@ -179,9 +163,9 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     ///
     ///  # Errors
     /// This function will produce errors if the [`User`] tries to recover their instance without a
-    /// proper [`UserIdentity`] or [`Transport`]. It can also return an error if there is an issue creating a new
-    /// announcement message with the provided User configuration, or should the provided
-    /// announcement link not be present on the transport layer.
+    /// proper [`UserIdentity`]. It will also return an error if there is an issue creating a new
+    /// channel with the provided [`User`] configuration, or should the provided announcement link
+    /// not be present on the transport layer.
     ///
     ///  # Example
     /// ```
