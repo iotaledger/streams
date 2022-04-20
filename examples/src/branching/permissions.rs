@@ -1,5 +1,5 @@
 use iota_streams::{
-    app::permission::*,
+    app::id::permission::*,
     app_channels::api::{
         psk_from_seed,
         pskid_from_psk,
@@ -20,6 +20,9 @@ use iota_streams::{
     },
     ddml::types::*,
 };
+
+use iota_streams::app_channels::api::tangle::futures::TryStreamExt;
+use iota_streams::app::message::HasLink;
 
 use super::utils;
 
@@ -61,7 +64,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     println!("\nAuthor Predefines Subscriber A");
     author.store_new_subscriber(*subscriberA.id(), subA_xkey)?;
 
-    // Generate a simple PSK for storage by users
+    // Generate a simple PSK for storage by users, Subscriber C
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
     author.store_psk(pskid, psk)?;
@@ -81,6 +84,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         print!("  Author     : {}", author);
     }
 
+    // Only author and A can send, B and C will be ignored
     let sub_a_perm = Permission::ReadWrite(subscriberA.id().clone(), PermissionDuration::Perpetual);
     let sub_b_perm = Permission::Read(subscriberB.id().clone());
     let psk_perm = Permission::Read(pskid.into());
@@ -121,12 +125,22 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     }
 
     println!("\nSubscriber B fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberB).await?;
-    println!("\nSubscriber C fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberC).await?;
+    let mut count = 0;
+    
+    // This verifies correct
+    // count = utils::fetch_next_messages(&mut subscriberB).await?;
+    // assert!(count == 1);
 
-    println!("\nTagged packet 1 - SubscriberB (tagged is always allowed)");
-    let previous_msg_link = {
+    // This breaks
+    assert!(utils::fetch_next_messages(&mut subscriberB).await? == 1);
+    
+    println!("\nSubscriber C fetching transactions...");
+    count = utils::fetch_next_messages(&mut subscriberC).await?;
+    assert!(count == 1);
+
+
+    println!("\nTagged packet 1 - SubscriberB (subscriber B does NOT have Write permission)");
+    let previous_msg_link_wrong = {
         let (msg, seq) = subscriberB
             .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
@@ -134,15 +148,13 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         print!("  SubscriberB: {}", subscriberB);
         msg
     };
-
-    println!("\nHandle Tagged packet 1");
-    {
-        author.receive_msg(&previous_msg_link).await?;
-        print!("  Author     : {}", author);
-    }
-
-    println!("\nSubscriber A fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberA).await?;
+    
+    count = utils::fetch_next_messages(&mut author).await?;
+    assert!(count == 0);
+    count = utils::fetch_next_messages(&mut subscriberA).await?;
+    assert!(count == 0); // Not found by subA
+    count = utils::fetch_next_messages(&mut subscriberC).await?;
+    assert!(count == 0);// Not found by subA
 
     println!("\nSigned packet 2 - SubscriberA (subscriber A has Write permission");
     let previous_msg_link = {
@@ -154,48 +166,55 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         msg
     };
 
+    println!("\nauthor fetching Signed packet from Subscriber A...");
+    author.receive_signed_packet(&previous_msg_link).await?;
+
     println!("\nAuthor fetching transactions...");
-    utils::fetch_next_messages(&mut author).await?;
+    count = utils::fetch_next_messages(&mut author).await?; // We fetched manually
+    assert!(count == 0);
     println!("\nSubscriber B fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberB).await?;
+    count = utils::fetch_next_messages(&mut subscriberB).await?; 
+    assert!(count == 0); // Sub B send his own on this address and now has a faulty state
     println!("\nSubscriber C fetching transactions...");
-    utils::fetch_next_messages(&mut subscriberC).await?;
+    count = utils::fetch_next_messages(&mut subscriberC).await?;
+    assert!(count == 1);
 
-    println!("\nSigned packet 3 - SubscriberB (subscriber B does NOT has Write permission");
-    let previous_msg_link = {
-        let (msg, seq) = subscriberB
-            .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
-            .await?;
-        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-        assert!(seq.is_none());
-        print!("  SubscriberB: {}", subscriberB);
-        msg
-    };
-    println!("\nSubscriber A fetching Signed packet from Subscriber B...");
-    {
-        match subscriberA.receive_signed_packet(&previous_msg_link).await {
-            Ok((_signer_pk, unwrapped_public, unwrapped_masked)) => {
-                return Err(anyhow::anyhow!(
-                    "\nSubscriber B message should have failed due to no permissions"
-                ))
-            }
-            Err(e) => {
-                println!("  SubscriberA: Did not accept Subscriber B message correctly: {:?}", e);
-                print!("  SubscriberA: {}", subscriberA);
-            }
-        }
-    }
-
-    println!("\nSigned packet 4 - SubscriberA (subscriber A has Write permission");
-    let previous_msg_link = {
+    println!("\nSigned packet 3 - SubscriberA (subscriber A has Write permission");
+    let previous_msg_link_wrong = {
         let (msg, seq) = subscriberA
             .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        assert!(seq.is_none());
         print!("  SubscriberA: {}", subscriberA);
         msg
     };
 
+    print!("  author: {}", author);
+    count = utils::fetch_next_messages(&mut author).await?;
+    assert!(count == 1); // Author finds normally
+    print!("  author: {}", author);
+    count = utils::fetch_next_messages(&mut subscriberB).await?;
+    assert!(count == 0); // B has a wrong state, thus doenst see it
+    count = utils::fetch_next_messages(&mut subscriberC).await?;
+    assert!(count == 1); // C finds finds normally
+
+    println!("\nSigned packet 4 - SubscriberC (subscriber C does NOT have Write permission");
+    let previous_msg_link = {
+        let (msg, seq) = subscriberC
+            .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
+            .await?;
+        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+        print!("  SubscriberC: {}", subscriberC);
+        msg
+    };
+
     println!("\nAuthor fetching transactions...");
-    utils::fetch_next_messages(&mut author).await
+    count = utils::fetch_next_messages(&mut author).await?;
+    assert!(count == 0); // C is not allowed
+    count = utils::fetch_next_messages(&mut subscriberA).await?;
+    assert!(count == 0); // A is not allowed
+    count = utils::fetch_next_messages(&mut subscriberB).await?;
+    assert!(count == 0); // B has a wrong state, thus doenst see it
+    Ok(())
 }
