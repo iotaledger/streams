@@ -1,8 +1,10 @@
 // Rust
 use alloc::{
-    string::String,
+    string::{
+        String,
+        ToString,
+    },
     vec::Vec,
-    string::ToString,
 };
 use core::convert::TryInto;
 
@@ -19,7 +21,10 @@ use crypto::{
     signatures::ed25519,
 };
 use identity::{
-    core::{encode_b58, decode_b58},
+    core::{
+        decode_b58,
+        encode_b58,
+    },
     crypto::{
         SetSignature,
         Signature,
@@ -29,7 +34,7 @@ use identity::{
     did::{
         MethodUriType,
         TryMethod,
-        DID,
+        DID as IdentityDID,
     },
     iota::IotaDID,
 };
@@ -56,7 +61,7 @@ use identity::{
 pub(crate) const DID_CORE: &str = "did:iota:";
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Default)]
-pub(crate) struct DIDMethodId([u8; 32]);
+pub struct DIDMethodId([u8; 32]);
 
 impl DIDMethodId {
     pub(crate) fn new(method_id_bytes: [u8; 32]) -> Self {
@@ -91,13 +96,13 @@ impl AsMut<[u8]> for DIDMethodId {
 }
 
 #[derive(Serialize)]
-pub(crate) struct DataWrapper {
-    data: Vec<u8>,
+pub(crate) struct DataWrapper<'a> {
+    data: &'a [u8],
     signature: Option<Signature>,
 }
 
-impl DataWrapper {
-    pub(crate) fn new(data: Vec<u8>) -> Self {
+impl<'a> DataWrapper<'a> {
+    pub(crate) fn new(data: &'a [u8]) -> Self {
         Self { data, signature: None }
     }
 
@@ -111,46 +116,55 @@ impl DataWrapper {
     }
 }
 
-impl TrySignature for DataWrapper {
+impl<'a> TrySignature for DataWrapper<'a> {
     fn signature(&self) -> Option<&Signature> {
         self.signature.as_ref()
     }
 }
 
-impl TrySignatureMut for DataWrapper {
+impl<'a> TrySignatureMut for DataWrapper<'a> {
     fn signature_mut(&mut self) -> Option<&mut Signature> {
         self.signature.as_mut()
     }
 }
 
-impl SetSignature for DataWrapper {
+impl<'a> SetSignature for DataWrapper<'a> {
     fn set_signature(&mut self, signature: Signature) {
         self.signature = Some(signature)
     }
 }
 
-impl TryMethod for DataWrapper {
+impl<'a> TryMethod for DataWrapper<'a> {
     const TYPE: MethodUriType = MethodUriType::Absolute;
 }
 
-pub(crate) enum DIDImpl {
+pub enum DID {
     // TODO: Add DID Account implementation
     PrivateKey(DIDInfo),
 }
 
-pub(crate) struct DIDInfo {
-    did: Option<IotaDID>,
+impl DID {
+    pub(crate) fn info(&self) -> &DIDInfo {
+        match self {
+            Self::PrivateKey(did_info) => did_info,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct DIDInfo {
+    did: IotaDID,
     key_fragment: String,
     keypair: identity::crypto::KeyPair,
 }
 
 impl DIDInfo {
-    pub(crate) fn did(&self) -> Result<&IotaDID> {
-        self.did.as_ref().ok_or_else(|| anyhow!("DID not present"))
+    pub(crate) fn did(&self) -> &IotaDID {
+        &self.did
     }
 
-    pub(crate) fn method_id(&self) -> Result<&str> {
-        Ok(self.did()?.method_id())
+    pub(crate) fn method_id(&self) -> &str {
+        self.did().method_id()
     }
 
     pub(crate) fn key_fragment(&self) -> &str {

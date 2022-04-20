@@ -40,8 +40,8 @@ impl<F: PRP, IS: io::IStream> Squeeze<Mac> for Context<F, IS> {
     }
 }
 
-impl<'a, F: PRP, T: AsMut<[u8]>, IS> Squeeze<&'a mut External<NBytes<T>>> for Context<F, IS> {
-    fn squeeze(&mut self, val: &'a mut External<NBytes<T>>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsMut<[u8]>, IS> Squeeze<External<&'a mut NBytes<T>>> for Context<F, IS> {
+    fn squeeze(&mut self, val: External<&'a mut NBytes<T>>) -> Result<&mut Self> {
         self.spongos.squeeze_mut(val);
         Ok(self)
     }

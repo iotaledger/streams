@@ -33,7 +33,7 @@
 extern crate alloc;
 
 /// Message definitions and utils for wrapping/unwrapping.
-mod message;
+pub mod message;
 
 /// Message addressing and linking
 mod link;
@@ -46,4 +46,4 @@ mod transport;
 // use cty;
 
 /// Identity based Signature/Verification utilities
-mod id;
+pub mod id;

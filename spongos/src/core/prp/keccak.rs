@@ -3,7 +3,7 @@ use generic_array::{typenum::{U168, U32}, GenericArray};
 use super::PRP;
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct KeccakF1600 {
+pub struct KeccakF1600 {
     state: [u64; 25],
 }
 

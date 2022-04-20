@@ -21,7 +21,7 @@ use spongos::{
 
 // Local
 use crate::{
-    link::link::Linked,
+    link::Linked,
     message::{
         content::ContentUnwrap,
         hdf::HDF,

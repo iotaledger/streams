@@ -39,7 +39,7 @@ impl<T> NBytes<T> {
         Self(t)
     }
 
-    pub(crate) fn as_slice(&self) -> &[u8]
+    pub fn as_slice(&self) -> &[u8]
     where
         T: AsRef<[u8]>,
     {

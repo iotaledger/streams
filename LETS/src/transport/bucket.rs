@@ -20,7 +20,7 @@ use async_trait::async_trait;
 
 // Local
 use crate::{
-    link::link::Addressable,
+    link::Addressable,
     transport::Transport,
 };
 

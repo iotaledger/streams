@@ -36,22 +36,38 @@ use spongos::ddml::{
 // };
 
 #[async_trait(?Send)]
-pub(crate) trait ContentSizeof<'a> {
+pub trait ContentSizeof<'a> {
     async fn sizeof<'b>(&'a self, ctx: &'b mut sizeof::Context) -> Result<&'b mut sizeof::Context>;
 }
 
 #[async_trait(?Send)]
-pub(crate) trait ContentWrap<'a, F, OS>: ContentSizeof<'a> {
+pub trait ContentWrap<'a, F, OS>: ContentSizeof<'a> {
     async fn wrap<'b>(&'a self, ctx: &'b mut wrap::Context<F, OS>) -> Result<&'b mut wrap::Context<F, OS>>;
 }
 
 #[async_trait(?Send)]
-pub(crate) trait ContentSign<F, OS> {
+pub trait ContentUnwrap<'a, F, IS> {
+    async fn unwrap<'b>(&'a mut self, ctx: &'b mut unwrap::Context<F, IS>) -> Result<&'b mut unwrap::Context<F, IS>>;
+}
+
+#[async_trait(?Send)]
+pub trait ContentSignSizeof {
+    async fn sign_sizeof<'a>(&self, ctx: &'a mut sizeof::Context) -> Result<&'a mut sizeof::Context>;
+}
+
+// TODO: MAKE SURE 'a is not needed in the traits that don't yet have it 
+#[async_trait(?Send)]
+pub trait ContentSign<F, OS> {
     async fn sign<'a>(&self, ctx: &'a mut wrap::Context<F, OS>) -> Result<&'a mut wrap::Context<F, OS>>;
 }
 
 #[async_trait(?Send)]
-pub(crate) trait ContentEncryptSizeOf<F> {
+pub trait ContentVerify<F, IS> {
+    async fn verify<'a>(&self, ctx: &'a mut unwrap::Context<F, IS>) -> Result<&'a mut unwrap::Context<F, IS>>;
+}
+
+#[async_trait(?Send)]
+pub trait ContentEncryptSizeOf {
     async fn encrypt_sizeof<'a>(
         &self,
         ctx: &'a mut sizeof::Context,
@@ -61,7 +77,7 @@ pub(crate) trait ContentEncryptSizeOf<F> {
 }
 
 #[async_trait(?Send)]
-pub(crate) trait ContentEncrypt<F, OS> {
+pub trait ContentEncrypt<F, OS> {
     async fn encrypt<'a>(
         &self,
         ctx: &'a mut wrap::Context<F, OS>,
@@ -71,31 +87,11 @@ pub(crate) trait ContentEncrypt<F, OS> {
 }
 
 #[async_trait(?Send)]
-pub(crate) trait ContentUnwrap<'a, F, IS> {
-    async fn unwrap<'b>(&'a mut self, ctx: &'b mut unwrap::Context<F, IS>) -> Result<&'b mut unwrap::Context<F, IS>>;
-}
-
-#[async_trait(?Send)]
-pub(crate) trait ContentVerify<F, IS> {
-    async fn verify<'a>(&self, ctx: &'a mut unwrap::Context<F, IS>) -> Result<&'a mut unwrap::Context<F, IS>>;
-}
-
-#[async_trait(?Send)]
-pub(crate) trait ContentDecrypt<F, IS> {
+pub trait ContentDecrypt<F, IS> {
     async fn decrypt<'a>(
         &self,
         ctx: &'a mut unwrap::Context<F, IS>,
         exchange_key: &'a [u8],
         key: &'a mut [u8],
     ) -> Result<&'a mut unwrap::Context<F, IS>>;
-}
-
-#[async_trait(?Send)]
-pub(crate) trait ContentUnwrapNew<F, IS>
-where
-    Self: Sized,
-{
-    async fn unwrap_new<'a>(
-        ctx: &'a mut unwrap::Context<F, IS>,
-    ) -> Result<(Self, &'a mut unwrap::Context<F, IS>)>;
 }

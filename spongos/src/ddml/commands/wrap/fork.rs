@@ -24,14 +24,15 @@ use crate::{
     },
 };
 
-impl<C, F: Clone, OS> Fork<C> for Context<F, OS>
-where
-    C: for<'a> FnMut(&'a mut Self) -> Result<&'a mut Self>,
-{
-    fn fork(&mut self, mut cont: C) -> Result<&mut Self> {
-        let saved_fork = self.spongos.fork();
-        cont(self)?;
-        self.spongos = saved_fork;
-        Ok(self)
-    }
-}
+// TODO
+// impl<F, OS> Fork for Context<F, OS>
+// where
+//     F: Clone,
+// {
+//     type Forked<'a> = Context<F, &'a mut OS>;
+
+//     fn fork(&mut self) -> Context<F, &mut OS> {
+//         let fork = self.spongos.fork();
+//         Context::new_with_spongos(self.stream_mut(), fork)
+//     }
+// }

@@ -70,8 +70,9 @@ pub trait X25519<ExchangeKey, EncryptionKey> {
 /// After the fork is finished the resulting Spongos state is discarded and
 /// field processing continues using the saved current Spongos state.
 /// The trait can be implemented for functions `Fn(&mut self) -> Result<&mut Self>`.
-pub trait Fork<F> {
-    fn fork(&mut self, cont: F) -> Result<&mut Self>;
+pub trait Fork {
+    type Forked;
+    fn fork(&mut self) -> Self::Forked;
 }
 
 /// Join command. Spongos state for the linked message is retrieved from the context

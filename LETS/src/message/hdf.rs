@@ -47,7 +47,6 @@ use crate::{
         content::{
             ContentSizeof,
             ContentUnwrap,
-            ContentUnwrapNew,
             ContentWrap,
         },
         version::{
@@ -333,7 +332,8 @@ where
             .absorb(&mut self.previous_msg_address)?
             .skip(&mut seq_num)?;
 
-        (self.sender_id, ctx) = Identifier::unwrap_new(ctx).await?;
+        self.sender_id = Identifier::default();
+        self.sender_id.unwrap(ctx).await?;
 
         self.encoding = encoding.inner();
         self.version = version.inner();

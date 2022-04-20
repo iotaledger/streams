@@ -20,19 +20,27 @@ pub struct Context<F, OS> {
     stream: OS,
 }
 
-impl<F, OS> Context<F, OS>
-where
-    F: Default,
-{
-    pub fn new(stream: OS) -> Self {
+impl<F, OS> Context<F, OS> {
+    pub fn new(stream: OS) -> Self
+    where
+        F: Default,
+    {
         Self {
             spongos: Spongos::<F>::init(),
             stream,
         }
     }
 
+    pub(crate) fn new_with_spongos(stream: OS, spongos: Spongos<F>) -> Self {
+        Self { spongos, stream }
+    }
+
     pub fn stream(&self) -> &OS {
         &self.stream
+    }
+
+    pub(crate) fn stream_mut(&mut self) -> &mut OS {
+        &mut self.stream
     }
 
     pub fn finalize(mut self) -> Spongos<F>

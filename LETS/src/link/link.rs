@@ -15,7 +15,7 @@ use crate::{
 
 /// Type of "absolute" links. For http it's the absolute URL.
 // trait HasLink: Sized + Default + Clone + Eq {
-pub(crate) trait Link {
+pub trait Link {
     /// Type of "base" links. For http it's domain name.
     type Base;
     /// Type of "relative" links. For http it's URL path.

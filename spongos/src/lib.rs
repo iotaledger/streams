@@ -78,4 +78,5 @@ pub use crate::core::{
     spongos::Spongos,
     prp::PRP,
     prng::SpongosRng,
+    prp::keccak::KeccakF1600
 };

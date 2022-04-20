@@ -20,7 +20,7 @@ impl Bytes {
     ///
     /// If the Bytes are valid UTF8, this method returns `Some(str)`, otherwise returns `None`
     /// This is the borrowed alternative of the owned [`Bytes::into_string()`].
-    fn as_str(&self) -> Option<&str> {
+    pub fn as_str(&self) -> Option<&str> {
         core::str::from_utf8(&self.0).ok()
     }
 
@@ -40,7 +40,7 @@ impl Bytes {
         self.0.as_mut_slice()
     }
 
-    pub fn into_vec(self) -> Vec<u8> {
+    fn into_vec(self) -> Vec<u8> {
         self.0
     }
 

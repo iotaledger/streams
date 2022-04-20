@@ -34,8 +34,21 @@ impl<F, IS> Context<F, IS> {
         }
     }
 
+    pub(crate) fn new_with_spongos(stream: IS, spongos: Spongos<F>) -> Self {
+        Self { spongos, stream }
+    }
+
     pub fn stream(&self) -> &IS {
         &self.stream
+    }
+
+    pub(crate) fn stream_mut(&mut self) -> &mut IS {
+        &mut self.stream
+    }
+
+    pub fn drop(&mut self, bytes: usize) -> Result<&mut Self> where IS: io::IStream {
+        self.stream.try_advance(bytes)?;
+        Ok(self)
     }
 
     pub fn finalize(mut self) -> Spongos<F> where F: PRP {

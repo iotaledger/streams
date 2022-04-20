@@ -19,7 +19,6 @@ mod version;
 /// Linked Message with header already parsed
 mod preparsed;
 
-
 // TODO: REVIEW LATER
 // use hdf::HDF;
 // use pcf::PCF;
@@ -43,8 +42,15 @@ use spongos::{
 };
 
 // Local
-use content::{
+pub use content::{
+    ContentDecrypt,
+    ContentEncryptSizeOf,
+    ContentEncrypt,
+    ContentSign,
+    ContentSignSizeof,
     ContentSizeof,
+    ContentUnwrap,
+    ContentVerify,
     ContentWrap,
 };
 use hdf::HDF;
@@ -76,8 +82,8 @@ impl<Address, Content> Message<Address, Content> {
     where
         F: PRP,
         Address: Clone,
-            HDF<Address>: for <'b> ContentWrap<'a, F, &'b mut [u8]>,
-            PCF<Content>: for <'b> ContentWrap<'a, F, &'b mut [u8]>,
+        HDF<Address>: for<'b> ContentWrap<'a, F, &'b mut [u8]>,
+        PCF<Content>: for<'b> ContentWrap<'a, F, &'b mut [u8]>,
     {
         let mut ctx = sizeof::Context::new();
         self.hdf.sizeof(&mut ctx).await?;

@@ -138,3 +138,13 @@ impl<T: AsRef<[u8]>> Absorb<External<&NBytes<T>>> for Context {
         Ok(self)
     }
 }
+
+// Implement &External<T> for any External<&T> implementation
+impl<'a, T> Absorb<&'a External<T>> for Context
+where
+    Self: Absorb<External<&'a T>>,
+{
+    fn absorb(&mut self, external: &'a External<T>) -> Result<&mut Self> {
+        self.absorb(External::new(external.inner()))
+    }
+}

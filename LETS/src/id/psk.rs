@@ -56,7 +56,7 @@ use spongos::{
 // type Psk = GenericArray<u8, PskSize>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub(crate) struct Psk([u8; 32]);
+pub struct Psk([u8; 32]);
 
 impl Psk {
     // TODO: REMOVE
@@ -76,7 +76,7 @@ impl Psk {
         &self.0
     }
 
-    fn to_pskid<F>(&self) -> PskId
+    pub(crate) fn to_pskid<F>(&self) -> PskId
     where
         F: PRP,
     {
@@ -108,7 +108,7 @@ impl TryFrom<&[u8]> for Psk {
 
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
-pub(crate) struct PskId([u8; 16]);
+pub struct PskId([u8; 16]);
 
 // TODO: REMOVE
 // pub(crate) trait TypeSized {

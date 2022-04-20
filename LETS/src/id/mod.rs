@@ -1,9 +1,9 @@
-mod psk;
 mod identifier;
-mod user_identity;
+mod identity;
+mod psk;
 
-pub(crate) use identifier::Identifier;
-pub(crate) use user_identity::UserIdentity;
+pub use self::identity::Identity;
+pub use identifier::Identifier;
 
 #[cfg(feature = "did")]
 mod did;

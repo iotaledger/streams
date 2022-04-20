@@ -2,16 +2,15 @@ use core::fmt;
 
 use anyhow::Result;
 
-/// DDML `size_t` type, unsigned.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]
-pub(crate) struct Size(usize);
+pub struct Size(usize);
 
 impl Size {
-    pub(crate) fn new(n: usize) -> Self {
+    pub fn new(n: usize) -> Self {
         Self(n)
     }
 
-    pub(crate) fn inner(&self) -> usize {
+    pub fn inner(&self) -> usize {
         self.0
     }
 
