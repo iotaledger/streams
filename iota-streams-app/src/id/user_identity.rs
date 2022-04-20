@@ -72,8 +72,6 @@ use crate::{
     transport::tangle::client::Client as StreamsClient,
 };
 #[cfg(feature = "did")]
-use futures::executor::block_on;
-#[cfg(feature = "did")]
 use identity::{
     core::{
         decode_b58,

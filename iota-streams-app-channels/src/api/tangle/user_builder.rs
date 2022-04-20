@@ -16,14 +16,14 @@ use iota_streams_core::{
 };
 
 /// Builder instance for a Streams User
-pub struct UserBuilder<Trans: Transport + Clone, F> {
+pub struct UserBuilder<Trans: Transport, F> {
     /// Base Identity that will be used to Identifier a Streams User
     pub id: Option<UserIdentity<F>>,
     /// Transport Client instance
     pub transport: Option<Trans>,
 }
 
-impl<Trans: Transport + Clone, F> Default for UserBuilder<Trans, F> {
+impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
     fn default() -> Self {
         UserBuilder {
             id: None,
@@ -130,10 +130,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn build(self) -> Result<User<Trans>>
-    where
-        Trans: Default,
-    {
+    pub fn build(self) -> Result<User<Trans>> {
         let id = self.id.ok_or_else(|| anyhow!(UserIdentityMissing))?;
         let user = crate::api::ApiUser::new(id);
         let transport = self.transport.unwrap_or(Trans::default());
@@ -194,10 +191,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn recover(self, announcement: &Address) -> Result<User<Trans>>
-    where
-        Trans: Default,
-    {
+    pub async fn recover(self, announcement: &Address) -> Result<User<Trans>> {
         let mut user = self.build()?;
         user.user.create_channel(0)?;
 

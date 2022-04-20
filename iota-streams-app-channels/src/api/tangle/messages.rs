@@ -827,7 +827,7 @@ mod tests {
         // This packet will never be readable by subscriber2. However, the sequence is
         let (_, seq_link) = subscriber1.send_signed_packet(&packet_link, &p, &p).await?;
 
-        let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, &announcement_link, &transport).await?;
+        let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, &announcement_link, transport).await?;
 
         author.sync_state().await?;
         // This keyload link to announcement is necessary (for now) to "introduce" both subscribers

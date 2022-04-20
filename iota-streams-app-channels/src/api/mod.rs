@@ -55,8 +55,8 @@ pub type BucketTransport = iota_streams_app::transport::BucketTransport<Address,
 
 /// Transportation trait for Tangle Client implementation
 // TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
-pub trait Transport: transport::Transport<Address, Message> + Clone {}
-impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone {}
+pub trait Transport: transport::Transport<Address, Message> + Clone + Default {}
+impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone + Default {}
 
 pub use tangle::{
     MessageContent,
