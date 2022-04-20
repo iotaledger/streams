@@ -164,16 +164,10 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
             return err(UserTransportMissing);
         }
 
-        let mut user = User {
-            user: crate::api::ApiUser::new(self.id.unwrap(), self.alias, self.auto_sync),
+        Ok(User {
+            user: crate::api::ApiUser::new(self.id.unwrap()),
             transport: self.transport.unwrap(),
-        };
-        // If User is using a Psk as their base Identifier,
-        if let Identifier::PskId(pskid) = *user.user.id() {
-            // Unwraps shouldn't fail here due to the user containing a PskId type
-            user.store_psk(pskid, user.user.user_id.psk().unwrap()).unwrap();
-        }
-        Ok(user)
+        })
     }
 
     /// Generates a new [`User`] implementation from the builder. If the announcement message generated

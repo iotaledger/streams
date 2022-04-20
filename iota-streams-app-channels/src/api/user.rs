@@ -91,9 +91,6 @@ where
     /// Users' Identity information, contains keys and logic for signing and verification
     pub(crate) user_id: UserIdentity<F>,
 
-    /// User's public Identity information, can be used to mask true identity information in channel
-    pub(crate) alias: Option<UserIdentity<F>>,
-
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     pub(crate) key_store: KeyStore<Link::Rel>,
 
@@ -116,8 +113,6 @@ where
     pub message_encoding: Vec<u8>,
 
     pub uniform_payload_length: usize,
-
-    pub auto_sync: bool,
 }
 
 impl<F, Link, LG, LS> Default for User<F, Link, LG, LS>
@@ -131,7 +126,6 @@ where
         Self {
             _phantom: PhantomData,
             user_id: UserIdentity::default(),
-            alias: None,
             key_store: KeyStore::default(),
             author_id: None,
             author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
@@ -140,7 +134,6 @@ where
             appinst: None,
             message_encoding: ENCODING.as_bytes().to_vec(),
             uniform_payload_length: PAYLOAD_LENGTH,
-            auto_sync: false,
         }
     }
 }
@@ -154,15 +147,14 @@ where
     LG: LinkGenerator<Link>,
     LS: LinkStore<F, Link::Rel> + Default,
 {
-    /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
-    pub fn new(user_id: UserIdentity<F>, alias: Option<UserIdentity<F>>, auto_sync: bool) -> Self {
+    /// Create a new User, storing [`UserIdentity`].
+    pub fn new(user_id: UserIdentity<F>) -> Self {
         // TODO: Remove different channel types, encoding and uniform payload
         let message_encoding = ENCODING.as_bytes().to_vec();
 
-        Self {
+        let mut user = Self {
             _phantom: PhantomData,
             user_id,
-            alias,
             key_store: KeyStore::default(),
             author_id: None,
             author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
@@ -171,8 +163,15 @@ where
             appinst: None,
             message_encoding,
             uniform_payload_length: PAYLOAD_LENGTH,
-            auto_sync,
+        };
+
+        // If User is using a Psk as their base Identifier,
+        if let Identifier::PskId(pskid) = user.id() {
+            // Unwraps shouldn't fail here due to the user containing a PskId type
+            user.store_psk(*pskid, user_id.psk().unwrap()).unwrap();
         }
+
+        user
     }
 
     /// Create a new channel (without announcing it). User now becomes Author.
