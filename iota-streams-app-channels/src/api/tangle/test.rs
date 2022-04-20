@@ -16,7 +16,7 @@ use iota_streams_core::{
 use super::*;
 use crate::UserIdentity;
 
-pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
+pub async fn example<T: Transport + Clone + Default>(transport: T) -> Result<()> {
     let mut author = UserBuilder::new()
         .with_identity(UserIdentity::new("AUTHOR9SEED"))
         .with_transport(transport.clone())

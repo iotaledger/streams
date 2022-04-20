@@ -8,20 +8,10 @@ use crate::api::{
     DefaultF,
     Message,
 };
-use iota_streams_app::id::{
-    Identifier,
-    UserIdentity,
-};
-#[cfg(feature = "tangle")]
-use iota_streams_app::transport::tangle::client::Client;
-#[cfg(not(feature = "tangle"))]
-use crate::api::BucketTransport as Client;
+use iota_streams_app::id::UserIdentity;
 use iota_streams_core::{
-    err,
-    Errors::{
-        UserIdentityMissing,
-        UserTransportMissing,
-    },
+    anyhow,
+    Errors::UserIdentityMissing,
     Result,
 };
 
@@ -140,10 +130,13 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn build(self) -> Result<User<Trans>> {
-        let id = self.id.ok_or_else(|| UserIdentityMissing)?;
+    pub fn build(self) -> Result<User<Trans>>
+    where
+        Trans: Default,
+    {
+        let id = self.id.ok_or_else(|| anyhow!(UserIdentityMissing))?;
         let user = crate::api::ApiUser::new(id);
-        let transport = self.transport.unwrap_or(Client::default());
+        let transport = self.transport.unwrap_or(Trans::default());
         Ok(User { user, transport })
     }
 
@@ -201,7 +194,10 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn recover(self, announcement: &Address) -> Result<User<Trans>> {
+    pub async fn recover(self, announcement: &Address) -> Result<User<Trans>>
+    where
+        Trans: Default,
+    {
         let mut user = self.build()?;
         user.user.create_channel(0)?;
 

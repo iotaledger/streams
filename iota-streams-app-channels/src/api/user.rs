@@ -152,10 +152,17 @@ where
         // TODO: Remove different channel types, encoding and uniform payload
         let message_encoding = ENCODING.as_bytes().to_vec();
 
-        let mut user = Self {
+        let mut key_store = KeyStore::default();
+        // If User is using a Psk as their base Identifier, store the Psk
+        if let Identifier::PskId(pskid) = &user_id.id {
+            // Unwraps shouldn't fail here due to the user containing a PskId type
+            key_store.insert_psk((*pskid).into(), user_id.psk().unwrap()).unwrap();
+        }
+
+        Self {
             _phantom: PhantomData,
             user_id,
-            key_store: KeyStore::default(),
+            key_store,
             author_id: None,
             author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             link_gen: LG::default(),
@@ -163,15 +170,7 @@ where
             appinst: None,
             message_encoding,
             uniform_payload_length: PAYLOAD_LENGTH,
-        };
-
-        // If User is using a Psk as their base Identifier,
-        if let Identifier::PskId(pskid) = user.id() {
-            // Unwraps shouldn't fail here due to the user containing a PskId type
-            user.store_psk(*pskid, user_id.psk().unwrap()).unwrap();
         }
-
-        user
     }
 
     /// Create a new channel (without announcing it). User now becomes Author.
