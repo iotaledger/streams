@@ -807,7 +807,7 @@ mod tests {
         // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
         let mut subscriber = UserBuilder::new()
             .with_identity(UserIdentity::new("subscriber"))
-            .with_transport(transport.clone())
+            .with_transport(transport)
             .build()?;
         subscriber.receive_announcement(&announcement_link).await?;
         let n_msgs = subscriber.sync_state().await?;
@@ -856,7 +856,7 @@ mod tests {
             .with_transport(transport.clone())
             .build()?;
         let announcement_link = author.send_announce().await?;
-        let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, &transport).await?;
+        let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, transport.clone()).await?;
         Ok((author, subscriber, announcement_link, transport))
     }
 
@@ -864,11 +864,11 @@ mod tests {
         seed: &str,
         author: &mut User<Transport>,
         announcement_link: &Address,
-        transport: &Transport,
+        transport: Transport,
     ) -> Result<User<Transport>> {
         let mut subscriber = UserBuilder::new()
             .with_identity(UserIdentity::new(seed))
-            .with_transport(transport.clone())
+            .with_transport(transport)
             .build()?;
         subscriber.receive_announcement(announcement_link).await?;
         let subscription = subscriber.send_subscribe(announcement_link).await?;
