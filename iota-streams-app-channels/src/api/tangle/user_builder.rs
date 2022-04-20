@@ -141,15 +141,10 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # }
     /// ```
     pub fn build(self) -> Result<User<Trans>> {
-        if self.id.is_none() {
-            return err(UserIdentityMissing);
-        }
-
+        let id = self.id.ok_or_else(|| UserIdentityMissing)?;
+        let user = crate::api::ApiUser::new(id);
         let transport = self.transport.unwrap_or(Client::default());
-        Ok(User {
-            user: crate::api::ApiUser::new(self.id.unwrap()),
-            transport,
-        })
+        Ok(User { user, transport })
     }
 
     /// Recover a user instance from the builder parameters.
