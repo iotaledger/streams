@@ -123,7 +123,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
         print!("  SubscriberC: {}", subscriberC);
     }
 
-    println!("\nSigned packet");
+    println!("\nSigned packet 1 - Author");
     let previous_msg_link = {
         let (msg, seq) = author
             .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)

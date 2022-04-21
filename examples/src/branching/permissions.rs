@@ -128,11 +128,11 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     let mut count = 0;
     
     // This verifies correct
-    // count = utils::fetch_next_messages(&mut subscriberB).await?;
-    // assert!(count == 1);
+    count = utils::fetch_next_messages(&mut subscriberB).await?;
+    assert!(count == 1);
 
     // This breaks
-    assert!(utils::fetch_next_messages(&mut subscriberB).await? == 1);
+    // assert!(utils::fetch_next_messages(&mut subscriberB).await? == 1);
     
     println!("\nSubscriber C fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberC).await?;
@@ -141,24 +141,27 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nTagged packet 1 - SubscriberB (subscriber B does NOT have Write permission)");
     let previous_msg_link_wrong = {
-        let (msg, seq) = subscriberB
+        let (msg, _) = subscriberB
             .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         print!("  SubscriberB: {}", subscriberB);
         msg
     };
-    
+    // Not found by subA
+    println!("\nAuthor fetching transactions...");
     count = utils::fetch_next_messages(&mut author).await?;
     assert!(count == 0);
+    println!("\nSubscriber A fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberA).await?;
-    assert!(count == 0); // Not found by subA
+    assert!(count == 0); 
+    println!("\nSubscriber C fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberC).await?;
-    assert!(count == 0);// Not found by subA
+    assert!(count == 0);
 
     println!("\nSigned packet 2 - SubscriberA (subscriber A has Write permission");
     let previous_msg_link = {
-        let (msg, seq) = subscriberA
+        let (msg, _) = subscriberA
             .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
@@ -180,41 +183,23 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     assert!(count == 1);
 
     println!("\nSigned packet 3 - SubscriberA (subscriber A has Write permission");
-    let previous_msg_link_wrong = {
-        let (msg, seq) = subscriberA
-            .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
-            .await?;
-        println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-        assert!(seq.is_none());
-        print!("  SubscriberA: {}", subscriberA);
-        msg
-    };
-
-    print!("  author: {}", author);
-    count = utils::fetch_next_messages(&mut author).await?;
-    assert!(count == 1); // Author finds normally
-    print!("  author: {}", author);
-    count = utils::fetch_next_messages(&mut subscriberB).await?;
-    assert!(count == 0); // B has a wrong state, thus doenst see it
-    count = utils::fetch_next_messages(&mut subscriberC).await?;
-    assert!(count == 1); // C finds finds normally
-
-    println!("\nSigned packet 4 - SubscriberC (subscriber C does NOT have Write permission");
     let previous_msg_link = {
-        let (msg, seq) = subscriberC
+        let (msg, _) = subscriberA
             .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
             .await?;
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
-        print!("  SubscriberC: {}", subscriberC);
         msg
     };
 
     println!("\nAuthor fetching transactions...");
     count = utils::fetch_next_messages(&mut author).await?;
-    assert!(count == 0); // C is not allowed
-    count = utils::fetch_next_messages(&mut subscriberA).await?;
-    assert!(count == 0); // A is not allowed
+    assert!(count == 1); // Author finds normally
+    println!("\nSubscriber B fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberB).await?;
     assert!(count == 0); // B has a wrong state, thus doenst see it
+    println!("\nSubscriber C fetching transactions...");
+    count = utils::fetch_next_messages(&mut subscriberC).await?;
+    assert!(count == 1); // C finds finds normally
+
     Ok(())
 }

@@ -17,11 +17,9 @@ where
 {
     let mut count = 0;
     let mut msgs = streamable.messages();
-    println!("Start");
     while let Some(msg) = msgs.try_next().await? {
         count+=1;
         println!("Message exists at {}... ", &msg.link.rel());
     }
-    println!("End: {}", count);
     Ok(count)
 }

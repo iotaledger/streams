@@ -161,6 +161,6 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("  msg => <{}> <{:x}>", last_msg.msgid, last_msg.to_msg_index());
 
     println!("\nSubscriber A fetching transactions...");
-    let msgs = subscriberA.fetch_next_msgs().await?;
+    subscriberA.fetch_next_msgs().await?;
     Ok(())
 }
