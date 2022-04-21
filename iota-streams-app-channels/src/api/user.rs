@@ -546,7 +546,7 @@ where
         let perms: Vec<Permission> = keys.into_iter().copied().collect();
         let prep = self.prepare_keyload(link_to, &perms)?;
         let res = prep.wrap(&self.link_store).await;
-        self.handle_permissions(perms, res)
+        self.handle_permissions(perms, res, link_to)
     }
 
     /// Create keyload message with a new session key shared with all Subscribers
@@ -556,11 +556,11 @@ where
         let perms: Vec<Permission> = keys.into_iter().map(|k| Permission::ReadWrite(k.0, PermissionDuration::Perpetual)).collect();
         let prep = self.prepare_keyload(link_to, &perms)?;
         let res = prep.wrap(&self.link_store).await;
-        self.handle_permissions(perms, res)
+        self.handle_permissions(perms, res, link_to)
         
     }
 
-    fn handle_permissions(&mut self, perms: Vec<Permission>, res: Result<WrappedMessage<F, Link>>) -> Result<WrappedMessage<F, Link>> {
+    fn handle_permissions(&mut self, perms: Vec<Permission>, res: Result<WrappedMessage<F, Link>>, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
         match res {
             Ok(wm) => {
                 for key in &perms {
@@ -568,7 +568,7 @@ where
                         Permission::Read(_) => {},
                         _ => {
                             if !self.key_store.contains_subscriber(key.identifier()) {
-                                self.key_store.insert_cursor(key.identifier().clone(), Cursor::new_at(wm.message.prev_link.rel().clone(), 0, INIT_MESSAGE_NUM));
+                                self.key_store.insert_cursor(key.identifier().clone(), Cursor::new_at(link_to.rel().clone(), 0, INIT_MESSAGE_NUM));
                             }
                         }
                     }
