@@ -11,17 +11,17 @@ use identity::{
 };
 use iota_streams::{
     app::{
-        id::DIDInfo,
+        id::{
+            DIDInfo,
+            UserIdentity,
+        },
         transport::tangle::client::Client,
     },
     app_channels::{
         api::{
             psk_from_seed,
             pskid_from_psk,
-            tangle::{
-                Author,
-                Subscriber,
-            },
+            tangle::UserBuilder,
         },
         Address,
     },
@@ -76,7 +76,7 @@ async fn make_did_info(client: &DIDClient, fragment: &str) -> Result<DIDInfo> {
 pub async fn example(transport: Client) -> Result<()> {
     println!("Creating new DID instance...");
 
-    let (did_info, sub_did_info) = match transport.to_did_client().await {
+    let (did_info, sub_did_info) = match transport.to_did_client() {
         Ok(client) => {
             println!("Making DID with method for Author");
             let did_info = make_did_info(&client, "auth_key").await?;
@@ -87,15 +87,32 @@ pub async fn example(transport: Client) -> Result<()> {
         Err(e) => return Err(anyhow!("DID Client could not be created from transport: {}", e)),
     };
 
-    println!("\nMaking Author...");
-    let mut author = Author::new_with_did(did_info, transport.clone()).await?;
-    author.insert_did_client(transport.to_did_client().await?);
+    // Generate a simple PSK for storage by users
+    let psk = psk_from_seed("A pre shared key".as_bytes());
+    let pskid = pskid_from_psk(&psk);
+
+    println!("Making Author...");
+    let mut author_id = UserIdentity::new_with_did_private_key(did_info)?;
+    author_id.insert_did_client(transport.clone().to_did_client()?);
+    let mut author = UserBuilder::new()
+        .with_identity(author_id)
+        .with_transport(transport.clone())
+        .build()?;
 
     println!("Making Subscribers...");
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
-    let mut subscriberB = Subscriber::new_with_did(sub_did_info, transport.clone()).await?;
-    subscriberB.insert_did_client(transport.to_did_client().await?);
-    let mut subscriberC = Subscriber::new("SUBSCRIBERC9SEED", transport).await;
+    let subscriberA_id = UserIdentity::new_with_did_private_key(sub_did_info)?;
+    let mut subscriberA = UserBuilder::new()
+        .with_identity(subscriberA_id)
+        .with_transport(transport.clone())
+        .build()?;
+    let mut subscriberB = UserBuilder::new()
+        .with_identity(UserIdentity::new("SUBSCRIBERB9SEED"))
+        .with_transport(transport.clone())
+        .build()?;
+    let mut subscriberC = UserBuilder::new()
+        .with_identity(UserIdentity::new_from_psk(pskid, psk))
+        .with_transport(transport.clone())
+        .build()?;
 
     let subA_xkey = subscriberA.key_exchange_public_key()?;
 
@@ -116,14 +133,13 @@ pub async fn example(transport: Client) -> Result<()> {
     subscriberC.receive_announcement(&announcement_link).await?;
 
     // Predefine Subscriber A
-    println!("\nAuthor Predefines Subscriber A");
+    println!("\nAuthor Predefines Subscriber A and Psk");
     author.store_new_subscriber(*subscriberA.id(), subA_xkey)?;
 
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
     author.store_psk(pskid, psk)?;
-    subscriberC.store_psk(pskid, psk)?;
 
     println!("\nShare keyload for [SubscriberA, PSK]");
     let (keyload_link, keyload_seq) = {

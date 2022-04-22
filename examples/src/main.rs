@@ -8,10 +8,7 @@ use rand::Rng;
 
 use iota_streams::{
     app::transport::tangle::client::Client,
-    app_channels::api::tangle::{
-        ChannelType,
-        Transport,
-    },
+    app_channels::api::Transport,
     core::prelude::{
         Rc,
         String,
@@ -19,6 +16,15 @@ use iota_streams::{
 };
 
 mod branching;
+
+async fn run_recovery_test<T: Transport>(transport: T, seed: &str) {
+    println!("\tRunning Recovery Test, seed: {}", seed);
+    match branching::recovery::example(transport, seed).await {
+        Err(err) => println!("Error in recovery test: {:?}", err),
+        Ok(_) => println!("\tRecovery test completed!!"),
+    }
+    println!("#######################################");
+}
 
 async fn run_did_author_test(transport: Client) {
     println!("\tRunning DID Test");
@@ -29,45 +35,9 @@ async fn run_did_author_test(transport: Client) {
     println!("#######################################");
 }
 
-async fn run_recovery_single_branch_test<T: Transport>(transport: T, seed: &str) {
-    println!("\tRunning Recovery Test (single-branch), seed: {}", seed);
-    match branching::recovery::example(transport, ChannelType::SingleBranch, seed).await {
-        Err(err) => println!("Error in recovery (single-branch) test: {:?}", err),
-        Ok(_) => println!("\tRecovery test (single-branch) completed!!"),
-    }
-    println!("#######################################");
-}
-
-async fn run_recovery_multi_branch_test<T: Transport>(transport: T, seed: &str) {
-    println!("\tRunning Recovery Test (multi-branch), seed: {}", seed);
-    match branching::recovery::example(transport, ChannelType::MultiBranch, seed).await {
-        Err(err) => println!("Error in recovery (multi-branch) test: {:?}", err),
-        Ok(_) => println!("\tRecovery test (multi-branch) completed!!"),
-    }
-    println!("#######################################");
-}
-
-async fn run_single_branch_test<T: Transport>(transport: T, seed: &str) {
-    println!("\tRunning Single Branch Test, seed: {}", seed);
-    match branching::single_branch::example(transport, ChannelType::SingleBranch, seed).await {
-        Err(err) => println!("Error in Single Branch test: {:?}", err),
-        Ok(_) => println!("\tSingle Branch Test completed!!"),
-    }
-    println!("#######################################");
-}
-
-async fn run_single_depth_test<T: Transport>(transport: T, seed: &str) {
-    println!("\tRunning Single Branch Test, seed: {}", seed);
-    match branching::single_depth::example(transport, ChannelType::SingleDepth, seed).await {
-        Err(err) => println!("Error in Single Depth test: {:?}", err),
-        Ok(_) => println!("\tSingle Depth Test completed!!"),
-    }
-    println!("#######################################");
-}
-
 async fn run_multi_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("\tRunning Multi Branch Test, seed: {}", seed);
-    match branching::multi_branch::example(transport, ChannelType::MultiBranch, seed).await {
+    match branching::multi_branch::example(transport, seed).await {
         Err(err) => println!("Error in Multi Branch test: {:?}", err),
         Ok(_) => println!("\tMulti Branch Test completed!!"),
     }
@@ -75,7 +45,7 @@ async fn run_multi_branch_test<T: Transport>(transport: T, seed: &str) {
 }
 
 async fn main_pure() {
-    let transport = iota_streams::app_channels::api::tangle::BucketTransport::new();
+    let transport = iota_streams::app_channels::api::BucketTransport::new();
 
     println!("#######################################");
     println!("Running pure tests without accessing Tangle");
@@ -86,11 +56,8 @@ async fn main_pure() {
     // hence the Rc<RefCell<BucketTransport>>
     let transport = Rc::new(RefCell::new(transport));
 
-    run_single_branch_test(transport.clone(), "PURESEEDA").await;
-    run_single_depth_test(transport.clone(), "PURESEEDB").await;
-    run_multi_branch_test(transport.clone(), "PURESEEDC").await;
-    run_recovery_single_branch_test(transport.clone(), "PURESEEDD").await;
-    run_recovery_multi_branch_test(transport.clone(), "PURESEEDF").await;
+    run_multi_branch_test(transport.clone(), "PURESEEDA").await;
+    run_recovery_test(transport, "PURESEEDB").await;
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }
@@ -106,12 +73,9 @@ async fn main_client() {
     println!("#######################################");
     println!("\n");
 
-    run_single_branch_test(transport.clone(), &new_seed()).await;
-    run_single_depth_test(transport.clone(), &new_seed()).await;
     run_multi_branch_test(transport.clone(), &new_seed()).await;
-    run_recovery_single_branch_test(transport.clone(), &new_seed()).await;
-    run_recovery_multi_branch_test(transport.clone(), &new_seed()).await;
-    run_did_author_test(transport.clone()).await;
+    run_recovery_test(transport.clone(), &new_seed()).await;
+    run_did_author_test(transport).await;
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }

@@ -168,14 +168,24 @@ pub enum Errors {
     ChannelNotSingleDepth,
     /// Message '{0}' does not have a previous message
     NoPreviousMessage(String),
-    /// No signature key pair found in User instance
+    /// User does not have a signature pair to retrieve
     NoSignatureKeyPair,
+    /// User keys does not contain a Psk
+    NotAPskUser,
     /// User failed to sign data
     SignatureError,
     /// DID not present
     DIDMissing,
     /// User is not a DID user
     NotDIDUser,
+    /// Cursor is not found in Key Store
+    CursorNotFound,
+
+    //////////
+    // User Builder
+    //////////
+    /// UserIdentity not specified, cannot build User without Identity
+    UserIdentityMissing,
 
     //////////
     // User Recovery

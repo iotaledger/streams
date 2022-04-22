@@ -1,4 +1,5 @@
 use async_recursion::async_recursion;
+use core::fmt;
 use futures::{
     future,
     TryFutureExt,
@@ -6,16 +7,8 @@ use futures::{
 };
 
 use crypto::keys::x25519;
-#[cfg(feature = "did")]
-use iota_streams_app::id::{
-    DIDClient,
-    DIDInfo,
-};
 use iota_streams_app::{
-    id::{
-        Identifier,
-        UserIdentity,
-    },
+    id::Identifier,
     message::HasLink,
 };
 use iota_streams_core::{
@@ -33,7 +26,6 @@ use iota_streams_core::{
     unwrap_or_break,
     Errors::{
         ChannelDuplication,
-        ChannelNotSingleDepth,
         NoPreviousMessage,
         UnknownMsgType,
         UserNotRegistered,
@@ -49,9 +41,6 @@ use crate::{
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore>;
 
-const ENCODING: &str = "utf-8";
-const PAYLOAD_LENGTH: usize = 32_000;
-
 /// Baseline User api object. Contains the api user implementation as well as the transport object
 pub struct User<Trans> {
     pub user: UserImp,
@@ -59,18 +48,7 @@ pub struct User<Trans> {
 }
 
 impl<Trans> User<Trans> {
-    /// Create a new User instance.
-    ///
-    /// # Arguments
-    /// * `seed` - A string slice representing the seed of the user [Characters: A-Z, 9]
-    /// * `channel_type` - Implementation type: [0: Single Branch, 1: Multi Branch , 2: Single Depth]
-    /// * `transport` - Transport object used for sending and receiving
-    pub async fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
-        let id = UserIdentity::new(seed).await;
-        let user = UserImp::gen(id, channel_type, ENCODING.as_bytes().to_vec(), PAYLOAD_LENGTH);
-        Self { user, transport }
-    }
-
+    /// Get reference of User Transport
     pub fn transport(&self) -> &Trans {
         &self.transport
     }
@@ -90,16 +68,6 @@ impl<Trans> User<Trans> {
     /// Channel Author's public Id
     pub fn author_id(&self) -> Option<&Identifier> {
         self.user.author_id()
-    }
-
-    /// Return boolean representing the sequencing nature of the channel
-    pub fn is_multi_branching(&self) -> bool {
-        self.user.is_multi_branching()
-    }
-
-    /// Return boolean representing whether the implementation type is single depth
-    pub fn is_single_depth(&self) -> bool {
-        self.user.is_single_depth()
     }
 
     /// Fetch the user public Id
@@ -123,40 +91,14 @@ impl<Trans> User<Trans> {
 
     // Utility
 
-    /// Stores the provided link to the internal sequencing state for the provided participant
-    /// [Used for multi-branching sequence state updates]
-    /// [Author, Subscriber]
-    ///
-    ///   # Arguments
-    ///   * `pk` - ed25519 Public Key of the sender of the message
-    ///   * `link` - Address link to be stored in internal sequence state mapping
-    pub fn store_state(&mut self, id: Identifier, link: &Address) -> Result<()> {
-        // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state(id, link.msgid)
-    }
-
-    /// Stores the provided link and sequence number to the internal sequencing state for all participants
-    /// [Used for single-branching sequence state updates]
-    /// [Author, Subscriber]
-    ///
-    ///   # Arguments
-    ///   * `link` - Address link to be stored in internal sequence state mapping
-    ///   * `seq_num` - New sequence state to be stored in internal sequence state mapping
-    pub fn store_state_for_all(&mut self, link: &Address, seq_num: u32) -> Result<()> {
-        // TODO: assert!(link.appinst == self.appinst.unwrap());
-        self.user.store_state_for_all(link.msgid, seq_num)
-    }
-
     /// Fetches the latest PublicKey -> Cursor state mapping from the implementation, allowing the
     /// user to see the latest messages present from each publisher
-    /// [Author, Subscriber]
     pub fn fetch_state(&self) -> Result<Vec<(Identifier, Cursor<Address>)>> {
         self.user.fetch_state()
     }
 
     /// Resets the cursor state storage to allow a User to retrieve all messages in a channel
     /// from scratch
-    /// [Author, Subscriber]
     pub fn reset_state(&mut self) -> Result<()> {
         self.user.reset_state()
     }
@@ -176,21 +118,12 @@ impl<Trans> User<Trans> {
         self.user.gen_next_msg_links()
     }
 
-    /// Commit to state a wrapped message and type
-    /// [Author, Subscriber]
-    ///
-    ///  # Arguments
-    ///  * `wrapped` - A wrapped message intended to be committed to the link store
-    ///  * `info` - The type of wrapped message being committed to the link store
-    pub fn commit_wrapped(&mut self, wrapped: WrapState, info: MsgInfo) -> Result<Address> {
-        self.user.commit_wrapped(wrapped, info)
+    pub async fn export(&self, pwd: &str) -> Result<Vec<u8>> {
+        self.user.export(pwd).await
     }
 
-    pub async fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
-        self.user.export(flag, pwd).await
-    }
-    pub async fn import(bytes: &[u8], flag: u8, pwd: &str, tsp: Trans) -> Result<Self> {
-        UserImp::import(bytes, flag, pwd).await.map(|u| Self {
+    pub async fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
+        UserImp::import(bytes, pwd).await.map(|u| Self {
             user: u,
             transport: tsp,
         })
@@ -201,8 +134,8 @@ impl<Trans> User<Trans> {
     ///   # Arguments
     ///   * `pskid` - An identifier representing a pre shared key
     ///   * `psk` - A pre shared key
-    pub fn store_psk(&mut self, pskid: PskId, psk: Psk, use_psk: bool) -> Result<()> {
-        self.user.store_psk(pskid, psk, use_psk)
+    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
+        self.user.store_psk(pskid, psk)
     }
 
     /// Remove a PSK from the user instance
@@ -242,61 +175,29 @@ impl<Trans> User<Trans> {
     }
 }
 
-#[cfg(feature = "did")]
 impl<Trans: Transport + Clone> User<Trans> {
-    pub async fn new_with_did(did_info: DIDInfo, transport: Trans) -> Result<Self> {
-        let id = UserIdentity::new_with_did_private_key(did_info).await?;
-        let user = UserImp::gen(
-            id,
-            ChannelType::MultiBranch,
-            ENCODING.as_bytes().to_vec(),
-            PAYLOAD_LENGTH,
-        );
-        Ok(User {
-            user,
-            transport: transport as Trans,
-        })
-    }
-
-    pub fn insert_did_client(&mut self, client: DIDClient) {
-        self.user.user_id.insert_did_client(client)
-    }
-}
-
-impl<Trans: Transport + Clone> User<Trans> {
-    /// Send a message with sequencing logic. If channel is single-branched, then no secondary
-    /// sequence message is sent and None is returned for the address.
+    /// Send a message with sequencing logic.
     ///
     /// # Arguments
     /// * `wrapped` - A wrapped sequence object containing the sequence message and state
     async fn send_sequence(&mut self, wrapped_sequence: WrappedSequence) -> Result<Option<Address>> {
-        match wrapped_sequence {
-            WrappedSequence::MultiBranch(
-                cursor,
+        let WrappedSequence {
+            cursor,
+            wrapped_message:
                 WrappedMessage {
                     message,
                     wrapped: wrapped_state,
                 },
-            ) => {
-                self.transport.send_message(&message).await?;
-                self.user.commit_sequence(cursor, wrapped_state, MsgInfo::Sequence)
-            }
-            WrappedSequence::SingleBranch(cursor) => {
-                self.user.commit_sequence_to_all(cursor)?;
-                Ok(None)
-            }
-            WrappedSequence::SingleDepth(cursor) => {
-                self.user.commit_sequence_to_all(cursor)?;
-                Ok(None)
-            }
-            WrappedSequence::None => Ok(None),
-        }
+        } = wrapped_sequence;
+
+        self.transport.send_message(&message).await?;
+        self.user.commit_sequence(cursor, wrapped_state, MsgInfo::Sequence)
     }
 
     /// Send a message without using sequencing logic. Reserved for Announce and Subscribe messages
     async fn send_message(&mut self, msg: WrappedMessage, info: MsgInfo) -> Result<Address> {
         self.transport.send_message(&msg.message).await?;
-        self.commit_wrapped(msg.wrapped, info)
+        self.user.commit_wrapped(msg.wrapped, info)
     }
 
     /// Send a message using sequencing logic.
@@ -313,7 +214,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ) -> Result<(Address, Option<Address>)> {
         // Send & commit original message
         self.transport.send_message(&msg.message).await?;
-        let msg_link = self.commit_wrapped(msg.wrapped, info)?;
+        let msg_link = self.user.commit_wrapped(msg.wrapped, info)?;
 
         // Send & commit associated sequence message
         let seq = self.user.wrap_sequence(ref_link).await?;
@@ -321,8 +222,10 @@ impl<Trans: Transport + Clone> User<Trans> {
         Ok((msg_link, seq_link))
     }
 
-    /// Send an announcement message, generating a channel [Author].
+    /// Send an announcement message, generating a channel.
     pub async fn send_announce(&mut self) -> Result<Address> {
+        // TODO: Implement channel id inclusion for multiple channel ownership
+        self.user.create_channel(0)?;
         let msg = self.user.announce().await?;
         try_or!(
             self.transport.recv_message(&msg.message.link).await.is_err(),
@@ -331,7 +234,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.send_message(msg, MsgInfo::Announce).await
     }
 
-    /// Create and send a signed packet [Author, Subscriber].
+    /// Create and send a signed packet.
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
@@ -348,7 +251,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             .await
     }
 
-    /// Create and send a tagged packet [Author, Subscriber].
+    /// Create and send a tagged packet.
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
@@ -365,7 +268,7 @@ impl<Trans: Transport + Clone> User<Trans> {
             .await
     }
 
-    /// Create and send a new keyload for a list of subscribers [Author].
+    /// Create and send a new keyload for a list of subscribers.
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
@@ -378,7 +281,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
-    /// Create and send keyload for all subscribed subscribers [Author].
+    /// Create and send keyload for all subscribed subscribers.
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
@@ -387,7 +290,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 
-    /// Create and Send a Subscribe message to a Channel app instance [Subscriber].
+    /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
@@ -396,7 +299,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.send_message(msg, MsgInfo::Subscribe).await
     }
 
-    /// Create and Send an Unsubscribe message to a Channel app instance [Subscriber].
+    /// Create and Send an Unsubscribe message to a Channel app instance.
     ///
     /// # Arguments
     /// * `link_to` - Address of the user subscription message
@@ -407,7 +310,7 @@ impl<Trans: Transport + Clone> User<Trans> {
 
     // Receive
 
-    /// Receive and process a sequence message [Author, Subscriber].
+    /// Receive and process a sequence message.
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
@@ -424,7 +327,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         }
     }
 
-    /// Receive and process a signed packet message [Author, Subscriber].
+    /// Receive and process a signed packet message.
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
@@ -434,7 +337,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         Ok(m.body)
     }
 
-    /// Receive and process a tagged packet message [Author, Subscriber].
+    /// Receive and process a tagged packet message.
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
@@ -444,7 +347,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         Ok(m.body)
     }
 
-    /// Receive and process a subscribe message [Author].
+    /// Receive and process a subscribe message.
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
@@ -453,7 +356,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.user.handle_subscribe(&msg, MsgInfo::Subscribe).await
     }
 
-    /// Receive and process an unsubscribe message [Author].
+    /// Receive and process an unsubscribe message.
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
@@ -462,7 +365,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.user.handle_unsubscribe(msg, MsgInfo::Unsubscribe).await
     }
 
-    /// Receive and Process an announcement message [Subscriber].
+    /// Receive and Process an announcement message.
     ///
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
@@ -471,7 +374,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         self.user.handle_announcement(&msg, MsgInfo::Announce).await
     }
 
-    /// Receive and process a keyload message [Subscriber].
+    /// Receive and process a keyload message.
     ///
     ///  # Argument&s
     ///  * `link` - Address of the message to be processed
@@ -482,7 +385,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     }
 
     /// Receive and process a message of unknown type. Message will be handled appropriately and
-    /// the unwrapped contents returned [Author, Subscriber].
+    /// the unwrapped contents returned.
     ///
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
@@ -532,7 +435,7 @@ impl<Trans: Transport + Clone> User<Trans> {
         Ok(unwrapped)
     }
 
-    /// Retrieves a specified number of previous messages from an original specified messsage link [Author, Subscriber]
+    /// Retrieves a specified number of previous messages from an original specified messsage link
     /// # Arguments
     /// * `link` - Address of message to act as root of previous message fetching
     /// * `max` - The number of msgs to try and parse
@@ -560,7 +463,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     }
 
     /// Handle message of unknown type. Ingests a message and unwraps it according to its determined
-    /// content type [Author, Subscriber].
+    /// content type.
     ///
     /// # Arguments
     /// * `msg` - Binary message of unknown type
@@ -628,30 +531,11 @@ impl<Trans: Transport + Clone> User<Trans> {
             .or_else(|_| err!(NoPreviousMessage(link.to_string())))?;
         Ok((link, header.content_type, msg))
     }
+}
 
-    /// Receive and process a message with a known anchor link and message number. This can only
-    /// be used if the channel is a single depth channel. [Author, Subscriber]
-    ///
-    ///   # Arguments
-    ///   * `anchor_link` - Address of the anchor message for the channel
-    ///   * `msg_num` - Sequence of sent message (not counting announce or any keyloads)
-    pub async fn receive_msg_by_sequence_number(
-        &mut self,
-        anchor_link: &Address,
-        msg_num: u32,
-    ) -> Result<UnwrappedMessage> {
-        if !self.is_single_depth() {
-            return err(ChannelNotSingleDepth);
-        }
-        match self.author_id() {
-            Some(pk) => {
-                let seq_no = self.user.fetch_anchor()?.seq_no;
-                let msg_cursor = self.user.gen_link(pk, anchor_link.rel(), seq_no + msg_num);
-                let msg = self.transport.recv_message(&msg_cursor.link).await?;
-                self.handle_message(msg, false).await
-            }
-            None => err(UserNotRegistered),
-        }
+impl<Trans: Clone> fmt::Display for User<Trans> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<{}>\n{}", self.id(), self.user.key_store)
     }
 }
 
