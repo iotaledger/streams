@@ -1,9 +1,9 @@
 use iota_streams::{
-    app_channels::api::tangle::{
-        Author,
-        ChannelType,
-        Subscriber,
+    app::id::UserIdentity,
+    app_channels::api::{
         Transport,
+        User,
+        UserBuilder,
     },
     core::{
         assert,
@@ -19,11 +19,16 @@ use std::{
     time::Duration,
 };
 
-pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, channel_type.clone(), transport.clone()).await;
-    println!("Author multi branching?: {}", author.is_multi_branching());
+pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
+    let mut author = UserBuilder::new()
+        .with_identity(UserIdentity::new(seed))
+        .with_transport(transport.clone())
+        .build()?;
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
+    let mut subscriberA = UserBuilder::new()
+        .with_identity(UserIdentity::new("SUBSCRIBERA9SEED"))
+        .with_transport(transport.clone())
+        .build()?;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -67,8 +72,6 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         };
     }
 
-    println!("\nWait a moment for messages to propogate...");
-    sleep(Duration::from_secs(3));
     println!("Subscriber A fetching transactions...");
     utils::fetch_next_messages(&mut subscriberA).await?;
 
@@ -83,14 +86,15 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         };
     }
 
-    println!("\nWait a moment for messages to propogate...");
-    sleep(Duration::from_secs(3));
     println!("Author fetching transactions...");
     utils::fetch_next_messages(&mut author).await?;
 
     println!("\n\nTime to try to recover the instance...");
-    let mut new_author = Author::recover(seed, &announcement_link, channel_type, transport.clone()).await?;
-    new_author.sync_state().await?;
+    let mut new_author = UserBuilder::new()
+        .with_identity(UserIdentity::new(seed))
+        .with_transport(transport.clone())
+        .recover(&announcement_link)
+        .await?;
 
     let state = new_author.fetch_state()?;
     let old_state = author.fetch_state()?;
@@ -138,7 +142,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nTesting export/import");
     let exported = author.export("Password").await?;
     println!("Author exported...");
-    let new_auth = Author::import(&exported, "Password", transport).await?;
+    let new_auth = User::import(&exported, "Password", transport).await?;
     println!("Author imported...");
     let retrieved_announcement = new_auth.announcement_link().unwrap();
     assert!(retrieved_announcement == announcement_link);

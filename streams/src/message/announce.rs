@@ -74,12 +74,11 @@ use LETS::{
 
 struct Wrap<'a> {
     user_id: &'a Identity,
-    flags: u8,
 }
 
 impl<'a> Wrap<'a> {
-    fn new(user_id: &'a Identity, flags: u8) -> Self {
-        Self { user_id, flags }
+    fn new(user_id: &'a Identity) -> Self {
+        Self { user_id}
     }
 }
 
@@ -88,10 +87,9 @@ impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
         self.sizeof(&announcement.user_id.to_identifier())
             .await?
-            .absorb(Uint8::new(announcement.flags))?
             .sign_sizeof(&announcement.user_id)
             .await?
-            .commit();
+            .commit()?;
         Ok(self)
     }
 }
@@ -105,25 +103,21 @@ where
     async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
         self.wrap(&mut announcement.user_id.to_identifier())
             .await?
-            .absorb(Uint8::new(announcement.flags))?
             .sign(&mut announcement.user_id)
             .await?
-            .commit();
+            .commit()?;
         Ok(self)
     }
 }
 
 struct Unwrap {
     author_id: Identifier,
-    flags: u8,
 }
 
 impl Default for Unwrap {
     fn default() -> Self {
-        let ke_pk = x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]);
         let author_id = Default::default();
-        let flags = 0;
-        Self { author_id, flags }
+        Self { author_id}
     }
 }
 
@@ -140,14 +134,11 @@ where
     IS: io::IStream,
 {
     async fn unwrap(&mut self, announcement: &mut Unwrap) -> Result<&mut Self> {
-        let mut flags = Uint8::default();
         self.unwrap(&mut announcement.author_id)
             .await?
-            .absorb(&mut flags)?
             .verify(&mut announcement.author_id)
             .await?
-            .commit();
-        announcement.flags = flags.inner();
+            .commit()?;
         Ok(self)
     }
 }

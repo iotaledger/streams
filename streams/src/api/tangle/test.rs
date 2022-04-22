@@ -1,8 +1,4 @@
 #![allow(non_snake_case)]
-use crate::api::tangle::{
-    Author,
-    Subscriber,
-};
 use iota_streams_app::message::HasLink;
 
 use iota_streams_core::{
@@ -18,13 +14,23 @@ use iota_streams_core::{
 };
 
 use super::*;
+use crate::UserIdentity;
 
-pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
-    let mut author = Author::new("AUTHOR9SEED", ChannelType::SingleBranch, transport.clone()).await;
+pub async fn example<T: Transport + Clone + Default>(transport: T) -> Result<()> {
+    let mut author = UserBuilder::new()
+        .with_identity(UserIdentity::new("AUTHOR9SEED"))
+        .with_transport(transport.clone())
+        .build()?;
 
-    let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone()).await;
+    let mut subscriberA = UserBuilder::new()
+        .with_identity(UserIdentity::new("SubscriberA9SEED"))
+        .with_transport(transport.clone())
+        .build()?;
 
-    let mut subscriberB = Subscriber::new("SUBSCRIBERB9SEED", transport.clone()).await;
+    let mut subscriberB = UserBuilder::new()
+        .with_identity(UserIdentity::new("SubscriberB9SEED"))
+        .with_transport(transport.clone())
+        .build()?;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
     let masked_payload = Bytes("MASKEDPAYLOAD".as_bytes().to_vec());
@@ -124,19 +130,17 @@ pub async fn example<T: Transport + Clone>(transport: T) -> Result<()> {
     }
 
     let subAdump = subscriberA.export("pwdSubA").await.unwrap();
-    let _subscriberA2 = Subscriber::import(subAdump.as_ref(), "pwdSubA", transport.clone())
+    let _subscriberA2 = User::import(subAdump.as_ref(), "pwdSubA", transport.clone())
         .await
         .unwrap();
 
     let subBdump = subscriberB.export("pwdSubB").await.unwrap();
-    let _subscriberB2 = Subscriber::import(subBdump.as_ref(), "pwdSubB", transport.clone())
+    let _subscriberB2 = User::import(subBdump.as_ref(), "pwdSubB", transport.clone())
         .await
         .unwrap();
 
     let authordump = author.export("pwdAuthor").await.unwrap();
-    let _author2 = Author::import(authordump.as_ref(), "pwdAuthor", transport)
-        .await
-        .unwrap();
+    let _author2 = User::import(authordump.as_ref(), "pwdAuthor", transport).await.unwrap();
 
     Ok(())
 }
@@ -148,6 +152,6 @@ async fn run_basic_scenario() {
 
     use iota_streams_core::prelude::Rc;
 
-    let transport = Rc::new(RefCell::new(crate::api::tangle::BucketTransport::new()));
+    let transport = Rc::new(RefCell::new(crate::api::BucketTransport::new()));
     example(transport).await.unwrap();
 }
