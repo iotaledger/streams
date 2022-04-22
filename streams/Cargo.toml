@@ -6,7 +6,7 @@ edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
 keywords = ["iota", "streams", "app", "channels", "pub-sub", "communication protocol"]
-description = "A rust implementation of the IOTA Streams protocol"
+description = "A Rust implementation of the IOTA Streams protocol"
 
 [features]
 default = ["std", "duh"]
@@ -31,9 +31,11 @@ LETS = { path = "../LETS", default-features = false }
 iota-crypto = { version = "0.9.1", default-features = false, features = ["x25519"] }
 
 # 3rd-party dependencies
-hex = { version = "0.4", default-features = false, optional = false }
+hex = { version = "0.4", default-features = false}
 futures = { version = "0.3.8", default-features = false, optional = true }
 async-recursion = { version = "0.3.2", default-features = false, optional = true }
+async-trait = {version = "0.1", default-features = false }
+anyhow = {version = "1.0", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1.15", default-features = false }

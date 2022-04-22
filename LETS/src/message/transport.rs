@@ -99,11 +99,12 @@ where
     T: AsRef<[u8]>,
     Address: Default + Clone,
 {
-    async fn parse_header<'b, F>(&'b self) -> Result<PreparsedMessage<'b, F, Address>>
+    async fn parse_header<'a, F>(&'a self) -> Result<PreparsedMessage<'a, F, Address>>
     // where
     //     AbsLink: Clone + AbsorbExternalFallback<F> + HasLink,
     where
-        unwrap::Context<F, &'b [u8]>: for<'a> Absorb<&'a mut Address> + for<'a> Absorb<External<&'a Address>>,
+        // unwrap::Context<F, &'a [u8]>: for<'b> Absorb<&'b mut Address> + for<'b> Absorb<External<&'b Address>>,
+        unwrap::Context<F, &'a [u8]>: ContentUnwrap<HDF<Address>>,
         F: PRP,
     {
         let mut ctx = unwrap::Context::new(self.body().as_ref());
@@ -112,7 +113,7 @@ where
         //     HDF::<Address>::new(self.address().clone()).with_previous_msg_link(Bytes(self.previous().to_bytes()));
         let mut header = HDF::<Address>::default().with_address(self.address().clone());
 
-        header.unwrap(&mut ctx).await?;
+        ctx.unwrap(&mut header).await?;
 
         Ok(PreparsedMessage::new(header, ctx))
     }

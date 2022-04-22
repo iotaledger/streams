@@ -44,8 +44,8 @@ use spongos::{
 // Local
 pub use content::{
     ContentDecrypt,
-    ContentEncryptSizeOf,
     ContentEncrypt,
+    ContentEncryptSizeOf,
     ContentSign,
     ContentSignSizeof,
     ContentSizeof,
@@ -78,23 +78,22 @@ impl<Address, Content> Message<Address, Content> {
         self
     }
 
-    async fn wrap<'a, F>(&'a self) -> Result<(TransportMessage<Address, Vec<u8>>, Spongos<F>)>
+    async fn wrap<F>(&mut self) -> Result<(TransportMessage<Address, Vec<u8>>, Spongos<F>)>
     where
         F: PRP,
         Address: Clone,
-        HDF<Address>: for<'b> ContentWrap<'a, F, &'b mut [u8]>,
-        PCF<Content>: for<'b> ContentWrap<'a, F, &'b mut [u8]>,
+        PCF<Content>: Copy,
+        for<'b> wrap::Context<F, &'b mut [u8]>: ContentWrap<HDF<Address>> + ContentWrap<PCF<Content>>,
+        sizeof::Context: ContentSizeof<HDF<Address>> + ContentSizeof<PCF<Content>>
     {
         let mut ctx = sizeof::Context::new();
-        self.hdf.sizeof(&mut ctx).await?;
-        self.pcf.sizeof(&mut ctx).await?;
+        ctx.sizeof(&self.hdf).await?.sizeof(&self.pcf).await?;
         let buf_size = ctx.size();
 
         let mut buf = vec![0; buf_size];
 
         let mut ctx = wrap::Context::new(&mut buf[..]);
-        self.hdf.wrap(&mut ctx).await?;
-        self.pcf.wrap(&mut ctx).await?;
+        ctx.wrap(&mut self.hdf).await?.wrap(&mut self.pcf).await?;
         // If buffer is not empty, it's an implementation error, panic
         assert!(
             ctx.stream().is_empty(),

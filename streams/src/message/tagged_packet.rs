@@ -13,13 +13,29 @@
 //!     squeeze byte mac[32];
 //! }
 //! ```
-use core::marker::PhantomData;
+// Rust
+use alloc::{boxed::Box, vec::Vec};
 
-use lets::message::{
-    self,
-    HasLink,
+// 3rd-party
+use async_trait::async_trait;
+use anyhow::Result;
+
+// IOTA
+
+// Streams
+use spongos::{
+    ddml::{
+        commands::{sizeof, wrap, unwrap, Absorb, Mask, Commit, Squeeze, Join},
+        types::{Mac, Bytes},
+        io,
+    },
+    PRP, Spongos,
 };
-use spongos::sponge::prp::PRP;
+use LETS::message::{
+    ContentSizeof, ContentWrap, ContentUnwrap
+};
+
+// Local
 // use iota_streams_core::{
 //     async_trait,
 //     prelude::{
@@ -42,101 +58,70 @@ use spongos::sponge::prp::PRP;
 //     types::*,
 // };
 
-pub struct ContentWrap<'a, F, Link>
-where
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a,
-{
-    pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) public_payload: &'a Bytes,
-    pub(crate) masked_payload: &'a Bytes,
-    pub(crate) _phantom: PhantomData<(F, Link)>,
+const MAC: Mac = Mac::new(32);
+
+pub struct Wrap<'a, F> {
+    initial_state: &'a mut Spongos<F>,
+    public_payload: &'a [u8],
+    masked_payload: &'a [u8],
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
-where
-    F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-{
-    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        let mac = Mac(spongos::MacSize::<F>::USIZE);
-        ctx.join(&store, self.link)?
-            .absorb(self.public_payload)?
-            .mask(self.masked_payload)?
+impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
+    async fn sizeof(&mut self, signed_packet: &Wrap<'a, F>) -> Result<&mut Self> {
+        self
+            .absorb(&Bytes::new(signed_packet.public_payload))?
+            .mask(&Bytes::new(signed_packet.masked_payload))?
             .commit()?
-            .squeeze(&mac)?;
-        // TODO: Is bot public and masked payloads are ok? Leave public only or masked only?
-        Ok(ctx)
+            .squeeze(&MAC)?;
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+impl<'a, F, OS> ContentWrap<Wrap<'a, F>> for wrap::Context<F, OS>
 where
     F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    OS: io::OStream,
 {
-    async fn wrap<'c, OS: io::OStream>(
-        &self,
-        store: &Store,
-        ctx: &'c mut wrap::Context<F, OS>,
-    ) -> Result<&'c mut wrap::Context<F, OS>> {
-        let mac = Mac(spongos::MacSize::<F>::USIZE);
-        ctx.join(store, self.link)?
-            .absorb(self.public_payload)?
-            .mask(self.masked_payload)?
+    async fn wrap(&mut self, signed_packet: &mut Wrap<'a, F>) -> Result<&mut Self> {
+        self.join(signed_packet.initial_state)?
+            .absorb(&Bytes::new(signed_packet.public_payload))?
+            .mask(&Bytes::new(signed_packet.masked_payload))?
             .commit()?
-            .squeeze(&mac)?;
-        Ok(ctx)
+            .squeeze(&MAC)?;
+        Ok(self)
     }
 }
 
-// TODO: factor out `public_payload` and `masked_payload` into `pub struct Content`
-pub struct ContentUnwrap<F, Link: HasLink> {
-    pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) public_payload: Bytes,
-    pub(crate) masked_payload: Bytes,
-    pub(crate) _phantom: PhantomData<(F, Link)>,
+pub struct Unwrap<'a, F> {
+    initial_state: &'a mut Spongos<F>,
+    public_payload: Vec<u8>,
+    masked_payload: Vec<u8>,
 }
 
-impl<F, Link> Default for ContentUnwrap<F, Link>
-where
-    Link: HasLink,
-{
-    fn default() -> Self {
+impl<'a, F> Unwrap<'a, F> {
+    fn new(initial_state: &'a mut Spongos<F>) -> Self {
         Self {
-            link: Link::Rel::default(),
-            public_payload: Bytes::default(),
-            masked_payload: Bytes::default(),
-            _phantom: PhantomData,
+            initial_state,
+            public_payload: Default::default(),
+            masked_payload: Default::default(),
         }
     }
 }
 
 #[async_trait(?Send)]
-impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
+impl<'a, F, IS> ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
 where
     F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    IS: io::IStream,
 {
-    async fn unwrap<'c, IS: io::IStream>(
-        &mut self,
-        store: &Store,
-        ctx: &'c mut unwrap::Context<F, IS>,
-    ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        let mac = Mac(spongos::MacSize::<F>::USIZE);
-        ctx.join(store, &mut self.link)?
-            .absorb(&mut self.public_payload)?
-            .mask(&mut self.masked_payload)?
+    async fn unwrap(&mut self, signed_packet: &mut Unwrap<'a, F>) -> Result<&mut Self> {
+        self.join(signed_packet.initial_state)?
+            .absorb(&mut Bytes::new(&mut signed_packet.public_payload))?
+            .mask(&mut Bytes::new(&mut signed_packet.masked_payload))?
             .commit()?
-            .squeeze(&mac)?;
-        Ok(ctx)
+            .squeeze(&MAC)?;
+        Ok(self)
     }
 }

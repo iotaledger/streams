@@ -1236,7 +1236,8 @@ where
             let mut link = Fallback(<Link as HasLink>::Rel::default());
             let mut branch_no = Uint32(0);
             let mut seq_no = Uint32(0);
-            let (id, ctx) = Identifier::unwrap_new(store, ctx).await?;
+            let id = Identifier::default();
+            id.unwrap(ctx).await?;
             ctx.absorb(&mut link)?.absorb(&mut branch_no)?.absorb(&mut seq_no)?;
             key_store.insert_cursor(id, Cursor::new_at(link.0, branch_no.0, seq_no.0));
         }

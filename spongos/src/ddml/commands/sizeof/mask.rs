@@ -70,8 +70,8 @@ impl<T: AsRef<[u8]>> Mask<&NBytes<T>> for Context {
 }
 
 /// Mask bytes, the size prefixed before the content bytes is also masked.
-impl Mask<&Bytes> for Context {
-    fn mask(&mut self, bytes: &Bytes) -> Result<&mut Self> {
+impl<T> Mask<&Bytes<T>> for Context where T: AsRef<[u8]> {
+    fn mask(&mut self, bytes: &Bytes<T>) -> Result<&mut Self> {
         let size = Size::new(bytes.len());
         self.mask(size)?;
         self.size += bytes.len();

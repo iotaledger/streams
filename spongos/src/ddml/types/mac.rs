@@ -4,10 +4,10 @@
 /// the requested amount of bytes is squeezed from Spongos and compared to the
 /// bytes encoded in the binary stream.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub(crate) struct Mac(usize);
+pub struct Mac(usize);
 
 impl Mac {
-    pub(crate) fn new(length: usize) -> Self {
+    pub const fn new(length: usize) -> Self {
         Self(length)
     }
 

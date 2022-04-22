@@ -1,8 +1,8 @@
 //! `Sequence` message _wrapping_ and _unwrapping_.
-//! 
+//!
 //! `Sequence` messages act as a referencing lookup point for messages in a multi-branch tree. They form
 //! a sequential chain of all the messages published by one publisher. Each publisher has its own chain
-//! of `Sequence` messages. 
+//! of `Sequence` messages.
 //!
 //! ```ddml
 //! message Sequence {
@@ -22,16 +22,44 @@
 //!    ed25519(hash)        u8  signature[64];   
 //! }
 //! ```
+// Rust
+use alloc::boxed::Box;
+
+// 3rd-party
+use anyhow::Result;
+use async_trait::async_trait;
+
+// IOTA
 use crypto::signatures::ed25519;
 
-use lets::{
+// Streams
+use spongos::{
+    ddml::{
+        commands::{
+            sizeof,
+            unwrap,
+            wrap,
+            Absorb,
+            Commit,
+            Join,
+            Skip,
+        },
+        io,
+        types::Uint64,
+    },
+    Spongos,
+    PRP,
+};
+use LETS::{
     id::Identifier,
     message::{
-        self,
-        HasLink,
+        ContentSizeof,
+        ContentUnwrap,
+        ContentWrap,
     },
 };
-use spongos::sponge::prp::PRP;
+
+// Local
 // use iota_streams_core::{
 //     async_trait,
 //     prelude::Box,
@@ -49,97 +77,69 @@ use spongos::sponge::prp::PRP;
 //     types::*,
 // };
 
-pub struct ContentWrap<'a, Link>
-where
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a,
-{
-    pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) id: Identifier,
-    pub seq_num: u64,
-    pub(crate) ref_link: &'a <Link as HasLink>::Rel,
+pub struct Wrap<'a, F, Link> {
+    initial_state: &'a mut Spongos<F>,
+    id: Identifier,
+    seq_num: u64,
+    ref_link: &'a Link,
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, Link>
+impl<'a, F, Link> ContentSizeof<Wrap<'a, F, Link>> for sizeof::Context
 where
-    F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F>,
+    Self: Absorb<&'a Link>,
 {
-    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        ctx.join(&store, self.link)?;
-        let ctx = self.id.sizeof(ctx).await?;
-        ctx.skip(Uint64(self.seq_num))?
-            .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
+    async fn sizeof(&mut self, sequence: &Wrap<'a, F, Link>) -> Result<&mut Self> {
+        self.sizeof(&sequence.id)
+            .await?
+            .skip(Uint64::new(sequence.seq_num))?
+            .absorb(&sequence.ref_link)?
             .commit()?;
-        Ok(ctx)
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link>
+impl<'a, F, OS, Link> ContentWrap<Wrap<'a, F, Link>> for wrap::Context<F, OS>
 where
     F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    OS: io::OStream,
+    Self: Absorb<&'a Link>,
 {
-    async fn wrap<'c, OS: io::OStream>(
-        &self,
-        store: &Store,
-        ctx: &'c mut wrap::Context<F, OS>,
-    ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?;
-        let ctx = self.id.wrap(store, ctx).await?;
-        ctx.skip(Uint64(self.seq_num))?
-            .absorb(<&Fallback<<Link as HasLink>::Rel>>::from(self.ref_link))?
+    async fn wrap(&mut self, sequence: &mut Wrap<'a, F, Link>) -> Result<&mut Self> {
+        self.join(sequence.initial_state)?
+            .wrap(&mut sequence.id)
+            .await?
+            .skip(Uint64::new(sequence.seq_num))?
+            .absorb(&sequence.ref_link)?
             .commit()?;
-        Ok(ctx)
+        Ok(self)
     }
 }
 
-pub struct ContentUnwrap<Link: HasLink> {
-    pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) id: Identifier,
-    pub(crate) seq_num: Uint64,
-    pub(crate) ref_link: <Link as HasLink>::Rel,
-}
-
-impl<Link> Default for ContentUnwrap<Link>
-where
-    Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default,
-{
-    fn default() -> Self {
-        Self {
-            link: <<Link as HasLink>::Rel as Default>::default(),
-            id: ed25519::PublicKey::try_from_bytes([0; 32]).unwrap().into(),
-            seq_num: Uint64(0),
-            ref_link: <<Link as HasLink>::Rel as Default>::default(),
-        }
-    }
+pub struct Unwrap<'a, F, Link> {
+    initial_state: &'a mut Spongos<F>,
+    id: Identifier,
+    seq_num: u64,
+    ref_link: Link,
 }
 
 #[async_trait(?Send)]
-impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<Link>
+impl<'a, F, IS, Link> ContentUnwrap<Unwrap<'a, F, Link>> for unwrap::Context<F, IS>
 where
     F: PRP,
-    Link: HasLink,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F> + AbsorbFallback<F>,
+    IS: io::IStream,
+    Self: for<'b> Absorb<&'b mut Link>,
 {
-    async fn unwrap<'c, IS: io::IStream>(
-        &mut self,
-        store: &Store,
-        ctx: &'c mut unwrap::Context<F, IS>,
-    ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.join(store, &mut self.link)?;
-        let ctx = self.id.unwrap(store, ctx).await?;
-        ctx.skip(&mut self.seq_num)?
-            .absorb(<&mut Fallback<<Link as HasLink>::Rel>>::from(&mut self.ref_link))?
+    async fn unwrap(&mut self, sequence: &mut Unwrap<'a, F, Link>) -> Result<&mut Self> {
+        let mut seq_num = Uint64::default();
+        self.join(sequence.initial_state)?
+            .unwrap(&mut sequence.id)
+            .await?
+            .skip(&mut seq_num)?
+            .absorb(&mut sequence.ref_link)?
             .commit()?;
-        Ok(ctx)
+        sequence.seq_num = seq_num.inner();
+        Ok(self)
     }
 }

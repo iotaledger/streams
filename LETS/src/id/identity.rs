@@ -445,27 +445,27 @@ impl From<Identity> for Identifier {
 // }
 
 #[async_trait(?Send)]
-impl ContentSignSizeof for Identity {
-    async fn sign_sizeof<'c>(&self, ctx: &'c mut sizeof::Context) -> Result<&'c mut sizeof::Context> {
-        match self {
-            Self::Ed25519(Ed25519(secret)) => {
+impl ContentSignSizeof<Identity> for sizeof::Context {
+    async fn sign_sizeof(&mut self, signer: &Identity) -> Result<&mut Self> {
+        match signer {
+            Identity::Ed25519(Ed25519(secret)) => {
                 let hash = External::new(NBytes::new([0; 64]));
-                ctx.absorb(Uint8::new(0))?
+                self.absorb(Uint8::new(0))?
                     .commit()?
                     .squeeze(&hash)?
                     .ed25519(secret, &hash)?;
-                Ok(ctx)
+                Ok(self)
             }
 
-            Self::Psk(_) => Err(anyhow!("PSKs cannot be used as signature keys")),
+            Identity::Psk(_) => Err(anyhow!("PSKs cannot be used as signature keys")),
 
             #[cfg(feature = "did")]
-            Self::DID(did_impl) => match did_impl {
+            Identity::DID(did_impl) => match did_impl {
                 DID::PrivateKey(info) => {
                     let hash = [0; 64];
                     let key_fragment = info.key_fragment().as_bytes().to_vec();
                     let signature = [0; 64];
-                    ctx.absorb(Uint8::new(1))?
+                    self.absorb(Uint8::new(1))?
                         .absorb(&Bytes::new(key_fragment))?
                         .commit()?
                         .squeeze(External::new(&NBytes::new(&hash)))?
@@ -477,31 +477,31 @@ impl ContentSignSizeof for Identity {
 }
 
 #[async_trait(?Send)]
-impl<F, OS> ContentSign<F, OS> for Identity
+impl<F, OS> ContentSign<Identity> for wrap::Context<F, OS>
 where
     F: PRP,
     OS: io::OStream,
 {
-    async fn sign<'c>(&self, ctx: &'c mut wrap::Context<F, OS>) -> Result<&'c mut wrap::Context<F, OS>> {
-        match self {
-            Self::Ed25519(Ed25519(secret)) => {
+    async fn sign(&mut self, signer: &Identity) -> Result<&mut Self> {
+        match signer {
+            Identity::Ed25519(Ed25519(secret)) => {
                 let mut hash = External::new(NBytes::new([0; 64]));
-                ctx.absorb(Uint8::new(0))?
+                self.absorb(Uint8::new(0))?
                     .commit()?
                     .squeeze(&mut hash)?
                     .ed25519(secret, &hash)?;
-                Ok(ctx)
+                Ok(self)
             }
 
-            Self::Psk(_) => Err(anyhow!("PSKs cannot be used as signature keys")),
+            Identity::Psk(_) => Err(anyhow!("PSKs cannot be used as signature keys")),
 
             #[cfg(feature = "did")]
-            Self::DID(did_impl) => {
+            Identity::DID(did_impl) => {
                 match did_impl {
                     DID::PrivateKey(info) => {
                         let mut hash = [0; 64];
                         let key_fragment = info.key_fragment().as_bytes().to_vec();
-                        ctx.absorb(Uint8::new(1))?
+                        self.absorb(Uint8::new(1))?
                             .absorb(&Bytes::new(key_fragment))?
                             .commit()?
                             .squeeze(External::new(&mut NBytes::new(&mut hash)))?;
@@ -525,11 +525,11 @@ where
                                 .value()
                                 .as_str(),
                         )?;
-                        ctx.absorb(&NBytes::new(signature))
-                        // match self.sign_data(wrapper).await {
+                        self.absorb(&NBytes::new(signature))
+                        // match signer.sign_data(wrapper).await {
                         //     Ok(signature) => {
-                        //         ctx.absorb(&Bytes::new(decode_b58(signature.value().as_str())?))?;
-                        //         Ok(ctx)
+                        //         self.absorb(&Bytes::new(decode_b58(signature.value().as_str())?))?;
+                        //         Ok(self)
                         //     }
                         //     Err(e) => Err(anyhow!(
                         //         e
@@ -543,25 +543,20 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, IS> ContentDecrypt<F, IS> for Identity
+impl<F, IS> ContentDecrypt<Identity> for unwrap::Context<F, IS>
 where
     F: PRP,
     IS: io::IStream,
 {
-    async fn decrypt<'a>(
-        &self,
-        ctx: &'a mut unwrap::Context<F, IS>,
-        exchange_key: &'a [u8],
-        key: &'a mut [u8],
-    ) -> Result<&'a mut unwrap::Context<F, IS>> {
-        match self {
-            Self::Psk(_) => ctx
+    async fn decrypt(&mut self, recipient: &Identity, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
+        match recipient {
+            Identity::Psk(_) => self
                 .absorb(External::new(&NBytes::new(Psk::try_from(exchange_key)?)))?
                 .commit()?
                 .mask(&mut NBytes::new(key)),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introduction)
             _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(slice) => ctx.x25519(&x25519::SecretKey::from_bytes(slice), &mut NBytes::new(key)),
+                Ok(slice) => self.x25519(&x25519::SecretKey::from_bytes(slice), &mut NBytes::new(key)),
                 Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
             },
         }

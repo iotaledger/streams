@@ -172,13 +172,13 @@ where
     // let nonce = "TESTPRNGNONCE".as_bytes().to_vec();
 
     for &n in NS.iter() {
-        let ta = Bytes::new(prng.borrow_mut().sample_iter(Standard).take(n).collect());
+        let ta = Bytes::<Vec<u8>>::new(prng.borrow_mut().sample_iter(Standard).take(n).collect());
         // nonce.slice_mut().inc();
         let nta: NBytes<GenericArray<u8, U64>> = prng.gen();
         // nonce.slice_mut().inc();
         let enta: NBytes<GenericArray<u8, U64>> = prng.gen();
         // nonce.slice_mut().inc();
-        let tm = Bytes::new(prng.borrow_mut().sample_iter(Standard).take(n).collect());
+        let tm = Bytes::<Vec<u8>>::new(prng.borrow_mut().sample_iter(Standard).take(n).collect());
         // nonce.slice_mut().inc();
         let ntm: NBytes<GenericArray<u8, U64>> = prng.gen();
         // nonce.slice_mut().inc();
@@ -225,7 +225,7 @@ where
 
         let mut ta2 = Bytes::default();
         let mut nta2 = NBytes::<GenericArray<u8, U64>>::default();
-        let mut tm2 = Bytes::default();
+        let mut tm2 = Bytes::<Vec<u8>>::default();
         let mut ntm2 = NBytes::<GenericArray<u8, U64>>::default();
         let mut ents2 = External::new(NBytes::<GenericArray<u8, U64>>::default());
 

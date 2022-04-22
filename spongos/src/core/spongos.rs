@@ -394,7 +394,10 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Join two Spongos objects.
-    /// Joiner -- self -- object absorbs data squeezed from joinee.
+    ///
+    /// Joiner (self) absorbs data squeezed from joinee.
+    /// Be aware that before squeezing the joinee, this is commited, its outer state is zeroed, and a transformation is
+    /// performed. This means the joinee will be mutated. if this is not desirable, make sure to clone the joinee beforehand.
     pub(crate) fn join(&mut self, joinee: &mut Self) {
         joinee.commit();
         // Clear outer state, this is equivalent to having joinee initialized from inner state

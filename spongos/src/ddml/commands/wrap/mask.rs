@@ -93,8 +93,8 @@ impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<&'a NBytes<T>> for Contex
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<&'a Bytes> for Context<F, OS> {
-    fn mask(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
+impl<'a, F: PRP, OS: io::OStream, T> Mask<&'a Bytes<T>> for Context<F, OS> where T: AsRef<[u8]> {
+    fn mask(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
         self.mask(Size::new(bytes.len()))?;
         MaskContext::new(self).wrapn(bytes)?;
         Ok(self)

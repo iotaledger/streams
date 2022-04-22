@@ -1,14 +1,20 @@
+// Rust
+use alloc::vec::Vec;
+
+// 3rd-party
 use anyhow::{
     bail,
     Result,
 };
+use generic_array::ArrayLength;
 
+// IOTA
 use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
-use generic_array::ArrayLength;
 
+// Local
 use crate::{
     core::prp::PRP,
     ddml::{
@@ -95,8 +101,14 @@ impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<&'a mut NBytes<T>> for 
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut Bytes> for Context<F, IS> {
-    fn absorb(&mut self, bytes: &'a mut Bytes) -> Result<&mut Self> {
+impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut Bytes<Vec<u8>>> for Context<F, IS> {
+    fn absorb(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
+        self.absorb(&mut Bytes::new(bytes.inner_mut()))
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut Bytes<&mut Vec<u8>>> for Context<F, IS> {
+    fn absorb(&mut self, bytes: &'a mut Bytes<&mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.absorb(&mut size)?;
         bytes.resize(size.inner());

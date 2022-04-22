@@ -61,8 +61,8 @@ impl Skip<Size> for Context {
     }
 }
 
-impl<'a> Skip<&'a Bytes> for Context {
-    fn skip(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
+impl<'a, T> Skip<&'a Bytes<T>> for Context where T: AsRef<[u8]> {
+    fn skip(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
         let bytes_size = Size::new(bytes.len());
         self.skip(bytes_size)?;
         self.size += bytes.len();

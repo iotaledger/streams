@@ -43,11 +43,11 @@ impl<'a, F, Address> PreparsedMessage<'a, F, Address> {
 
     async fn unwrap<Content>(mut self, content: Content) -> Result<(Message<Address, Content>, Spongos<F>)>
     where
-        Content: for<'b> ContentUnwrap<'b, F, &'a [u8]>,
+        unwrap::Context<F, &'a [u8]>: ContentUnwrap<PCF<Content>>,
         F: PRP,
     {
         let mut pcf = PCF::<()>::default().with_content(content);
-        pcf.unwrap(&mut self.ctx).await?;
+        self.ctx.unwrap(&mut pcf).await?;
         // Commit Spongos and discard `self.ctx.stream` that should be empty
         let spongos = self.ctx.finalize();
         Ok((Message::new(self.hdf, pcf), spongos))

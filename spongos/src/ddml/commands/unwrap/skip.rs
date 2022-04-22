@@ -1,6 +1,11 @@
+// Rust
+use alloc::vec::Vec;
+
+// 3rd-party
 use generic_array::ArrayLength;
 use anyhow::Result;
 
+// Local
 use crate::{
     core::prp::PRP,
     ddml::{
@@ -82,8 +87,14 @@ impl<'a, F, T: AsMut<[u8]>, IS: io::IStream> Skip<&'a mut NBytes<T>> for Context
     }
 }
 
-impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes> for Context<F, IS> {
-    fn skip(&mut self, bytes: &'a mut Bytes) -> Result<&mut Self> {
+impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes<Vec<u8>>> for Context<F, IS> {
+    fn skip(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
+        self.skip(&mut Bytes::new(bytes.inner_mut()))
+    }
+}
+
+impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes<&'a mut Vec<u8>>> for Context<F, IS> {
+    fn skip(&mut self, bytes: &'a mut Bytes<&'a mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.skip(&mut size)?;
         bytes.resize(size.inner());

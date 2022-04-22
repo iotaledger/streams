@@ -63,8 +63,8 @@ impl Absorb<Size> for Context {
 }
 
 /// `bytes` has variable size thus the size is encoded before the content bytes.
-impl<'a> Absorb<&'a Bytes> for Context {
-    fn absorb(&mut self, bytes: &'a Bytes) -> Result<&mut Self> {
+impl<'a, T> Absorb<&'a Bytes<T>> for Context where T: AsRef<[u8]>  {
+    fn absorb(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
         let bytes_size = Size::new(bytes.len());
         self.absorb(bytes_size)?;
         self.size += bytes.len();

@@ -80,7 +80,10 @@ impl PCF<()> {
     }
 }
 
-impl<Content> Default for PCF<Content> where Content: Default {
+impl<Content> Default for PCF<Content>
+where
+    Content: Default,
+{
     fn default() -> Self {
         PCF::new_final_frame().with_content(Default::default())
     }
@@ -139,46 +142,54 @@ impl<Content> PCF<Content> {
 }
 
 #[async_trait(?Send)]
-impl<'a, Content> ContentSizeof<'a> for PCF<Content>
+impl<Content> ContentSizeof<PCF<Content>> for sizeof::Context
 where
-    Content: ContentSizeof<'a>,
+    sizeof::Context: ContentSizeof<Content>,
 {
-    async fn sizeof<'b>(&'a self, ctx: &'b mut sizeof::Context) -> Result<&'b mut sizeof::Context> {
-        ctx.absorb(Uint8::new(self.frame_type))?.skip(self.payload_frame_num)?;
-        self.content.sizeof(ctx).await?;
-        Ok(ctx)
+    async fn sizeof(&mut self, pcf: &PCF<Content>) -> Result<&mut Self> {
+        self.absorb(Uint8::new(pcf.frame_type))?
+            .skip(pcf.payload_frame_num)?
+            .sizeof(&pcf.content)
+            .await?;
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, OS, Content> ContentWrap<'a, F, OS> for PCF<Content>
+impl<F, OS, Content> ContentWrap<PCF<Content>> for wrap::Context<F, OS>
 where
     F: PRP,
     OS: io::OStream,
-    Content: ContentWrap<'a, F, OS>,
+    Self: ContentWrap<Content>,
 {
-    async fn wrap<'b>(&'a self, ctx: &'b mut wrap::Context<F, OS>) -> Result<&'b mut wrap::Context<F, OS>> {
-        ctx.absorb(Uint8::new(self.frame_type))?.skip(self.payload_frame_num)?;
-        self.content.wrap(ctx).await?;
-        Ok(ctx)
+    async fn wrap(&mut self, pcf: &mut PCF<Content>) -> Result<&mut Self>
+    where
+        Content: 'async_trait,
+    {
+        self.absorb(Uint8::new(pcf.frame_type))?
+            .skip(pcf.payload_frame_num)?
+            .wrap(&mut pcf.content)
+            .await?;
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, IS, Content> ContentUnwrap<'a, F, IS> for PCF<Content>
+impl<F, IS, Content> ContentUnwrap<PCF<Content>> for unwrap::Context<F, IS>
 where
     F: PRP,
     IS: io::IStream,
-    Content: ContentUnwrap<'a, F, IS>,
+    unwrap::Context<F, IS>: ContentUnwrap<Content>,
 {
-    async fn unwrap<'b>(&'a mut self, ctx: &'b mut unwrap::Context<F, IS>) -> Result<&'b mut unwrap::Context<F, IS>> {
+    async fn unwrap(&mut self, pcf: &mut PCF<Content>) -> Result<&mut Self> {
         let mut frame_type = Uint8::default();
-        ctx.absorb(&mut frame_type)?.skip(&mut self.payload_frame_num)?;
-        self.frame_type = frame_type.into();
+        self.absorb(&mut frame_type)?
+            .skip(&mut pcf.payload_frame_num)?
+            .unwrap(&mut pcf.content);
+        pcf.frame_type = frame_type.into();
         // TODO: REMOVE
-        // payload_frame_num_check(&self.payload_frame_num)?;
-        self.content.unwrap(ctx).await?;
-        Ok(ctx)
+        // payload_frame_num_check(&pcf.payload_frame_num)?;
+        Ok(self)
     }
 }
 
@@ -255,8 +266,7 @@ impl<F, OS> Skip<&mut PayloadFrameNum> for unwrap::Context<F, OS> {
     }
 }
 
-impl Skip<PayloadFrameNum> for sizeof::Context
-{
+impl Skip<PayloadFrameNum> for sizeof::Context {
     fn skip(&mut self, frame_num: PayloadFrameNum) -> Result<&mut Self> {
         // PayloadFrameNum validates bounds at creation, does not need to validate now
         self.skip(&NBytes::from(frame_num))

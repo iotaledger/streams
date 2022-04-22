@@ -1,10 +1,17 @@
+// Rust
+use alloc::vec::Vec;
+
+// 3rd-party
+use generic_array::ArrayLength;
+use anyhow::Result;
+
+// IOTA
 use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
-use generic_array::ArrayLength;
-use anyhow::Result;
 
+// Local
 use crate::{
     core::prp::PRP,
     ddml::{
@@ -89,8 +96,14 @@ impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Mask<&'a mut NBytes<T>> for Co
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes> for Context<F, IS> {
-    fn mask(&mut self, bytes: &'a mut Bytes) -> Result<&mut Self> {
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes<Vec<u8>>> for Context<F, IS> {
+    fn mask(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
+        self.mask(&mut Bytes::new(bytes.inner_mut()))
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes<&'a mut Vec<u8>>> for Context<F, IS> {
+    fn mask(&mut self, bytes: &'a mut Bytes<&'a mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.mask(&mut size)?;
         bytes.resize(size.inner());

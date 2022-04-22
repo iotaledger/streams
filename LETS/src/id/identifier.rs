@@ -85,16 +85,14 @@ use crate::{
         Psk,
         PskId,
     },
-    message::{
-        content::{
-            ContentSizeof,
-            ContentWrap,
-        },
+    message::content::{
         ContentDecrypt,
         ContentEncrypt,
         ContentEncryptSizeOf,
+        ContentSizeof,
         ContentUnwrap,
         ContentVerify,
+        ContentWrap,
     },
 };
 // TODO: REMOVE
@@ -217,117 +215,146 @@ impl core::fmt::Display for Identifier {
 }
 
 #[async_trait(?Send)]
-impl<'a> ContentSizeof<'a> for Identifier {
-    async fn sizeof<'b>(&'a self, ctx: &'b mut sizeof::Context) -> Result<&'b mut sizeof::Context> {
-        match self {
+impl ContentSizeof<Identifier> for sizeof::Context {
+    async fn sizeof(&mut self, identifier: &Identifier) -> Result<&mut Self> {
+        match identifier {
             Identifier::Ed25519(pk) => {
                 let oneof = Uint8::new(0);
-                ctx.mask(oneof)?.mask(pk)?;
-                Ok(ctx)
+                self.mask(oneof)?.mask(pk)?;
+                Ok(self)
             }
             Identifier::PskId(pskid) => {
                 let oneof = Uint8::new(1);
-                ctx.mask(oneof)?.mask(&NBytes::new(pskid))?;
-                Ok(ctx)
+                self.mask(oneof)?.mask(&NBytes::new(pskid))?;
+                Ok(self)
             }
             #[cfg(feature = "did")]
             Identifier::DID(did) => {
                 let oneof = Uint8::new(2);
-                ctx.mask(oneof)?.mask(&NBytes::new(did))?;
-                Ok(ctx)
+                self.mask(oneof)?.mask(&NBytes::new(did))?;
+                Ok(self)
             }
         }
     }
 }
 
+// TODO: REMOVE
+// #[async_trait(?Send)]
+// impl<F, OS> ContentWrap<Identifier> for wrap::Context<F, OS>
+// where
+//     F: PRP,
+//     OS: io::OStream,
+// {
+//     async fn wrap(&mut self, identifier: &'a mut wrap::Context<F, OS>) -> Result<&'a mut wrap::Context<F, OS>> {
+//         match &self {
+//             Identifier::Ed25519(pk) => {
+//                 let oneof = Uint8::new(0);
+//                 ctx.mask(oneof)?.mask(pk)?;
+//                 Ok(ctx)
+//             }
+//             Identifier::PskId(pskid) => {
+//                 let oneof = Uint8::new(1);
+//                 ctx.mask(oneof)?.mask(&NBytes::new(pskid))?;
+//                 Ok(ctx)
+//             }
+//             #[cfg(feature = "did")]
+//             Identifier::DID(did) => {
+//                 let oneof = Uint8::new(2);
+//                 ctx.mask(oneof)?.mask(&NBytes::new(did))?;
+//                 Ok(ctx)
+//             }
+//         }
+//     }
+// }
+
 #[async_trait(?Send)]
-impl<'a, F, OS> ContentWrap<'a, F, OS> for Identifier
+impl<F, OS> ContentWrap<Identifier> for wrap::Context<F, OS>
 where
     F: PRP,
     OS: io::OStream,
 {
-    async fn wrap<'b>(&'a self, ctx: &'b mut wrap::Context<F, OS>) -> Result<&'b mut wrap::Context<F, OS>> {
-        match self {
+    async fn wrap(&mut self, identifier: &mut Identifier) -> Result<&mut Self> {
+        match &identifier {
             Identifier::Ed25519(pk) => {
                 let oneof = Uint8::new(0);
-                ctx.mask(oneof)?.mask(pk)?;
-                Ok(ctx)
+                self.mask(oneof)?.mask(pk)?;
+                Ok(self)
             }
             Identifier::PskId(pskid) => {
                 let oneof = Uint8::new(1);
-                ctx.mask(oneof)?.mask(&NBytes::new(pskid))?;
-                Ok(ctx)
+                self.mask(oneof)?.mask(&NBytes::new(pskid))?;
+                Ok(self)
             }
             #[cfg(feature = "did")]
             Identifier::DID(did) => {
                 let oneof = Uint8::new(2);
-                ctx.mask(oneof)?.mask(&NBytes::new(did))?;
-                Ok(ctx)
+                self.mask(oneof)?.mask(&NBytes::new(did))?;
+                Ok(self)
             }
         }
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, IS> ContentUnwrap<'a, F, IS> for Identifier
+impl<F, IS> ContentUnwrap<Identifier> for unwrap::Context<F, IS>
 where
     F: PRP,
     IS: io::IStream,
 {
-    async fn unwrap<'b>(&'a mut self, ctx: &'b mut unwrap::Context<F, IS>) -> Result<&'b mut unwrap::Context<F, IS>> {
+    async fn unwrap(&mut self, identifier: &mut Identifier) -> Result<&mut Self> {
         let mut oneof = Uint8::new(0);
-        ctx.mask(&mut oneof)?;
+        self.mask(&mut oneof)?;
         match oneof.inner() {
             0 => {
                 let mut pk = ed25519::PublicKey::try_from_bytes([0; 32]).unwrap();
-                ctx.mask(&mut pk)?;
-                *self = Identifier::Ed25519(pk);
+                self.mask(&mut pk)?;
+                *identifier = Identifier::Ed25519(pk);
             }
             1 => {
                 let mut pskid = PskId::default();
-                ctx.mask(&mut NBytes::new(&mut pskid))?;
-                *self = Identifier::PskId(pskid);
+                self.mask(&mut NBytes::new(&mut pskid))?;
+                *identifier = Identifier::PskId(pskid);
             }
             #[cfg(feature = "did")]
             2 => {
                 let mut method_id = DIDMethodId::default();
-                ctx.mask(&mut NBytes::new(&mut method_id))?;
+                self.mask(&mut NBytes::new(&mut method_id))?;
                 let did = method_id.try_to_did()?;
-                *self = Identifier::DID(DIDMethodId::from_did_unsafe(&did));
+                *identifier = Identifier::DID(DIDMethodId::from_did_unsafe(&did));
             }
             o => return Err(anyhow!("{} is not a valid identifier option", o)),
         }
-        Ok(ctx)
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
-impl<F, IS> ContentVerify<F, IS> for Identifier
+impl<F, IS> ContentVerify<Identifier> for unwrap::Context<F, IS>
 where
     F: PRP,
     IS: io::IStream,
 {
-    async fn verify<'b>(&self, ctx: &'b mut unwrap::Context<F, IS>) -> Result<&'b mut unwrap::Context<F, IS>> {
+    async fn verify(&mut self, verifier: &Identifier) -> Result<&mut Self> {
         let mut oneof = Uint8::default();
-        ctx.absorb(&mut oneof)?;
+        self.absorb(&mut oneof)?;
         match oneof.inner() {
-            0 => match self {
-                Self::Ed25519(public_key) => {
+            0 => match verifier {
+                Identifier::Ed25519(public_key) => {
                     let mut hash = External::new(NBytes::new([0; 64]));
-                    ctx.commit()?.squeeze(&mut hash)?.ed25519(public_key, &hash)?;
-                    Ok(ctx)
+                    self.commit()?.squeeze(&mut hash)?.ed25519(public_key, &hash)?;
+                    Ok(self)
                 }
                 _ => Err(anyhow!("expected Identity type 'Ed25519', found something else")),
             },
             #[cfg(feature = "did")]
             1 => {
-                match self {
-                    Self::DID(method_id) => {
+                match verifier {
+                    Identifier::DID(method_id) => {
                         let mut hash = [0; 64];
-                        let mut fragment_bytes = Bytes::default();
+                        let mut fragment_bytes = Bytes::<Vec<u8>>::default();
                         let mut signature_bytes = NBytes::new([0; 64]);
 
-                        ctx.absorb(&mut fragment_bytes)? // TODO: MOVE FRAGMENT TO IDENTIFIER
+                        self.absorb(&mut fragment_bytes)? // TODO: MOVE FRAGMENT TO IDENTIFIER
                             .commit()?
                             .squeeze(External::new(&mut NBytes::new(&mut hash)))?
                             .absorb(&mut signature_bytes)?;
@@ -335,7 +362,7 @@ where
                         let fragment = format!(
                             "#{}",
                             fragment_bytes
-                                .as_str()
+                                .to_str()
                                 .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
                         );
 
@@ -348,10 +375,8 @@ where
                         let doc = DIDClient::new().await?.read_document(did_url.did()).await?;
                         doc.document
                             .verify_data(&data, &VerifierOptions::new())
-                            .map_err(|e| {
-                                anyhow!("There was an issue validating the signature: {}", e)
-                            })?;
-                        Ok(ctx)
+                            .map_err(|e| anyhow!("There was an issue validating the signature: {}", e))?;
+                        Ok(self)
                     }
                     _ => Err(anyhow!("expected Identity type 'DID', found something else")),
                 }
@@ -363,21 +388,16 @@ where
 
 // TODO: Find a better way to represent this logic without the need for an additional trait
 #[async_trait(?Send)]
-impl ContentEncryptSizeOf for Identifier {
-    async fn encrypt_sizeof<'a>(
-        &self,
-        ctx: &'a mut sizeof::Context,
-        exchange_key: &'a [u8],
-        key: &'a [u8],
-    ) -> Result<&'a mut sizeof::Context> {
-        match self {
-            Self::PskId(_) => ctx
+impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
+    async fn encrypt_sizeof(&mut self, recipient: &Identifier, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
+        match recipient {
+            Identifier::PskId(_) => self
                 .absorb(External::new(&NBytes::new(Psk::try_from(exchange_key)?)))?
                 .commit()?
                 .mask(&NBytes::new(key)),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
             _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &NBytes::new(key)),
+                Ok(slice) => self.x25519(&x25519::PublicKey::from(slice), &NBytes::new(key)),
                 Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
             },
         }
@@ -385,25 +405,20 @@ impl ContentEncryptSizeOf for Identifier {
 }
 
 #[async_trait(?Send)]
-impl<F, OS> ContentEncrypt<F, OS> for Identifier
+impl<F, OS> ContentEncrypt<Identifier> for wrap::Context<F, OS>
 where
     F: PRP,
     OS: io::OStream,
 {
-    async fn encrypt<'a>(
-        &self,
-        ctx: &'a mut wrap::Context<F, OS>,
-        exchange_key: &'a [u8],
-        key: &'a [u8],
-    ) -> Result<&'a mut wrap::Context<F, OS>> {
-        match self {
-            Self::PskId(_) => ctx
+    async fn encrypt(&mut self, recipient: &Identifier, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
+        match recipient {
+            Identifier::PskId(_) => self
                 .absorb(External::new(&NBytes::new(Psk::try_from(exchange_key)?)))?
                 .commit()?
                 .mask(&NBytes::new(key)),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
             _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(slice) => ctx.x25519(&x25519::PublicKey::from(slice), &NBytes::new(key)),
+                Ok(slice) => self.x25519(&x25519::PublicKey::from(slice), &NBytes::new(key)),
                 Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
             },
         }

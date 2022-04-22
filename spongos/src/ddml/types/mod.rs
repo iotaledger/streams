@@ -5,7 +5,7 @@ mod size;
 mod uint;
 
 pub use bytes::Bytes;
-pub(crate) use mac::Mac;
+pub use mac::Mac;
 pub use nbytes::NBytes;
 pub use size::Size;
 pub(crate) use uint::{

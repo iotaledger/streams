@@ -1,5 +1,5 @@
 //! `SignedPacket` message _wrapping_ and _unwrapping_.
-//! 
+//!
 //! `SignedPacket` messages contain a plain and a masked payload, signed by the sender.
 //!
 //! ```ddml
@@ -16,15 +16,53 @@
 //!     ed25519(hash)       u8      signature[64];
 //! }
 //! ```
-use core::marker::PhantomData;
+// Rust
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
 
+// 3rd-party
+use anyhow::Result;
+use async_trait::async_trait;
+
+// IOTA
 use crypto::signatures::ed25519;
 
-use lets::message::{
-    self,
-    HasLink,
+// Streams
+use spongos::{
+    ddml::{
+        commands::{
+            sizeof,
+            unwrap,
+            wrap,
+            Absorb,
+            Join,
+            Mask,
+        },
+        io,
+        types::Bytes,
+    },
+    Spongos,
+    PRP,
 };
-use spongos::sponge::prp::PRP;
+use LETS::{
+    id::{
+        Identifier,
+        Identity,
+    },
+    message::{
+        ContentSign,
+        ContentSignSizeof,
+        ContentSizeof,
+        ContentUnwrap,
+        ContentVerify,
+        ContentWrap,
+    },
+};
+
+// Local
+
 // use iota_streams_core::{
 //     async_trait,
 //     prelude::Box,
@@ -41,110 +79,76 @@ use spongos::sponge::prp::PRP;
 //     types::*,
 // };
 
-pub struct ContentWrap<'a, F, Link>
-where
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a,
-{
-    pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) public_payload: &'a Bytes,
-    pub(crate) masked_payload: &'a Bytes,
-    pub(crate) user_id: &'a UserIdentity<F>,
-    pub(crate) _phantom: PhantomData<(F, Link)>,
+struct Wrap<'a, F> {
+    initial_state: &'a mut Spongos<F>,
+    public_payload: &'a [u8],
+    masked_payload: &'a [u8],
+    user_id: &'a Identity,
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
-where
-    F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-{
-    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        ctx.join(&store, self.link)?;
-        self.user_id
-            .id
-            .sizeof(ctx)
+impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
+    async fn sizeof(&mut self, signed_packet: &Wrap<'a, F>) -> Result<&mut Self> {
+        self.sizeof(&signed_packet.user_id.to_identifier())
             .await?
-            .absorb(self.public_payload)?
-            .mask(self.masked_payload)?;
-        let ctx = self.user_id.sizeof(ctx).await?;
-        // TODO: Is both public and masked payloads are ok? Leave public only or masked only?
-        Ok(ctx)
+            .absorb(&Bytes::new(signed_packet.public_payload))?
+            .mask(&Bytes::new(signed_packet.masked_payload))?
+            .sign_sizeof(signed_packet.user_id)
+            .await?;
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+impl<'a, F, OS> ContentWrap<Wrap<'a, F>> for wrap::Context<F, OS>
 where
     F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    OS: io::OStream,
 {
-    async fn wrap<'c, OS: io::OStream>(
-        &self,
-        store: &Store,
-        ctx: &'c mut wrap::Context<F, OS>,
-    ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?;
-        self.user_id
-            .id
-            .wrap(store, ctx)
+    async fn wrap(&mut self, signed_packet: &mut Wrap<'a, F>) -> Result<&mut Self> {
+        self.join(signed_packet.initial_state)?
+            .wrap(&mut signed_packet.user_id.to_identifier())
             .await?
-            .absorb(self.public_payload)?
-            .mask(self.masked_payload)?;
-        let ctx = self.user_id.sign(ctx).await?;
-        Ok(ctx)
+            .absorb(&Bytes::new(signed_packet.public_payload))?
+            .mask(&Bytes::new(signed_packet.masked_payload))?
+            .sign(signed_packet.user_id)
+            .await?;
+        Ok(self)
     }
 }
 
-pub struct ContentUnwrap<F, Link: HasLink> {
-    pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) public_payload: Bytes,
-    pub(crate) masked_payload: Bytes,
-    pub(crate) user_id: UserIdentity<F>,
-    pub(crate) _phantom: PhantomData<(F, Link)>,
+pub struct Unwrap<'a, F> {
+    initial_state: &'a mut Spongos<F>,
+    public_payload: Vec<u8>,
+    masked_payload: Vec<u8>,
+    user_id: Identifier,
 }
 
-impl<F, Link> Default for ContentUnwrap<F, Link>
-where
-    Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
-{
-    fn default() -> Self {
+impl<'a, F> Unwrap<'a, F> {
+    fn new(initial_state: &'a mut Spongos<F>) -> Self {
         Self {
-            link: <<Link as HasLink>::Rel as Default>::default(),
-            public_payload: Bytes::default(),
-            masked_payload: Bytes::default(),
-            user_id: UserIdentity::default(),
-            _phantom: PhantomData,
+            initial_state,
+            public_payload: Default::default(),
+            masked_payload: Default::default(),
+            user_id: Identifier::default(),
         }
     }
 }
 
 #[async_trait(?Send)]
-impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
+impl<'a, F, IS> ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
 where
     F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    IS: io::IStream,
 {
-    async fn unwrap<'c, IS: io::IStream>(
-        &mut self,
-        store: &Store,
-        ctx: &'c mut unwrap::Context<F, IS>,
-    ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.join(store, &mut self.link)?;
-        self.user_id
-            .id
-            .unwrap(store, ctx)
+    async fn unwrap(&mut self, signed_packet: &mut Unwrap<'a, F>) -> Result<&mut Self> {
+        self.join(signed_packet.initial_state)?
+            .unwrap(&mut signed_packet.user_id)
             .await?
-            .absorb(&mut self.public_payload)?
-            .mask(&mut self.masked_payload)?;
-        let ctx = self.user_id.verify(ctx).await?;
-        Ok(ctx)
+            .absorb(&mut Bytes::new(&mut signed_packet.public_payload))?
+            .mask(&mut Bytes::new(&mut signed_packet.masked_payload))?
+            .verify(&signed_packet.user_id)
+            .await?;
+        Ok(self)
     }
 }

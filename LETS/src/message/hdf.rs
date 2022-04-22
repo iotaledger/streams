@@ -218,82 +218,118 @@ impl<Address> HDF<Address> {
 
 // TODO: REVIEW IF WE CAN GET RID OF THE MULTIPLE BOUNDS BY USING for <'a>
 #[async_trait(?Send)]
-impl<'a, Link> ContentSizeof<'a> for HDF<Link>
+impl<Link> ContentSizeof<HDF<Link>> for sizeof::Context
 where
     // sizeof::Context<F>: Absorb<Link> + Absorb<Uint8> +
     // Absorb<External<Link>>,
-    sizeof::Context: Absorb<&'a Link> + Absorb<External<&'a Link>>,
-    Self: 'a,
+    sizeof::Context: for<'a> Absorb<&'a Link> + for<'a> Absorb<External<&'a Link>>,
 {
-    async fn sizeof<'b>(&'a self, ctx: &'b mut sizeof::Context) -> Result<&'b mut sizeof::Context> {
+    async fn sizeof(&mut self, hdf: &HDF<Link>) -> Result<&mut Self> {
         let content_type_and_payload_length = NBytes::<[u8; 2]>::default();
         let payload_frame_count = NBytes::<[u8; 3]>::default();
-        ctx.absorb(Uint8::new(self.encoding))?
-            .absorb(Uint8::new(self.version))?
+        self.absorb(Uint8::new(hdf.encoding))?
+            .absorb(Uint8::new(hdf.version))?
             .skip(&content_type_and_payload_length)?
-            .absorb(External::new(Uint8::new(self.content_type << 4)))? // ?
-            .absorb(Uint8::new(self.frame_type))?
+            .absorb(External::new(Uint8::new(hdf.content_type << 4)))? // ?
+            .absorb(Uint8::new(hdf.frame_type))?
             .skip(&payload_frame_count)?
-            .absorb(External::new(&self.address))?
-            .absorb(&self.previous_msg_address)?
-            .skip(Uint64::new(self.seq_num))?;
+            .absorb(External::new(&hdf.address))?
+            .absorb(&hdf.previous_msg_address)?
+            .skip(Uint64::new(hdf.seq_num))?
+            .sizeof(&hdf.sender_id)
+            .await?;
 
-        self.sender_id.sizeof(ctx).await?;
-
-        Ok(ctx)
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, OS, Link> ContentWrap<'a, F, OS> for HDF<Link>
+impl<F, OS, Link> ContentWrap<HDF<Link>> for wrap::Context<F, OS>
 where
     F: PRP,
     OS: io::OStream,
-    Self: 'a,
-    wrap::Context<F, OS>: Absorb<&'a Link> + Absorb<External<&'a Link>>,
-    sizeof::Context: Absorb<&'a Link> + Absorb<External<&'a Link>>,
+    for<'a> Self: Absorb<&'a Link> + Absorb<External<&'a Link>>,
 {
-    async fn wrap<'b>(&'a self, ctx: &'b mut wrap::Context<F, OS>) -> Result<&'b mut wrap::Context<F, OS>> {
+    async fn wrap(&mut self, hdf: &mut HDF<Link>) -> Result<&mut Self> {
         let content_type_and_payload_length = {
             let mut nbytes = NBytes::<[u8; 2]>::default();
-            nbytes[0] = (self.content_type << 4) | ((self.payload_length >> 8) as u8 & 0b0011);
-            nbytes[1] = self.payload_length as u8;
+            nbytes[0] = (hdf.content_type << 4) | ((hdf.payload_length >> 8) as u8 & 0b0011);
+            nbytes[1] = hdf.payload_length as u8;
             nbytes
         };
         let payload_frame_count = {
             let mut nbytes = NBytes::<[u8; 3]>::default();
-            let x = self.payload_frame_count.to_be_bytes();
+            let x = hdf.payload_frame_count.to_be_bytes();
             nbytes[0] = x[1] & 0b00111111;
             nbytes[1] = x[2];
             nbytes[2] = x[3];
             nbytes
         };
 
-        ctx.absorb(Uint8::new(self.encoding))?
-            .absorb(Uint8::new(self.version))?
+        self.absorb(Uint8::new(hdf.encoding))?
+            .absorb(Uint8::new(hdf.version))?
             .skip(&content_type_and_payload_length)?
-            .absorb(External::new(Uint8::new(self.content_type << 4)))?
-            .absorb(Uint8::new(self.frame_type))?
+            .absorb(External::new(Uint8::new(hdf.content_type << 4)))?
+            .absorb(Uint8::new(hdf.frame_type))?
             .skip(&payload_frame_count)?
-            .absorb(External::new(&self.address))?
-            .absorb(&self.previous_msg_address)?
-            .skip(Uint64::new(self.seq_num))?;
+            .absorb(External::new(&hdf.address))?
+            .absorb(&hdf.previous_msg_address)?
+            .skip(Uint64::new(hdf.seq_num))?
+            .wrap(&mut hdf.sender_id)
+            .await?;
 
-        self.sender_id.wrap(ctx).await?;
-
-        Ok(ctx)
+        Ok(self)
     }
 }
 
+// #[async_trait(?Send)]
+// impl<F, OS, Link> ContentWrap<HDF<Link>> for wrap::Context<F, OS>
+// where
+//     F: PRP,
+//     OS: io::OStream,
+//     wrap::Context<F, OS>: for<'a> Absorb<&'a Link> + for <'a> Absorb<External<&'a Link>>,
+//     sizeof::Context: for<'a> Absorb<&'a Link> + for <'a> Absorb<External<&'a Link>>,
+// {
+//     async fn wrap<'b>(&mut self, ctx: &'b mut wrap::Context<F, OS>) -> Result<&'b mut wrap::Context<F, OS>> {
+//         let content_type_and_payload_length = {
+//             let mut nbytes = NBytes::<[u8; 2]>::default();
+//             nbytes[0] = (self.content_type << 4) | ((self.payload_length >> 8) as u8 & 0b0011);
+//             nbytes[1] = self.payload_length as u8;
+//             nbytes
+//         };
+//         let payload_frame_count = {
+//             let mut nbytes = NBytes::<[u8; 3]>::default();
+//             let x = self.payload_frame_count.to_be_bytes();
+//             nbytes[0] = x[1] & 0b00111111;
+//             nbytes[1] = x[2];
+//             nbytes[2] = x[3];
+//             nbytes
+//         };
+
+//         ctx.absorb(Uint8::new(self.encoding))?
+//             .absorb(Uint8::new(self.version))?
+//             .skip(&content_type_and_payload_length)?
+//             .absorb(External::new(Uint8::new(self.content_type << 4)))?
+//             .absorb(Uint8::new(self.frame_type))?
+//             .skip(&payload_frame_count)?
+//             .absorb(External::new(&self.address))?
+//             .absorb(&self.previous_msg_address)?
+//             .skip(Uint64::new(self.seq_num))?;
+
+//         self.sender_id.wrap(ctx).await?;
+
+//         Ok(ctx)
+//     }
+// }
+
 #[async_trait(?Send)]
-impl<'a, F, IS, Link> ContentUnwrap<'a, F, IS> for HDF<Link>
+impl<F, IS, Link> ContentUnwrap<HDF<Link>> for unwrap::Context<F, IS>
 where
     F: PRP,
     IS: io::IStream,
-    unwrap::Context<F, IS>: Absorb<External<&'a Link>> + Absorb<&'a mut Link>,
-    Self: 'a,
+    unwrap::Context<F, IS>: for<'a> Absorb<External<&'a Link>> + for<'a> Absorb<&'a mut Link>,
 {
-    async fn unwrap<'b>(&'a mut self, mut ctx: &'b mut unwrap::Context<F, IS>) -> Result<&'b mut unwrap::Context<F, IS>> {
+    async fn unwrap(&mut self, mut hdf: &mut HDF<Link>) -> Result<&mut Self> {
         let mut encoding = Uint8::default();
         let mut version = Uint8::default();
         // [content_type x 4][reserved x 2][payload_length x 2]
@@ -303,7 +339,7 @@ where
         let mut payload_frame_count_bytes = NBytes::<[u8; 3]>::default();
         let mut seq_num = Uint64::default();
 
-        ctx.absorb(&mut encoding)?
+        self.absorb(&mut encoding)?
             .absorb(&mut version)?
             .guard(
                 version.inner() == STREAMS_1_VER,
@@ -328,28 +364,27 @@ where
                 0 == payload_frame_count_bytes[0] & 0b1100,
                 anyhow!("first 2 bits of payload-frame-count are reserved"),
             )?
-            .absorb(External::new(&self.address))?
-            .absorb(&mut self.previous_msg_address)?
-            .skip(&mut seq_num)?;
+            .absorb(External::new(&hdf.address))?
+            .absorb(&mut hdf.previous_msg_address)?
+            .skip(&mut seq_num)?
+            .unwrap(&mut hdf.sender_id)
+            .await?;
 
-        self.sender_id = Identifier::default();
-        self.sender_id.unwrap(ctx).await?;
-
-        self.encoding = encoding.inner();
-        self.version = version.inner();
-        self.content_type = content_type_and_payload_length[0] >> 4;
-        self.payload_length =
+        hdf.encoding = encoding.inner();
+        hdf.version = version.inner();
+        hdf.content_type = content_type_and_payload_length[0] >> 4;
+        hdf.payload_length =
             (((content_type_and_payload_length[0] & 0b0011) as u16) << 8) | (content_type_and_payload_length[1] as u16);
-        self.frame_type = frame_type.inner();
+        hdf.frame_type = frame_type.inner();
 
         let mut x = [0_u8; 4];
         x[1] = payload_frame_count_bytes[0];
         x[2] = payload_frame_count_bytes[1];
         x[3] = payload_frame_count_bytes[2];
-        self.payload_frame_count = u32::from_be_bytes(x);
+        hdf.payload_frame_count = u32::from_be_bytes(x);
 
-        self.seq_num = seq_num.inner();
+        hdf.seq_num = seq_num.inner();
 
-        Ok(ctx)
+        Ok(self)
     }
 }

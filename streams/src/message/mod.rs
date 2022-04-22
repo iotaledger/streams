@@ -15,11 +15,12 @@ mod tagged_packet;
 /// Subscribe message.
 mod subscribe;
 
+/// Unsubscribe message.
+mod unsubscribe;
+
 /// Sequence message.
 mod sequence;
 
-/// Unsubscribe message.
-mod unsubscribe;
 
 // TODO: WHAT IS THIS DOING HERE?
 /// Announcement Message Type

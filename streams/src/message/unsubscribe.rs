@@ -20,15 +20,39 @@
 //! * `hash` -- hash value to be signed.
 //!
 //! * `sig` -- message signature generated with the senders private key.
-use core::marker::PhantomData;
+// Rust
+use alloc::boxed::Box;
 
+// 3rd-party
+use async_trait::async_trait;
+use anyhow::Result;
+
+// IOTA
 use crypto::signatures::ed25519;
 
-use lets::message::{
-    self,
-    HasLink,
+// Streams
+use spongos::{
+    ddml::{
+        commands::{
+            sizeof,
+            wrap, unwrap, Commit, Join,
+        },
+        io,
+    },
+    Spongos,
+    PRP,
 };
-use spongos::sponge::prp::PRP;
+use LETS::{
+    id::{Identity, Identifier},
+    message::{
+        ContentSizeof,
+        ContentWrap,
+        ContentUnwrap, ContentSignSizeof, ContentSign, ContentVerify,
+    },
+};
+
+// Local
+
 // use iota_streams_core::{
 //     async_trait,
 //     prelude::Box,
@@ -45,80 +69,58 @@ use spongos::sponge::prp::PRP;
 //     types::*,
 // };
 
-pub struct ContentWrap<'a, F, Link: HasLink> {
-    pub(crate) link: &'a <Link as HasLink>::Rel,
-    pub(crate) subscriber_id: &'a UserIdentity<F>,
-    pub(crate) _phantom: PhantomData<(F, Link)>,
+pub struct Wrap<'a, F> {
+    initial_state: &'a mut Spongos<F>,
+    subscriber_id: &'a Identity,
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
-where
-    F: PRP,
-    Link: HasLink,
-    Link::Rel: 'a + Eq + SkipFallback<F>,
-{
-    async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-        ctx.join(&store, self.link)?;
-        self.subscriber_id.id.sizeof(ctx).await?.commit()?;
-        let ctx = self.subscriber_id.sizeof(ctx).await?;
-        Ok(ctx)
+impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
+    async fn sizeof(&mut self, unsubscription: &Wrap<'a, F>) -> Result<&mut Self> {
+        self.sizeof(&unsubscription.subscriber_id.to_identifier())
+            .await?
+            .commit()?
+            .sign_sizeof(unsubscription.subscriber_id)
+            .await?;
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
+impl<'a, F, OS> ContentWrap<Wrap<'a, F>> for wrap::Context<F, OS>
 where
     F: PRP,
-    Link: HasLink,
-    Link::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, Link::Rel>,
+    OS: io::OStream,
 {
-    async fn wrap<'c, OS: io::OStream>(
-        &self,
-        store: &Store,
-        ctx: &'c mut wrap::Context<F, OS>,
-    ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.join(store, self.link)?;
-        self.subscriber_id.id.wrap(store, ctx).await?.commit()?;
-        let ctx = self.subscriber_id.sign(ctx).await?;
-        Ok(ctx)
+    async fn wrap(&mut self, unsubscription: &mut Wrap<'a, F>) -> Result<&mut Self> {
+        self.join(unsubscription.initial_state)?
+            .wrap(&mut unsubscription.subscriber_id.to_identifier())
+            .await?
+            .commit()?
+            .sign(unsubscription.subscriber_id)
+            .await?;
+        Ok(self)
     }
 }
 
-pub struct ContentUnwrap<F, Link: HasLink> {
-    pub(crate) link: <Link as HasLink>::Rel,
-    pub(crate) subscriber_id: UserIdentity<F>,
-    _phantom: PhantomData<(F, Link)>,
-}
-
-impl<F, Link: HasLink> Default for ContentUnwrap<F, Link> {
-    fn default() -> Self {
-        Self {
-            link: Default::default(),
-            subscriber_id: UserIdentity::default(),
-            _phantom: Default::default(),
-        }
-    }
+pub struct Unwrap<'a, F> {
+    initial_state: &'a mut Spongos<F>,
+    subscriber_id: Identifier,
 }
 
 #[async_trait(?Send)]
-impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<F, Link>
+impl<'a, F, IS> ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
 where
     F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    IS: io::IStream,
 {
-    async fn unwrap<'c, IS: io::IStream>(
-        &mut self,
-        store: &Store,
-        ctx: &'c mut unwrap::Context<F, IS>,
-    ) -> Result<&'c mut unwrap::Context<F, IS>> {
-        ctx.join(store, &mut self.link)?;
-        self.subscriber_id.id.unwrap(store, ctx).await?.commit()?;
-        self.subscriber_id.verify(ctx).await?;
-        Ok(ctx)
+    async fn unwrap(&mut self, unsubscription: &mut Unwrap<'a, F>) -> Result<&mut Self> {
+        self.join(unsubscription.initial_state)?
+            .unwrap(&mut unsubscription.subscriber_id)
+            .await?
+            .commit()?
+            .verify(&unsubscription.subscriber_id)
+            .await?;
+        Ok(self)
     }
 }
