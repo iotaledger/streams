@@ -21,8 +21,10 @@ use iota_streams::{
     ddml::types::*,
 };
 
-use iota_streams::app_channels::api::tangle::futures::TryStreamExt;
-use iota_streams::app::message::HasLink;
+use iota_streams::{
+    app::message::HasLink,
+    app_channels::api::tangle::futures::TryStreamExt,
+};
 
 use super::utils;
 
@@ -126,18 +128,17 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
 
     println!("\nSubscriber B fetching transactions...");
     let mut count = 0;
-    
+
     // This verifies correct
     count = utils::fetch_next_messages(&mut subscriberB).await?;
     assert!(count == 1);
 
     // This breaks
     // assert!(utils::fetch_next_messages(&mut subscriberB).await? == 1);
-    
+
     println!("\nSubscriber C fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberC).await?;
     assert!(count == 1);
-
 
     println!("\nTagged packet 1 - SubscriberB (subscriber B does NOT have Write permission)");
     let previous_msg_link_wrong = {
@@ -154,7 +155,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     assert!(count == 0);
     println!("\nSubscriber A fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberA).await?;
-    assert!(count == 0); 
+    assert!(count == 0);
     println!("\nSubscriber C fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberC).await?;
     assert!(count == 0);
@@ -176,7 +177,7 @@ pub async fn example<T: Transport>(transport: T, channel_impl: ChannelType, seed
     count = utils::fetch_next_messages(&mut author).await?; // We fetched manually
     assert!(count == 0);
     println!("\nSubscriber B fetching transactions...");
-    count = utils::fetch_next_messages(&mut subscriberB).await?; 
+    count = utils::fetch_next_messages(&mut subscriberB).await?;
     assert!(count == 0); // Sub B send his own on this address and now has a faulty state
     println!("\nSubscriber C fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberC).await?;

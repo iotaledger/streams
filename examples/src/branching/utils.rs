@@ -18,7 +18,7 @@ where
     let mut count = 0;
     let mut msgs = streamable.messages();
     while let Some(msg) = msgs.try_next().await? {
-        count+=1;
+        count += 1;
         println!("Message exists at {}... ", &msg.link.rel());
     }
     Ok(count)
