@@ -24,7 +24,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
-    
+
     let mut author = UserBuilder::new()
         .with_identity(UserIdentity::new(seed))
         .with_transport(transport.clone())
@@ -211,10 +211,10 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
 
     println!("\nAuthor fetching transactions...");
     count = utils::fetch_next_messages(&mut author).await?;
-    assert!(count == 1); 
+    assert!(count == 1);
     println!("\nSubscriber B fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberB).await?;
-    assert!(count == 1); 
+    assert!(count == 1);
     println!("\nSubscriber C fetching transactions...");
     count = utils::fetch_next_messages(&mut subscriberC).await?;
     assert!(count == 1);
