@@ -142,7 +142,7 @@ impl<Trans> User<Trans> {
     ///
     ///   # Arguments
     ///   * `pskid` - An identifier representing a pre shared key
-    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+    pub fn remove_psk(&mut self, pskid: PskId) {
         self.user.remove_psk(pskid)
     }
 
@@ -273,11 +273,18 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `keys`  - Iterable of [`Identifier`] to be included in message
-    pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
+    ///  * `psks`  - Iterable of [`PskId`] to be included in message
+    pub async fn send_keyload<'a, I, P>(
+        &mut self,
+        link_to: &Address,
+        keys: I,
+        pskids: P,
+    ) -> Result<(Address, Option<Address>)>
     where
         I: IntoIterator<Item = &'a Identifier>,
+        P: IntoIterator<Item = &'a PskId>,
     {
-        let msg = self.user.share_keyload(link_to, keys).await?;
+        let msg = self.user.share_keyload(link_to, keys, pskids).await?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
 

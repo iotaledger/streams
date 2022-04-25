@@ -110,8 +110,9 @@ pub async fn example(transport: Client) -> Result<()> {
         .with_transport(transport.clone())
         .build()?;
     let mut subscriberC = UserBuilder::new()
-        .with_identity(UserIdentity::new_from_psk(pskid, psk))
+        .with_identity(UserIdentity::new("SUBSCRIBERC9SEED"))
         .with_transport(transport.clone())
+        .with_psk(pskid, psk)
         .build()?;
 
     let subA_xkey = subscriberA.key_exchange_public_key()?;

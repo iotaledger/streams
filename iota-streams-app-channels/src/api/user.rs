@@ -26,13 +26,15 @@ use iota_streams_core::{
         string::ToString,
         typenum::U32,
         Box,
+        HashMap,
         Vec,
     },
     prng,
     psk::{
-        self,
         Psk,
         PskId,
+        PskIdSize,
+        PskSize,
     },
     sponge::prp::{
         Inner,
@@ -94,6 +96,9 @@ where
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     pub(crate) key_store: KeyStore<Link::Rel>,
 
+    /// Mapping of trusted pre shared keys and identifiers
+    pub(crate) psk_store: HashMap<PskId, Psk>,
+
     /// Author's public Id.
     pub(crate) author_id: Option<Identifier>,
 
@@ -127,6 +132,7 @@ where
             _phantom: PhantomData,
             user_id: UserIdentity::default(),
             key_store: KeyStore::default(),
+            psk_store: HashMap::new(),
             author_id: None,
             author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             link_gen: LG::default(),
@@ -148,21 +154,21 @@ where
     LS: LinkStore<F, Link::Rel> + Default,
 {
     /// Create a new User, storing [`UserIdentity`].
-    pub fn new(user_id: UserIdentity<F>) -> Self {
+    pub fn new(user_id: UserIdentity<F>, psks: &[(PskId, Psk)]) -> Self {
         // TODO: Remove different channel types, encoding and uniform payload
         let message_encoding = ENCODING.as_bytes().to_vec();
 
-        let mut key_store = KeyStore::default();
-        // If User is using a Psk as their base Identifier, store the Psk
-        if let Identifier::PskId(pskid) = &user_id.id {
-            // Unwraps shouldn't fail here due to the user containing a PskId type
-            key_store.insert_psk((*pskid).into(), user_id.psk().unwrap()).unwrap();
-        }
+        let mut psk_store = HashMap::new();
+        // Store any provided Psks
+        psks.iter().for_each(|(pskid, psk)| {
+            psk_store.insert(*pskid, *psk);
+        });
 
         Self {
             _phantom: PhantomData,
             user_id,
-            key_store,
+            key_store: KeyStore::default(),
+            psk_store,
             author_id: None,
             author_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             link_gen: LG::default(),
@@ -183,14 +189,9 @@ where
         self.link_gen.gen(&self.id().clone(), channel_idx);
         let appinst = self.link_gen.get();
 
-        match self.id() {
-            Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
-            _ => {
-                self.key_store
-                    .insert_cursor(*self.id(), Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
-                self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
-            }
-        }
+        self.key_store
+            .insert_cursor(*self.id(), Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
+        self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
         self.author_id = Some(*self.id());
         self.appinst = Some(appinst);
         Ok(())
@@ -297,18 +298,11 @@ where
         // At the moment the Author is free to choose any address, not tied to PK.
 
         let cursor = Cursor::new_at(link.rel().clone(), 0, INIT_MESSAGE_NUM);
-        match &author_id.id {
-            Identifier::PskId(_pskid) => err(UnsupportedIdentifier)?,
-            _ => {
-                self.key_store.insert_cursor(author_id.id, cursor.clone());
-                self.key_store.insert_keys(author_id.id, author_ke_pk)?;
-            }
-        };
+        self.key_store.insert_cursor(author_id.id, cursor.clone());
+        self.key_store.insert_keys(author_id.id, author_ke_pk)?;
 
-        if !self.id().is_psk() {
-            self.key_store.insert_cursor(*self.id(), cursor);
-            self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
-        };
+        self.key_store.insert_cursor(*self.id(), cursor);
+        self.key_store.insert_keys(*self.id(), self.user_id.ke_kp()?.1)?;
 
         // Reset link_gen
         self.link_gen.reset(link.clone());
@@ -453,6 +447,7 @@ where
         header: HDF<Link>,
         link_to: &'a Link::Rel,
         keys: Vec<(Identifier, Vec<u8>)>,
+        psks: Vec<(PskId, Psk)>,
     ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>> {
         let nonce = NBytes::from(prng::random_nonce());
         let key = NBytes::from(prng::random_key());
@@ -461,19 +456,22 @@ where
             nonce,
             key,
             keys,
+            psks,
             user_id: &self.user_id,
             _phantom: PhantomData,
         };
         Ok(PreparedMessage::new(header, content))
     }
 
-    pub fn prepare_keyload<'a, 'b, I>(
+    pub fn prepare_keyload<'a, 'b, I, P>(
         &'a self,
         link_to: &'a Link,
         keys: I,
+        pskids: P,
     ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>>
     where
         I: IntoIterator<Item = &'b Identifier>,
+        P: IntoIterator<Item = &'b PskId>,
     {
         match self.seq_no() {
             Some(seq_no) => {
@@ -484,11 +482,21 @@ where
                     .with_payload_length(1)?
                     .with_seq_num(msg_cursor.seq_no)
                     .with_identifier(self.id());
+                let psks = self.filter_psks(pskids);
                 let filtered_keys = self.key_store.filter(keys);
-                self.do_prepare_keyload(header, link_to.rel(), filtered_keys)
+                self.do_prepare_keyload(header, link_to.rel(), filtered_keys, psks)
             }
             None => err!(SeqNumRetrievalFailure),
         }
+    }
+
+    fn filter_psks<'a, P>(&self, ids: P) -> Vec<(PskId, Psk)>
+    where
+        P: IntoIterator<Item = &'a PskId>,
+    {
+        ids.into_iter()
+            .filter_map(|id| self.psk_store.get(id).map(|psk| (*id, *psk)))
+            .collect()
     }
 
     pub fn prepare_keyload_for_everyone<'a>(
@@ -505,7 +513,8 @@ where
                     .with_seq_num(msg_cursor.seq_no)
                     .with_identifier(self.id());
                 let keys = self.key_store.exchange_keys();
-                self.do_prepare_keyload(header, link_to.rel(), keys)
+                let psks = self.psk_store.iter().map(|(pskid, psk)| (*pskid, *psk)).collect();
+                self.do_prepare_keyload(header, link_to.rel(), keys, psks)
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -513,11 +522,19 @@ where
 
     /// Create keyload message with a new session key shared with recipients
     /// identified by pre-shared key IDs and by Ed25519 public keys.
-    pub async fn share_keyload<'a, I>(&mut self, link_to: &Link, keys: I) -> Result<WrappedMessage<F, Link>>
+    pub async fn share_keyload<'a, I, P>(
+        &mut self,
+        link_to: &Link,
+        keys: I,
+        pskids: P,
+    ) -> Result<WrappedMessage<F, Link>>
     where
         I: IntoIterator<Item = &'a Identifier>,
+        P: IntoIterator<Item = &'a PskId>,
     {
-        self.prepare_keyload(link_to, keys)?.wrap(&self.link_store).await
+        self.prepare_keyload(link_to, keys, pskids)?
+            .wrap(&self.link_store)
+            .await
     }
 
     /// Create keyload message with a new session key shared with all Subscribers
@@ -529,11 +546,10 @@ where
     pub async fn unwrap_keyload<'a>(
         &self,
         preparsed: PreparsedMessage<'_, F, Link>,
-        keys_lookup: KeysLookup<'a, F, Link>,
+        keys_lookup: &'a HashMap<PskId, Psk>,
         own_keys: OwnKeys<'a, F>,
         author_id: UserIdentity<F>,
-    ) -> Result<UnwrappedMessage<F, Link, keyload::ContentUnwrap<F, Link, KeysLookup<'a, F, Link>, OwnKeys<'a, F>>>>
-    {
+    ) -> Result<UnwrappedMessage<F, Link, keyload::ContentUnwrap<'a, F, Link, OwnKeys<'a, F>>>> {
         self.ensure_appinst(&preparsed)?;
         let content = keyload::ContentUnwrap::new(keys_lookup, own_keys, author_id);
         preparsed.unwrap(&self.link_store, content).await
@@ -551,14 +567,13 @@ where
                 let prev_link = Link::try_from_bytes(&preparsed.header.previous_msg_link.0)?;
                 // We need to borrow self.key_store, self.sig_kp and self.ke_kp at this scope
                 // to leverage https://doc.rust-lang.org/nomicon/borrow-splitting.html
-                let keys_lookup = KeysLookup::new(&self.key_store);
                 let own_keys = OwnKeys(&self.user_id);
 
                 let mut author_identity = UserIdentity::default();
                 author_identity.id = *author_id;
 
                 let unwrapped = self
-                    .unwrap_keyload(preparsed, keys_lookup, own_keys, author_identity)
+                    .unwrap_keyload(preparsed, &self.psk_store, own_keys, author_identity)
                     .await?;
 
                 // Process a generic message containing the access right bool, also return the list of identifiers
@@ -581,7 +596,7 @@ where
                 // Store any unknown publishers
                 if let Some(appinst) = &self.appinst {
                     for identifier in keys {
-                        if !identifier.is_psk() && !self.key_store.contains_subscriber(&identifier) {
+                        if !self.key_store.contains_subscriber(&identifier) {
                             // Store at state 2 since 0 and 1 are reserved states
                             self.key_store
                                 .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
@@ -602,9 +617,6 @@ where
         public_payload: &'a Bytes,
         masked_payload: &'a Bytes,
     ) -> Result<PreparedMessage<F, Link, signed_packet::ContentWrap<'a, F, Link>>> {
-        if self.id().is_psk() {
-            return err(MessageBuildFailure);
-        }
         match self.seq_no() {
             Some(seq_no) => {
                 let msg_cursor = self.gen_link(self.id(), link_to.rel(), seq_no);
@@ -830,30 +842,18 @@ where
     pub fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
         match &self.appinst {
             Some(_) => {
-                if self.key_store.contains_psk(&pskid) {
+                if self.psk_store.contains_key(&pskid) {
                     return err(PskAlreadyStored);
                 }
-                self.key_store.insert_psk(pskid.into(), psk)?;
+                self.psk_store.insert(pskid, psk);
                 Ok(())
             }
-            None => {
-                if let Identifier::PskId(_) = self.id() {
-                    self.key_store.insert_psk(pskid.into(), psk)
-                } else {
-                    err(UserNotRegistered)
-                }
-            }
+            None => err(UserNotRegistered),
         }
     }
 
-    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
-        match self.key_store.contains_psk(&pskid) {
-            true => {
-                self.key_store.remove(&pskid.into());
-                Ok(())
-            }
-            false => err(UserNotRegistered),
-        }
+    pub fn remove_psk(&mut self, pskid: PskId) {
+        self.psk_store.remove(&pskid);
     }
 
     /// Generate the link of a message
@@ -960,6 +960,7 @@ where
         let repeated_links = Size(self.link_store.len());
         let keys = self.key_store.cursors();
         let repeated_keys = Size(self.key_store.cursors_size());
+        let repeated_psks = Size(self.psk_store.len());
 
         ctx.absorb(repeated_links)?;
         for (link, (s, info)) in self.link_store.iter() {
@@ -977,6 +978,13 @@ where
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
         }
+
+        ctx.absorb(repeated_psks)?;
+        for (pskid, psk) in self.psk_store.iter() {
+            ctx.absorb(&NBytes::<PskIdSize>::from(*pskid))?
+                .mask(&NBytes::<PskSize>::from(*psk))?;
+        }
+
         ctx.commit()?.squeeze(Mac(32))?;
         Ok(ctx)
     }
@@ -1018,6 +1026,7 @@ where
         let repeated_links = Size(self.link_store.len());
         let keys = self.key_store.cursors();
         let repeated_keys = Size(self.key_store.cursors_size());
+        let repeated_psks = Size(self.psk_store.len());
 
         ctx.absorb(repeated_links)?;
         for (link, (s, info)) in self.link_store.iter() {
@@ -1035,6 +1044,13 @@ where
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
         }
+
+        ctx.absorb(repeated_psks)?;
+        for (pskid, psk) in self.psk_store.iter() {
+            ctx.absorb(&NBytes::<PskIdSize>::from(*pskid))?
+                .mask(&NBytes::<PskSize>::from(*psk))?;
+        }
+
         ctx.commit()?.squeeze(Mac(32))?;
         Ok(ctx)
     }
@@ -1112,6 +1128,16 @@ where
             key_store.insert_cursor(id, Cursor::new_at(link.0, branch_no.0, seq_no.0));
         }
 
+        let mut repeated_psks = Size(0);
+        let mut psk_store = HashMap::new();
+        ctx.absorb(&mut repeated_psks)?;
+        for _ in 0..repeated_psks.0 {
+            let mut pskid = NBytes::<PskIdSize>::default();
+            let mut psk = NBytes::<PskSize>::default();
+            ctx.absorb(&mut pskid)?.mask(&mut psk)?;
+            psk_store.insert(pskid.0, psk.0);
+        }
+
         ctx.commit()?.squeeze(Mac(32))?;
 
         let sig_sk = ed25519::SecretKey::from_bytes(<[u8; 32]>::try_from(sig_sk_bytes.as_ref())?);
@@ -1120,6 +1146,7 @@ where
         self.user_id = UserIdentity::from((sig_sk, sig_pk));
         self.link_store = link_store;
         self.key_store = key_store;
+        self.psk_store = psk_store;
         self.author_id = author_id;
         if let Some(ref seed) = appinst {
             self.link_gen.reset(seed.clone());
@@ -1191,36 +1218,6 @@ where
         user.unwrap(&store, &mut ctx).await?;
         try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
         Ok(user)
-    }
-}
-
-// Newtype wrapper around KeyStore reference to be able to implement Lookup on it
-// Direct implementation is not possible due to KeyStore trait having type parameters itself
-pub struct KeysLookup<'a, F, Link>(&'a KeyStore<Link::Rel>, PhantomData<F>, PhantomData<Link>)
-where
-    F: PRP,
-    Link: HasLink;
-impl<'a, F, Link> KeysLookup<'a, F, Link>
-where
-    F: PRP,
-    Link: HasLink,
-{
-    fn new(key_store: &'a KeyStore<Link::Rel>) -> Self {
-        Self(key_store, PhantomData, PhantomData)
-    }
-}
-
-impl<F, Link> Lookup<&Identifier, psk::Psk> for KeysLookup<'_, F, Link>
-where
-    F: PRP,
-    Link: HasLink,
-{
-    fn lookup(&self, id: &Identifier) -> Option<psk::Psk> {
-        if let Identifier::PskId(pskid) = id {
-            self.0.get_psk(pskid).copied()
-        } else {
-            None
-        }
     }
 }
 

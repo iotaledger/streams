@@ -11,25 +11,24 @@ use crate::api::{
 use iota_streams_app::id::UserIdentity;
 use iota_streams_core::{
     anyhow,
+    prelude::Vec,
+    psk::{
+        Psk,
+        PskId,
+    },
     Errors::UserIdentityMissing,
     Result,
 };
 
+#[derive(Default)]
 /// Builder instance for a Streams User
 pub struct UserBuilder<Trans: Transport, F> {
     /// Base Identity that will be used to Identifier a Streams User
     pub id: Option<UserIdentity<F>>,
     /// Transport Client instance
     pub transport: Option<Trans>,
-}
-
-impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
-    fn default() -> Self {
-        UserBuilder {
-            id: None,
-            transport: None,
-        }
-    }
+    /// Pre Shared Keys
+    pub psks: Vec<(PskId, Psk)>,
 }
 
 impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
@@ -53,6 +52,46 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// * `transport` - Transport Client to be used by the Streams User
     pub fn with_transport(mut self, transport: Trans) -> Self {
         self.transport = Some(transport);
+        self
+    }
+
+    /// Inject a new Pre Shared Key and Id into the User Builder
+    ///
+    /// # Examples
+    /// ## Add Multiple Psks
+    /// ```
+    /// use iota_streams_app_channels::{
+    ///     api::{
+    ///         psk_from_seed,
+    ///         pskid_from_psk,
+    ///     },
+    ///     UserBuilder,
+    /// };
+    /// # use iota_streams_core::Result;
+    /// # use iota_streams_app_channels::api::BucketTransport;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// # let transport = BucketTransport::new();
+    /// let psk1 = psk_from_seed("Psk1".as_bytes());
+    /// let psk2 = psk_from_seed("Psk2".as_bytes());
+    /// let pskid1 = pskid_from_psk(&psk1);
+    /// let pskid2 = pskid_from_psk(&psk2);
+    ///
+    /// let user = UserBuilder::new()
+    /// #   .with_transport(transport)
+    ///     .with_psk(pskid1, psk1)
+    ///     .with_psk(pskid2, psk2)
+    ///     .build();
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Arguments
+    /// * `pskid` - Pre Shared Key Identifier
+    /// * `psk` - Pre Shared Key shared outside of Streams scope
+    pub fn with_psk(mut self, pskid: PskId, psk: Psk) -> Self {
+        self.psks.push((pskid, psk));
         self
     }
 
@@ -95,44 +134,9 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// ## User from PskId
-    /// ```
-    /// use iota_streams_app_channels::{
-    ///     api::{
-    ///         psk_from_seed,
-    ///         pskid_from_psk,
-    ///     },
-    ///     Tangle,
-    ///     UserBuilder,
-    ///     UserIdentity,
-    /// };
-    /// # use std::cell::RefCell;
-    /// # use iota_streams_core::{prelude::Rc, Result};
-    /// # use iota_streams_app_channels::api::BucketTransport;
-    /// #
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<()> {
-    /// let transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-    /// #
-    /// # let transport = Rc::new(RefCell::new(BucketTransport::new()));
-    /// #
-    /// let psk_seed = "seed-for-pre-shared-key";
-    /// let psk = psk_from_seed(psk_seed.as_bytes());
-    /// let pskid = pskid_from_psk(&psk);
-    ///
-    /// let user_identity = UserIdentity::new_from_psk(pskid, psk);
-    /// let mut user = UserBuilder::new()
-    ///     .with_identity(user_identity)
-    ///     .with_transport(transport)
-    ///     .build()?;
-    ///
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn build(self) -> Result<User<Trans>> {
         let id = self.id.ok_or_else(|| anyhow!(UserIdentityMissing))?;
-        let user = crate::api::ApiUser::new(id);
+        let user = crate::api::ApiUser::new(id, &self.psks);
         let transport = self.transport.unwrap_or(Trans::default());
         Ok(User { user, transport })
     }

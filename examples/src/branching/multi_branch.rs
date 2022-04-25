@@ -41,8 +41,9 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         .with_transport(transport.clone())
         .build()?;
     let mut subscriberC = UserBuilder::new()
-        .with_identity(UserIdentity::new_from_psk(pskid, psk))
+        .with_identity(UserIdentity::new("SUBSCRIBERC9SEED"))
         .with_transport(transport.clone())
+        .with_psk(pskid, psk)
         .build()?;
 
     let public_payload = Bytes("PUBLICPAYLOAD".as_bytes().to_vec());
@@ -327,7 +328,8 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     println!("\nSubscriber C fetching transactions...");
     utils::fetch_next_messages(&mut subscriberC).await?;
 
-    println!("\nAttempt Tagged packet 4 - SubscriberC");
+    // TODO: reintegrate this part of the example once Idenityless Users are reintroduced
+    /*println!("\nAttempt Tagged packet 4 - SubscriberC");
     let tp = subscriberC
         .send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)
         .await;
@@ -336,7 +338,7 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         "Subscriber C is a PSK user and should not be able to send messages"
     );
     println!("SubscriberC was not able to send tagged packet, as expected");
-
+    */
     println!("\nAuthor fetching transactions...");
     utils::fetch_next_messages(&mut author).await?;
 

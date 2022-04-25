@@ -10,16 +10,10 @@ use iota_streams_app::{
     message::Cursor,
 };
 use iota_streams_core::{
-    err,
     prelude::{
         HashMap,
         Vec,
     },
-    psk::{
-        Psk,
-        PskId,
-    },
-    Errors::BadIdentifier,
     Result,
 };
 
@@ -28,7 +22,6 @@ pub struct KeyStore<Link> {
     /// a precalculated corresponding x25519 pk and some additional Cursor.
     cursors: HashMap<Identifier, Cursor<Link>>,
     keys: HashMap<Identifier, x25519::PublicKey>,
-    psks: HashMap<PskId, Psk>,
 }
 
 impl<Link> KeyStore<Link> {
@@ -36,7 +29,6 @@ impl<Link> KeyStore<Link> {
         Self {
             cursors: HashMap::new(),
             keys: HashMap::new(),
-            psks: HashMap::new(),
         }
     }
 }
@@ -47,15 +39,10 @@ impl<Link> KeyStore<Link> {
         I: IntoIterator<Item = &'a Identifier>,
     {
         ids.into_iter()
-            .filter_map(|id| match &id {
-                Identifier::PskId(pskid) => self
-                    .psks
-                    .get_key_value(pskid)
-                    .map(|(pskid, psk)| ((*pskid).into(), psk.to_vec())),
-                _ => self
-                    .keys
+            .filter_map(|id| {
+                self.keys
                     .get_key_value(id)
-                    .map(|(id, pk)| (*id, pk.as_slice().to_vec())),
+                    .map(|(id, pk)| (*id, pk.as_slice().to_vec()))
             })
             .collect()
     }
@@ -85,24 +72,6 @@ impl<Link> KeyStore<Link> {
         }
     }
 
-    pub fn contains_psk(&self, pskid: &PskId) -> bool {
-        self.psks.contains_key(pskid)
-    }
-
-    pub fn get_psk(&self, pskid: &PskId) -> Option<&Psk> {
-        self.psks.get(pskid)
-    }
-
-    pub fn insert_psk(&mut self, id: Identifier, psk: Psk) -> Result<()> {
-        match &id {
-            Identifier::PskId(pskid) => {
-                self.psks.insert(*pskid, psk);
-                Ok(())
-            }
-            _ => err(BadIdentifier),
-        }
-    }
-
     pub fn insert_keys(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
         if !self.keys.contains_key(&id) {
             self.keys.insert(id, xkey);
@@ -111,11 +80,7 @@ impl<Link> KeyStore<Link> {
     }
 
     pub fn exchange_keys(&self) -> Vec<(Identifier, Vec<u8>)> {
-        self.keys
-            .iter()
-            .map(|(id, pk)| (*id, pk.as_slice().to_vec()))
-            .chain(self.psks.iter().map(|(pskid, psk)| ((*pskid).into(), psk.to_vec())))
-            .collect()
+        self.keys.iter().map(|(id, pk)| (*id, pk.as_slice().to_vec())).collect()
     }
 
     pub fn cursors(&self) -> impl Iterator<Item = (&Identifier, &Cursor<Link>)> {
@@ -133,9 +98,6 @@ impl<Link> KeyStore<Link> {
     pub fn remove(&mut self, id: &Identifier) {
         self.cursors.borrow_mut().remove(id);
         self.keys.borrow_mut().remove(id);
-        if let Identifier::PskId(pskid) = id {
-            self.psks.borrow_mut().remove(pskid);
-        }
     }
 }
 

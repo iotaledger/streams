@@ -7,10 +7,6 @@ use iota_streams_core::{
         Box,
         Vec,
     },
-    psk::{
-        self,
-        PskId,
-    },
     sponge::prp::PRP,
     Errors::BadOneof,
     Result,
@@ -45,7 +41,6 @@ use crate::message::*;
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum Identifier {
     EdPubKey(ed25519::PublicKey),
-    PskId(PskId),
     #[cfg(feature = "did")]
     DID(DIDWrap),
 }
@@ -60,26 +55,21 @@ impl Identifier {
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Identifier::EdPubKey(public_key) => public_key.as_slice(),
-            Identifier::PskId(id) => id,
             #[cfg(feature = "did")]
             Identifier::DID(did) => did,
         }
     }
 
     pub fn pk(&self) -> Option<&ed25519::PublicKey> {
-        if let Identifier::EdPubKey(pk) = self {
-            Some(pk)
-        } else {
-            None
+        match self {
+            Identifier::EdPubKey(pk) => Some(pk),
+            #[cfg(feature = "did")]
+            _ => None,
         }
     }
 
     pub fn is_pub_key(&self) -> bool {
         matches!(self, Self::EdPubKey(_))
-    }
-
-    pub fn is_psk(&self) -> bool {
-        matches!(self, Self::PskId(_))
     }
 }
 
@@ -93,12 +83,6 @@ impl Default for Identifier {
 impl From<ed25519::PublicKey> for Identifier {
     fn from(pk: ed25519::PublicKey) -> Self {
         Identifier::EdPubKey(pk)
-    }
-}
-
-impl From<PskId> for Identifier {
-    fn from(pskid: PskId) -> Self {
-        Identifier::PskId(pskid)
     }
 }
 
@@ -138,14 +122,9 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
                 ctx.mask(oneof)?.mask(pk)?;
                 Ok(ctx)
             }
-            Identifier::PskId(pskid) => {
-                let oneof = Uint8(1);
-                ctx.mask(oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?;
-                Ok(ctx)
-            }
             #[cfg(feature = "did")]
             Identifier::DID(did) => {
-                let oneof = Uint8(2);
+                let oneof = Uint8(1);
                 ctx.mask(oneof)?.mask(<&NBytes<DIDSize>>::from(did))?;
                 Ok(ctx)
             }
@@ -166,14 +145,9 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
                 ctx.mask(oneof)?.mask(pk)?;
                 Ok(ctx)
             }
-            Identifier::PskId(pskid) => {
-                let oneof = Uint8(1);
-                ctx.mask(oneof)?.mask(<&NBytes<psk::PskIdSize>>::from(pskid))?;
-                Ok(ctx)
-            }
             #[cfg(feature = "did")]
             Identifier::DID(did) => {
-                let oneof = Uint8(2);
+                let oneof = Uint8(1);
                 ctx.mask(oneof)?.mask(<&NBytes<DIDSize>>::from(did))?;
                 Ok(ctx)
             }
@@ -209,14 +183,8 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
                 let id = Identifier::EdPubKey(pk);
                 Ok((id, ctx))
             }
-            1 => {
-                let mut pskid = PskId::default();
-                ctx.mask(<&mut NBytes<psk::PskIdSize>>::from(&mut pskid))?;
-                let id = Identifier::PskId(pskid);
-                Ok((id, ctx))
-            }
             #[cfg(feature = "did")]
-            2 => {
+            1 => {
                 let mut did_bytes = NBytes::<DIDSize>::default();
                 ctx.mask(&mut did_bytes)?;
                 let did_str = DID_CORE.to_string() + &encode_b58(&did_bytes.0);
