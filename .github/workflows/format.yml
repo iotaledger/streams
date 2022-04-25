@@ -24,7 +24,6 @@ jobs:
         package:
           - "."
           - "examples"
-          - "bindings/wasm"
     steps:
       - uses: actions/checkout@v2
       - name: Install rustfmt with nightly toolchain

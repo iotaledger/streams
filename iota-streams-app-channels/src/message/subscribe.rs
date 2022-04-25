@@ -73,6 +73,7 @@ pub struct ContentWrap<'a, F, Link: HasLink> {
     pub(crate) _phantom: core::marker::PhantomData<(Link, F)>,
 }
 
+// TODO: Account for alias in subscription as well
 #[async_trait(?Send)]
 impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where

@@ -9,14 +9,10 @@ use iota_streams_app::{
         self,
         BinaryBody,
     },
-    transport::{
-        self,
-        tangle::{
-            AppInst,
-            DefaultTangleLinkGenerator,
-            TangleAddress,
-            TangleMessage,
-        },
+    transport::tangle::{
+        AppInst,
+        DefaultTangleLinkGenerator,
+        TangleAddress,
     },
 };
 
@@ -27,8 +23,12 @@ pub use message::Cursor;
 // Bring trait methods into scope publicly.
 pub use message::LinkGenerator;
 
-pub use super::ChannelType;
-use super::DefaultF;
+use super::{
+    Address,
+    DefaultF,
+    Message,
+    Transport,
+};
 use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;
 pub use iota_streams_ddml::types::Bytes;
@@ -41,13 +41,9 @@ use crypto::{
 /// Identifiers for Pre-Shared Keys
 pub type PskIds = psk::PskIds;
 
-/// Tangle Address Link type.
-pub type Address = TangleAddress;
 /// Tangle Address representing Channel Application Instance.
 pub type ChannelAddress = AppInst;
 
-/// Binary encoded message type.
-pub type Message = TangleMessage;
 // Details for a message on our tangle transport
 #[cfg(any(feature = "client", feature = "wasm-client"))]
 pub type Details = ClientDetails;
@@ -74,14 +70,6 @@ pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
 
 /// Link Store.
 pub type LinkStore = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;
-
-/// Test Transport.
-pub type BucketTransport = transport::BucketTransport<Address, Message>;
-
-/// Transportation trait for Tangle Client implementation
-// TODO: Use trait synonyms `pub Transport = transport::Transport<DefaultF, Address>;`.
-pub trait Transport: transport::Transport<Address, Message> + Clone {}
-impl<T> Transport for T where T: transport::Transport<Address, Message> + Clone {}
 
 mod msginfo;
 pub use msginfo::MsgInfo;
@@ -223,12 +211,7 @@ pub use messages::{
     Messages,
 };
 
-mod author;
-/// Tangle-specific Channel Author type.
-pub use author::Author;
-
-mod subscriber;
-/// Tangle-specific Channel Subscriber type.
-pub use subscriber::Subscriber;
-
 pub mod test;
+
+mod user_builder;
+pub use user_builder::UserBuilder;
