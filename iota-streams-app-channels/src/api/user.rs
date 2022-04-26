@@ -505,7 +505,10 @@ where
         let perms: Vec<Permission> = keys.into_iter().copied().collect();
         let prep = self.prepare_keyload(link_to, &perms)?;
         let res = prep.wrap(&self.link_store).await;
-        self.handle_permissions(perms, res, link_to)
+        match res {
+            Ok(wm) => self.handle_permissions(perms, wm, link_to),
+            Err(e) => Err(e),
+        }
     }
 
     /// Create keyload message with a new session key shared with all Subscribers
@@ -515,27 +518,25 @@ where
         let perms: Vec<Permission> = keys.into_iter().map(|k| Permission::ReadWrite(k.0, PermissionDuration::Perpetual)).collect();
         let prep = self.prepare_keyload(link_to, &perms)?;
         let res = prep.wrap(&self.link_store).await;
-        self.handle_permissions(perms, res, link_to)
         
-    }
-
-    fn handle_permissions(&mut self, perms: Vec<Permission>, res: Result<WrappedMessage<F, Link>>, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
         match res {
-            Ok(wm) => {
-                for key in &perms {
-                    match key {
-                        Permission::Read(_) => {},
-                        _ => {
-                            if !self.key_store.contains_subscriber(key.identifier()) {
-                                self.key_store.insert_cursor(key.identifier().clone(), Cursor::new_at(link_to.rel().clone(), 0, INIT_MESSAGE_NUM));
-                            }
-                        }
-                    }
-                }
-                Ok(wm)
-            }
+            Ok(wm) => self.handle_permissions(perms, wm, link_to),
             Err(e) => Err(e),
         }
+    }
+
+    fn handle_permissions(&mut self, perms: Vec<Permission>, wm: WrappedMessage<F, Link>, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
+        for perm in &perms {
+            match perm {
+                Permission::Read(_) => {},
+                _ => {
+                    if !self.key_store.contains_subscriber(perm.identifier()) {
+                        self.key_store.insert_cursor(perm.identifier().clone(), Cursor::new_at(link_to.rel().clone(), 0, INIT_MESSAGE_NUM));
+                    }
+                }
+            }
+        }
+        Ok(wm)
     }
 
     pub async fn unwrap_keyload<'a>(
@@ -719,7 +720,7 @@ where
     /// Create a tagged (ie. MACed) message with public and masked payload.
     /// Tagged messages must be linked to a secret spongos state, ie. keyload or a message linked to keyload.
     pub async fn tag_packet(
-        &mut self,
+        &self,
         link_to: &Link,
         public_payload: &Bytes,
         masked_payload: &Bytes,

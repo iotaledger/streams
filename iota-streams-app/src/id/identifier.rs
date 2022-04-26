@@ -90,23 +90,6 @@ impl Default for Identifier {
     }
 }
 
-impl core::convert::TryFrom<Vec<u8>> for Identifier {
-    type Error = Errors;
-    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
-        match bytes[0] {
-            0 => {
-                let pk = ed25519::PublicKey::try_from_bytes([0; 32]).unwrap();
-                Ok(Identifier::EdPubKey(pk))
-            }
-            1 => {
-                let pskid = PskId::clone_from_slice(&bytes[1..bytes.len()]);
-                Ok(Identifier::PskId(pskid))
-            }
-            _ => Err(Errors::BadOneof),
-        }
-    }
-}
-
 impl From<ed25519::PublicKey> for Identifier {
     fn from(pk: ed25519::PublicKey) -> Self {
         Identifier::EdPubKey(pk)
