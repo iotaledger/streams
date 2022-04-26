@@ -61,8 +61,8 @@ impl Skip<Size> for Context {
     }
 }
 
-impl<'a, T> Skip<&'a Bytes<T>> for Context where T: AsRef<[u8]> {
-    fn skip(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
+impl<'a, T> Skip<Bytes<&'a T>> for Context where T: AsRef<[u8]> {
+    fn skip(&mut self, bytes: Bytes<&'a T>) -> Result<&mut Self> {
         let bytes_size = Size::new(bytes.len());
         self.skip(bytes_size)?;
         self.size += bytes.len();
@@ -70,10 +70,22 @@ impl<'a, T> Skip<&'a Bytes<T>> for Context where T: AsRef<[u8]> {
     }
 }
 
-impl<'a, T: AsRef<[u8]>> Skip<&'a NBytes<T>> for Context {
-    fn skip(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
+impl<'a, T> Skip<&'a Bytes<T>> for Context where Self: Skip<Bytes<&'a T>> {
+    fn skip(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
+        self.skip(Bytes::new(bytes.inner()))
+    }
+}
+
+impl<'a, T: AsRef<[u8]>> Skip<NBytes<&'a T>> for Context {
+    fn skip(&mut self, nbytes: NBytes<&'a T>) -> Result<&mut Self> {
         self.size += nbytes.as_ref().len();
         Ok(self)
+    }
+}
+
+impl<'a, T> Skip<&'a NBytes<T>> for Context where Self: Skip<NBytes<&'a T>> {
+    fn skip(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
+        self.skip(NBytes::new(nbytes.inner()))
     }
 }
 

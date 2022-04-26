@@ -85,7 +85,7 @@ use crate::{
         Psk,
         PskId,
     },
-    message::content::{
+    message::{
         ContentDecrypt,
         ContentEncrypt,
         ContentEncryptSizeOf,
@@ -146,7 +146,7 @@ impl Identifier {
         }
     }
 
-    fn pk(&self) -> Option<&ed25519::PublicKey> {
+    fn public_key(&self) -> Option<&ed25519::PublicKey> {
         if let Identifier::Ed25519(pk) = self {
             Some(pk)
         } else {
@@ -154,7 +154,16 @@ impl Identifier {
         }
     }
 
-    fn is_pub_key(&self) -> bool {
+    #[deprecated = "to be removed once key-exchange is encapsulated within Identity"]
+    pub fn _ke_pk(&self) -> Option<x25519::PublicKey> {
+        Some(
+            self.public_key()?
+                .try_into()
+                .expect("failed to convert ed25519 public-key to x25519 public-key"),
+        )
+    }
+
+    fn is_ed25519(&self) -> bool {
         matches!(self, Self::Ed25519(_))
     }
 

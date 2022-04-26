@@ -1,4 +1,4 @@
-//! Lightweight abstraction, a trinary equivalent of `Write` trait allowing access to trinary slices.
+// TODO: REMOVE Traits, make inherent
 use alloc::string::{String, ToString};
 
 use anyhow::{Result, ensure};

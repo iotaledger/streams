@@ -80,21 +80,27 @@ impl<'a, F, IS: io::IStream> Skip<&'a mut Size> for Context<F, IS> {
     }
 }
 
-impl<'a, F, T: AsMut<[u8]>, IS: io::IStream> Skip<&'a mut NBytes<T>> for Context<F, IS> {
-    fn skip(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
+impl<'a, F, T: AsMut<[u8]>, IS: io::IStream> Skip<NBytes<&'a mut T>> for Context<F, IS> {
+    fn skip(&mut self, nbytes: NBytes<&'a mut T>) -> Result<&mut Self> {
         SkipContext::new(self).unwrapn(nbytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes<Vec<u8>>> for Context<F, IS> {
-    fn skip(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
-        self.skip(&mut Bytes::new(bytes.inner_mut()))
+impl<'a, F, T, IS: io::IStream> Skip<&'a mut NBytes<T>> for Context<F, IS> where Self: Skip<NBytes<&'a mut T>> {
+    fn skip(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
+        self.skip(NBytes::new(nbytes.inner_mut()))
     }
 }
 
-impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes<&'a mut Vec<u8>>> for Context<F, IS> {
-    fn skip(&mut self, bytes: &'a mut Bytes<&'a mut Vec<u8>>) -> Result<&mut Self> {
+impl<'a, F, IS: io::IStream> Skip<&'a mut Bytes<Vec<u8>>> for Context<F, IS> {
+    fn skip(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
+        self.skip(Bytes::new(bytes.inner_mut()))
+    }
+}
+
+impl<'a, F, IS: io::IStream> Skip<Bytes<&'a mut Vec<u8>>> for Context<F, IS> {
+    fn skip(&mut self, mut bytes: Bytes<&'a mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.skip(&mut size)?;
         bytes.resize(size.inner());

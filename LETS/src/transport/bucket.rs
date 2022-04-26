@@ -50,7 +50,7 @@ impl<Link, Msg> Default for BucketTransport<Link, Msg> {
 }
 
 #[async_trait(?Send)]
-impl<Address, Msg> Transport<Address, Msg> for BucketTransport<Address, Msg>
+impl<Address, Msg> Transport<Address, Msg, Msg> for BucketTransport<Address, Msg>
 where
     Address: Ord + Display,
     Msg: Clone,
@@ -59,14 +59,14 @@ where
                                 * core::fmt::Display,     Msg: LinkedMessage<Link> +
                                 * Clone + core::marker::Send + core::marker::Sync, */
 {
-    async fn send_message(&mut self, addr: Address, msg: Msg) -> Result<()> {
-        self.bucket.entry(addr).or_default().push(msg);
-        Ok(())
+    async fn send_message(&mut self, addr: Address, msg: Msg) -> Result<Msg> {
+        self.bucket.entry(addr).or_default().push(msg.clone());
+        Ok(msg)
     }
 
-    async fn recv_messages(&mut self, address: &Address) -> Result<Vec<Msg>> {
+    async fn recv_messages(&mut self, address: Address) -> Result<Vec<Msg>> {
         self.bucket
-            .get(address)
+            .get(&address)
             .cloned()
             .ok_or_else(|| anyhow!("No messages found at address {}", address))
     }

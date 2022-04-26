@@ -60,7 +60,7 @@ use LETS::message::{
 
 const MAC: Mac = Mac::new(32);
 
-pub struct Wrap<'a, F> {
+struct Wrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
     public_payload: &'a [u8],
     masked_payload: &'a [u8],
@@ -94,7 +94,7 @@ where
     }
 }
 
-pub struct Unwrap<'a, F> {
+struct Unwrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
     public_payload: Vec<u8>,
     masked_payload: Vec<u8>,
@@ -118,8 +118,8 @@ where
 {
     async fn unwrap(&mut self, signed_packet: &mut Unwrap<'a, F>) -> Result<&mut Self> {
         self.join(signed_packet.initial_state)?
-            .absorb(&mut Bytes::new(&mut signed_packet.public_payload))?
-            .mask(&mut Bytes::new(&mut signed_packet.masked_payload))?
+            .absorb(Bytes::new(&mut signed_packet.public_payload))?
+            .mask(Bytes::new(&mut signed_packet.masked_payload))?
             .commit()?
             .squeeze(&MAC)?;
         Ok(self)

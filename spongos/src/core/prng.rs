@@ -7,8 +7,8 @@ use alloc::vec::Vec;
 use generic_array::GenericArray;
 use rand::{
     CryptoRng,
-    SeedableRng,
     RngCore,
+    SeedableRng,
 };
 
 use super::{
@@ -166,21 +166,16 @@ type Key = [u8; 32];
 // // pub type NonceType<F> = spongos::NonceType<F>;
 // pub type NonceType = Vec<u8>;
 
-pub struct SpongosRng<F>
-where
-    F: PRP,
-{
+pub struct SpongosRng<F> {
     spongos: Spongos<F>,
     nonce: Nonce,
 }
 
-impl<F> SpongosRng<F>
-where
-    F: PRP,
-{
+impl<F> SpongosRng<F> {
     pub fn new<T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
+        F: PRP + Default,
     {
         let mut spongos = Spongos::<F>::init();
         let key = spongos.sponge(seed);
@@ -234,7 +229,7 @@ impl<F> CryptoRng for SpongosRng<F> where F: PRP {}
 
 impl<F> SeedableRng for SpongosRng<F>
 where
-    F: PRP,
+    F: PRP + Default,
 {
     type Seed = Key;
 

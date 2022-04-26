@@ -42,49 +42,49 @@ use crate::{
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore>;
 
 /// Baseline User api object. Contains the api user implementation as well as the transport object
-pub struct User<Trans> {
-    pub user: UserImp,
-    pub transport: Trans,
+struct User<Trans> {
+    user: UserImp,
+    transport: Trans,
 }
 
 impl<Trans> User<Trans> {
     /// Get reference of User Transport
-    pub fn transport(&self) -> &Trans {
+    fn transport(&self) -> &Trans {
         &self.transport
     }
 
     // Attributes
 
     /// Fetch the Address (application instance) of the channel.
-    pub fn channel_address(&self) -> Option<&ChannelAddress> {
+    fn channel_address(&self) -> Option<&ChannelAddress> {
         self.user.appinst.as_ref().map(|x| &x.appinst)
     }
 
     /// Fetch the Announcement Link of the channel.
-    pub fn announcement_link(&self) -> &Option<TangleAddress> {
+    fn announcement_link(&self) -> &Option<TangleAddress> {
         &self.user.appinst
     }
 
     /// Channel Author's public Id
-    pub fn author_id(&self) -> Option<&Identifier> {
+    fn author_id(&self) -> Option<&Identifier> {
         self.user.author_id()
     }
 
     /// Fetch the user public Id
-    pub fn id(&self) -> &Identifier {
+    fn id(&self) -> &Identifier {
         self.user.id()
     }
 
     /// Fetch the user key exchange public key
-    pub fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
+    fn key_exchange_public_key(&self) -> Result<x25519::PublicKey> {
         self.user.key_exchange_public_key()
     }
 
-    pub fn is_registered(&self) -> bool {
+    fn is_registered(&self) -> bool {
         self.user.appinst.is_some()
     }
 
-    pub fn unregister(&mut self) {
+    fn unregister(&mut self) {
         self.user.appinst = None;
         self.user.author_id = None;
     }
@@ -93,13 +93,13 @@ impl<Trans> User<Trans> {
 
     /// Fetches the latest PublicKey -> Cursor state mapping from the implementation, allowing the
     /// user to see the latest messages present from each publisher
-    pub fn fetch_state(&self) -> Result<Vec<(Identifier, Cursor<Address>)>> {
+    fn fetch_state(&self) -> Result<Vec<(Identifier, Cursor<Address>)>> {
         self.user.fetch_state()
     }
 
     /// Resets the cursor state storage to allow a User to retrieve all messages in a channel
     /// from scratch
-    pub fn reset_state(&mut self) -> Result<()> {
+    fn reset_state(&mut self) -> Result<()> {
         self.user.reset_state()
     }
 
@@ -114,15 +114,15 @@ impl<Trans> User<Trans> {
     /// Keep in mind that in multi-branch channels, the link returned corresponds to the next sequence message.
     ///
     /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information
-    pub fn gen_next_msg_addresses(&self) -> Vec<(Identifier, Cursor<Address>)> {
+    fn gen_next_msg_addresses(&self) -> Vec<(Identifier, Cursor<Address>)> {
         self.user.gen_next_msg_links()
     }
 
-    pub async fn export(&self, pwd: &str) -> Result<Vec<u8>> {
+    async fn export(&self, pwd: &str) -> Result<Vec<u8>> {
         self.user.export(pwd).await
     }
 
-    pub async fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
+    async fn import(bytes: &[u8], pwd: &str, tsp: Trans) -> Result<Self> {
         UserImp::import(bytes, pwd).await.map(|u| Self {
             user: u,
             transport: tsp,
@@ -134,7 +134,7 @@ impl<Trans> User<Trans> {
     ///   # Arguments
     ///   * `pskid` - An identifier representing a pre shared key
     ///   * `psk` - A pre shared key
-    pub fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
+    fn store_psk(&mut self, pskid: PskId, psk: Psk) -> Result<()> {
         self.user.store_psk(pskid, psk)
     }
 
@@ -142,7 +142,7 @@ impl<Trans> User<Trans> {
     ///
     ///   # Arguments
     ///   * `pskid` - An identifier representing a pre shared key
-    pub fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
+    fn remove_psk(&mut self, pskid: PskId) -> Result<()> {
         self.user.remove_psk(pskid)
     }
 
@@ -151,7 +151,7 @@ impl<Trans> User<Trans> {
     ///   # Arguments
     ///   * `id` - Identifier of known subscriber
     ///   * `xkey` - Public exchange key for decryption
-    pub fn store_new_subscriber(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
+    fn store_new_subscriber(&mut self, id: Identifier, xkey: x25519::PublicKey) -> Result<()> {
         self.user.insert_subscriber(id, xkey)
     }
 
@@ -159,7 +159,7 @@ impl<Trans> User<Trans> {
     ///
     ///   # Arguments
     ///   * `id` - Identifier of known subscriber
-    pub fn remove_subscriber(&mut self, id: Identifier) -> Result<()> {
+    fn remove_subscriber(&mut self, id: Identifier) -> Result<()> {
         self.user.remove_subscriber(id)
     }
 
@@ -223,7 +223,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     }
 
     /// Send an announcement message, generating a channel.
-    pub async fn send_announce(&mut self) -> Result<Address> {
+    async fn send_announce(&mut self) -> Result<Address> {
         // TODO: Implement channel id inclusion for multiple channel ownership
         self.user.create_channel(0)?;
         let msg = self.user.announce().await?;
@@ -240,7 +240,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `public_payload` - Wrapped vector of Bytes to have public access
     ///  * `masked_payload` - Wrapped vector of Bytes to have masked access
-    pub async fn send_signed_packet(
+    async fn send_signed_packet(
         &mut self,
         link_to: &Address,
         public_payload: &Bytes,
@@ -257,7 +257,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `public_payload` - Wrapped vector of Bytes to have public access
     ///  * `masked_payload` - Wrapped vector of Bytes to have masked access
-    pub async fn send_tagged_packet(
+    async fn send_tagged_packet(
         &mut self,
         link_to: &Address,
         public_payload: &Bytes,
@@ -273,7 +273,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
     ///  * `keys`  - Iterable of [`Identifier`] to be included in message
-    pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
+    async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
     where
         I: IntoIterator<Item = &'a Identifier>,
     {
@@ -285,7 +285,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
-    pub async fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
+    async fn send_keyload_for_everyone(&mut self, link_to: &Address) -> Result<(Address, Option<Address>)> {
         let msg = self.user.share_keyload_for_everyone(link_to).await?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
     }
@@ -294,7 +294,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
-    pub async fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
+    async fn send_subscribe(&mut self, link_to: &Address) -> Result<Address> {
         let msg = self.user.subscribe(link_to).await?;
         self.send_message(msg, MsgInfo::Subscribe).await
     }
@@ -303,7 +303,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     /// # Arguments
     /// * `link_to` - Address of the user subscription message
-    pub async fn send_unsubscribe(&mut self, link_to: &Address) -> Result<Address> {
+    async fn send_unsubscribe(&mut self, link_to: &Address) -> Result<Address> {
         let msg = self.user.unsubscribe(link_to).await?;
         self.send_message(msg, MsgInfo::Unsubscribe).await
     }
@@ -314,7 +314,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
+    async fn receive_sequence(&mut self, link: &Address) -> Result<Address> {
         let msg = self.transport.recv_message(link).await?;
         if let Some(_addr) = &self.user.appinst {
             let seq_msg = self.user.handle_sequence(&msg, MsgInfo::Sequence, true).await?.body;
@@ -331,7 +331,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
+    async fn receive_signed_packet(&mut self, link: &Address) -> Result<(Identifier, Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
         let m = self.user.handle_signed_packet(&msg, MsgInfo::SignedPacket).await?;
         Ok(m.body)
@@ -341,7 +341,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
+    async fn receive_tagged_packet(&mut self, link: &Address) -> Result<(Bytes, Bytes)> {
         let msg = self.transport.recv_message(link).await?;
         let m = self.user.handle_tagged_packet(&msg, MsgInfo::TaggedPacket).await?;
         Ok(m.body)
@@ -351,7 +351,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
+    async fn receive_subscribe(&mut self, link: &Address) -> Result<()> {
         let msg = self.transport.recv_message(link).await?;
         self.user.handle_subscribe(&msg, MsgInfo::Subscribe).await
     }
@@ -360,7 +360,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_unsubscribe(&mut self, link: &Address) -> Result<()> {
+    async fn receive_unsubscribe(&mut self, link: &Address) -> Result<()> {
         let msg = self.transport.recv_message(link).await?;
         self.user.handle_unsubscribe(msg, MsgInfo::Unsubscribe).await
     }
@@ -369,7 +369,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     /// # Arguments
     /// * `link_to` - Address of the Channel Announcement message
-    pub async fn receive_announcement(&mut self, link: &Address) -> Result<()> {
+    async fn receive_announcement(&mut self, link: &Address) -> Result<()> {
         let msg = self.transport.recv_message(link).await?;
         self.user.handle_announcement(&msg, MsgInfo::Announce).await
     }
@@ -378,7 +378,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Argument&s
     ///  * `link` - Address of the message to be processed
-    pub async fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
+    async fn receive_keyload(&mut self, link: &Address) -> Result<bool> {
         let msg = self.transport.recv_message(link).await?;
         let m = self.user.handle_keyload(&msg, MsgInfo::Keyload).await?;
         Ok(m.body)
@@ -390,7 +390,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///   # Arguments
     ///   * `link` - Address of the message to be processed
     ///   * `pk` - Optional ed25519 Public Key of the sending participant. None if unknown
-    pub async fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+    async fn receive_message(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
         self.handle_message(msg, true).await
     }
@@ -398,14 +398,14 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// Start a [`Messages`] stream to traverse the channel messages
     ///
     /// See the documentation in [`Messages`] for more details and examples.
-    pub fn messages(&mut self) -> Messages<Trans> {
+    fn messages(&mut self) -> Messages<Trans> {
         IntoMessages::messages(self)
     }
 
     /// Iteratively fetches all the next messages until internal state has caught up
     ///
     /// If succeeded, returns the number of messages advanced.
-    pub async fn sync_state(&mut self) -> Result<usize> {
+    async fn sync_state(&mut self) -> Result<usize> {
         // ignoring the result is sound as Drain::Error is Infallible
         self.messages().try_fold(0, |n, _| future::ok(n + 1)).await
     }
@@ -415,7 +415,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// Return a vector with all the messages collected. This is a convenience
     /// method around the [`Messages`] stream. Check out its docs for more
     /// advanced usages.
-    pub async fn fetch_next_msgs(&mut self) -> Result<Vec<UnwrappedMessage>> {
+    async fn fetch_next_msgs(&mut self) -> Result<Vec<UnwrappedMessage>> {
         self.messages().try_collect().await
     }
 
@@ -424,7 +424,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     /// # Arguments
     /// * `link` - Address of message to act as root of previous message fetching
-    pub async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
+    async fn fetch_prev_msg(&mut self, link: &Address) -> Result<UnwrappedMessage> {
         let msg = self.transport.recv_message(link).await?;
         let preparsed: Preparsed = msg.parse_header().await?;
         let header = preparsed.header;
@@ -439,7 +439,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// # Arguments
     /// * `link` - Address of message to act as root of previous message fetching
     /// * `max` - The number of msgs to try and parse
-    pub async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
+    async fn fetch_prev_msgs(&mut self, link: &Address, max: usize) -> Result<Vec<UnwrappedMessage>> {
         let mut msg_info: (Address, u8, Message) = self.parse_msg_info(link).await?;
         let mut to_process = Vec::new();
         let mut msgs = Vec::new();
@@ -468,7 +468,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     /// # Arguments
     /// * `msg` - Binary message of unknown type
     #[async_recursion(?Send)]
-    pub async fn handle_message<M>(&mut self, msg: M, store: bool) -> Result<UnwrappedMessage>
+    async fn handle_message<M>(&mut self, msg: M, store: bool) -> Result<UnwrappedMessage>
     where
         M: AsRef<BinaryMessage>,
     {

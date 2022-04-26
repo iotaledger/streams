@@ -1,5 +1,5 @@
 /// Traits for implementing Spongos de/serialization
-pub(crate) mod content;
+mod content;
 /// Header Description Frame
 mod hdf;
 /// Binary version of a [`GenericMessage`]
@@ -53,47 +53,66 @@ pub use content::{
     ContentVerify,
     ContentWrap,
 };
-use hdf::HDF;
-use pcf::PCF;
-use transport::TransportMessage;
+pub use hdf::HDF;
+pub use pcf::PCF;
+pub use preparsed::PreparsedMessage;
+pub use transport::TransportMessage;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
-pub(crate) struct Message<Address, Content> {
-    hdf: HDF<Address>,
-    pcf: PCF<Content>,
+pub struct Message<Address, Payload> {
+    header: HDF<Address>,
+    payload: PCF<Payload>,
 }
 
-impl<Address, Content> Message<Address, Content> {
-    pub(crate) fn new(hdf: HDF<Address>, pcf: PCF<Content>) -> Self {
-        Self { hdf, pcf }
+impl<Address, Payload> Message<Address, Payload> {
+    pub fn new(header: HDF<Address>, payload: PCF<Payload>) -> Self {
+        Self { header, payload }
     }
 
     pub(crate) fn with_header(&mut self, header: HDF<Address>) -> &mut Self {
-        self.hdf = header;
+        self.header = header;
         self
     }
 
-    pub(crate) fn with_content(&mut self, content: Content) -> &mut Self {
-        self.pcf.change_content(content);
+    pub fn with_content(&mut self, content: Payload) -> &mut Self {
+        self.payload.change_content(content);
         self
     }
 
-    async fn wrap<F>(&mut self) -> Result<(TransportMessage<Address, Vec<u8>>, Spongos<F>)>
+    pub fn header(&self) -> &HDF<Address> {
+        &self.header
+    }
+
+    pub fn take_header(&mut self) -> HDF<Address>
     where
-        F: PRP,
-        Address: Clone,
-        PCF<Content>: Copy,
-        for<'b> wrap::Context<F, &'b mut [u8]>: ContentWrap<HDF<Address>> + ContentWrap<PCF<Content>>,
-        sizeof::Context: ContentSizeof<HDF<Address>> + ContentSizeof<PCF<Content>>
+        Address: Default,
+    {
+        core::mem::take(&mut self.header)
+    }
+
+    pub fn payload(&self) -> &PCF<Payload> {
+        &self.payload
+    }
+
+    pub fn into_payload(self) -> PCF<Payload> {
+        self.payload
+    }
+
+
+    pub async fn wrap<F>(&mut self) -> Result<(TransportMessage<Vec<u8>>, Spongos<F>)>
+    where
+        F: PRP + Default,
+        for<'b> wrap::Context<F, &'b mut [u8]>: ContentWrap<HDF<Address>> + ContentWrap<PCF<Payload>>,
+        sizeof::Context: ContentSizeof<HDF<Address>> + ContentSizeof<PCF<Payload>>,
     {
         let mut ctx = sizeof::Context::new();
-        ctx.sizeof(&self.hdf).await?.sizeof(&self.pcf).await?;
+        ctx.sizeof(&self.header).await?.sizeof(&self.payload).await?;
         let buf_size = ctx.size();
 
         let mut buf = vec![0; buf_size];
 
         let mut ctx = wrap::Context::new(&mut buf[..]);
-        ctx.wrap(&mut self.hdf).await?.wrap(&mut self.pcf).await?;
+        ctx.wrap(&mut self.header).await?.wrap(&mut self.payload).await?;
         // If buffer is not empty, it's an implementation error, panic
         assert!(
             ctx.stream().is_empty(),
@@ -102,6 +121,6 @@ impl<Address, Content> Message<Address, Content> {
         );
         let spongos = ctx.finalize();
 
-        Ok((TransportMessage::new(self.hdf.address().clone(), buf), spongos))
+        Ok((TransportMessage::new(buf), spongos))
     }
 }

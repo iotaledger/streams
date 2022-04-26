@@ -58,7 +58,7 @@ impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> X25519<&'a x25519::PublicKey, 
         let ephemeral_secret_key = x25519::SecretKey::generate_with(&mut StdRng::from_entropy());
         let shared_secret = ephemeral_secret_key.diffie_hellman(remote_public_key);
         self.absorb(&ephemeral_secret_key.public_key())?
-            .absorb(External::new(&NBytes::new(shared_secret.as_bytes())))?
+            .absorb(External::new(NBytes::new(shared_secret.as_bytes())))?
             .commit()?
             .mask(key)
     }

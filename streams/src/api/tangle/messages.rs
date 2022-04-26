@@ -45,7 +45,7 @@ use super::{
 // TODO: Consider renaming msgs => messages
 // TODO: run examples in actions
 
-pub trait IntoMessages<Trans> {
+trait IntoMessages<Trans> {
     fn messages(&mut self) -> Messages<'_, Trans>
     where
         Trans: Transport;
@@ -575,11 +575,11 @@ pub trait IntoMessages<Trans> {
 /// network failure, [`Messages::next()`] will return `Err`. It is strongly suggested that, when suitable, use the
 /// methods in [`futures::TryStreamExt`] to make the error-handling much more ergonomic (with the use of `?`) and
 /// shortcircuit the [`futures::Stream`] on the first error.
-pub struct Messages<'a, Trans>(PinBoxFut<'a, (MessagesState<'a, Trans>, Option<Result<UnwrappedMessage>>)>);
+struct Messages<'a, Trans>(PinBoxFut<'a, (MessagesState<'a, Trans>, Option<Result<UnwrappedMessage>>)>);
 
 type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
-pub struct MessagesState<'a, Trans> {
+struct MessagesState<'a, Trans> {
     user: &'a mut User<Trans>,
     ids_stack: Vec<(Identifier, Cursor<Address>)>,
     msg_queue: HashMap<Address, VecDeque<BinaryMessage>>,
@@ -588,7 +588,7 @@ pub struct MessagesState<'a, Trans> {
 }
 
 impl<'a, Trans> MessagesState<'a, Trans> {
-    pub fn new(user: &'a mut User<Trans>) -> Self {
+    fn new(user: &'a mut User<Trans>) -> Self {
         Self {
             user,
             ids_stack: Vec::new(),
@@ -602,7 +602,7 @@ impl<'a, Trans> MessagesState<'a, Trans> {
     ///
     /// See [`Messages`] documentation and examples for more details.
     #[async_recursion(?Send)]
-    pub async fn next(&mut self) -> Option<Result<UnwrappedMessage>>
+    async fn next(&mut self) -> Option<Result<UnwrappedMessage>>
     where
         Trans: Transport,
     {
@@ -698,7 +698,7 @@ impl<'a, Trans> Messages<'a, Trans>
 where
     Trans: Transport,
 {
-    pub fn new(user: &'a mut User<Trans>) -> Self {
+    fn new(user: &'a mut User<Trans>) -> Self {
         let mut state = MessagesState::new(user);
         Self(Box::pin(async move {
             let r = state.next().await;
@@ -706,7 +706,7 @@ where
         }))
     }
 
-    pub async fn next(&mut self) -> Option<Result<UnwrappedMessage>> {
+    async fn next(&mut self) -> Option<Result<UnwrappedMessage>> {
         StreamExt::next(self).await
     }
 
@@ -717,7 +717,7 @@ where
     ///
     ///  See [example in `Messages` docs](struct.Messages.html#filter-the-messages-of-a-particular-branch)
     /// for more details.
-    pub fn filter_branch<F>(
+    fn filter_branch<F>(
         self,
         predicate: impl FnMut(&UnwrappedMessage) -> F + 'a,
     ) -> impl Stream<Item = Result<UnwrappedMessage>> + 'a

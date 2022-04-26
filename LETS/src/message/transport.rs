@@ -30,10 +30,11 @@ use crate::{
 };
 
 /// Binary network Message representation.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub(crate) struct TransportMessage<Address, Body> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub struct TransportMessage<Body> {
+    // TODO: CONSIDER REMOVING ADDRESS FROM TRANSPORTMESSAGE
     /// Link -- message address.
-    address: Address,
+    // address: Address,
 
     // TODO: REMOVE
     // /// Previous Link -- previous message address
@@ -42,14 +43,14 @@ pub(crate) struct TransportMessage<Address, Body> {
     body: Body,
 }
 
-impl<Address, Body> TransportMessage<Address, Body> {
-    pub(crate) fn new(address: Address, body: Body) -> Self {
-        Self { address, body }
+impl<Body> TransportMessage<Body> {
+    pub(crate) fn new(body: Body) -> Self {
+        Self { body }
     }
 
-    fn map<B, F: FnOnce(Body) -> B>(self, f: F) -> TransportMessage<Address, B> {
+    fn map<B, F: FnOnce(Body) -> B>(self, f: F) -> TransportMessage<B> {
         TransportMessage {
-            address: self.address,
+            // address: self.address,
             body: f(self.body),
         }
     }
@@ -58,9 +59,9 @@ impl<Address, Body> TransportMessage<Address, Body> {
         &self.body
     }
 
-    fn address(&self) -> &Address {
-        &self.address
-    }
+    // fn address(&self) -> &Address {
+    //     &self.address
+    // }
 
     // TODO: REMOVE
     // fn map_err<B, F: FnOnce(Body) -> Result<B>>(self, f: F) -> Result<GenericMessage<AbsLink, B>> {
@@ -94,24 +95,24 @@ impl<Address, Body> TransportMessage<Address, Body> {
 //     }
 // }
 
-impl<Address, T> TransportMessage<Address, T>
+impl<T> TransportMessage<T>
 where
     T: AsRef<[u8]>,
-    Address: Default + Clone,
 {
-    async fn parse_header<'a, F>(&'a self) -> Result<PreparsedMessage<'a, F, Address>>
+    pub async fn parse_header<'a, F, Address>(&'a self) -> Result<PreparsedMessage<'a, F, Address>>
     // where
     //     AbsLink: Clone + AbsorbExternalFallback<F> + HasLink,
     where
         // unwrap::Context<F, &'a [u8]>: for<'b> Absorb<&'b mut Address> + for<'b> Absorb<External<&'b Address>>,
         unwrap::Context<F, &'a [u8]>: ContentUnwrap<HDF<Address>>,
-        F: PRP,
+        F: PRP + Default,
+        Address: Default,
     {
         let mut ctx = unwrap::Context::new(self.body().as_ref());
         // TODO: REMOVE ONCE SURE THE PREVIOUS IS NOT NECESSARY
         // let mut header =
         //     HDF::<Address>::new(self.address().clone()).with_previous_msg_link(Bytes(self.previous().to_bytes()));
-        let mut header = HDF::<Address>::default().with_address(self.address().clone());
+        let mut header = HDF::default();
 
         ctx.unwrap(&mut header).await?;
 

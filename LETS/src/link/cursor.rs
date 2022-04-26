@@ -1,73 +1,61 @@
-use core::fmt::{Debug, Display, Formatter, Result};
+use core::fmt::{
+    Debug,
+    Display,
+    Formatter,
+    Result,
+};
 
 /// Represents an input state for message identifier generation.
 /// Contains an Address and sequencing states.
 #[derive(Clone, Copy, Hash, Default, PartialEq, Eq)]
-struct Cursor<Link> {
-    link: Link,
-    branch_no: u32,
-    seq_no: u32,
+pub struct Cursor<Address> {
+    address: Address,
+    seq: u64,
 }
 
-impl<Link> Cursor<Link> {
-    fn new(link: Link) -> Self {
+impl<Address> Cursor<Address> {
+    pub fn new(address: Address, seq: u64) -> Self {
+        Self { address, seq }
+    }
+
+     fn address(&self) -> &Address {
+        &self.address
+    }
+
+    pub fn sequence(&self) -> u64 {
+        self.seq
+    }
+
+    fn next(self, address: Address) -> Self {
         Self {
-            link,
-            branch_no: 0,
-            seq_no: 0,
-        }
-    }
-    fn new_at(link: Link, branch_no: u32, seq_no: u32) -> Self {
-        Self {
-            link,
-            branch_no,
-            seq_no,
+            address,
+            seq: self.seq + 1,
         }
     }
 
-    fn next_branch(&mut self) {
-        self.branch_no += 1;
-        self.seq_no = 0;
-    }
-
-    fn next_seq(&mut self) {
-        self.seq_no += 1;
-    }
-
-    fn seq_num(&self) -> u64 {
-        (self.branch_no as u64) << 32 | (self.seq_no as u64)
-    }
-
-    fn set_seq_num(&mut self, seq_num: u64) {
-        self.seq_no = seq_num as u32;
-        self.branch_no = (seq_num >> 32) as u32;
-    }
-
-    fn as_ref(&self) -> Cursor<&Link> {
+    fn as_ref(&self) -> Cursor<&Address> {
         Cursor {
-            link: &self.link,
-            branch_no: self.branch_no,
-            seq_no: self.seq_no,
+            address: &self.address,
+            seq: self.seq,
         }
     }
 
-    fn as_mut(&mut self) -> Cursor<&mut Link> {
+    fn as_mut(&mut self) -> Cursor<&mut Address> {
         Cursor {
-            link: &mut self.link,
-            branch_no: self.branch_no,
-            seq_no: self.seq_no,
+            address: &mut self.address,
+            seq: self.seq,
         }
     }
 }
 
 impl<Link: Display> Display for Cursor<Link> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "<{},{}:{}>", self.link, self.branch_no, self.seq_no)
+        write!(f, "<{} -- {}>", self.address, self.seq)
     }
 }
 
 impl<Link: Debug> Debug for Cursor<Link> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "<{:?},{}:{}>", self.link, self.branch_no, self.seq_no)
+        write!(f, "<{:?} -- {}>", self.address, self.seq)
     }
 }

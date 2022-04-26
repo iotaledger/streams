@@ -94,21 +94,26 @@ impl<F: PRP, IS: io::IStream> Absorb<&mut Size> for Context<F, IS> {
     }
 }
 
-impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<&'a mut NBytes<T>> for Context<F, IS> {
-    fn absorb(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<NBytes<&'a mut T>> for Context<F, IS> {
+    fn absorb(&mut self, nbytes: NBytes<&'a mut T>) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrapn(nbytes)?;
         Ok(self)
+    }
+}
+impl<'a, F: PRP, IS: io::IStream, T> Absorb<&'a mut NBytes<T>> for Context<F, IS> where Self: Absorb<NBytes<&'a mut T>> {
+    fn absorb(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
+        self.absorb(NBytes::new(nbytes.inner_mut()))
     }
 }
 
 impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut Bytes<Vec<u8>>> for Context<F, IS> {
     fn absorb(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
-        self.absorb(&mut Bytes::new(bytes.inner_mut()))
+        self.absorb(Bytes::new(bytes.inner_mut()))
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut Bytes<&mut Vec<u8>>> for Context<F, IS> {
-    fn absorb(&mut self, bytes: &'a mut Bytes<&mut Vec<u8>>) -> Result<&mut Self> {
+impl<'a, F: PRP, IS: io::IStream> Absorb<Bytes<&mut Vec<u8>>> for Context<F, IS> {
+    fn absorb(&mut self, mut bytes: Bytes<&mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.absorb(&mut size)?;
         bytes.resize(size.inner());
@@ -136,6 +141,24 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<
         let mut bytes = [0_u8; x25519::PUBLIC_KEY_LENGTH];
         AbsorbContext::new(self).unwrapn(&mut bytes)?;
         *public_key = x25519::PublicKey::from(bytes);
+        Ok(self)
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream, T> Absorb<&'a mut Option<T>> for Context<F, IS>
+where
+    for<'b, 'c> &'b mut Self: Absorb<&'c mut T>,
+    T: Default,
+{
+    fn absorb(&mut self, option: &'a mut Option<T>) -> Result<&mut Self> {
+        let mut oneof = Uint8::default();
+        let mut ctx = self.absorb(&mut oneof)?;
+        if oneof.inner() == 1 {
+            let mut t = T::default();
+            // This hacky &mut is necessary to break the recursivity of the trait bound
+            (&mut ctx).absorb(&mut t)?;
+            *option = Some(t);
+        };
         Ok(self)
     }
 }

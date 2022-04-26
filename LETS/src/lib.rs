@@ -36,10 +36,10 @@ extern crate alloc;
 pub mod message;
 
 /// Message addressing and linking
-mod link;
+pub mod link;
 
 /// Transport-related abstractions.
-mod transport;
+pub mod transport;
 
 // TODO: REMOVE
 // use cstr_core;

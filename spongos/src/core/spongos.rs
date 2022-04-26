@@ -199,7 +199,7 @@ impl<F: PRP> Spongos<F> {
         eq
     }
 
-    pub(crate) fn squeeze<R>(&mut self) -> R
+    pub fn squeeze<R>(&mut self) -> R
     where
         R: AsMut<[u8]> + Default,
     {
@@ -245,7 +245,7 @@ impl<F: PRP> Spongos<F> {
 
     fn hash<T, R>(data: T) -> R
     where
-        F: PRP,
+        F: PRP + Default,
         T: AsRef<[u8]>,
         R: AsMut<[u8]> + Default,
     {
@@ -378,7 +378,7 @@ impl<F: PRP> Spongos<F> {
 
     /// Force transform even if for incomplete (but non-empty!) outer state.
     /// Commit with empty outer state has no effect.
-    pub(crate) fn commit(&mut self) {
+    pub fn commit(&mut self) {
         if self.pos != 0 {
             for o in &mut self.s.outer_mut()[self.pos..] {
                 *o = 0
@@ -397,7 +397,8 @@ impl<F: PRP> Spongos<F> {
     ///
     /// Joiner (self) absorbs data squeezed from joinee.
     /// Be aware that before squeezing the joinee, this is commited, its outer state is zeroed, and a transformation is
-    /// performed. This means the joinee will be mutated. if this is not desirable, make sure to clone the joinee beforehand.
+    /// performed. This means the joinee will be mutated. if this is not desirable, make sure to clone the joinee
+    /// beforehand.
     pub(crate) fn join(&mut self, joinee: &mut Self) {
         joinee.commit();
         // Clear outer state, this is equivalent to having joinee initialized from inner state
@@ -496,7 +497,7 @@ impl<F: PRP> fmt::Debug for Spongos<F> {
 /// Hash data with Spongos.
 fn hash<F, T, R>(data: T) -> R
 where
-    F: PRP,
+    F: PRP + Default,
     T: AsRef<[u8]>,
     R: AsMut<[u8]> + Default,
 {
@@ -505,7 +506,7 @@ where
 
 impl<F> Digest for Spongos<F>
 where
-    F: PRP,
+    F: PRP + Default,
     // TODO: REMOVE
     F::CapacitySize: Mul<U2>,
     <F::CapacitySize as Mul<U2>>::Output: ArrayLength<u8>,

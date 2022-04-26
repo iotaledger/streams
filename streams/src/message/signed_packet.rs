@@ -117,7 +117,8 @@ where
     }
 }
 
-pub struct Unwrap<'a, F> {
+#[derive(PartialEq, Eq, Hash)]
+struct Unwrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
     public_payload: Vec<u8>,
     masked_payload: Vec<u8>,
@@ -141,12 +142,12 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, signed_packet: &mut Unwrap<'a, F>) -> Result<&mut Self> {
-        self.join(signed_packet.initial_state)?
+    async fn unwrap(&mut self, signed_packet: &mut Unwrap<F>) -> Result<&mut Self> {
+        self.join(&mut signed_packet.initial_state)?
             .unwrap(&mut signed_packet.user_id)
             .await?
-            .absorb(&mut Bytes::new(&mut signed_packet.public_payload))?
-            .mask(&mut Bytes::new(&mut signed_packet.masked_payload))?
+            .absorb(Bytes::new(&mut signed_packet.public_payload))?
+            .mask(Bytes::new(&mut signed_packet.masked_payload))?
             .verify(&signed_packet.user_id)
             .await?;
         Ok(self)

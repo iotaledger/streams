@@ -31,11 +31,13 @@ LETS = { path = "../LETS", default-features = false }
 iota-crypto = { version = "0.9.1", default-features = false, features = ["x25519"] }
 
 # 3rd-party dependencies
+rand = {version = "0.8.5", default-features = false }
 hex = { version = "0.4", default-features = false}
-futures = { version = "0.3.8", default-features = false, optional = true }
-async-recursion = { version = "0.3.2", default-features = false, optional = true }
 async-trait = {version = "0.1", default-features = false }
 anyhow = {version = "1.0", default-features = false }
+hashbrown = { version = "0.12.0", default-features = false, features = ["ahash"]}
+futures = { version = "0.3.8", default-features = false, optional = true }
+async-recursion = { version = "0.3.2", default-features = false, optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.15", default-features = false }

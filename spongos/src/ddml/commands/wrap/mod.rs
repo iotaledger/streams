@@ -15,6 +15,8 @@ use crate::{
     },
 };
 
+type BinContext<'a, F> = Context<F, &'a mut [u8]>;
+
 pub struct Context<F, OS> {
     spongos: Spongos<F>,
     stream: OS,

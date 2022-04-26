@@ -19,7 +19,7 @@ impl<T> Bytes<T> {
         Self(bytes)
     }
 
-    fn inner(&self) -> &T {
+    pub(crate) fn inner(&self) -> &T {
         &self.0
     }
     

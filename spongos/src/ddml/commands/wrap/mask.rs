@@ -86,18 +86,30 @@ impl<'a, F: PRP, OS: io::OStream> Mask<Size> for Context<F, OS> {
     }
 }
 
-impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<&'a NBytes<T>> for Context<F, OS> {
-    fn mask(&mut self, bytes: &'a NBytes<T>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<NBytes<&'a T>> for Context<F, OS> {
+    fn mask(&mut self, bytes: NBytes<&'a T>) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(bytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream, T> Mask<&'a Bytes<T>> for Context<F, OS> where T: AsRef<[u8]> {
-    fn mask(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
+impl<'a, F: PRP, T, OS: io::OStream> Mask<&'a NBytes<T>> for Context<F, OS> where Self: Mask<NBytes<&'a T>> {
+    fn mask(&mut self, bytes: &'a NBytes<T>) -> Result<&mut Self> {
+        self.mask(NBytes::new(bytes.inner()))
+    }
+}
+
+impl<'a, F: PRP, OS: io::OStream, T> Mask<Bytes<&'a T>> for Context<F, OS> where T: AsRef<[u8]> {
+    fn mask(&mut self, bytes: Bytes<&'a T>) -> Result<&mut Self> {
         self.mask(Size::new(bytes.len()))?;
         MaskContext::new(self).wrapn(bytes)?;
         Ok(self)
+    }
+}
+
+impl<'a, F: PRP, OS: io::OStream, T> Mask<&'a Bytes<T>> for Context<F, OS> where Self: Mask<Bytes<&'a T>> {
+    fn mask(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
+        self.mask(Bytes::new(bytes.inner()))
     }
 }
 
@@ -111,6 +123,19 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<F, OS>
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS> {
     fn mask(&mut self, public_key: &'a ed25519::PublicKey) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(public_key)?;
+        Ok(self)
+    }
+}
+
+impl<F: PRP, OS: io::OStream, T> Mask<Option<T>> for Context<F, OS>
+where
+    Self: Mask<T> + Mask<Uint8>,
+{
+    fn mask(&mut self, option: Option<T>) -> Result<&mut Self> {
+        match option {
+            Some(t) => self.mask(Uint8::new(1))?.mask(t)?,
+            None => self.mask(Uint8::new(0))?,
+        };
         Ok(self)
     }
 }

@@ -63,10 +63,12 @@ use LETS::{
         Identity,
     },
     message::{
+        ContentSign,
+        ContentSignSizeof,
         ContentSizeof,
         ContentUnwrap,
         ContentVerify,
-        ContentWrap, ContentSignSizeof, ContentSign,
+        ContentWrap,
     },
 };
 // use iota_streams_core::{
@@ -85,11 +87,27 @@ use LETS::{
 //     types::*,
 // };
 
-pub struct Wrap<'a, F> {
+pub(crate) struct Wrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
     unsubscribe_key: [u8; 32],
     subscriber_id: &'a Identity,
     author_ke_pk: &'a x25519::PublicKey,
+}
+
+impl<'a, F> Wrap<'a, F> {
+    pub(crate) fn new(
+        initial_state: &'a mut Spongos<F>,
+        unsubscribe_key: [u8; 32],
+        subscriber_id: &'a Identity,
+        author_ke_pk: &'a x25519::PublicKey,
+    ) -> Self {
+        Self {
+            initial_state,
+            unsubscribe_key,
+            subscriber_id,
+            author_ke_pk,
+        }
+    }
 }
 
 #[async_trait(?Send)]
@@ -98,7 +116,8 @@ impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
         self.x25519(subscription.author_ke_pk, &NBytes::new(&subscription.unsubscribe_key))?
             .sizeof(&subscription.subscriber_id.to_identifier())
             .await?
-            .sign_sizeof(subscription.subscriber_id).await?;
+            .sign_sizeof(subscription.subscriber_id)
+            .await?;
         Ok(self)
     }
 }
@@ -114,12 +133,13 @@ where
             .x25519(subscription.author_ke_pk, &NBytes::new(&subscription.unsubscribe_key))?
             .wrap(&mut subscription.subscriber_id.to_identifier())
             .await?
-            .sign(subscription.subscriber_id).await?;
+            .sign(subscription.subscriber_id)
+            .await?;
         Ok(self)
     }
 }
 
-pub struct Unwrap<'a, F> {
+pub(crate) struct Unwrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
     unsubscribe_key: [u8; 32],
     subscriber_id: Identifier,
@@ -127,16 +147,18 @@ pub struct Unwrap<'a, F> {
 }
 
 impl<'a, F> Unwrap<'a, F>
-where
-    F: PRP,
 {
-    pub fn new(initial_state: &'a mut Spongos<F>, author_ke_sk: &'a x25519::SecretKey) -> Result<Self> {
-        Ok(Self {
+    pub(crate) fn new(initial_state: &'a mut Spongos<F>, author_ke_sk: &'a x25519::SecretKey) -> Self {
+        Self {
             initial_state,
             unsubscribe_key: Default::default(),
             subscriber_id: Default::default(),
             author_ke_sk,
-        })
+        }
+    }
+
+    pub(crate) fn subscriber_id(&self) -> Identifier {
+        self.subscriber_id
     }
 }
 

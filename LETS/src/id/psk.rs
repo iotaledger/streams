@@ -1,4 +1,5 @@
 use core::convert::{TryFrom, TryInto};
+use alloc::vec::Vec;
 
 // use crate::{
 //     prelude::{
@@ -65,20 +66,24 @@ impl Psk {
     fn new<F, T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
-        F: PRP,
+        F: PRP + Default,
     {
         let mut spongos = Spongos::<F>::init();
         spongos.absorb("PSK");
         spongos.sponge(seed)
     }
 
-    pub(crate) fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
-    pub(crate) fn to_pskid<F>(&self) -> PskId
+    pub(crate) fn to_bytes(self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+
+    pub fn to_pskid<F>(self) -> PskId
     where
-        F: PRP,
+        F: PRP + Default,
     {
         let mut spongos = Spongos::<F>::init();
         spongos.absorb("PSKID");
@@ -127,7 +132,7 @@ impl PskId {
     fn new<F, T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
-        F: PRP,
+        F: PRP + Default,
     {
         Psk::new::<F, T>(seed).to_pskid::<F>()
     }

@@ -69,7 +69,7 @@ use LETS::{
 //     types::*,
 // };
 
-pub struct Wrap<'a, F> {
+struct Wrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
     subscriber_id: &'a Identity,
 }
@@ -103,7 +103,7 @@ where
     }
 }
 
-pub struct Unwrap<'a, F> {
+struct Unwrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
     subscriber_id: Identifier,
 }

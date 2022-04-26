@@ -26,9 +26,15 @@ impl Squeeze<Mac> for Context {
 }
 
 /// External values are not encoded.
-impl<T: AsRef<[u8]>> Squeeze<External<&NBytes<T>>> for Context {
-    fn squeeze(&mut self, _external_nbytes: External<&NBytes<T>>) -> Result<&mut Self> {
+impl<T: AsRef<[u8]>> Squeeze<External<NBytes<&T>>> for Context {
+    fn squeeze(&mut self, _external_nbytes: External<NBytes<&T>>) -> Result<&mut Self> {
         Ok(self)
+    }
+}
+
+impl<'a, T> Squeeze<External<&'a NBytes<T>>> for Context where Self: Squeeze<External<NBytes<&'a T>>> {
+    fn squeeze(&mut self, external_nbytes: External<&'a NBytes<T>>) -> Result<&mut Self> {
+        self.squeeze(External::new(NBytes::new(external_nbytes.into_inner().inner())))
     }
 }
 

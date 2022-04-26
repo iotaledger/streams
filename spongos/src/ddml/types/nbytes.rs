@@ -45,11 +45,20 @@ impl<T> NBytes<T> {
     {
         self.0.as_ref()
     }
+
     fn as_mut_slice(&mut self) -> &mut [u8]
     where
         T: AsMut<[u8]>,
     {
         self.0.as_mut()
+    }
+
+    pub(crate) fn inner(&self) -> &T {
+        &self.0
+    }
+
+    pub(crate) fn inner_mut(&mut self) -> &mut T {
+        &mut self.0
     }
 }
 

@@ -16,11 +16,11 @@ use iota_streams_core::{
 };
 
 /// Builder instance for a Streams User
-pub struct UserBuilder<Trans: Transport, F> {
+struct UserBuilder<Trans: Transport, F> {
     /// Base Identity that will be used to Identifier a Streams User
-    pub id: Option<UserIdentity<F>>,
+    id: Option<UserIdentity<F>>,
     /// Transport Client instance
-    pub transport: Option<Trans>,
+    transport: Option<Trans>,
 }
 
 impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
@@ -34,7 +34,7 @@ impl<Trans: Transport, F> Default for UserBuilder<Trans, F> {
 
 impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// Create a new User Builder instance
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self::default()
     }
 
@@ -42,7 +42,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     ///
     /// # Arguments
     /// * `id` - UserIdentity to be used for base identification of the Streams User
-    pub fn with_identity(mut self, id: UserIdentity<DefaultF>) -> Self {
+    fn with_identity(mut self, id: UserIdentity<DefaultF>) -> Self {
         self.id = Some(id);
         self
     }
@@ -51,7 +51,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     ///
     /// # Arguments
     /// * `transport` - Transport Client to be used by the Streams User
-    pub fn with_transport(mut self, transport: Trans) -> Self {
+    fn with_transport(mut self, transport: Trans) -> Self {
         self.transport = Some(transport);
         self
     }
@@ -130,7 +130,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn build(self) -> Result<User<Trans>> {
+    fn build(self) -> Result<User<Trans>> {
         let id = self.id.ok_or_else(|| anyhow!(UserIdentityMissing))?;
         let user = crate::api::ApiUser::new(id);
         let transport = self.transport.unwrap_or(Trans::default());
@@ -191,7 +191,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn recover(self, announcement: &Address) -> Result<User<Trans>> {
+    async fn recover(self, announcement: &Address) -> Result<User<Trans>> {
         let mut user = self.build()?;
         user.user.create_channel(0)?;
 

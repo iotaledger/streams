@@ -61,20 +61,20 @@ const FLAG_BRANCHING_MASK: u8 = 1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) struct HDF<Address> {
-    address: Address,
+pub struct HDF<Address> {
+    // address: Address,
     encoding: u8,
     version: u8,
     // content type is 4 bits
-    content_type: u8,
+    message_type: u8,
     // payload length is 10 bits
     payload_length: u16,
     frame_type: u8,
     // frame count is 22 bits
     payload_frame_count: u32,
-    previous_msg_address: Address,
-    seq_num: u64,
-    sender_id: Identifier,
+    linked_msg_address: Option<Address>,
+    sequence: u64,
+    // sender_id: Identifier,
 }
 
 impl<Address> Default for HDF<Address>
@@ -83,36 +83,50 @@ where
 {
     fn default() -> Self {
         Self {
-            address: Address::default(),
             encoding: UTF8,
             version: STREAMS_1_VER,
-            content_type: 0,
+            message_type: 0,
             payload_length: 0,
             frame_type: HDF_ID,
             payload_frame_count: 0,
-            previous_msg_address: Address::default(),
-            seq_num: 0,
-            sender_id: Identifier::default(),
+            linked_msg_address: Default::default(),
+            sequence: 0,
         }
     }
 }
 
 impl<Address> HDF<Address> {
-    fn new(
-        address: Address,
-        previous_msg_address: Address,
-        content_type: u8,
-        payload_length: u16,
-        seq_num: u64,
-        identifier: &Identifier,
-    ) -> Result<Self> {
+    pub fn new(message_type: u8, seq_num: u64) -> Result<Self> {
         ensure!(
-            content_type >> 4 == 0,
+            message_type >> 4 == 0,
             anyhow!(
                 "invalid content-type '{}': content-type value cannot be greater than 4 bits",
-                content_type
+                message_type
             )
         );
+        Ok(Self {
+            encoding: UTF8,
+            version: STREAMS_1_VER,
+            message_type,
+            payload_length: 0,
+            frame_type: HDF_ID,
+            payload_frame_count: 0,
+            linked_msg_address: None,
+            sequence: seq_num,
+        })
+    }
+
+    // TODO: REMOVE
+    // pub(crate) fn with_address(mut self, address: Address) -> Self {
+    //     self.address = address;
+    //     self
+    // }
+
+    pub fn with_linked_msg_address(mut self, address: Address) -> Self {
+        self.linked_msg_address = Some(address);
+        self
+    }
+    fn with_payload_length(mut self, payload_length: u16) -> Result<Self> {
         ensure!(
             payload_length >> 10 == 0,
             anyhow!(
@@ -120,23 +134,8 @@ impl<Address> HDF<Address> {
                 payload_length
             )
         );
-        Ok(Self {
-            encoding: UTF8,
-            version: STREAMS_1_VER,
-            content_type,
-            payload_length,
-            frame_type: HDF_ID,
-            payload_frame_count: 0,
-            previous_msg_address,
-            address,
-            seq_num,
-            sender_id: *identifier,
-        })
-    }
-
-    pub(crate) fn with_address(mut self, address: Address) -> Self {
-        self.address = address;
-        self
+        self.payload_length = payload_length;
+        Ok(self)
     }
 
     // TODO: REMOVE
@@ -171,8 +170,8 @@ impl<Address> HDF<Address> {
     //     self
     // }
 
-    pub(crate) fn content_type(&self) -> u8 {
-        self.content_type
+    pub(crate) fn message_type(&self) -> u8 {
+        self.message_type
     }
 
     fn payload_length(&self) -> u16 {
@@ -183,21 +182,21 @@ impl<Address> HDF<Address> {
         self.payload_frame_count
     }
 
-    fn seq_num(&self) -> u64 {
-        self.seq_num
+    pub fn sequence(&self) -> u64 {
+        self.sequence
     }
 
-    fn identifier(&self) -> &Identifier {
-        &self.sender_id
+    // fn identifier(&self) -> &Identifier {
+    //     &self.sender_id
+    // }
+
+    pub(crate) fn linked_msg_address(&self) -> &Option<Address> {
+        &self.linked_msg_address
     }
 
-    fn previous_msg_address(&self) -> &Address {
-        &self.previous_msg_address
-    }
-
-    pub(crate) fn address(&self) -> &Address {
-        &self.previous_msg_address
-    }
+    // pub fn address(&self) -> &Address {
+    //     &self.address
+    // }
 }
 
 // impl<Link> fmt::Debug for HDF<Link>
@@ -222,22 +221,22 @@ impl<Link> ContentSizeof<HDF<Link>> for sizeof::Context
 where
     // sizeof::Context<F>: Absorb<Link> + Absorb<Uint8> +
     // Absorb<External<Link>>,
-    sizeof::Context: for<'a> Absorb<&'a Link> + for<'a> Absorb<External<&'a Link>>,
+    for<'a> Self: Absorb<&'a Link> + Absorb<&'a ()>,
 {
     async fn sizeof(&mut self, hdf: &HDF<Link>) -> Result<&mut Self> {
-        let content_type_and_payload_length = NBytes::<[u8; 2]>::default();
+        let message_type_and_payload_length = NBytes::<[u8; 2]>::default();
         let payload_frame_count = NBytes::<[u8; 3]>::default();
         self.absorb(Uint8::new(hdf.encoding))?
             .absorb(Uint8::new(hdf.version))?
-            .skip(&content_type_and_payload_length)?
-            .absorb(External::new(Uint8::new(hdf.content_type << 4)))? // ?
+            .skip(&message_type_and_payload_length)?
+            .absorb(External::new(Uint8::new(hdf.message_type << 4)))? // ?
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(&payload_frame_count)?
-            .absorb(External::new(&hdf.address))?
-            .absorb(&hdf.previous_msg_address)?
-            .skip(Uint64::new(hdf.seq_num))?
-            .sizeof(&hdf.sender_id)
-            .await?;
+            // .absorb(External::new(&hdf.address))?
+            .absorb(hdf.linked_msg_address.as_ref())?
+            .skip(Uint64::new(hdf.sequence))?;
+        // .sizeof(&hdf.sender_id)
+        // .await?;
 
         Ok(self)
     }
@@ -248,12 +247,12 @@ impl<F, OS, Link> ContentWrap<HDF<Link>> for wrap::Context<F, OS>
 where
     F: PRP,
     OS: io::OStream,
-    for<'a> Self: Absorb<&'a Link> + Absorb<External<&'a Link>>,
+    Self: for<'a> Absorb<&'a Link> + Absorb<Uint8>,
 {
     async fn wrap(&mut self, hdf: &mut HDF<Link>) -> Result<&mut Self> {
-        let content_type_and_payload_length = {
+        let message_type_and_payload_length = {
             let mut nbytes = NBytes::<[u8; 2]>::default();
-            nbytes[0] = (hdf.content_type << 4) | ((hdf.payload_length >> 8) as u8 & 0b0011);
+            nbytes[0] = (hdf.message_type << 4) | ((hdf.payload_length >> 8) as u8 & 0b0011);
             nbytes[1] = hdf.payload_length as u8;
             nbytes
         };
@@ -268,15 +267,15 @@ where
 
         self.absorb(Uint8::new(hdf.encoding))?
             .absorb(Uint8::new(hdf.version))?
-            .skip(&content_type_and_payload_length)?
-            .absorb(External::new(Uint8::new(hdf.content_type << 4)))?
+            .skip(&message_type_and_payload_length)?
+            .absorb(External::new(Uint8::new(hdf.message_type << 4)))?
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(&payload_frame_count)?
-            .absorb(External::new(&hdf.address))?
-            .absorb(&hdf.previous_msg_address)?
-            .skip(Uint64::new(hdf.seq_num))?
-            .wrap(&mut hdf.sender_id)
-            .await?;
+            // .absorb(External::new(&hdf.address))?
+            .absorb(hdf.linked_msg_address.as_ref())?
+            .skip(Uint64::new(hdf.sequence))?;
+        // .wrap(&mut hdf.sender_id)
+        // .await?;
 
         Ok(self)
     }
@@ -323,18 +322,20 @@ where
 // }
 
 #[async_trait(?Send)]
-impl<F, IS, Link> ContentUnwrap<HDF<Link>> for unwrap::Context<F, IS>
+impl<F, IS, Address> ContentUnwrap<HDF<Address>> for unwrap::Context<F, IS>
 where
     F: PRP,
     IS: io::IStream,
-    unwrap::Context<F, IS>: for<'a> Absorb<External<&'a Link>> + for<'a> Absorb<&'a mut Link>,
+    // TODO: Investigate how to get rid of this hack (necessary because of trait recursion)
+    for<'a> unwrap::Context<F, IS>: Absorb<&'a mut Address> + Absorb<&'a mut Option<Address>>,
+    Address: Default,
 {
-    async fn unwrap(&mut self, mut hdf: &mut HDF<Link>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, mut hdf: &mut HDF<Address>) -> Result<&mut Self> {
         let mut encoding = Uint8::default();
         let mut version = Uint8::default();
-        // [content_type x 4][reserved x 2][payload_length x 2]
+        // [message_type x 4][reserved x 2][payload_length x 2]
         // [payload_length x 8 -------------------------------]
-        let mut content_type_and_payload_length = NBytes::<[u8; 2]>::default();
+        let mut message_type_and_payload_length = NBytes::<[u8; 2]>::default();
         let mut frame_type = Uint8::default();
         let mut payload_frame_count_bytes = NBytes::<[u8; 3]>::default();
         let mut seq_num = Uint64::default();
@@ -345,14 +346,14 @@ where
                 version.inner() == STREAMS_1_VER,
                 anyhow!("Msg version '{}' not supported", version),
             )?
-            .skip(&mut content_type_and_payload_length)?
+            .skip(&mut message_type_and_payload_length)?
             .guard(
-                0 == content_type_and_payload_length[0] & 0b1100,
+                0 == message_type_and_payload_length[0] & 0b1100,
                 anyhow!("bits 5 and 6 between content-type and payload-length are reserved"),
             )?
             .absorb(External::new(Uint8::new(
-                // Absorb only content_type
-                content_type_and_payload_length[0] & 0b11110000,
+                // Absorb only message_type
+                message_type_and_payload_length[0] & 0b11110000,
             )))?
             .absorb(&mut frame_type)?
             .guard(
@@ -364,17 +365,17 @@ where
                 0 == payload_frame_count_bytes[0] & 0b1100,
                 anyhow!("first 2 bits of payload-frame-count are reserved"),
             )?
-            .absorb(External::new(&hdf.address))?
-            .absorb(&mut hdf.previous_msg_address)?
-            .skip(&mut seq_num)?
-            .unwrap(&mut hdf.sender_id)
-            .await?;
+            // .absorb(External::new(&hdf.address))?
+            .absorb(&mut hdf.linked_msg_address)?
+            .skip(&mut seq_num)?;
+        // .unwrap(&mut hdf.sender_id)
+        // .await?;
 
         hdf.encoding = encoding.inner();
         hdf.version = version.inner();
-        hdf.content_type = content_type_and_payload_length[0] >> 4;
+        hdf.message_type = message_type_and_payload_length[0] >> 4;
         hdf.payload_length =
-            (((content_type_and_payload_length[0] & 0b0011) as u16) << 8) | (content_type_and_payload_length[1] as u16);
+            (((message_type_and_payload_length[0] & 0b0011) as u16) << 8) | (message_type_and_payload_length[1] as u16);
         hdf.frame_type = frame_type.inner();
 
         let mut x = [0_u8; 4];
@@ -383,7 +384,7 @@ where
         x[3] = payload_frame_count_bytes[2];
         hdf.payload_frame_count = u32::from_be_bytes(x);
 
-        hdf.seq_num = seq_num.inner();
+        hdf.sequence = seq_num.inner();
 
         Ok(self)
     }

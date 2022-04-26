@@ -29,20 +29,20 @@ extern crate alloc;
 mod message;
 
 /// [`User`] API.
-// mod api;
+mod api;
 
-/// Get a `Value` given a `Key`
-///
-/// This trait can be implemented to any kind of collection to get an item out of it.
-/// It's meant to be versatile, so it can be implemented for T or &T, and both `Key` and
-/// `Value` can be owned or references as well.
-pub trait Lookup<Key, Value> {
-    fn lookup(&self, key: Key) -> Option<Value>;
-}
+// /// Get a `Value` given a `Key`
+// ///
+// /// This trait can be implemented to any kind of collection to get an item out of it.
+// /// It's meant to be versatile, so it can be implemented for T or &T, and both `Key` and
+// /// `Value` can be owned or references as well.
+// trait Lookup<Key, Value> {
+//     fn lookup(&self, key: Key) -> Option<Value>;
+// }
 
 // // Reexport the most frequently used types for an easier discoverability
 // #[cfg(feature = "tangle")]
-// pub use api::{
+// use api::{
 //     Address,
 //     MessageContent,
 //     UnwrappedMessage,
@@ -51,9 +51,9 @@ pub trait Lookup<Key, Value> {
 // };
 
 // #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
-// pub use LETS::transport::tangle::client::Client as Tangle;
+// use LETS::transport::tangle::client::Client as Tangle;
 
 // // TODO: REMOVE BYTES DEPENDENCY ALLTOGETHER
-// pub use iota_streams_ddml::types::Bytes;
+// use iota_streams_ddml::types::Bytes;
 
-// pub use iota_streams_app::id::UserIdentity;
+// use iota_streams_app::id::UserIdentity;

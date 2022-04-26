@@ -47,7 +47,7 @@ use crate::message::{
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) struct PCF<Content> {
+pub struct PCF<Content> {
     frame_type: u8,
     // 22-bit field
     payload_frame_num: PayloadFrameNum,
@@ -71,7 +71,7 @@ impl PCF<()> {
         }
     }
 
-    pub(crate) fn new_final_frame() -> Self {
+    pub fn new_final_frame() -> Self {
         Self {
             frame_type: FINAL_PCF_ID,
             payload_frame_num: PayloadFrameNum::from_u32_unchecked(1),
@@ -119,7 +119,7 @@ impl<Content> PCF<Content> {
         })
     }
 
-    pub(crate) fn with_content<T>(self, content: T) -> PCF<T> {
+    pub fn with_content<T>(self, content: T) -> PCF<T> {
         PCF {
             frame_type: self.frame_type,
             payload_frame_num: self.payload_frame_num,
@@ -129,6 +129,14 @@ impl<Content> PCF<Content> {
 
     pub(crate) fn change_content(&mut self, content: Content) {
         self.content = content;
+    }
+
+    pub fn content(&self) -> &Content {
+        &self.content
+    }
+
+    pub fn into_content(self) -> Content {
+        self.content
     }
 
     fn with_payload_frame_num(&mut self, payload_frame_num: u32) -> Result<&mut Self> {

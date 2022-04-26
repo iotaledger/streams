@@ -8,7 +8,7 @@ use super::{
     spongos::Spongos,
 };
 
-fn bytes_spongosn<F: PRP>(n: usize) {
+fn bytes_spongosn<F: PRP + Default>(n: usize) {
     let mut rng = Spongos::<F>::init();
     rng.absorb(&vec![0; 10]);
     rng.commit();
@@ -47,7 +47,7 @@ fn bytes_spongosn<F: PRP>(n: usize) {
     assert!(t == u, "{}: MAC(x) != MAC(D(E(x)))", n);
 }
 
-fn slice_spongosn<F: PRP>(n: usize) {
+fn slice_spongosn<F: PRP + Default>(n: usize) {
     let mut k = vec![0_u8; n];
     let mut p = vec![0_u8; n];
     let mut x = vec![0_u8; n];
@@ -127,7 +127,7 @@ fn slices_with_size_boundary_cases() {
     slice_spongosn::<KeccakF1600>(rate * 5);
 }
 
-fn encrypt_decrypt_n<F: PRP>(n: usize) {
+fn encrypt_decrypt_n<F: PRP + Default + Clone>(n: usize) {
     let rate = F::RateSize::USIZE;
     let mut s = Spongos::<F>::init();
     s.absorb(&vec![1; 32]);

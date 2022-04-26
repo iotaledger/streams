@@ -98,15 +98,13 @@ use crate::{
         },
     },
     message::{
-        content::{
-            ContentDecrypt,
-            ContentEncrypt,
-            ContentEncryptSizeOf,
-            ContentSign,
-            ContentSizeof,
-            ContentVerify,
-        },
+        ContentDecrypt,
+        ContentEncrypt,
+        ContentEncryptSizeOf,
+        ContentSign,
         ContentSignSizeof,
+        ContentSizeof,
+        ContentVerify,
     },
 };
 
@@ -203,7 +201,7 @@ impl Ed25519 {
     fn from_seed<F, T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
-        F: PRP,
+        F: PRP + Default,
     {
         Self(ed25519::SecretKey::generate_with(&mut SpongosRng::<F>::new(seed)))
     }
@@ -254,6 +252,19 @@ impl Default for Identity {
 }
 
 impl Identity {
+    #[deprecated = "to be removed once key exchange is encapsulated within Identity"]
+    pub fn _ke_sk(&self) -> Option<x25519::SecretKey> {
+        match self {
+            Self::Ed25519(Ed25519(ed_secret)) => {
+                let x_secret: x25519::SecretKey = ed_secret.into();
+                Some(x_secret)
+            }
+            Self::Psk(_) => None,
+            #[cfg(feature = "did")]
+            Self::DID(DID::PrivateKey(info)) => Some(info.ke_kp().0),
+            // TODO: Account implementation
+        }
+    }
     // TODO: MOVE TO KEYS
     // async fn new(seed: &str) -> Identity {
     //     let signing_private_key = ed25519::SecretKey::generate_with(&mut SpongosRng::::new(seed));

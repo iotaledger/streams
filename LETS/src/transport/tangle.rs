@@ -25,7 +25,10 @@ use iota_client::bee_message::Message as IotaMessage;
 // Streams
 
 // Local
-use crate::transport::Transport;
+use crate::{
+    link::Address,
+    transport::Transport,
+};
 
 // TODO: REMOVE
 // use core::fmt;
@@ -282,28 +285,27 @@ impl Client {
 // }
 
 #[async_trait(?Send)]
-impl<Index, Message> Transport<Index, Message> for Client
+impl<Message> Transport<Address, Message, Message> for Client
 where
-    Index: AsRef<[u8]> + Display,
     Message: Into<Vec<u8>> + From<IotaMessage>,
 {
-    async fn send_message(&mut self, index: Index, msg: Message) -> Result<()>
+    async fn send_message(&mut self, address: Address, msg: Message) -> Result<Message>
     where
         Message: 'async_trait,
-        Index: 'async_trait,
     {
-        self.client()
+        Ok(self
+            .client()
             .message()
-            .with_index(index)
+            .with_index(address.to_blake2b())
             .with_data(msg.into())
             .finish()
-            .await?;
-        Ok(())
+            .await?
+            .into())
     }
 
-    async fn recv_messages(&mut self, index: &Index) -> Result<Vec<Message>> {
-        let msg_ids = self.client().get_message().index(index).await?;
-        ensure!(!msg_ids.is_empty(), "no message found at index '{}'", index);
+    async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
+        let msg_ids = self.client().get_message().index(address.to_blake2b()).await?;
+        ensure!(!msg_ids.is_empty(), "no message found at index '{}'", address);
 
         let msgs = try_join_all(
             msg_ids

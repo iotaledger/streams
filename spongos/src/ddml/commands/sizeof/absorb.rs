@@ -1,8 +1,8 @@
+use anyhow::Result;
 use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
-use anyhow::Result;
 use generic_array::ArrayLength;
 
 use crate::ddml::{
@@ -63,8 +63,11 @@ impl Absorb<Size> for Context {
 }
 
 /// `bytes` has variable size thus the size is encoded before the content bytes.
-impl<'a, T> Absorb<&'a Bytes<T>> for Context where T: AsRef<[u8]>  {
-    fn absorb(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
+impl<'a, T> Absorb<Bytes<&'a T>> for Context
+where
+    T: AsRef<[u8]>,
+{
+    fn absorb(&mut self, bytes: Bytes<&'a T>) -> Result<&mut Self> {
         let bytes_size = Size::new(bytes.len());
         self.absorb(bytes_size)?;
         self.size += bytes.len();
@@ -72,11 +75,29 @@ impl<'a, T> Absorb<&'a Bytes<T>> for Context where T: AsRef<[u8]>  {
     }
 }
 
+impl<'a, T> Absorb<&'a Bytes<T>> for Context
+where
+    Self: Absorb<Bytes<&'a T>>,
+{
+    fn absorb(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
+        self.absorb(Bytes::new(bytes.inner()))
+    }
+}
+
 /// `byte [n]` is fixed-size and is encoded with `n` bytes.
-impl<'a, T: AsRef<[u8]>> Absorb<&'a NBytes<T>> for Context {
-    fn absorb(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
+impl<'a, T: AsRef<[u8]>> Absorb<NBytes<&'a T>> for Context {
+    fn absorb(&mut self, nbytes: NBytes<&'a T>) -> Result<&mut Self> {
         self.size += nbytes.as_ref().len();
         Ok(self)
+    }
+}
+
+impl<'a, T> Absorb<&'a NBytes<T>> for Context
+where
+    Self: Absorb<NBytes<&'a T>>,
+{
+    fn absorb(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
+        self.absorb(NBytes::new(nbytes.inner()))
     }
 }
 
@@ -133,9 +154,15 @@ impl Absorb<External<Uint64>> for Context {
 }
 
 /// External values are not encoded in the binary stream.
-impl<T: AsRef<[u8]>> Absorb<External<&NBytes<T>>> for Context {
-    fn absorb(&mut self, _external: External<&NBytes<T>>) -> Result<&mut Self> {
+impl<T: AsRef<[u8]>> Absorb<External<NBytes<&T>>> for Context {
+    fn absorb(&mut self, _external: External<NBytes<&T>>) -> Result<&mut Self> {
         Ok(self)
+    }
+}
+
+impl<'a, T> Absorb<External<&'a NBytes<T>>> for Context where Self: Absorb<External<NBytes<&'a T>>>{
+    fn absorb(&mut self, external: External<&'a NBytes<T>>) -> Result<&mut Self> {
+        self.absorb(External::new(NBytes::new(external.into_inner().inner())))
     }
 }
 
@@ -146,5 +173,25 @@ where
 {
     fn absorb(&mut self, external: &'a External<T>) -> Result<&mut Self> {
         self.absorb(External::new(external.inner()))
+    }
+}
+
+impl<T> Absorb<Option<T>> for Context
+where
+    Self: Absorb<T>,
+{
+    fn absorb(&mut self, option: Option<T>) -> Result<&mut Self> {
+        match option {
+            // for some reason fully qualified syntax is necessary, and cannot use the trait bound like in wrap::Context
+            Some(t) => <Self as Absorb<Uint8>>::absorb(self, Uint8::new(1))?.absorb(t)?,
+            None => <Self as Absorb<Uint8>>::absorb(self, Uint8::new(0))?,
+        };
+        Ok(self)
+    }
+}
+
+impl<'a> Absorb<&'a ()> for Context {
+    fn absorb(&mut self, _: &'a ()) -> Result<&mut Self> {
+        Ok(self)
     }
 }

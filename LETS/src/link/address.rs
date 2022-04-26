@@ -10,11 +10,15 @@ use core::{
         LowerHex,
         UpperHex,
     },
+    marker::PhantomData,
     str::FromStr,
 };
 
 // 3rd-party
-use anyhow::anyhow;
+use anyhow::{
+    anyhow,
+    Result,
+};
 
 // IOTA
 use crypto::hashes::{
@@ -23,11 +27,21 @@ use crypto::hashes::{
 };
 
 // Streams
+use spongos::{
+    Spongos,
+    PRP,
+};
 
 // Local
 use crate::{
     id::Identifier,
-    link::link::Link,
+    link::{
+        cursor::Cursor,
+        link::{
+            Link,
+            LinkGenerator,
+        },
+    },
 };
 
 /// Tangle representation of a Message Link
@@ -98,7 +112,7 @@ use crate::{
 ///
 /// [Display]: #impl-Display
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
-struct Address {
+pub struct Address {
     appaddr: AppAddr,
     msgid: MsgId,
 }
@@ -109,7 +123,7 @@ impl Address {
     }
 
     /// Hash the content of the [`Address`] using `Blake2b256`
-    fn to_blake2b(self) -> [u8; 32] {
+    pub(crate) fn to_blake2b(self) -> [u8; 32] {
         let hasher = Blake2b256::new();
         hasher.chain(&self.appaddr).chain(&self.msgid).finalize().into()
     }
@@ -181,14 +195,26 @@ impl FromStr for Address {
 
 impl Link for Address {
     type Base = AppAddr;
-    type Rel = MsgId;
+    type Relative = MsgId;
 
     fn base(&self) -> &AppAddr {
         &self.appaddr
     }
 
-    fn rel(&self) -> &MsgId {
+    fn into_base(self) -> AppAddr {
+        self.appaddr
+    }
+
+    fn relative(&self) -> &MsgId {
         &self.msgid
+    }
+
+    fn into_relative(self) -> MsgId {
+        self.msgid
+    }
+
+    fn from_parts(appaddr: AppAddr, msgid: MsgId) -> Self {
+        Self::new(appaddr, msgid)
     }
 
     // TODO: REMOVE
@@ -215,13 +241,40 @@ impl Link for Address {
     // }
 }
 
-// TODO: REMOVE
-// /// Default Message Identifer Generator. Used for deriving MsgId's for sequencing
-// #[derive(Clone)]
-// struct DefaultTangleLinkGenerator<F> {
-//     addr: Address,
-//     _phantom: core::marker::PhantomData<F>,
-// }
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+struct AddressGenerator<F>(PhantomData<F>);
+
+impl<'a, F> LinkGenerator<'a, MsgId> for AddressGenerator<F>
+where
+    F: Default + PRP,
+{
+    type Data = (&'a AppAddr, Identifier, u64);
+
+    // fn init(appaddr: AppAddr) -> Self {
+    //     Self {
+    //         appaddr,
+    //         f: PhantomData,
+    //     }
+    // }
+
+    fn gen(&mut self, (appaddr, identifier, seq_num): (&'a AppAddr, Identifier, u64)) -> MsgId {
+        let mut s = Spongos::<F>::init();
+        s.absorb(appaddr);
+        s.absorb(identifier);
+        s.absorb(seq_num.to_be_bytes());
+        s.commit();
+        s.squeeze()
+    }
+}
+
+impl<F> LinkGenerator<'_, AppAddr> for AddressGenerator<F>
+{
+    type Data = (Identifier, u64);
+
+    fn gen(&mut self, (identifier, channel_idx): (Identifier, u64)) -> AppAddr {
+        AppAddr::new(identifier, channel_idx)
+    }
+}
 
 // impl<F> Default for DefaultTangleLinkGenerator<F> {
 //     fn default() -> Self {
@@ -304,12 +357,12 @@ impl Link for Address {
 
 /// 40 byte Application Instance identifier.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-struct AppAddr([u8; Self::SIZE]);
+pub struct AppAddr([u8; Self::SIZE]);
 
 impl AppAddr {
     const SIZE: usize = 40;
 
-    fn new(id: &Identifier, channel_idx: u64) -> Self {
+    pub fn new(id: Identifier, channel_idx: u64) -> Self {
         let mut addr = [0_u8; 40];
         let id_bytes = id.as_bytes();
         assert_eq!(id_bytes.len(), 32, "identifier must be 32 bytes long");
@@ -391,7 +444,7 @@ impl AsRef<[u8]> for AppAddr {
 
 /// 12 byte Message Identifier unique within the same application.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-struct MsgId([u8; Self::SIZE]);
+pub struct MsgId([u8; Self::SIZE]);
 
 impl MsgId {
     const SIZE: usize = 12;
@@ -457,5 +510,11 @@ impl UpperHex for MsgId {
 impl AsRef<[u8]> for MsgId {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl AsMut<[u8]> for MsgId {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
     }
 }

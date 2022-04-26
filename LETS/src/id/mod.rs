@@ -4,6 +4,8 @@ mod psk;
 
 pub use self::identity::Identity;
 pub use identifier::Identifier;
+pub use psk::Psk;
+pub use psk::PskId;
 
 #[cfg(feature = "did")]
 mod did;

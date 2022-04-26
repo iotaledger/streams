@@ -54,7 +54,7 @@ use crate::{
 
 fn absorb_mask_u8<F>() -> Result<()>
 where
-    F: PRP,
+    F: PRP + Default,
 {
     let mut buf = vec![0_u8; 2];
     let mut tag_wrap = External::new(NBytes::<[u8; 32]>::default());
@@ -106,7 +106,7 @@ fn test_u8() {
 
 fn absorb_mask_size<F>() -> Result<()>
 where
-    F: PRP,
+    F: PRP + Default,
 {
     let mut tag_wrap = External::new(NBytes::<GenericArray<u8, U32>>::default());
     let mut tag_unwrap = External::new(NBytes::<GenericArray<u8, U32>>::default());
@@ -160,7 +160,7 @@ fn size() {
 
 fn absorb_mask_squeeze_bytes_mac<F>() -> Result<()>
 where
-    F: PRP,
+    F: PRP + Default,
 {
     const NS: [usize; 10] = [0, 3, 255, 256, 257, 483, 486, 489, 1002, 2001];
 
@@ -268,7 +268,7 @@ fn bytes() {
     assert!(absorb_mask_squeeze_bytes_mac::<KeccakF1600>().is_ok());
 }
 
-fn absorb_ed25519<F: PRP>() -> Result<()> {
+fn absorb_ed25519<F: PRP + Default>() -> Result<()> {
     let secret = ed25519::SecretKey::from_bytes([7; ed25519::SECRET_KEY_LENGTH]);
 
     let tag_wrap = Bytes::new([3_u8; 17].to_vec());
@@ -421,7 +421,7 @@ fn test_ed25519() {
 //     Ok(())
 // }
 
-fn x25519_transport<F: PRP>() -> Result<()> {
+fn x25519_transport<F: PRP + Default>() -> Result<()> {
     let mut prng = SpongosRng::<F>::new("seed for tests");
     let local_secret_key = x25519::SecretKey::generate_with(&mut prng);
     let remote_secret_key = x25519::SecretKey::generate_with(&mut prng);

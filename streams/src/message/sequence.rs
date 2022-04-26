@@ -77,7 +77,7 @@ use LETS::{
 //     types::*,
 // };
 
-pub struct Wrap<'a, F, Link> {
+struct Wrap<'a, F, Link> {
     initial_state: &'a mut Spongos<F>,
     id: Identifier,
     seq_num: u64,
@@ -117,23 +117,24 @@ where
     }
 }
 
-pub struct Unwrap<'a, F, Link> {
-    initial_state: &'a mut Spongos<F>,
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Unwrap<F, Link> {
+    initial_state: Spongos<F>,
     id: Identifier,
     seq_num: u64,
     ref_link: Link,
 }
 
 #[async_trait(?Send)]
-impl<'a, F, IS, Link> ContentUnwrap<Unwrap<'a, F, Link>> for unwrap::Context<F, IS>
+impl<'a, F, IS, Link> ContentUnwrap<Unwrap<F, Link>> for unwrap::Context<F, IS>
 where
     F: PRP,
     IS: io::IStream,
     Self: for<'b> Absorb<&'b mut Link>,
 {
-    async fn unwrap(&mut self, sequence: &mut Unwrap<'a, F, Link>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, sequence: &mut Unwrap<F, Link>) -> Result<&mut Self> {
         let mut seq_num = Uint64::default();
-        self.join(sequence.initial_state)?
+        self.join(&mut sequence.initial_state)?
             .unwrap(&mut sequence.id)
             .await?
             .skip(&mut seq_num)?

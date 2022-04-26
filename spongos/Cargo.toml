@@ -26,7 +26,6 @@ sync-parking-lot = ["parking_lot"]
 iota-crypto = { version = "0.9.1", default-features = false, features = ["ed25519", "x25519"] }
 
 # 3rd-party dependencies 
-# TODO: REMOVE UNUSED
 digest = { version = "0.9", default-features = false }
 keccak = { version = "0.1", default-features = false }
 hex = { version = "0.4", default-features = false}

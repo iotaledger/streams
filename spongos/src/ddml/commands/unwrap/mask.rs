@@ -89,21 +89,27 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Size> for Context<F, IS> {
     }
 }
 
-impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Mask<&'a mut NBytes<T>> for Context<F, IS> {
-    fn mask(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Mask<NBytes<&'a mut T>> for Context<F, IS> {
+    fn mask(&mut self, nbytes: NBytes<&'a mut T>) -> Result<&mut Self> {
         MaskContext::new(self).unwrapn(nbytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes<Vec<u8>>> for Context<F, IS> {
-    fn mask(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
-        self.mask(&mut Bytes::new(bytes.inner_mut()))
+impl<'a, F: PRP, T, IS: io::IStream> Mask<&'a mut NBytes<T>> for Context<F, IS> where Self: Mask<NBytes<&'a mut T>> {
+    fn mask(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
+        self.mask(NBytes::new(nbytes.inner_mut()))
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes<&'a mut Vec<u8>>> for Context<F, IS> {
-    fn mask(&mut self, bytes: &'a mut Bytes<&'a mut Vec<u8>>) -> Result<&mut Self> {
+impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes<Vec<u8>>> for Context<F, IS> {
+    fn mask(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
+        self.mask(Bytes::new(bytes.inner_mut()))
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream> Mask<Bytes<&'a mut Vec<u8>>> for Context<F, IS> {
+    fn mask(&mut self, mut bytes: Bytes<&'a mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.mask(&mut size)?;
         bytes.resize(size.inner());
@@ -132,5 +138,23 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F
             }
             Err(e) => Err(PublicKeyGenerationFailure.wrap(&e)),
         }
+    }
+}
+
+impl<'a, F: PRP, IS: io::IStream, T> Mask<&'a mut Option<T>> for Context<F, IS>
+where
+    for<'b> &'b mut Self: Mask<&'b mut T>,
+    T: Default,
+{
+    fn mask(&mut self, option: &'a mut Option<T>) -> Result<&mut Self> {
+        let mut oneof = Uint8::default();
+        let mut ctx = self.mask(&mut oneof)?;
+        if oneof.inner() == 1 {
+            let mut t = T::default();
+            // This hacky &mut is necessary to break the recursivity of the trait bound
+            (&mut ctx).mask(&mut t)?;
+            *option = Some(t);
+        };
+        Ok(self)
     }
 }

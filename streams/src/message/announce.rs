@@ -72,13 +72,13 @@ use LETS::{
 //     types::*,
 // };
 
-struct Wrap<'a> {
+pub(crate) struct Wrap<'a> {
     user_id: &'a Identity,
 }
 
 impl<'a> Wrap<'a> {
-    fn new(user_id: &'a Identity) -> Self {
-        Self { user_id}
+    pub(crate) fn new(user_id: &'a Identity) -> Self {
+        Self { user_id }
     }
 }
 
@@ -110,20 +110,25 @@ where
     }
 }
 
-struct Unwrap {
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct Unwrap {
     author_id: Identifier,
 }
 
 impl Default for Unwrap {
     fn default() -> Self {
         let author_id = Default::default();
-        Self { author_id}
+        Self { author_id }
     }
 }
 
 impl Unwrap {
     fn new() -> Self {
         Self::default()
+    }
+
+    pub(crate) fn author_id(self) -> Identifier {
+        self.author_id
     }
 }
 

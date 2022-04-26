@@ -23,7 +23,7 @@ use crate::message::{
 
 /// Message context preparsed for unwrapping.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub(crate) struct PreparsedMessage<'a, F, Address> {
+pub struct PreparsedMessage<'a, F, Address> {
     hdf: HDF<Address>,
     ctx: unwrap::Context<F, &'a [u8]>,
 }
@@ -33,15 +33,23 @@ impl<'a, F, Address> PreparsedMessage<'a, F, Address> {
         Self { hdf, ctx }
     }
 
-    fn is_content_type(&self, content_type: u8) -> bool {
-        self.header().content_type() == content_type
+    fn is_message_type(&self, content_type: u8) -> bool {
+        self.header().message_type() == content_type
+    }
+
+    pub fn message_type(&self) -> u8 {
+        self.header().message_type()
+    }
+
+    pub fn linked_msg_address(&self) -> &Option<Address> {
+        self.header().linked_msg_address()
     }
 
     fn header(&self) -> &HDF<Address> {
         &self.hdf
     }
 
-    async fn unwrap<Content>(mut self, content: Content) -> Result<(Message<Address, Content>, Spongos<F>)>
+    pub async fn unwrap<Content>(mut self, content: Content) -> Result<(Message<Address, Content>, Spongos<F>)>
     where
         unwrap::Context<F, &'a [u8]>: ContentUnwrap<PCF<Content>>,
         F: PRP,

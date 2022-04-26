@@ -1,8 +1,8 @@
 //! Default parameters for Author and Subscriber types.
 
-pub use futures;
+use futures;
 
-pub use iota_streams_app::transport::tangle::MsgId;
+use iota_streams_app::transport::tangle::MsgId;
 use iota_streams_app::{
     id::Identifier,
     message::{
@@ -19,9 +19,9 @@ use iota_streams_app::{
 #[cfg(any(feature = "client", feature = "wasm-client"))]
 use iota_streams_app::transport::tangle::client::Details as ClientDetails;
 
-pub use message::Cursor;
+use message::Cursor;
 // Bring trait methods into scope publicly.
-pub use message::LinkGenerator;
+use message::LinkGenerator;
 
 use super::{
     Address,
@@ -31,7 +31,7 @@ use super::{
 };
 use iota_streams_core::psk;
 use iota_streams_ddml::link_store::DefaultLinkStore;
-pub use iota_streams_ddml::types::Bytes;
+use iota_streams_ddml::types::Bytes;
 
 use crypto::{
     keys::x25519,
@@ -39,40 +39,40 @@ use crypto::{
 };
 
 /// Identifiers for Pre-Shared Keys
-pub type PskIds = psk::PskIds;
+type PskIds = psk::PskIds;
 
 /// Tangle Address representing Channel Application Instance.
-pub type ChannelAddress = AppInst;
+type ChannelAddress = AppInst;
 
 // Details for a message on our tangle transport
 #[cfg(any(feature = "client", feature = "wasm-client"))]
-pub type Details = ClientDetails;
+type Details = ClientDetails;
 
 /// Wrapped Message for sending and commit
-pub type WrappedMessage = message::WrappedMessage<DefaultF, Address>;
+type WrappedMessage = message::WrappedMessage<DefaultF, Address>;
 /// Wrapped Spongos state with Address identifier
-pub type WrapState = message::WrapState<DefaultF, Address>;
+type WrapState = message::WrapState<DefaultF, Address>;
 /// Wrapper for optional sequence message and state
-pub type WrappedSequence = super::user::WrappedSequence<DefaultF, Address>;
+type WrappedSequence = super::user::WrappedSequence<DefaultF, Address>;
 /// Ed25519 Public Key
-pub type PublicKey = ed25519::PublicKey;
-pub type ExchangeKey = x25519::PublicKey;
-pub const PUBLIC_KEY_LENGTH: usize = ed25519::PUBLIC_KEY_LENGTH;
+type PublicKey = ed25519::PublicKey;
+type ExchangeKey = x25519::PublicKey;
+const PUBLIC_KEY_LENGTH: usize = ed25519::PUBLIC_KEY_LENGTH;
 
 /// Message type with parsed header.
-pub type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
+type Preparsed<'a> = message::PreparsedMessage<'a, DefaultF, Address>;
 
 /// Sequence State information
-pub type SeqState = Cursor<MsgId>;
+type SeqState = Cursor<MsgId>;
 
 /// Link Generator specifies algorithm for generating new message addressed.
-pub type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
+type LinkGen = DefaultTangleLinkGenerator<DefaultF>;
 
 /// Link Store.
-pub type LinkStore = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;
+type LinkStore = DefaultLinkStore<DefaultF, MsgId, MsgInfo>;
 
 mod msginfo;
-pub use msginfo::MsgInfo;
+use msginfo::MsgInfo;
 
 // SignedPacket is 240 bytes in stack (192 + 24 + 24), which means 5 times more than
 // the next biggest variant (TaggedPacket, 48 bytes), and the impossibility of inlining.
@@ -82,7 +82,7 @@ pub use msginfo::MsgInfo;
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// Message body returned as part of handle message routine.
-pub enum MessageContent {
+enum MessageContent {
     Announce,
     Keyload,
     SignedPacket {
@@ -101,15 +101,15 @@ pub enum MessageContent {
 }
 
 impl MessageContent {
-    pub fn new_announce() -> Self {
+    fn new_announce() -> Self {
         Self::Announce
     }
 
-    pub fn new_keyload() -> Self {
+    fn new_keyload() -> Self {
         Self::Keyload
     }
 
-    pub fn new_signed_packet<P, M>(id: Identifier, public_payload: P, masked_payload: M) -> Self
+    fn new_signed_packet<P, M>(id: Identifier, public_payload: P, masked_payload: M) -> Self
     where
         P: Into<Bytes>,
         M: Into<Bytes>,
@@ -121,7 +121,7 @@ impl MessageContent {
         }
     }
 
-    pub fn new_tagged_packet<P, M>(public_payload: P, masked_payload: M) -> Self
+    fn new_tagged_packet<P, M>(public_payload: P, masked_payload: M) -> Self
     where
         P: Into<Bytes>,
         M: Into<Bytes>,
@@ -132,39 +132,39 @@ impl MessageContent {
         }
     }
 
-    pub fn unreadable(binary: BinaryMessage) -> Self {
+    fn unreadable(binary: BinaryMessage) -> Self {
         Self::Unreadable(binary)
     }
 
-    pub fn is_announce(&self) -> bool {
+    fn is_announce(&self) -> bool {
         matches!(self, MessageContent::Announce)
     }
 
-    pub fn is_keyload(&self) -> bool {
+    fn is_keyload(&self) -> bool {
         matches!(self, MessageContent::Keyload)
     }
 
-    pub fn is_signed_packet(&self) -> bool {
+    fn is_signed_packet(&self) -> bool {
         matches!(self, MessageContent::SignedPacket { .. })
     }
 
-    pub fn is_tagged_packet(&self) -> bool {
+    fn is_tagged_packet(&self) -> bool {
         matches!(self, MessageContent::TaggedPacket { .. })
     }
 
-    pub fn is_sequence(&self) -> bool {
+    fn is_sequence(&self) -> bool {
         matches!(self, MessageContent::Sequence)
     }
 
-    pub fn is_subscribe(&self) -> bool {
+    fn is_subscribe(&self) -> bool {
         matches!(self, MessageContent::Subscribe)
     }
 
-    pub fn is_unsubscribe(&self) -> bool {
+    fn is_unsubscribe(&self) -> bool {
         matches!(self, MessageContent::Unsubscribe)
     }
 
-    pub fn is_unreadable(&self) -> bool {
+    fn is_unreadable(&self) -> bool {
         matches!(self, MessageContent::Unreadable(..))
     }
 
@@ -172,7 +172,7 @@ impl MessageContent {
     ///
     /// If the message is a [MessageContent::TaggedPacket] or [MessageContent::SignedPacket]
     /// it returns `Some(payload)`, otherwise returns `None`.  
-    pub fn public_payload(&self) -> Option<&Bytes> {
+    fn public_payload(&self) -> Option<&Bytes> {
         match self {
             Self::TaggedPacket { public_payload, .. } | Self::SignedPacket { public_payload, .. } => {
                 Some(public_payload)
@@ -185,7 +185,7 @@ impl MessageContent {
     ///
     /// If the message is a [MessageContent::TaggedPacket] or [MessageContent::SignedPacket]
     /// it returns `Some(payload)`, otherwise returns `None`.  
-    pub fn masked_payload(&self) -> Option<&Bytes> {
+    fn masked_payload(&self) -> Option<&Bytes> {
         match self {
             Self::TaggedPacket { masked_payload, .. } | Self::SignedPacket { masked_payload, .. } => {
                 Some(masked_payload)
@@ -196,22 +196,22 @@ impl MessageContent {
 }
 
 /// Generic unwrapped message type containing possible message contents
-pub type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
+type UnwrappedMessage = message::GenericMessage<Address, MessageContent>;
 
 /// Generic binary message type for sequence handling
-pub type BinaryMessage = message::GenericMessage<Address, BinaryBody>;
+type BinaryMessage = message::GenericMessage<Address, BinaryBody>;
 
 mod user;
 /// User object storing the Auth/Sub implementation as well as the transport instance
-pub use user::User;
+use user::User;
 
 mod messages;
-pub use messages::{
+use messages::{
     IntoMessages,
     Messages,
 };
 
-pub mod test;
+mod test;
 
 mod user_builder;
-pub use user_builder::UserBuilder;
+use user_builder::UserBuilder;

@@ -1,9 +1,9 @@
+use anyhow::Result;
 use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
 use generic_array::ArrayLength;
-use anyhow::Result;
 
 use crate::{
     core::prp::PRP,
@@ -63,10 +63,19 @@ impl<F: PRP, OS> Absorb<External<Size>> for Context<F, OS> {
     }
 }
 
-impl<'a, F: PRP, T: AsRef<[u8]>, OS> Absorb<External<&'a NBytes<T>>> for Context<F, OS> {
-    fn absorb(&mut self, bytes: External<&'a NBytes<T>>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsRef<[u8]>, OS> Absorb<External<NBytes<&'a T>>> for Context<F, OS> {
+    fn absorb(&mut self, bytes: External<NBytes<&'a T>>) -> Result<&mut Self> {
         self.spongos.absorb(bytes);
         Ok(self)
+    }
+}
+
+impl<'a, F: PRP, T, OS> Absorb<External<&'a NBytes<T>>> for Context<F, OS>
+where
+    Self: Absorb<External<NBytes<&'a T>>>,
+{
+    fn absorb(&mut self, bytes: External<&'a NBytes<T>>) -> Result<&mut Self> {
+        self.absorb(External::new(NBytes::new(bytes.into_inner().inner())))
     }
 }
 

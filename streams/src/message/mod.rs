@@ -1,39 +1,24 @@
 //! Streams Protocol message types and encodings
 
 /// Announce message.
-mod announce;
+pub(crate) mod announce;
 
 /// Keyload message.
-mod keyload;
+pub(crate) mod keyload;
 
 /// SignedPacket message.
-mod signed_packet;
+pub(crate) mod signed_packet;
 
 /// TaggedPacket message.
-mod tagged_packet;
+pub(crate) mod tagged_packet;
 
 /// Subscribe message.
-mod subscribe;
+pub(crate) mod subscribe;
 
 /// Unsubscribe message.
-mod unsubscribe;
+pub(crate) mod unsubscribe;
 
 /// Sequence message.
-mod sequence;
+pub(crate) mod sequence;
 
-
-// TODO: WHAT IS THIS DOING HERE?
-/// Announcement Message Type
-const ANNOUNCE: u8 = 0;
-/// Keyload Message Type
-const KEYLOAD: u8 = 1;
-/// Sequence Message Type
-const SEQUENCE: u8 = 2;
-/// Signed Packet Message Type
-const SIGNED_PACKET: u8 = 3;
-/// Tagged Packet Message Type
-const TAGGED_PACKET: u8 = 4;
-/// Subscribe Message Type
-const SUBSCRIBE: u8 = 5;
-/// Unsubscribe Message Type
-const UNSUBSCRIBE: u8 = 6;
+pub(crate) mod message_types;

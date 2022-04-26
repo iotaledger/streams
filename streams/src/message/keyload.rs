@@ -129,7 +129,7 @@ use LETS::{
 const NONCE_SIZE: usize = 16;
 const KEY_SIZE: usize = 32;
 
-struct Wrap<'a, F, Subscribers> {
+pub(crate) struct Wrap<'a, F, Subscribers> {
     initial_state: &'a mut Spongos<F>,
     nonce: [u8; NONCE_SIZE],
     key: [u8; KEY_SIZE],
@@ -137,16 +137,40 @@ struct Wrap<'a, F, Subscribers> {
     author_id: &'a Identity,
 }
 
+impl<'a, F, Subscribers> Wrap<'a, F, Subscribers> {
+    pub(crate) fn new(
+        initial_state: &'a mut Spongos<F>,
+        subscribers: Subscribers,
+        key: [u8; KEY_SIZE],
+        nonce: [u8; NONCE_SIZE],
+        author_id: &'a Identity,
+    ) -> Self
+    where
+        Subscribers: IntoIterator<Item = (Identifier, &'a [u8])>,
+        Subscribers::IntoIter: ExactSizeIterator,
+    {
+        Self {
+            initial_state,
+            subscribers,
+            key,
+            nonce,
+            author_id,
+        }
+    }
+}
+
 #[async_trait(?Send)]
 impl<'a, F, Subscribers> message::ContentSizeof<Wrap<'a, F, Subscribers>> for sizeof::Context
 where
     // Subscribers: 'a,
-    for<'b> &'b Subscribers: IntoIterator<Item = (Identifier, &'b [u8])>,
-    for<'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator, /* where
-                                                                             * TODO: REMOVE
-                                                                             * F: 'a + PRP, // weird 'a constraint, but compiler requires it
-                                                                             * somehow?! L: Link,
-                                                                             * L::Rel: 'a + Eq + SkipFallback<F>, */
+    for <'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
+    for <'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
+    // /* where
+    //                                                                          * TODO: REMOVE
+    //                                                                          * F: 'a + PRP, // weird 'a constraint,
+    //                                                                            but compiler requires it
+    //                                                                          * somehow?! L: Link,
+    //                                                                          * L::Rel: 'a + Eq + SkipFallback<F>, */
 {
     async fn sizeof(&mut self, keyload: &Wrap<'a, F, Subscribers>) -> Result<&mut sizeof::Context> {
         let subscribers = keyload.subscribers.into_iter();
@@ -156,7 +180,7 @@ where
         for (identifier, exchange_key) in subscribers {
             // TODO: WHY FORK? CAN'T WE NOT FORK AT ALL?
             // let fork = self.fork();
-            self.sizeof(&identifier)
+            self.sizeof(identifier)
                 .await?
                 .encrypt_sizeof(&identifier, &exchange_key, &keyload.key)
                 .await?;
@@ -173,8 +197,8 @@ where
 impl<'a, F, OS, Subscribers> message::ContentWrap<Wrap<'a, F, Subscribers>> for wrap::Context<F, OS>
 where
     // Subscribers: 'a,
-    for<'b> &'b Subscribers: IntoIterator<Item = (Identifier, &'b [u8])>,
-    for<'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
+    for <'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
+    for <'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
     F: PRP,
     OS: io::OStream,
     // where
@@ -206,14 +230,14 @@ where
     }
 }
 
-struct Unwrap<'a, F>
+pub(crate) struct Unwrap<'a, F>
 // where
 //     L: HasLink,
 {
-    initial_state: Spongos<F>,
+    initial_state: &'a mut Spongos<F>,
     nonce: [u8; 16],
-    // pub(crate) psk_store: PskStore,
-    // pub(crate) ke_sk_store: KeSkStore,
+    //  psk_store: PskStore,
+    //  ke_sk_store: KeSkStore,
     subscribers: Vec<Identifier>,
     key: Option<[u8; 32]>,
     author_id: Identifier,
@@ -227,7 +251,12 @@ impl<'a, 'b, F> Unwrap<'a, F>
 // L: HasLink,
 // L::Rel: Eq + Default + SkipFallback<F>,
 {
-    fn new(initial_state: Spongos<F>, user_id: &'a Identity, user_ke_key: &'a [u8], author_id: Identifier) -> Self {
+    pub(crate) fn new(
+        initial_state: &'a mut Spongos<F>,
+        user_id: &'a Identity,
+        user_ke_key: &'a [u8],
+        author_id: Identifier,
+    ) -> Self {
         Self {
             initial_state,
             nonce: Default::default(),
@@ -237,6 +266,14 @@ impl<'a, 'b, F> Unwrap<'a, F>
             user_id,
             user_ke_key,
         }
+    }
+
+    pub(crate) fn subscribers(&self) -> &[Identifier] {
+        &self.subscribers
+    }
+
+    pub(crate) fn into_subscribers(self) -> Vec<Identifier> {
+        self.subscribers
     }
 }
 
