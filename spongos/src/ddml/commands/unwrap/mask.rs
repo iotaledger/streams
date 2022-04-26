@@ -2,8 +2,8 @@
 use alloc::vec::Vec;
 
 // 3rd-party
-use generic_array::ArrayLength;
 use anyhow::Result;
+use generic_array::ArrayLength;
 
 // IOTA
 use crypto::{
@@ -47,7 +47,10 @@ impl<'a, F: PRP, IS: io::IStream> MaskContext<'a, F, IS> {
 }
 
 impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<'_, F, IS> {
-    fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self> where T: AsMut<[u8]> {
+    fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self>
+    where
+        T: AsMut<[u8]>,
+    {
         let y = self.ctx.stream.try_advance(bytes.as_mut().len())?;
         self.ctx.spongos.decrypt_mut(y, bytes)?;
         Ok(self)
@@ -96,7 +99,10 @@ impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Mask<NBytes<&'a mut T>> for Co
     }
 }
 
-impl<'a, F: PRP, T, IS: io::IStream> Mask<&'a mut NBytes<T>> for Context<F, IS> where Self: Mask<NBytes<&'a mut T>> {
+impl<'a, F: PRP, T, IS: io::IStream> Mask<&'a mut NBytes<T>> for Context<F, IS>
+where
+    Self: Mask<NBytes<&'a mut T>>,
+{
     fn mask(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
         self.mask(NBytes::new(nbytes.inner_mut()))
     }

@@ -89,27 +89,6 @@ where
     }
 }
 
-// fn payload_frame_num_from(n: u32) -> Result<NBytes<U3>> {
-//     try_or!(n < 0x400000, ValueOutOfRange(0x400000_usize, n as usize))?;
-//     let v = n.to_be_bytes();
-//     let g = <GenericArray<u8, U3>>::from_slice(&v[1..]);
-//     Ok(NBytes::from(*g))
-// }
-
-// fn payload_frame_num_to(v: &NBytes<U3>) -> u32 {
-//     let mut u = [0_u8; 4];
-//     u[1..].copy_from_slice(v.as_ref());
-//     u32::from_be_bytes(u)
-// }
-
-// fn payload_frame_num_check(v: &NBytes<U3>) -> Result<()> {
-//     try_or!(
-//         v.as_ref()[0] < 0x40,
-//         ValueOutOfRange(0x40_usize, v.as_ref()[0] as usize)
-//     )?;
-//     Ok(())
-// }
-
 impl<Content> PCF<Content> {
     fn new(frame_type: u8, payload_frame_num: u32, content: Content) -> Result<Self> {
         Ok(Self {
@@ -195,8 +174,6 @@ where
             .skip(&mut pcf.payload_frame_num)?
             .unwrap(&mut pcf.content);
         pcf.frame_type = frame_type.into();
-        // TODO: REMOVE
-        // payload_frame_num_check(&pcf.payload_frame_num)?;
         Ok(self)
     }
 }

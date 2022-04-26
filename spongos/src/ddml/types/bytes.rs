@@ -11,8 +11,6 @@ use alloc::{
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Bytes<T>(T);
-// #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-// pub struct Bytes(Vec<u8>);
 
 impl<T> Bytes<T> {
     pub fn new(bytes: T) -> Self {
@@ -22,7 +20,7 @@ impl<T> Bytes<T> {
     pub(crate) fn inner(&self) -> &T {
         &self.0
     }
-    
+
     pub(crate) fn inner_mut(&mut self) -> &mut T {
         &mut self.0
     }
@@ -91,19 +89,6 @@ where
     }
 }
 
-// TODO: REMOVE
-// impl<'a> From<&'a Vec<u8>> for &'a Bytes {
-//     fn from(v: &Vec<u8>) -> &Bytes {
-//         unsafe { &*(v as *const Vec<u8> as *const Bytes) }
-//     }
-// }
-
-// impl<'a> From<&'a mut Vec<u8>> for &'a mut Bytes {
-//     fn from(v: &mut Vec<u8>) -> &mut Bytes {
-//         unsafe { &mut *(v as *mut Vec<u8> as *mut Bytes) }
-//     }
-// }
-
 impl<T> From<T> for Bytes<T> {
     fn from(v: T) -> Self {
         Self::new(v)
@@ -121,29 +106,6 @@ impl From<Bytes<Vec<u8>>> for Vec<u8> {
         b.0
     }
 }
-
-// TODO: REMOVE
-// impl From<&[u8]> for Bytes {
-//     fn from(s: &[u8]) -> Self {
-//         Self(s.to_vec())
-//     }
-// }
-
-// /// Use `b"<content>".into()` as a convenient way to create new `Bytes`
-// #[rustversion::since(1.51)]
-// impl<const N: usize> From<[u8; N]> for Bytes {
-//     fn from(v: [u8; N]) -> Self {
-//         Self(v.to_vec())
-//     }
-// }
-
-// /// Use `b"<content>".into()` as a convenient way to create new `Bytes`
-// #[rustversion::since(1.51)]
-// impl<const N: usize> From<&[u8; N]> for Bytes {
-//     fn from(v: &[u8; N]) -> Self {
-//         Self(v.to_vec())
-//     }
-// }
 
 impl<T> AsRef<[u8]> for Bytes<T>
 where

@@ -1,7 +1,7 @@
 /// Identifier Key storage. Used for keeping track of channel state
 mod key_store;
 
-/// User Client 
+/// User Client
 mod user;
 
 mod message;

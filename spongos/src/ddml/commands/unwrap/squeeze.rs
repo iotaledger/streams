@@ -1,6 +1,8 @@
-use anyhow::ensure;
+use anyhow::{
+    ensure,
+    Result,
+};
 use generic_array::ArrayLength;
-use anyhow::Result;
 
 use crate::{
     core::prp::PRP,
@@ -16,8 +18,8 @@ use crate::{
         modifiers::External,
         types::{
             Bytes,
-            NBytes,
             Mac,
+            NBytes,
             Size,
             Uint16,
             Uint32,
@@ -47,14 +49,20 @@ impl<'a, F: PRP, T: AsMut<[u8]>, IS> Squeeze<External<NBytes<&'a mut T>>> for Co
     }
 }
 
-impl<'a, F: PRP, T, IS> Squeeze<External<&'a mut NBytes<T>>> for Context<F, IS> where Self: Squeeze<External<NBytes<&'a mut T>>> {
+impl<'a, F: PRP, T, IS> Squeeze<External<&'a mut NBytes<T>>> for Context<F, IS>
+where
+    Self: Squeeze<External<NBytes<&'a mut T>>>,
+{
     fn squeeze(&mut self, external_nbytes: External<&'a mut NBytes<T>>) -> Result<&mut Self> {
         self.squeeze(External::new(NBytes::new(external_nbytes.into_inner().inner_mut())))
     }
 }
 
 // Implement &mut External<T> for any External<&mut T> implementation
-impl<'a, T, F, OS> Squeeze<&'a mut External<T>> for Context<F, OS> where Self: Squeeze<External<&'a mut T>> {
+impl<'a, T, F, OS> Squeeze<&'a mut External<T>> for Context<F, OS>
+where
+    Self: Squeeze<External<&'a mut T>>,
+{
     fn squeeze(&mut self, external: &'a mut External<T>) -> Result<&mut Self> {
         self.squeeze(External::new(external.inner_mut()))
     }

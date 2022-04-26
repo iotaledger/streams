@@ -1,4 +1,7 @@
-use core::fmt::{Debug, Display};
+use core::fmt::{
+    Debug,
+    Display,
+};
 
 use anyhow::{
     ensure,
@@ -18,7 +21,10 @@ use crate::{
 };
 
 impl<F, IS> Guard for Context<F, IS> {
-    fn guard<E>(&mut self, cond: bool, err: E) -> Result<&mut Self> where E: Into<anyhow::Error> {
+    fn guard<E>(&mut self, cond: bool, err: E) -> Result<&mut Self>
+    where
+        E: Into<anyhow::Error>,
+    {
         ensure!(cond, err);
         Ok(self)
     }

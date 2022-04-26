@@ -4,14 +4,17 @@ use crate::{
     core::prp::PRP,
     ddml::{
         commands::{
-            wrap::{Wrap, Context},
+            wrap::{
+                Context,
+                Wrap,
+            },
             Commit,
         },
         io,
         modifiers::External,
         types::{
-            NBytes,
             Bytes,
+            NBytes,
             Size,
             Uint16,
             Uint32,

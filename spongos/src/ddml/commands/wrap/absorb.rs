@@ -155,14 +155,6 @@ where
     }
 }
 
-// TODO: REMOVE
-// impl<'a, F, T: 'a + AbsorbFallback<F>, OS> Absorb<&'a Fallback<T>> for Context<F, OS> {
-//     fn absorb(&mut self, val: &'a Fallback<T>) -> Result<&mut Self> {
-//         (val.0).wrap_absorb(self)?;
-//         Ok(self)
-//     }
-// }
-
 impl<'a, F, OS> Absorb<&'a ()> for Context<F, OS> {
     fn absorb(&mut self, _: &'a ()) -> Result<&mut Self> {
         Ok(self)

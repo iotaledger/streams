@@ -95,32 +95,6 @@ use crate::{
         ContentWrap,
     },
 };
-// TODO: REMOVE
-// use iota_streams_core::{
-//     async_trait,
-//     err,
-//     prelude::{
-//         Box,
-//         Vec,
-//     },
-//     psk::{
-//         self,
-//         PskId,
-//     },
-//     sponge::prp::PRP,
-//     Errors::BadOneof,
-//     Result,
-// };
-// use iota_streams_ddml::{
-//     command::*,
-//     io,
-//     types::*,
-// };
-// #[cfg(feature = "did")]
-// use iota_streams_core::prelude::ToString;
-
-// TODO: REMOVE
-// use crate::message::*;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum Identifier {
@@ -246,35 +220,6 @@ impl ContentSizeof<Identifier> for sizeof::Context {
         }
     }
 }
-
-// TODO: REMOVE
-// #[async_trait(?Send)]
-// impl<F, OS> ContentWrap<Identifier> for wrap::Context<F, OS>
-// where
-//     F: PRP,
-//     OS: io::OStream,
-// {
-//     async fn wrap(&mut self, identifier: &'a mut wrap::Context<F, OS>) -> Result<&'a mut wrap::Context<F, OS>> {
-//         match &self {
-//             Identifier::Ed25519(pk) => {
-//                 let oneof = Uint8::new(0);
-//                 ctx.mask(oneof)?.mask(pk)?;
-//                 Ok(ctx)
-//             }
-//             Identifier::PskId(pskid) => {
-//                 let oneof = Uint8::new(1);
-//                 ctx.mask(oneof)?.mask(&NBytes::new(pskid))?;
-//                 Ok(ctx)
-//             }
-//             #[cfg(feature = "did")]
-//             Identifier::DID(did) => {
-//                 let oneof = Uint8::new(2);
-//                 ctx.mask(oneof)?.mask(&NBytes::new(did))?;
-//                 Ok(ctx)
-//             }
-//         }
-//     }
-// }
 
 #[async_trait(?Send)]
 impl<F, OS> ContentWrap<Identifier> for wrap::Context<F, OS>

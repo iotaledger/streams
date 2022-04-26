@@ -16,8 +16,3 @@ pub use uint::{
     Uint64,
     Uint8,
 };
-
-// TODO: REMOVE OR MOVE
-// mod external;
-// mod fallback;
-// mod hashsig;

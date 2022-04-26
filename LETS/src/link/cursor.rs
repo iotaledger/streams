@@ -18,7 +18,7 @@ impl<Address> Cursor<Address> {
         Self { address, seq }
     }
 
-     fn address(&self) -> &Address {
+    fn address(&self) -> &Address {
         &self.address
     }
 

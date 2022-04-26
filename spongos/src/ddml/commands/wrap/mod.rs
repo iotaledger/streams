@@ -94,20 +94,3 @@ mod squeeze;
 
 mod ed25519;
 mod x25519;
-
-// TODO: REMOVE
-// use absorb::*;
-// use absorb_external::*;
-// use commit::*;
-// use dump::*;
-// use fork::*;
-// use guard::*;
-// use join::*;
-// use mask::*;
-// use repeated::*;
-// use skip::*;
-// use squeeze::*;
-// use squeeze_external::*;
-
-// use ed25519::*;
-// use x25519::*;

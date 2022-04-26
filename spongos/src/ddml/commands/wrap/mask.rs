@@ -1,9 +1,9 @@
+use anyhow::Result;
 use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
 use generic_array::ArrayLength;
-use anyhow::Result;
 
 use crate::{
     core::{
@@ -43,7 +43,10 @@ impl<'a, F, OS> MaskContext<'a, F, OS> {
 }
 
 impl<'a, F: PRP, OS: io::OStream> Wrap for MaskContext<'a, F, OS> {
-    fn wrapn<T>(&mut self, bytes: T) -> Result<&mut Self> where T: AsRef<[u8]> {
+    fn wrapn<T>(&mut self, bytes: T) -> Result<&mut Self>
+    where
+        T: AsRef<[u8]>,
+    {
         let bytes = bytes.as_ref();
         let mut slice = self.ctx.stream.try_advance(bytes.len())?;
         self.ctx.spongos.encrypt_mut(bytes, &mut slice)?;
@@ -93,13 +96,19 @@ impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<NBytes<&'a T>> for Contex
     }
 }
 
-impl<'a, F: PRP, T, OS: io::OStream> Mask<&'a NBytes<T>> for Context<F, OS> where Self: Mask<NBytes<&'a T>> {
+impl<'a, F: PRP, T, OS: io::OStream> Mask<&'a NBytes<T>> for Context<F, OS>
+where
+    Self: Mask<NBytes<&'a T>>,
+{
     fn mask(&mut self, bytes: &'a NBytes<T>) -> Result<&mut Self> {
         self.mask(NBytes::new(bytes.inner()))
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream, T> Mask<Bytes<&'a T>> for Context<F, OS> where T: AsRef<[u8]> {
+impl<'a, F: PRP, OS: io::OStream, T> Mask<Bytes<&'a T>> for Context<F, OS>
+where
+    T: AsRef<[u8]>,
+{
     fn mask(&mut self, bytes: Bytes<&'a T>) -> Result<&mut Self> {
         self.mask(Size::new(bytes.len()))?;
         MaskContext::new(self).wrapn(bytes)?;
@@ -107,7 +116,10 @@ impl<'a, F: PRP, OS: io::OStream, T> Mask<Bytes<&'a T>> for Context<F, OS> where
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream, T> Mask<&'a Bytes<T>> for Context<F, OS> where Self: Mask<Bytes<&'a T>> {
+impl<'a, F: PRP, OS: io::OStream, T> Mask<&'a Bytes<T>> for Context<F, OS>
+where
+    Self: Mask<Bytes<&'a T>>,
+{
     fn mask(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
         self.mask(Bytes::new(bytes.inner()))
     }

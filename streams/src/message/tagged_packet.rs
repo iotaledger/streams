@@ -14,25 +14,43 @@
 //! }
 //! ```
 // Rust
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
 
 // 3rd-party
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 
 // IOTA
 
 // Streams
 use spongos::{
     ddml::{
-        commands::{sizeof, wrap, unwrap, Absorb, Mask, Commit, Squeeze, Join},
-        types::{Mac, Bytes},
+        commands::{
+            sizeof,
+            unwrap,
+            wrap,
+            Absorb,
+            Commit,
+            Join,
+            Mask,
+            Squeeze,
+        },
         io,
+        types::{
+            Bytes,
+            Mac,
+        },
     },
-    PRP, Spongos,
+    Spongos,
+    PRP,
 };
 use LETS::message::{
-    ContentSizeof, ContentWrap, ContentUnwrap
+    ContentSizeof,
+    ContentUnwrap,
+    ContentWrap,
 };
 
 // Local
@@ -69,8 +87,7 @@ struct Wrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
     async fn sizeof(&mut self, signed_packet: &Wrap<'a, F>) -> Result<&mut Self> {
-        self
-            .absorb(&Bytes::new(signed_packet.public_payload))?
+        self.absorb(&Bytes::new(signed_packet.public_payload))?
             .mask(&Bytes::new(signed_packet.masked_payload))?
             .commit()?
             .squeeze(&MAC)?;

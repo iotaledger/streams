@@ -127,28 +127,6 @@ impl Address {
         let hasher = Blake2b256::new();
         hasher.chain(&self.appaddr).chain(&self.msgid).finalize().into()
     }
-
-    // TODO: REMOVE
-    // /// Generate the hash used to index the [`TangleMessage`] published in this address
-    // ///
-    // /// Currently this hash is computed with [Blake2b256].
-    // ///
-    // /// [Blake2b256]: https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE2|Blake2b256
-    // fn to_msg_index(self) -> NBytes<U32> {
-    //     self.to_blake2b()
-    // }
-
-    // TODO: REMOVE
-    // /// # Safety
-    // ///
-    // /// This function uses CStr::from_ptr which is unsafe...
-    // unsafe fn from_c_str(c_addr: *const c_char) -> *const Self {
-    //     c_addr.as_ref().map_or(null(), |c_addr| {
-    //         CStr::from_ptr(c_addr).to_str().map_or(null(), |addr_str| {
-    //             Self::from_str(addr_str).map_or(null(), |addr| Box::into_raw(Box::new(addr)))
-    //         })
-    //     })
-    // }
 }
 
 /// String representation of a Tangle Link
@@ -216,29 +194,6 @@ impl Link for Address {
     fn from_parts(appaddr: AppAddr, msgid: MsgId) -> Self {
         Self::new(appaddr, msgid)
     }
-
-    // TODO: REMOVE
-    // fn from_base_rel(base: &AppAddr, rel: &MsgId) -> Self {
-    //     Self {
-    //         appaddr: *base,
-    //         msgid: *rel,
-    //     }
-    // }
-    // fn to_bytes(&self) -> Vec<u8> {
-    //     let mut bytes = self.appaddr.as_ref().to_vec();
-    //     bytes.extend_from_slice(self.msgid.as_ref());
-    //     bytes
-    // }
-
-    // fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-    //     if bytes.len() != APPINST_SIZE + MSGID_SIZE {
-    //         return err!(InvalidMessageAddress);
-    //     }
-    //     Ok(Address::new(
-    //         AppAddr::from(&bytes[0..APPINST_SIZE]),
-    //         MsgId::from(&bytes[APPINST_SIZE..]),
-    //     ))
-    // }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
@@ -250,13 +205,6 @@ where
 {
     type Data = (&'a AppAddr, Identifier, u64);
 
-    // fn init(appaddr: AppAddr) -> Self {
-    //     Self {
-    //         appaddr,
-    //         f: PhantomData,
-    //     }
-    // }
-
     fn gen(&mut self, (appaddr, identifier, seq_num): (&'a AppAddr, Identifier, u64)) -> MsgId {
         let mut s = Spongos::<F>::init();
         s.absorb(appaddr);
@@ -267,93 +215,13 @@ where
     }
 }
 
-impl<F> LinkGenerator<'_, AppAddr> for AddressGenerator<F>
-{
+impl<F> LinkGenerator<'_, AppAddr> for AddressGenerator<F> {
     type Data = (Identifier, u64);
 
     fn gen(&mut self, (identifier, channel_idx): (Identifier, u64)) -> AppAddr {
         AppAddr::new(identifier, channel_idx)
     }
 }
-
-// impl<F> Default for DefaultTangleLinkGenerator<F> {
-//     fn default() -> Self {
-//         Self {
-//             addr: Address::default(),
-//             _phantom: core::marker::PhantomData,
-//         }
-//     }
-// }
-
-// impl<F> DefaultTangleLinkGenerator<F> {
-//     fn reset_addr(&mut self, addr: Address) {
-//         self.addr = addr;
-//     }
-// }
-
-// impl<F: PRP> DefaultTangleLinkGenerator<F> {
-//     fn gen_uniform_msgid(&self, cursor: Cursor<&MsgId>) -> MsgId {
-//         let mut s = Spongos::<F>::init();
-//         s.absorb(self.addr.appaddr.id.as_ref());
-//         s.absorb(cursor.link.id.as_ref());
-//         s.absorb(&cursor.branch_no.to_be_bytes());
-//         s.absorb(&cursor.seq_no.to_be_bytes());
-//         s.commit();
-//         let mut new = MsgId::default();
-//         s.squeeze(new.id.as_mut());
-//         new
-//     }
-//     fn gen_msgid(&self, id_bytes: &[u8], cursor: Cursor<&MsgId>) -> MsgId {
-//         let mut s = Spongos::<F>::init();
-//         s.absorb(self.addr.appaddr.id.as_ref());
-//         s.absorb(id_bytes);
-//         s.absorb(cursor.link.id.as_ref());
-//         s.absorb(&cursor.branch_no.to_be_bytes());
-//         s.absorb(&cursor.seq_no.to_be_bytes());
-//         s.commit();
-//         let mut new = MsgId::default();
-//         s.squeeze(new.id.as_mut());
-//         new
-//     }
-// }
-
-// impl<F: PRP> LinkGenerator<Address> for DefaultTangleLinkGenerator<F> {
-//     /// Used by Author to generate a new application instance: channels address and announcement message identifier
-//     fn gen(&mut self, id: &Identifier, channel_idx: u64) {
-//         self.addr.appaddr = AppAddr::new(id, channel_idx);
-//         self.addr.msgid = self.gen_msgid(id.as_ref(), Cursor::default().as_ref());
-//     }
-
-//     /// Used by Author to get announcement message id, it's just stored internally by link generator
-//     fn get(&self) -> Address {
-//         self.addr
-//     }
-
-//     /// Used by Subscriber to initialize link generator with the same state as Author
-//     fn reset(&mut self, announcement_link: Address) {
-//         self.addr = announcement_link;
-//     }
-
-//     /// Used by users to pseudo-randomly generate a new uniform message link from a cursor
-//     fn uniform_link_from(&self, cursor: Cursor<&MsgId>) -> Address {
-//         Address {
-//             appaddr: self.addr.appaddr,
-//             msgid: self.gen_uniform_msgid(cursor),
-//         }
-//     }
-
-//     /// Used by users to pseudo-randomly generate a new message link from a cursor
-//     fn link_from<T: AsRef<[u8]>>(&self, id: T, cursor: Cursor<&MsgId>) -> Address {
-//         Address {
-//             appaddr: self.addr.appaddr,
-//             msgid: self.gen_msgid(id.as_ref(), cursor),
-//         }
-//     }
-// }
-
-// TODO: REMOVE
-// type AppInstSize = U40;
-// const APPINST_SIZE: usize = 40;
 
 /// 40 byte Application Instance identifier.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -387,16 +255,6 @@ impl Default for AppAddr {
         Self([0; 40])
     }
 }
-
-// TODO: REMOVE
-// impl<'a> From<&'a [u8]> for AppAddr {
-//     fn from(v: &[u8]) -> AppAddr {
-//         AppAddr {
-//             // TODO: Implement safer TryFrom or force check for length at call site.
-//             id: *<&NBytes<AppInstSize>>::from(v),
-//         }
-//     }
-// }
 
 impl FromStr for AppAddr {
     type Err = anyhow::Error;
@@ -437,11 +295,6 @@ impl AsRef<[u8]> for AppAddr {
     }
 }
 
-// TODO: REMOVE
-// type MsgIdSize = U12;
-/// Unique 12 byte identifier
-// const MSGID_SIZE: usize = 12;
-
 /// 12 byte Message Identifier unique within the same application.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 pub struct MsgId([u8; Self::SIZE]);
@@ -460,13 +313,6 @@ impl MsgId {
     }
 }
 
-// TODO: REMOVE
-// impl<'a> From<&'a [u8]> for MsgId {
-//     fn from(v: &[u8]) -> MsgId {
-//         MsgId (
-//     }
-// }
-
 impl FromStr for MsgId {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -480,13 +326,6 @@ impl FromStr for MsgId {
         })
     }
 }
-
-// TODO: REMOVE
-// impl From<NBytes<MsgIdSize>> for MsgId {
-//     fn from(b: NBytes<MsgIdSize>) -> Self {
-//         Self { id: b }
-//     }
-// }
 
 /// Display MsgId with its hexadecimal representation (lower case)
 impl Display for MsgId {

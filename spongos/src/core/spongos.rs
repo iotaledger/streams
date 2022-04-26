@@ -25,27 +25,6 @@ use crate::Error::{
     SpongosNotCommitted,
 };
 
-// use crate::{
-//     prelude::{
-//         digest::Digest,
-//         generic_array::{
-//             typenum::{
-//                 Unsigned as _,
-//                 U2,
-//             },
-//             ArrayLength,
-//             GenericArray,
-//         },
-//         Vec,
-//     },
-//     try_or,
-//     Errors::{
-//         LengthMismatch,
-//         SpongosNotCommitted,
-//     },
-//     Result,
-// };
-
 fn xor(s: &mut [u8], x: &[u8]) {
     for (si, xi) in s.iter_mut().zip(x.iter()) {
         *si ^= *xi;
@@ -208,14 +187,6 @@ impl<F: PRP> Spongos<F> {
         output
     }
 
-    // TODO: REMOVE
-    // /// Squeeze array, length inferred from output type.
-    // fn squeeze_arr<N: ArrayLength<u8>>(&mut self) -> GenericArray<u8, N> {
-    //     let mut y = GenericArray::default();
-    //     self.squeeze(&mut y);
-    //     y
-    // }
-
     /// Squeeze vector, length is known at runtime.
     pub(crate) fn squeeze_n(&mut self, n: usize) -> Vec<u8> {
         let mut v = vec![0; n];
@@ -288,12 +259,6 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    // TODO: REMOVE
-    // fn encrypt_arr<N: ArrayLength<u8>>(&mut self, x: &GenericArray<u8, N>) -> Result<GenericArray<u8, N>> {
-    //     let mut y = GenericArray::default();
-    //     self.encrypt(x, &mut y)?;
-    //     Ok(y)
-    // }
     fn encrypt<T, R>(&mut self, plain: T) -> Result<R>
     where
         T: AsRef<[u8]>,
@@ -359,14 +324,6 @@ impl<F: PRP> Spongos<F> {
         Ok(plaintext)
     }
 
-    // TODO: REMOVE
-    // /// Decrypt buf.
-    // fn decrypt_arr<N: ArrayLength<u8>>(&mut self, y: impl AsRef<[u8]>) -> Result<GenericArray<u8, N>> {
-    //     let mut x = GenericArray::default();
-    //     self.decrypt(y, &mut x)?;
-    //     Ok(x)
-    // }
-
     pub(crate) fn decrypt_n<T>(&mut self, y: T) -> Result<Vec<u8>>
     where
         T: AsRef<[u8]>,
@@ -410,14 +367,6 @@ impl<F: PRP> Spongos<F> {
         let x: Capacity<F> = joinee.squeeze();
         self.absorb(x.as_ref());
     }
-
-    /// Only `inner` part of the state may be serialized.
-    /// State must be committed.
-    fn to_inner(&self) -> Result<Inner<F>> {
-        // TODO: RENAME OR SOMETHING (OPTION: MAKE COMMITING A COMPILER CHECK)
-        ensure!(self.is_committed(), SpongosNotCommitted);
-        Ok(self.s.inner().clone().into())
-    }
 }
 
 impl<F> Spongos<F>
@@ -437,44 +386,8 @@ where
     }
 }
 
-// TODO: REVIEW
-impl<F: PRP> From<Inner<F>> for Spongos<F> {
-    fn from(inner: Inner<F>) -> Self {
-        Self {
-            s: F::from_inner(&inner.into()),
-            pos: 0,
-        }
-    }
-}
-
-// TODO: REMOVE
-// impl<F: PRP> From<&Inner<F>> for Spongos<F> {
-//     fn from(inner: &Inner<F>) -> Self {
-//         Self {
-//             s: F::from_inner(inner.into()),
-//             pos: 0,
-//         }
-//     }
-// }
-// impl<F: PRP> From<Spongos<F>> for Inner<F> {
-//     fn from(spongos: Spongos<F>) -> Self {
-//         spongos.into_inner().unwrap()
-//     }
-// }
-
-// TODO: REMOVE
-// impl<F: PRP> From<&Spongos<F>> for Inner<F> {
-//     fn from(inner: &Spongos<F>) -> Self {
-//         inner.to_inner().unwrap()
-//     }
-// }
-
 impl<F: PRP> fmt::Debug for Spongos<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // write!(f, "{}[{:?}]", self.pos, hex::encode(self.s.outer().as_ref()))
-        // write!(f, "[{}:{}]",
-        //       hex::encode(&self.s.outer().as_ref()[..self.pos]),
-        //       hex::encode(&self.s.outer().as_ref()[self.pos..]))
         write!(
             f,
             "[{}:{}|{}]",
@@ -484,15 +397,6 @@ impl<F: PRP> fmt::Debug for Spongos<F> {
         )
     }
 }
-
-// TODO: REMOVE
-// /// Shortcut for `Spongos::init`.
-// fn init<F>() -> Spongos<F>
-// where
-//     F: PRP + Default,
-// {
-//     Spongos::init()
-// }
 
 /// Hash data with Spongos.
 fn hash<F, T, R>(data: T) -> R
@@ -507,12 +411,10 @@ where
 impl<F> Digest for Spongos<F>
 where
     F: PRP + Default,
-    // TODO: REMOVE
     F::CapacitySize: Mul<U2>,
     <F::CapacitySize as Mul<U2>>::Output: ArrayLength<u8>,
 {
     // This would normally result in U64, ie 512 bits needed for ed25519prehashed.
-    // type OutputSize = <F::CapacitySize as Mul<U2>>::Output;
     type OutputSize = Prod<F::CapacitySize, U2>;
 
     fn new() -> Self {
@@ -550,51 +452,3 @@ where
         Self::init().sponge(data)
     }
 }
-
-/// Convenience wrapper for storing Spongos inner state.
-#[derive(Clone, PartialEq, Eq, Default, Hash)]
-struct Inner<F: PRP> {
-    /// Represents inner state of spongos automaton.
-    inner: Capacity<F>,
-}
-
-impl<F: PRP> Inner<F> {
-    fn arr(&self) -> &Capacity<F> {
-        &self.inner
-    }
-
-    fn arr_mut(&mut self) -> &mut Capacity<F> {
-        &mut self.inner
-    }
-}
-
-impl<F: PRP> AsRef<[u8]> for Inner<F> {
-    fn as_ref(&self) -> &[u8] {
-        self.inner.as_ref()
-    }
-}
-
-impl<F: PRP> AsMut<[u8]> for Inner<F> {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.inner.as_mut()
-    }
-}
-
-impl<F: PRP> From<Capacity<F>> for Inner<F> {
-    fn from(bytes: Capacity<F>) -> Self {
-        Self { inner: bytes }
-    }
-}
-
-impl<F: PRP> From<Inner<F>> for Capacity<F> {
-    fn from(inner: Inner<F>) -> Self {
-        inner.inner
-    }
-}
-
-// TODO: REMOVE
-// impl<'a, F: PRP> From<&'a Inner<F>> for &'a GenericArray<u8, F::CapacitySize> {
-//     fn from(inner: &'a Inner<F>) -> Self {
-//         &(*inner).inner
-//     }
-// }

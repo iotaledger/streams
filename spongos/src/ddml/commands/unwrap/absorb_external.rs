@@ -84,14 +84,6 @@ impl<'a, F: PRP, IS> Absorb<External<&'a x25519::PublicKey>> for Context<F, IS> 
     }
 }
 
-// TODO: REMOVE
-// impl<'a, F, T: 'a + AbsorbExternalFallback<F>, IS: io::IStream> Absorb<External<Fallback<&'a T>>> for Context<F, IS>
-// {     fn absorb(&mut self, val: External<Fallback<&'a T>>) -> Result<&mut Self> {
-//         val.into_inner().into_inner().unwrap_absorb_external(self)?;
-//         Ok(self)
-//     }
-// }
-
 // Implement &External<T> for any External<&T> implementation
 impl<'a, T, F, IS> Absorb<&'a External<T>> for Context<F, IS>
 where

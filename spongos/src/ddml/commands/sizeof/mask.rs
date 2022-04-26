@@ -1,9 +1,9 @@
+use anyhow::Result;
 use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
 use generic_array::ArrayLength;
-use anyhow::Result;
 
 use crate::ddml::{
     commands::{
@@ -69,14 +69,20 @@ impl<T: AsRef<[u8]>> Mask<NBytes<&T>> for Context {
     }
 }
 
-impl<'a, T> Mask<&'a NBytes<T>> for Context where Self: Mask<NBytes<&'a T>> {
+impl<'a, T> Mask<&'a NBytes<T>> for Context
+where
+    Self: Mask<NBytes<&'a T>>,
+{
     fn mask(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
         self.mask(NBytes::new(nbytes.inner()))
     }
 }
 
 /// Mask bytes, the size prefixed before the content bytes is also masked.
-impl<T> Mask<Bytes<&T>> for Context where T: AsRef<[u8]> {
+impl<T> Mask<Bytes<&T>> for Context
+where
+    T: AsRef<[u8]>,
+{
     fn mask(&mut self, bytes: Bytes<&T>) -> Result<&mut Self> {
         let size = Size::new(bytes.len());
         self.mask(size)?;
@@ -85,7 +91,10 @@ impl<T> Mask<Bytes<&T>> for Context where T: AsRef<[u8]> {
     }
 }
 
-impl<'a, T> Mask<&'a Bytes<T>> for Context where Self: Mask<Bytes<&'a T>> {
+impl<'a, T> Mask<&'a Bytes<T>> for Context
+where
+    Self: Mask<Bytes<&'a T>>,
+{
     fn mask(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
         self.mask(Bytes::new(bytes.inner()))
     }

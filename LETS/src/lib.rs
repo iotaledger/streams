@@ -24,11 +24,6 @@
 
 #![no_std]
 
-// TODO: REMOVE
-// #[cfg(feature = "std")]
-// #[macro_use]
-// extern crate std;
-
 #[macro_use]
 extern crate alloc;
 
@@ -40,10 +35,6 @@ pub mod link;
 
 /// Transport-related abstractions.
 pub mod transport;
-
-// TODO: REMOVE
-// use cstr_core;
-// use cty;
 
 /// Identity based Signature/Verification utilities
 pub mod id;

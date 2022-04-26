@@ -1,4 +1,10 @@
-use generic_array::{typenum::{U168, U32}, GenericArray};
+use generic_array::{
+    typenum::{
+        U168,
+        U32,
+    },
+    GenericArray,
+};
 
 use super::PRP;
 

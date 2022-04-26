@@ -146,8 +146,7 @@ pub(crate) struct Unwrap<'a, F> {
     author_ke_sk: &'a x25519::SecretKey,
 }
 
-impl<'a, F> Unwrap<'a, F>
-{
+impl<'a, F> Unwrap<'a, F> {
     pub(crate) fn new(initial_state: &'a mut Spongos<F>, author_ke_sk: &'a x25519::SecretKey) -> Self {
         Self {
             initial_state,

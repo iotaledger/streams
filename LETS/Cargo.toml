@@ -10,15 +10,13 @@ description = "A Rust framework for developing cryptographic communication proto
 
 [features]
 default = ["tangle-client", "did"]
-# Enable `std` feature in dependencies
-# std = ["hex/std"]  # TODO: REMOVE?
 # Enable the IOTA-Tangle transport client (implies `std` features)
 tangle-client = ["iota-client/async", "futures"]
 # Enable the wasm-compatible IOTA-Tangle transport client (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`. Implies `std` feature)
 tangle-client-wasm = ["iota-client/wasm", "futures"]
 # Enable Iota Identity for use with Streams
 did = ["identity", "serde"]
-# TODO: REMOVE
+# TODO: REMOVE?
 # # Enable synchronized transports using parking-lot
 # sync-parking-lot = ["spongos/sync-parking-lot"]
 # # Enable synchronized transports using spin 

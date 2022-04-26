@@ -29,7 +29,6 @@ use crate::{
 
 impl<F: PRP, OS> Join<F> for Context<F, OS> {
     fn join(&mut self, joinee: &mut Spongos<F>) -> Result<&mut Self> {
-        // TODO: Return and use info.
         self.spongos.join(joinee);
         Ok(self)
     }

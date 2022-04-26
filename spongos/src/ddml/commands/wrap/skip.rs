@@ -1,5 +1,5 @@
-use generic_array::ArrayLength;
 use anyhow::Result;
+use generic_array::ArrayLength;
 
 use crate::{
     core::{
@@ -39,7 +39,10 @@ impl<'a, F, OS> SkipContext<'a, F, OS> {
 }
 
 impl<'a, F, OS: io::OStream> Wrap for SkipContext<'a, F, OS> {
-    fn wrapn<T>(&mut self, bytes: T) -> Result<&mut Self> where T: AsRef<[u8]> {
+    fn wrapn<T>(&mut self, bytes: T) -> Result<&mut Self>
+    where
+        T: AsRef<[u8]>,
+    {
         let bytes = bytes.as_ref();
         self.ctx.stream.try_advance(bytes.len())?.copy_from_slice(bytes);
         Ok(self)
@@ -88,24 +91,22 @@ impl<'a, F, T: AsRef<[u8]>, OS: io::OStream> Skip<NBytes<&'a T>> for Context<F, 
     }
 }
 
-impl<'a, F, T, OS: io::OStream> Skip<&'a NBytes<T>> for Context<F, OS> where Self: Skip<NBytes<&'a T>> {
+impl<'a, F, T, OS: io::OStream> Skip<&'a NBytes<T>> for Context<F, OS>
+where
+    Self: Skip<NBytes<&'a T>>,
+{
     fn skip(&mut self, bytes: &'a NBytes<T>) -> Result<&mut Self> {
         self.skip(NBytes::new(bytes.inner()))
     }
 }
 
-impl<'a, F, OS: io::OStream, T> Skip<&'a Bytes<T>> for Context<F, OS> where T: AsRef<[u8]> {
+impl<'a, F, OS: io::OStream, T> Skip<&'a Bytes<T>> for Context<F, OS>
+where
+    T: AsRef<[u8]>,
+{
     fn skip(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
         self.skip(Size::new(bytes.len()))?;
         SkipContext::new(self).wrapn(bytes)?;
         Ok(self)
     }
 }
-
-// TODO: REMOVE
-// impl<'a, F, T: 'a + SkipFallback<F>, OS: io::OStream> Skip<&'a Fallback<T>> for Context<F, OS> {
-//     fn skip(&mut self, val: &'a Fallback<T>) -> Result<&mut Self> {
-//         (val.0).wrap_skip(self)?;
-//         Ok(self)
-//     }
-// }

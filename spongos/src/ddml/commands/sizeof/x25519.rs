@@ -1,5 +1,5 @@
-use crypto::keys::x25519;
 use anyhow::Result;
+use crypto::keys::x25519;
 use generic_array::ArrayLength;
 
 use crate::ddml::{

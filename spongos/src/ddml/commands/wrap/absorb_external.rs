@@ -93,14 +93,6 @@ impl<'a, F: PRP, OS> Absorb<External<&'a x25519::PublicKey>> for Context<F, OS> 
     }
 }
 
-// TODO: REMOVE
-// impl<'a, F, T: 'a + AbsorbExternalFallback<F>, OS> Absorb<External<Fallback<&'a T>>> for Context<F, OS> {
-//     fn absorb(&mut self, val: External<Fallback<&'a T>>) -> Result<&mut Self> {
-//         val.into_inner().into_inner().wrap_absorb_external(self)?;
-//         Ok(self)
-//     }
-// }
-
 // Implement &External<T> for any External<&T> implementation
 impl<'a, T, F, OS> Absorb<&'a External<T>> for Context<F, OS>
 where

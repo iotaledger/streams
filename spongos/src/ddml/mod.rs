@@ -12,8 +12,3 @@ pub mod io;
 
 /// DDML specific types.
 pub mod types;
-
-// TODO: REMOVE
-// /// LinkStore trait and impls.
-// #[allow(clippy::all)]
-// mod link_store;

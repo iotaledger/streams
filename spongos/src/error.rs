@@ -1,10 +1,10 @@
 use alloc::string::String;
-use core::fmt::{Display, Debug};
+use core::fmt::{
+    Debug,
+    Display,
+};
 
 use displaydoc::Display;
-
-// TODO: REMOVE
-// pub struct WrappedError<T: Debug>(T);
 
 // TODO: REMOVE UNUSED
 #[derive(Display, Debug)]
@@ -237,7 +237,10 @@ pub enum Error {
 }
 
 impl Error {
-    pub(crate) fn wrap<T>(&self, src: &T) -> anyhow::Error where T: Display + Debug {
+    pub(crate) fn wrap<T>(&self, src: &T) -> anyhow::Error
+    where
+        T: Display + Debug,
+    {
         anyhow::anyhow!("\n\tStreams Error: {}\n\t\tCause: {:?}", self, src)
     }
 }

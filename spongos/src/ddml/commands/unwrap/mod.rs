@@ -27,7 +27,10 @@ pub struct Context<F, IS> {
 }
 
 impl<F, IS> Context<F, IS> {
-    pub fn new(stream: IS) -> Self where F: Default {
+    pub fn new(stream: IS) -> Self
+    where
+        F: Default,
+    {
         Self {
             spongos: Spongos::<F>::init(),
             stream,
@@ -46,24 +49,22 @@ impl<F, IS> Context<F, IS> {
         &mut self.stream
     }
 
-    pub fn drop(&mut self, bytes: usize) -> Result<&mut Self> where IS: io::IStream {
+    pub fn drop(&mut self, bytes: usize) -> Result<&mut Self>
+    where
+        IS: io::IStream,
+    {
         self.stream.try_advance(bytes)?;
         Ok(self)
     }
 
-    pub fn finalize(mut self) -> Spongos<F> where F: PRP {
+    pub fn finalize(mut self) -> Spongos<F>
+    where
+        F: PRP,
+    {
         self.spongos.commit();
         self.spongos
     }
 }
-
-// TODO: REMOVE
-// impl<F, IS: io::IStream> Context<F, IS> {
-    // fn drop(&mut self, n: Size) -> Result<&mut Self> {
-    //     self.stream.try_advance(n.0)?;
-    //     Ok(self)
-    // }
-// }
 
 impl<F, IS> fmt::Debug for Context<F, IS> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -78,7 +79,9 @@ impl<F, IS> fmt::Debug for Context<F, IS> {
 /// this trait to perform their particular cryptographic processing while
 /// reading data.
 trait Unwrap {
-    fn unwrapn<T>(&mut self, v: T) -> Result<&mut Self> where T: AsMut<[u8]>;
+    fn unwrapn<T>(&mut self, v: T) -> Result<&mut Self>
+    where
+        T: AsMut<[u8]>;
 
     fn unwrap_u8(&mut self, u: &mut Uint8) -> Result<&mut Self> {
         let mut v = [0_u8; 1];
@@ -134,20 +137,3 @@ mod squeeze;
 
 mod ed25519;
 mod x25519;
-
-// TODO: REMOVE
-// use absorb::*;
-// use absorb_external::*;
-// use commit::*;
-// use dump::*;
-// use fork::*;
-// use guard::*;
-// use join::*;
-// use mask::*;
-// use repeated::*;
-// use skip::*;
-// use squeeze::*;
-// use squeeze_external::*;
-
-// use ed25519::*;
-// use x25519::*;

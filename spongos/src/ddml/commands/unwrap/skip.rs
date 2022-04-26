@@ -2,15 +2,18 @@
 use alloc::vec::Vec;
 
 // 3rd-party
-use generic_array::ArrayLength;
 use anyhow::Result;
+use generic_array::ArrayLength;
 
 // Local
 use crate::{
     core::prp::PRP,
     ddml::{
         commands::{
-            unwrap::{Unwrap, Context},
+            unwrap::{
+                Context,
+                Unwrap,
+            },
             Skip,
         },
         io,
@@ -37,7 +40,10 @@ impl<'a, F, IS: io::IStream> SkipContext<'a, F, IS> {
 }
 
 impl<'a, F, IS: io::IStream> Unwrap for SkipContext<'a, F, IS> {
-    fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self> where T: AsMut<[u8]> {
+    fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self>
+    where
+        T: AsMut<[u8]>,
+    {
         let bytes = bytes.as_mut();
         let slice = self.ctx.stream.try_advance(bytes.len())?;
         bytes.copy_from_slice(slice);
@@ -87,7 +93,10 @@ impl<'a, F, T: AsMut<[u8]>, IS: io::IStream> Skip<NBytes<&'a mut T>> for Context
     }
 }
 
-impl<'a, F, T, IS: io::IStream> Skip<&'a mut NBytes<T>> for Context<F, IS> where Self: Skip<NBytes<&'a mut T>> {
+impl<'a, F, T, IS: io::IStream> Skip<&'a mut NBytes<T>> for Context<F, IS>
+where
+    Self: Skip<NBytes<&'a mut T>>,
+{
     fn skip(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
         self.skip(NBytes::new(nbytes.inner_mut()))
     }
@@ -108,11 +117,3 @@ impl<'a, F, IS: io::IStream> Skip<Bytes<&'a mut Vec<u8>>> for Context<F, IS> {
         Ok(self)
     }
 }
-
-// TODO: REMOVE
-// impl<'a, F, T: 'a + SkipFallback<F>, IS: io::IStream> Skip<&'a mut Fallback<T>> for Context<F, IS> {
-//     fn skip(&mut self, val: &'a mut Fallback<T>) -> Result<&mut Self> {
-//         (val.0).unwrap_skip(self)?;
-//         Ok(self)
-//     }
-// }

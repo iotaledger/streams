@@ -117,14 +117,6 @@ impl<'a> Absorb<&'a x25519::PublicKey> for Context {
     }
 }
 
-// TODO: REMOVE (and replace by impl)
-// impl<'a, F, T: 'a + AbsorbFallback> Absorb<&'a Fallback<T>> for Context {
-//     fn absorb(&mut self, val: &'a Fallback<T>) -> Result<&mut Self> {
-//         (val.0).sizeof_absorb(self)?;
-//         Ok(self)
-//     }
-// }
-
 /// External values are not encoded in the stream.
 impl Absorb<External<Uint8>> for Context {
     fn absorb(&mut self, _external: External<Uint8>) -> Result<&mut Self> {
@@ -160,7 +152,10 @@ impl<T: AsRef<[u8]>> Absorb<External<NBytes<&T>>> for Context {
     }
 }
 
-impl<'a, T> Absorb<External<&'a NBytes<T>>> for Context where Self: Absorb<External<NBytes<&'a T>>>{
+impl<'a, T> Absorb<External<&'a NBytes<T>>> for Context
+where
+    Self: Absorb<External<NBytes<&'a T>>>,
+{
     fn absorb(&mut self, external: External<&'a NBytes<T>>) -> Result<&mut Self> {
         self.absorb(External::new(NBytes::new(external.into_inner().inner())))
     }

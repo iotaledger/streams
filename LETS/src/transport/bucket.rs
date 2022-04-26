@@ -1,10 +1,10 @@
 // Rust
-use core::fmt::Display;
 use alloc::{
     boxed::Box,
     collections::BTreeMap,
     vec::Vec,
 };
+use core::fmt::Display;
 
 // 3rd-party
 use anyhow::{
@@ -31,10 +31,7 @@ struct BucketTransport<Address, Msg> {
     bucket: BTreeMap<Address, Vec<Msg>>,
 }
 
-impl<Link, Msg> BucketTransport<Link, Msg>
-// where
-//     Link: Eq + hash::Hash,
-{
+impl<Link, Msg> BucketTransport<Link, Msg> {
     fn new() -> Self {
         Self::default()
     }
@@ -54,10 +51,6 @@ impl<Address, Msg> Transport<Address, Msg, Msg> for BucketTransport<Address, Msg
 where
     Address: Ord + Display,
     Msg: Clone,
-     /* where
-                                *     Link: Eq + hash::Hash + Clone + core::marker::Send + core::marker::Sync +
-                                * core::fmt::Display,     Msg: LinkedMessage<Link> +
-                                * Clone + core::marker::Send + core::marker::Sync, */
 {
     async fn send_message(&mut self, addr: Address, msg: Msg) -> Result<Msg> {
         self.bucket.entry(addr).or_default().push(msg.clone());
@@ -70,15 +63,4 @@ where
             .cloned()
             .ok_or_else(|| anyhow!("No messages found at address {}", address))
     }
-
-    // TODO: REMOVE
-    // async fn recv_message(&mut self, address: &'a Address) -> Result<Msg> {
-    //     let mut msgs = self.recv_messages(address).await?;
-    //     if let Some(msg) = msgs.pop() {
-    //         ensure!(msgs.is_empty(), "More than one message found: with address {}", address);
-    //         Ok(msg)
-    //     } else {
-    //         Err(anyhow!("Message at link {} not found in Bucket transport", address))
-    //     }
-    // }
 }

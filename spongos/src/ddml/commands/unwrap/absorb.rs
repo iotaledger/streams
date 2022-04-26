@@ -50,7 +50,10 @@ impl<'a, F: PRP, IS: io::IStream> AbsorbContext<'a, F, IS> {
 }
 
 impl<F: PRP, IS: io::IStream> Unwrap for AbsorbContext<'_, F, IS> {
-    fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self> where T: AsMut<[u8]> {
+    fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self>
+    where
+        T: AsMut<[u8]>,
+    {
         let bytes = bytes.as_mut();
         let slice = self.ctx.stream.try_advance(bytes.len())?;
         bytes.copy_from_slice(slice);
@@ -100,7 +103,10 @@ impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<NBytes<&'a mut T>> for 
         Ok(self)
     }
 }
-impl<'a, F: PRP, IS: io::IStream, T> Absorb<&'a mut NBytes<T>> for Context<F, IS> where Self: Absorb<NBytes<&'a mut T>> {
+impl<'a, F: PRP, IS: io::IStream, T> Absorb<&'a mut NBytes<T>> for Context<F, IS>
+where
+    Self: Absorb<NBytes<&'a mut T>>,
+{
     fn absorb(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
         self.absorb(NBytes::new(nbytes.inner_mut()))
     }
@@ -162,11 +168,3 @@ where
         Ok(self)
     }
 }
-
-// TODO: REMOVE
-// impl<'a, F: PRP, T: 'a + AbsorbFallback<F>, IS: io::IStream> Absorb<&'a mut Fallback<T>> for Context<F, IS> {
-//     fn absorb(&mut self, val: &'a mut Fallback<T>) -> Result<&mut Self> {
-//         (val.0).unwrap_absorb(self)?;
-//         Ok(self)
-//     }
-// }

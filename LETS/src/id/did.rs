@@ -39,25 +39,6 @@ use identity::{
     iota::IotaDID,
 };
 
-// TODO: REMOVE
-// use iota_streams_core::{
-//     err,
-//     prelude::{
-//         generic_array::{
-//             typenum::U32,
-//             GenericArray,
-//         },
-//         String,
-//         Vec,
-//     },
-//     Errors::DIDMissing,
-//     Result,
-// };
-
-// type DIDSize = U32;
-// type DIDWrap = GenericArray<u8, DIDSize>;
-// type DIDClient = identity::iota::Client;
-
 pub(crate) const DID_CORE: &str = "did:iota:";
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Default)]

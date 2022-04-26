@@ -2,8 +2,6 @@
 mod content;
 /// Header Description Frame
 mod hdf;
-/// Binary version of a [`GenericMessage`]
-// mod binary;
 /// Payload Carrying Frame
 mod pcf;
 /// Abstract linked-message representation
@@ -11,17 +9,8 @@ mod transport;
 /// Protocol versioning tools
 mod version;
 
-// TODO: REMOVE
-// mod prepared;
-// mod unwrapped;
-// mod wrapped;
-
 /// Linked Message with header already parsed
 mod preparsed;
-
-// TODO: REVIEW LATER
-// use hdf::HDF;
-// use pcf::PCF;
 
 // Rust
 use alloc::vec::Vec;
@@ -97,7 +86,6 @@ impl<Address, Payload> Message<Address, Payload> {
     pub fn into_payload(self) -> PCF<Payload> {
         self.payload
     }
-
 
     pub async fn wrap<F>(&mut self) -> Result<(TransportMessage<Vec<u8>>, Spongos<F>)>
     where

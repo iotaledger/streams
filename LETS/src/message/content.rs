@@ -6,8 +6,6 @@ use alloc::boxed::Box;
 // 3rd-party
 use anyhow::Result;
 use async_trait::async_trait;
-// TODO: REMOVE
-// use generic_array::ArrayLength;
 
 // IOTA
 use crypto::keys::x25519;
@@ -24,25 +22,6 @@ use spongos::ddml::{
 };
 
 // local
-
-// use iota_streams_core::{
-//     async_trait,
-//     prelude::Box,
-//     Result,
-// };
-
-// use iota_streams_ddml::{
-//     command::{
-//         sizeof,
-//         unwrap,
-//         wrap,
-//     },
-//     io,
-//     types::{
-//         ArrayLength,
-//         NBytes,
-//     },
-// };
 
 #[async_trait(?Send)]
 pub trait ContentSizeof<T> {

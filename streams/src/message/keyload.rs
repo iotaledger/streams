@@ -163,8 +163,8 @@ impl<'a, F, Subscribers> Wrap<'a, F, Subscribers> {
 impl<'a, F, Subscribers> message::ContentSizeof<Wrap<'a, F, Subscribers>> for sizeof::Context
 where
     // Subscribers: 'a,
-    for <'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
-    for <'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
+    for<'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
+    for<'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
     // /* where
     //                                                                          * TODO: REMOVE
     //                                                                          * F: 'a + PRP, // weird 'a constraint,
@@ -197,8 +197,8 @@ where
 impl<'a, F, OS, Subscribers> message::ContentWrap<Wrap<'a, F, Subscribers>> for wrap::Context<F, OS>
 where
     // Subscribers: 'a,
-    for <'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
-    for <'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
+    for<'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
+    for<'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
     F: PRP,
     OS: io::OStream,
     // where

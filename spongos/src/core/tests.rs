@@ -3,8 +3,10 @@ use alloc::vec::Vec;
 use generic_array::typenum::Unsigned;
 
 use super::{
-    prp::PRP,
-    prp::keccak::KeccakF1600,
+    prp::{
+        keccak::KeccakF1600,
+        PRP,
+    },
     spongos::Spongos,
 };
 

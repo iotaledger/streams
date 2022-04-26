@@ -24,8 +24,8 @@
 use alloc::boxed::Box;
 
 // 3rd-party
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 
 // IOTA
 use crypto::signatures::ed25519;
@@ -35,7 +35,10 @@ use spongos::{
     ddml::{
         commands::{
             sizeof,
-            wrap, unwrap, Commit, Join,
+            unwrap,
+            wrap,
+            Commit,
+            Join,
         },
         io,
     },
@@ -43,11 +46,17 @@ use spongos::{
     PRP,
 };
 use LETS::{
-    id::{Identity, Identifier},
+    id::{
+        Identifier,
+        Identity,
+    },
     message::{
+        ContentSign,
+        ContentSignSizeof,
         ContentSizeof,
+        ContentUnwrap,
+        ContentVerify,
         ContentWrap,
-        ContentUnwrap, ContentSignSizeof, ContentSign, ContentVerify,
     },
 };
 

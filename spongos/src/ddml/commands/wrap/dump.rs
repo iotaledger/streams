@@ -1,18 +1,21 @@
-use generic_array::ArrayLength;
 use anyhow::Result;
+use generic_array::ArrayLength;
 
 use crate::{
     core::prp::PRP,
     ddml::{
         commands::{
-            wrap::{Wrap, Context},
+            wrap::{
+                Context,
+                Wrap,
+            },
             Dump,
         },
         io,
         modifiers::External,
         types::{
-            NBytes,
             Bytes,
+            NBytes,
             Size,
             Uint16,
             Uint32,
