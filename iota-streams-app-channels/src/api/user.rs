@@ -15,16 +15,16 @@ use crypto::{
 
 use iota_streams_app::{
     id::{
-        Identifier,
         permission::{
             Permission,
             PermissionDuration,
         },
+        Identifier,
     },
     message::{
         hdf::HDF,
         *,
-    }
+    },
 };
 use iota_streams_core::{
     async_trait,
@@ -386,9 +386,7 @@ where
     pub fn insert_subscriber(&mut self, id: Identifier, subscriber_xkey: x25519::PublicKey) -> Result<()> {
         match (!self.key_store.contains_subscriber(&id), &self.appinst) {
             (_, None) => err!(UserNotRegistered),
-            (true, Some(_)) => {
-                self.key_store.insert_keys(id, subscriber_xkey)
-            }
+            (true, Some(_)) => self.key_store.insert_keys(id, subscriber_xkey),
             (false, Some(ref_link)) => err!(UserAlreadyRegistered(id.to_string(), ref_link.base().to_string())),
         }
     }
@@ -479,7 +477,7 @@ where
     where
         I: IntoIterator<Item = &'b Permission>,
     {
-        match self.seq_no(){
+        match self.seq_no() {
             Some(seq_no) => {
                 let msg_cursor = self.gen_link(self.id(), link_to.rel(), seq_no);
                 let header = HDF::new(msg_cursor.link)
@@ -515,23 +513,34 @@ where
     /// known to Author.
     pub async fn share_keyload_for_everyone(&mut self, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
         let keys = self.key_store.exchange_keys();
-        let perms: Vec<Permission> = keys.into_iter().map(|k| Permission::ReadWrite(k.0, PermissionDuration::Perpetual)).collect();
+        let perms: Vec<Permission> = keys
+            .into_iter()
+            .map(|k| Permission::ReadWrite(k.0, PermissionDuration::Perpetual))
+            .collect();
         let prep = self.prepare_keyload(link_to, &perms)?;
         let res = prep.wrap(&self.link_store).await;
-        
+
         match res {
             Ok(wm) => self.handle_permissions(perms, wm, link_to),
             Err(e) => Err(e),
         }
     }
 
-    fn handle_permissions(&mut self, perms: Vec<Permission>, wm: WrappedMessage<F, Link>, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
+    fn handle_permissions(
+        &mut self,
+        perms: Vec<Permission>,
+        wm: WrappedMessage<F, Link>,
+        link_to: &Link,
+    ) -> Result<WrappedMessage<F, Link>> {
         for perm in &perms {
             match perm {
-                Permission::Read(_) => {},
+                Permission::Read(_) => {}
                 _ => {
                     if !self.key_store.contains_subscriber(perm.identifier()) {
-                        self.key_store.insert_cursor(perm.identifier().clone(), Cursor::new_at(link_to.rel().clone(), 0, INIT_MESSAGE_NUM));
+                        self.key_store.insert_cursor(
+                            perm.identifier().clone(),
+                            Cursor::new_at(link_to.rel().clone(), 0, INIT_MESSAGE_NUM),
+                        );
                     }
                 }
             }
@@ -597,7 +606,7 @@ where
                         match permission {
                             Permission::Read(_) => {
                                 // Nont need to add
-                            },
+                            }
                             _ => {
                                 let identifier = permission.identifier();
                                 if !self.key_store.contains_subscriber(identifier) {
@@ -656,8 +665,7 @@ where
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<WrappedMessage<F, Link>> {
-        self
-            .prepare_signed_packet(link_to, public_payload, masked_payload)?
+        self.prepare_signed_packet(link_to, public_payload, masked_payload)?
             .wrap(&self.link_store)
             .await
     }
@@ -725,8 +733,7 @@ where
         public_payload: &Bytes,
         masked_payload: &Bytes,
     ) -> Result<WrappedMessage<F, Link>> {
-        self
-            .prepare_tagged_packet(link_to, public_payload, masked_payload)?
+        self.prepare_tagged_packet(link_to, public_payload, masked_payload)?
             .wrap(&self.link_store)
             .await
     }
