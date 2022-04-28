@@ -26,7 +26,7 @@ use crate::{
             Uint16,
             Uint32,
             Uint64,
-            Uint8,
+            Uint8, Maybe,
         },
     },
 };
@@ -142,12 +142,12 @@ impl<'a, F: PRP, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<F, O
     }
 }
 
-impl<F: PRP, OS: io::OStream, T> Absorb<Option<T>> for Context<F, OS>
+impl<F, OS, T> Absorb<Maybe<Option<T>>> for Context<F, OS>
 where
     Self: Absorb<T> + Absorb<Uint8>,
 {
-    fn absorb(&mut self, option: Option<T>) -> Result<&mut Self> {
-        match option {
+    fn absorb(&mut self, maybe: Maybe<Option<T>>) -> Result<&mut Self> {
+        match maybe.into_inner() {
             Some(t) => self.absorb(Uint8::new(1))?.absorb(t)?,
             None => self.absorb(Uint8::new(0))?,
         };
@@ -155,6 +155,7 @@ where
     }
 }
 
+// TODO: REMOVE
 impl<'a, F, OS> Absorb<&'a ()> for Context<F, OS> {
     fn absorb(&mut self, _: &'a ()) -> Result<&mut Self> {
         Ok(self)

@@ -33,7 +33,7 @@ use crate::{
             Uint16,
             Uint32,
             Uint64,
-            Uint8,
+            Uint8, Maybe,
         },
     },
     error::Error::PublicKeyGenerationFailure,
@@ -151,19 +151,20 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream, T> Absorb<&'a mut Option<T>> for Context<F, IS>
+
+impl<'a, F, IS, T> Absorb<Maybe<&'a mut Option<T>>> for Context<F, IS>
 where
-    for<'b, 'c> &'b mut Self: Absorb<&'c mut T>,
+    for<'b> Self: Absorb<&'b mut T> + Absorb<&'b mut Uint8>,
     T: Default,
 {
-    fn absorb(&mut self, option: &'a mut Option<T>) -> Result<&mut Self> {
+    fn absorb(&mut self, maybe: Maybe<&'a mut Option<T>>) -> Result<&mut Self> {
         let mut oneof = Uint8::default();
-        let mut ctx = self.absorb(&mut oneof)?;
+        let ctx = self.absorb(&mut oneof)?;
         if oneof.inner() == 1 {
             let mut t = T::default();
             // This hacky &mut is necessary to break the recursivity of the trait bound
-            (&mut ctx).absorb(&mut t)?;
-            *option = Some(t);
+            ctx.absorb(&mut t)?;
+            *maybe.into_inner() = Some(t);
         };
         Ok(self)
     }

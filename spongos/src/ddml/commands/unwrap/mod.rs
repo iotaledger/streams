@@ -24,6 +24,7 @@ use crate::{
 pub struct Context<F, IS> {
     spongos: Spongos<F>,
     stream: IS,
+    cursor: usize,
 }
 
 impl<F, IS> Context<F, IS> {
@@ -34,11 +35,16 @@ impl<F, IS> Context<F, IS> {
         Self {
             spongos: Spongos::<F>::init(),
             stream,
+            cursor: 0,
         }
     }
 
-    pub(crate) fn new_with_spongos(stream: IS, spongos: Spongos<F>) -> Self {
-        Self { spongos, stream }
+    pub fn new_with_spongos(stream: IS, spongos: Spongos<F>) -> Self {
+        Self {
+            spongos,
+            stream,
+            cursor: 0,
+        }
     }
 
     pub fn stream(&self) -> &IS {
@@ -57,12 +63,12 @@ impl<F, IS> Context<F, IS> {
         Ok(self)
     }
 
-    pub fn finalize(mut self) -> Spongos<F>
+    pub fn finalize(mut self) -> (Spongos<F>, usize)
     where
         F: PRP,
     {
         self.spongos.commit();
-        self.spongos
+        (self.spongos, self.cursor)
     }
 }
 

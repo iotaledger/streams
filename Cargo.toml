@@ -3,5 +3,5 @@
 members = [
     "spongos",
     "LETS",
-    "streams"
+    "iota-streams"
 ]

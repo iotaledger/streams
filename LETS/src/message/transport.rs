@@ -44,7 +44,7 @@ impl<Body> TransportMessage<Body> {
         TransportMessage { body: f(self.body) }
     }
 
-    fn body(&self) -> &Body {
+    pub(crate) fn body(&self) -> &Body {
         &self.body
     }
 }
@@ -53,9 +53,9 @@ impl<T> TransportMessage<T>
 where
     T: AsRef<[u8]>,
 {
-    pub async fn parse_header<'a, F, Address>(&'a self) -> Result<PreparsedMessage<'a, F, Address>>
+    pub async fn parse_header<F, Address>(self) -> Result<PreparsedMessage<T, F, Address>>
     where
-        unwrap::Context<F, &'a [u8]>: ContentUnwrap<HDF<Address>>,
+        for<'a> unwrap::Context<F, &'a [u8]>: ContentUnwrap<HDF<Address>>,
         F: PRP + Default,
         Address: Default,
     {
@@ -64,6 +64,14 @@ where
 
         ctx.unwrap(&mut header).await?;
 
-        Ok(PreparsedMessage::new(header, ctx))
+        let (spongos, cursor) = ctx.finalize();
+
+        Ok(PreparsedMessage::new(self, header, spongos, cursor))
+    }
+}
+
+impl From<TransportMessage<Vec<u8>>> for Vec<u8> {
+    fn from(message: TransportMessage<Vec<u8>>) -> Self {
+        message.body
     }
 }

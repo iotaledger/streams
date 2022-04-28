@@ -19,7 +19,7 @@ use spongos::{
 pub struct Psk([u8; 32]);
 
 impl Psk {
-    fn new<F, T>(seed: T) -> Self
+    pub fn new<F, T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
         F: PRP + Default,

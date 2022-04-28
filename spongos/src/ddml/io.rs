@@ -1,5 +1,8 @@
 // TODO: REMOVE Traits, make inherent?
-use alloc::string::String;
+use alloc::{
+    string::String,
+    vec::Vec,
+};
 
 use anyhow::{
     ensure,

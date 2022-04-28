@@ -28,6 +28,7 @@ use async_trait::async_trait;
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[async_trait(?Send)]
 pub trait Transport<Address, Msg, SendResponse> {
+    // TODO: CONSIDER CONVERTING TYPE PARAMETERS TO ASSOCIATED TYPES
     /// Send a message
     async fn send_message(&mut self, link: Address, msg: Msg) -> Result<SendResponse>
     where
@@ -116,7 +117,7 @@ mod sync {
     }
 }
 
-mod bucket;
+pub mod bucket;
 
 #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
-mod tangle;
+pub mod tangle;

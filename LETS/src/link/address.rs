@@ -29,7 +29,7 @@ use crypto::hashes::{
 // Streams
 use spongos::{
     Spongos,
-    PRP,
+    PRP, ddml::{commands::{Absorb, wrap, unwrap, sizeof}, types::NBytes, io},
 };
 
 // Local
@@ -111,7 +111,7 @@ use crate::{
 /// `{:x?}` or `{:#x?}` to render them as hexadecimal arrays.
 ///
 /// [Display]: #impl-Display
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct Address {
     appaddr: AppAddr,
     msgid: MsgId,
@@ -123,9 +123,17 @@ impl Address {
     }
 
     /// Hash the content of the [`Address`] using `Blake2b256`
-    pub(crate) fn to_blake2b(self) -> [u8; 32] {
+    pub fn to_blake2b(self) -> [u8; 32] {
         let hasher = Blake2b256::new();
         hasher.chain(&self.appaddr).chain(&self.msgid).finalize().into()
+    }
+
+    pub fn to_msg_index(self) -> [u8; 32] {
+        self.to_blake2b()
+    }
+
+    pub fn relative(self) -> MsgId {
+        self.msgid
     }
 }
 
@@ -196,8 +204,8 @@ impl Link for Address {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-struct AddressGenerator<F>(PhantomData<F>);
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Default)]
+pub struct AddressGenerator<F>(PhantomData<F>);
 
 impl<'a, F> LinkGenerator<'a, MsgId> for AddressGenerator<F>
 where
@@ -224,7 +232,7 @@ impl<F> LinkGenerator<'_, AppAddr> for AddressGenerator<F> {
 }
 
 /// 40 byte Application Instance identifier.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AppAddr([u8; Self::SIZE]);
 
 impl AppAddr {
@@ -296,7 +304,7 @@ impl AsRef<[u8]> for AppAddr {
 }
 
 /// 12 byte Message Identifier unique within the same application.
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MsgId([u8; Self::SIZE]);
 
 impl MsgId {
@@ -355,5 +363,23 @@ impl AsRef<[u8]> for MsgId {
 impl AsMut<[u8]> for MsgId {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
+    }
+}
+
+impl<'a> Absorb<&'a MsgId> for sizeof::Context {
+    fn absorb(&mut self, msgid: &'a MsgId) -> Result<&mut Self> {
+        self.absorb(NBytes::new(msgid))
+    }
+}
+
+impl<'a, F, OS> Absorb<&'a MsgId> for wrap::Context<F, OS> where F: PRP, OS: io::OStream {
+    fn absorb(&mut self, msgid: &'a MsgId) -> Result<&mut Self> {
+        self.absorb(NBytes::new(msgid))
+    }
+}
+
+impl<'a, F, IS> Absorb<&'a mut MsgId> for unwrap::Context<F, IS> where F: PRP, IS: io::IStream {
+    fn absorb(&mut self, msgid: &'a mut MsgId) -> Result<&mut Self> {
+        self.absorb(NBytes::new(msgid))
     }
 }

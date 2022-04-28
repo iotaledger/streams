@@ -30,7 +30,7 @@ use crate::{
             Uint16,
             Uint32,
             Uint64,
-            Uint8,
+            Uint8, Maybe,
         },
     },
     error::Error::PublicKeyGenerationFailure,
@@ -147,19 +147,19 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream, T> Mask<&'a mut Option<T>> for Context<F, IS>
+impl<'a, F, IS, T> Mask<Maybe<&'a mut Option<T>>> for Context<F, IS>
 where
-    for<'b> &'b mut Self: Mask<&'b mut T>,
+    for<'b> Self: Mask<&'b mut T> + Mask<&'b mut Uint8>,
     T: Default,
 {
-    fn mask(&mut self, option: &'a mut Option<T>) -> Result<&mut Self> {
+    fn mask(&mut self, maybe: Maybe<&'a mut Option<T>>) -> Result<&mut Self> {
         let mut oneof = Uint8::default();
-        let mut ctx = self.mask(&mut oneof)?;
+        let ctx = self.mask(&mut oneof)?;
         if oneof.inner() == 1 {
             let mut t = T::default();
             // This hacky &mut is necessary to break the recursivity of the trait bound
-            (&mut ctx).mask(&mut t)?;
-            *option = Some(t);
+            ctx.mask(&mut t)?;
+            *maybe.into_inner() = Some(t);
         };
         Ok(self)
     }

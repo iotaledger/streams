@@ -110,11 +110,11 @@ struct KeyPairs {
 pub struct Ed25519(ed25519::SecretKey);
 
 impl Ed25519 {
-    fn new(secret: ed25519::SecretKey) -> Self {
+    pub fn new(secret: ed25519::SecretKey) -> Self {
         Self(secret)
     }
 
-    fn from_seed<F, T>(seed: T) -> Self
+    pub fn from_seed<F, T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
         F: PRP + Default,
@@ -162,6 +162,7 @@ impl Identity {
         match self {
             Self::Ed25519(Ed25519(secret)) => secret.public_key().into(),
             Self::Psk(psk) => psk.into(),
+            #[cfg(feature = "did")]
             Self::DID(did) => did.info().did().into(),
         }
     }

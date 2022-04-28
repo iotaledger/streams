@@ -6,6 +6,7 @@ pub use address::{
     Address,
     AppAddr,
     MsgId,
+    AddressGenerator
 };
 pub use cursor::Cursor;
 pub(crate) use link::{

@@ -18,7 +18,7 @@ use crate::ddml::{
         Uint16,
         Uint32,
         Uint64,
-        Uint8,
+        Uint8, Maybe,
     },
 };
 
@@ -171,12 +171,12 @@ where
     }
 }
 
-impl<T> Absorb<Option<T>> for Context
+impl<T> Absorb<Maybe<Option<T>>> for Context
 where
     Self: Absorb<T>,
 {
-    fn absorb(&mut self, option: Option<T>) -> Result<&mut Self> {
-        match option {
+    fn absorb(&mut self, maybe: Maybe<Option<T>>) -> Result<&mut Self> {
+        match maybe.into_inner() {
             // for some reason fully qualified syntax is necessary, and cannot use the trait bound like in wrap::Context
             Some(t) => <Self as Absorb<Uint8>>::absorb(self, Uint8::new(1))?.absorb(t)?,
             None => <Self as Absorb<Uint8>>::absorb(self, Uint8::new(0))?,
@@ -185,6 +185,7 @@ where
     }
 }
 
+// TODO: REMOVE
 impl<'a> Absorb<&'a ()> for Context {
     fn absorb(&mut self, _: &'a ()) -> Result<&mut Self> {
         Ok(self)

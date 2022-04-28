@@ -25,19 +25,19 @@ use crate::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct BucketTransport<Address, Msg> {
+pub struct Client<Address, Msg> {
     // Use BTreeMap instead of HashMap to make BucketTransport nostd without pulling hashbrown
     // (this transport is for hacking purposes only, performance is no concern)
     bucket: BTreeMap<Address, Vec<Msg>>,
 }
 
-impl<Link, Msg> BucketTransport<Link, Msg> {
-    fn new() -> Self {
+impl<Address, Msg> Client<Address, Msg> {
+    pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl<Link, Msg> Default for BucketTransport<Link, Msg> {
+impl<Link, Msg> Default for Client<Link, Msg> {
     // Implement default manually because derive puts Default bounds in type parameters
     fn default() -> Self {
         Self {
@@ -47,19 +47,19 @@ impl<Link, Msg> Default for BucketTransport<Link, Msg> {
 }
 
 #[async_trait(?Send)]
-impl<Address, Msg> Transport<Address, Msg, Msg> for BucketTransport<Address, Msg>
+impl<'a, Address, Msg> Transport<&'a Address, Msg, Msg> for Client<Address, Msg>
 where
-    Address: Ord + Display,
+    Address: Ord + Display + Clone,
     Msg: Clone,
 {
-    async fn send_message(&mut self, addr: Address, msg: Msg) -> Result<Msg> {
-        self.bucket.entry(addr).or_default().push(msg.clone());
+    async fn send_message(&mut self, addr: &'a Address, msg: Msg) -> Result<Msg> {
+        self.bucket.entry(addr.clone()).or_default().push(msg.clone());
         Ok(msg)
     }
 
-    async fn recv_messages(&mut self, address: Address) -> Result<Vec<Msg>> {
+    async fn recv_messages(&mut self, address: &'a Address) -> Result<Vec<Msg>> {
         self.bucket
-            .get(&address)
+            .get(address)
             .cloned()
             .ok_or_else(|| anyhow!("No messages found at address {}", address))
     }

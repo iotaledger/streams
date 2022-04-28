@@ -17,7 +17,7 @@ use crate::ddml::{
         Uint16,
         Uint32,
         Uint64,
-        Uint8,
+        Uint8, Maybe,
     },
 };
 
@@ -114,17 +114,22 @@ impl Mask<&ed25519::PublicKey> for Context {
     }
 }
 
-impl<T> Mask<Option<T>> for Context
+impl<T> Mask<Maybe<Option<T>>> for Context
 where
-    for<'b> &'b mut Self: Mask<T>,
+    for <'a> Self: Mask<T> + Mask<&'a ()>,
 {
-    fn mask(&mut self, option: Option<T>) -> Result<&mut Self> {
-        match option {
-            // The hacky &mut is to break the recursivity of the trait bound. Not entirely sure if it shouldn't be
-            // considered a Rust bug...
-            Some(t) => (&mut self.mask(Uint8::new(1))?).mask(t)?,
+    fn mask(&mut self, maybe: Maybe<Option<T>>) -> Result<&mut Self> {
+        match maybe.into_inner() {
+            Some(t) => self.mask(Uint8::new(1))?.mask(t)?,
             None => self.mask(Uint8::new(0))?,
         };
+        Ok(self)
+    }
+}
+
+impl<'a> Mask<&'a ()> for Context
+{
+    fn mask(&mut self, _: &'a ()) -> Result<&mut Self> {
         Ok(self)
     }
 }

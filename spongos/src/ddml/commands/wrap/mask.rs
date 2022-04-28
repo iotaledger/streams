@@ -27,7 +27,7 @@ use crate::{
             Uint16,
             Uint32,
             Uint64,
-            Uint8,
+            Uint8, Maybe,
         },
     },
 };
@@ -139,12 +139,12 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS
     }
 }
 
-impl<F: PRP, OS: io::OStream, T> Mask<Option<T>> for Context<F, OS>
+impl<F, OS, T> Mask<Maybe<Option<T>>> for Context<F, OS>
 where
     Self: Mask<T> + Mask<Uint8>,
 {
-    fn mask(&mut self, option: Option<T>) -> Result<&mut Self> {
-        match option {
+    fn mask(&mut self, maybe: Maybe<Option<T>>) -> Result<&mut Self> {
+        match maybe.into_inner() {
             Some(t) => self.mask(Uint8::new(1))?.mask(t)?,
             None => self.mask(Uint8::new(0))?,
         };
