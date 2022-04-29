@@ -714,7 +714,7 @@ where
                 }
             };
             let base_address = self.user.stream_address().as_ref()?.base();
-            let rel_address = AG::default().gen((base_address, publisher, cursor));
+            let rel_address = AG::default().gen((base_address, publisher, cursor + 1));
             let address = A::from_parts(base_address.clone(), rel_address);
             match self.user.transport_mut().recv_message(&address).await {
                 Ok(msg) => {

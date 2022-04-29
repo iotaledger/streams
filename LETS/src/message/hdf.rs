@@ -20,9 +20,10 @@ use spongos::{
         io,
         modifiers::External,
         types::{
+            Maybe,
             NBytes,
             Uint64,
-            Uint8, Maybe,
+            Uint8,
         },
     },
     PRP,

@@ -20,7 +20,10 @@ impl<Address, TSR> SendResponse<Address, TSR> {
         self.address
     }
 
-    pub fn to_address(&self) -> Address where Address: Copy {
+    pub fn to_address(&self) -> Address
+    where
+        Address: Copy,
+    {
         self.address
     }
 

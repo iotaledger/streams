@@ -28,12 +28,13 @@ use crate::{
         io,
         types::{
             Bytes,
+            Maybe,
             NBytes,
             Size,
             Uint16,
             Uint32,
             Uint64,
-            Uint8, Maybe,
+            Uint8,
         },
     },
     error::Error::PublicKeyGenerationFailure,
@@ -56,6 +57,7 @@ impl<F: PRP, IS: io::IStream> Unwrap for AbsorbContext<'_, F, IS> {
     {
         let bytes = bytes.as_mut();
         let slice = self.ctx.stream.try_advance(bytes.len())?;
+        self.ctx.cursor += bytes.len();
         bytes.copy_from_slice(slice);
         self.ctx.spongos.absorb(bytes);
         Ok(self)
@@ -103,6 +105,7 @@ impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<NBytes<&'a mut T>> for 
         Ok(self)
     }
 }
+
 impl<'a, F: PRP, IS: io::IStream, T> Absorb<&'a mut NBytes<T>> for Context<F, IS>
 where
     Self: Absorb<NBytes<&'a mut T>>,
@@ -150,7 +153,6 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<
         Ok(self)
     }
 }
-
 
 impl<'a, F, IS, T> Absorb<Maybe<&'a mut Option<T>>> for Context<F, IS>
 where

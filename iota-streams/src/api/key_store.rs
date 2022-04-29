@@ -79,6 +79,14 @@ impl KeyStore {
         self.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor))
     }
 
+    pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + '_ {
+        self.psks
+            .keys()
+            .copied()
+            .map(Into::into)
+            .chain(self.keys.keys().copied())
+    }
+
     // fn replace_cursors(&mut self, new_cursor: Cursor<Link>)
     // where
     //     Link: Clone,
@@ -129,10 +137,8 @@ impl KeyStore {
     }
 
     fn all_exchange_keys(&self) -> impl Iterator<Item = (Identifier, &[u8])> {
-        self.keys
-            .iter()
-            .map(|(id, pk)| (*id, pk.as_slice()))
-            .chain(self.psks.iter().map(|(pskid, psk)| ((*pskid).into(), psk.as_bytes())))
+        self.subscribers()
+            .filter_map(move |identifier| Some((identifier, self.get_exchange_key(&identifier)?)))
     }
 
     // fn cursors(&self) -> impl Iterator<Item = (&Identifier, &Cursor<Link>)> {
@@ -164,8 +170,9 @@ impl KeyStore {
 
 impl fmt::Debug for KeyStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "cursors:")?;
         for (id, cursor) in self.cursors.iter() {
-            writeln!(f, "    <{}> => {}", id, cursor)?;
+            writeln!(f, "\t<{}> => {}", id, cursor)?;
         }
         Ok(())
     }

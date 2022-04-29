@@ -180,7 +180,8 @@ where
         for (identifier, exchange_key) in subscribers {
             // TODO: WHY FORK? CAN'T WE NOT FORK AT ALL?
             // let fork = self.fork();
-            self.sizeof(identifier)
+            self.fork()
+                .sizeof(identifier)
                 .await?
                 .encrypt_sizeof(&identifier, &exchange_key, &keyload.key)
                 .await?;
@@ -199,7 +200,7 @@ where
     // Subscribers: 'a,
     for<'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
     for<'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
-    F: PRP,
+    F: PRP + Clone,
     OS: io::OStream,
     // where
     //     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
@@ -207,23 +208,23 @@ where
     //     <Link as HasLink>::Rel: 'a + Eq +
     // SkipFallback<F>,
 {
-    async fn wrap(&mut self, keyload_wrap: &mut Wrap<'a, F, Subscribers>) -> Result<&mut Self> {
-        let subscribers = keyload_wrap.subscribers.into_iter();
+    async fn wrap(&mut self, keyload: &mut Wrap<'a, F, Subscribers>) -> Result<&mut Self> {
+        let subscribers = keyload.subscribers.into_iter();
         let n_subscribers = Size::new(subscribers.len());
-        self.join(keyload_wrap.initial_state)?
-            .absorb(&NBytes::new(keyload_wrap.nonce))?
+        self.join(keyload.initial_state)?
+            .absorb(&NBytes::new(keyload.nonce))?
             .absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
         for (mut identifier, exchange_key) in subscribers {
-            // TODO: WHY FORK? CAN'T WE NOT FORK AT ALL?
             // let fork = self.fork();
-            self.wrap(&mut identifier)
+            self.fork()
+                .wrap(&mut identifier)
                 .await?
-                .encrypt(&identifier, &exchange_key, &keyload_wrap.key)
+                .encrypt(&identifier, exchange_key, &keyload.key)
                 .await?;
         }
-        self.absorb(External::new(&NBytes::new(&keyload_wrap.key)))?
-            .sign(keyload_wrap.author_id)
+        self.absorb(External::new(&NBytes::new(&keyload.key)))?
+            .sign(keyload.author_id)
             .await?
             .commit()?;
         Ok(self)
@@ -232,9 +233,7 @@ where
 
 pub(crate) struct Unwrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
-    nonce: [u8; 16],
     subscribers: Vec<Identifier>,
-    key: Option<[u8; 32]>,
     author_id: Identifier,
     user_id: &'a Identity,
     user_ke_key: &'a [u8],
@@ -249,9 +248,7 @@ impl<'a, F> Unwrap<'a, F> {
     ) -> Self {
         Self {
             initial_state,
-            nonce: Default::default(),
             subscribers: Default::default(),
-            key: None,
             author_id,
             user_id,
             user_ke_key,
@@ -270,7 +267,7 @@ impl<'a, F> Unwrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F, IS> message::ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
 where
-    F: PRP,
+    F: PRP + Clone,
     IS: io::IStream,
     // where
     //     F: PRP + Clone,
@@ -281,23 +278,29 @@ where
     // KeSkStore: for<'c> Lookup<&'c Identifier, x25519::SecretKey> + 'b,
 {
     async fn unwrap(&mut self, keyload: &mut Unwrap<'a, F>) -> Result<&mut Self> {
-        let mut hash = [0; 64];
+        let mut nonce = [0_u8; NONCE_SIZE];
+        let mut key = None;
         let mut n_subscribers = Size::default();
-        self.join(&mut keyload.initial_state)?
-            .absorb(&mut NBytes::new(&mut keyload.nonce))?
+        self.join(keyload.initial_state)?
+            .absorb(NBytes::new(&mut nonce))?
             .absorb(&mut n_subscribers)?;
 
         for _ in 0..n_subscribers.inner() {
+            let mut fork = self.fork();
             // Loop through provided number of identifiers and subsequent keys
             let mut subscriber_id = Identifier::default();
-            self.unwrap(&mut subscriber_id).await?;
+            fork.unwrap(&mut subscriber_id).await?;
 
-            let mut key = [0; KEY_SIZE];
             if subscriber_id == keyload.user_id.to_identifier() {
-                self.decrypt(keyload.user_id, keyload.user_ke_key, &mut key).await?;
+                fork.decrypt(keyload.user_id, keyload.user_ke_key, key.get_or_insert([0; KEY_SIZE]))
+                    .await?;
             } else {
                 // Key is meant for another subscriber, skip it
-                self.drop(KEY_SIZE);
+                if subscriber_id.is_psk() {
+                    fork.drop(KEY_SIZE)?;
+                } else {
+                    fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
+                }
             }
             keyload.subscribers.push(subscriber_id);
             // TODO: REMOVE
@@ -329,7 +332,12 @@ where
         // TODO: REMOVE
         // self.commit()?.squeeze(&mut External::new(NBytes::new(hash)))?;
 
-        self.verify(&keyload.author_id).await?.commit();
+        if let Some(key) = key {
+            self.absorb(External::new(&NBytes::new(&key)))?
+                .verify(&keyload.author_id)
+                .await?;
+        }
+        self.commit()?;
         Ok(self)
         // TODO: REMOVE
         // if let Some(key) = keyload.key {

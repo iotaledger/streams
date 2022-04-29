@@ -46,6 +46,7 @@ impl<'a, F, IS: io::IStream> Unwrap for SkipContext<'a, F, IS> {
     {
         let bytes = bytes.as_mut();
         let slice = self.ctx.stream.try_advance(bytes.len())?;
+        self.ctx.cursor += bytes.len();
         bytes.copy_from_slice(slice);
         Ok(self)
     }
@@ -86,14 +87,18 @@ impl<'a, F, IS: io::IStream> Skip<&'a mut Size> for Context<F, IS> {
     }
 }
 
-impl<'a, F, T: AsMut<[u8]>, IS: io::IStream> Skip<NBytes<&'a mut T>> for Context<F, IS> {
+impl<'a, F, IS, T> Skip<NBytes<&'a mut T>> for Context<F, IS>
+where
+    T: AsMut<[u8]>,
+    IS: io::IStream,
+{
     fn skip(&mut self, nbytes: NBytes<&'a mut T>) -> Result<&mut Self> {
         SkipContext::new(self).unwrapn(nbytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F, T, IS: io::IStream> Skip<&'a mut NBytes<T>> for Context<F, IS>
+impl<'a, F, IS, T> Skip<&'a mut NBytes<T>> for Context<F, IS>
 where
     Self: Skip<NBytes<&'a mut T>>,
 {

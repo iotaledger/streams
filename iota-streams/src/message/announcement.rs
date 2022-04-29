@@ -87,7 +87,7 @@ impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
         self.sizeof(&announcement.user_id.to_identifier())
             .await?
-            .sign_sizeof(&announcement.user_id)
+            .sign_sizeof(announcement.user_id)
             .await?
             .commit()?;
         Ok(self)
@@ -103,7 +103,7 @@ where
     async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
         self.wrap(&mut announcement.user_id.to_identifier())
             .await?
-            .sign(&mut announcement.user_id)
+            .sign(announcement.user_id)
             .await?
             .commit()?;
         Ok(self)
@@ -141,7 +141,7 @@ where
     async fn unwrap(&mut self, announcement: &mut Unwrap) -> Result<&mut Self> {
         self.unwrap(&mut announcement.author_id)
             .await?
-            .verify(&mut announcement.author_id)
+            .verify(&announcement.author_id)
             .await?
             .commit()?;
         Ok(self)

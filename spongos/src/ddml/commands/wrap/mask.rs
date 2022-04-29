@@ -22,12 +22,13 @@ use crate::{
         modifiers::External,
         types::{
             Bytes,
+            Maybe,
             NBytes,
             Size,
             Uint16,
             Uint32,
             Uint64,
-            Uint8, Maybe,
+            Uint8,
         },
     },
 };

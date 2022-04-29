@@ -12,12 +12,13 @@ use crate::ddml::{
     },
     types::{
         Bytes,
+        Maybe,
         NBytes,
         Size,
         Uint16,
         Uint32,
         Uint64,
-        Uint8, Maybe,
+        Uint8,
     },
 };
 
@@ -116,7 +117,7 @@ impl Mask<&ed25519::PublicKey> for Context {
 
 impl<T> Mask<Maybe<Option<T>>> for Context
 where
-    for <'a> Self: Mask<T> + Mask<&'a ()>,
+    for<'a> Self: Mask<T> + Mask<&'a ()>,
 {
     fn mask(&mut self, maybe: Maybe<Option<T>>) -> Result<&mut Self> {
         match maybe.into_inner() {
@@ -127,8 +128,7 @@ where
     }
 }
 
-impl<'a> Mask<&'a ()> for Context
-{
+impl<'a> Mask<&'a ()> for Context {
     fn mask(&mut self, _: &'a ()) -> Result<&mut Self> {
         Ok(self)
     }

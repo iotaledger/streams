@@ -1,5 +1,9 @@
 // Rust
-use alloc::vec::Vec;
+use alloc::{
+    format,
+    string::String,
+    vec::Vec,
+};
 use core::{
     borrow::{
         Borrow,
@@ -8,6 +12,7 @@ use core::{
     convert::TryFrom,
     fmt::{
         self,
+        Debug,
         Display,
         Formatter,
     },
@@ -177,16 +182,24 @@ where
     where
         AG: Default,
     {
-        let mut key_store = KeyStore::default();
+        let mut id_store = KeyStore::default();
         // If User is using a Psk as their base Identifier, store the Psk
         if let Identity::Psk(psk) = user_id {
-            key_store.insert_psk(psk.to_pskid::<F>(), psk);
+            id_store.insert_psk(psk.to_pskid::<F>(), psk);
+        } else {
+            id_store.insert_key(
+                user_id.to_identifier(),
+                user_id
+                    ._ke_sk()
+                    .expect("except PSK, all identities must be able to derive an x25519 key")
+                    .public_key(),
+            );
         }
 
         Self {
             user_id,
             transport,
-            id_store: key_store,
+            id_store,
             spongos_store: Default::default(),
             link_generator: Default::default(),
             stream_address: None,
@@ -213,6 +226,10 @@ where
 
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, u64)> + ExactSizeIterator + '_ {
         self.id_store.cursors()
+    }
+
+    pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + '_ {
+        self.id_store.subscribers()
     }
 
     fn insert_subscriber(&mut self, subscriber: Identifier) -> Result<bool> {
@@ -370,10 +387,10 @@ where
 
         // Update own's cursor
         let previous_user_cursor = self.id_store.get_cursor(&self.identifier()).unwrap_or(1); // Account for subscribers added manually instead of sending a subscription message
+        let new_user_cursor = previous_user_cursor + 1;
         let rel_address: A::Relative =
             self.link_generator
-                .gen((stream_address.base(), self.identifier(), previous_user_cursor));
-        let new_user_cursor = previous_user_cursor + 1;
+                .gen((stream_address.base(), self.identifier(), new_user_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
@@ -424,10 +441,10 @@ where
             .id_store
             .get_cursor(&self.identifier())
             .expect("author of a stream must have its cursor already stored");
+        let new_user_cursor = previous_user_cursor + 1;
         let rel_address: A::Relative =
             self.link_generator
-                .gen((stream_address.base(), self.identifier(), previous_user_cursor));
-        let new_user_cursor = previous_user_cursor + 1;
+                .gen((stream_address.base(), self.identifier(), new_user_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
@@ -457,7 +474,7 @@ where
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber))?,
                 ))
             })
-            .collect::<Result<Vec<(Identifier, &[u8])>>>()?;
+            .collect::<Result<Vec<(Identifier, &[u8])>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut announcement_spongos,
             subscribers_with_keys,
@@ -487,18 +504,17 @@ where
     pub async fn send_keyload_for_all(&mut self, link_to: A::Relative) -> Result<SendResponse<A, TSR>> {
         self.send_keyload(
             link_to,
-            self.cursors()
-                .map(|(identifier, ..)| identifier)
-                .collect::<Vec<Identifier>>(),  // Alas, must collect to release the &self immutable borrow 
+            // Alas, must collect to release the &self immutable borrow
+            self.subscribers().collect::<Vec<Identifier>>(),
         )
         .await
     }
 
-    pub async fn send_signed_packet<M, P>(
+    pub async fn send_signed_packet<P, M>(
         &mut self,
         link_to: A::Relative,
-        masked_payload: M,
         public_payload: P,
+        masked_payload: M,
     ) -> Result<SendResponse<A, TSR>>
     where
         M: AsRef<[u8]>,
@@ -511,10 +527,10 @@ where
 
         // Update own's cursor
         let previous_user_cursor = self.id_store.get_cursor(&self.identifier()).unwrap_or(1); // Account for subscribers added manually instead of sending a subscription message
+        let new_user_cursor = previous_user_cursor + 1;
         let rel_address: A::Relative =
             self.link_generator
-                .gen((stream_address.base(), self.identifier(), previous_user_cursor));
-        let new_user_cursor = previous_user_cursor + 1;
+                .gen((stream_address.base(), self.identifier(), new_user_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
@@ -548,11 +564,11 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
-    pub async fn send_tagged_packet<M, P>(
+    pub async fn send_tagged_packet<P, M>(
         &mut self,
         link_to: A::Relative,
-        masked_payload: M,
         public_payload: P,
+        masked_payload: M,
     ) -> Result<SendResponse<A, TSR>>
     where
         M: AsRef<[u8]>,
@@ -565,10 +581,10 @@ where
 
         // Update own's cursor
         let previous_user_cursor = self.id_store.get_cursor(&self.identifier()).unwrap_or(1); // Account for subscribers added manually instead of sending a subscription message
+        let new_user_cursor = previous_user_cursor + 1;
         let rel_address: A::Relative =
             self.link_generator
-                .gen((stream_address.base(), self.identifier(), previous_user_cursor));
-        let new_user_cursor = previous_user_cursor + 1;
+                .gen((stream_address.base(), self.identifier(), new_user_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
@@ -623,7 +639,7 @@ where
         match preparsed.message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
             message_types::SUBSCRIPTION => self.handle_subscription(address, preparsed).await,
-            message_types::UNSUBSCRIPTION => self.handle_subscription(address, preparsed).await,
+            message_types::UNSUBSCRIPTION => self.handle_unsubscription(address, preparsed).await,
             message_types::KEYLOAD => self.handle_keyload(address, preparsed).await,
             message_types::SIGNED_PACKET => self.handle_signed_packet(address, preparsed).await,
             message_types::TAGGED_PACKET => self.handle_tagged_packet(address, preparsed).await,
@@ -714,6 +730,12 @@ where
             subscriber_identifier,
             message.header().sequence(), // Cursor::new(address.relative().clone(), message.header().sequence()),
         );
+        self.id_store.insert_key(
+            subscriber_identifier,
+            subscriber_identifier._ke_pk().ok_or_else(|| {
+                anyhow!("subscriber must have an identifier from which an x25519 public key can be derived")
+            })?,
+        );
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -800,11 +822,7 @@ where
             .clone();
 
         // TODO: Remove Psk from Identity and Identifier, and manage it as a complementary permission
-        let user_ke_sk = self
-            .id_store
-            .get_exchange_key(&self.identifier())
-            .expect(" subscriber of a stream must have an identifier with which a key-exchange can be performed")
-            .to_vec(); // need to own the byte vector in order to release the immutable borrow of self
+        let user_ke_sk = self.user_id._ke();
         let keyload = keyload::Unwrap::new(&mut announcement_spongos, &self.user_id, &user_ke_sk, author_identifier);
         let (message, spongos) = preparsed.unwrap(keyload).await?;
 
@@ -813,7 +831,9 @@ where
 
         // Store message content into stores
         for subscriber in message.payload().content().subscribers() {
-            self.id_store.insert_cursor_if_missing(*subscriber, 1)
+            if !subscriber.is_psk() {
+                self.id_store.insert_cursor_if_missing(*subscriber, 1)
+            }
         }
 
         // Update publisher's cursor
@@ -1339,17 +1359,22 @@ where
     }
 }
 
-impl<T, TSR, F, A, AG> Display for GenericUser<T, TSR, F, A, AG>
+impl<T, TSR, F, A, AG> Debug for GenericUser<T, TSR, F, A, AG>
 where
     A: Link,
+    A::Relative: Display,
     F: PRP + Default,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "identifier: <{}>\ncursors:\n{:>4?}",
+            "* identifier: <{}>\n* {:?}\n* messages:\n{}",
             self.identifier(),
-            self.id_store
+            self.id_store,
+            self.spongos_store
+                .keys()
+                .map(|key| format!("\t<{}>\n", key))
+                .collect::<String>()
         )
     }
 }

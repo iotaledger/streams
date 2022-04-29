@@ -8,7 +8,10 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    convert::TryFrom,
+    convert::{
+        AsRef,
+        TryFrom,
+    },
     marker::PhantomData,
 };
 
@@ -158,6 +161,20 @@ impl Identity {
         }
     }
 
+    #[deprecated = "to be removed once key exchange is encapsulated within Identity"]
+    pub fn _ke(&self) -> [u8; 32] {
+        match self {
+            Self::Psk(psk) => psk.to_bytes(),
+            Self::Ed25519(Ed25519(ed_secret)) => {
+                let x_secret: x25519::SecretKey = ed_secret.into();
+                x_secret.to_bytes()
+            }
+            #[cfg(feature = "did")]
+            Self::DID(DID::PrivateKey(info)) => info.ke_kp().0.to_bytes(),
+            // TODO: Account implementation
+        }
+    }
+
     pub fn to_identifier(&self) -> Identifier {
         match self {
             Self::Ed25519(Ed25519(secret)) => secret.public_key().into(),
@@ -277,7 +294,7 @@ where
                 .mask(&mut NBytes::new(key)),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introduction)
             _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(slice) => self.x25519(&x25519::SecretKey::from_bytes(slice), &mut NBytes::new(key)),
+                Ok(byte_array) => self.x25519(&x25519::SecretKey::from_bytes(byte_array), &mut NBytes::new(key)),
                 Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
             },
         }

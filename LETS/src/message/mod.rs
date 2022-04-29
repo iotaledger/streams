@@ -25,6 +25,7 @@ use spongos::{
     ddml::commands::{
         sizeof,
         wrap,
+        Commit,
     },
     Spongos,
     PRP,
@@ -94,13 +95,17 @@ impl<Address, Payload> Message<Address, Payload> {
         sizeof::Context: ContentSizeof<HDF<Address>> + ContentSizeof<PCF<Payload>>,
     {
         let mut ctx = sizeof::Context::new();
-        ctx.sizeof(&self.header).await?.sizeof(&self.payload).await?;
+        ctx.sizeof(&self.header).await?.commit()?.sizeof(&self.payload).await?;
         let buf_size = ctx.size();
 
         let mut buf = vec![0; buf_size];
 
         let mut ctx = wrap::Context::new(&mut buf[..]);
-        ctx.wrap(&mut self.header).await?.wrap(&mut self.payload).await?;
+        ctx.wrap(&mut self.header)
+            .await?
+            .commit()?
+            .wrap(&mut self.payload)
+            .await?;
         // If buffer is not empty, it's an implementation error, panic
         assert!(
             ctx.stream().is_empty(),

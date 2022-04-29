@@ -5,10 +5,9 @@ use crate::ddml::commands::{
     Fork,
 };
 
-// TODO
-// impl Fork for Context
-// {
-//     fn fork(&mut self) -> Context {
-//         self
-//     }
-// }
+impl<'a> Fork<'a> for Context {
+    type Forked = &'a mut Context;
+    fn fork(&'a mut self) -> Self::Forked {
+        self
+    }
+}

@@ -4,9 +4,9 @@ mod link;
 
 pub use address::{
     Address,
+    AddressGenerator,
     AppAddr,
     MsgId,
-    AddressGenerator
 };
 pub use cursor::Cursor;
 pub(crate) use link::{

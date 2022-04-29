@@ -137,11 +137,11 @@ impl Identifier {
         )
     }
 
-    fn is_ed25519(&self) -> bool {
+    pub fn is_ed25519(&self) -> bool {
         matches!(self, Self::Ed25519(_))
     }
 
-    fn is_psk(&self) -> bool {
+    pub fn is_psk(&self) -> bool {
         matches!(self, Self::PskId(_))
     }
 }
@@ -266,13 +266,13 @@ where
             }
             1 => {
                 let mut pskid = PskId::default();
-                self.mask(&mut NBytes::new(&mut pskid))?;
+                self.mask(NBytes::new(&mut pskid))?;
                 *identifier = Identifier::PskId(pskid);
             }
             #[cfg(feature = "did")]
             2 => {
                 let mut method_id = DIDMethodId::default();
-                self.mask(&mut NBytes::new(&mut method_id))?;
+                self.mask(NBytes::new(&mut method_id))?;
                 let did = method_id.try_to_did()?;
                 *identifier = Identifier::DID(DIDMethodId::from_did_unsafe(&did));
             }
@@ -372,7 +372,7 @@ where
                 .mask(&NBytes::new(key)),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
             _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(slice) => self.x25519(&x25519::PublicKey::from(slice), &NBytes::new(key)),
+                Ok(byte_array) => self.x25519(&x25519::PublicKey::from(byte_array), &NBytes::new(key)),
                 Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
             },
         }

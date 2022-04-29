@@ -32,6 +32,7 @@ use crate::{
 impl<'a, F: PRP, IS: io::IStream> Squeeze<&'a Mac> for Context<F, IS> {
     fn squeeze(&mut self, val: &'a Mac) -> Result<&mut Self> {
         ensure!(self.spongos.squeeze_eq(self.stream.try_advance(val.length())?), BadMac);
+        self.cursor += val.length();
         Ok(self)
     }
 }

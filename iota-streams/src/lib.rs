@@ -18,6 +18,10 @@
 
 #![no_std]
 
+// Uncomment to enable printing for development
+// #[macro_use]
+// extern crate std;
+
 extern crate alloc;
 
 /// Protocol message types and encodings

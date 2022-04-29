@@ -68,7 +68,6 @@ impl UserBuilder<()> {
 }
 
 impl<T> UserBuilder<T> {
-
     /// Inject Base Identity into the User Builder
     ///
     /// # Arguments
@@ -86,9 +85,9 @@ impl<T> UserBuilder<T> {
     where
         NewTransport: for<'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TSR>,
     {
-        UserBuilder{
+        UserBuilder {
             transport: Some(transport),
-            id: self.id
+            id: self.id,
         }
     }
 

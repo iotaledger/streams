@@ -36,6 +36,7 @@ impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes
         hash: &'a External<NBytes<GenericArray<u8, U64>>>,
     ) -> Result<&mut Self> {
         let signature_bytes = self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?;
+        self.cursor += ed25519::SIGNATURE_LENGTH;
         let signature = ed25519::Signature::from_bytes(signature_bytes.try_into()?);
         let is_valid = public_key.verify(&signature, hash.inner().as_slice());
         ensure!(is_valid, SignatureMismatch);
@@ -50,6 +51,7 @@ impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes
         hash: &'a External<NBytes<[u8; 64]>>,
     ) -> Result<&mut Self> {
         let signature_bytes = self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?;
+        self.cursor += ed25519::SIGNATURE_LENGTH;
         let signature = ed25519::Signature::from_bytes(signature_bytes.try_into()?);
         let is_valid = public_key.verify(&signature, hash.inner().as_slice());
         ensure!(is_valid, SignatureMismatch);

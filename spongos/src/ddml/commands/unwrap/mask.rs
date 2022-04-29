@@ -25,12 +25,13 @@ use crate::{
         io,
         types::{
             Bytes,
+            Maybe,
             NBytes,
             Size,
             Uint16,
             Uint32,
             Uint64,
-            Uint8, Maybe,
+            Uint8,
         },
     },
     error::Error::PublicKeyGenerationFailure,
@@ -52,7 +53,8 @@ impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<'_, F, IS> {
         T: AsMut<[u8]>,
     {
         let y = self.ctx.stream.try_advance(bytes.as_mut().len())?;
-        self.ctx.spongos.decrypt_mut(y, bytes)?;
+        self.ctx.cursor += bytes.as_mut().len();
+        self.ctx.spongos.decrypt_mut(y, &mut bytes)?;
         Ok(self)
     }
 }

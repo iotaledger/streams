@@ -6,6 +6,7 @@ use std::{
 };
 
 // 3rd-party
+use anyhow::Result;
 use rand::Rng;
 
 // IOTA
@@ -24,9 +25,15 @@ use LETS::message::TransportMessage;
 
 mod branching;
 
-trait GenericTransport: for <'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>> + Clone {}
+trait GenericTransport:
+    for<'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>> + Clone
+{
+}
 
-impl<T> GenericTransport for T where T: for <'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>> + Clone {}
+impl<T> GenericTransport for T where
+    T: for<'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>> + Clone
+{
+}
 
 // async fn run_recovery_test<T: GenericTransport>(transport: T, seed: &str) {
 //     println!("\tRunning Recovery Test, seed: {}", seed);
@@ -46,34 +53,38 @@ impl<T> GenericTransport for T where T: for <'a> Transport<&'a Address, Transpor
 //     println!("#######################################");
 // }
 
-async fn run_multi_branch_test<T: GenericTransport>(transport: T, seed: &str) {
-    println!("\tRunning Multi Branch Test, seed: {}", seed);
-    match branching::multi_branch::example(transport, seed).await {
+async fn run_multi_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+    println!("Running multi branch test with seed: {}", seed);
+    let result = branching::multi_branch::example(transport, seed).await;
+    match &result {
         Err(err) => println!("Error in Multi Branch test: {:?}", err),
-        Ok(_) => println!("\tMulti Branch Test completed!!"),
-    }
+        Ok(_) => println!("Multi Branch Test completed successfully!!"),
+    };
     println!("#######################################");
+    result
 }
 
-async fn main_pure() {
+async fn main_pure() -> Result<()> {
     let transport = bucket::Client::new();
 
-    println!("#######################################");
+    println!("\n");
+    println!("###########################################");
     println!("Running pure tests without accessing Tangle");
-    println!("#######################################");
+    println!("###########################################");
     println!("\n");
 
     // BucketTransport is an in-memory storage that needs to be shared between all the users,
     // hence the Rc<RefCell<BucketTransport>>
     let transport = Rc::new(RefCell::new(transport));
 
-    run_multi_branch_test(transport.clone(), "PURESEEDA").await;
+    run_multi_branch_test(transport.clone(), "PURESEEDA").await?;
     // run_recovery_test(transport, "PURESEEDB").await;
     println!("Done running pure tests without accessing Tangle");
-    println!("#######################################");
+    println!("################################################");
+    Ok(())
 }
 
-async fn main_client() {
+async fn main_client() -> Result<()> {
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
 
@@ -88,11 +99,12 @@ async fn main_client() {
     println!("#######################################");
     println!("\n");
 
-    run_multi_branch_test(transport.clone(), &new_seed()).await;
+    run_multi_branch_test(transport.clone(), &new_seed()).await?;
     // run_recovery_test(transport.clone(), &new_seed()).await;
     // run_did_author_test(transport).await;
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
+    Ok(())
 }
 
 fn new_seed() -> String {
@@ -103,7 +115,7 @@ fn new_seed() -> String {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     // Load or .env file, log message if we failed
     if dotenv::dotenv().is_err() {
         println!(".env file not found; copy and rename example.env to \".env\"");

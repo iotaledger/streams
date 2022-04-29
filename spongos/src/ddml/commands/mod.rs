@@ -52,6 +52,7 @@ pub trait Skip<Type> {
 
 /// Commit command. Commit Spongos state.
 pub trait Commit {
+    // TODO: ISN'T COMMIT ALWAYS INFALLIBLE?
     fn commit(&mut self) -> Result<&mut Self>;
 }
 
@@ -70,9 +71,9 @@ pub trait X25519<ExchangeKey, EncryptionKey> {
 /// After the fork is finished the resulting Spongos state is discarded and
 /// field processing continues using the saved current Spongos state.
 /// The trait can be implemented for functions `Fn(&mut self) -> Result<&mut Self>`.
-pub trait Fork {
+pub trait Fork<'a> {
     type Forked;
-    fn fork(&mut self) -> Self::Forked;
+    fn fork(&'a mut self) -> Self::Forked;
 }
 
 /// Join command. Spongos state for the linked message is retrieved from the context

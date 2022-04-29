@@ -172,7 +172,8 @@ where
         let mut frame_type = Uint8::default();
         self.absorb(&mut frame_type)?
             .skip(&mut pcf.payload_frame_num)?
-            .unwrap(&mut pcf.content);
+            .unwrap(&mut pcf.content)
+            .await?;
         pcf.frame_type = frame_type.into();
         Ok(self)
     }
@@ -241,11 +242,14 @@ where
     }
 }
 
-impl<F, OS> Skip<&mut PayloadFrameNum> for unwrap::Context<F, OS> {
+impl<F, OS> Skip<&mut PayloadFrameNum> for unwrap::Context<F, OS>
+where
+    Self: for<'a> Skip<&'a mut NBytes<[u8; 3]>>,
+{
     fn skip(&mut self, frame_num: &mut PayloadFrameNum) -> Result<&mut Self> {
         // PayloadFrameNum validates bounds at creation, does not need to validate now
-        let mut bytes = Default::default();
-        self.skip(&mut bytes);
+        let mut bytes = NBytes::new([0_u8; 3]);
+        self.skip(&mut bytes)?;
         *frame_num = bytes.into();
         Ok(self)
     }

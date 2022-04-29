@@ -2,8 +2,8 @@
 mod key_store;
 
 pub(crate) mod message;
-pub(crate) mod send_response;
 mod messages;
+pub(crate) mod send_response;
 /// User Client
 pub(crate) mod user;
 pub(crate) mod user_builder;

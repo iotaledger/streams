@@ -60,6 +60,7 @@ impl<F, IS> Context<F, IS> {
         IS: io::IStream,
     {
         self.stream.try_advance(bytes)?;
+        self.cursor += bytes;
         Ok(self)
     }
 
@@ -113,7 +114,7 @@ trait Unwrap {
         *u = Uint64::from_bytes(v);
         Ok(self)
     }
-    fn unwrap_size(&mut self, size: &mut Size) -> Result<&mut Self> where {
+    fn unwrap_size(&mut self, size: &mut Size) -> Result<&mut Self> {
         let mut num_bytes = Uint8::new(0_u8);
         self.unwrap_u8(&mut num_bytes)?;
         *size = Size::decode(

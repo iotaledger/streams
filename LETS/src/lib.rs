@@ -27,6 +27,10 @@
 #[macro_use]
 extern crate alloc;
 
+// Uncomment to enable printing for development
+// #[macro_use]
+// extern crate std;
+
 /// Message definitions and utils for wrapping/unwrapping.
 pub mod message;
 

@@ -3,6 +3,10 @@ use alloc::{
     string::String,
     vec::Vec,
 };
+use core::ops::{
+    Deref,
+    DerefMut,
+};
 
 use anyhow::{
     ensure,
@@ -45,6 +49,19 @@ impl OStream for &mut [u8] {
     }
 }
 
+impl<T> OStream for &mut T
+where
+    T: OStream,
+{
+    fn try_advance(&mut self, n: usize) -> Result<&mut [u8]> {
+        self.deref_mut().try_advance(n)
+    }
+
+    fn dump(&self) -> String {
+        self.deref().dump()
+    }
+}
+
 impl IStream for &[u8] {
     fn try_advance(&mut self, n: usize) -> Result<&[u8]> {
         ensure!(n <= self.len(), StreamAllocationExceededIn(n, self.len()));
@@ -55,5 +72,18 @@ impl IStream for &[u8] {
 
     fn dump(&self) -> String {
         hex::encode(self)
+    }
+}
+
+impl<T> IStream for &mut T
+where
+    T: IStream,
+{
+    fn try_advance(&mut self, n: usize) -> Result<&[u8]> {
+        self.deref_mut().try_advance(n)
+    }
+
+    fn dump(&self) -> String {
+        self.deref().dump()
     }
 }

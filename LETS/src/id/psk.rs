@@ -33,8 +33,8 @@ impl Psk {
         &self.0
     }
 
-    pub(crate) fn to_bytes(self) -> Vec<u8> {
-        self.0.to_vec()
+    pub(crate) fn to_bytes(self) -> [u8; 32] {
+        self.0
     }
 
     pub fn to_pskid<F>(self) -> PskId

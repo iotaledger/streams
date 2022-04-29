@@ -28,8 +28,18 @@ use crypto::hashes::{
 
 // Streams
 use spongos::{
+    ddml::{
+        commands::{
+            sizeof,
+            unwrap,
+            wrap,
+            Absorb,
+        },
+        io,
+        types::NBytes,
+    },
     Spongos,
-    PRP, ddml::{commands::{Absorb, wrap, unwrap, sizeof}, types::NBytes, io},
+    PRP,
 };
 
 // Local
@@ -372,13 +382,21 @@ impl<'a> Absorb<&'a MsgId> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Absorb<&'a MsgId> for wrap::Context<F, OS> where F: PRP, OS: io::OStream {
+impl<'a, F, OS> Absorb<&'a MsgId> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
     fn absorb(&mut self, msgid: &'a MsgId) -> Result<&mut Self> {
         self.absorb(NBytes::new(msgid))
     }
 }
 
-impl<'a, F, IS> Absorb<&'a mut MsgId> for unwrap::Context<F, IS> where F: PRP, IS: io::IStream {
+impl<'a, F, IS> Absorb<&'a mut MsgId> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
     fn absorb(&mut self, msgid: &'a mut MsgId) -> Result<&mut Self> {
         self.absorb(NBytes::new(msgid))
     }

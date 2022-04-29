@@ -234,9 +234,9 @@ impl<F: PRP> Spongos<F> {
         let mut cipher = cipher.as_mut();
         ensure!(plain.len() == cipher.len(), LengthMismatch(plain.len(), cipher.len()));
         while !plain.is_empty() {
-            let s = self.outer_min_mut(plain.len());
-            let n = s.len();
-            encrypt_xor(s, &plain[..n], &mut cipher[..n]);
+            let spongos = self.outer_min_mut(plain.len());
+            let n = spongos.len();
+            encrypt_xor(spongos, &plain[..n], &mut cipher[..n]);
             plain = &plain[n..];
             cipher = &mut cipher[n..];
             self.update(n);
