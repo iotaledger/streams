@@ -17,4 +17,4 @@ std = ["rand/std", "iota-streams-core/std"]
 iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
 rand = { version = "0.8", default-features = false }
 hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }
-iota-crypto = { version = "0.9.1", default-features = false, features = ["x25519", "rand"] }
+iota-crypto = { version = "=0.9.1", default-features = false, features = ["x25519", "rand"] }
