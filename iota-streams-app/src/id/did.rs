@@ -1,9 +1,9 @@
 use identity::{
     crypto::{
-        SetSignature,
-        Proof,
         GetSignature,
         GetSignatureMut,
+        Proof,
+        SetSignature,
     },
     did::{
         MethodUriType,

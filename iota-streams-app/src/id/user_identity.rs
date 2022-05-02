@@ -90,9 +90,7 @@ use identity::{
         verifiable::VerifierOptions,
         DID,
     },
-    iota::{
-        Client,
-    },
+    iota::Client,
     iota_core::IotaDID,
 };
 #[cfg(feature = "did")]
