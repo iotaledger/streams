@@ -1,0 +1,23 @@
+# Benchmarks
+
+## Messages per second by message type and payload size (publisher)
+- Metric: MPS
+- X axis: Amount of transactions
+- Y axis: Time
+- Series: by message type (keyload (10, 100, 1000 subscribers), tagged-packet (10B, 100B, 1KB, 10KB), signed-packet (10B 100B 1KB 10KB))
+
+## Messages per second by message type and payload size (subscriber)
+- Metric: MPS
+- X axis: Amount of transactions
+- Y axis: Time
+- Series: by message type and payload size (keyload (10, 100, 1000 subscribers), tagged-packet (10B, 100B, 1KB, 10KB), signed-packet (10B 100B 1KB 10KB))
+
+## Bytes per second by Payload Size (publisher)
+- Metric: Bytes Per Second (BPS)
+- X axis: Time
+- Series: by payload size
+
+## Bytes per second by Payload Size (subscriber)
+- Metric: Bytes Per Second (BPS)
+- X axis: Time
+- Series: by payload size

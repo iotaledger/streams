@@ -193,7 +193,7 @@ impl Client {
                 iota_client::ClientBuilder::new()
                     .with_node(url)
                     .unwrap()
-                    .with_local_pow(false)
+                    .with_local_pow(true)
                     .finish(),
             )
             .unwrap(),
