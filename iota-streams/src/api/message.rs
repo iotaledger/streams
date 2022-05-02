@@ -243,7 +243,6 @@ pub struct SignedPacket {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TaggedPacket {
-    pub publisher_identifier: Identifier,
     pub masked_payload: Vec<u8>,
     pub public_payload: Vec<u8>,
 }
@@ -313,7 +312,6 @@ impl<'a, F> From<signed_packet::Unwrap<'a, F>> for MessageContent {
 impl<'a, F> From<tagged_packet::Unwrap<'a, F>> for MessageContent {
     fn from(mut tagged_packet: tagged_packet::Unwrap<'a, F>) -> Self {
         Self::TaggedPacket(TaggedPacket {
-            publisher_identifier: tagged_packet.publisher_identifier(),
             masked_payload: tagged_packet.take_masked_payload(),
             public_payload: tagged_packet.take_public_payload(),
         })

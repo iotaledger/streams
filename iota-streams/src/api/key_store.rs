@@ -154,13 +154,7 @@ impl KeyStore {
     }
 
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
-        self.cursors.remove(id).is_some() && self.keys.remove(id).is_some() && {
-            if let Identifier::PskId(pskid) = id {
-                self.psks.remove(pskid).is_some()
-            } else {
-                true
-            }
-        }
+        self.cursors.remove(id).is_some() | self.keys.remove(id).is_some()
     }
 
     pub(crate) fn remove_psk(&mut self, pskid: PskId) -> bool {

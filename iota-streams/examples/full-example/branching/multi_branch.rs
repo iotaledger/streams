@@ -241,7 +241,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
         MASKED_PAYLOAD
     );
 
-    println!("> Subscriber C attempts to send a packet (but PSK users cannot send packets!)");
+    println!("> Subscriber C attempts to send a signed packet (but PSK users cannot send packets!)");
     let messages_in_branch_as_c = subscriberC
         .messages()
         .filter_branch(|message| {
@@ -259,7 +259,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
         .last()
         .expect("Subscriber C hasn't received any of the new messages");
     let result = subscriberC
-        .send_tagged_packet(
+        .send_signed_packet(
             last_message_in_branch_as_c.address().relative(),
             PUBLIC_PAYLOAD,
             MASKED_PAYLOAD,
@@ -267,9 +267,9 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
         .await;
     assert!(
         result.is_err(),
-        "Subscriber C is a PSK user and should not be able to send messages"
+        "Subscriber C is a PSK user and should not be able to send signed packets"
     );
-    println!("> SubscriberC was not able to send tagged packet, as expected");
+    println!("> SubscriberC was not able to send signed packet, as expected");
 
     println!("> Author unsubscribes Subscriber A");
     author.remove_subscriber(
@@ -280,9 +280,11 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
     );
 
     println!("> Subscriber B sends unsubscription");
-    let unsub_link = subscriberB.unsubscribe(new_keyload_as_b.address().relative()).await?;
-    println!("Author receives unsubscription");
+    let _unsub_link = subscriberB.unsubscribe(new_keyload_as_b.address().relative()).await?;
+    println!("> Author receives unsubscription");
     author.sync_state().await?;
+    subscriberA.sync_state().await?;
+    subscriberC.sync_state().await?;
 
     println!("> Author removes PSK");
     author.remove_psk(psk.to_pskid::<KeccakF1600>());
@@ -300,37 +302,47 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
     let next_messages = subscriberA.fetch_next_messages().await?;
     let last_msg_as_a = next_messages
         .last()
-        .expect("Subscriber A has not received the lattest keyload");
-    assert!(last_msg_as_a.is_keyload());
+        .expect("Subscriber A has not received the latest keyload");
+    assert!(
+        last_msg_as_a.is_keyload(),
+        "Subscriber A expected the last message to be a keyload message, found {:?} instead",
+        last_msg_as_a.content()
+    );
 
     println!("> Subscriber B only receives the last keyload");
     let next_messages = subscriberB.fetch_next_messages().await?;
     let last_msg_as_b = next_messages
         .last()
-        .expect("Subscriber B has not received the lattest keyload");
-    assert!(last_msg_as_b.is_keyload());
+        .expect("Subscriber B has not received the latest keyload");
+    assert!(
+        last_msg_as_b.is_keyload(),
+        "Subscriber B expected the last message to be a keyload message, found {:?} instead",
+        last_msg_as_b.content()
+    );
 
     println!("> Subscriber C only receives the last keyload");
     let next_messages = subscriberC.fetch_next_messages().await?;
     let last_msg_as_c = next_messages
         .last()
-        .expect("Subscriber B has not received the lattest keyload");
-    assert!(last_msg_as_c.is_keyload());
+        .expect("Subscriber C has not received the latest keyload");
+    assert!(
+        last_msg_as_c.is_keyload(),
+        "Subscriber C expected the last message to be a keyload message, found {:?} instead",
+        last_msg_as_c.content()
+    );
 
-    println!("> Subscribers A B and C try to send a signed packet");
+    println!("> Subscribers A and B try to send a signed packet");
     subscriberA
         .send_signed_packet(last_msg_as_a.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     subscriberB
         .send_signed_packet(last_msg_as_b.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
-    subscriberC
-        .send_signed_packet(last_msg_as_c.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
-        .await?;
 
-    println!("> The message is not received by the rest of the subscribers");
+    println!("> The messages are not received by the rest of the subscribers");
     assert_eq!(author.sync_state().await?, 0);
     assert_eq!(subscriberA.sync_state().await?, 0);
+    println!("{:?}", subscriberB.fetch_next_messages().await?);
     assert_eq!(subscriberB.sync_state().await?, 0);
     assert_eq!(subscriberC.sync_state().await?, 0);
 

@@ -50,7 +50,7 @@ impl<T, F, Address> PreparsedMessage<T, F, Address> {
         self.header().message_type() == content_type
     }
 
-    pub fn message_type(&self) -> u8 {
+    fn message_type(&self) -> u8 {
         self.header().message_type()
     }
 
@@ -58,7 +58,7 @@ impl<T, F, Address> PreparsedMessage<T, F, Address> {
         self.header().linked_msg_address()
     }
 
-    fn header(&self) -> &HDF<Address> {
+    pub fn header(&self) -> &HDF<Address> {
         &self.header
     }
 

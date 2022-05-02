@@ -110,24 +110,9 @@ const ENCODING: &str = "utf-8";
 const PAYLOAD_LENGTH: usize = 32_000;
 
 const ANN_MESSAGE_NUM: u64 = 0; // Announcement is always the first message of authors
-const SUB_MESSAGE_NUM: u64 = 0; // Subscribe is always the first message of subscribers
+const SUB_MESSAGE_NUM: u64 = 0; // Subscription is always the first message of subscribers
 const SEQ_MESSAGE_NUM: u64 = 1; // Reserved for sequence messages
 const INIT_MESSAGE_NUM: u64 = 2; // First non-reserved message number
-
-const UNKNOWN_APPADDR: &str = "unknown app address";
-
-// TODO: REMOVE
-// /// Sequence wrapping object
-// ///
-// /// This wrapping object contains the (wrapped) sequence message ([`WrappedMessage`]) to be
-// /// sent and the [`Cursor`] of the user sending it.
-// struct WrappedSequence<F, Link>
-// where
-//     Link: HasLink,
-// {
-//     cursor: Cursor<Link::Rel>,
-//     wrapped_message: WrappedMessage<F, Link>,
-// }
 
 pub type User<T, TSR> = GenericUser<T, TSR, KeccakF1600, Address, AddressGenerator<KeccakF1600>>;
 
@@ -138,27 +123,17 @@ where
     /// Users' Identity information, contains keys and logic for signing and verification
     user_id: Identity,
 
-    // /// Author's public Id.
-    // author_id: Option<Identifier>,
-
-    // TODO: REMOVE
-    // /// Author's Key Exchange Address
-    //  author_ke_pk: x25519::PublicKey,
     /// Address of the stream announcement message
     ///
     /// None if channel is not created or user is not subscribed.
     stream_address: Option<A>,
+
     author_identifier: Option<Identifier>,
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     id_store: KeyStore,
 
     spongos_store: HashMap<A::Relative, Spongos<F>>,
-    // TODO: REMOVE
-    // message_encoding: Vec<u8>, */
-    //
-    // TODO: REMOVE
-    // uniform_payload_length: usize,
     transport: T,
 
     /// Address generator.
@@ -232,7 +207,7 @@ where
         self.id_store.subscribers()
     }
 
-    fn insert_subscriber(&mut self, subscriber: Identifier) -> Result<bool> {
+    fn add_subscriber(&mut self, subscriber: Identifier) -> Result<bool> {
         let is_new = self.id_store.insert_cursor(subscriber, 1)
             && self.id_store.insert_key(
                 subscriber,
@@ -308,7 +283,7 @@ where
         let user_cursor = 1;
 
         // Prepare HDF and PCF
-        let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor)?;
+        let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, self.identifier())?;
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(&self.user_id));
 
         // Wrap message
@@ -360,7 +335,8 @@ where
             &self.user_id,
             author_ke_pk,
         ));
-        let header = HDF::new(message_types::SUBSCRIPTION, user_cursor)?.with_linked_msg_address(link_to);
+        let header =
+            HDF::new(message_types::SUBSCRIPTION, user_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -382,7 +358,7 @@ where
     pub async fn unsubscribe(&mut self, link_to: A::Relative) -> Result<SendResponse<A, TSR>> {
         // Check conditions
         let stream_address = self.stream_address().as_ref().cloned().ok_or_else(|| {
-            anyhow!("before sending a signed packet one must receive the announcement of a stream first")
+            anyhow!("before sending a subscription one must receive the announcement of a stream first")
         })?;
 
         // Update own's cursor
@@ -401,7 +377,8 @@ where
             .clone();
         let content =
             PCF::new_final_frame().with_content(unsubscription::Wrap::new(&mut linked_msg_spongos, &self.user_id));
-        let header = HDF::new(message_types::UNSUBSCRIPTION, new_user_cursor)?.with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::UNSUBSCRIPTION, new_user_cursor, self.identifier())?
+            .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -482,7 +459,8 @@ where
             nonce,
             &self.user_id,
         ));
-        let header = HDF::new(message_types::KEYLOAD, new_user_cursor)?.with_linked_msg_address(link_to);
+        let header =
+            HDF::new(message_types::KEYLOAD, new_user_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -545,7 +523,8 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::SIGNED_PACKET, new_user_cursor)?.with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::SIGNED_PACKET, new_user_cursor, self.identifier())?
+            .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -576,15 +555,16 @@ where
     {
         // Check conditions
         let stream_address = self.stream_address().as_ref().cloned().ok_or_else(|| {
-            anyhow!("before sending a signed packet one must receive the announcement of a stream first")
+            anyhow!("before sending a tagged packet one must receive the announcement of a stream first")
         })?;
 
         // Update own's cursor
-        let previous_user_cursor = self.id_store.get_cursor(&self.identifier()).unwrap_or(1); // Account for subscribers added manually instead of sending a subscription message
-        let new_user_cursor = previous_user_cursor + 1;
-        let rel_address: A::Relative =
-            self.link_generator
-                .gen((stream_address.base(), self.identifier(), new_user_cursor));
+        // Account for subscribers added manually instead of sending a subscription message
+        let previous_cursor = self.id_store.get_cursor(&self.identifier()).unwrap_or(1);
+        let new_cursor = previous_cursor + 1;
+        let rel_address: A::Relative = self
+            .link_generator
+            .gen((stream_address.base(), self.identifier(), new_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
@@ -595,11 +575,11 @@ where
             .clone();
         let content = PCF::new_final_frame().with_content(tagged_packet::Wrap::new(
             &mut linked_msg_spongos,
-            self.identifier(),
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::TAGGED_PACKET, new_user_cursor)?.with_linked_msg_address(link_to);
+        let header =
+            HDF::new(message_types::TAGGED_PACKET, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -613,7 +593,7 @@ where
         let send_response = self.transport.send_message(&message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.id_store.insert_cursor(self.identifier(), new_user_cursor);
+        self.id_store.insert_cursor(self.identifier(), new_cursor);
         self.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -636,7 +616,11 @@ where
 
     pub(crate) async fn handle_message(&mut self, address: A, msg: TransportMessage<Vec<u8>>) -> Result<Message<A>> {
         let preparsed = msg.parse_header::<F, A::Relative>().await?;
-        match preparsed.message_type() {
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.id_store
+            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+        match preparsed.header().message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
             message_types::SUBSCRIPTION => self.handle_subscription(address, preparsed).await,
             message_types::UNSUBSCRIPTION => self.handle_unsubscription(address, preparsed).await,
@@ -655,12 +639,6 @@ where
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
         // Check conditions
-        ensure!(
-            preparsed.message_type() == message_types::ANNOUNCEMENT,
-            "message is not an announcement. Expected message-type {}, found {}",
-            message_types::ANNOUNCEMENT,
-            preparsed.message_type()
-        );
         if let Some(stream_address) = self.stream_address() {
             bail!("user is already connected to the stream {}", stream_address);
         }
@@ -681,10 +659,6 @@ where
         self.stream_address = Some(address.clone());
         self.author_identifier = Some(author_id);
 
-        // Update publisher's cursor
-        let cursor = message.header().sequence();
-        self.id_store.insert_cursor(author_id, cursor);
-
         Ok(Message::from_lets_message(address, message))
     }
     async fn handle_subscription<'a>(
@@ -693,12 +667,6 @@ where
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
         // Check conditions
-        ensure!(
-            preparsed.message_type() == message_types::SUBSCRIPTION,
-            "message is not a subscription. Expected message-type {}, found {}",
-            message_types::SUBSCRIPTION,
-            preparsed.message_type()
-        );
 
         // Unwrap message
         let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
@@ -723,13 +691,7 @@ where
         self.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
-
-        // Update publisher's cursor
         let subscriber_identifier = message.payload().content().subscriber_identifier();
-        self.id_store.insert_cursor(
-            subscriber_identifier,
-            message.header().sequence(), // Cursor::new(address.relative().clone(), message.header().sequence()),
-        );
         self.id_store.insert_key(
             subscriber_identifier,
             subscriber_identifier._ke_pk().ok_or_else(|| {
@@ -746,12 +708,6 @@ where
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
         // Check conditions
-        ensure!(
-            preparsed.message_type() == message_types::TAGGED_PACKET,
-            "message is not a tagged packet. Expected message-type {}, found {}",
-            message_types::TAGGED_PACKET,
-            preparsed.message_type()
-        );
 
         // Unwrap message
         let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
@@ -772,12 +728,7 @@ where
         self.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
-
-        // Update publisher's cursor
-        self.id_store.insert_cursor(
-            message.payload().content().subscriber_identifier(),
-            message.header().sequence(),
-        );
+        self.remove_subscriber(message.payload().content().subscriber_identifier());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -788,17 +739,6 @@ where
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
         // Check conditions
-        // TODO: CONSIDER REMOVE THE MESSAGE-TYPE CHECK, ISN'T IT REDUNDANT?
-        ensure!(
-            preparsed.message_type() == message_types::KEYLOAD,
-            "message is not a keyload. Expected message-type {}, found {}",
-            message_types::KEYLOAD,
-            preparsed.message_type()
-        );
-        let stream_address = self
-            .stream_address()
-            .as_ref()
-            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
 
         // Unwrap message
         let author_identifier = self.author_identifier.ok_or_else(|| {
@@ -814,6 +754,10 @@ where
         //     .ok_or_else(|| anyhow!("message '{}' not found in spongos store", linked_msg_address))?
         //     .clone();
         // TODO: EXPERIMENT: USE ANNOUNCEMENT SPONGOS FOR KEYLOADS, TO REMOVE SEQUENCE MESSAGES
+        let stream_address = self
+            .stream_address()
+            .as_ref()
+            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
         let mut announcement_spongos = self
             .spongos_store
             .get(stream_address.relative())
@@ -836,10 +780,6 @@ where
             }
         }
 
-        // Update publisher's cursor
-        self.id_store
-            .insert_cursor(author_identifier, message.header().sequence());
-
         Ok(Message::from_lets_message(address, message))
     }
 
@@ -849,12 +789,6 @@ where
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
         // Check conditions
-        ensure!(
-            preparsed.message_type() == message_types::SIGNED_PACKET,
-            "message is not a signed packet. Expected message-type {}, found {}",
-            message_types::SIGNED_PACKET,
-            preparsed.message_type()
-        );
 
         // Unwrap message
         let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
@@ -876,12 +810,6 @@ where
 
         // Store message content into stores
 
-        // Update publisher's cursor
-        self.id_store.insert_cursor(
-            message.payload().content().publisher_identifier(),
-            message.header().sequence(),
-        );
-
         Ok(Message::from_lets_message(address, message))
     }
 
@@ -891,12 +819,6 @@ where
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
         // Check conditions
-        ensure!(
-            preparsed.message_type() == message_types::TAGGED_PACKET,
-            "message is not a tagged packet. Expected message-type {}, found {}",
-            message_types::TAGGED_PACKET,
-            preparsed.message_type()
-        );
 
         // Unwrap message
         let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
@@ -917,12 +839,6 @@ where
         self.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
-
-        // Update publisher's cursor
-        self.id_store.insert_cursor(
-            message.payload().content().publisher_identifier(),
-            message.header().sequence(),
-        );
 
         Ok(Message::from_lets_message(address, message))
     }

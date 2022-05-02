@@ -178,8 +178,6 @@ where
         self.absorb(&NBytes::new(keyload.nonce))?.absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
         for (identifier, exchange_key) in subscribers {
-            // TODO: WHY FORK? CAN'T WE NOT FORK AT ALL?
-            // let fork = self.fork();
             self.fork()
                 .sizeof(identifier)
                 .await?
@@ -269,13 +267,6 @@ impl<'a, F, IS> message::ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
 where
     F: PRP + Clone,
     IS: io::IStream,
-    // where
-    //     F: PRP + Clone,
-    //     Link: HasLink,
-    //     Link::Rel: Eq + Default + SkipFallback<F>,
-    //     LStore: LinkStore<F, Link::Rel>,
-    // PskStore: for<'c> Lookup<&'c Identifier, psk::Psk>,
-    // KeSkStore: for<'c> Lookup<&'c Identifier, x25519::SecretKey> + 'b,
 {
     async fn unwrap(&mut self, keyload: &mut Unwrap<'a, F>) -> Result<&mut Self> {
         let mut nonce = [0_u8; NONCE_SIZE];
@@ -303,35 +294,7 @@ where
                 }
             }
             keyload.subscribers.push(subscriber_id);
-            // TODO: REMOVE
-            // match id {
-            //     Identifier::PskId(pskid) => {
-            //         if let Some(psk) = keyload.psk_store.lookup(id) {
-            //             id.decrypt(self, &psk, &mut key).await?;
-            //             keyload.key = Some(key);
-            //         } else {
-            //             // Just drop the rest of the forked message so not to waste Spongos operations
-            //             // let n = Size(spongos::KeySize::<F>::USIZE);
-            //             self.drop(KEY_SIZE)?;
-            //         }
-            //     }
-            //     _ => {
-            //         if let Some(ke_sk) = keyload.ke_sk_store.lookup(&id) {
-            //             sender_id.decrypt(self, &ke_sk.to_bytes(), &mut key).await?;
-            //             keyload.key = Some(key);
-            //         } else {
-            //             // Just drop the rest of the forked message so not to waste Spongos operations
-            //             // TODO: key length
-            //             let n = Size(64);
-            //             self.drop(n)?;
-            //         }
-            //     }
-            // }
-            // Save the relevant identifier
         }
-        // TODO: REMOVE
-        // self.commit()?.squeeze(&mut External::new(NBytes::new(hash)))?;
-
         if let Some(key) = key {
             self.absorb(External::new(&NBytes::new(&key)))?
                 .verify(&keyload.author_id)
@@ -339,16 +302,5 @@ where
         }
         self.commit()?;
         Ok(self)
-        // TODO: REMOVE
-        // if let Some(key) = keyload.key {
-        //     // self.absorb(External::new(key))?;
-        //     // let signature_fork = self.spongos.fork();
-        //     // let self = keyload.author_id.verify(self.absorb(&hash)?).await?;
-        //     // self.spongos = signature_fork;
-        //     // self.commit()
-        // } else {
-        //     // Allow key not found, no key situation must be handled outside, there's a use-case for that
-        //     Ok(self)
-        // }
     }
 }

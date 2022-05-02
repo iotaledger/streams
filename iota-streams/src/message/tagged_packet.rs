@@ -62,21 +62,14 @@ const MAC: Mac = Mac::new(32);
 
 pub(crate) struct Wrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
-    user_id: Identifier,
     public_payload: &'a [u8],
     masked_payload: &'a [u8],
 }
 
 impl<'a, F> Wrap<'a, F> {
-    pub(crate) fn new(
-        initial_state: &'a mut Spongos<F>,
-        user_id: Identifier,
-        public_payload: &'a [u8],
-        masked_payload: &'a [u8],
-    ) -> Self {
+    pub(crate) fn new(initial_state: &'a mut Spongos<F>, public_payload: &'a [u8], masked_payload: &'a [u8]) -> Self {
         Self {
             initial_state,
-            user_id,
             public_payload,
             masked_payload,
         }
@@ -86,9 +79,7 @@ impl<'a, F> Wrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
     async fn sizeof(&mut self, tagged_packet: &Wrap<'a, F>) -> Result<&mut Self> {
-        self.sizeof(&tagged_packet.user_id)
-            .await?
-            .absorb(&Bytes::new(tagged_packet.public_payload))?
+        self.absorb(&Bytes::new(tagged_packet.public_payload))?
             .mask(&Bytes::new(tagged_packet.masked_payload))?
             .commit()?
             .squeeze(&MAC)?;
@@ -104,8 +95,6 @@ where
 {
     async fn wrap(&mut self, tagged_packet: &mut Wrap<'a, F>) -> Result<&mut Self> {
         self.join(tagged_packet.initial_state)?
-            .wrap(&mut tagged_packet.user_id)
-            .await?
             .absorb(&Bytes::new(tagged_packet.public_payload))?
             .mask(&Bytes::new(tagged_packet.masked_payload))?
             .commit()?
@@ -116,7 +105,6 @@ where
 
 pub(crate) struct Unwrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
-    publisher_id: Identifier,
     public_payload: Vec<u8>,
     masked_payload: Vec<u8>,
 }
@@ -125,14 +113,9 @@ impl<'a, F> Unwrap<'a, F> {
     pub(crate) fn new(initial_state: &'a mut Spongos<F>) -> Self {
         Self {
             initial_state,
-            publisher_id: Default::default(),
             public_payload: Default::default(),
             masked_payload: Default::default(),
         }
-    }
-
-    pub(crate) fn publisher_identifier(&self) -> Identifier {
-        self.publisher_id
     }
 
     pub(crate) fn take_masked_payload(&mut self) -> Vec<u8> {
@@ -152,8 +135,6 @@ where
 {
     async fn unwrap(&mut self, tagged_packet: &mut Unwrap<'a, F>) -> Result<&mut Self> {
         self.join(tagged_packet.initial_state)?
-            .unwrap(&mut tagged_packet.publisher_id)
-            .await?
             .absorb(Bytes::new(&mut tagged_packet.public_payload))?
             .mask(Bytes::new(&mut tagged_packet.masked_payload))?
             .commit()?

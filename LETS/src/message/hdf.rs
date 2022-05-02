@@ -29,16 +29,19 @@ use spongos::{
     PRP,
 };
 
-use crate::message::{
-    content::{
-        ContentSizeof,
-        ContentUnwrap,
-        ContentWrap,
-    },
-    version::{
-        HDF_ID,
-        STREAMS_1_VER,
-        UTF8,
+use crate::{
+    id::Identifier,
+    message::{
+        content::{
+            ContentSizeof,
+            ContentUnwrap,
+            ContentWrap,
+        },
+        version::{
+            HDF_ID,
+            STREAMS_1_VER,
+            UTF8,
+        },
     },
 };
 
@@ -59,6 +62,7 @@ pub struct HDF<Address> {
     payload_frame_count: u32,
     pub linked_msg_address: Option<Address>,
     pub sequence: u64,
+    pub publisher: Identifier,
 }
 
 impl<Address> Default for HDF<Address>
@@ -75,12 +79,13 @@ where
             payload_frame_count: 0,
             linked_msg_address: Default::default(),
             sequence: 0,
+            publisher: Default::default(),
         }
     }
 }
 
 impl<Address> HDF<Address> {
-    pub fn new(message_type: u8, seq_num: u64) -> Result<Self> {
+    pub fn new(message_type: u8, seq_num: u64, publisher: Identifier) -> Result<Self> {
         ensure!(
             message_type >> 4 == 0,
             anyhow!(
@@ -97,6 +102,7 @@ impl<Address> HDF<Address> {
             payload_frame_count: 0,
             linked_msg_address: None,
             sequence: seq_num,
+            publisher,
         })
     }
 
@@ -116,7 +122,7 @@ impl<Address> HDF<Address> {
         Ok(self)
     }
 
-    pub(crate) fn message_type(&self) -> u8 {
+    pub fn message_type(&self) -> u8 {
         self.message_type
     }
 
@@ -126,6 +132,10 @@ impl<Address> HDF<Address> {
 
     fn payload_frame_count(&self) -> u32 {
         self.payload_frame_count
+    }
+
+    pub fn publisher(&self) -> Identifier {
+        self.publisher
     }
 
     pub fn sequence(&self) -> u64 {
@@ -152,6 +162,8 @@ where
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(&payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
+            .sizeof(&hdf.publisher)
+            .await?
             .skip(Uint64::new(hdf.sequence))?;
 
         Ok(self)
@@ -188,6 +200,8 @@ where
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(&payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
+            .wrap(&mut hdf.publisher)
+            .await?
             .skip(Uint64::new(hdf.sequence))?;
 
         Ok(self)
@@ -238,6 +252,8 @@ where
                 anyhow!("first 2 bits of payload-frame-count are reserved"),
             )?
             .absorb(Maybe::new(&mut hdf.linked_msg_address))?
+            .unwrap(&mut hdf.publisher)
+            .await?
             .skip(&mut seq_num)?;
 
         hdf.encoding = encoding.inner();

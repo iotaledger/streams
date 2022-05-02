@@ -50,8 +50,3 @@ pub use LETS::{
     link::Address,
     transport,
 };
-
-// // TODO: REMOVE BYTES DEPENDENCY ALLTOGETHER
-// use iota_streams_ddml::types::Bytes;
-
-// use iota_streams_app::id::UserIdentity;
