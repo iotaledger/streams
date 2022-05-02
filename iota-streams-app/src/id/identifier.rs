@@ -35,7 +35,7 @@ use identity::{
         encode_b58,
     },
     did::DID,
-    iota::IotaDID,
+    iota_core::IotaDID,
 };
 #[cfg(feature = "did")]
 use iota_streams_core::prelude::ToString;
