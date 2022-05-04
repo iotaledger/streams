@@ -187,13 +187,13 @@ where
 
 impl<F, Link, LG, LS, Keys> User<F, Link, LG, LS, Keys>
 where
-    F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + Default + Debug,
-    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display,
-    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
+    F: PRP + Send + Sync,
+    Link: HasLink + AbsorbExternalFallback<F> + Default + Debug +Send + Sync,
+    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display + Send + Sync,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F> + Send + Sync,
     LG: LinkGenerator<Link>,
-    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default + Sync,
+    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F> +Send + Sync,
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
     pub fn gen(
@@ -1057,17 +1057,17 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Link, LG, LS, Keys> ContentSizeof<F> for User<F, Link, LG, LS, Keys>
 where
-    F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display,
-    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
-    LG: LinkGenerator<Link>,
-    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
+    F: PRP + Send + Sync,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F> +Send + Sync,
+    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display + Send + Sync,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F> + Send + Sync,
+    LG: LinkGenerator<Link> + Send + Sync,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default + Send + Sync,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F> +Send + Sync,
+    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F> + Send + Sync,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
@@ -1112,20 +1112,20 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Link, Store, LG, LS, Keys> ContentWrap<F, Store> for User<F, Link, LG, LS, Keys>
 where
-    F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display,
-    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
-    LG: LinkGenerator<Link>,
-    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
+    F: PRP + Send + Sync,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F> + Send + Sync,
+    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display + Send + Sync,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F> + Send + Sync,
+    Store: LinkStore<F, <Link as HasLink>::Rel> + Send +Sync ,
+    LG: LinkGenerator<Link> + Sync + Send,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default + Send + Sync,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F> + Send + Sync,
+    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F> + Send + Sync,
 {
-    async fn wrap<'c, OS: io::OStream>(
+    async fn wrap<'c, OS: io::OStream + Send>(
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -1172,20 +1172,20 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Link, Store, LG, LS, Keys> ContentUnwrap<F, Store> for User<F, Link, LG, LS, Keys>
 where
-    F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display,
-    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
-    LG: LinkGenerator<Link>,
-    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: Default + AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F> + Default,
+    F: PRP + Send + Sync,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F> + Send + Sync,
+    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display + Send + Sync,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F> + Send + Sync,
+    Store: LinkStore<F, <Link as HasLink>::Rel> + Send + Sync,
+    LG: LinkGenerator<Link> + Send + Sync,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default + Send + Sync,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: Default + AbsorbFallback<F> + Send + Sync,
+    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F> + Default + Send + Sync,
 {
-    async fn unwrap<'c, IS: io::IStream>(
+    async fn unwrap<'c, IS: io::IStream + Send>(
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
@@ -1277,14 +1277,14 @@ where
 
 impl<F, Link, LG, LS, Keys> User<F, Link, LG, LS, Keys>
 where
-    F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display,
-    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
-    LG: LinkGenerator<Link>,
-    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
+    F: PRP + Send + Sync,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F> + Send + Sync,
+    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display + Send + Sync,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F> + Send + Sync,
+    LG: LinkGenerator<Link> + Send + Sync,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default + Send + Sync,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: AbsorbFallback<F> + Send + Sync,
+    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F> + Send + Sync,
 {
     pub async fn export(&self, flag: u8, pwd: &str) -> Result<Vec<u8>> {
         const VERSION: u8 = 0;
@@ -1315,14 +1315,14 @@ where
 
 impl<F, Link, LG, LS, Keys> User<F, Link, LG, LS, Keys>
 where
-    F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display,
-    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F>,
-    LG: LinkGenerator<Link>,
-    LS: LinkStore<F, <Link as HasLink>::Rel> + Default,
-    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: Default + AbsorbFallback<F>,
-    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F> + Default,
+    F: PRP + Send + Sync,
+    Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F> + Send + Sync,
+    <Link as HasLink>::Base: Eq + fmt::Debug + fmt::Display + Send + Sync,
+    <Link as HasLink>::Rel: Eq + fmt::Debug + SkipFallback<F> + AbsorbFallback<F> + Send + Sync,
+    LG: LinkGenerator<Link> + Send + Sync,
+    LS: LinkStore<F, <Link as HasLink>::Rel> + Default + Send + Sync,
+    <LS as LinkStore<F, <Link as HasLink>::Rel>>::Info: Default + AbsorbFallback<F> + Send + Sync,
+    Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F> + Default + Send + Sync,
 {
     pub async fn import(bytes: &[u8], flag: u8, pwd: &str) -> Result<Self> {
         const VERSION: u8 = 0;

@@ -102,8 +102,8 @@ impl core::fmt::Display for Identifier {
     }
 }
 
-#[async_trait(?Send)]
-impl<F: PRP> ContentSizeof<F> for Identifier {
+#[async_trait]
+impl<F: PRP + Send> ContentSizeof<F> for Identifier {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         match *self {
             Identifier::EdPubKey(pk) => {
@@ -120,9 +120,9 @@ impl<F: PRP> ContentSizeof<F> for Identifier {
     }
 }
 
-#[async_trait(?Send)]
-impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
-    async fn wrap<'c, OS: io::OStream>(
+#[async_trait]
+impl<F: PRP + Send, Store: Sync> ContentWrap<F, Store> for Identifier {
+    async fn wrap<'c, OS: io::OStream + Send>(
         &self,
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -142,9 +142,9 @@ impl<F: PRP, Store> ContentWrap<F, Store> for Identifier {
     }
 }
 
-#[async_trait(?Send)]
-impl<F: PRP, Store> ContentUnwrap<F, Store> for Identifier {
-    async fn unwrap<'c, IS: io::IStream>(
+#[async_trait]
+impl<F: PRP + Send, Store: Sync> ContentUnwrap<F, Store> for Identifier{
+    async fn unwrap<'c, IS: io::IStream + Send>(
         &mut self,
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
@@ -155,9 +155,9 @@ impl<F: PRP, Store> ContentUnwrap<F, Store> for Identifier {
     }
 }
 
-#[async_trait(?Send)]
-impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
-    async fn unwrap_new<'c, IS: io::IStream>(
+#[async_trait]
+impl<F: PRP + Send, Store: Sync> ContentUnwrapNew<F, Store> for Identifier {
+    async fn unwrap_new<'c, IS: io::IStream + Send>(
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,
     ) -> Result<(Self, &'c mut unwrap::Context<F, IS>)> {

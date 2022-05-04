@@ -53,7 +53,7 @@ impl Default for SendOptions {
     fn default() -> Self {
         Self {
             url: "https://chrysalis-nodes.iota.org".to_string(),
-            local_pow: true,
+            local_pow: false,
         }
     }
 }
@@ -166,6 +166,7 @@ impl Default for Client {
                 iota_client::ClientBuilder::new()
                     .with_node("http://localhost:14265")
                     .unwrap()
+                    .with_node_sync_disabled()
                     .finish(),
             )
             .unwrap(),
@@ -193,7 +194,8 @@ impl Client {
                 iota_client::ClientBuilder::new()
                     .with_node(url)
                     .unwrap()
-                    .with_local_pow(true)
+                    .with_local_pow(false)
+                    .with_node_sync_disabled()
                     .finish(),
             )
             .unwrap(),
@@ -210,6 +212,7 @@ impl Clone for Client {
                     .with_node(&self.send_opt.url)
                     .unwrap()
                     .with_local_pow(self.send_opt.local_pow)
+                    .with_node_sync_disabled()
                     .finish(),
             )
             .unwrap(),
@@ -234,7 +237,7 @@ impl TransportOptions for Client {
     fn set_recv_options(&mut self, _opt: ()) {}
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Transport<TangleAddress, TangleMessage> for Client {
     /// Send a Streams message over the Tangle with default SendOptions.
     async fn send_message(&mut self, msg: &TangleMessage) -> Result<()> {
@@ -257,7 +260,7 @@ impl Transport<TangleAddress, TangleMessage> for Client {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl TransportDetails<TangleAddress> for Client {
     type Details = Details;
     async fn get_link_details(&mut self, link: &TangleAddress) -> Result<Self::Details> {

@@ -181,7 +181,7 @@ impl<Trans> Subscriber<Trans> {
     }
 }
 
-impl<Trans: Transport + Clone> Subscriber<Trans> {
+impl<Trans: Transport + Clone + Send + Sync> Subscriber<Trans> {
     /// Create and Send a Subscribe message to a Channel app instance.
     ///
     /// # Arguments
@@ -345,7 +345,7 @@ impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
     }
 }
 
-impl<Trans> IntoMessages<Trans> for Subscriber<Trans> {
+impl<Trans> IntoMessages<Trans> for Subscriber<Trans> where Trans: Send + Sync {
     fn messages(&mut self) -> Messages<'_, Trans>
     where
         Trans: Transport,

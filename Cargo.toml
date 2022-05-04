@@ -1,47 +1,49 @@
 #cargo-features = ["named-profiles"]
 
 [package]
-name = "iota-streams"
-version = "0.1.2"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org"]
-edition = "2018"
-license = "Apache-2.0/MIT"
-readme = "README.md"
-keywords = ["iota", "streams"]
+authors = [
+  "Vlad Semenov <vlad.semenov@iota.org>",
+  "Dyrell Chapman <dyrell.chapman@iota.org>",
+  "Brord van Wierst <brord@iota.org>",
+  "Arnau Orriols <arnau.orriols@iota.org",
+]
 description = "A Rust implementation of the IOTA Streams"
-repository = "https://github.com/iotaledger/streams"
+edition = "2018"
 homepage = "https://wiki.iota.org/streams/libraries/rust/overview"
+keywords = ["iota", "streams"]
+license = "Apache-2.0/MIT"
+name = "iota-streams"
+readme = "README.md"
+repository = "https://github.com/iotaledger/streams"
+version = "0.1.2"
 
 autoexamples = false
 
 [lib]
 name = "iota_streams"
-crate-type = ["staticlib", "cdylib", "rlib"]
 
 [workspace]
 members = [
-    "iota-streams-core",
-    "iota-streams-core-edsig",
-    "iota-streams-core-keccak",
-    "iota-streams-ddml",
-    "iota-streams-app",
-    "iota-streams-app-channels",
+  "iota-streams-core",
+  "iota-streams-core-edsig",
+  "iota-streams-core-keccak",
+  "iota-streams-ddml",
+  "iota-streams-app",
+  "iota-streams-app-channels",
 ]
 
 # Members selected by default by Cargo commands like `test`
 default-members = [
-    "iota-streams-core",
-    "iota-streams-ddml",
-    "iota-streams-app",
-    "iota-streams-app-channels",
-    # TODO: Fix clippy warnings in wasm bindings
-    # "bindings/wasm",
+  "iota-streams-core",
+  "iota-streams-ddml",
+  "iota-streams-app",
+  "iota-streams-app-channels", # TODO: Fix clippy warnings in wasm bindings  # "bindings/wasm",
 ]
 
 exclude = [
-    "bindings/c",
-    "bindings/wasm",
-    "examples",
+  "bindings/c",
+  "bindings/wasm",
+  "examples",
 ]
 
 [features]
@@ -62,12 +64,12 @@ sync-spin = ["iota-streams-app/sync-spin", "iota-streams-core/sync-spin"]
 sync-parking-lot = ["iota-streams-app/sync-parking-lot", "iota-streams-core/sync-parking-lot", "std"]
 
 [dependencies]
-iota-streams-core = { version = "0.1.2", path = "iota-streams-core", default-features = false }
-iota-streams-core-keccak = { version = "0.1.2", path = "iota-streams-core-keccak", default-features = false }
-iota-streams-core-edsig = { version = "0.1.2", path = "iota-streams-core-edsig", default-features = false }
-iota-streams-ddml = { version = "0.1.2", path = "iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "0.1.2", path = "iota-streams-app", default-features = false }
-iota-streams-app-channels = { version = "0.1.2", path = "iota-streams-app-channels", default-features = false }
+iota-streams-app = {version = "0.1.2", path = "iota-streams-app", default-features = false}
+iota-streams-app-channels = {version = "0.1.2", path = "iota-streams-app-channels", default-features = false}
+iota-streams-core = {version = "0.1.2", path = "iota-streams-core", default-features = false}
+iota-streams-core-edsig = {version = "0.1.2", path = "iota-streams-core-edsig", default-features = false}
+iota-streams-core-keccak = {version = "0.1.2", path = "iota-streams-core-keccak", default-features = false}
+iota-streams-ddml = {version = "0.1.2", path = "iota-streams-ddml", default-features = false}
 
 #[profile.release-nostd]
 #inherits = "release"
@@ -80,17 +82,26 @@ iota-streams-app-channels = { version = "0.1.2", path = "iota-streams-app-channe
 #panic = "abort"
 
 [dev-dependencies]
-criterion = {version = "0.3.5", features = ["async_tokio", "html_reports"] }
-rand = {version = "0.7.3"}
-tokio = {version = "1.18.0"}
+criterion = {version = "0.3.5", features = ["async_tokio", "html_reports"]}
+goose = {version = "0.16.0", default-features = false, features = ["rustls-tls"]}
 iota-client = {version = "1.1.1"}
+rand = {version = "0.7.3"}
+tokio = {version = "1.15.0"}
+anyhow = {version = "1.0.57"}
+futures = {version = "0.3.17"}
 
 [profile.release]
-# Tell `rustc` to optimize for small code size.
-opt-level = 3
+incremental = true
 lto = true
-#panic = 'abort'
+
+[profile.bench]
+incremental = true
+lto = true
 
 [[bench]]
-name = "mps"
 harness = false
+name = "mps"
+
+[[bench]]
+harness = false
+name = "load"

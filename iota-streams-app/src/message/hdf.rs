@@ -180,11 +180,11 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Link> ContentSizeof<F> for HDF<Link>
 where
-    F: PRP,
-    Link: AbsorbExternalFallback<F>,
+    F: PRP + Send,
+    Link: AbsorbExternalFallback<F> + Sync + Send,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let content_type_and_payload_length = NBytes::<U2>::default();
@@ -205,13 +205,14 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Link, Store> ContentWrap<F, Store> for HDF<Link>
 where
-    F: PRP,
-    Link: AbsorbExternalFallback<F>,
+    F: PRP + Send,
+    Link: AbsorbExternalFallback<F> + Sync + Send,
+    Store: Sync
 {
-    async fn wrap<'c, OS: io::OStream>(
+    async fn wrap<'c, OS: io::OStream + Send>(
         &self,
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -249,13 +250,14 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Link, Store> ContentUnwrap<F, Store> for HDF<Link>
 where
-    F: PRP,
-    Link: AbsorbExternalFallback<F> + fmt::Debug + Clone,
+    F: PRP + Send,
+    Link: AbsorbExternalFallback<F> + fmt::Debug + Clone + Send,
+    Store: Sync
 {
-    async fn unwrap<'c, IS: io::IStream>(
+    async fn unwrap<'c, IS: io::IStream + Send>(
         &mut self,
         _store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,

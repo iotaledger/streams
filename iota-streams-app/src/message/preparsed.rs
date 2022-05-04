@@ -27,8 +27,9 @@ impl<'a, F, Link: Default + Clone> PreparsedMessage<'a, F, Link> {
         content: Content,
     ) -> Result<UnwrappedMessage<F, Link, Content>>
     where
-        Content: ContentUnwrap<F, Store>,
-        F: PRP,
+        Content: ContentUnwrap<F, Store> + Send,
+        F: PRP + Send,
+        Store: Sync
     {
         let mut pcf = pcf::PCF::default_with_content(content);
         pcf.unwrap(store, &mut self.ctx).await?;

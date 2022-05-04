@@ -104,12 +104,12 @@ where
     pub(crate) _phantom: core::marker::PhantomData<(F, Link)>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, F, Link>
 where
-    F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
+    F: 'a + PRP + Send + Sync, // weird 'a constraint, but compiler requires it somehow?!
+    Link: HasLink + Send + Sync,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + Sync + Send,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -147,15 +147,15 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, F, Link>
 where
-    F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    F: 'a + PRP + Send + Sync, // weird 'a constraint, but compiler requires it somehow?!
+    Link: HasLink + Send + Sync,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + Sync + Send,
+    Store: LinkStore<F, <Link as HasLink>::Rel> + Sync,
 {
-    async fn wrap<'c, OS: io::OStream>(
+    async fn wrap<'c, OS: io::OStream + Send>(
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -237,18 +237,18 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a, 'b, F, Link, LStore, PskStore, KeSkStore> message::ContentUnwrap<F, LStore>
     for ContentUnwrap<'a, F, Link, PskStore, KeSkStore>
 where
-    F: PRP + Clone,
-    Link: HasLink,
-    Link::Rel: Eq + Default + SkipFallback<F>,
-    LStore: LinkStore<F, Link::Rel>,
-    PskStore: for<'c> Lookup<&'c Identifier, psk::Psk>,
-    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b,
+    F: PRP + Clone + Send + Sync,
+    Link: HasLink + Send + Sync,
+    Link::Rel: Eq + Default + SkipFallback<F> + Send + Sync,
+    LStore: LinkStore<F, Link::Rel> + Sync,
+    PskStore: for<'c> Lookup<&'c Identifier, psk::Psk> + Send,
+    KeSkStore: for<'c> Lookup<&'c Identifier, &'b x25519::StaticSecret> + 'b + Send,
 {
-    async fn unwrap<'c, IS: io::IStream>(
+    async fn unwrap<'c, IS: io::IStream + Send>(
         &mut self,
         store: &LStore,
         ctx: &'c mut unwrap::Context<F, IS>,

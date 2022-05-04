@@ -234,7 +234,7 @@ impl<Trans> User<Trans> {
     }
 }
 
-impl<Trans: Transport + Clone> User<Trans> {
+impl<Trans: Transport + Clone + Send + Sync> User<Trans> {
     /// Send a message with sequencing logic. If channel is single-branched, then no secondary
     /// sequence message is sent and None is returned for the address.
     ///
@@ -535,10 +535,10 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     /// # Arguments
     /// * `msg` - Binary message of unknown type
-    #[async_recursion(?Send)]
+    #[async_recursion]
     pub async fn handle_message<M>(&mut self, msg: M, store: bool) -> Result<UnwrappedMessage>
     where
-        M: AsRef<BinaryMessage>,
+        M: AsRef<BinaryMessage> + Send,
     {
         let msg = msg.as_ref();
         let preparsed: Preparsed = msg.parse_header().await?;
@@ -626,7 +626,7 @@ impl<Trans: Transport + Clone> User<Trans> {
     }
 }
 
-impl<Trans> IntoMessages<Trans> for User<Trans> {
+impl<Trans> IntoMessages<Trans> for User<Trans> where Trans: Sync + Send {
     fn messages(&mut self) -> Messages<'_, Trans>
     where
         Trans: Transport,

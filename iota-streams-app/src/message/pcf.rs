@@ -115,11 +115,11 @@ impl<Content> PCF<Content> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Content> ContentSizeof<F> for PCF<Content>
 where
-    F: PRP,
-    Content: ContentSizeof<F>,
+    F: PRP + Send,
+    Content: ContentSizeof<F> + Send + Sync,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         ctx.absorb(&self.frame_type)?.skip(&self.payload_frame_num)?;
@@ -128,13 +128,14 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Content, Store> ContentWrap<F, Store> for PCF<Content>
 where
-    F: PRP,
-    Content: ContentWrap<F, Store>,
+    F: PRP + Send,
+    Content: ContentWrap<F, Store> + Send + Sync,
+    Store: Sync
 {
-    async fn wrap<'c, OS: io::OStream>(
+    async fn wrap<'c, OS: io::OStream + Send>(
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -145,13 +146,14 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Content, Store> ContentUnwrap<F, Store> for PCF<Content>
 where
-    F: PRP,
-    Content: ContentUnwrap<F, Store>,
+    F: PRP + Send ,
+    Content: ContentUnwrap<F, Store> + Send ,
+    Store: Sync
 {
-    async fn unwrap<'c, IS: io::IStream>(
+    async fn unwrap<'c, IS: io::IStream + Send>(
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,

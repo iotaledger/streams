@@ -61,8 +61,8 @@ pub type BinaryMessage<AbsLink> = GenericMessage<AbsLink, BinaryBody>;
 impl<AbsLink> BinaryMessage<AbsLink> {
     pub async fn parse_header<F>(&self) -> Result<PreparsedMessage<'_, F, AbsLink>>
     where
-        F: PRP,
-        AbsLink: Clone + AbsorbExternalFallback<F> + HasLink + Debug,
+        F: PRP + Send + Sync,
+        AbsLink: Clone + AbsorbExternalFallback<F> + HasLink + Debug + Send + Sync,
     {
         let mut ctx = unwrap::Context::new(self.body.as_bytes());
         let mut header =

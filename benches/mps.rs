@@ -30,9 +30,6 @@ use iota_streams::{
     core_edsig::signature::ed25519::Keypair,
 };
 
-// const TANGLE_URL: &str = "http://68.183.204.5:14265/";
-const TANGLE_URL: &str = "http://65.108.208.75:14265";
-
 fn setup(handle: &tokio::runtime::Handle) -> impl FnMut() -> (Author<Client>, Address) + '_ {
     move || {
         handle.block_on(async {
@@ -60,16 +57,16 @@ pub fn publisher(c: &mut Criterion) {
     // (see https://github.com/bheisler/criterion.rs/issues/576).
     let runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let mut group = c.benchmark_group("Transactions per Second [write] [minPoWScore: 200]");
+    let mut publisher_benchmarks = c.benchmark_group(&format!("Transactions per Second [write] [{}]", TANGLE_URL));
     for n_items_magnitude in 1..=4 {
         let n_items = 1 * n_items_magnitude;
         let mut payload = [0; 1024];
         rand::thread_rng().fill(&mut payload);
-        group.throughput(Throughput::Elements(n_items));
-        group.sample_size(20);
+        publisher_benchmarks.throughput(Throughput::Elements(n_items));
+        publisher_benchmarks.sample_size(30);
         // group.sampling_mode(SamplingMode::Flat);
-        group.bench_with_input(
-            BenchmarkId::new("Streams publisher sendsing signed-packet", n_items),
+        publisher_benchmarks.bench_with_input(
+            BenchmarkId::new("Streams publisher sending signed-packets", n_items),
             &(runtime.handle(), n_items),
             |b, &(tokio_handle, n_items)| {
                 b.iter_batched_ref(
@@ -103,15 +100,15 @@ pub fn publisher(c: &mut Criterion) {
                     .finish(),
             )
             .unwrap();
-        group.bench_with_input(
-            BenchmarkId::new("[baseline] send an indexed payload using iota.rs Client", n_items),
+        publisher_benchmarks.bench_with_input(
+            BenchmarkId::new("[baseline] iota.rs Client sending Indexation Payloads", n_items),
             &(runtime.handle(), n_items),
             |b, &(tokio_handle, n_items)| {
                 b.iter(|| {
                     tokio_handle.block_on(async {
                         // let mut payload = payload.to_vec();
                         // let mut hasher = DefaultHasher::new();
-                        for i in 0..n_items {
+                        for _ in 0..n_items {
                             // payload.extend(i.to_be_bytes());
                             // payload.hash(&mut hasher);
                             // let index = hasher.finish();
@@ -129,7 +126,78 @@ pub fn publisher(c: &mut Criterion) {
             },
         );
     }
-    group.finish();
+    publisher_benchmarks.finish();
+
+    let mut subscriber_benchmarks = c.benchmark_group(&format!("Transactions per Second [read] [{}]", TANGLE_URL));
+    for n_items_magnitude in 1..=4 {
+        let n_items = 1 * n_items_magnitude;
+        let mut payload = [0; 1024];
+        rand::thread_rng().fill(&mut payload);
+        subscriber_benchmarks.throughput(Throughput::Elements(n_items));
+        subscriber_benchmarks.sample_size(30);
+        // group.sampling_mode(SamplingMode::Flat);
+        subscriber_benchmarks.bench_with_input(
+            BenchmarkId::new("Streams subscriber reading signed-packets", n_items),
+            &(runtime.handle(), n_items),
+            |b, &(tokio_handle, n_items)| {
+                b.iter_batched_ref(
+                    setup(runtime.handle()),
+                    |(author, keyload)| {
+                        // tokio::runtime::Runtime::new().unwrap().block_on(async move {
+                        tokio_handle.block_on(async {
+                            let (mut last_msg, _) = author
+                                .send_signed_packet(keyload, &payload.as_slice().into(), &[].into())
+                                .await
+                                .unwrap();
+                            for _ in 1..n_items {
+                                (last_msg, _) = author
+                                    .send_signed_packet(&last_msg, &payload.as_slice().into(), &[].into())
+                                    .await
+                                    .unwrap();
+                            }
+                        })
+                    },
+                    BatchSize::SmallInput,
+                );
+            },
+        );
+
+        let tangle_client = runtime
+            .block_on(
+                iota_client::Client::builder()
+                    .with_node(TANGLE_URL)
+                    .unwrap()
+                    .with_local_pow(true)
+                    .finish(),
+            )
+            .unwrap();
+        subscriber_benchmarks.bench_with_input(
+            BenchmarkId::new("[baseline] iota.rs Client sending Indexation Payloads", n_items),
+            &(runtime.handle(), n_items),
+            |b, &(tokio_handle, n_items)| {
+                b.iter(|| {
+                    tokio_handle.block_on(async {
+                        // let mut payload = payload.to_vec();
+                        // let mut hasher = DefaultHasher::new();
+                        for _ in 0..n_items {
+                            // payload.extend(i.to_be_bytes());
+                            // payload.hash(&mut hasher);
+                            // let index = hasher.finish();
+                            tangle_client
+                                .message()
+                               // .with_index(index.to_be_bytes())
+                                .with_index(&payload[0..32])
+                                .with_data(payload.to_vec())
+                                .finish()
+                                .await
+                                .unwrap();
+                        }
+                    });
+                });
+            },
+        );
+    }
+    subscriber_benchmarks.finish();
 }
 criterion_group!(benches, publisher);
 criterion_main!(benches);

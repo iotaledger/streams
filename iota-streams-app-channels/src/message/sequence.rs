@@ -55,12 +55,12 @@ where
     pub(crate) ref_link: &'a <Link as HasLink>::Rel,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a, F, Link> message::ContentSizeof<F> for ContentWrap<'a, Link>
 where
-    F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F>,
+    F: PRP + Send,
+    Link: HasLink + Send + Sync,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F> + Sync + Send,
 {
     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
         let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
@@ -73,15 +73,15 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a, F, Link, Store> message::ContentWrap<F, Store> for ContentWrap<'a, Link>
 where
-    F: PRP,
-    Link: HasLink,
-    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F>,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
+    F: PRP + Send,
+    Link: HasLink + Send + Sync,
+    <Link as HasLink>::Rel: 'a + Eq + SkipFallback<F> + AbsorbFallback<F> + Sync + Send,
+    Store: LinkStore<F, <Link as HasLink>::Rel> + Sync,
 {
-    async fn wrap<'c, OS: io::OStream>(
+    async fn wrap<'c, OS: io::OStream + Send>(
         &self,
         store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
@@ -117,15 +117,15 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, Link, Store> message::ContentUnwrap<F, Store> for ContentUnwrap<Link>
 where
-    F: PRP,
-    Link: HasLink,
-    Store: LinkStore<F, <Link as HasLink>::Rel>,
-    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F> + AbsorbFallback<F>,
+    F: PRP + Send,
+    Link: HasLink + Send + Sync,
+    Store: LinkStore<F, <Link as HasLink>::Rel> + Sync,
+    <Link as HasLink>::Rel: Eq + Default + SkipFallback<F> + AbsorbFallback<F> + Send,
 {
-    async fn unwrap<'c, IS: io::IStream>(
+    async fn unwrap<'c, IS: io::IStream + Send>(
         &mut self,
         store: &Store,
         ctx: &'c mut unwrap::Context<F, IS>,

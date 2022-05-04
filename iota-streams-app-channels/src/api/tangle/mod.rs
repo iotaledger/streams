@@ -228,4 +228,4 @@ mod subscriber;
 /// Tangle-specific Channel Subscriber type.
 pub use subscriber::Subscriber;
 
-pub mod test;
+// pub mod test;
