@@ -84,19 +84,17 @@ use identity::{
         Ed25519 as DIDEd25519,
         JcsEd25519,
         Named,
-        Signature,
-        SignatureOptions,
-        SignatureValue,
+        Proof,
+        ProofOptions,
+        ProofValue,
         Signer,
     },
     did::{
         verifiable::VerifierOptions,
         DID,
     },
-    iota::{
-        Client,
-        IotaDID,
-    },
+    iota::Client,
+    iota_core::IotaDID,
 };
 #[cfg(feature = "did")]
 use iota_streams_core::{
@@ -260,7 +258,7 @@ impl<F: PRP> UserIdentity<F> {
     /// # Arguments
     /// * `data` - Wrapper containing the prehashed bytes of a message
     #[cfg(feature = "did")]
-    async fn sign_data(&self, data: &mut DataWrapper) -> Result<Signature> {
+    async fn sign_data(&self, data: &mut DataWrapper) -> Result<Proof> {
         match &self.keys {
             Keys::DID(did_impl) => {
                 match did_impl {
@@ -273,7 +271,7 @@ impl<F: PRP> UserIdentity<F> {
                             data,
                             method.to_string(),
                             info.did_keypair.private().as_ref(),
-                            SignatureOptions::new(),
+                            ProofOptions::new(),
                         )?;
                     }
                 }
@@ -451,8 +449,8 @@ impl<F: PRP, IS: io::IStream> ContentVerify<'_, F, IS> for UserIdentity<F> {
 
                 let mut sig_bytes = Bytes(Vec::new());
                 ctx.absorb(&mut sig_bytes)?;
-                let mut signature = Signature::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
-                signature.set_value(SignatureValue::Signature(encode_b58(&sig_bytes.0)));
+                let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
+                signature.set_value(ProofValue::Signature(encode_b58(&sig_bytes.0)));
 
                 // Place hash in data wrapper and verify it
                 let wrapper = DataWrapper {
