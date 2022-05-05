@@ -44,6 +44,15 @@ async fn run_multi_branch_test<T: Transport>(transport: T, seed: &str) {
     println!("#######################################");
 }
 
+async fn run_permissions_test<T: Transport>(transport: T, seed: &str) {
+    println!("\tRunning permissions Test, seed: {}", seed);
+    match branching::permissions::example(transport, seed).await {
+        Err(err) => println!("Error in permissions test: {:?}", err),
+        Ok(_) => println!("\tpermissions Test completed!!"),
+    }
+    println!("#######################################");
+}
+
 async fn main_pure() {
     let transport = iota_streams::app_channels::api::BucketTransport::new();
 
@@ -57,7 +66,8 @@ async fn main_pure() {
     let transport = Rc::new(RefCell::new(transport));
 
     run_multi_branch_test(transport.clone(), "PURESEEDA").await;
-    run_recovery_test(transport, "PURESEEDB").await;
+    run_recovery_test(transport.clone(), "PURESEEDB").await;
+    run_permissions_test(transport, "PURESEEDC").await;
     println!("Done running pure tests without accessing Tangle");
     println!("#######################################");
 }
@@ -75,6 +85,7 @@ async fn main_client() {
 
     run_multi_branch_test(transport.clone(), &new_seed()).await;
     run_recovery_test(transport.clone(), &new_seed()).await;
+    run_permissions_test(transport.clone(), &new_seed()).await;
     run_did_author_test(transport).await;
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");

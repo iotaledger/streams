@@ -4,6 +4,7 @@ use core::{
         BorrowMut,
     },
     convert::TryFrom,
+    hash::Hash,
     marker::PhantomData,
 };
 
@@ -13,7 +14,13 @@ use crypto::{
 };
 
 use iota_streams_app::{
-    id::Identifier,
+    id::{
+        permission::{
+            Permission,
+            PermissionDuration,
+        },
+        Identifier,
+    },
     message::{
         hdf::HDF,
         *,
@@ -24,7 +31,6 @@ use iota_streams_core::{
     err,
     prelude::{
         string::ToString,
-        typenum::U32,
         Box,
         Vec,
     },
@@ -141,7 +147,7 @@ where
 impl<F, Link, LG, LS> User<F, Link, LG, LS>
 where
     F: PRP,
-    Link: HasLink + AbsorbExternalFallback<F> + Default + Clone,
+    Link: HasLink + AbsorbExternalFallback<F> + Default + Clone + Hash,
     Link::Base: Eq + ToString,
     Link::Rel: Eq + SkipFallback<F> + AbsorbFallback<F>,
     LG: LinkGenerator<Link>,
@@ -380,11 +386,7 @@ where
     pub fn insert_subscriber(&mut self, id: Identifier, subscriber_xkey: x25519::PublicKey) -> Result<()> {
         match (!self.key_store.contains_subscriber(&id), &self.appinst) {
             (_, None) => err!(UserNotRegistered),
-            (true, Some(ref_link)) => {
-                self.key_store
-                    .insert_cursor(id, Cursor::new_at(ref_link.rel().clone(), 0, INIT_MESSAGE_NUM));
-                self.key_store.insert_keys(id, subscriber_xkey)
-            }
+            (true, Some(_)) => self.key_store.insert_keys(id, subscriber_xkey),
             (false, Some(ref_link)) => err!(UserAlreadyRegistered(id.to_string(), ref_link.base().to_string())),
         }
     }
@@ -452,7 +454,7 @@ where
         &'a self,
         header: HDF<Link>,
         link_to: &'a Link::Rel,
-        keys: Vec<(Identifier, Vec<u8>)>,
+        keys: Vec<(Permission, Vec<u8>)>,
     ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>> {
         let nonce = NBytes::from(prng::random_nonce());
         let key = NBytes::from(prng::random_key());
@@ -473,7 +475,7 @@ where
         keys: I,
     ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>>
     where
-        I: IntoIterator<Item = &'b Identifier>,
+        I: IntoIterator<Item = &'b Permission>,
     {
         match self.seq_no() {
             Some(seq_no) => {
@@ -484,28 +486,9 @@ where
                     .with_payload_length(1)?
                     .with_seq_num(msg_cursor.seq_no)
                     .with_identifier(self.id());
+
                 let filtered_keys = self.key_store.filter(keys);
                 self.do_prepare_keyload(header, link_to.rel(), filtered_keys)
-            }
-            None => err!(SeqNumRetrievalFailure),
-        }
-    }
-
-    pub fn prepare_keyload_for_everyone<'a>(
-        &'a self,
-        link_to: &'a Link,
-    ) -> Result<PreparedMessage<F, Link, keyload::ContentWrap<'a, F, Link>>> {
-        match self.seq_no() {
-            Some(seq_no) => {
-                let msg_cursor = self.gen_link(self.id(), link_to.rel(), seq_no);
-                let header = hdf::HDF::new(msg_cursor.link)
-                    .with_previous_msg_link(Bytes(link_to.to_bytes()))
-                    .with_content_type(KEYLOAD)?
-                    .with_payload_length(1)?
-                    .with_seq_num(msg_cursor.seq_no)
-                    .with_identifier(self.id());
-                let keys = self.key_store.exchange_keys();
-                self.do_prepare_keyload(header, link_to.rel(), keys)
             }
             None => err!(SeqNumRetrievalFailure),
         }
@@ -515,15 +498,59 @@ where
     /// identified by pre-shared key IDs and by Ed25519 public keys.
     pub async fn share_keyload<'a, I>(&mut self, link_to: &Link, keys: I) -> Result<WrappedMessage<F, Link>>
     where
-        I: IntoIterator<Item = &'a Identifier>,
+        I: IntoIterator<Item = &'a Permission>,
     {
-        self.prepare_keyload(link_to, keys)?.wrap(&self.link_store).await
+        let perms: Vec<Permission> = keys.into_iter().copied().collect();
+        let prep = self.prepare_keyload(link_to, &perms)?;
+        let res = prep.wrap(&self.link_store).await;
+        match res {
+            Ok(wm) => self.handle_permissions(perms, wm, link_to),
+            Err(e) => Err(e),
+        }
     }
 
     /// Create keyload message with a new session key shared with all Subscribers
     /// known to Author.
     pub async fn share_keyload_for_everyone(&mut self, link_to: &Link) -> Result<WrappedMessage<F, Link>> {
-        self.prepare_keyload_for_everyone(link_to)?.wrap(&self.link_store).await
+        let keys = self.key_store.exchange_keys();
+        let perms: Vec<Permission> = keys
+            .into_iter()
+            .map(|k| {
+                match k.0 {
+                    Identifier::PskId(_) => Permission::Read(k.0),
+                    _ => Permission::ReadWrite(k.0, PermissionDuration::Perpetual),
+                }
+            })
+            .collect();
+        let prep = self.prepare_keyload(link_to, &perms)?;
+        let res = prep.wrap(&self.link_store).await;
+
+        match res {
+            Ok(wm) => self.handle_permissions(perms, wm, link_to),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn handle_permissions(
+        &mut self,
+        perms: Vec<Permission>,
+        wm: WrappedMessage<F, Link>,
+        link_to: &Link,
+    ) -> Result<WrappedMessage<F, Link>> {
+        for perm in &perms {
+            match perm {
+                Permission::Read(_) => {}
+                _ => {
+                    if !self.key_store.contains_subscriber(perm.identifier()) {
+                        self.key_store.insert_cursor(
+                            perm.identifier().clone(),
+                            Cursor::new_at(link_to.rel().clone(), 0, INIT_MESSAGE_NUM),
+                        );
+                    }
+                }
+            }
+        }
+        Ok(wm)
     }
 
     pub async fn unwrap_keyload<'a>(
@@ -580,11 +607,21 @@ where
 
                 // Store any unknown publishers
                 if let Some(appinst) = &self.appinst {
-                    for identifier in keys {
-                        if !identifier.is_psk() && !self.key_store.contains_subscriber(&identifier) {
-                            // Store at state 2 since 0 and 1 are reserved states
-                            self.key_store
-                                .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM));
+                    for permission in &keys {
+                        match permission {
+                            Permission::Read(_) => {
+                                // Nont need to add
+                            }
+                            _ => {
+                                let identifier = permission.identifier();
+                                if !self.key_store.contains_subscriber(identifier) {
+                                    // Store at state 2 since 0 and 1 are reserved states
+                                    self.key_store.insert_cursor(
+                                        *identifier,
+                                        Cursor::new_at(appinst.rel().clone(), 0, INIT_MESSAGE_NUM),
+                                    );
+                                }
+                            }
                         }
                     }
                 }
@@ -594,7 +631,6 @@ where
             None => err!(AuthorIdNotFound),
         }
     }
-
     /// Prepare SignedPacket message.
     pub fn prepare_signed_packet<'a>(
         &'a self,
@@ -977,6 +1013,7 @@ where
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
         }
+
         ctx.commit()?.squeeze(Mac(32))?;
         Ok(ctx)
     }
@@ -1035,6 +1072,7 @@ where
                 .absorb(Uint32(cursor.branch_no))?
                 .absorb(Uint32(cursor.seq_no))?;
         }
+
         ctx.commit()?.squeeze(Mac(32))?;
         Ok(ctx)
     }
@@ -1127,6 +1165,7 @@ where
         self.appinst = appinst;
         self.message_encoding = message_encoding.0;
         self.uniform_payload_length = uniform_payload_length.0 as usize;
+
         Ok(ctx)
     }
 }

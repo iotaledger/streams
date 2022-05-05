@@ -1,4 +1,7 @@
-use core::fmt;
+use core::{
+    fmt,
+    hash::Hash,
+};
 
 use iota_streams_core::{
     prelude::Vec,

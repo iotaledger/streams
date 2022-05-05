@@ -6,7 +6,10 @@ use core::{
 use crypto::keys::x25519;
 
 use iota_streams_app::{
-    id::Identifier,
+    id::{
+        permission::Permission,
+        Identifier,
+    },
     message::Cursor,
 };
 use iota_streams_core::{
@@ -23,6 +26,7 @@ use iota_streams_core::{
     Result,
 };
 
+#[derive(Debug)]
 pub struct KeyStore<Link> {
     /// Map from user identity -- ed25519 pk -- to
     /// a precalculated corresponding x25519 pk and some additional Cursor.
@@ -42,20 +46,17 @@ impl<Link> KeyStore<Link> {
 }
 
 impl<Link> KeyStore<Link> {
-    pub fn filter<'a, I>(&self, ids: I) -> Vec<(Identifier, Vec<u8>)>
+    pub fn filter<'a, I>(&self, ids: I) -> Vec<(Permission, Vec<u8>)>
     where
-        I: IntoIterator<Item = &'a Identifier>,
+        I: IntoIterator<Item = &'a Permission>,
     {
         ids.into_iter()
-            .filter_map(|id| match &id {
-                Identifier::PskId(pskid) => self
-                    .psks
-                    .get_key_value(pskid)
-                    .map(|(pskid, psk)| ((*pskid).into(), psk.to_vec())),
+            .filter_map(|p| match p.identifier() {
+                Identifier::PskId(pskid) => self.psks.get_key_value(pskid).map(|(_, psk)| (*p, psk.to_vec())),
                 _ => self
                     .keys
-                    .get_key_value(id)
-                    .map(|(id, pk)| (*id, pk.as_slice().to_vec())),
+                    .get_key_value(p.identifier())
+                    .map(|(_, pk)| (*p, pk.as_slice().to_vec())),
             })
             .collect()
     }

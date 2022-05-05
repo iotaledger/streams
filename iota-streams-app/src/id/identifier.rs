@@ -12,7 +12,7 @@ use iota_streams_core::{
         PskId,
     },
     sponge::prp::PRP,
-    Errors::BadOneof,
+    Errors,
     Result,
 };
 
@@ -223,7 +223,7 @@ impl<F: PRP, Store> ContentUnwrapNew<F, Store> for Identifier {
                 let did = IotaDID::parse(did_str)?;
                 Ok(((&did).into(), ctx))
             }
-            _ => err(BadOneof),
+            _ => err(Errors::BadOneof),
         }
     }
 }

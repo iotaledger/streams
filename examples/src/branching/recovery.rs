@@ -78,10 +78,13 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     for i in 6..11 {
         println!("Tagged packet {} - SubscriberA", i);
         previous_msg_link = {
-            let (msg, _seq) = subscriberA
+            let (msg, seq) = subscriberA
                 .send_tagged_packet(&previous_msg_link, &public_payload, &masked_payload)
                 .await?;
             println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
+            if let Some(seq) = seq {
+                println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
+            }
             msg
         };
     }
@@ -117,9 +120,16 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         );
     }
 
-    println!("States match...\nSending next sequenced message...");
+    // Find latest link again
+    previous_msg_link = author.receive_sequence(&latest_link).await?;
+    latest_link = &previous_msg_link;
+
+    println!(
+        "States match...\nSending next sequenced message... {}",
+        latest_link.msgid
+    );
     let (last_msg, _seq) = new_author
-        .send_signed_packet(latest_link, &public_payload, &masked_payload)
+        .send_signed_packet(&previous_msg_link, &public_payload, &masked_payload)
         .await?;
     println!("  msg => <{}> <{:x}>", last_msg.msgid, last_msg.to_msg_index());
 
@@ -146,7 +156,14 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
     println!("Author imported...");
     let retrieved_announcement = new_auth.announcement_link().unwrap();
     assert!(retrieved_announcement == announcement_link);
-    println!("Imported Author announcement message matches original\n");
+    println!("Imported Author announcement message matches original\nSending next sequenced message");
 
+    let (last_msg, _seq) = new_author
+        .send_signed_packet(&last_msg, &public_payload, &masked_payload)
+        .await?;
+    println!("  msg => <{}> <{:x}>", last_msg.msgid, last_msg.to_msg_index());
+
+    println!("\nSubscriber A fetching transactions...");
+    subscriberA.fetch_next_msgs().await?;
     Ok(())
 }

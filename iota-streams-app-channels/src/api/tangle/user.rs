@@ -8,7 +8,10 @@ use futures::{
 
 use crypto::keys::x25519;
 use iota_streams_app::{
-    id::Identifier,
+    id::{
+        permission::Permission,
+        Identifier,
+    },
     message::HasLink,
 };
 use iota_streams_core::{
@@ -272,10 +275,10 @@ impl<Trans: Transport + Clone> User<Trans> {
     ///
     ///  # Arguments
     ///  * `link_to` - Address of the message the keyload will be attached to
-    ///  * `keys`  - Iterable of [`Identifier`] to be included in message
+    ///  * `keys`  - Iterable of [`Permission`] to be included in message
     pub async fn send_keyload<'a, I>(&mut self, link_to: &Address, keys: I) -> Result<(Address, Option<Address>)>
     where
-        I: IntoIterator<Item = &'a Identifier>,
+        I: IntoIterator<Item = &'a Permission>,
     {
         let msg = self.user.share_keyload(link_to, keys).await?;
         self.send_message_sequenced(msg, link_to.rel(), MsgInfo::Keyload).await
@@ -516,6 +519,11 @@ impl<Trans: Transport + Clone> User<Trans> {
                         ))
                     })
                     .await
+            }
+            message::ANNOUNCE => {
+                self.user.handle_announcement(&msg, MsgInfo::Announce).await?;
+                let link = preparsed.header.link;
+                Ok(UnwrappedMessage::new(link, link, MessageContent::new_announce()))
             }
             unknown_content => err!(UnknownMsgType(unknown_content)),
         }

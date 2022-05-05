@@ -1,5 +1,8 @@
 use crate::{
-    id::Identifier,
+    id::{
+        permission::Permission,
+        Identifier,
+    },
     message::{
         ContentSign,
         ContentSizeof,
@@ -319,6 +322,15 @@ impl<F> From<Identifier> for UserIdentity<F> {
     fn from(id: Identifier) -> Self {
         UserIdentity {
             id,
+            ..Default::default()
+        }
+    }
+}
+
+impl<F> From<Permission> for UserIdentity<F> {
+    fn from(permission: Permission) -> Self {
+        UserIdentity {
+            id: *permission.identifier(),
             ..Default::default()
         }
     }
