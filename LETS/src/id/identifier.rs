@@ -96,12 +96,22 @@ use crate::{
     },
 };
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Identifier {
     Ed25519(ed25519::PublicKey),
     PskId(PskId),
     #[cfg(feature = "did")]
     DID(DIDMethodId),
+}
+
+impl core::fmt::Debug for Identifier {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Ed25519(arg0) => f.debug_tuple("Ed25519").field(&hex::encode(&arg0)).finish(),
+            Self::PskId(arg0) => f.debug_tuple("PskId").field(&hex::encode(arg0)).finish(),
+            Self::DID(arg0) => f.debug_tuple("DID").field(&hex::encode(arg0)).finish(),
+        }
+    }
 }
 
 impl Identifier {
@@ -165,8 +175,8 @@ impl From<PskId> for Identifier {
     }
 }
 
-impl From<&Psk> for Identifier {
-    fn from(psk: &Psk) -> Self {
+impl From<Psk> for Identifier {
+    fn from(psk: Psk) -> Self {
         // TODO: REMOVE TYPE PARAMETER OR REMOTE TYPE ARGUMENT ASSUMPTION
         Identifier::PskId(psk.to_pskid::<KeccakF1600>())
     }

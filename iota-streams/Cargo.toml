@@ -14,7 +14,8 @@ readme = "README.md"
 version = "0.1.2"
 
 [features]
-default = ["tangle-client"]
+default = ["tangle-client", "did"]
+did = ["LETS/did"]
 # Enable re-export of IOTA-Tangle transport client from LETS
 tangle-client = ["LETS/tangle-client"]
 # Enable re-export of wasm-compatible IOTA-Tangle transport client from LETS (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`)
@@ -42,3 +43,4 @@ hex = {version = "0.4.3", default-features = false}
 rand = {version = "0.8.5", default-features = false, features = ["std", "std_rng"]}
 textwrap = {version = "0.15.0", default-features = false}
 tokio = {version = "1.15", default-features = false}
+identity = { git = "https://github.com/iotaledger/identity.rs", rev = "86edaad" }

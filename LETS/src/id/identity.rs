@@ -178,10 +178,28 @@ impl Identity {
     pub fn to_identifier(&self) -> Identifier {
         match self {
             Self::Ed25519(Ed25519(secret)) => secret.public_key().into(),
-            Self::Psk(psk) => psk.into(),
+            &Self::Psk(psk) => psk.into(),
             #[cfg(feature = "did")]
             Self::DID(did) => did.info().did().into(),
         }
+    }
+}
+
+impl From<Ed25519> for Identity {
+    fn from(ed25519: Ed25519) -> Self {
+        Self::Ed25519(ed25519)
+    }
+}
+
+impl From<Psk> for Identity {
+    fn from(psk: Psk) -> Self {
+        Self::Psk(psk)
+    }
+}
+
+impl From<DID> for Identity {
+    fn from(did: DID) -> Self {
+        Self::DID(did)
     }
 }
 

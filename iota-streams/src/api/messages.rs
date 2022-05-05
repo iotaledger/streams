@@ -58,7 +58,7 @@ use crate::api::{
         MessageContent,
         Orphan,
     },
-    user::GenericUser,
+    user::User,
 };
 // use crate::api::{
 //     Address,
@@ -77,8 +77,8 @@ use crate::api::{
 // TODO: Consider renaming msgs => messages
 // TODO: run examples in actions
 
-pub(crate) trait IntoMessages<T, TSR, F, A, AG> {
-    fn messages(&mut self) -> Messages<'_, T, TSR, F, A, AG>
+pub(crate) trait IntoMessages<T, F, A, AG> {
+    fn messages(&mut self) -> Messages<'_, T, F, A, AG>
     where
         A: Link;
 }
@@ -607,30 +607,30 @@ pub(crate) trait IntoMessages<T, TSR, F, A, AG> {
 /// network failure, [`Messages::next()`] will return `Err`. It is strongly suggested that, when suitable, use the
 /// methods in [`futures::TryStreamExt`] to make the error-handling much more ergonomic (with the use of `?`) and
 /// shortcircuit the [`futures::Stream`] on the first error.
-pub struct Messages<'a, T, TSR, F, A, AG>(
-    PinBoxFut<'a, (MessagesState<'a, T, TSR, F, A, AG>, Option<Result<Message<A>>>)>,
+pub struct Messages<'a, T, F, A, AG>(
+    PinBoxFut<'a, (MessagesState<'a, T, F, A, AG>, Option<Result<Message<A>>>)>,
 )
 where
     A: Link;
 
 type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
-struct MessagesState<'a, T, TSR, F, A, AG>
+struct MessagesState<'a, T, F, A, AG>
 where
     A: Link,
 {
-    user: &'a mut GenericUser<T, TSR, F, A, AG>,
+    user: &'a mut User<T, F, A, AG>,
     ids_stack: Vec<(Identifier, u64)>,
     msg_queue: HashMap<A::Relative, VecDeque<(A::Relative, TransportMessage<Vec<u8>>)>>,
     stage: VecDeque<(A::Relative, TransportMessage<Vec<u8>>)>,
     successful_round: bool,
 }
 
-impl<'a, T, TSR, F, A, AG> MessagesState<'a, T, TSR, F, A, AG>
+impl<'a, T, F, A, AG> MessagesState<'a, T, F, A, AG>
 where
     A: Link,
 {
-    fn new(user: &'a mut GenericUser<T, TSR, F, A, AG>) -> Self {
+    fn new(user: &'a mut User<T, F, A, AG>) -> Self {
         Self {
             user,
             ids_stack: Vec::new(),
@@ -652,7 +652,7 @@ where
         F: PRP + Default + Clone,
         AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, u64)> + Default,
         for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-        T: for<'b> Transport<&'b A, TransportMessage<Vec<u8>>, TSR>,
+        T: for <'b> Transport<'b, Address = &'b A , Msg = TransportMessage<Vec<u8>>>,
     {
         if let Some((relative_address, binary_msg)) = self.stage.pop_front() {
             // Drain stage if not empty...
@@ -740,7 +740,7 @@ where
     }
 }
 
-impl<'a, T, TSR, F, A, AG> Messages<'a, T, TSR, F, A, AG>
+impl<'a, T, F, A, AG> Messages<'a, T, F, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
@@ -748,9 +748,9 @@ where
     F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, u64)> + Default,
     for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<&'b A, TransportMessage<Vec<u8>>, TSR>,
+    T: for <'b>Transport<'b, Address = &'b A, Msg = TransportMessage<Vec<u8>>>,
 {
-    pub(crate) fn new(user: &'a mut GenericUser<T, TSR, F, A, AG>) -> Self {
+    pub(crate) fn new(user: &'a mut User<T, F, A, AG>) -> Self {
         let mut state = MessagesState::new(user);
         Self(Box::pin(async move {
             let r = state.next().await;
@@ -794,7 +794,7 @@ where
     }
 }
 
-impl<'a, T, TSR, F, A, AG> From<&'a mut GenericUser<T, TSR, F, A, AG>> for Messages<'a, T, TSR, F, A, AG>
+impl<'a, T, F, A, AG> From<&'a mut User<T, F, A, AG>> for Messages<'a, T, F, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
@@ -802,14 +802,14 @@ where
     F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, u64)> + Default,
     for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<&'b A, TransportMessage<Vec<u8>>, TSR>,
+    T: for <'b>Transport<'b, Address = &'b A, Msg = TransportMessage<Vec<u8>>>,
 {
-    fn from(user: &'a mut GenericUser<T, TSR, F, A, AG>) -> Self {
+    fn from(user: &'a mut User<T, F, A, AG>) -> Self {
         Self::new(user)
     }
 }
 
-impl<'a, T, TSR, F, A, AG> Stream for Messages<'a, T, TSR, F, A, AG>
+impl<'a, T, F, A, AG> Stream for Messages<'a, T, F, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
@@ -817,7 +817,7 @@ where
     F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, u64)> + Default,
     for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<&'b A, TransportMessage<Vec<u8>>, TSR>,
+    T: for <'b>Transport<'b, Address = &'b A, Msg = TransportMessage<Vec<u8>>>,
 {
     type Item = Result<Message<A>>;
 

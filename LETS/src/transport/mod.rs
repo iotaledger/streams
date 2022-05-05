@@ -27,25 +27,25 @@ use async_trait::async_trait;
 /// Parametrized by the type of message links.
 /// Message link is used to identify/locate a message (eg. like URL for HTTP).
 #[async_trait(?Send)]
-pub trait Transport<Address, Msg, SendResponse> {
+pub trait Transport<'a> {
+    type Address;
+    type Msg;
+    type SendResponse;
     // TODO: CONSIDER CONVERTING TYPE PARAMETERS TO ASSOCIATED TYPES
     /// Send a message
-    async fn send_message(&mut self, link: Address, msg: Msg) -> Result<SendResponse>
+    async fn send_message(&mut self, link: Self::Address, msg: Self::Msg) -> Result<Self::SendResponse>
     where
-        Msg: 'async_trait,
-        Address: 'async_trait;
-    // 'async_trait is necessary when the type implementing transport has type parameters
-    // (see https://github.com/dtolnay/async-trait/issues/8#issuecomment-514812245)
+        'a: 'async_trait;
 
     /// Receive messages
-    async fn recv_messages(&mut self, link: Address) -> Result<Vec<Msg>>
+    async fn recv_messages(&mut self, link: Self::Address) -> Result<Vec<Self::Msg>>
     where
-        Address: 'async_trait;
+        'a: 'async_trait;
 
     /// Receive a single message
-    async fn recv_message(&mut self, link: Address) -> Result<Msg>
+    async fn recv_message(&mut self, link: Self::Address) -> Result<Self::Msg>
     where
-        Address: Display + Clone + 'async_trait,
+        Self::Address: Display + Clone + 'async_trait,
     {
         let mut msgs = self.recv_messages(link.clone()).await?;
         if let Some(msg) = msgs.pop() {
@@ -58,22 +58,24 @@ pub trait Transport<Address, Msg, SendResponse> {
 }
 
 #[async_trait(?Send)]
-impl<Link, Msg, SendResponse, Tsp: Transport<Link, Msg, SendResponse>> Transport<Link, Msg, SendResponse>
-    for Rc<RefCell<Tsp>>
-{
+impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
+    type Address = Tsp::Address;
+    type Msg = Tsp::Msg;
+    type SendResponse = Tsp::SendResponse;
+
     // Send a message.
-    async fn send_message(&mut self, link: Link, msg: Msg) -> Result<SendResponse>
+    async fn send_message(&mut self, link: Tsp::Address, msg: Tsp::Msg) -> Result<Tsp::SendResponse>
     where
-        Msg: 'async_trait,
-        Link: 'async_trait,
+        Self::Address: 'async_trait,
+        Self::Msg: 'async_trait,
     {
         self.borrow_mut().send_message(link, msg).await
     }
 
     // Receive messages with default options.
-    async fn recv_messages(&mut self, link: Link) -> Result<Vec<Msg>>
+    async fn recv_messages(&mut self, link: Tsp::Address) -> Result<Vec<Tsp::Msg>>
     where
-        Link: 'async_trait,
+        Self::Address: 'async_trait,
     {
         self.borrow_mut().recv_messages(link).await
     }

@@ -72,8 +72,11 @@ impl<T> UserBuilder<T> {
     ///
     /// # Arguments
     /// * `id` - UserIdentity to be used for base identification of the Streams User
-    pub fn with_identity(mut self, id: Identity) -> Self {
-        self.id = Some(id);
+    pub fn with_identity<I>(mut self, id: I) -> Self
+    where
+        I: Into<Identity>,
+    {
+        self.id = Some(id.into());
         self
     }
 
@@ -81,9 +84,9 @@ impl<T> UserBuilder<T> {
     ///
     /// # Arguments
     /// * `transport` - Transport Client to be used by the Streams User
-    pub fn with_transport<NewTransport, TSR>(self, transport: NewTransport) -> UserBuilder<NewTransport>
+    pub fn with_transport<NewTransport>(self, transport: NewTransport) -> UserBuilder<NewTransport>
     where
-        NewTransport: for<'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TSR>,
+        NewTransport: for <'a> Transport<'a>,
     {
         UserBuilder {
             transport: Some(transport),
@@ -92,11 +95,12 @@ impl<T> UserBuilder<T> {
     }
 
     /// Use the default version of the Transport Client
-    pub async fn with_default_transport<TSR>(mut self) -> Result<Self>
+    pub async fn with_default_transport(mut self) -> Result<Self>
     where
-        T: for<'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TSR> + DefaultTransport,
+        T: for <'a> Transport<'a> + DefaultTransport,
     {
-        // Separated as a method instead of defaulting at build to avoid requiring the bespoke bound T: AsyncDefault
+        // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke bound T: DefaultTransport
+        // for all transports
         self.transport = Some(T::try_default().await?);
         Ok(self)
     }
@@ -175,7 +179,7 @@ impl<T> UserBuilder<T> {
     /// # Ok(())
     /// # }
     /// ```Default
-    pub fn build<TSR>(self) -> Result<User<T, TSR>> {
+    pub fn build(self) -> Result<User<T>> {
         let id = self
             .id
             .ok_or_else(|| anyhow!("user Identity not specified, cannot build User without Identity"))?;
@@ -241,7 +245,7 @@ impl<T> UserBuilder<T> {
     /// # Ok(())
     /// # }
     /// ```
-    async fn recover<TSR>(self, announcement: Address) -> Result<User<T, TSR>>
+    async fn recover(self, announcement: Address) -> Result<User<T>>
     where
         //     A: Link + Display + Clone,
         //     A::Base: Clone,
@@ -251,7 +255,7 @@ impl<T> UserBuilder<T> {
         //     // Hack necessary to workaround apparent infinite recursivity in Absorb<&mut Option<T>> for unwrap::Context.
         //     // Investigate!
         //     for<'a, 'b, 'c> &'a mut unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-        T: for<'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TSR>,
+    T: for <'a> Transport<'a, Address = &'a Address, Msg = TransportMessage<Vec<u8>>>,
         //     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, u64)> + Default,
     {
         let mut user = self.build()?;
@@ -271,7 +275,7 @@ where
 
 #[async_trait(?Send)]
 #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
-impl DefaultTransport for LETS::transport::tangle::Client {
+impl<Message, SendResponse> DefaultTransport for LETS::transport::tangle::Client<Message, SendResponse> {
     async fn try_default() -> Result<Self> {
         Self::for_node("https://chrysalis-nodes.iota.org").await
     }

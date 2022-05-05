@@ -140,6 +140,9 @@ pub struct DIDInfo {
 }
 
 impl DIDInfo {
+    pub fn new(did: IotaDID, key_fragment: String, keypair: identity::crypto::KeyPair) -> Self {
+        Self { did, key_fragment, keypair}
+    }
     pub(crate) fn did(&self) -> &IotaDID {
         &self.did
     }

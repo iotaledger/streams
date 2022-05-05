@@ -14,3 +14,8 @@ pub use psk::{
 
 #[cfg(feature = "did")]
 mod did;
+
+pub use did::{
+    DIDInfo,
+    DID,
+};

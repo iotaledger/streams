@@ -4,7 +4,7 @@ use alloc::{
     collections::BTreeMap,
     vec::Vec,
 };
-use core::fmt::Display;
+use core::{fmt::Display, marker::PhantomData};
 
 // 3rd-party
 use anyhow::{
@@ -47,12 +47,15 @@ impl<Link, Msg> Default for Client<Link, Msg> {
 }
 
 #[async_trait(?Send)]
-impl<'a, Address, Msg> Transport<&'a Address, Msg, Msg> for Client<Address, Msg>
+impl<'a, Address, Msg> Transport<'a> for Client<Address, Msg>
 where
-    Address: Ord + Display + Clone,
+    Address: Ord + Display + Clone + 'a,
     Msg: Clone,
 {
-    async fn send_message(&mut self, addr: &'a Address, msg: Msg) -> Result<Msg> {
+    type Address = &'a Address;
+    type Msg = Msg;
+    type SendResponse = Msg;
+    async fn send_message(&mut self, addr: &'a Address, msg: Msg) -> Result<Msg> where Self::Address: 'async_trait, Self::Msg: 'async_trait, 'a: 'async_trait {
         self.bucket.entry(addr.clone()).or_default().push(msg.clone());
         Ok(msg)
     }

@@ -1,23 +1,28 @@
 // Rust
 
 // 3rd-party
+use textwrap::indent;
 
 // IOTA
 
 // Streams
+use iota_streams::{
+    Address,
+    SendResponse,
+    TransportMessage,
+    User,
+};
 
 // Local
-use crate::GenericTransport;
 
-pub async fn fetch_next_messages<T, S>(streamable: &mut S) -> Result<()>
-where
-    T: Transport,
-    S: IntoMessages<T>,
-{
-    let mut msgs = streamable.messages();
-    while let Some(msg) = msgs.try_next().await? {
-        println!("Message exists at {}... ", &msg.link.rel());
-    }
-    println!("No more messages in sequence.");
-    Ok(())
+pub fn print_user<T>(user_name: &str, user: &User<T>) {
+    println!("  {}:\n{}", user_name, indent(&format!("{:?}", user), "\t"));
+}
+
+pub fn print_send_result(msg: &SendResponse<Address, TransportMessage<Vec<u8>>>) {
+    println!(
+        "  msg => <{}> [{}]",
+        msg.address().relative(),
+        hex::encode(msg.address().to_msg_index())
+    );
 }

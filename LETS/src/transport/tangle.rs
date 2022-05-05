@@ -3,7 +3,10 @@ use alloc::{
     boxed::Box,
     vec::Vec,
 };
-use core::fmt::Display;
+use core::{
+    fmt::Display,
+    marker::PhantomData,
+};
 
 // 3rd-party
 use anyhow::{
@@ -36,22 +39,23 @@ use crate::{
 
 #[derive(Debug)]
 /// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
-pub struct Client(iota_client::Client);
+pub struct Client<Message, SendResponse>(iota_client::Client, PhantomData<(Message, SendResponse)>);
 
-impl Client {
+impl<Message, SendResponse> Client<Message, SendResponse> {
     // Create an instance of Client with a ready client and its send options
     pub fn new(client: iota_client::Client) -> Self {
-        Self(client)
+        Self(client, PhantomData)
     }
 
     // Shortcut to create an instance of Client connecting to a node with default parameters
-    pub async fn for_node(node_url: &str) -> Result<Self> {
+    pub async fn for_node(node_url: &str) -> Result<Client<Message, SendResponse>> {
         Ok(Self(
             iota_client::ClientBuilder::new()
                 .with_node(node_url)?
                 .with_local_pow(true)
                 .finish()
                 .await?,
+            PhantomData,
         ))
     }
 
@@ -65,11 +69,15 @@ impl Client {
 }
 
 #[async_trait(?Send)]
-impl<'a, Message, SendResponse> Transport<&'a Address, Message, SendResponse> for Client
+impl<'a, Message, SendResponse> Transport<'a> for Client<Message, SendResponse>
 where
     Message: Into<Vec<u8>> + From<IotaMessage>,
     SendResponse: From<IotaMessage>,
 {
+    type Address = &'a Address;
+    type Msg = Message;
+    type SendResponse = SendResponse;
+
     async fn send_message(&mut self, address: &'a Address, msg: Message) -> Result<SendResponse>
     where
         Message: 'async_trait,
@@ -77,7 +85,7 @@ where
         Ok(self
             .client()
             .message()
-            .with_index(address.to_blake2b())
+            .with_index(address.to_msg_index())
             .with_data(msg.into())
             .finish()
             .await?
@@ -85,7 +93,7 @@ where
     }
 
     async fn recv_messages(&mut self, address: &'a Address) -> Result<Vec<Message>> {
-        let msg_ids = self.client().get_message().index(address.to_blake2b()).await?;
+        let msg_ids = self.client().get_message().index(address.to_msg_index()).await?;
         ensure!(!msg_ids.is_empty(), "no message found at index '{}'", address);
 
         let msgs = try_join_all(

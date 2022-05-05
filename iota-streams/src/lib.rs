@@ -48,5 +48,6 @@ pub use api::{
 pub use LETS::{
     id,
     link::Address,
+    message::TransportMessage,
     transport,
 };

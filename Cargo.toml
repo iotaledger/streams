@@ -5,3 +5,6 @@ members = [
     "LETS",
     "iota-streams"
 ]
+
+[profile.dev]
+incremental = true

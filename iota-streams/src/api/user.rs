@@ -114,9 +114,7 @@ const SUB_MESSAGE_NUM: u64 = 0; // Subscription is always the first message of s
 const SEQ_MESSAGE_NUM: u64 = 1; // Reserved for sequence messages
 const INIT_MESSAGE_NUM: u64 = 2; // First non-reserved message number
 
-pub type User<T, TSR> = GenericUser<T, TSR, KeccakF1600, Address, AddressGenerator<KeccakF1600>>;
-
-pub struct GenericUser<T, TSR, F, A, AG>
+pub struct User<T, F = KeccakF1600, A = Address, AG = AddressGenerator<KeccakF1600>>
 where
     A: Link,
 {
@@ -138,17 +136,15 @@ where
 
     /// Address generator.
     link_generator: AG,
-
-    phantom: PhantomData<TSR>,
 }
 
-impl GenericUser<(), (), KeccakF1600, Address, AddressGenerator<KeccakF1600>> {
+impl User<(), KeccakF1600, Address, AddressGenerator<KeccakF1600>> {
     pub fn builder() -> UserBuilder<()> {
         UserBuilder::new()
     }
 }
 
-impl<T, TSR, F, A, AG> GenericUser<T, TSR, F, A, AG>
+impl<T, F, A, AG> User<T, F, A, AG>
 where
     A: Link,
     F: PRP + Default,
@@ -179,7 +175,6 @@ where
             link_generator: Default::default(),
             stream_address: None,
             author_identifier: None,
-            phantom: PhantomData,
         }
     }
 
@@ -207,15 +202,14 @@ where
         self.id_store.subscribers()
     }
 
-    fn add_subscriber(&mut self, subscriber: Identifier) -> Result<bool> {
-        let is_new = self.id_store.insert_cursor(subscriber, 1)
+    pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
+        self.id_store.insert_cursor(subscriber, 1)
             && self.id_store.insert_key(
                 subscriber,
-                subscriber._ke_pk().ok_or_else(|| {
-                    anyhow!("subscriber must have an identifier from which an x25519 public key can be derived")
-                })?,
-            );
-        Ok(is_new)
+                subscriber
+                    ._ke_pk()
+                    .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
+            )
     }
 
     pub fn remove_subscriber(&mut self, id: Identifier) -> bool {
@@ -261,10 +255,10 @@ where
     }
 }
 
-impl<T, TSR, F, A, AG> GenericUser<T, TSR, F, A, AG>
+impl<T, F, A, AG, TSR> User<T, F, A, AG>
 where
-    T: for<'a> Transport<&'a A, TransportMessage<Vec<u8>>, TSR>,
-    A: Link + Display + Clone,
+    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>, SendResponse = TSR>,
+    A: Link + Display + Clone + 'static,
     A::Relative: Clone + Eq + Hash + Display,
     F: PRP + Default + Clone,
     for<'a, 'b> wrap::Context<F, &'a mut [u8]>: Absorb<&'b A::Relative>,
@@ -599,7 +593,7 @@ where
     }
 }
 
-impl<T, TSR, F, A, AG> GenericUser<T, TSR, F, A, AG>
+impl<T, F, A, AG> User<T, F, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
@@ -608,7 +602,8 @@ where
 {
     pub async fn receive_message(&mut self, address: A) -> Result<Message<A>>
     where
-        T: for<'a> Transport<&'a A, TransportMessage<Vec<u8>>, TSR>,
+        A: 'static,
+        T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
     {
         let msg = self.transport.recv_message(&address).await?;
         self.handle_message(address, msg).await
@@ -652,9 +647,7 @@ where
 
         // Store message content into stores
         let author_id = message.payload().content().author_id();
-        let author_ke_pk = author_id
-            ._ke_pk()
-            .expect("Stream's author must have an identifier from which an x25519 public key can be derived");
+        let author_ke_pk = message.payload().content().author_ke_pk();
         self.id_store.insert_key(author_id, author_ke_pk);
         self.stream_address = Some(address.clone());
         self.author_identifier = Some(author_id);
@@ -692,12 +685,8 @@ where
 
         // Store message content into stores
         let subscriber_identifier = message.payload().content().subscriber_identifier();
-        self.id_store.insert_key(
-            subscriber_identifier,
-            subscriber_identifier._ke_pk().ok_or_else(|| {
-                anyhow!("subscriber must have an identifier from which an x25519 public key can be derived")
-            })?,
-        );
+        let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
+        self.id_store.insert_key(subscriber_identifier, subscriber_ke_pk);
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -844,20 +833,20 @@ where
     }
 }
 
-impl<T, TSR, F, A, AG> GenericUser<T, TSR, F, A, AG>
+impl<T, F, A, AG> User<T, F, A, AG>
 where
-    A: Link + Display + Clone,
+    A: Link + Display + Clone + 'static,
     A::Base: Clone,
     A::Relative: Clone + Eq + Hash + Default,
     F: PRP + Default + Clone,
     for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
-    T: for<'a> Transport<&'a A, TransportMessage<Vec<u8>>, TSR>,
+    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, u64)> + Default,
 {
     /// Start a [`Messages`] stream to traverse the channel messages
     ///
     /// See the documentation in [`Messages`] for more details and examples.
-    pub fn messages(&mut self) -> Messages<T, TSR, F, A, AG> {
+    pub fn messages(&mut self) -> Messages<T, F, A, AG> {
         IntoMessages::messages(self)
     }
 
@@ -1260,22 +1249,22 @@ where
 //     }
 // }
 
-impl<T, TSR, F, A, AG> IntoMessages<T, TSR, F, A, AG> for GenericUser<T, TSR, F, A, AG>
+impl<T, F, A, AG> IntoMessages<T, F, A, AG> for User<T, F, A, AG>
 where
-    A: Link + Display + Clone,
+    A: Link + Display + Clone + 'static,
     A::Relative: Clone + Eq + Hash + Default,
     A::Base: Clone,
     F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, u64)> + Default,
     for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<&'b A, TransportMessage<Vec<u8>>, TSR>,
+    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
 {
-    fn messages(&mut self) -> Messages<'_, T, TSR, F, A, AG> {
+    fn messages(&mut self) -> Messages<'_, T, F, A, AG> {
         Messages::new(self)
     }
 }
 
-impl<T, TSR, F, A, AG> Debug for GenericUser<T, TSR, F, A, AG>
+impl<T, F, A, AG> Debug for User<T, F, A, AG>
 where
     A: Link,
     A::Relative: Display,

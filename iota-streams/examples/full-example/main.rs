@@ -20,18 +20,28 @@ use iota_streams::{
     },
     Address,
     Message,
+    TransportMessage,
 };
-use LETS::message::TransportMessage;
 
 mod branching;
 
 trait GenericTransport:
-    for<'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>> + Clone
+    for<'a> Transport<
+        'a,
+        Address = &'a Address,
+        Msg = TransportMessage<Vec<u8>>,
+        SendResponse = TransportMessage<Vec<u8>>,
+    > + Clone
 {
 }
 
 impl<T> GenericTransport for T where
-    T: for<'a> Transport<&'a Address, TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>> + Clone
+    T: for<'a> Transport<
+            'a,
+            Address = &'a Address,
+            Msg = TransportMessage<Vec<u8>>,
+            SendResponse = TransportMessage<Vec<u8>>,
+        > + Clone
 {
 }
 
@@ -44,28 +54,29 @@ impl<T> GenericTransport for T where
 //     println!("#######################################");
 // }
 
-// async fn run_did_author_test(transport: tangle::Client) {
-//     println!("\tRunning DID Test");
-//     match branching::did_author::example(transport).await {
-//         Err(err) => println!("Error in DID test: {:?}", err),
-//         Ok(_) => println!("\tDID test completed!!"),
-//     }
-//     println!("#######################################");
-// }
+type TangleClient = tangle::Client<TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>>;
+
+async fn run_did_test(transport: Rc<RefCell<TangleClient>>) -> Result<()> {
+    println!("## Running DID Test ##\n");
+    let result = branching::did::example(transport).await;
+    match &result {
+        Err(err) => eprintln!("Error in DID test: {:?}", err),
+        Ok(_) => println!("\n## DID test completed successfully!! ##\n"),
+    }
+    result
+}
 
 async fn run_multi_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
-    println!("Running multi branch test with seed: {}", seed);
+    println!("## Running multi branch test with seed: {} ##\n", seed);
     let result = branching::multi_branch::example(transport, seed).await;
     match &result {
-        Err(err) => println!("Error in Multi Branch test: {:?}", err),
-        Ok(_) => println!("Multi Branch Test completed successfully!!"),
+        Err(err) => eprintln!("Error in Multi Branch test: {:?}", err),
+        Ok(_) => println!("\n## Multi Branch Test completed successfully!! ##\n"),
     };
-    println!("#######################################");
     result
 }
 
 async fn main_pure() -> Result<()> {
-    let transport = bucket::Client::new();
 
     println!("\n");
     println!("###########################################");
@@ -73,12 +84,14 @@ async fn main_pure() -> Result<()> {
     println!("###########################################");
     println!("\n");
 
+    let transport = bucket::Client::new();
     // BucketTransport is an in-memory storage that needs to be shared between all the users,
     // hence the Rc<RefCell<BucketTransport>>
     let transport = Rc::new(RefCell::new(transport));
 
     run_multi_branch_test(transport.clone(), "PURESEEDA").await?;
     // run_recovery_test(transport, "PURESEEDB").await;
+    println!("################################################");
     println!("Done running pure tests without accessing Tangle");
     println!("################################################");
     Ok(())
@@ -88,22 +101,24 @@ async fn main_client() -> Result<()> {
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
 
+    println!("\n");
+    println!("########################################{}", "#".repeat(node_url.len()));
+    println!("Running tests accessing Tangle via node {}", &node_url);
+    println!("########################################{}", "#".repeat(node_url.len()));
+    println!("\n");
+
     let transport = Rc::new(RefCell::new(
         tangle::Client::for_node(&node_url)
             .await
             .expect(&format!("error connecting Tangle client to '{}'", node_url)),
     ));
 
-    println!("#######################################");
-    println!("Running tests accessing Tangle via node {}", &node_url);
-    println!("#######################################");
-    println!("\n");
-
     run_multi_branch_test(transport.clone(), &new_seed()).await?;
+    run_did_test(transport).await?;
     // run_recovery_test(transport.clone(), &new_seed()).await;
-    // run_did_author_test(transport).await;
+    println!("#############################################{}", "#".repeat(node_url.len()));
     println!("Done running tests accessing Tangle via node {}", &node_url);
-    println!("#######################################");
+    println!("#############################################{}", "#".repeat(node_url.len()));
     Ok(())
 }
 
