@@ -1,15 +1,15 @@
 use identity::{
     crypto::{
+        GetSignature,
+        GetSignatureMut,
+        Proof,
         SetSignature,
-        Signature,
-        TrySignature,
-        TrySignatureMut,
     },
     did::{
         MethodUriType,
         TryMethod,
     },
-    iota::IotaDID,
+    iota_core::IotaDID,
 };
 
 use iota_streams_core::{
@@ -42,23 +42,23 @@ pub const DID_CORE: &str = "did:iota:";
 #[derive(Serialize)]
 pub struct DataWrapper {
     pub data: Vec<u8>,
-    pub signature: Option<Signature>,
+    pub signature: Option<Proof>,
 }
 
-impl TrySignature for DataWrapper {
-    fn signature(&self) -> Option<&Signature> {
+impl GetSignature for DataWrapper {
+    fn signature(&self) -> Option<&Proof> {
         self.signature.as_ref()
     }
 }
 
-impl TrySignatureMut for DataWrapper {
-    fn signature_mut(&mut self) -> Option<&mut Signature> {
+impl GetSignatureMut for DataWrapper {
+    fn signature_mut(&mut self) -> Option<&mut Proof> {
         self.signature.as_mut()
     }
 }
 
 impl SetSignature for DataWrapper {
-    fn set_signature(&mut self, signature: Signature) {
+    fn set_signature(&mut self, signature: Proof) {
         self.signature = Some(signature)
     }
 }

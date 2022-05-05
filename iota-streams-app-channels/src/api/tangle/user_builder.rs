@@ -133,7 +133,7 @@ impl<Trans: Transport> UserBuilder<Trans, DefaultF> {
     pub fn build(self) -> Result<User<Trans>> {
         let id = self.id.ok_or_else(|| anyhow!(UserIdentityMissing))?;
         let user = crate::api::ApiUser::new(id);
-        let transport = self.transport.unwrap_or(Trans::default());
+        let transport = self.transport.unwrap_or_default();
         Ok(User { user, transport })
     }
 
