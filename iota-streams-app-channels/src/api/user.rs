@@ -515,7 +515,12 @@ where
         let keys = self.key_store.exchange_keys();
         let perms: Vec<Permission> = keys
             .into_iter()
-            .map(|k| Permission::ReadWrite(k.0, PermissionDuration::Perpetual))
+            .map(|k| {
+                match k.0 {
+                    Identifier::PskId(_) => Permission::Read(k.0),
+                    _ => Permission::ReadWrite(k.0, PermissionDuration::Perpetual),
+                }
+            })
             .collect();
         let prep = self.prepare_keyload(link_to, &perms)?;
         let res = prep.wrap(&self.link_store).await;

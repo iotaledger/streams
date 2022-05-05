@@ -347,6 +347,9 @@ pub async fn example<T: Transport>(transport: T, seed: &str) -> Result<()> {
         (msg, seq)
     };
 
+    println!("\nAuthor fetching transactions...");
+    utils::fetch_next_messages(&mut subscriberA).await?;
+
     println!("\nHandle Signed packet 2 - Author");
     {
         let msg_tag = subscriberA.receive_sequence(&signed_packet_seq).await?;
