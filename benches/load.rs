@@ -51,11 +51,11 @@ async fn main() -> Result<(), GooseError> {
                         .set_name("publish signed packet")
                         .set_sequence(2),
                 )
-                .register_transaction(
-                    transaction!(read_signed_packet)
-                        .set_name("read signed packet")
-                        .set_sequence(3),
-                ),
+                // .register_transaction(
+                //     transaction!(read_signed_packet)
+                //         .set_name("read signed packet")
+                //         .set_sequence(3),
+                // ),
         )
         .execute()
         .await?;
