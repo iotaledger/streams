@@ -79,7 +79,7 @@ impl KeyStore {
         self.psks.iter().map(|(pskid, psk)| (*pskid, *psk))
     }
 
-    pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + '_ {
+    pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
         self.psks
             .keys()
             .copied()
@@ -146,6 +146,10 @@ impl KeyStore {
 
     pub(crate) fn remove_psk(&mut self, pskid: PskId) -> bool {
         self.psks.remove(&pskid).is_some()
+    }
+
+    pub(crate) fn remove_cursor(&mut self, id: &Identifier) -> bool {
+        self.cursors.remove(id).is_some()
     }
 }
 

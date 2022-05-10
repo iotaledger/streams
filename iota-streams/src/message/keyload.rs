@@ -38,6 +38,7 @@ use alloc::{
     vec::Vec,
 };
 use core::{
+    borrow::Borrow,
     convert::TryFrom,
     iter::{
         FromIterator,
@@ -84,6 +85,7 @@ use LETS::{
     id::{
         Identifier,
         Identity,
+        Permissioned,
     },
     message::{
         self,
@@ -147,8 +149,8 @@ impl<'a, F, Subscribers> Wrap<'a, F, Subscribers> {
         author_id: &'a Identity,
     ) -> Self
     where
-        Subscribers: IntoIterator<Item = (Identifier, &'a [u8])>,
-        Subscribers::IntoIter: ExactSizeIterator,
+        Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
+        Subscribers::IntoIter: ExactSizeIterator, 
     {
         Self {
             initial_state,
@@ -163,25 +165,23 @@ impl<'a, F, Subscribers> Wrap<'a, F, Subscribers> {
 #[async_trait(?Send)]
 impl<'a, F, Subscribers> message::ContentSizeof<Wrap<'a, F, Subscribers>> for sizeof::Context
 where
-    // Subscribers: 'a,
-    for<'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
-    for<'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
-    // /* where
-    //                                                                          * TODO: REMOVE
-    //                                                                          * F: 'a + PRP, // weird 'a constraint,
-    //                                                                            but compiler requires it
-    //                                                                          * somehow?! L: Link,
-    //                                                                          * L::Rel: 'a + Eq + SkipFallback<F>, */
+    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
+    Subscribers::IntoIter: ExactSizeIterator, /* /* where
+                                               *                                                                          * TODO: REMOVE
+                                               *                                                                          * F: 'a + PRP, // weird 'a constraint,
+                                               *                                                                            but compiler requires it
+                                               *                                                                          * somehow?! L: Link,
+                                               *                                                                          * L::Rel: 'a + Eq + SkipFallback<F>, */ */
 {
     async fn sizeof(&mut self, keyload: &Wrap<'a, F, Subscribers>) -> Result<&mut sizeof::Context> {
-        let subscribers = keyload.subscribers.into_iter();
+        let subscribers = keyload.subscribers.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
         self.absorb(&NBytes::new(keyload.nonce))?.absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
-        for (identifier, exchange_key) in subscribers {
+        for (subscriber, exchange_key) in subscribers {
             self.fork()
-                .mask(identifier)?
-                .encrypt_sizeof(&identifier, &exchange_key, &keyload.key)
+                .mask(subscriber)?
+                .encrypt_sizeof(&subscriber.identifier(), &exchange_key, &keyload.key)
                 .await?;
         }
         self.absorb(External::new(&NBytes::new(&keyload.key)))?
@@ -196,8 +196,8 @@ where
 impl<'a, F, OS, Subscribers> message::ContentWrap<Wrap<'a, F, Subscribers>> for wrap::Context<F, OS>
 where
     // Subscribers: 'a,
-    for<'b> &'b Subscribers: IntoIterator<Item = &'b (Identifier, &'a [u8])>,
-    for<'b> <&'b Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
+    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
+    Subscribers::IntoIter: ExactSizeIterator,
     F: PRP + Clone,
     OS: io::OStream,
     // where
@@ -207,17 +207,17 @@ where
     // SkipFallback<F>,
 {
     async fn wrap(&mut self, keyload: &mut Wrap<'a, F, Subscribers>) -> Result<&mut Self> {
-        let subscribers = keyload.subscribers.into_iter();
+        let subscribers = keyload.subscribers.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
         self.join(keyload.initial_state)?
             .absorb(&NBytes::new(keyload.nonce))?
             .absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
-        for (mut identifier, exchange_key) in subscribers {
+        for (mut subscriber, exchange_key) in subscribers {
             // let fork = self.fork();
             self.fork()
-                .mask(&identifier)?
-                .encrypt(&identifier, exchange_key, &keyload.key)
+                .mask(&subscriber)?
+                .encrypt(&subscriber.identifier(), exchange_key, &keyload.key)
                 .await?;
         }
         self.absorb(External::new(&NBytes::new(&keyload.key)))?
@@ -230,7 +230,7 @@ where
 
 pub(crate) struct Unwrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
-    subscribers: Vec<Identifier>,
+    subscribers: Vec<Permissioned<Identifier>>,
     author_id: Identifier,
     user_id: &'a Identity,
     user_ke_key: &'a [u8],
@@ -252,11 +252,11 @@ impl<'a, F> Unwrap<'a, F> {
         }
     }
 
-    pub(crate) fn subscribers(&self) -> &[Identifier] {
+    pub(crate) fn subscribers(&self) -> &[Permissioned<Identifier>] {
         &self.subscribers
     }
 
-    pub(crate) fn into_subscribers(self) -> Vec<Identifier> {
+    pub(crate) fn into_subscribers(self) -> Vec<Permissioned<Identifier>> {
         self.subscribers
     }
 }
@@ -278,15 +278,15 @@ where
         for _ in 0..n_subscribers.inner() {
             let mut fork = self.fork();
             // Loop through provided number of identifiers and subsequent keys
-            let mut subscriber_id = Identifier::default();
+            let mut subscriber_id = Permissioned::<Identifier>::default();
             fork.mask(&mut subscriber_id)?;
 
-            if subscriber_id == keyload.user_id.to_identifier() {
+            if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
                 fork.decrypt(keyload.user_id, keyload.user_ke_key, key.get_or_insert([0; KEY_SIZE]))
                     .await?;
             } else {
                 // Key is meant for another subscriber, skip it
-                if subscriber_id.is_psk() {
+                if subscriber_id.identifier().is_psk() {
                     fork.drop(KEY_SIZE)?;
                 } else {
                     fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;

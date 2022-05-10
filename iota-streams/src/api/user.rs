@@ -76,6 +76,7 @@ use LETS::{
     id::{
         Identifier,
         Identity,
+        Permissioned,
         Psk,
         PskId,
     },
@@ -233,6 +234,11 @@ where
     fn cursor(&self) -> Option<usize> {
         self.state.id_store.get_cursor(&self.identifier())
     }
+    fn next_cursor(&self) -> Result<usize> {
+        self.cursor()
+            .map(|c| c + 1)
+            .ok_or_else(|| anyhow!("User is not a publisher"))
+    }
 
     pub(crate) fn stream_address(&self) -> &Option<A> {
         &self.state.stream_address
@@ -249,18 +255,23 @@ where
         self.state.id_store.cursors()
     }
 
-    pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + '_ {
+    pub fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
         self.state.id_store.subscribers()
     }
 
+    fn should_store_cursor(&self, subscriber: &Permissioned<Identifier>) -> bool {
+        let no_tracked_cursor = !self.state.id_store.contains_subscriber(subscriber.identifier());
+        let must_track_cursor = !subscriber.identifier().is_psk() && !subscriber.is_readonly();
+        must_track_cursor && no_tracked_cursor
+    }
+
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        self.state.id_store.insert_cursor(subscriber, INIT_MESSAGE_NUM - 1)
-            && self.state.id_store.insert_key(
-                subscriber,
-                subscriber
-                    ._ke_pk()
-                    .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
-            )
+        self.state.id_store.insert_key(
+            subscriber,
+            subscriber
+                ._ke_pk()
+                .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
+        )
     }
 
     pub fn remove_subscriber(&mut self, id: Identifier) -> bool {
@@ -296,15 +307,6 @@ where
             .gen((&stream_base_address, user_identifier, INIT_MESSAGE_NUM));
         self.state.stream_address = Some(A::from_parts(stream_base_address, stream_rel_address));
         self.state.author_identifier = Some(self.identifier());
-
-        // to be removed once key-exchange is encapsulated within user-id
-        let user_ke_pk = self
-            .state
-            .user_id
-            ._ke_sk()
-            .ok_or_else(|| anyhow!("this type of user cannot create channels"))?
-            .public_key();
-        self.state.id_store.insert_key(self.identifier(), user_ke_pk);
 
         Ok(())
     }
@@ -404,8 +406,8 @@ where
         let send_response = self.transport.send_message(&message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(self.identifier(), user_cursor);
-        // Subscription messages are never stored in spongos to maintain consistency about the view of the
+        // - Subscription messages are not stored in the cursor store
+        // - Subscription messages are never stored in spongos to maintain consistency about the view of the
         // set of messages of the stream between all the subscribers and across stateless recovers
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -417,7 +419,7 @@ where
         })?;
 
         // Update own's cursor
-        let new_cursor = self.cursor().map(|c| c + 1).unwrap_or(INIT_MESSAGE_NUM);
+        let new_cursor = self.next_cursor()?;
         let rel_address: A::Relative =
             self.address_generator
                 .gen((stream_address.base(), self.identifier(), new_cursor));
@@ -452,14 +454,14 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
-    pub async fn send_keyload<Subscribers>(
+    pub async fn send_keyload<'a, Subscribers>(
         &mut self,
         link_to: A::Relative,
         subscribers: Subscribers,
     ) -> Result<SendResponse<A, TSR>>
     where
-        Subscribers: IntoIterator<Item = Identifier>,
-        Subscribers::IntoIter: ExactSizeIterator,
+        Subscribers: IntoIterator<Item = Permissioned<Identifier>> + Clone,
+        // for <'a> <&'a Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
     {
         // Check conditions
         let stream_address = self
@@ -469,10 +471,7 @@ where
             .ok_or_else(|| anyhow!("before sending a keyload one must create a stream first"))?;
 
         // Update own's cursor
-        let previous_cursor = self
-            .cursor()
-            .expect("author of a stream must have its cursor already stored to be able to send keyloads");
-        let new_cursor = previous_cursor + 1;
+        let new_cursor = self.next_cursor()?;
         let rel_address: A::Relative =
             self.address_generator
                 .gen((stream_address.base(), self.identifier(), new_cursor));
@@ -497,20 +496,21 @@ where
         let encryption_key = rng.gen();
         let nonce = rng.gen();
         let subscribers_with_keys = subscribers
+            .clone()
             .into_iter()
             .map(|subscriber| {
                 Ok((
                     subscriber,
                     self.state
                         .id_store
-                        .get_exchange_key(&subscriber)
-                        .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber))?,
+                        .get_exchange_key(&subscriber.identifier())
+                        .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
                 ))
             })
-            .collect::<Result<Vec<(Identifier, &[u8])>>>()?; // collect to handle possible error
+            .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut announcement_spongos,
-            subscribers_with_keys,
+            &subscribers_with_keys,
             encryption_key,
             nonce,
             &self.state.user_id,
@@ -529,6 +529,13 @@ where
         let send_response = self.transport.send_message(&message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
+        for subscriber in subscribers {
+            if self.should_store_cursor(&subscriber) {
+                self.state
+                    .id_store
+                    .insert_cursor(*subscriber.identifier(), INIT_MESSAGE_NUM);
+            }
+        }
         self.state.id_store.insert_cursor(self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
@@ -538,7 +545,7 @@ where
         self.send_keyload(
             link_to,
             // Alas, must collect to release the &self immutable borrow
-            self.subscribers().collect::<Vec<Identifier>>(),
+            self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
         )
         .await
     }
@@ -559,7 +566,7 @@ where
         })?;
 
         // Update own's cursor
-        let new_cursor = self.cursor().map(|c| c + 1).unwrap_or(INIT_MESSAGE_NUM);
+        let new_cursor = self.next_cursor()?;
         let rel_address: A::Relative =
             self.address_generator
                 .gen((stream_address.base(), self.identifier(), new_cursor));
@@ -614,7 +621,7 @@ where
         })?;
 
         // Update own's cursor
-        let new_cursor = self.cursor().map(|c| c + 1).unwrap_or(INIT_MESSAGE_NUM);
+        let new_cursor = self.next_cursor()?;
         let rel_address: A::Relative =
             self.address_generator
                 .gen((stream_address.base(), self.identifier(), new_cursor));
@@ -672,11 +679,6 @@ where
 
     pub(crate) async fn handle_message(&mut self, address: A, msg: TransportMessage<Vec<u8>>) -> Result<Message<A>> {
         let preparsed = msg.parse_header::<F, A::Relative>().await?;
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
         match preparsed.header().message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
             message_types::SUBSCRIPTION => self.handle_subscription(address, preparsed).await,
@@ -700,6 +702,12 @@ where
             bail!("user is already connected to the stream {}", stream_address);
         }
 
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.state
+            .id_store
+            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+
         // Unwrap message
         let announcement = announcement::Unwrap::default();
         let (message, spongos) = preparsed.unwrap(announcement).await?;
@@ -721,7 +729,7 @@ where
         address: A,
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
-        // Check conditions
+        // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
 
         // Unwrap message
         let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
@@ -758,7 +766,7 @@ where
         address: A,
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
-        // Check conditions
+        // Cursor is not stored, as user is unsubscribing
 
         // Unwrap message
         let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
@@ -789,7 +797,11 @@ where
         address: A,
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
-        // Check conditions
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.state
+            .id_store
+            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
         let author_identifier = self.state.author_identifier.ok_or_else(|| {
@@ -832,13 +844,10 @@ where
 
         // Store message content into stores
         for subscriber in message.payload().content().subscribers() {
-            let no_cursor_tracked = !self.state.id_store.contains_subscriber(subscriber);
-            if !subscriber.is_psk() && no_cursor_tracked {
-                self.state.id_store.insert_cursor(*subscriber, INIT_MESSAGE_NUM - 1);
-                // TODO: fetch subscription message at sequence 1?
-                // let subscription_address = self.address_generator.gen((stream_address.base(), *subscriber, 1));
-                // if !self.state.spongos_store.contains_key(&subscription_address) {
-                // }
+            if self.should_store_cursor(subscriber) {
+                self.state
+                    .id_store
+                    .insert_cursor(*subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
 
@@ -850,7 +859,11 @@ where
         address: A,
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
-        // Check conditions
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.state
+            .id_store
+            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
@@ -880,7 +893,11 @@ where
         address: A,
         preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
     ) -> Result<Message<A>> {
-        // Check conditions
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.state
+            .id_store
+            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {

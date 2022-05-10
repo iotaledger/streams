@@ -178,7 +178,7 @@ impl<T> UserBuilder<T> {
     ///
     /// # Ok(())
     /// # }
-    /// ```Default
+    /// ```
     pub fn build(self) -> Result<User<T>> {
         let id = self
             .id

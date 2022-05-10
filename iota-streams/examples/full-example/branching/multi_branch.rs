@@ -10,6 +10,8 @@ use futures::TryStreamExt;
 use iota_streams::{
     id::{
         Ed25519,
+        PermissionDuration,
+        Permissioned,
         Psk,
     },
     Address,
@@ -113,28 +115,28 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .expect("expected keyload, found something else")
         .includes(subscriber_c.identifier()));
 
-    println!("> Subscriber A sends a tagged packet linked to the keyload");
-    let tagged_packet_as_a = subscriber_a
+    println!("> Author sends a tagged packet linked to the keyload");
+    let tagged_packet_as_author = author
         .send_tagged_packet(keyload_as_a.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
-    print_send_result(&tagged_packet_as_a);
-    print_user("Subscriber A", &subscriber_a);
+    print_send_result(&tagged_packet_as_author);
+    print_user("Author", &author);
 
-    println!("> Author receives the tagged packet");
-    let tagged_packet_as_author = author
+    println!("> Subscriber A receives the tagged packet");
+    let tagged_packet_as_a = subscriber_a
         .messages()
         .try_next()
         .await?
-        .expect("author did not receive the tagged packet sent by subscriber A");
-    print_user("Author", &author);
+        .expect("subscriber A did not receive the tagged packet sent by Author");
+    print_user("Subscriber A", &subscriber_a);
     assert_eq!(
-        tagged_packet_as_author
+        tagged_packet_as_a
             .public_payload()
             .expect("expected a message with public payload, found something else"),
         PUBLIC_PAYLOAD
     );
     assert_eq!(
-        tagged_packet_as_author
+        tagged_packet_as_a
             .masked_payload()
             .expect("expected a message with masked payload, found something else"),
         MASKED_PAYLOAD
@@ -204,6 +206,10 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         MASKED_PAYLOAD
     );
 
+    author.sync().await?;
+    subscriber_a.sync().await?;
+    subscriber_b.sync().await?;
+
     println!("> Subscriber C attempts to send a signed packet (but PSK users cannot send packets!)");
     let messages_in_branch_as_c = subscriber_c
         .messages()
@@ -216,7 +222,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
                 linked_msg == tagged_packet_as_c.address().relative()
             })
         })
-        .try_collect::<Vec<Message<Address>>>()
+        .try_collect::<Vec<_>>()
         .await?;
     let last_message_in_branch_as_c = messages_in_branch_as_c
         .last()
@@ -234,10 +240,59 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     );
     println!("> SubscriberC was not able to send signed packet, as expected");
 
-    author.sync().await?;
+    println!("> Subscriber A attempts to send a signed packet (but he has readonly permission over the branch!)");
+    let result = subscriber_a
+        .send_signed_packet(
+            new_keyload_as_author.address().relative(),
+            PUBLIC_PAYLOAD,
+            MASKED_PAYLOAD,
+        )
+        .await;
+    assert!(
+        result.is_err(),
+        "Subscriber A has readonly permissions and should not be able to send signed packets"
+    );
+
+    println!("> The other users don't receive the messages attempted by Subscriber C and Subscriber A");
+    assert_eq!(author.sync().await?, 0);
+    assert_eq!(subscriber_b.sync().await?, 0);
+
+    println!("> Author gives Subscriber A write permission");
+    let new_keyload_as_author = author
+        .send_keyload(
+            signed_packet_as_author.address().relative(),
+            author
+                .subscribers()
+                .map(|s| {
+                    if s == subscriber_a.identifier() {
+                        Permissioned::ReadWrite(s, PermissionDuration::Perpetual)
+                    } else {
+                        Permissioned::Read(s)
+                    }
+                })
+                .collect::<Vec<_>>(),
+        )
+        .await?;
+    println!("> Subscriber A publishes signed packet");
     subscriber_a.sync().await?;
-    subscriber_b.sync().await?;
-    subscriber_c.sync().await?;
+    let signed_packet_as_a = subscriber_a
+        .send_signed_packet(
+            new_keyload_as_author.address().relative(),
+            PUBLIC_PAYLOAD,
+            MASKED_PAYLOAD,
+        )
+        .await?;
+    print_send_result(&signed_packet_as_a);
+    print_user("Subscriber A", &subscriber_a);
+    
+    println!("> The other users receive the signed packet sent by Subscriber A");
+    assert_eq!(author.sync().await?, 1);
+    print_user("Author", &author);
+    assert_eq!(subscriber_b.sync().await?, 2);
+    print_user("Subscriber B", &subscriber_b);
+    assert_eq!(subscriber_c.sync().await?, 2);
+    print_user("Subscriber C", &subscriber_c);
+
 
     println!("> Backup & restore users");
     let author_backup = author.backup("my secret backup password").await?;
@@ -281,6 +336,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     new_author.add_psk(psk);
     new_author.add_subscriber(subscriber_b.identifier());
     new_author.receive_message(*announcement.address()).await?;
+    new_author.receive_message(*subscription_a_as_a.address()).await?;
     new_author.sync().await?;
     print_user("Recovered Author", &new_author);
     assert_eq!(author, new_author);
@@ -333,18 +389,25 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     subscriber_c.remove_subscriber(subscriber_a.identifier());
     print_user("Subscriber C", &subscriber_c);
 
-    println!("> Subscriber B sends unsubscription");
-    let unsubscription = subscriber_b.unsubscribe(new_keyload_as_b.address().relative()).await?;
-    print_send_result(&unsubscription);
-    print_user("Subscriber B", &subscriber_b);
-    println!("> Author receives unsubscription");
-    author.sync().await?;
-    print_user("Author", &author);
+    println!("> ~Subscriber B sends unsubscription~ [CURRENTLY BROKEN]");
+    // let unsubscription = subscriber_b.unsubscribe(new_keyload_as_b.address().relative()).await?;
+    // print_send_result(&unsubscription);
+    // print_user("Subscriber B", &subscriber_b);
+    // println!("> Author receives unsubscription");
+    // author.sync().await?;
+    // print_user("Author", &author);
 
-    println!("> The rest of subscribers also receive the unsubscription");
-    subscriber_a.sync().await?;
+    println!("> ~The rest of subscribers also receive the unsubscription~ [CURRENTLY BROKEN]");
+    // subscriber_a.sync().await?;
+    // print_user("Subscriber A", &subscriber_a);
+    // subscriber_c.sync().await?;
+    // print_user("Subscriber C", &subscriber_c);
+    println!("> Alternative: users manually unsubscribe Subscriber B");
+    author.remove_subscriber(subscriber_b.identifier());
+    print_user("Author", &author);
+    subscriber_a.remove_subscriber(subscriber_b.identifier());
     print_user("Subscriber A", &subscriber_a);
-    subscriber_c.sync().await?;
+    subscriber_c.remove_subscriber(subscriber_b.identifier());
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Author removes PSK");
@@ -401,16 +464,17 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     );
 
     println!("> Subscribers A and B try to send a signed packet");
+    // TODO: THIS SHOULD FAIL ONCE PUBLISHERS ARE TRACKED BY BRANCH AND WE CAN "DEMOTE" SUBSCRIBERS
     let a_signed_packet = subscriber_a
         .send_signed_packet(last_msg_as_a.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&a_signed_packet);
     print_user("Subscriber A", &subscriber_a);
-    let b_signed_packet = subscriber_b
+    let result = subscriber_b
         .send_signed_packet(last_msg_as_b.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
-        .await?;
-    print_send_result(&b_signed_packet);
+        .await;
     print_user("Subscriber B", &subscriber_b);
+    assert!(result.is_err());
 
     println!("> The messages are not received by the rest of the subscribers");
     assert_eq!(author.sync().await?, 0);

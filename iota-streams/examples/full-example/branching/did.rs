@@ -32,6 +32,7 @@ use iota_streams::{
     id::{
         DIDInfo,
         Ed25519,
+        Permissioned,
         Psk,
         DID,
     },
@@ -131,7 +132,10 @@ pub async fn example(transport: Rc<RefCell<TangleClient>>) -> Result<()> {
     let second_keyload_as_author = author
         .send_keyload(
             last_msg.address().relative(),
-            [subscription_b_as_author.header().publisher(), psk.into()],
+            [
+                Permissioned::Read(subscription_b_as_author.header().publisher()),
+                Permissioned::Read(psk.into()),
+            ],
         )
         .await?;
     print_send_result(&second_keyload_as_author);

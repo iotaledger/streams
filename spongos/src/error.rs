@@ -140,6 +140,8 @@ pub enum Error {
     IdentifierGenerationFailure,
     /// Identifier type is not supported for this operation
     UnsupportedIdentifier,
+    /// Received message did not have permission to be created
+    NoPermission,
 
     //////////
     // Users

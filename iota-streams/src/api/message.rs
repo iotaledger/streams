@@ -13,7 +13,10 @@ use alloc::vec::Vec;
 // Streams
 use spongos::PRP;
 use LETS::{
-    id::Identifier,
+    id::{
+        Identifier,
+        Permissioned,
+    },
     link::Link,
     message::{
         Message as LetsMessage,
@@ -225,12 +228,12 @@ pub struct Announcement {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Keyload {
-    pub subscribers: Vec<Identifier>,
+    pub subscribers: Vec<Permissioned<Identifier>>,
 }
 
 impl Keyload {
     pub fn includes(&self, subscriber: Identifier) -> bool {
-        self.subscribers.contains(&subscriber)
+        self.subscribers.iter().any(|s| s.identifier() == &subscriber)
     }
 }
 
