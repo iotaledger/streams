@@ -4,7 +4,10 @@ use alloc::{
     collections::BTreeMap,
     vec::Vec,
 };
-use core::{fmt::Display, marker::PhantomData};
+use core::{
+    fmt::Display,
+    marker::PhantomData,
+};
 
 // 3rd-party
 use anyhow::{
@@ -55,7 +58,12 @@ where
     type Address = &'a Address;
     type Msg = Msg;
     type SendResponse = Msg;
-    async fn send_message(&mut self, addr: &'a Address, msg: Msg) -> Result<Msg> where Self::Address: 'async_trait, Self::Msg: 'async_trait, 'a: 'async_trait {
+    async fn send_message(&mut self, addr: &'a Address, msg: Msg) -> Result<Msg>
+    where
+        Self::Address: 'async_trait,
+        Self::Msg: 'async_trait,
+        'a: 'async_trait,
+    {
         self.bucket.entry(addr.clone()).or_default().push(msg.clone());
         Ok(msg)
     }

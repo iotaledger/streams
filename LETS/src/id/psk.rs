@@ -1,7 +1,13 @@
 use alloc::vec::Vec;
-use core::convert::{
-    TryFrom,
-    TryInto,
+use core::{
+    convert::{
+        TryFrom,
+        TryInto,
+    },
+    fmt::{
+        LowerHex,
+        UpperHex,
+    },
 };
 
 use anyhow::{
@@ -10,12 +16,21 @@ use anyhow::{
 };
 
 use spongos::{
-    ddml::types::NBytes,
+    ddml::{
+        commands::{
+            sizeof,
+            unwrap,
+            wrap,
+            Mask,
+        },
+        io,
+        types::NBytes,
+    },
     Spongos,
     PRP,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Psk([u8; 32]);
 
 impl Psk {
@@ -67,7 +82,7 @@ impl TryFrom<&[u8]> for Psk {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct PskId([u8; 16]);
 
 impl PskId {
@@ -101,5 +116,69 @@ impl TryFrom<&[u8]> for PskId {
 
     fn try_from(bytes: &[u8]) -> Result<Self> {
         Ok(PskId(bytes.try_into()?))
+    }
+}
+
+impl LowerHex for PskId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", hex::encode(self))
+    }
+}
+
+impl UpperHex for PskId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", hex::encode_upper(self))
+    }
+}
+
+impl<'a> Mask<&'a PskId> for sizeof::Context {
+    fn mask(&mut self, pskid: &'a PskId) -> Result<&mut Self> {
+        self.mask(NBytes::new(pskid))
+    }
+}
+
+impl<'a, F, OS> Mask<&'a PskId> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, pskid: &'a PskId) -> Result<&mut Self> {
+        self.mask(NBytes::new(pskid))
+    }
+}
+
+impl<'a, F, IS> Mask<&'a mut PskId> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, pskid: &'a mut PskId) -> Result<&mut Self> {
+        self.mask(NBytes::new(pskid))
+    }
+}
+
+impl<'a> Mask<&'a Psk> for sizeof::Context {
+    fn mask(&mut self, psk: &'a Psk) -> Result<&mut Self> {
+        self.mask(NBytes::new(psk))
+    }
+}
+
+impl<'a, F, OS> Mask<&'a Psk> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, psk: &'a Psk) -> Result<&mut Self> {
+        self.mask(NBytes::new(psk))
+    }
+}
+
+impl<'a, F, IS> Mask<&'a mut Psk> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, psk: &'a mut Psk) -> Result<&mut Self> {
+        self.mask(NBytes::new(psk))
     }
 }

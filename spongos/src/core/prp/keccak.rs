@@ -8,7 +8,7 @@ use generic_array::{
 
 use super::PRP;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeccakF1600 {
     state: [u64; 25],
 }
@@ -40,10 +40,7 @@ impl PRP for KeccakF1600 {
         unsafe { &*(self.state.as_ptr().add(21) as *const GenericArray<u8, Self::CapacitySize>) }
     }
 
-    fn from_inner(inner: &GenericArray<u8, Self::CapacitySize>) -> Self {
-        let mut state = [0_u64; 25];
-        let i = unsafe { &mut *(state.as_mut_ptr().add(21) as *mut GenericArray<u8, Self::CapacitySize>) };
-        *i = *inner;
-        Self { state }
+    fn inner_mut(&mut self) -> &mut GenericArray<u8, Self::CapacitySize> {
+        unsafe { &mut *(self.state.as_mut_ptr().add(21) as *mut GenericArray<u8, Self::CapacitySize>) }
     }
 }

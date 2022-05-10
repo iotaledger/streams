@@ -50,14 +50,14 @@ fn bytes_spongosn<F: PRP + Default>(n: usize) {
 }
 
 fn slice_spongosn<F: PRP + Default>(n: usize) {
-    let mut k = vec![0_u8; n];
-    let mut p = vec![0_u8; n];
-    let mut x = vec![0_u8; n];
-    let mut y = vec![0_u8; n];
-    let mut z = vec![0_u8; n];
-    let mut t = vec![0_u8; n];
-    let mut u = vec![0_u8; n];
-    let mut t23 = vec![0_u8; n + n];
+    let mut k = vec![0u8; n];
+    let mut p = vec![0u8; n];
+    let mut x = vec![0u8; n];
+    let mut y = vec![0u8; n];
+    let mut z = vec![0u8; n];
+    let mut t = vec![0u8; n];
+    let mut u = vec![0u8; n];
+    let mut t23 = vec![0u8; n + n];
 
     let mut s: Spongos<F>;
     s = Spongos::init();

@@ -13,7 +13,7 @@ impl Context {
     }
 
     /// Returns calculated message size.
-    pub fn size(&self) -> usize {
+    pub fn finalize(self) -> usize {
         self.size
     }
 }

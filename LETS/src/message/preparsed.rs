@@ -100,7 +100,7 @@ impl<T, F, Address> PreparsedMessage<T, F, Address> {
         let transport_msg = self.transport_msg;
         let mut ctx = unwrap::Context::new_with_spongos(&transport_msg.body().as_ref()[self.cursor..], spongos);
         ctx.unwrap(&mut pcf).await?;
-        // Commit Spongos and discard `self.ctx.stream` that should be empty
+        // discard `self.ctx.stream` that should be empty
         let (spongos, _) = ctx.finalize();
         Ok((Message::new(self.header, pcf), spongos))
     }

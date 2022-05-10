@@ -6,7 +6,14 @@ use alloc::{
     },
     vec::Vec,
 };
-use core::convert::TryInto;
+use core::{
+    convert::TryInto,
+    fmt::{
+        LowerHex,
+        UpperHex,
+    },
+    hash::Hash,
+};
 
 // 3rd party
 use anyhow::{
@@ -39,9 +46,27 @@ use identity::{
     iota::IotaDID,
 };
 
+// Streams
+use spongos::{
+    ddml::{
+        commands::{
+            sizeof,
+            unwrap,
+            wrap,
+            Mask,
+        },
+        io,
+        types::{
+            Bytes,
+            NBytes,
+        },
+    },
+    PRP,
+};
+
 pub(crate) const DID_CORE: &str = "did:iota:";
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
 pub struct DIDMethodId([u8; 32]);
 
 impl DIDMethodId {
@@ -73,6 +98,18 @@ impl AsRef<[u8]> for DIDMethodId {
 impl AsMut<[u8]> for DIDMethodId {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
+    }
+}
+
+impl LowerHex for DIDMethodId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", hex::encode(self))
+    }
+}
+
+impl UpperHex for DIDMethodId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", hex::encode_upper(self))
     }
 }
 
@@ -119,29 +156,49 @@ impl<'a> TryMethod for DataWrapper<'a> {
     const TYPE: MethodUriType = MethodUriType::Absolute;
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DID {
     // TODO: Add DID Account implementation
     PrivateKey(DIDInfo),
+    Default,
 }
 
 impl DID {
     pub(crate) fn info(&self) -> &DIDInfo {
         match self {
             Self::PrivateKey(did_info) => did_info,
+            Empty => unreachable!(),
+        }
+    }
+
+    fn info_mut(&mut self) -> &mut DIDInfo {
+        match self {
+            Self::PrivateKey(did_info) => did_info,
+            Empty => unreachable!(),
         }
     }
 }
 
-#[derive(Clone, Debug)]
+impl Default for DID {
+    fn default() -> Self {
+        DID::Default
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DIDInfo {
     did: IotaDID,
     key_fragment: String,
-    keypair: identity::crypto::KeyPair,
+    keypair: KeyPair,
 }
 
 impl DIDInfo {
     pub fn new(did: IotaDID, key_fragment: String, keypair: identity::crypto::KeyPair) -> Self {
-        Self { did, key_fragment, keypair}
+        Self {
+            did,
+            key_fragment,
+            keypair: KeyPair(keypair),
+        }
     }
     pub(crate) fn did(&self) -> &IotaDID {
         &self.did
@@ -156,12 +213,24 @@ impl DIDInfo {
     }
 
     pub(crate) fn keypair(&self) -> &identity::crypto::KeyPair {
-        &self.keypair
+        &self.keypair.0
+    }
+
+    fn did_mut(&mut self) -> &mut IotaDID {
+        &mut self.did
+    }
+
+    fn key_fragment_mut(&mut self) -> &mut String {
+        &mut self.key_fragment
+    }
+
+    fn keypair_mut(&mut self) -> &mut identity::crypto::KeyPair {
+        &mut self.keypair.0
     }
 
     pub(crate) fn sig_kp(&self) -> (ed25519::SecretKey, ed25519::PublicKey) {
-        let mut key_bytes = [0_u8; ed25519::SECRET_KEY_LENGTH];
-        key_bytes.clone_from_slice(self.keypair.private().as_ref());
+        let mut key_bytes = [0u8; ed25519::SECRET_KEY_LENGTH];
+        key_bytes.clone_from_slice(self.keypair().private().as_ref());
         let signing_secret_key = ed25519::SecretKey::from_bytes(key_bytes);
         let signing_public_key = signing_secret_key.public_key();
         (signing_secret_key, signing_public_key)
@@ -172,5 +241,78 @@ impl DIDInfo {
         let key_exchange_secret_key = x25519::SecretKey::from(&kp.0);
         let key_exchange_public_key = key_exchange_secret_key.public_key();
         (key_exchange_secret_key, key_exchange_public_key)
+    }
+}
+
+struct KeyPair(identity::crypto::KeyPair);
+
+impl PartialEq for KeyPair {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.type_() == other.0.type_() && self.0.private().as_ref() == other.0.private().as_ref()
+    }
+}
+
+impl Eq for KeyPair {}
+
+impl PartialOrd for KeyPair {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for KeyPair {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        (self.0.type_(), self.0.private().as_ref()).cmp(&(other.0.type_(), other.0.private().as_ref()))
+    }
+}
+
+impl Hash for KeyPair {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.0.type_().hash(state);
+        self.0.private().as_ref().hash(state);
+    }
+}
+
+impl Mask<&DID> for sizeof::Context {
+    fn mask(&mut self, did: &DID) -> Result<&mut Self> {
+        self.mask(Bytes::new(did.info().did().as_str()))?
+            .mask(Bytes::new(did.info().key_fragment()))?
+            .mask(NBytes::new(did.info().keypair().private()))
+    }
+}
+
+impl<F, OS> Mask<&DID> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, did: &DID) -> Result<&mut Self> {
+        self.mask(Bytes::new(did.info().did().as_str()))?
+            .mask(Bytes::new(did.info().key_fragment()))?
+            .mask(NBytes::new(did.info().keypair().private()))
+    }
+}
+
+impl<F, IS> Mask<&mut DID> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, did: &mut DID) -> Result<&mut Self> {
+        let mut did_bytes = Vec::new();
+        let mut fragment_bytes = Vec::new();
+        let mut private_key_bytes = [0; ed25519::SECRET_KEY_LENGTH];
+        self.mask(Bytes::new(&mut did_bytes))?
+            .mask(Bytes::new(&mut fragment_bytes))?
+            .mask(&mut NBytes::new(&mut private_key_bytes))?;
+
+        *did.info_mut().did_mut() = core::str::from_utf8(&did_bytes)?.try_into()?;
+        *did.info_mut().key_fragment_mut() = String::from_utf8(fragment_bytes)?;
+
+        let keypair = identity::crypto::KeyPair::try_from_ed25519_bytes(&private_key_bytes)
+            .map_err(|e| anyhow!("error unmasking DID private key: {}", e))?;
+        *did.info_mut().keypair_mut() = keypair;
+
+        Ok(self)
     }
 }

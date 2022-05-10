@@ -96,7 +96,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
     Ed25519(ed25519::PublicKey),
     PskId(PskId),
@@ -109,6 +109,7 @@ impl core::fmt::Debug for Identifier {
         match self {
             Self::Ed25519(arg0) => f.debug_tuple("Ed25519").field(&hex::encode(&arg0)).finish(),
             Self::PskId(arg0) => f.debug_tuple("PskId").field(&hex::encode(arg0)).finish(),
+            #[cfg(feature = "did")]
             Self::DID(arg0) => f.debug_tuple("DID").field(&hex::encode(arg0)).finish(),
         }
     }
@@ -201,15 +202,20 @@ impl core::fmt::LowerHex for Identifier {
     }
 }
 
+impl core::fmt::UpperHex for Identifier {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "{}", hex::encode_upper(self))
+    }
+}
+
 impl core::fmt::Display for Identifier {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         core::fmt::LowerHex::fmt(self, f)
     }
 }
 
-#[async_trait(?Send)]
-impl ContentSizeof<Identifier> for sizeof::Context {
-    async fn sizeof(&mut self, identifier: &Identifier) -> Result<&mut Self> {
+impl Mask<&Identifier> for sizeof::Context {
+    fn mask(&mut self, identifier: &Identifier) -> Result<&mut Self> {
         match identifier {
             Identifier::Ed25519(pk) => {
                 let oneof = Uint8::new(0);
@@ -231,13 +237,12 @@ impl ContentSizeof<Identifier> for sizeof::Context {
     }
 }
 
-#[async_trait(?Send)]
-impl<F, OS> ContentWrap<Identifier> for wrap::Context<F, OS>
+impl<F, OS> Mask<&Identifier> for wrap::Context<F, OS>
 where
     F: PRP,
     OS: io::OStream,
 {
-    async fn wrap(&mut self, identifier: &mut Identifier) -> Result<&mut Self> {
+    fn mask(&mut self, identifier: &Identifier) -> Result<&mut Self> {
         match &identifier {
             Identifier::Ed25519(pk) => {
                 let oneof = Uint8::new(0);
@@ -259,13 +264,12 @@ where
     }
 }
 
-#[async_trait(?Send)]
-impl<F, IS> ContentUnwrap<Identifier> for unwrap::Context<F, IS>
+impl<F, IS> Mask<&mut Identifier> for unwrap::Context<F, IS>
 where
     F: PRP,
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, identifier: &mut Identifier) -> Result<&mut Self> {
+    fn mask(&mut self, identifier: &mut Identifier) -> Result<&mut Self> {
         let mut oneof = Uint8::new(0);
         self.mask(&mut oneof)?;
         match oneof.inner() {

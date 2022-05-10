@@ -367,6 +367,22 @@ impl<F: PRP> Spongos<F> {
         let x: Capacity<F> = joinee.squeeze();
         self.absorb(x.as_ref());
     }
+
+    pub(crate) fn outer(&self) -> &GenericArray<u8, F::RateSize> {
+        self.s.outer()
+    }
+
+    pub(crate) fn inner(&self) -> &GenericArray<u8, F::CapacitySize> {
+        self.s.inner()
+    }
+
+    pub(crate) fn outer_mut(&mut self) -> &mut GenericArray<u8, F::RateSize> {
+        self.s.outer_mut()
+    }
+
+    pub(crate) fn inner_mut(&mut self) -> &mut GenericArray<u8, F::CapacitySize> {
+        self.s.inner_mut()
+    }
 }
 
 impl<F> Spongos<F>

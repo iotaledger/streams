@@ -105,7 +105,7 @@ pub async fn example(transport: Rc<RefCell<TangleClient>>) -> Result<()> {
     print_user("Subscriber A", &subscriber_b);
 
     println!("> Author stores the PSK used by Subscriber C");
-    author.store_psk(psk);
+    author.add_psk(psk);
 
     println!("> Author reads subscription of subscribers A and B");
     let _subscription_a_as_author = author.receive_message(*subscription_a_as_a.address()).await?;

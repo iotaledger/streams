@@ -67,6 +67,7 @@ use spongos::{
             Commit,
             Fork,
             Join,
+            Mask,
             Repeated,
         },
         io,
@@ -179,8 +180,7 @@ where
         // Loop through provided identifiers, masking the shared key for each one
         for (identifier, exchange_key) in subscribers {
             self.fork()
-                .sizeof(identifier)
-                .await?
+                .mask(identifier)?
                 .encrypt_sizeof(&identifier, &exchange_key, &keyload.key)
                 .await?;
         }
@@ -216,8 +216,7 @@ where
         for (mut identifier, exchange_key) in subscribers {
             // let fork = self.fork();
             self.fork()
-                .wrap(&mut identifier)
-                .await?
+                .mask(&identifier)?
                 .encrypt(&identifier, exchange_key, &keyload.key)
                 .await?;
         }
@@ -269,7 +268,7 @@ where
     IS: io::IStream,
 {
     async fn unwrap(&mut self, keyload: &mut Unwrap<'a, F>) -> Result<&mut Self> {
-        let mut nonce = [0_u8; NONCE_SIZE];
+        let mut nonce = [0u8; NONCE_SIZE];
         let mut key = None;
         let mut n_subscribers = Size::default();
         self.join(keyload.initial_state)?
@@ -280,7 +279,7 @@ where
             let mut fork = self.fork();
             // Loop through provided number of identifiers and subsequent keys
             let mut subscriber_id = Identifier::default();
-            fork.unwrap(&mut subscriber_id).await?;
+            fork.mask(&mut subscriber_id)?;
 
             if subscriber_id == keyload.user_id.to_identifier() {
                 fork.decrypt(keyload.user_id, keyload.user_ke_key, key.get_or_insert([0; KEY_SIZE]))

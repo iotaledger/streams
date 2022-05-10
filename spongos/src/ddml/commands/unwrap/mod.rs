@@ -91,31 +91,31 @@ trait Unwrap {
         T: AsMut<[u8]>;
 
     fn unwrap_u8(&mut self, u: &mut Uint8) -> Result<&mut Self> {
-        let mut v = [0_u8; 1];
+        let mut v = [0u8; 1];
         self.unwrapn(&mut v)?;
         *u = Uint8::from_bytes(v);
         Ok(self)
     }
     fn unwrap_u16(&mut self, u: &mut Uint16) -> Result<&mut Self> {
-        let mut v = [0_u8; 2];
+        let mut v = [0u8; 2];
         self.unwrapn(&mut v)?;
         *u = Uint16::from_bytes(v);
         Ok(self)
     }
     fn unwrap_u32(&mut self, u: &mut Uint32) -> Result<&mut Self> {
-        let mut v = [0_u8; 4];
+        let mut v = [0u8; 4];
         self.unwrapn(&mut v)?;
         *u = Uint32::from_bytes(v);
         Ok(self)
     }
     fn unwrap_u64(&mut self, u: &mut Uint64) -> Result<&mut Self> {
-        let mut v = [0_u8; 8];
+        let mut v = [0u8; 8];
         self.unwrapn(&mut v)?;
         *u = Uint64::from_bytes(v);
         Ok(self)
     }
     fn unwrap_size(&mut self, size: &mut Size) -> Result<&mut Self> {
-        let mut num_bytes = Uint8::new(0_u8);
+        let mut num_bytes = Uint8::new(0u8);
         self.unwrap_u8(&mut num_bytes)?;
         *size = Size::decode(
             |byte| {

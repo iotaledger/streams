@@ -13,7 +13,10 @@ use crypto::{
 
 // Local
 use crate::{
-    core::prp::PRP,
+    core::{
+        prp::PRP,
+        spongos::Spongos,
+    },
     ddml::{
         commands::{
             unwrap::{
@@ -128,7 +131,7 @@ impl<'a, F: PRP, IS: io::IStream> Mask<Bytes<&'a mut Vec<u8>>> for Context<F, IS
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut x25519::PublicKey> for Context<F, IS> {
     fn mask(&mut self, public_key: &'a mut x25519::PublicKey) -> Result<&mut Self> {
-        let mut bytes = [0_u8; x25519::PUBLIC_KEY_LENGTH];
+        let mut bytes = [0u8; x25519::PUBLIC_KEY_LENGTH];
         MaskContext::new(self).unwrapn(&mut bytes)?;
         *public_key = x25519::PublicKey::from(bytes);
         Ok(self)
@@ -137,7 +140,7 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut x25519::PublicKey> for Context<F,
 
 impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F, IS> {
     fn mask(&mut self, public_key: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
-        let mut bytes = [0_u8; ed25519::PUBLIC_KEY_LENGTH];
+        let mut bytes = [0u8; ed25519::PUBLIC_KEY_LENGTH];
         MaskContext::new(self).unwrapn(&mut bytes)?;
         match ed25519::PublicKey::try_from_bytes(bytes) {
             Ok(pk) => {
@@ -149,6 +152,18 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<F
     }
 }
 
+impl<F, IS> Mask<&mut Spongos<F>> for Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, spongos: &mut Spongos<F>) -> Result<&mut Self> {
+        MaskContext::new(self)
+            .unwrapn(spongos.outer_mut())?
+            .unwrapn(spongos.inner_mut())?;
+        Ok(self)
+    }
+}
 impl<'a, F, IS, T> Mask<Maybe<&'a mut Option<T>>> for Context<F, IS>
 where
     for<'b> Self: Mask<&'b mut T> + Mask<&'b mut Uint8>,

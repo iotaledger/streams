@@ -90,7 +90,7 @@ impl<'a, F: PRP, OS: io::OStream> Mask<Size> for Context<F, OS> {
     }
 }
 
-impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<NBytes<&'a T>> for Context<F, OS> {
+impl<'a, F: PRP, T: AsRef<[u8]> + ?Sized, OS: io::OStream> Mask<NBytes<&'a T>> for Context<F, OS> {
     fn mask(&mut self, bytes: NBytes<&'a T>) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(bytes)?;
         Ok(self)
@@ -108,7 +108,7 @@ where
 
 impl<'a, F: PRP, OS: io::OStream, T> Mask<Bytes<&'a T>> for Context<F, OS>
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + ?Sized,
 {
     fn mask(&mut self, bytes: Bytes<&'a T>) -> Result<&mut Self> {
         self.mask(Size::new(bytes.len()))?;
@@ -136,6 +136,17 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<F, OS>
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS> {
     fn mask(&mut self, public_key: &'a ed25519::PublicKey) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(public_key)?;
+        Ok(self)
+    }
+}
+
+impl<F, OS> Mask<&Spongos<F>> for Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, spongos: &Spongos<F>) -> Result<&mut Self> {
+        MaskContext::new(self).wrapn(spongos.outer())?.wrapn(spongos.inner())?;
         Ok(self)
     }
 }

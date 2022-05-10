@@ -30,9 +30,7 @@ pub trait ContentSizeof<T> {
 
 #[async_trait(?Send)]
 pub trait ContentWrap<T> {
-    async fn wrap(&mut self, content: &mut T) -> Result<&mut Self>
-    where
-        T: 'async_trait;
+    async fn wrap(&mut self, content: &mut T) -> Result<&mut Self>;
 }
 
 #[async_trait(?Send)]

@@ -52,8 +52,9 @@ impl fmt::Display for Size {
     }
 }
 
-impl From<usize> for Size {
-    fn from(n: usize) -> Self {
-        Self(n)
-    }
-}
+// TODO: REMOVE
+// impl From<usize> for Size {
+//     fn from(n: usize) -> Self {
+//         Self(n)
+//     }
+// }

@@ -225,7 +225,7 @@ impl From<PayloadFrameNum> for NBytes<[u8; 3]> {
 
 impl From<NBytes<[u8; 3]>> for PayloadFrameNum {
     fn from(nbytes: NBytes<[u8; 3]>) -> Self {
-        let mut bytes = [0_u8; 4];
+        let mut bytes = [0u8; 4];
         bytes[1..=3].copy_from_slice(nbytes.as_ref());
         Self::from_u32_unchecked(u32::from_be_bytes(bytes))
     }
@@ -248,7 +248,7 @@ where
 {
     fn skip(&mut self, frame_num: &mut PayloadFrameNum) -> Result<&mut Self> {
         // PayloadFrameNum validates bounds at creation, does not need to validate now
-        let mut bytes = NBytes::new([0_u8; 3]);
+        let mut bytes = NBytes::new([0u8; 3]);
         self.skip(&mut bytes)?;
         *frame_num = bytes.into();
         Ok(self)

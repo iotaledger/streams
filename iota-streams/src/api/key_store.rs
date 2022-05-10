@@ -41,7 +41,7 @@ pub(crate) struct KeyStore {
     /// Map from user identity -- ed25519 pk -- to
     /// a precalculated corresponding x25519 pk and some additional Cursor.
     // cursors: HashMap<Identifier, Cursor<Link>>,
-    cursors: HashMap<Identifier, u64>,
+    cursors: HashMap<Identifier, usize>,
     keys: HashMap<Identifier, x25519::PublicKey>,
     psks: HashMap<PskId, Psk>,
 }
@@ -50,14 +50,12 @@ impl KeyStore {
     fn new() -> Self {
         Default::default()
     }
-}
 
-impl KeyStore {
-    fn contains_subscriber(&self, id: &Identifier) -> bool {
+    pub fn contains_subscriber(&self, id: &Identifier) -> bool {
         self.cursors.contains_key(id)
     }
 
-    pub(crate) fn get_cursor(&self, id: &Identifier) -> Option<u64> {
+    pub(crate) fn get_cursor(&self, id: &Identifier) -> Option<usize> {
         self.cursors.get(id).copied()
     }
 
@@ -65,18 +63,20 @@ impl KeyStore {
     //     self.cursors.get_mut(id)
     // }
 
-    pub(crate) fn insert_cursor(&mut self, id: Identifier, cursor: u64) -> bool {
+    pub(crate) fn insert_cursor(&mut self, id: Identifier, cursor: usize) -> bool {
         self.cursors.insert(id, cursor).is_none()
     }
 
-    pub(crate) fn insert_cursor_if_missing(&mut self, id: Identifier, cursor: u64) {
-        if !self.cursors.contains_key(&id) {
-            self.cursors.insert(id, cursor);
-        }
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + '_ {
+        self.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor))
     }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, u64)> + ExactSizeIterator + '_ {
-        self.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor))
+    pub(crate) fn keys(&self) -> impl Iterator<Item = (Identifier, x25519::PublicKey)> + ExactSizeIterator + '_ {
+        self.keys.iter().map(|(identifier, key)| (*identifier, *key))
+    }
+
+    pub(crate) fn psks(&self) -> impl Iterator<Item = (PskId, Psk)> + ExactSizeIterator + '_ {
+        self.psks.iter().map(|(pskid, psk)| (*pskid, *psk))
     }
 
     pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + '_ {
@@ -136,19 +136,6 @@ impl KeyStore {
         })
     }
 
-    fn all_exchange_keys(&self) -> impl Iterator<Item = (Identifier, &[u8])> {
-        self.subscribers()
-            .filter_map(move |identifier| Some((identifier, self.get_exchange_key(&identifier)?)))
-    }
-
-    // fn cursors(&self) -> impl Iterator<Item = (&Identifier, &Cursor<Link>)> {
-    //     self.cursors.iter()
-    // }
-
-    // fn cursors_mut(&mut self) -> impl Iterator<Item = (&Identifier, &mut Cursor<Link>)> {
-    //     self.cursors.iter_mut()
-    // }
-
     fn num_cursors(&self) -> usize {
         self.cursors.len()
     }
@@ -164,9 +151,13 @@ impl KeyStore {
 
 impl fmt::Debug for KeyStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "cursors:")?;
+        writeln!(f, "* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
-            writeln!(f, "\t<{}> => {}", id, cursor)?;
+            writeln!(f, "\t{:?} => {}", id, cursor)?;
+        }
+        writeln!(f, "* PSKs:")?;
+        for pskid in self.psks.keys() {
+            writeln!(f, "\t<{:x}>", pskid)?;
         }
         Ok(())
     }

@@ -56,14 +56,14 @@ fn absorb_mask_u8<F>() -> Result<()>
 where
     F: PRP + Default,
 {
-    let mut buf = vec![0_u8; 2];
+    let mut buf = vec![0u8; 2];
     let mut tag_wrap = External::new(NBytes::<[u8; 32]>::default());
     let mut tag_unwrap = External::new(NBytes::<[u8; 32]>::default());
 
-    for t in 0_u8..10_u8 {
+    for t in 0u8..10u8 {
         let t = Uint8::new(t);
-        let buf_size = sizeof::Context::new().absorb(t)?.mask(t)?.size();
-        let buf_size2 = sizeof::Context::new().absorb(t)?.mask(t)?.size();
+        let buf_size = sizeof::Context::new().absorb(t)?.mask(t)?.finalize();
+        let buf_size2 = sizeof::Context::new().absorb(t)?.mask(t)?.finalize();
         assert_eq!(buf_size, buf_size2, "Buffer sizes are not equal");
         assert_eq!(buf_size, 2);
 
@@ -75,8 +75,8 @@ where
             ctx.stream().len()
         );
 
-        let mut t2 = Uint8::new(0_u8);
-        let mut t3 = Uint8::new(0_u8);
+        let mut t2 = Uint8::new(0u8);
+        let mut t3 = Uint8::new(0u8);
         let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
         ctx.commit()?
             .absorb(&mut t2)?
@@ -115,11 +115,11 @@ where
 
     for n in ns.iter() {
         let s = Size::new(*n);
-        let buf_size = sizeof::Context::new().absorb(s)?.mask(s)?.size();
-        let buf_size2 = sizeof::Context::new().absorb(s)?.mask(s)?.size();
+        let buf_size = sizeof::Context::new().absorb(s)?.mask(s)?.finalize();
+        let buf_size2 = sizeof::Context::new().absorb(s)?.mask(s)?.finalize();
         assert_eq!(buf_size, buf_size2);
 
-        let mut buf = vec![0_u8; buf_size];
+        let mut buf = vec![0u8; buf_size];
 
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
         ctx.commit()?.absorb(s)?.mask(s)?.commit()?.squeeze(&mut tag_wrap)?;
@@ -192,8 +192,8 @@ where
             //
             .commit()?
             .squeeze(&tag_wrap)?;
-        let buf_size = ctx.size();
-        let mut buf = vec![0_u8; buf_size];
+        let buf_size = ctx.finalize();
+        let mut buf = vec![0u8; buf_size];
 
         let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
         ctx.commit()?
@@ -260,7 +260,7 @@ fn bytes() {
 fn absorb_ed25519<F: PRP + Default>() -> Result<()> {
     let secret = ed25519::SecretKey::from_bytes([7; ed25519::SECRET_KEY_LENGTH]);
 
-    let tag_wrap = Bytes::new([3_u8; 17].to_vec());
+    let tag_wrap = Bytes::new([3u8; 17].to_vec());
     let mut tag_unwrap = Bytes::default();
     let mut hash_wrap = External::new(NBytes::<GenericArray<u8, U64>>::default());
     let mut hash_unwrap = External::new(NBytes::<GenericArray<u8, U64>>::default());
@@ -270,9 +270,9 @@ fn absorb_ed25519<F: PRP + Default>() -> Result<()> {
         .commit()?
         .squeeze(&hash_wrap)?
         .ed25519(&secret, &hash_wrap)?;
-    let buf_size = ctx.size();
+    let buf_size = ctx.finalize();
 
-    let mut buf = vec![0_u8; buf_size];
+    let mut buf = vec![0u8; buf_size];
 
     let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
     ctx.absorb(&tag_wrap)?
@@ -322,9 +322,9 @@ fn x25519_transport<F: PRP + Default>() -> Result<()> {
 
     let mut ctx = sizeof::Context::new();
     ctx.x25519(&local_secret_key.public_key(), &key_wrap)?;
-    let buf_size = ctx.size();
+    let buf_size = ctx.finalize();
 
-    let mut buf = vec![0_u8; buf_size];
+    let mut buf = vec![0u8; buf_size];
 
     let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
     ctx.x25519(&local_secret_key.public_key(), &key_wrap)?;

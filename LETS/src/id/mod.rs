@@ -1,11 +1,10 @@
+mod ed25519;
 mod identifier;
 mod identity;
 mod psk;
 
-pub use self::identity::{
-    Ed25519,
-    Identity,
-};
+pub use self::identity::Identity;
+pub use ed25519::Ed25519;
 pub use identifier::Identifier;
 pub use psk::{
     Psk,
@@ -15,6 +14,7 @@ pub use psk::{
 #[cfg(feature = "did")]
 mod did;
 
+#[cfg(feature = "did")]
 pub use did::{
     DIDInfo,
     DID,

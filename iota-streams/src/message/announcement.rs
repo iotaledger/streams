@@ -37,6 +37,7 @@ use spongos::{
             wrap,
             Absorb,
             Commit,
+            Mask,
         },
         io,
         types::Uint8,
@@ -85,8 +86,7 @@ impl<'a> Wrap<'a> {
 #[async_trait(?Send)]
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
-        self.sizeof(&announcement.user_id.to_identifier())
-            .await?
+        self.mask(&announcement.user_id.to_identifier())?
             // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
             .absorb(
                 &announcement
@@ -109,8 +109,7 @@ where
     OS: io::OStream,
 {
     async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
-        self.wrap(&mut announcement.user_id.to_identifier())
-            .await?
+        self.mask(&announcement.user_id.to_identifier())?
             // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
             .absorb(
                 &announcement
@@ -166,8 +165,7 @@ where
     IS: io::IStream,
 {
     async fn unwrap(&mut self, announcement: &mut Unwrap) -> Result<&mut Self> {
-        self.unwrap(&mut announcement.author_id)
-            .await?
+        self.mask(&mut announcement.author_id)?
             .absorb(&mut announcement.author_ke_pk)?
             .verify(&announcement.author_id)
             .await?

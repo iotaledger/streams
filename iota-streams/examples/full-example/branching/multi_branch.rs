@@ -28,12 +28,12 @@ use crate::GenericTransport;
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
-pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
     // Generate a simple PSK for storage by users
     let psk = Psk::new::<KeccakF1600, _>("A pre shared key");
 
     let mut author = User::builder()
-        .with_identity(Ed25519::from_seed::<KeccakF1600, _>(seed))
+        .with_identity(Ed25519::from_seed::<KeccakF1600, _>(author_seed))
         .with_transport(transport.clone())
         .build()?;
 
@@ -65,7 +65,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Author stores the PSK used by Subscriber C");
-    author.store_psk(psk);
+    author.add_psk(psk);
 
     println!("> Subscriber A sends subscription");
     let subscription_a_as_a = subscriber_a.subscribe(announcement.address().relative()).await?;
@@ -234,6 +234,89 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
     );
     println!("> SubscriberC was not able to send signed packet, as expected");
 
+    author.sync().await?;
+    subscriber_a.sync().await?;
+    subscriber_b.sync().await?;
+    subscriber_c.sync().await?;
+
+    println!("> Backup & restore users");
+    let author_backup = author.backup("my secret backup password").await?;
+    println!("  Author backup size: {} Bytes", author_backup.len());
+    let new_author = User::restore(&author_backup, "my secret backup password", transport.clone()).await?;
+    print_user("Recovered Author", &new_author);
+    assert_eq!(author, new_author);
+    author = new_author;
+
+    let subscriber_a_backup = subscriber_a.backup("my secret backup password").await?;
+    println!("  Subscriber A backup size: {} Bytes", subscriber_a_backup.len());
+    let new_subscriber_a = User::restore(&subscriber_a_backup, "my secret backup password", transport.clone()).await?;
+    print_user("Recovered Subscriber A", &new_subscriber_a);
+    assert_eq!(subscriber_a, new_subscriber_a);
+    subscriber_a = new_subscriber_a;
+
+    let subscriber_b_backup = subscriber_b.backup("my secret backup password").await?;
+    println!("  Subscriber B backup size: {} Bytes", subscriber_b_backup.len());
+    let new_subscriber_b = User::restore(&subscriber_b_backup, "my secret backup password", transport.clone()).await?;
+    print_user("Recovered Subscriber B", &new_subscriber_b);
+    assert_eq!(subscriber_b, new_subscriber_b);
+    subscriber_b = new_subscriber_b;
+
+    let subscriber_c_backup = subscriber_c.backup("my secret backup password").await?;
+    println!("  Subscriber C backup size: {} Bytes", subscriber_c_backup.len());
+    let new_subscriber_c = User::restore(&subscriber_c_backup, "my secret backup password", transport.clone()).await?;
+    print_user("Recovered Subscriber C", &new_subscriber_c);
+    assert_eq!(subscriber_c, new_subscriber_c);
+    subscriber_c = new_subscriber_c;
+
+    let failed_recovery: Result<User<_>> =
+        User::restore(&subscriber_c_backup, "wrong password", transport.clone()).await;
+    assert!(failed_recovery.is_err());
+
+    println!("> Statelessly recover users rereading the stream");
+    let mut new_author = User::builder()
+        .with_identity(Ed25519::from_seed::<KeccakF1600, _>(author_seed))
+        .with_transport(transport.clone())
+        .build()?;
+    // OOB data must be recovered manually
+    new_author.add_psk(psk);
+    new_author.add_subscriber(subscriber_b.identifier());
+    new_author.receive_message(*announcement.address()).await?;
+    new_author.sync().await?;
+    print_user("Recovered Author", &new_author);
+    assert_eq!(author, new_author);
+    author = new_author;
+
+    let mut new_subscriber_a = User::builder()
+        .with_identity(Ed25519::from_seed::<KeccakF1600, _>("SUBSCRIBERA9SEED"))
+        .with_transport(transport.clone())
+        .build()?;
+
+    new_subscriber_a.receive_message(*announcement.address()).await?;
+    new_subscriber_a.sync().await?;
+    print_user("Recovered Subscriber A", &new_subscriber_a);
+    assert_eq!(subscriber_a, new_subscriber_a);
+    subscriber_a = new_subscriber_a;
+
+    let mut new_subscriber_b = User::builder()
+        .with_identity(Ed25519::from_seed::<KeccakF1600, _>("SUBSCRIBERB9SEED"))
+        .with_transport(transport.clone())
+        .build()?;
+    new_subscriber_b.receive_message(*announcement.address()).await?;
+    new_subscriber_b.sync().await?;
+    print_user("Recovered Subscriber B", &new_subscriber_b);
+    assert_eq!(subscriber_b, new_subscriber_b);
+    subscriber_b = new_subscriber_b;
+
+    let mut new_subscriber_c = User::builder()
+        .with_identity(psk)
+        .with_transport(transport.clone())
+        .build()?;
+    new_subscriber_c.receive_message(*announcement.address()).await?;
+    new_subscriber_c.sync().await?;
+    print_user("Recovered Subscriber C", &new_subscriber_c);
+    assert_eq!(subscriber_c, new_subscriber_c);
+    subscriber_c = new_subscriber_c;
+
     println!("> Author manually unsubscribes Subscriber A");
     author.remove_subscriber(
         subscription_a_as_author
@@ -255,13 +338,13 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
     print_send_result(&unsubscription);
     print_user("Subscriber B", &subscriber_b);
     println!("> Author receives unsubscription");
-    author.sync_state().await?;
+    author.sync().await?;
     print_user("Author", &author);
 
     println!("> The rest of subscribers also receive the unsubscription");
-    subscriber_a.sync_state().await?;
+    subscriber_a.sync().await?;
     print_user("Subscriber A", &subscriber_a);
-    subscriber_c.sync_state().await?;
+    subscriber_c.sync().await?;
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Author removes PSK");
@@ -330,13 +413,13 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, seed: &str) -> Re
     print_user("Subscriber B", &subscriber_b);
 
     println!("> The messages are not received by the rest of the subscribers");
-    assert_eq!(author.sync_state().await?, 0);
+    assert_eq!(author.sync().await?, 0);
     print_user("Author", &author);
-    assert_eq!(subscriber_a.sync_state().await?, 0);
+    assert_eq!(subscriber_a.sync().await?, 0);
     print_user("Subscriber A", &subscriber_a);
-    assert_eq!(subscriber_b.sync_state().await?, 0);
+    assert_eq!(subscriber_b.sync().await?, 0);
     print_user("Subscriber B", &subscriber_b);
-    assert_eq!(subscriber_c.sync_state().await?, 0);
+    assert_eq!(subscriber_c.sync().await?, 0);
     print_user("Subscriber C", &subscriber_c);
 
     Ok(())

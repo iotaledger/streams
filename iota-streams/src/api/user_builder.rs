@@ -86,7 +86,7 @@ impl<T> UserBuilder<T> {
     /// * `transport` - Transport Client to be used by the Streams User
     pub fn with_transport<NewTransport>(self, transport: NewTransport) -> UserBuilder<NewTransport>
     where
-        NewTransport: for <'a> Transport<'a>,
+        NewTransport: for<'a> Transport<'a>,
     {
         UserBuilder {
             transport: Some(transport),
@@ -97,10 +97,10 @@ impl<T> UserBuilder<T> {
     /// Use the default version of the Transport Client
     pub async fn with_default_transport(mut self) -> Result<Self>
     where
-        T: for <'a> Transport<'a> + DefaultTransport,
+        T: for<'a> Transport<'a> + DefaultTransport,
     {
-        // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke bound T: DefaultTransport
-        // for all transports
+        // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke bound T:
+        // DefaultTransport for all transports
         self.transport = Some(T::try_default().await?);
         Ok(self)
     }
@@ -193,20 +193,23 @@ impl<T> UserBuilder<T> {
 
     /// Recover a user instance from the builder parameters.
     ///
-    /// Generates a new [`User`] implementation from the builder. If the announcement message generated
-    /// by this instance matches that of an existing (and provided) announcement link, the user will
-    /// sync to the latest state
+    /// # Arguements
+    /// * `announcement` - An existing announcement message link from which to recover the state of the user
     ///
-    ///  # Arguements
-    /// * `announcement` - An existing announcement message link for validation of ownership
+    /// # Caveats
+    /// Under the hood, this method recovers the user by rereading all the
+    /// messages of the Stream. Besides the obvious caveat of the potential cost
+    /// of execution, keep in mind that only the information present as messages
+    /// in the stream will be recovered; OOB actions, particularly manually
+    /// added or removed subscribers and PSK, will not be recovered and will
+    /// need to be reapplied manually.
     ///
-    ///  # Errors
-    /// This function will produce errors if the [`User`] tries to recover their instance without a
-    /// proper [`UserIdentity`]. It will also return an error if there is an issue creating a new
-    /// channel with the provided [`User`] configuration, or should the provided announcement link
-    /// not be present on the transport layer.
+    /// # Errors
+    /// This function will produce errors if the [`User`] tries to recover their
+    /// instance without a proper [`UserIdentity`]. It will also return an error
+    /// if the provided announcement link is not present on the transport layer.
     ///
-    ///  # Example
+    /// # Example
     /// ```
     /// # use std::cell::RefCell;
     /// # use iota_streams_core::{
@@ -255,12 +258,12 @@ impl<T> UserBuilder<T> {
         //     // Hack necessary to workaround apparent infinite recursivity in Absorb<&mut Option<T>> for unwrap::Context.
         //     // Investigate!
         //     for<'a, 'b, 'c> &'a mut unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for <'a> Transport<'a, Address = &'a Address, Msg = TransportMessage<Vec<u8>>>,
+        T: for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage<Vec<u8>>>,
         //     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, u64)> + Default,
     {
         let mut user = self.build()?;
         user.receive_message(announcement).await?;
-        user.sync_state().await?;
+        user.sync().await?;
         Ok(user)
     }
 }

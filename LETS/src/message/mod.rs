@@ -96,7 +96,7 @@ impl<Address, Payload> Message<Address, Payload> {
     {
         let mut ctx = sizeof::Context::new();
         ctx.sizeof(&self.header).await?.commit()?.sizeof(&self.payload).await?;
-        let buf_size = ctx.size();
+        let buf_size = ctx.finalize();
 
         let mut buf = vec![0; buf_size];
 
@@ -109,7 +109,7 @@ impl<Address, Payload> Message<Address, Payload> {
         // If buffer is not empty, it's an implementation error, panic
         assert!(
             ctx.stream().is_empty(),
-            "Missmatch between buffer size expected by SizeOf ({buf_size}) and actual size of Wrap {}",
+            "Missmatch between buffer size expected by SizeOf ({buf_size}) and actual size of Wrap ({})",
             ctx.stream().len()
         );
         let spongos = ctx.finalize();

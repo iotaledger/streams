@@ -3,22 +3,28 @@ use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
-use generic_array::ArrayLength;
+use generic_array::typenum::Unsigned;
 
-use crate::ddml::{
-    commands::{
-        sizeof::Context,
-        Mask,
+use crate::{
+    core::{
+        prp::PRP,
+        spongos::Spongos,
     },
-    types::{
-        Bytes,
-        Maybe,
-        NBytes,
-        Size,
-        Uint16,
-        Uint32,
-        Uint64,
-        Uint8,
+    ddml::{
+        commands::{
+            sizeof::Context,
+            Mask,
+        },
+        types::{
+            Bytes,
+            Maybe,
+            NBytes,
+            Size,
+            Uint16,
+            Uint32,
+            Uint64,
+            Uint8,
+        },
     },
 };
 
@@ -82,7 +88,7 @@ where
 /// Mask bytes, the size prefixed before the content bytes is also masked.
 impl<T> Mask<Bytes<&T>> for Context
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + ?Sized,
 {
     fn mask(&mut self, bytes: Bytes<&T>) -> Result<&mut Self> {
         let size = Size::new(bytes.len());
@@ -111,6 +117,16 @@ impl Mask<&x25519::PublicKey> for Context {
 impl Mask<&ed25519::PublicKey> for Context {
     fn mask(&mut self, _pk: &ed25519::PublicKey) -> Result<&mut Self> {
         self.size += ed25519::PUBLIC_KEY_LENGTH;
+        Ok(self)
+    }
+}
+
+impl<F> Mask<&Spongos<F>> for Context
+where
+    F: PRP,
+{
+    fn mask(&mut self, _spongos: &Spongos<F>) -> Result<&mut Self> {
+        self.size += F::CapacitySize::USIZE + F::RateSize::USIZE;
         Ok(self)
     }
 }

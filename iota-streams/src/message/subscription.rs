@@ -50,6 +50,7 @@ use spongos::{
             wrap,
             Absorb,
             Join,
+            Mask,
             X25519,
         },
         io,
@@ -115,8 +116,7 @@ impl<'a, F> Wrap<'a, F> {
 impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
     async fn sizeof(&mut self, subscription: &Wrap<'a, F>) -> Result<&mut Self> {
         self.x25519(subscription.author_ke_pk, &NBytes::new(&subscription.unsubscribe_key))?
-            .sizeof(&subscription.subscriber_id.to_identifier())
-            .await?
+            .mask(&subscription.subscriber_id.to_identifier())?
             .absorb(
                 &subscription
                     .subscriber_id
@@ -139,8 +139,7 @@ where
     async fn wrap(&mut self, subscription: &mut Wrap<'a, F>) -> Result<&mut Self> {
         self.join(subscription.initial_state)?
             .x25519(subscription.author_ke_pk, &NBytes::new(&subscription.unsubscribe_key))?
-            .wrap(&mut subscription.subscriber_id.to_identifier())
-            .await?
+            .mask(&subscription.subscriber_id.to_identifier())?
             .absorb(
                 &subscription
                     .subscriber_id
@@ -177,7 +176,7 @@ impl<'a, F> Unwrap<'a, F> {
     pub(crate) fn subscriber_identifier(&self) -> Identifier {
         self.subscriber_identifier
     }
-    
+
     #[deprecated = "to be removed once ke is encapsulated within identity"]
     pub(crate) fn subscriber_ke_pk(&self) -> x25519::PublicKey {
         self.subscriber_ke_pk
@@ -196,8 +195,7 @@ where
                 subscription.author_ke_sk,
                 &mut NBytes::new(&mut subscription.unsubscribe_key),
             )?
-            .unwrap(&mut subscription.subscriber_identifier)
-            .await?
+            .mask(&mut subscription.subscriber_identifier)?
             .absorb(&mut subscription.subscriber_ke_pk)?
             .verify(&subscription.subscriber_identifier)
             .await?;

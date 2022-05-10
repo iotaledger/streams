@@ -105,8 +105,7 @@ impl<'a, F> Wrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
     async fn sizeof(&mut self, signed_packet: &Wrap<'a, F>) -> Result<&mut Self> {
-        self.sizeof(&signed_packet.user_id.to_identifier())
-            .await?
+        self.mask(&signed_packet.user_id.to_identifier())?
             .absorb(&Bytes::new(signed_packet.public_payload))?
             .mask(&Bytes::new(signed_packet.masked_payload))?
             .sign_sizeof(signed_packet.user_id)
@@ -123,8 +122,7 @@ where
 {
     async fn wrap(&mut self, signed_packet: &mut Wrap<'a, F>) -> Result<&mut Self> {
         self.join(signed_packet.initial_state)?
-            .wrap(&mut signed_packet.user_id.to_identifier())
-            .await?
+            .mask(&signed_packet.user_id.to_identifier())?
             .absorb(&Bytes::new(signed_packet.public_payload))?
             .mask(&Bytes::new(signed_packet.masked_payload))?
             .sign(signed_packet.user_id)
@@ -172,8 +170,7 @@ where
 {
     async fn unwrap(&mut self, signed_packet: &mut Unwrap<F>) -> Result<&mut Self> {
         self.join(&mut signed_packet.initial_state)?
-            .unwrap(&mut signed_packet.publisher_id)
-            .await?
+            .mask(&mut signed_packet.publisher_id)?
             .absorb(Bytes::new(&mut signed_packet.public_payload))?
             .mask(Bytes::new(&mut signed_packet.masked_payload))?
             .verify(&signed_packet.publisher_id)

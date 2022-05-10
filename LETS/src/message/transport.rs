@@ -30,7 +30,7 @@ use crate::{
 };
 
 /// Binary network Message representation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct TransportMessage<Body> {
     body: Body,
 }

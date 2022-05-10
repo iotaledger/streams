@@ -1,5 +1,6 @@
 // Rust
 use alloc::{
+    boxed::Box,
     format,
     string::String,
     vec::Vec,
@@ -27,6 +28,7 @@ use anyhow::{
     ensure,
     Result,
 };
+use async_trait::async_trait;
 use futures::{
     future,
     TryStreamExt,
@@ -46,14 +48,28 @@ use crypto::{
 
 // Streams
 use spongos::{
-    ddml::commands::{
-        sizeof,
-        unwrap,
-        wrap,
-        Absorb,
+    ddml::{
+        commands::{
+            sizeof,
+            unwrap,
+            wrap,
+            Absorb,
+            Commit,
+            Mask,
+            Squeeze,
+        },
+        modifiers::External,
+        types::{
+            Mac,
+            Maybe,
+            NBytes,
+            Size,
+            Uint8,
+        },
     },
     KeccakF1600,
     Spongos,
+    SpongosRng,
     PRP,
 };
 use LETS::{
@@ -73,6 +89,8 @@ use LETS::{
         MsgId,
     },
     message::{
+        ContentSizeof,
+        ContentUnwrap,
         ContentWrap,
         Message as LetsMessage,
         PreparsedMessage,
@@ -109,14 +127,15 @@ use crate::{
 const ENCODING: &str = "utf-8";
 const PAYLOAD_LENGTH: usize = 32_000;
 
-const ANN_MESSAGE_NUM: u64 = 0; // Announcement is always the first message of authors
-const SUB_MESSAGE_NUM: u64 = 0; // Subscription is always the first message of subscribers
-const SEQ_MESSAGE_NUM: u64 = 1; // Reserved for sequence messages
-const INIT_MESSAGE_NUM: u64 = 2; // First non-reserved message number
+const ANN_MESSAGE_NUM: usize = 1; // Announcement is always the first message of authors
+const SUB_MESSAGE_NUM: usize = 1; // Subscription is always the first message of subscribers
+const INIT_MESSAGE_NUM: usize = 5; // First non-reserved message number
 
-pub struct User<T, F = KeccakF1600, A = Address, AG = AddressGenerator<KeccakF1600>>
+#[derive(PartialEq, Eq)]
+struct State<F, A>
 where
     A: Link,
+    A::Relative: Eq + Hash,
 {
     /// Users' Identity information, contains keys and logic for signing and verification
     user_id: Identity,
@@ -132,10 +151,34 @@ where
     id_store: KeyStore,
 
     spongos_store: HashMap<A::Relative, Spongos<F>>,
+}
+
+impl<F, A> Default for State<F, A>
+where
+    A: Link,
+    A::Relative: Eq + Hash,
+{
+    fn default() -> Self {
+        Self {
+            user_id: Default::default(),
+            stream_address: Default::default(),
+            author_identifier: Default::default(),
+            id_store: Default::default(),
+            spongos_store: Default::default(),
+        }
+    }
+}
+
+pub struct User<T, F = KeccakF1600, A = Address, AG = AddressGenerator<KeccakF1600>>
+where
+    A: Link,
+    A::Relative: Eq + Hash,
+{
     transport: T,
 
     /// Address generator.
-    link_generator: AG,
+    address_generator: AG,
+    state: State<F, A>,
 }
 
 impl User<(), KeccakF1600, Address, AddressGenerator<KeccakF1600>> {
@@ -147,6 +190,7 @@ impl User<(), KeccakF1600, Address, AddressGenerator<KeccakF1600>> {
 impl<T, F, A, AG> User<T, F, A, AG>
 where
     A: Link,
+    A::Relative: Eq + Hash,
     F: PRP + Default,
 {
     pub(crate) fn new(user_id: Identity, transport: T) -> Self
@@ -168,23 +212,30 @@ where
         }
 
         Self {
-            user_id,
             transport,
-            id_store,
-            spongos_store: Default::default(),
-            link_generator: Default::default(),
-            stream_address: None,
-            author_identifier: None,
+            address_generator: Default::default(),
+            state: State {
+                user_id,
+                id_store,
+                spongos_store: Default::default(),
+                stream_address: None,
+                author_identifier: None,
+            },
         }
     }
 
     /// User's identifier
     pub fn identifier(&self) -> Identifier {
-        self.user_id.to_identifier()
+        self.state.user_id.to_identifier()
+    }
+
+    /// User's cursor
+    fn cursor(&self) -> Option<usize> {
+        self.state.id_store.get_cursor(&self.identifier())
     }
 
     pub(crate) fn stream_address(&self) -> &Option<A> {
-        &self.stream_address
+        &self.state.stream_address
     }
 
     pub(crate) fn transport(&self) -> &T {
@@ -194,17 +245,17 @@ where
         &mut self.transport
     }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, u64)> + ExactSizeIterator + '_ {
-        self.id_store.cursors()
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + '_ {
+        self.state.id_store.cursors()
     }
 
     pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + '_ {
-        self.id_store.subscribers()
+        self.state.id_store.subscribers()
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        self.id_store.insert_cursor(subscriber, 1)
-            && self.id_store.insert_key(
+        self.state.id_store.insert_cursor(subscriber, INIT_MESSAGE_NUM - 1)
+            && self.state.id_store.insert_key(
                 subscriber,
                 subscriber
                     ._ke_pk()
@@ -213,24 +264,25 @@ where
     }
 
     pub fn remove_subscriber(&mut self, id: Identifier) -> bool {
-        self.id_store.remove(&id)
+        self.state.id_store.remove(&id)
     }
 
-    pub fn store_psk(&mut self, psk: Psk) -> bool {
-        self.id_store.insert_psk(psk.to_pskid::<F>(), psk)
+    pub fn add_psk(&mut self, psk: Psk) -> bool {
+        self.state.id_store.insert_psk(psk.to_pskid::<F>(), psk)
     }
 
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
-        self.id_store.remove_psk(pskid)
+        self.state.id_store.remove_psk(pskid)
     }
 
     /// Create a new stream (without announcing it). User now becomes Author.
-    pub fn create_stream(&mut self, channel_idx: u64) -> Result<()>
+    pub fn create_stream(&mut self, channel_idx: usize) -> Result<()>
     where
-        AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, u64)>
-            + LinkGenerator<'static, A::Base, Data = (Identifier, u64)>,
+        AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)>
+            + LinkGenerator<'static, A::Base, Data = (Identifier, usize)>,
         A: Display,
     {
+        // TODO: MERGE WITH ANNOUNCE
         if let Some(appaddr) = self.stream_address() {
             bail!(
                 "Cannot create a channel, user is already registered to channel {}",
@@ -238,18 +290,21 @@ where
             );
         }
         let user_identifier = self.identifier();
-        let stream_base_address = self.link_generator.gen((user_identifier, channel_idx));
-        let stream_rel_address = self.link_generator.gen((&stream_base_address, user_identifier, 1));
-        self.stream_address = Some(A::from_parts(stream_base_address, stream_rel_address));
-        self.author_identifier = Some(self.identifier());
+        let stream_base_address = self.address_generator.gen((user_identifier, channel_idx));
+        let stream_rel_address = self
+            .address_generator
+            .gen((&stream_base_address, user_identifier, INIT_MESSAGE_NUM));
+        self.state.stream_address = Some(A::from_parts(stream_base_address, stream_rel_address));
+        self.state.author_identifier = Some(self.identifier());
 
         // to be removed once key-exchange is encapsulated within user-id
         let user_ke_pk = self
+            .state
             .user_id
             ._ke_sk()
             .ok_or_else(|| anyhow!("this type of user cannot create channels"))?
             .public_key();
-        self.id_store.insert_key(self.identifier(), user_ke_pk);
+        self.state.id_store.insert_key(self.identifier(), user_ke_pk);
 
         Ok(())
     }
@@ -258,27 +313,28 @@ where
 impl<T, F, A, AG, TSR> User<T, F, A, AG>
 where
     T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>, SendResponse = TSR>,
-    A: Link + Display + Clone + 'static,
+    A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Display,
+    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)>,
     F: PRP + Default + Clone,
     for<'a, 'b> wrap::Context<F, &'a mut [u8]>: Absorb<&'b A::Relative>,
     for<'a> sizeof::Context: Absorb<&'a A::Relative>,
-    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, u64)>,
 {
     /// Prepare Announcement message.
     pub async fn announce(&mut self) -> Result<SendResponse<A, TSR>> {
         // Check conditions
         let stream_address = self
+            .state
             .stream_address
             .as_ref()
             .ok_or_else(|| anyhow!("before sending the announcement one must create the stream first"))?;
 
         // Update own's cursor
-        let user_cursor = 1;
+        let user_cursor = INIT_MESSAGE_NUM;
 
         // Prepare HDF and PCF
         let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, self.identifier())?;
-        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(&self.user_id));
+        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(&self.state.user_id));
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -291,8 +347,10 @@ where
         let send_response = self.transport.send_message(stream_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.id_store.insert_cursor(self.identifier(), user_cursor);
-        self.spongos_store.insert(stream_address.relative().clone(), spongos);
+        self.state.id_store.insert_cursor(self.identifier(), user_cursor);
+        self.state
+            .spongos_store
+            .insert(stream_address.relative().clone(), spongos);
         Ok(SendResponse::new(stream_address.clone(), send_response))
     }
 
@@ -305,28 +363,30 @@ where
             .cloned()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
 
+        let user_cursor = INIT_MESSAGE_NUM;
         // Update own's cursor
-        let user_cursor = 1;
-        let rel_address: A::Relative = self
-            .link_generator
-            .gen((stream_address.base(), self.identifier(), user_cursor));
+        let rel_address: A::Relative =
+            self.address_generator
+                .gen((stream_address.base(), self.identifier(), user_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
         let mut linked_msg_spongos = self
+            .state
             .spongos_store
             .get(&link_to)
             .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
             .clone();
         let unsubscribe_key = StdRng::from_entropy().gen();
         let author_ke_pk = self
+            .state
             .author_identifier
-            .and_then(|author_id| self.id_store.get_x25519(&author_id))
+            .and_then(|author_id| self.state.id_store.get_x25519(&author_id))
             .expect("a user that already have an stream address must know the author identifier");
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
             unsubscribe_key,
-            &self.user_id,
+            &self.state.user_id,
             author_ke_pk,
         ));
         let header =
@@ -344,8 +404,9 @@ where
         let send_response = self.transport.send_message(&message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.id_store.insert_cursor(self.identifier(), user_cursor);
-        self.spongos_store.insert(rel_address, spongos);
+        self.state.id_store.insert_cursor(self.identifier(), user_cursor);
+        // Subscription messages are never stored in spongos to maintain consistency about the view of the
+        // set of messages of the stream between all the subscribers and across stateless recovers
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -356,23 +417,23 @@ where
         })?;
 
         // Update own's cursor
-        let previous_user_cursor = self.id_store.get_cursor(&self.identifier()).unwrap_or(1); // Account for subscribers added manually instead of sending a subscription message
-        let new_user_cursor = previous_user_cursor + 1;
+        let new_cursor = self.cursor().map(|c| c + 1).unwrap_or(INIT_MESSAGE_NUM);
         let rel_address: A::Relative =
-            self.link_generator
-                .gen((stream_address.base(), self.identifier(), new_user_cursor));
+            self.address_generator
+                .gen((stream_address.base(), self.identifier(), new_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
         let mut linked_msg_spongos = self
+            .state
             .spongos_store
             .get(&link_to)
             .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
             .clone();
-        let content =
-            PCF::new_final_frame().with_content(unsubscription::Wrap::new(&mut linked_msg_spongos, &self.user_id));
-        let header = HDF::new(message_types::UNSUBSCRIPTION, new_user_cursor, self.identifier())?
-            .with_linked_msg_address(link_to);
+        let content = PCF::new_final_frame()
+            .with_content(unsubscription::Wrap::new(&mut linked_msg_spongos, &self.state.user_id));
+        let header =
+            HDF::new(message_types::UNSUBSCRIPTION, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -386,8 +447,8 @@ where
         let send_response = self.transport.send_message(&message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.id_store.insert_cursor(self.identifier(), new_user_cursor);
-        self.spongos_store.insert(rel_address, spongos);
+        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -408,24 +469,24 @@ where
             .ok_or_else(|| anyhow!("before sending a keyload one must create a stream first"))?;
 
         // Update own's cursor
-        let previous_user_cursor = self
-            .id_store
-            .get_cursor(&self.identifier())
-            .expect("author of a stream must have its cursor already stored");
-        let new_user_cursor = previous_user_cursor + 1;
+        let previous_cursor = self
+            .cursor()
+            .expect("author of a stream must have its cursor already stored to be able to send keyloads");
+        let new_cursor = previous_cursor + 1;
         let rel_address: A::Relative =
-            self.link_generator
-                .gen((stream_address.base(), self.identifier(), new_user_cursor));
+            self.address_generator
+                .gen((stream_address.base(), self.identifier(), new_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
         // let mut linked_msg_spongos = self
-        //     .spongos_store
+        //     .state.spongos_store
         //     .get(link_to)
         //     .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
         //     .clone();
         // TODO: EXPERIMENT: USE ANNOUNCEMENT SPONGOS FOR KEYLOADS, TO REMOVE SEQUENCE MESSAGES
         let mut announcement_spongos = self
+            .state
             .spongos_store
             .get(stream_address.relative())
             .expect("a subscriber that has received an stream announcement must keep its spongos in store")
@@ -440,7 +501,8 @@ where
             .map(|subscriber| {
                 Ok((
                     subscriber,
-                    self.id_store
+                    self.state
+                        .id_store
                         .get_exchange_key(&subscriber)
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber))?,
                 ))
@@ -451,10 +513,9 @@ where
             subscribers_with_keys,
             encryption_key,
             nonce,
-            &self.user_id,
+            &self.state.user_id,
         ));
-        let header =
-            HDF::new(message_types::KEYLOAD, new_user_cursor, self.identifier())?.with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::KEYLOAD, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -468,8 +529,8 @@ where
         let send_response = self.transport.send_message(&message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.id_store.insert_cursor(self.identifier(), new_user_cursor);
-        self.spongos_store.insert(rel_address, spongos);
+        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -498,27 +559,27 @@ where
         })?;
 
         // Update own's cursor
-        let previous_user_cursor = self.id_store.get_cursor(&self.identifier()).unwrap_or(1); // Account for subscribers added manually instead of sending a subscription message
-        let new_user_cursor = previous_user_cursor + 1;
+        let new_cursor = self.cursor().map(|c| c + 1).unwrap_or(INIT_MESSAGE_NUM);
         let rel_address: A::Relative =
-            self.link_generator
-                .gen((stream_address.base(), self.identifier(), new_user_cursor));
+            self.address_generator
+                .gen((stream_address.base(), self.identifier(), new_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
         let mut linked_msg_spongos = self
+            .state
             .spongos_store
             .get(&link_to)
             .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
             .clone();
         let content = PCF::new_final_frame().with_content(signed_packet::Wrap::new(
             &mut linked_msg_spongos,
-            &self.user_id,
+            &self.state.user_id,
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::SIGNED_PACKET, new_user_cursor, self.identifier())?
-            .with_linked_msg_address(link_to);
+        let header =
+            HDF::new(message_types::SIGNED_PACKET, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -532,8 +593,8 @@ where
         let send_response = self.transport.send_message(&message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.id_store.insert_cursor(self.identifier(), new_user_cursor);
-        self.spongos_store.insert(rel_address, spongos);
+        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -553,16 +614,15 @@ where
         })?;
 
         // Update own's cursor
-        // Account for subscribers added manually instead of sending a subscription message
-        let previous_cursor = self.id_store.get_cursor(&self.identifier()).unwrap_or(1);
-        let new_cursor = previous_cursor + 1;
-        let rel_address: A::Relative = self
-            .link_generator
-            .gen((stream_address.base(), self.identifier(), new_cursor));
+        let new_cursor = self.cursor().map(|c| c + 1).unwrap_or(INIT_MESSAGE_NUM);
+        let rel_address: A::Relative =
+            self.address_generator
+                .gen((stream_address.base(), self.identifier(), new_cursor));
 
         // Prepare HDF and PCF
         // Spongos must be cloned because wrapping mutates it
         let mut linked_msg_spongos = self
+            .state
             .spongos_store
             .get(&link_to)
             .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
@@ -587,8 +647,8 @@ where
         let send_response = self.transport.send_message(&message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.id_store.insert_cursor(self.identifier(), new_cursor);
-        self.spongos_store.insert(rel_address, spongos);
+        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
 }
@@ -597,12 +657,13 @@ impl<T, F, A, AG> User<T, F, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
+    A::Base: Clone,
+    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
     F: PRP + Default + Clone,
     for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
 {
     pub async fn receive_message(&mut self, address: A) -> Result<Message<A>>
     where
-        A: 'static,
         T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
     {
         let msg = self.transport.recv_message(&address).await?;
@@ -613,7 +674,8 @@ where
         let preparsed = msg.parse_header::<F, A::Relative>().await?;
         // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
         // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.id_store
+        self.state
+            .id_store
             .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
         match preparsed.header().message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
@@ -643,14 +705,14 @@ where
         let (message, spongos) = preparsed.unwrap(announcement).await?;
 
         // Store spongos
-        self.spongos_store.insert(address.relative().clone(), spongos);
+        self.state.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
         let author_id = message.payload().content().author_id();
         let author_ke_pk = message.payload().content().author_ke_pk();
-        self.id_store.insert_key(author_id, author_ke_pk);
-        self.stream_address = Some(address.clone());
-        self.author_identifier = Some(author_id);
+        self.state.id_store.insert_key(author_id, author_ke_pk);
+        self.state.stream_address = Some(address.clone());
+        self.state.author_identifier = Some(author_id);
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -666,27 +728,27 @@ where
             anyhow!("subscription messages must contain the address of the message they are linked to in the header")
         })?;
         let mut linked_msg_spongos = {
-            if let Some(spongos) = self.spongos_store.get(linked_msg_address) {
+            if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
                 // Spongos must be cloned because wrapping mutates it
                 spongos.clone()
             } else {
                 return Ok(Message::orphan(address, preparsed));
             }
         };
-        let user_ke_sk = &self
-            .user_id
-            ._ke_sk()
-            .expect("author of a stream must have an identity from which an x25519 secret-key can be derived");
+        let user_ke_sk = &self.state.user_id._ke_sk().ok_or_else(|| {
+            anyhow!("reader of a stream must have an identity from which an x25519 secret-key can be derived")
+        })?;
         let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
         let (message, spongos) = preparsed.unwrap(subscription).await?;
 
         // Store spongos
-        self.spongos_store.insert(address.relative().clone(), spongos);
+        // Subscription messages are never stored in spongos to maintain consistency about the view of the
+        // set of messages of the stream between all the subscribers and across stateless recovers
 
         // Store message content into stores
         let subscriber_identifier = message.payload().content().subscriber_identifier();
         let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
-        self.id_store.insert_key(subscriber_identifier, subscriber_ke_pk);
+        self.state.id_store.insert_key(subscriber_identifier, subscriber_ke_pk);
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -703,7 +765,7 @@ where
             anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
         })?;
         let mut linked_msg_spongos = {
-            if let Some(spongos) = self.spongos_store.get(linked_msg_address) {
+            if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
                 // Spongos must be cloned because wrapping mutates it
                 spongos.clone()
             } else {
@@ -714,7 +776,7 @@ where
         let (message, spongos) = preparsed.unwrap(unsubscription).await?;
 
         // Store spongos
-        self.spongos_store.insert(address.relative().clone(), spongos);
+        self.state.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
         self.remove_subscriber(message.payload().content().subscriber_identifier());
@@ -730,7 +792,7 @@ where
         // Check conditions
 
         // Unwrap message
-        let author_identifier = self.author_identifier.ok_or_else(|| {
+        let author_identifier = self.state.author_identifier.ok_or_else(|| {
             anyhow!("before receiving keyloads one must have received the announcement of a stream first")
         })?;
         // let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
@@ -738,7 +800,7 @@ where
         // })?;
         // // Spongos must be cloned because wrapping mutates it
         // let mut linked_msg_spongos = self
-        //     .spongos_store
+        //     .state.spongos_store
         //     .get(linked_msg_address)
         //     .ok_or_else(|| anyhow!("message '{}' not found in spongos store", linked_msg_address))?
         //     .clone();
@@ -748,6 +810,7 @@ where
             .as_ref()
             .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
         let mut announcement_spongos = self
+            .state
             .spongos_store
             .get(stream_address.relative())
             .expect("a subscriber that has received an stream announcement must keep its spongos in store")
@@ -755,17 +818,27 @@ where
             .clone();
 
         // TODO: Remove Psk from Identity and Identifier, and manage it as a complementary permission
-        let user_ke_sk = self.user_id._ke();
-        let keyload = keyload::Unwrap::new(&mut announcement_spongos, &self.user_id, &user_ke_sk, author_identifier);
+        let user_ke_sk = self.state.user_id._ke();
+        let keyload = keyload::Unwrap::new(
+            &mut announcement_spongos,
+            &self.state.user_id,
+            &user_ke_sk,
+            author_identifier,
+        );
         let (message, spongos) = preparsed.unwrap(keyload).await?;
 
         // Store spongos
-        self.spongos_store.insert(address.relative().clone(), spongos);
+        self.state.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
         for subscriber in message.payload().content().subscribers() {
-            if !subscriber.is_psk() {
-                self.id_store.insert_cursor_if_missing(*subscriber, 1)
+            let no_cursor_tracked = !self.state.id_store.contains_subscriber(subscriber);
+            if !subscriber.is_psk() && no_cursor_tracked {
+                self.state.id_store.insert_cursor(*subscriber, INIT_MESSAGE_NUM - 1);
+                // TODO: fetch subscription message at sequence 1?
+                // let subscription_address = self.address_generator.gen((stream_address.base(), *subscriber, 1));
+                // if !self.state.spongos_store.contains_key(&subscription_address) {
+                // }
             }
         }
 
@@ -784,7 +857,7 @@ where
             anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
         })?;
         let mut linked_msg_spongos = {
-            if let Some(spongos) = self.spongos_store.get(linked_msg_address) {
+            if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
                 // Spongos must be cloned because wrapping mutates it
                 spongos.clone()
             } else {
@@ -795,7 +868,7 @@ where
         let (message, spongos) = preparsed.unwrap(signed_packet).await?;
 
         // Store spongos
-        self.spongos_store.insert(address.relative().clone(), spongos);
+        self.state.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
 
@@ -814,7 +887,7 @@ where
             anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
         })?;
         let mut linked_msg_spongos = {
-            if let Some(spongos) = self.spongos_store.get(linked_msg_address) {
+            if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
                 // Spongos must be cloned because wrapping mutates it
                 spongos.clone()
             } else {
@@ -825,7 +898,7 @@ where
         let (message, spongos) = preparsed.unwrap(tagged_packet).await?;
 
         // Store spongos
-        self.spongos_store.insert(address.relative().clone(), spongos);
+        self.state.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
 
@@ -835,13 +908,13 @@ where
 
 impl<T, F, A, AG> User<T, F, A, AG>
 where
-    A: Link + Display + Clone + 'static,
-    A::Base: Clone,
+    A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
+    A::Base: Clone,
+    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
     F: PRP + Default + Clone,
     for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
     T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
-    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, u64)> + Default,
 {
     /// Start a [`Messages`] stream to traverse the channel messages
     ///
@@ -853,7 +926,7 @@ where
     /// Iteratively fetches all the next messages until internal state has caught up
     ///
     /// If succeeded, returns the number of messages advanced.
-    pub async fn sync_state(&mut self) -> Result<usize> {
+    pub async fn sync(&mut self) -> Result<usize> {
         // ignoring the result is sound as Drain::Error is Infallible
         self.messages().try_fold(0, |n, _| future::ok(n + 1)).await
     }
@@ -868,131 +941,205 @@ where
     }
 }
 
-// /// Generate the link of a message
-// ///
-// /// The link is generated from the link of the last message sent by the publishing user and its sequence number
-// ///
-// /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information
-// fn gen_link<I>(&self, id: I, last_link: &L::Rel, current_seq_no: u32) -> Cursor<L>
-// where
-//     I: AsRef<[u8]>,
-// {
-//     let new_link = self
-//         .link_generator
-//         .link_from(id, Cursor::new_at(last_link, 0, current_seq_no));
-//     Cursor::new_at(new_link, 0, current_seq_no)
-// }
+impl<T, F, A, AG> User<T, F, A, AG>
+where
+    F: PRP + Default,
+    A: Link,
+    A::Relative: Eq + Hash,
+    for<'a> sizeof::Context: Mask<&'a A> + Mask<&'a A::Relative>,
+    for<'a, 'b> wrap::Context<F, &'a mut [u8]>: Mask<&'b A> + Mask<&'b A::Relative>,
+{
+    pub async fn backup<P>(&mut self, pwd: P) -> Result<Vec<u8>>
+    where
+        P: AsRef<[u8]>,
+    {
+        let mut ctx = sizeof::Context::new();
+        ctx.sizeof(&mut self.state).await?;
+        let buf_size = ctx.finalize();
 
-// /// Generate the link of a sequence message of a user given the previous link of its referred message
-// ///
-// /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information
-// fn gen_seq_link<I>(&self, id: I, previous_link: &L::Rel) -> Cursor<L>
-// where
-//     I: AsRef<[u8]>,
-// {
-//     self.gen_link(id, previous_link, SEQ_MESSAGE_NUM)
-// }
+        let mut buf = vec![0; buf_size];
 
-// /// Generate the next batch of message links to poll
-// ///
-// /// Given the set of users registered as participants of the channel and their current registered
-// /// sequencing position, this method generates a set of new links to poll for new messages
-// /// (one for each user, represented by its [`Identifier`]).
-// ///
-// /// Keep in mind that in multi-branch channels, the link returned corresponds to the next sequence message.
-// ///
-// /// The link is returned in a [`Cursor<Link>`] to carry over its sequencing information
-// fn gen_next_msg_links(&self) -> Vec<(Identifier, Cursor<L>)> {
-//     // TODO: Turn it into iterator.
-//     let mut ids = Vec::new();
+        let mut ctx = wrap::Context::new(&mut buf[..]);
+        let key: [u8; 32] = SpongosRng::<F>::new(pwd).gen();
+        ctx.absorb(External::new(NBytes::new(&key)))?;
+        ctx.wrap(&mut self.state).await?;
+        assert!(
+            ctx.stream().is_empty(),
+            "Missmatch between buffer size expected by SizeOf ({buf_size}) and actual size of Wrap ({})",
+            ctx.stream().len()
+        );
 
-//     // TODO: Do the same for self.user_id.id
-//     for (id, cursor) in self.id_store.cursors() {
-//         ids.push((*id, self.gen_seq_link(&id, &cursor.link)));
-//     }
-//     ids
-// }
+        Ok(buf)
+    }
+}
 
-// fn store_state(&mut self, id: Identifier, link: L::Rel) -> Result<()> {
-//     if let Some(cursor) = self.id_store.get_cursor_mut(&id) {
-//         cursor.link = link;
-//         cursor.next_seq();
-//     }
-//     Ok(())
-// }
+impl<T, F, A, AG> User<T, F, A, AG>
+where
+    F: PRP + Default,
+    A: Link + Default,
+    A::Relative: Eq + Hash + Default,
+    AG: Default,
+    for<'a, 'b> unwrap::Context<F, &'a [u8]>: Mask<&'b mut A> + Mask<&'b mut A::Relative>,
+{
+    pub async fn restore<B, P>(backup: B, pwd: P, transport: T) -> Result<Self>
+    where
+        P: AsRef<[u8]>,
+        B: AsRef<[u8]>,
+    {
+        let mut ctx = unwrap::Context::<F, _>::new(backup.as_ref());
+        let key: [u8; 32] = SpongosRng::<F>::new(pwd).gen();
+        ctx.absorb(&External::new(NBytes::new(&key)))?;
+        let mut state = State::default();
+        ctx.unwrap(&mut state).await?;
+        Ok(User {
+            transport,
+            address_generator: Default::default(),
+            state,
+        })
+    }
+}
 
-// fn fetch_state(&self) -> Result<Vec<(Identifier, Cursor<L>)>> {
-//     let mut state = Vec::new();
-//     try_or!(self.appinst.is_some(), UserNotRegistered)?;
+#[async_trait(?Send)]
+impl<F, A> ContentSizeof<State<F, A>> for sizeof::Context
+where
+    F: PRP,
+    A: Link,
+    A::Relative: Eq + Hash,
+    for<'a> sizeof::Context: Mask<&'a A> + Mask<&'a A::Relative>,
+{
+    async fn sizeof(&mut self, user_state: &State<F, A>) -> Result<&mut Self> {
+        self.mask(&user_state.user_id)?
+            .mask(Maybe::new(user_state.stream_address.as_ref()))?
+            .mask(Maybe::new(user_state.author_identifier.as_ref()))?;
 
-//     for (
-//         pk,
-//         Cursor {
-//             link,
-//             branch_no,
-//             seq_no,
-//         },
-//     ) in self.id_store.cursors()
-//     {
-//         let link = L::from_base_rel(self.appaddr.as_ref().unwrap().base(), link);
-//         state.push((*pk, Cursor::new_at(link, *branch_no, *seq_no)))
-//     }
-//     Ok(state)
-// }
+        let amount_spongos = user_state.spongos_store.len();
+        self.mask(Size::new(amount_spongos))?;
+        for (address, spongos) in &user_state.spongos_store {
+            self.mask(address)?.mask(spongos)?;
+        }
 
-// #[async_trait(?Send)]
-// impl<F, Link, LG, LS> ContentSizeof<F> for User<F, Link, LG, LS>
-// where
-//     F: PRP,
-//     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-//     Link::Base: Eq + ToString,
-//     Link::Rel: Eq + SkipFallback<F> + AbsorbFallback<F>,
-//     LG: LinkGenerator<Link>,
-//     LS: LinkStore<F, Link::Rel> + Default,
-//     LS::Info: AbsorbFallback<F>,
-// {
-//     async fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-//         ctx.mask(<&NBytes<U32>>::from(&self.user_id.sig_sk()?.to_bytes()[..]))?
-//             .absorb(<&Bytes>::from(&self.message_encoding))?
-//             .absorb(Uint64(self.uniform_payload_length as u64))?;
+        let cursors = user_state.id_store.cursors();
+        let amount_cursors = cursors.len();
+        self.mask(Size::new(amount_cursors))?;
+        for (subscriber, cursor) in cursors {
+            self.mask(&subscriber)?.mask(Size::new(cursor))?;
+        }
 
-//         let oneof_appinst = Uint8(if self.appaddr.is_some() { 1 } else { 0 });
-//         ctx.absorb(oneof_appinst)?;
-//         if let Some(ref appinst) = self.appaddr {
-//             ctx.absorb(<&Fallback<Link>>::from(appinst))?;
-//         }
+        let keys = user_state.id_store.keys();
+        let amount_keys = keys.len();
+        self.mask(Size::new(amount_keys))?;
+        for (subscriber, ke_pk) in keys {
+            self.mask(&subscriber)?.mask(&ke_pk)?;
+        }
 
-//         let oneof_author_id = Uint8(if self.author_id.is_some() { 1 } else { 0 });
-//         ctx.absorb(oneof_author_id)?;
-//         if let Some(ref author_id) = self.author_id {
-//             author_id.sizeof(ctx).await?;
-//         }
+        let psks = user_state.id_store.psks();
+        let amount_psks = psks.len();
+        self.mask(Size::new(amount_psks))?;
+        for (pskid, psk) in psks {
+            self.mask(&pskid)?.mask(&psk)?;
+        }
+        self.commit()?.squeeze(Mac::new(32))?;
+        Ok(self)
+    }
+}
 
-//         let repeated_links = Size(self.spongos_store.len());
-//         let keys = self.id_store.cursors();
-//         let repeated_keys = Size(self.id_store.cursors_size());
+#[async_trait(?Send)]
+impl<'a, F, A> ContentWrap<State<F, A>> for wrap::Context<F, &'a mut [u8]>
+where
+    F: PRP,
+    A: Link,
+    A::Relative: Eq + Hash,
+    for<'b> wrap::Context<F, &'a mut [u8]>: Mask<&'b A> + Mask<&'b A::Relative>,
+{
+    async fn wrap(&mut self, user_state: &mut State<F, A>) -> Result<&mut Self> {
+        self.mask(&user_state.user_id)?
+            .mask(Maybe::new(user_state.stream_address.as_ref()))?
+            .mask(Maybe::new(user_state.author_identifier.as_ref()))?;
 
-//         ctx.absorb(repeated_links)?;
-//         for (link, (s, info)) in self.spongos_store.iter() {
-//             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
-//                 .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
-//                 .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
-//                     info,
-//                 ))?;
-//         }
+        let amount_spongos = user_state.spongos_store.len();
+        self.mask(Size::new(amount_spongos))?;
+        for (address, spongos) in &user_state.spongos_store {
+            self.mask(address)?.mask(spongos)?;
+        }
 
-//         ctx.absorb(repeated_keys)?;
-//         for (id, cursor) in keys {
-//             let ctx = (*id).sizeof(ctx).await?;
-//             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.link))?
-//                 .absorb(Uint32(cursor.branch_no))?
-//                 .absorb(Uint32(cursor.seq_no))?;
-//         }
-//         ctx.commit()?.squeeze(Mac(32))?;
-//         Ok(ctx)
-//     }
-// }
+        let cursors = user_state.id_store.cursors();
+        let amount_cursors = cursors.len();
+        self.mask(Size::new(amount_cursors))?;
+        for (subscriber, cursor) in cursors {
+            self.mask(&subscriber)?.mask(Size::new(cursor))?;
+        }
 
+        let keys = user_state.id_store.keys();
+        let amount_keys = keys.len();
+        self.mask(Size::new(amount_keys))?;
+        for (subscriber, ke_pk) in keys {
+            self.mask(&subscriber)?.mask(&ke_pk)?;
+        }
+
+        let psks = user_state.id_store.psks();
+        let amount_psks = psks.len();
+        self.mask(Size::new(amount_psks))?;
+        for (pskid, psk) in psks {
+            self.mask(&pskid)?.mask(&psk)?;
+        }
+        self.commit()?.squeeze(Mac::new(32))?;
+        Ok(self)
+    }
+}
+
+#[async_trait(?Send)]
+impl<'a, F, A> ContentUnwrap<State<F, A>> for unwrap::Context<F, &'a [u8]>
+where
+    F: PRP + Default,
+    A: Link + Default,
+    A::Relative: Eq + Hash + Default,
+    for<'b> unwrap::Context<F, &'a [u8]>: Mask<&'b mut A> + Mask<&'b mut A::Relative>,
+{
+    async fn unwrap(&mut self, user_state: &mut State<F, A>) -> Result<&mut Self> {
+        self.mask(&mut user_state.user_id)?
+            .mask(Maybe::new(&mut user_state.stream_address))?
+            .mask(Maybe::new(&mut user_state.author_identifier))?;
+
+        let mut amount_spongos = Size::default();
+        self.mask(&mut amount_spongos)?;
+        for _ in 0..amount_spongos.inner() {
+            let mut address = A::Relative::default();
+            let mut spongos = Spongos::default();
+            self.mask(&mut address)?.mask(&mut spongos)?;
+            user_state.spongos_store.insert(address, spongos);
+        }
+
+        let mut amount_cursors = Size::default();
+        self.mask(&mut amount_cursors)?;
+        for _ in 0..amount_cursors.inner() {
+            let mut subscriber = Identifier::default();
+            let mut cursor = Size::default();
+            self.mask(&mut subscriber)?.mask(&mut cursor)?;
+            user_state.id_store.insert_cursor(subscriber, cursor.inner());
+        }
+
+        let mut amount_keys = Size::default();
+        self.mask(&mut amount_keys)?;
+        for _ in 0..amount_keys.inner() {
+            let mut subscriber = Identifier::default();
+            let mut key = x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]);
+            self.mask(&mut subscriber)?.mask(&mut key)?;
+            user_state.id_store.insert_key(subscriber, key);
+        }
+
+        let mut amount_psks = Size::default();
+        self.mask(&mut amount_psks)?;
+        for _ in 0..amount_psks.inner() {
+            let mut pskid = PskId::default();
+            let mut psk = Psk::default();
+            self.mask(&mut pskid)?.mask(&mut psk)?;
+            user_state.id_store.insert_psk(pskid, psk);
+        }
+
+        self.commit()?.squeeze(Mac::new(32))?;
+        Ok(self)
+    }
+}
 // #[async_trait(?Send)]
 // impl<F, Link, Store, LG, LS> ContentWrap<F, Store> for User<F, Link, LG, LS>
 // where
@@ -1010,7 +1157,7 @@ where
 //         store: &Store,
 //         ctx: &'c mut wrap::Context<F, OS>,
 //     ) -> Result<&'c mut wrap::Context<F, OS>> {
-//         ctx.mask(<&NBytes<U32>>::from(&self.user_id.sig_sk()?.to_bytes()[..]))?
+//         ctx.mask(<&NBytes<U32>>::from(&self.state.user_id().sig_sk()?.to_bytes()[..]))?
 //             .absorb(<&Bytes>::from(&self.message_encoding))?
 //             .absorb(Uint64(self.uniform_payload_length as u64))?;
 
@@ -1026,12 +1173,12 @@ where
 //             author_id.wrap(store, ctx).await?;
 //         }
 
-//         let repeated_links = Size(self.spongos_store.len());
-//         let keys = self.id_store.cursors();
-//         let repeated_keys = Size(self.id_store.cursors_size());
+//         let repeated_links = Size(self.state.spongos_store.len());
+//         let keys = self.state.id_store.cursors();
+//         let repeated_keys = Size(self.state.id_store.cursors_size());
 
 //         ctx.absorb(repeated_links)?;
-//         for (link, (s, info)) in self.spongos_store.iter() {
+//         for (link, (s, info)) in self.state.spongos_store.iter() {
 //             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
 //                 .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
 //                 .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
@@ -1129,9 +1276,9 @@ where
 //         let sig_sk = ed25519::SecretKey::from_bytes(<[u8; 32]>::try_from(sig_sk_bytes.as_ref())?);
 //         let sig_pk = sig_sk.public_key();
 
-//         self.user_id = UserIdentity::from((sig_sk, sig_pk));
-//         self.spongos_store = link_store;
-//         self.id_store = key_store;
+//         self.state.user_id = UserIdentity::from((sig_sk, sig_pk));
+//         self.state.spongos_store = link_store;
+//         self.state.id_store = key_store;
 //         self.author_id = author_id;
 //         if let Some(ref seed) = appinst {
 //             self.link_generator.reset(seed.clone());
@@ -1142,42 +1289,6 @@ where
 //         Ok(ctx)
 //     }
 // }
-
-// impl<F, Link, LG, LS> User<F, Link, LG, LS>
-// where
-//     F: PRP,
-//     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-//     Link::Base: Eq + ToString,
-//     Link::Rel: Eq + SkipFallback<F> + AbsorbFallback<F>,
-//     LG: LinkGenerator<Link>,
-//     LS: LinkStore<F, Link::Rel> + Default,
-//     LS::Info: AbsorbFallback<F>,
-// {
-//     async fn export(&self, pwd: &str) -> Result<Vec<u8>> {
-//         const VERSION: u8 = 0;
-//         let buf_size = {
-//             let mut ctx = sizeof::Context::<F>::new();
-//             ctx.absorb(Uint8(VERSION))?;
-//             self.sizeof(&mut ctx).await?;
-//             ctx.size()
-//         };
-
-//         let mut buf = vec![0; buf_size];
-
-//         {
-//             let mut ctx = wrap::Context::new(&mut buf[..]);
-//             let prng = prng::from_seed::<F>("IOTA Streams Channels app", pwd);
-//             let key = NBytes::<U32>(prng.gen_arr("user export key"));
-//             ctx.absorb(Uint8(VERSION))?.absorb(External(&key))?;
-//             let store = EmptyLinkStore::<F, <Link as HasLink>::Rel, ()>::default();
-//             self.wrap(&store, &mut ctx).await?;
-//             try_or!(ctx.stream.is_empty(), OutputStreamNotFullyConsumed(ctx.stream.len()))?;
-//         }
-
-//         Ok(buf)
-//     }
-// }
-
 // impl<F, Link, LG, LS> User<F, Link, LG, LS>
 // where
 //     F: PRP,
@@ -1251,12 +1362,12 @@ where
 
 impl<T, F, A, AG> IntoMessages<T, F, A, AG> for User<T, F, A, AG>
 where
-    A: Link + Display + Clone + 'static,
+    A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
     A::Base: Clone,
+    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
     F: PRP + Default + Clone,
-    AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, u64)> + Default,
-    for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
+    for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
     T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
 {
     fn messages(&mut self) -> Messages<'_, T, F, A, AG> {
@@ -1267,19 +1378,43 @@ where
 impl<T, F, A, AG> Debug for User<T, F, A, AG>
 where
     A: Link,
-    A::Relative: Display,
+    A::Relative: Display + Eq + Hash,
     F: PRP + Default,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "* identifier: <{}>\n* {:?}\n* messages:\n{}",
+            "\n* identifier: <{}>\n{:?}\n* messages:\n{}\n",
             self.identifier(),
-            self.id_store,
-            self.spongos_store
+            self.state.id_store,
+            self.state
+                .spongos_store
                 .keys()
                 .map(|key| format!("\t<{}>\n", key))
                 .collect::<String>()
         )
     }
+}
+
+/// An streams user equality is determined by the equality of its state. The major consequence of this
+/// fact is that two users with the same identity but different transport configurations are considered equal
+impl<T, F, A, AG> PartialEq for User<T, F, A, AG>
+where
+    A: Link + PartialEq,
+    A::Relative: Eq + Hash,
+    F: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.state == other.state
+    }
+}
+
+/// An streams user equality is determined by the equality of its state. The major consequence of this
+/// fact is that two users with the same identity but different transport configurations are considered equal
+impl<T, F, A, AG> Eq for User<T, F, A, AG>
+where
+    A: Link + PartialEq,
+    A::Relative: Eq + Hash,
+    F: PartialEq,
+{
 }

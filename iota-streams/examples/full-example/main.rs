@@ -77,7 +77,6 @@ async fn run_multi_branch_test<T: GenericTransport>(transport: T, seed: &str) ->
 }
 
 async fn main_pure() -> Result<()> {
-
     println!("\n");
     println!("###########################################");
     println!("Running pure tests without accessing Tangle");
@@ -116,9 +115,15 @@ async fn main_client() -> Result<()> {
     run_multi_branch_test(transport.clone(), &new_seed()).await?;
     run_did_test(transport).await?;
     // run_recovery_test(transport.clone(), &new_seed()).await;
-    println!("#############################################{}", "#".repeat(node_url.len()));
+    println!(
+        "#############################################{}",
+        "#".repeat(node_url.len())
+    );
     println!("Done running tests accessing Tangle via node {}", &node_url);
-    println!("#############################################{}", "#".repeat(node_url.len()));
+    println!(
+        "#############################################{}",
+        "#".repeat(node_url.len())
+    );
     Ok(())
 }
 

@@ -30,6 +30,6 @@ pub trait PRP {
     /// Ref to inner state.
     fn inner(&self) -> &GenericArray<u8, Self::CapacitySize>;
 
-    /// Construct state from inner part defaulting outer part.
-    fn from_inner(inner: &GenericArray<u8, Self::CapacitySize>) -> Self;
+    /// Mut ref to inner state
+    fn inner_mut(&mut self) -> &mut GenericArray<u8, Self::CapacitySize>;
 }

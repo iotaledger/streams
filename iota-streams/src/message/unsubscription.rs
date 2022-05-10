@@ -39,6 +39,7 @@ use spongos::{
             wrap,
             Commit,
             Join,
+            Mask,
         },
         io,
     },
@@ -95,8 +96,7 @@ impl<'a, F> Wrap<'a, F> {
 #[async_trait(?Send)]
 impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
     async fn sizeof(&mut self, unsubscription: &Wrap<'a, F>) -> Result<&mut Self> {
-        self.sizeof(&unsubscription.subscriber_id.to_identifier())
-            .await?
+        self.mask(&unsubscription.subscriber_id.to_identifier())?
             .commit()?
             .sign_sizeof(unsubscription.subscriber_id)
             .await?;
@@ -112,8 +112,7 @@ where
 {
     async fn wrap(&mut self, unsubscription: &mut Wrap<'a, F>) -> Result<&mut Self> {
         self.join(unsubscription.initial_state)?
-            .wrap(&mut unsubscription.subscriber_id.to_identifier())
-            .await?
+            .mask(&unsubscription.subscriber_id.to_identifier())?
             .commit()?
             .sign(unsubscription.subscriber_id)
             .await?;
@@ -147,8 +146,7 @@ where
 {
     async fn unwrap(&mut self, unsubscription: &mut Unwrap<'a, F>) -> Result<&mut Self> {
         self.join(unsubscription.initial_state)?
-            .unwrap(&mut unsubscription.subscriber_id)
-            .await?
+            .mask(&mut unsubscription.subscriber_id)?
             .commit()?
             .verify(&unsubscription.subscriber_id)
             .await?;

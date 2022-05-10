@@ -34,6 +34,7 @@ use spongos::{
             unwrap,
             wrap,
             Absorb,
+            Mask,
         },
         io,
         types::NBytes,
@@ -76,7 +77,7 @@ use crate::{
 /// # use iota_streams_ddml::types::NBytes;
 /// #
 /// # fn main() -> anyhow::Result<()> {
-/// let address = TangleAddress::new([172_u8; 40][..].into(), [171_u8; 12][..].into());
+/// let address = TangleAddress::new([172u8; 40][..].into(), [171u8; 12][..].into());
 /// assert_eq!(
 ///     address.to_msg_index().as_ref(),
 ///     &[
@@ -102,7 +103,7 @@ use crate::{
 /// # use iota_streams_ddml::types::NBytes;
 /// #
 /// # fn main() -> anyhow::Result<()> {
-/// let address = TangleAddress::new([170_u8; 40][..].into(), [255_u8; 12][..].into());
+/// let address = TangleAddress::new([170u8; 40][..].into(), [255u8; 12][..].into());
 /// let address_str = address.to_string();
 /// assert_eq!(
 ///     address_str,
@@ -144,6 +145,10 @@ impl Address {
 
     pub fn relative(self) -> MsgId {
         self.msgid
+    }
+
+    pub fn base(self) -> AppAddr {
+        self.appaddr
     }
 }
 
@@ -214,16 +219,16 @@ impl Link for Address {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
 pub struct AddressGenerator<F>(PhantomData<F>);
 
 impl<'a, F> LinkGenerator<'a, MsgId> for AddressGenerator<F>
 where
     F: Default + PRP,
 {
-    type Data = (&'a AppAddr, Identifier, u64);
+    type Data = (&'a AppAddr, Identifier, usize);
 
-    fn gen(&mut self, (appaddr, identifier, seq_num): (&'a AppAddr, Identifier, u64)) -> MsgId {
+    fn gen(&mut self, (appaddr, identifier, seq_num): (&'a AppAddr, Identifier, usize)) -> MsgId {
         let mut s = Spongos::<F>::init();
         s.absorb(appaddr);
         s.absorb(identifier);
@@ -234,10 +239,10 @@ where
 }
 
 impl<F> LinkGenerator<'_, AppAddr> for AddressGenerator<F> {
-    type Data = (Identifier, u64);
+    type Data = (Identifier, usize);
 
-    fn gen(&mut self, (identifier, channel_idx): (Identifier, u64)) -> AppAddr {
-        AppAddr::new(identifier, channel_idx)
+    fn gen(&mut self, (identifier, channel_idx): (Identifier, usize)) -> AppAddr {
+        AppAddr::new(identifier, channel_idx as u64)
     }
 }
 
@@ -249,7 +254,7 @@ impl AppAddr {
     const SIZE: usize = 40;
 
     pub fn new(id: Identifier, channel_idx: u64) -> Self {
-        let mut addr = [0_u8; 40];
+        let mut addr = [0u8; 40];
         let id_bytes = id.as_bytes();
         assert_eq!(id_bytes.len(), 32, "identifier must be 32 bytes long");
         addr[..32].copy_from_slice(id_bytes);
@@ -310,6 +315,12 @@ impl UpperHex for AppAddr {
 impl AsRef<[u8]> for AppAddr {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl AsMut<[u8]> for AppAddr {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
     }
 }
 
@@ -399,5 +410,135 @@ where
 {
     fn absorb(&mut self, msgid: &'a mut MsgId) -> Result<&mut Self> {
         self.absorb(NBytes::new(msgid))
+    }
+}
+
+impl<'a> Absorb<&'a AppAddr> for sizeof::Context {
+    fn absorb(&mut self, appaddr: &'a AppAddr) -> Result<&mut Self> {
+        self.absorb(NBytes::new(appaddr))
+    }
+}
+
+impl<'a, F, OS> Absorb<&'a AppAddr> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn absorb(&mut self, appaddr: &'a AppAddr) -> Result<&mut Self> {
+        self.absorb(NBytes::new(appaddr))
+    }
+}
+
+impl<'a, F, IS> Absorb<&'a mut AppAddr> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn absorb(&mut self, appaddr: &'a mut AppAddr) -> Result<&mut Self> {
+        self.absorb(NBytes::new(appaddr))
+    }
+}
+
+impl<'a> Absorb<&'a Address> for sizeof::Context {
+    fn absorb(&mut self, address: &'a Address) -> Result<&mut Self> {
+        self.absorb(&address.appaddr)?.absorb(&address.msgid)
+    }
+}
+
+impl<'a, F, OS> Absorb<&'a Address> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn absorb(&mut self, address: &'a Address) -> Result<&mut Self> {
+        self.absorb(&address.appaddr)?.absorb(&address.msgid)
+    }
+}
+
+impl<'a, F, IS> Absorb<&'a mut Address> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn absorb(&mut self, address: &'a mut Address) -> Result<&mut Self> {
+        self.absorb(&mut address.appaddr)?.absorb(&mut address.msgid)
+    }
+}
+
+impl<'a> Mask<&'a MsgId> for sizeof::Context {
+    fn mask(&mut self, msgid: &'a MsgId) -> Result<&mut Self> {
+        self.mask(NBytes::new(msgid))
+    }
+}
+
+impl<'a, F, OS> Mask<&'a MsgId> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, msgid: &'a MsgId) -> Result<&mut Self> {
+        self.mask(NBytes::new(msgid))
+    }
+}
+
+impl<'a, F, IS> Mask<&'a mut MsgId> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, msgid: &'a mut MsgId) -> Result<&mut Self> {
+        self.mask(NBytes::new(msgid))
+    }
+}
+
+impl<'a> Mask<&'a AppAddr> for sizeof::Context {
+    fn mask(&mut self, appaddr: &'a AppAddr) -> Result<&mut Self> {
+        self.mask(NBytes::new(appaddr))
+    }
+}
+
+impl<'a, F, OS> Mask<&'a AppAddr> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, appaddr: &'a AppAddr) -> Result<&mut Self> {
+        self.mask(NBytes::new(appaddr))
+    }
+}
+
+impl<'a, F, IS> Mask<&'a mut AppAddr> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, appaddr: &'a mut AppAddr) -> Result<&mut Self> {
+        self.mask(NBytes::new(appaddr))
+    }
+}
+
+impl<'a> Mask<&'a Address> for sizeof::Context {
+    fn mask(&mut self, address: &'a Address) -> Result<&mut Self> {
+        self.mask(&address.appaddr)?.mask(&address.msgid)
+    }
+}
+
+impl<'a, F, OS> Mask<&'a Address> for wrap::Context<F, OS>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, address: &'a Address) -> Result<&mut Self> {
+        self.mask(&address.appaddr)?.mask(&address.msgid)
+    }
+}
+
+impl<'a, F, IS> Mask<&'a mut Address> for unwrap::Context<F, IS>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, address: &'a mut Address) -> Result<&mut Self> {
+        self.mask(&mut address.appaddr)?.mask(&mut address.msgid)
     }
 }
