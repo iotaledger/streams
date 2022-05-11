@@ -231,7 +231,7 @@ impl<T> UserBuilder<T> {
     /// ```
     async fn recover(self, announcement: Address) -> Result<User<T>>
     where
-        T: for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage<Vec<u8>>>,
+        T: for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage>,
     {
         let mut user = self.build()?;
         user.receive_message(announcement).await?;

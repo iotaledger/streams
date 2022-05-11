@@ -88,7 +88,7 @@ impl<Address, Payload> Message<Address, Payload> {
         self.payload
     }
 
-    pub async fn wrap<F>(&mut self) -> Result<(TransportMessage<Vec<u8>>, Spongos<F>)>
+    pub async fn wrap<F>(&mut self) -> Result<(TransportMessage, Spongos<F>)>
     where
         F: PRP + Default,
         for<'b> wrap::Context<F, &'b mut [u8]>: ContentWrap<HDF<Address>> + ContentWrap<PCF<Payload>>,

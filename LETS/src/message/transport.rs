@@ -21,7 +21,7 @@ use crate::message::{
 
 /// Binary network Message representation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct TransportMessage<Body> {
+pub struct TransportMessage<Body = Vec<u8>> {
     body: Body,
 }
 

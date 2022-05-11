@@ -18,10 +18,14 @@ use async_trait::async_trait;
 // Streams
 
 // Local
-use crate::transport::Transport;
+use crate::{
+    link,
+    message::TransportMessage,
+    transport::Transport,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Client<Address, Msg> {
+pub struct Client<Address = link::Address, Msg = TransportMessage> {
     // Use BTreeMap instead of HashMap to make BucketTransport nostd without pulling hashbrown
     // (this transport is for hacking purposes only, performance is no concern)
     bucket: BTreeMap<Address, Vec<Msg>>,

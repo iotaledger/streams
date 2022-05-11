@@ -262,7 +262,7 @@ impl Unsubscription {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Orphan {
-    pub message: TransportMessage<Vec<u8>>,
+    pub message: TransportMessage,
     pub cursor: usize,
 }
 

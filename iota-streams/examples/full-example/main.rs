@@ -28,8 +28,8 @@ trait GenericTransport:
     for<'a> Transport<
         'a,
         Address = &'a Address,
-        Msg = TransportMessage<Vec<u8>>,
-        SendResponse = TransportMessage<Vec<u8>>,
+        Msg = TransportMessage,
+        SendResponse = TransportMessage,
     > + Clone
 {
 }
@@ -38,13 +38,13 @@ impl<T> GenericTransport for T where
     T: for<'a> Transport<
             'a,
             Address = &'a Address,
-            Msg = TransportMessage<Vec<u8>>,
-            SendResponse = TransportMessage<Vec<u8>>,
+            Msg = TransportMessage,
+            SendResponse = TransportMessage,
         > + Clone
 {
 }
 
-type TangleClient = tangle::Client<TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>>;
+type TangleClient = tangle::Client<TransportMessage, TransportMessage>;
 
 async fn run_did_test(transport: Rc<RefCell<TangleClient>>) -> Result<()> {
     println!("## Running DID Test ##\n");

@@ -50,7 +50,7 @@ use super::utils::{
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
-type TangleClient = tangle::Client<TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>>;
+type TangleClient = tangle::Client<TransportMessage, TransportMessage>;
 
 pub async fn example(transport: Rc<RefCell<TangleClient>>) -> Result<()> {
     let did_client = DIDClient::new().await?;

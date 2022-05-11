@@ -612,8 +612,8 @@ where
 {
     user: &'a mut User<T, F, A, AG>,
     ids_stack: Vec<(Identifier, usize)>,
-    msg_queue: HashMap<A::Relative, VecDeque<(A::Relative, TransportMessage<Vec<u8>>)>>,
-    stage: VecDeque<(A::Relative, TransportMessage<Vec<u8>>)>,
+    msg_queue: HashMap<A::Relative, VecDeque<(A::Relative, TransportMessage)>>,
+    stage: VecDeque<(A::Relative, TransportMessage)>,
     successful_round: bool,
 }
 
@@ -644,7 +644,7 @@ where
         F: PRP + Default + Clone,
         AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
         for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-        T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage<Vec<u8>>>,
+        T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
     {
         if let Some((relative_address, binary_msg)) = self.stage.pop_front() {
             // Drain stage if not empty...
@@ -740,7 +740,7 @@ where
     F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
     for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage<Vec<u8>>>,
+    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
 {
     pub(crate) fn new(user: &'a mut User<T, F, A, AG>) -> Self {
         let mut state = MessagesState::new(user);
@@ -794,7 +794,7 @@ where
     F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
     for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage<Vec<u8>>>,
+    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
 {
     fn from(user: &'a mut User<T, F, A, AG>) -> Self {
         Self::new(user)
@@ -809,7 +809,7 @@ where
     F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
     for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage<Vec<u8>>>,
+    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
 {
     type Item = Result<Message<A>>;
 
@@ -827,7 +827,6 @@ where
     }
 }
 
-// TODO
 // #[cfg(test)]
 // mod tests {
 //     use core::{
@@ -835,9 +834,9 @@ where
 //     };
 //     use alloc::rc::Rc;
 
-//     use LETS::transport::bucket::BucketTransport;
+//     use LETS::transport::bucket;
 
-//     type Transport = Rc<RefCell<BucketTransport>>;
+//     type Transport = Rc<RefCell<bucket::Client>>;
 
 //     #[tokio::test]
 //     async fn messages_can_be_linked_to_sequence_messages() -> Result<()> {

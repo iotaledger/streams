@@ -298,7 +298,7 @@ where
 
 impl<T, F, A, AG, TSR> User<T, F, A, AG>
 where
-    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>, SendResponse = TSR>,
+    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage, SendResponse = TSR>,
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Display,
     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)>,
@@ -647,13 +647,13 @@ where
 {
     pub async fn receive_message(&mut self, address: A) -> Result<Message<A>>
     where
-        T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
+        T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage>,
     {
         let msg = self.transport.recv_message(&address).await?;
         self.handle_message(address, msg).await
     }
 
-    pub(crate) async fn handle_message(&mut self, address: A, msg: TransportMessage<Vec<u8>>) -> Result<Message<A>> {
+    pub(crate) async fn handle_message(&mut self, address: A, msg: TransportMessage) -> Result<Message<A>> {
         let preparsed = msg.parse_header::<F, A::Relative>().await?;
         match preparsed.header().message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
@@ -897,7 +897,7 @@ where
     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
     F: PRP + Default + Clone,
     for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
-    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
+    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage>,
 {
     /// Start a [`Messages`] stream to traverse the channel messages
     ///
@@ -1132,7 +1132,7 @@ where
     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
     F: PRP + Default + Clone,
     for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
-    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage<Vec<u8>>>,
+    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage>,
 {
     fn messages(&mut self) -> Messages<'_, T, F, A, AG> {
         Messages::new(self)
