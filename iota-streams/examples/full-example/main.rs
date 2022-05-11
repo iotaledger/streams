@@ -44,9 +44,8 @@ impl<T> GenericTransport for T where
 {
 }
 
-type TangleClient = tangle::Client<TransportMessage, TransportMessage>;
 
-async fn run_did_test(transport: Rc<RefCell<TangleClient>>) -> Result<()> {
+async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     println!("## Running DID Test ##\n");
     let result = branching::did::example(transport).await;
     match &result {
