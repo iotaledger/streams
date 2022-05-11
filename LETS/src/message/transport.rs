@@ -39,7 +39,7 @@ impl<T> TransportMessage<T>
 where
     T: AsRef<[u8]>,
 {
-    pub async fn parse_header<F, Address>(self) -> Result<PreparsedMessage<T, F, Address>>
+    pub async fn parse_header<F, Address>(self) -> Result<PreparsedMessage<F, Address, Self>>
     where
         for<'a> unwrap::Context<F, &'a [u8]>: ContentUnwrap<HDF<Address>>,
         F: PRP + Default,
@@ -59,5 +59,11 @@ where
 impl From<TransportMessage<Vec<u8>>> for Vec<u8> {
     fn from(message: TransportMessage<Vec<u8>>) -> Self {
         message.body
+    }
+}
+
+impl<T> AsRef<[u8]> for TransportMessage<T> where T: AsRef<[u8]> {
+    fn as_ref(&self) -> &[u8] {
+        self.body.as_ref()
     }
 }

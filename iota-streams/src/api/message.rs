@@ -59,7 +59,7 @@ where
         }
     }
 
-    pub(crate) fn orphan<F>(address: Address, mut preparsed: PreparsedMessage<Vec<u8>, F, Address::Relative>) -> Self
+    pub(crate) fn orphan<F>(address: Address, mut preparsed: PreparsedMessage<F, Address::Relative>) -> Self
     where
         Address::Relative: Default,
     {

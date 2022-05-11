@@ -671,7 +671,7 @@ where
     async fn handle_announcement<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
+        preparsed: PreparsedMessage<F, A::Relative>,
     ) -> Result<Message<A>> {
         // Check conditions
         if let Some(stream_address) = self.stream_address() {
@@ -703,7 +703,7 @@ where
     async fn handle_subscription<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
+        preparsed: PreparsedMessage<F, A::Relative>,
     ) -> Result<Message<A>> {
         // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
 
@@ -740,7 +740,7 @@ where
     async fn handle_unsubscription<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
+        preparsed: PreparsedMessage<F, A::Relative>,
     ) -> Result<Message<A>> {
         // Cursor is not stored, as user is unsubscribing
 
@@ -771,7 +771,7 @@ where
     async fn handle_keyload<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
+        preparsed: PreparsedMessage<F, A::Relative>,
     ) -> Result<Message<A>> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
         // its content. Therefore we must update the cursor of the publisher before handling the message
@@ -823,7 +823,7 @@ where
     async fn handle_signed_packet<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
+        preparsed: PreparsedMessage<F, A::Relative>,
     ) -> Result<Message<A>> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
         // its content. Therefore we must update the cursor of the publisher before handling the message
@@ -857,7 +857,7 @@ where
     async fn handle_tagged_packet<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<Vec<u8>, F, A::Relative>,
+        preparsed: PreparsedMessage<F, A::Relative>,
     ) -> Result<Message<A>> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
         // its content. Therefore we must update the cursor of the publisher before handling the message

@@ -9,35 +9,34 @@ use anyhow::Result;
 // Streams
 use spongos::{
     ddml::commands::unwrap,
+    KeccakF1600,
     Spongos,
     PRP,
 };
 
 // Local
-use crate::message::{
-    content::ContentUnwrap,
-    hdf::HDF,
-    pcf::PCF,
-    Message,
-    TransportMessage,
+use crate::{
+    link,
+    message::{
+        transport::TransportMessage,
+        content::ContentUnwrap,
+        hdf::HDF,
+        pcf::PCF,
+        Message,
+    },
 };
 
 /// Message context preparsed for unwrapping.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct PreparsedMessage<T, F, Address> {
-    transport_msg: TransportMessage<T>,
+pub struct PreparsedMessage<F = KeccakF1600, Address = link::MsgId,T=TransportMessage> {
+    transport_msg: T,
     header: HDF<Address>,
     spongos: Spongos<F>,
     cursor: usize,
 }
 
-impl<T, F, Address> PreparsedMessage<T, F, Address> {
-    pub(crate) fn new(
-        transport_msg: TransportMessage<T>,
-        header: HDF<Address>,
-        spongos: Spongos<F>,
-        cursor: usize,
-    ) -> Self {
+impl<F, Address, T> PreparsedMessage<F, Address, T> {
+    pub(crate) fn new(transport_msg: T, header: HDF<Address>, spongos: Spongos<F>, cursor: usize) -> Self {
         Self {
             transport_msg,
             header,
@@ -61,11 +60,11 @@ impl<T, F, Address> PreparsedMessage<T, F, Address> {
         core::mem::take(&mut self.header)
     }
 
-    pub fn transport_msg(&self) -> &TransportMessage<T> {
+    pub fn transport_msg(&self) -> &T {
         &self.transport_msg
     }
 
-    pub fn into_transport_msg(self) -> TransportMessage<T> {
+    pub fn into_transport_msg(self) -> T {
         self.transport_msg
     }
 
@@ -77,7 +76,7 @@ impl<T, F, Address> PreparsedMessage<T, F, Address> {
     where
         T: AsRef<[u8]>,
     {
-        &self.transport_msg.body().as_ref()[self.cursor..]
+        &self.transport_msg.as_ref()[self.cursor..]
     }
 
     pub async fn unwrap<Content>(self, content: Content) -> Result<(Message<Address, Content>, Spongos<F>)>
@@ -90,7 +89,7 @@ impl<T, F, Address> PreparsedMessage<T, F, Address> {
         let spongos = self.spongos;
         // Cannot use Self::remaining_message() due to partial move of spongos
         let transport_msg = self.transport_msg;
-        let mut ctx = unwrap::Context::new_with_spongos(&transport_msg.body().as_ref()[self.cursor..], spongos);
+        let mut ctx = unwrap::Context::new_with_spongos(&transport_msg.as_ref()[self.cursor..], spongos);
         ctx.unwrap(&mut pcf).await?;
         // discard `self.ctx.stream` that should be empty
         let (spongos, _) = ctx.finalize();
@@ -98,7 +97,7 @@ impl<T, F, Address> PreparsedMessage<T, F, Address> {
     }
 }
 
-impl<T, F, Link> fmt::Debug for PreparsedMessage<T, F, Link>
+impl<F, Link, T> fmt::Debug for PreparsedMessage<F, Link, T>
 where
     Link: fmt::Debug,
     T: AsRef<[u8]>,
