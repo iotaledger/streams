@@ -8,7 +8,7 @@ use iota_streams_core::{
         string::ToString,
         HashMap,
     },
-    Errors::MessageLinkNotFound,
+    Errors::MessageLinkNotFoundInBucket,
 };
 
 use iota_streams_core::{
@@ -17,7 +17,7 @@ use iota_streams_core::{
     Errors::MessageNotUnique,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BucketTransport<Link, Msg> {
     bucket: HashMap<Link, Vec<Msg>>,
 }
@@ -70,7 +70,7 @@ where
         if let Some(msgs) = self.bucket.get(link) {
             Ok(msgs.clone())
         } else {
-            err!(MessageLinkNotFound(link.to_string()))
+            err!(MessageLinkNotFoundInBucket(link.to_string()))
         }
     }
 
@@ -80,7 +80,7 @@ where
             try_or!(msgs.is_empty(), MessageNotUnique(link.to_string())).unwrap();
             Ok(msg)
         } else {
-            err!(MessageLinkNotFound(link.to_string()))?
+            err!(MessageLinkNotFoundInBucket(link.to_string()))?
         }
     }
 }

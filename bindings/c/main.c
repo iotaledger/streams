@@ -459,8 +459,8 @@ cleanup6:
   {
     unwrapped_messages_t const *message_returns = NULL;
 
-    printf("SubA syncing state... ");
-    e = sub_sync_state(&message_returns, subA);
+    printf("SubA fetching pending messages... ");
+    e = sub_fetch_next_msgs(&message_returns, subA);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup;
 
@@ -486,9 +486,15 @@ cleanup7:
     address_t const *recovered_state_link = NULL;
     address_t const *original_state_link = NULL;
     unwrapped_messages_t const *message_returns = NULL;
+    unwrapped_messages_t const *sync_returns = NULL;
 
     printf("Recovering author... ");
     e = auth_recover(&recovered_auth, seed, ann_link, implementation_type, tsp);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup8;
+
+    printf("Syncing author... ");
+    e = auth_sync_state(recovered_auth);
     printf("  %s\n", !e ? "done" : "failed");
     if(e) goto cleanup8;
 
@@ -525,6 +531,7 @@ cleanup8:
     drop_user_state(recovered_auth_state);
     auth_drop(recovered_auth);
     drop_unwrapped_messages(message_returns);
+    drop_unwrapped_messages(sync_returns);
   }
   printf("\n");
   if(e) goto cleanup;
@@ -532,6 +539,7 @@ cleanup8:
   {
     buffer_t bytes = { NULL, 0, 0 };
     author_t *auth_new = NULL;
+    address_t const *recovered_announcement = NULL;
 
     printf("Exporting author state... ");
     e = auth_export(&bytes, auth, "my_password");
@@ -545,31 +553,15 @@ cleanup8:
     //auth_import consumes bytes, need to clear to avoid double-free
     bytes.ptr = NULL;
 
+    printf("Checking announcement link exists... ");
+    e = auth_announcement_link(&recovered_announcement, auth_new);
+    printf("  %s\n", !e ? "done" : "failed");
+    if(e) goto cleanup9;
+
  cleanup9:
+    drop_address(recovered_announcement);
     auth_drop(auth_new);
     drop_buffer(bytes);
-  }
-  printf("\n");
-  if(e) goto cleanup;
-
-  {
-    printf("Resetting subscriber state... ");
-    e = sub_reset_state(subA);
-    if(e) goto cleanup;
-    printf("Fetching subscriber state... ");
-    e = sub_fetch_state(&reset_sub_state, subA);
-    if(e) goto cleanup10;
-    reset_sub_state_link = get_link_from_state(reset_sub_state, sub_a_pk);
-
-    char const *reset_state_link_id = get_address_id_str(reset_sub_state_link);
-    char const *original_state_link_id = get_address_id_str(original_sub_state_link);
-
-    printf("  reset sub state link: '%s'\n", reset_state_link_id);
-    printf("  original  state link: '%s'\n", original_state_link_id);
-
-    cleanup10:
-      drop_user_state(reset_sub_state);
-      drop_address(reset_sub_state_link);
   }
   printf("\n");
   if(e) goto cleanup;
@@ -622,6 +614,29 @@ cleanup8:
   }
   printf("\n");
   if(e) goto cleanup;
+
+  {
+    printf("Resetting subscriber state... ");
+    e = sub_reset_state(subA);
+    if(e) goto cleanup;
+    printf("Fetching subscriber state... ");
+    e = sub_fetch_state(&reset_sub_state, subA);
+    if(e) goto cleanup10;
+    reset_sub_state_link = get_link_from_state(reset_sub_state, sub_a_pk);
+
+    char const *reset_state_link_id = get_address_id_str(reset_sub_state_link);
+    char const *original_state_link_id = get_address_id_str(original_sub_state_link);
+
+    printf("  reset sub state link: '%s'\n", reset_state_link_id);
+    printf("  original  state link: '%s'\n", original_state_link_id);
+
+    cleanup10:
+      drop_user_state(reset_sub_state);
+      drop_address(reset_sub_state_link);
+  }
+  printf("\n");
+  if(e) goto cleanup;
+
 
 cleanup:
   printf("Error code: %d\n", e);

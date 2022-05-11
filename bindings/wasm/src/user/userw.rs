@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+
 use wasm_bindgen::prelude::*;
 
 use crate::types::{
@@ -7,30 +9,39 @@ use crate::types::{
     SendOptions,
 };
 
+use client_wasm::client::Client as RustWasmClient;
+
 use iota_streams::{
     app::transport::{
-        tangle::client::Client as ApiClient,
+        tangle::client::{
+            iota_client::Client as RustClient,
+            Client as ApiClient,
+        },
         TransportDetails,
         TransportOptions,
     },
-    core::prelude::{
-        Rc,
-        RefCell,
-    },
+    core::prelude::Rc,
 };
 
 #[wasm_bindgen]
 #[derive(Clone)]
-pub struct Client(pub(crate) Rc<RefCell<ApiClient>>);
+pub struct StreamsClient(pub(crate) Rc<RefCell<ApiClient>>);
 
 #[wasm_bindgen]
-impl Client {
+impl StreamsClient {
     #[wasm_bindgen(constructor)]
     pub fn new(node: String, options: SendOptions) -> Self {
         let mut client = ApiClient::new_from_url(&node);
         client.set_send_options(options.into());
         let transport = Rc::new(RefCell::new(client));
-        Client(transport)
+        StreamsClient(transport)
+    }
+
+    #[wasm_bindgen(js_name = "fromClient")]
+    pub fn from_client(client: &RustWasmClient) -> StreamsClient {
+        let client = ApiClient::new(Default::default(), RustClient::clone(&client.into_inner()));
+        let transport = Rc::new(RefCell::new(client));
+        StreamsClient(transport)
     }
 
     pub fn get_link_details(mut self, link: &Address) -> js_sys::Promise {
@@ -51,16 +62,16 @@ impl Client {
     }
 }
 
-impl Client {
+impl StreamsClient {
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_inner(self) -> Rc<RefCell<ApiClient>> {
+    pub fn into_inner(self) -> Rc<RefCell<ApiClient>> {
         self.0
     }
 }
 
-impl From<ApiClient> for Client {
+impl From<ApiClient> for StreamsClient {
     fn from(client: ApiClient) -> Self {
         let transport = Rc::new(RefCell::new(client));
-        Client(transport)
+        StreamsClient(transport)
     }
 }

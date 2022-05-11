@@ -1,3 +1,5 @@
+use iota_streams::app_channels::api::tangle::futures::TryStreamExt;
+
 use super::*;
 
 pub type Subscriber = iota_streams::app_channels::api::tangle::Subscriber<TransportWrap>;
@@ -19,32 +21,6 @@ pub unsafe extern "C" fn sub_new(
                 let user = Subscriber::new(seed, tsp.clone());
                 *sub = safe_into_mut_ptr(user);
                 Err::Ok
-            })
-        })
-    })
-}
-
-/// Recover an existing channel from seed and existing announcement message
-#[no_mangle]
-pub unsafe extern "C" fn sub_recover(
-    c_sub: *mut *mut Subscriber,
-    c_seed: *const c_char,
-    c_ann_address: *const Address,
-    transport: *mut TransportWrap,
-) -> Err {
-    if c_seed == null() {
-        return Err::NullArgument;
-    }
-
-    CStr::from_ptr(c_seed).to_str().map_or(Err::BadArgument, |seed| {
-        c_ann_address.as_ref().map_or(Err::NullArgument, |addr| {
-            transport.as_ref().map_or(Err::NullArgument, |tsp| {
-                c_sub.as_mut().map_or(Err::NullArgument, |sub| {
-                    run_async(Subscriber::recover(seed, addr, tsp.clone())).map_or(Err::OperationFailed, |user| {
-                        *sub = safe_into_mut_ptr(user);
-                        Err::Ok
-                    })
-                })
             })
         })
     })
@@ -105,6 +81,19 @@ pub unsafe extern "C" fn sub_channel_address(addr: *mut *const ChannelAddress, u
         addr.as_mut().map_or(Err::NullArgument, |addr| {
             user.channel_address().map_or(Err::OperationFailed, |channel_address| {
                 *addr = channel_address as *const ChannelAddress;
+                Err::Ok
+            })
+        })
+    })
+}
+
+/// Channel announcement link.
+#[no_mangle]
+pub unsafe extern "C" fn sub_announcement_link(addr: *mut *const Address, user: *const Subscriber) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        addr.as_mut().map_or(Err::NullArgument, |addr| {
+            user.announcement_link().map_or(Err::OperationFailed, |ann_link| {
+                *addr = safe_into_ptr(ann_link);
                 Err::Ok
             })
         })
@@ -366,7 +355,7 @@ pub unsafe extern "C" fn sub_receive_signed_packet(
 pub unsafe extern "C" fn sub_gen_next_msg_ids(ids: *mut *const NextMsgIds, user: *mut Subscriber) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         ids.as_mut().map_or(Err::NullArgument, |ids| {
-            let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
+            let next_msg_ids = user.gen_next_msg_addresses();
             *ids = safe_into_ptr(next_msg_ids);
             Err::Ok
         })
@@ -437,14 +426,26 @@ pub unsafe extern "C" fn sub_receive_msg_by_sequence_number(
     })
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn sub_fetch_next_msg(umsg: *mut *const UnwrappedMessage, user: *mut Subscriber) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        umsg.as_mut().map_or(Err::NullArgument, |umsg| {
+            run_async(user.messages().try_next()).map_or(Err::OperationFailed, |m| {
+                *umsg = m.map_or_else(null, safe_into_ptr);
+                Err::Ok
+            })
+        })
+    })
+}
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_fetch_next_msgs(r: *mut *const UnwrappedMessages, user: *mut Subscriber) -> Err {
-    r.as_mut().map_or(Err::NullArgument, |r| {
-        user.as_mut().map_or(Err::NullArgument, |user| {
-            let m = run_async(user.fetch_next_msgs());
-            *r = safe_into_ptr(m);
-            Err::Ok
+pub unsafe extern "C" fn sub_fetch_next_msgs(umsgs: *mut *const UnwrappedMessages, user: *mut Subscriber) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
+            run_async(user.fetch_next_msgs()).map_or(Err::OperationFailed, |m| {
+                *umsgs = safe_into_ptr(m);
+                Err::Ok
+            })
         })
     })
 }
@@ -479,20 +480,10 @@ pub unsafe extern "C" fn sub_fetch_prev_msgs(umsgs: *mut *const UnwrappedMessage
 
 
 #[no_mangle]
-pub unsafe extern "C" fn sub_sync_state(r: *mut *const UnwrappedMessages, user: *mut Subscriber) -> Err {
-    r.as_mut().map_or(Err::NullArgument, |r| {
-        user.as_mut().map_or(Err::NullArgument, |user| {
-            let mut ms = Vec::new();
-            loop {
-                let m = run_async(user.fetch_next_msgs());
-                if m.is_empty() {
-                    break;
-                }
-                ms.extend(m);
-            }
-            *r = safe_into_ptr(ms);
-            Err::Ok
-        })
+pub unsafe extern "C" fn sub_sync_state(user: *mut Subscriber) -> Err {
+    // TODO: return message count
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        run_async(user.sync_state()).map_or(Err::OperationFailed, |_| Err::Ok)
     })
 }
 

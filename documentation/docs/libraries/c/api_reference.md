@@ -25,12 +25,12 @@ Recover an Author instance using the announcement address link and seed.
 | tsp             | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** A recovered Author instance for administrating a channel.
 
-#### auth_drop(user)
+#### auth_drop(author)
 Drop an Author instance from memory.
 
 | Param           | Type                                   | Description              |
 | --------------- | -------------------------------------- | ------------------------ |
-| user            | `author_t *`                           | Author instance          |
+| author          | `author_t *`                           | Author instance          |
 
 
 
@@ -45,52 +45,62 @@ Import an Author instance from an encrypted binary array
 | transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper  |
 **Returns:** Error code.
 
-#### auth_export(buf, user, password): [err_t](#Err) 
+#### auth_export(buf, author, password): [err_t](#Err) 
 Export an Author instance as an encrypted array using a given password
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | buf             | `buffer_t *`        | Placeholder for resulting buffer stream of encrypted Author instance |
-| user            | `author_t *`        | Author instance           |
+| author          | `author_t *`        | Author instance           |
 | password        | `char const *`       | Key to encrypt            | 
 **Returns:** Error code.
 
 
-#### auth_channel_address(addr, user): [err_t](#Err) 
+#### auth_channel_address(addr, author): [err_t](#Err) 
 Return the channel address of the channel instance. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | addr            | `channel_address_t const *`| Placeholder for resulting channel address object |
-| user            | `author_t const *`  | Author instance           |
+| author          | `author_t const *`  | Author instance           |
 **Returns:** Error Code.
 
-#### auth_is_multi_branching(flag, user): [err_t](#Err) 
+#### auth_announcement_link(addr, author): [err_t](#Err)
+Return the announcement link of the channel instance.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+| addr            | `address_t const *` | Placeholder for resulting announcement link object |
+| author          | `author_t const *`  | Author instance           |
+**Returns:** Error code.
+
+
+#### auth_is_multi_branching(flag, author): [err_t](#Err) 
 Check if a channel type is single branching or multi branching. 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | flag            | `uint8_t *`         | Placeholder for resulting multi-branching flag: 0=single branch, 1=multi branch |
-| user            | `author_t const *`  | Author instance           |
+| author          | `author_t const *`  | Author instance           |
 **Returns:** Error code.
 
-#### auth_get_public_key(pk, user): [err_t](#Err) 
+#### auth_get_public_key(pk, author): [err_t](#Err) 
 Retrieve the Author public key.
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | pk              | `public_key_t const *` | Placeholder for resulting Author Public Key | 
-| user            | `author_t const *`  | Author instance           |
+| author          | `author_t const *`  | Author instance           |
 **Returns:** Error code.
 
 
-#### auth_send_announce(addr, user): [err_t](#Err)
+#### auth_send_announce(addr, author): [err_t](#Err)
 Send an announcement message, initialising the channel 
 
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | addr            | `address_t const *` | Placeholder for resulting announcement message address |  
-| user            | `author_t *`        | Author instance           |
+| author            | `author_t *`        | Author instance           |
 **Returns:** Error code.
 
 #### auth_send_keyload_for_everyone(links, author, link_to): [err_t](#Err)
@@ -214,13 +224,20 @@ Receive a message by its msg number in an anchored single depth channel.
 | msg_num         | `size_t`                                         | Message number                       |
 **Returns:** Error code.
 
-#### auth_sync_state(umsgs, author): [err_t](#Err)
-Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
-to ensure the user state matches all other publishers.
+#### auth_sync_state(author): [err_t](#Err)
+Synchronise a publishers state prior to sending another message, to ensure the user state matches all other publishers.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| umsgs           | `unwrapped_messages_t const *` | Placeholder for resulting UnwrappedMessages wrapper for retrieved publisher messages |
+| author          | `author_t *`                  | Author instance                     |
+**Returns:** Error code.
+
+#### auth_fetch_next_msg(umsg, author): [err_t](#Err)
+Fetch the next message sent by each publisher (empty array if none are present).
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| umsg            | `unwrapped_message_t const *` | Placeholder for resulting UnwrappedMessage wrapper for the retrieved message. Null if there are no more messages to fetch |
 | author          | `author_t *`                  | Author instance                     |
 **Returns:** Error code.
 
@@ -273,6 +290,14 @@ Fetch the current user state to see the latest links for each publisher
 | author          | `author_t *`                  | Author instance                     |
 **Returns:** Error code. 
 
+#### auth_reset_state(author): [err_t](#Err)
+Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| author          | `author_t *`                  | Author instance                     |
+**Returns:** Error code.
+
 #### auth_store_psk(pskid, author, psk): [err_t](#Err) 
 Stores a given Pre Shared Key (Psk) into the Author instance, returning a Pre Shared Key Id (PskId) 
 
@@ -323,18 +348,8 @@ Generates a new Subscriber instance
 | transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
 **Returns:** Error code.
 
-#### sub_recover(sub, seed, announcement, transport): [err_t](#Err) 
-Recover a Subscriber instance using the announcement address link and seed.
 
-| Param           | Type                                   | Description              |
-| --------------- | -------------------------------------- | ------------------------ |
-| sub             | `subscriber_t *`                       | Placeholder for resulting Subscriber instance |
-| seed            | `char const *`                         | Unique user seed         |
-| announcement    | [`address_t const *`](#Address)        | Announcement link        |
-| transport       | [`transport_t *`](#TransportWrap)      | Transport Client Wrapper |
-**Returns:** Error code.
-
-#### sub_drop(user)
+#### sub_drop(subscriber)
 Drop a Subscriber instance from memory.
 
 | Param           | Type                                   | Description              |
@@ -370,6 +385,15 @@ Return the channel address of the channel instance.
 | Param           | Type                | Description               |
 | --------------- | ------------------- | ------------------------- |
 | addr            | `channel_address_t const *`| Placeholder for resulting channel address object |
+| subscriber      | `subscriber_t const *` | Subscriber instance    |
+**Returns:** Error code.
+
+#### sub_announcement_link(addr, subscriber): [err_t](#Err)
+Return the announcement link of the channel instance.
+
+| Param           | Type                | Description               |
+| --------------- | ------------------- | ------------------------- |
+| addr            | `address_t const *` | Placeholder for resulting announcement link object |
 | subscriber      | `subscriber_t const *` | Subscriber instance    |
 **Returns:** Error code.
 
@@ -545,18 +569,24 @@ Receive a message by its msg number in an anchored single depth channel.
 | msg_num         | `size_t`                                         | Message number                       |
 **Returns:** Error code.
 
-#### sub_sync_state(umsgs, subscriber): [err_t](#Err)
-Synchronise a publishers state prior to sending another message. Retrieves any other messages from the channel 
-to ensure the subscriber state matches all other publishers.
+#### sub_sync_state(subscriber): [err_t](#Err)
+Synchronise a publishers state prior to sending another message to ensure the subscriber state matches all other publishers.
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
-| umsgs           | [`unwrapped_messages_t const **`](#UnwrappedMessages) | An Array of UnwrappedMessage wrappers around the retrieved messages. |
-| subscriber      | `subscriber_t *`             | Subscriber instance                 |
+| subscriber      | `subscriber_t *`              | Subscriber instance                 |
 **Returns:** Error code.
 
+#### sub_fetch_next_msg(umsg, author): [err_t](#Err)
+Fetch the next message sent by each publisher (null if there are no more messages to fetch).
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| umsg            | `unwrapped_message_t const *` | Placeholder for resulting UnwrappedMessage wrapper for the retrieved message. Null if there are no more messages to fetch |
+| subscriber      | `subscriber_t *`              | Subscriber instance                 |
+**Returns:** Error code.
 #### sub_fetch_next_msgs(umsgs, subscriber): [err_t](#Err)
-Fetch the next message sent by each publisher (empty array if none are present).
+Fetch the next messages sent by other publishers (empty array if none are present).
 
 | Param           | Type                          | Description                         |
 | --------------- | ----------------------------- | ----------------------------------- |
@@ -602,6 +632,13 @@ Fetch the current subscriber state to see the latest links for each publisher
 | subscriber       | `subscriber_t *`             | Subscriber instance                 |
 **Returns:** Error code.
 
+#### sub_reset_state(subscriber): [err_t](#Err)
+Reset the mapping of known publisher states for the channel for retrieval of messages from scratch.
+
+| Param           | Type                          | Description                         |
+| --------------- | ----------------------------- | ----------------------------------- |
+| subscriber      | `subscriber_t *`              | Subscriber instance                 |
+**Returns:** Error code.
 
 #### sub_store_psk(pskid, subscriber, psk): [err_t](#Err) 
 Stores a given Pre Shared Key (Psk) into the Subscriber instance, returning a Pre Shared Key Id (PskId) 

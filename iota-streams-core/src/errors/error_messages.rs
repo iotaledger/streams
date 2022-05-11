@@ -70,10 +70,12 @@ pub enum Errors {
     //////////
     /// More than one message found: with link {0}
     MessageNotUnique(String),
-    /// Message at link {0} not found in store
-    MessageLinkNotFound(String),
-    /// Message at link {0} not found in tangle
+    /// Message at link {0} not found in state store
+    MessageLinkNotFoundInStore(String),
+    /// Message at link {0} not found in Tangle
     MessageLinkNotFoundInTangle(String),
+    /// Message at link {0} not found in Bucket transport
+    MessageLinkNotFoundInBucket(String),
     /// Transport object is already borrowed
     TransportNotAvailable,
 
@@ -82,6 +84,8 @@ pub enum Errors {
     //////////
     /// Malformed address string: missing colon (':') separator between appinst and msgid
     MalformedAddressString,
+    /// Invalid Message Address
+    InvalidMessageAddress,
     /// Invalid Channel Address
     InvalidChannelAddress,
     /// Invalid Msg id
@@ -136,8 +140,8 @@ pub enum Errors {
     //////////
     /// Cannot create a channel, user is already registered to channel {0}
     ChannelCreationFailure(String),
-    /// Cannot unwrap announcement message, already registered to channel {0}
-    UserAlreadyRegistered(String),
+    /// Cannot register new user {0}, user is already registered to channel {1}
+    UserAlreadyRegistered(String, String),
     /// User is not registered to a channel
     UserNotRegistered,
     /// Message application instance does not match user channel (expected: {0}, found: {1}
@@ -158,6 +162,8 @@ pub enum Errors {
     SingleDepthOperationFailure,
     /// Operation only available on single depth channels
     ChannelNotSingleDepth,
+    /// Message '{0}' does not have a previous message
+    NoPreviousMessage(String),
 
     //////////
     // User Recovery

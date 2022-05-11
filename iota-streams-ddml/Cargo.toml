@@ -1,7 +1,7 @@
 [package]
 name = "iota-streams-ddml"
-version = "0.2.3"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
+version = "0.1.2"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
@@ -13,16 +13,11 @@ default = ["std"]
 # enable std
 std = ["rand/std", "iota-streams-core/std", "iota-streams-core-edsig/std"]
 
-[lib]
-name = "iota_streams_ddml"
-path = "src/lib.rs"
-
 [dependencies]
-iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-features = false }
-iota-streams-core-edsig = { version = "0.2.1", path = "../iota-streams-core-edsig", default-features = false }
-# anyhow version is kept in sync with iota-client
+iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
+iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsig", default-features = false }
 rand = { version = "0.7", default-features = false }
 hashbrown = { version = "0.8.2", default-features = false, optional = false, features = ["ahash"] }
 
 [dev-dependencies]
-iota-streams-core-keccak = { version = "0.3.1", path = "../iota-streams-core-keccak" }
+iota-streams-core-keccak = { version = "0.1.2", path = "../iota-streams-core-keccak" }

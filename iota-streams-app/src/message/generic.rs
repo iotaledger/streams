@@ -4,7 +4,7 @@ use iota_streams_core::Result;
 use super::LinkedMessage;
 
 /// Binary network Message representation.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct GenericMessage<AbsLink, Body> {
     /// Link -- message address.
     pub link: AbsLink,

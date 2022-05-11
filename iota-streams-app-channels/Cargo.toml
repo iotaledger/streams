@@ -1,7 +1,7 @@
 [package]
 name = "iota-streams-app-channels"
-version = "1.0.1"
-authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>"]
+version = "0.1.2"
+authors = ["Vlad Semenov <vlad.semenov@iota.org>", "Dyrell Chapman <dyrell.chapman@iota.org>", "Brord van Wierst <brord@iota.org>", "Arnau Orriols <arnau.orriols@iota.org>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
 readme = "README.md"
@@ -12,21 +12,23 @@ description = "A rust implementation of the IOTA Streams Channels Application"
 default = ["std", "tangle"]
 # Enable `std` feature in dependencies
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "hex/std"]
-tangle = ["iota-streams-app/tangle"]
-wasm-client = ["iota-streams-app/wasm-client", "tangle", "std"]
-
-[lib]
-name = "iota_streams_app_channels"
-path = "src/lib.rs"
+# Enable the tangle-specific API (implies `tangle` feature of iota-streams-app, but not necessarily `client`)
+tangle = ["iota-streams-app/tangle", "futures", "async-recursion"]
+# Enable re-export of Tangle client from iota-streams-app 
+client = ["iota-streams-app/client"]
+# Enable Tangle wasm-compatible client implementation (incompatile with `client` feature due to `iota-client/async` using `tokio`)
+wasm-client = ["iota-streams-app/wasm-client"]
 
 [dependencies]
-iota-streams-core = { version = "0.3.1", path = "../iota-streams-core", default-features = false }
-iota-streams-core-edsig = { version = "0.2.1", path = "../iota-streams-core-edsig", default-features = false }
-iota-streams-core-keccak = { version = "0.3.1", path = "../iota-streams-core-keccak", default-features = false }
-iota-streams-ddml = { version = "0.2.1", path = "../iota-streams-ddml", default-features = false }
-iota-streams-app = { version = "1.0.1", path = "../iota-streams-app", default-features = false }
+iota-streams-core = { version = "0.1.2", path = "../iota-streams-core", default-features = false }
+iota-streams-core-edsig = { version = "0.1.2", path = "../iota-streams-core-edsig", default-features = false }
+iota-streams-core-keccak = { version = "0.1.2", path = "../iota-streams-core-keccak", default-features = false }
+iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-features = false }
+iota-streams-app = { version = "0.1.2", path = "../iota-streams-app", default-features = false }
 
 hex = { version = "0.4", default-features = false, optional = false }
+futures = { version = "0.3.8", default-features = false, optional = true }
+async-recursion = { version = "0.3.2", default-features = false, optional = true }
 
 [dev-dependencies]
-smol = { version = "1.2.5" }
+tokio = { version = "1.15", default-features = false }

@@ -313,32 +313,30 @@ impl MsgId {
     }
 }
 
-pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
-    let mut payloads = Vec::new();
-    for msg in msgs {
-        match msg.body {
-            MessageContent::SignedPacket {
-                pk,
-                public_payload: p,
-                masked_payload: m,
-            } => payloads.push(UserResponse::new(
-                msg.link.into(),
-                None,
-                Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
-            )),
-            MessageContent::TaggedPacket {
-                public_payload: p,
-                masked_payload: m,
-            } => payloads.push(UserResponse::new(
-                msg.link.into(),
-                None,
-                Some(Message::new(None, p.0, m.0)),
-            )),
-            MessageContent::Sequence => (),
-            _ => payloads.push(UserResponse::new(msg.link.into(), None, None)),
-        };
+pub fn get_message_content(msg: UnwrappedMessage) -> UserResponse {
+    match msg.body {
+        MessageContent::SignedPacket {
+            pk,
+            public_payload: p,
+            masked_payload: m,
+        } => UserResponse::new(
+            msg.link.into(),
+            None,
+            Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
+        ),
+        MessageContent::TaggedPacket {
+            public_payload: p,
+            masked_payload: m,
+        } => UserResponse::new(msg.link.into(), None, Some(Message::new(None, p.0, m.0))),
+        _ => UserResponse::new(msg.link.into(), None, None),
     }
-    payloads
+}
+
+pub fn get_message_contents(msgs: Vec<UnwrappedMessage>) -> Vec<UserResponse> {
+    msgs.into_iter()
+        .filter(|msg| msg.body.is_sequence())
+        .map(get_message_content)
+        .collect()
 }
 
 #[wasm_bindgen]
@@ -367,9 +365,10 @@ pub struct UserResponse {
 }
 
 #[wasm_bindgen]
-pub struct NextMsgId {
-    identifier: String,
-    msgid: Address,
+pub struct NextMsgAddress {
+    #[wasm_bindgen(getter_with_clone)]
+    pub identifier: String,
+    pub address: Address,
 }
 
 #[wasm_bindgen]
@@ -423,14 +422,6 @@ impl UserState {
 }
 
 #[wasm_bindgen]
-#[derive(Clone)]
-pub struct Message {
-    identifier: Option<String>,
-    public_payload: Vec<u8>,
-    masked_payload: Vec<u8>,
-}
-
-#[wasm_bindgen]
 #[derive(Default)]
 pub struct PskIds {
     pub(crate) ids: Vec<PskId>,
@@ -456,11 +447,6 @@ impl PskIds {
     }
 }
 
-#[wasm_bindgen]
-pub struct PublicKeys {
-    pub(crate) pks: Vec<PublicKey>,
-}
-
 pub(crate) fn identifier_to_string(id: &Identifier) -> String {
     hex::encode(&id.to_bytes())
 }
@@ -474,23 +460,75 @@ pub(crate) fn public_key_from_string(hex_str: &str) -> Result<PublicKey> {
     PublicKey::from_bytes(&bytes).into_js_result()
 }
 
+/// Collection of PublicKeys representing a set of users
+#[wasm_bindgen]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PublicKeys {
+    pub(crate) pks: Vec<PublicKey>,
+}
+
 #[wasm_bindgen]
 impl PublicKeys {
+    #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self { pks: Vec::new() }
     }
 
+    /// Add key to collection   
+    ///
+    /// Key must be a valid 32 Byte public-key string in its hexadecimal representation.
+    ///
+    /// @throws Throws error if string is not a valid public key
     pub fn add(&mut self, id: String) -> Result<()> {
         self.pks.push(public_key_from_string(&id)?);
         Ok(())
     }
 
+    /// Obtain all the public-keys collected so far in an string array
     pub fn get_pks(&self) -> Array {
         self.pks
             .iter()
             .map(|pk| JsValue::from(public_key_to_string(pk)))
             .collect()
     }
+}
+
+#[cfg(test)]
+mod public_keys_tests {
+    use wasm_bindgen::prelude::*;
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    use iota_streams::app_channels::api::tangle::PublicKey;
+
+    use super::{
+        public_key_to_string,
+        PublicKeys,
+    };
+
+    pub type Result<T> = core::result::Result<T, JsValue>;
+
+    #[wasm_bindgen(module = "/src/types/tests.js")]
+    extern "C" {
+        #[wasm_bindgen(catch, js_name = "publicKeysWith")]
+        fn public_keys_with(key: &str) -> Result<PublicKeys>;
+    }
+
+    #[wasm_bindgen_test]
+    fn test_add_public_key() {
+        let mut expected = PublicKeys::new();
+        let key = public_key_to_string(&PublicKey::default());
+        expected.add(key.clone()).expect("preparing expected PublicKeys");
+        let actual = public_keys_with(&key).expect("adding key to PublicKeys in Javascript");
+        assert_eq!(actual, expected);
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Clone)]
+pub struct Message {
+    identifier: Option<String>,
+    public_payload: Vec<u8>,
+    masked_payload: Vec<u8>,
 }
 
 #[wasm_bindgen]
@@ -521,19 +559,9 @@ impl Message {
 }
 
 #[wasm_bindgen]
-impl NextMsgId {
-    pub fn new(identifier: String, msgid: Address) -> Self {
-        NextMsgId { identifier, msgid }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn identifier(&self) -> String {
-        self.identifier.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn link(&self) -> Address {
-        self.msgid
+impl NextMsgAddress {
+    pub fn new(identifier: String, address: Address) -> Self {
+        Self { identifier, address }
     }
 }
 

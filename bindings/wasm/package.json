@@ -1,6 +1,6 @@
 {
-  "name": "@iota/streams-wasm",
-  "version": "1.1.0",
+  "name": "@iota/streams",
+  "version": "0.1.2",
   "description": "WASM binding for the IOTA streams library",
   "repository": {
     "type": "git",
@@ -10,15 +10,17 @@
     "example": "examples"
   },
   "scripts": {
-    "build:nodejs": "wasm-pack build --target nodejs --out-dir node && rm ./node/.gitignore",
-    "build:web": "wasm-pack build --target web --out-dir web && node ./build/web && rm ./web/.gitignore",
+    "build:nodejs": "wasm-pack build --target nodejs --out-dir node && node ./build/node",
+    "build:web": "wasm-pack build --target web --out-dir web",
     "build": "npm run build:web && npm run build:nodejs",
     "pretest": "npm run build:nodejs",
     "prepublishOnly": "npm run build",
     "test": "mocha",
-    "serve": "webpack-dev-server",
+    "unittest": "wasm-pack test --node",
+    "serve": "webpack serve",
     "example:nodejs": "node examples/node.js",
     "example:nodets": "ts-node examples/node.ts",
+    "example:web": "cd examples/web && npm i && npm run start",
     "doc:nodejs": "jsdoc -d node/jsdoc -c jsdoc-conf.json node"
   },
   "contributors": [
@@ -38,17 +40,11 @@
   ],
   "devDependencies": {
     "@types/node-fetch": "^2.5.10",
-    "@wasm-tool/wasm-pack-plugin": "^1.1.0",
-    "copy-webpack-plugin": "^9.0",
-    "mocha": "^7.1.2",
-    "rimraf": "^3.0.0",
+    "jsdoc": "^3.6.7",
+    "mocha": "^9.2.1",
     "ts-node": "^9.1.1",
     "typescript": "^4.3.4",
-    "wasm-pack": "^0.10.0",
-    "webpack": "^5.39.1",
-    "webpack-cli": "^4",
-    "webpack-dev-server": "^4.1.1",
-    "jsdoc": "^3.6.7"
+    "wasm-pack": "^0.10.0"
   },
   "dependencies": {
     "node-fetch": "^2.6.0"

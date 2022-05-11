@@ -1,3 +1,4 @@
+use futures::executor::block_on;
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
@@ -8,17 +9,17 @@ use crate::{
 
 use core::cell::RefCell;
 use iota_streams::{
-    app::{
-        futures::executor::block_on,
-        transport::{
-            tangle::client::Client as ApiClient,
-            TransportOptions,
-        },
+    app::transport::{
+        tangle::client::Client as ApiClient,
+        TransportOptions,
     },
     app_channels::api::{
         psk_from_seed,
         pskid_from_psk,
-        tangle::Subscriber as ApiSubscriber,
+        tangle::{
+            futures::TryStreamExt,
+            Subscriber as ApiSubscriber,
+        },
     },
     core::{
         prelude::{
@@ -50,29 +51,17 @@ impl Subscriber {
         Subscriber { subscriber }
     }
 
-    pub fn from_client(client: Client, seed: String) -> Subscriber {
-        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.to_inner())));
+    #[wasm_bindgen(catch, js_name = "fromClient")]
+    pub fn from_client(client: StreamsClient, seed: String) -> Subscriber {
+        let subscriber = Rc::new(RefCell::new(ApiSubscriber::new(&seed, client.into_inner())));
         Subscriber { subscriber }
     }
 
     #[wasm_bindgen(catch)]
-    pub fn import(client: Client, bytes: Vec<u8>, password: &str) -> Result<Subscriber> {
-        block_on(ApiSubscriber::import(&bytes, password, client.to_inner()))
+    pub fn import(client: StreamsClient, bytes: Vec<u8>, password: &str) -> Result<Subscriber> {
+        block_on(ApiSubscriber::import(&bytes, password, client.into_inner()))
             .map(|v| Subscriber {
                 subscriber: Rc::new(RefCell::new(v)),
-            })
-            .into_js_result()
-    }
-
-    pub async fn recover(seed: String, ann_address: Address, options: SendOptions) -> Result<Subscriber> {
-        let mut client = ApiClient::new_from_url(&options.url());
-        client.set_send_options(options.into());
-        let transport = Rc::new(RefCell::new(client));
-
-        ApiSubscriber::recover(&seed, ann_address.as_inner(), transport)
-            .await
-            .map(|sub| Subscriber {
-                subscriber: Rc::new(RefCell::new(sub)),
             })
             .into_js_result()
     }
@@ -93,9 +82,17 @@ impl Subscriber {
             .into_js_result()
     }
 
+    #[wasm_bindgen(catch, js_name = "announcementLink")]
+    pub fn announcement_link(&self) -> Option<String> {
+        self.subscriber
+            .borrow_mut()
+            .announcement_link()
+            .map(|addr| addr.to_string())
+    }
+
     #[wasm_bindgen(catch)]
-    pub fn get_client(&self) -> Client {
-        Client(self.subscriber.borrow_mut().get_transport().clone())
+    pub fn get_client(&self) -> StreamsClient {
+        StreamsClient(self.subscriber.borrow_mut().get_transport().clone())
     }
 
     #[wasm_bindgen(catch)]
@@ -203,31 +200,21 @@ impl Subscriber {
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
     pub async fn receive_msg(self, link: Address) -> Result<UserResponse> {
         self.subscriber
             .borrow_mut()
             .receive_msg(link.as_inner())
             .await
-            .map(|msg| {
-                let msgs = vec![msg];
-                let responses = get_message_contents(msgs);
-                responses[0].copy()
-            })
+            .map(get_message_content)
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
     pub async fn receive_msg_by_sequence_number(self, anchor_link: Address, msg_num: u32) -> Result<UserResponse> {
         self.subscriber
             .borrow_mut()
             .receive_msg_by_sequence_number(anchor_link.as_inner(), msg_num)
             .await
-            .map(|msg| {
-                let msgs = vec![msg];
-                let response = get_message_contents(msgs);
-                response[0].copy()
-            })
+            .map(get_message_content)
             .into_js_result()
     }
 
@@ -281,35 +268,78 @@ impl Subscriber {
             .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
-    pub async fn sync_state(self) -> Result<()> {
-        loop {
-            let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
-            if msgs.is_empty() {
-                break;
-            }
-        }
-        Ok(())
+    /// Fetch all the pending messages that the user can read so as to bring the state of the user up to date
+    ///
+    /// This is the main method to bring the user to the latest state of the channel in order to be able to
+    /// publish new messages to it. It makes sure that the messages are processed in topologically order
+    /// (ie parent messages before child messages), ensuring a consistent state regardless of the order of publication.
+    ///
+    /// @returns {number} the amount of messages processed
+    /// @throws Throws error if an error has happened during message retrieval.
+    /// @see {@link Author#fetchNextMsg} for a method that retrieves the immediately next message that the user can read
+    /// @see {@link Author#fetchNextMsgs} for a method that retrieves all pending messages and collects
+    ///      them into an Array.
+    #[wasm_bindgen(js_name = "syncState")]
+    pub async fn sync_state(self) -> Result<usize> {
+        self.subscriber.borrow_mut().sync_state().await.into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
+    /// Fetch all the pending messages that the user can read and collect them into an Array
+    ///
+    /// This is the main method to traverse the a channel forward at once.  It
+    /// makes sure that the messages in the Array are topologically ordered (ie
+    /// parent messages before child messages), ensuring a consistent state regardless
+    /// of the order of publication.
+    ///
+    /// @returns {UserResponse[]}
+    /// @throws Throws error if an error has happened during message retrieval.
+    /// @see {@link Author#fetchNextMsg} for a method that retrieves the immediately next message that the user can read
+    /// @see {@link Author#syncState} for a method that traverses all pending messages to update the state
+    ///      without accumulating them.
+    #[wasm_bindgen(js_name = "fetchNextMsgs")]
     pub async fn fetch_next_msgs(self) -> Result<Array> {
-        let msgs = self.subscriber.borrow_mut().fetch_next_msgs().await;
-        let payloads = get_message_contents(msgs);
-        Ok(payloads.into_iter().map(JsValue::from).collect())
+        self.subscriber
+            .borrow_mut()
+            .messages()
+            .map_ok(get_message_content)
+            .map_ok(JsValue::from)
+            .try_collect()
+            .await
+            .into_js_result()
     }
 
-    #[wasm_bindgen(catch)]
+    /// Fetch the immediately next message that the user can read
+    ///
+    /// This is the main method to traverse the a channel forward message by message, as it
+    /// makes sure that no message is returned unless its parent message in the branches tree has already
+    /// been returned, ensuring a consistent state regardless of the order of publication.
+    ///
+    /// Keep in mind that internally this method might have to fetch multiple messages until the correct
+    /// message to be returned is found.
+    ///
+    /// @throws Throws error if an error has happened during message retrieval.
+    /// @see {@link Author#fetchNextMsgs} for a method that retrieves all pending messages and collects
+    ///      them into an Array.
+    /// @see {@link Author#syncState} for a method that traverses all pending messages to update the state
+    ///      without accumulating them.
+    #[wasm_bindgen(js_name = "fetchNextMsg")]
+    pub async fn fetch_next_msg(self) -> Result<Option<UserResponse>> {
+        Ok(self
+            .subscriber
+            .borrow_mut()
+            .messages()
+            .try_next()
+            .await
+            .into_js_result()?
+            .map(get_message_content))
+    }
+
     pub async fn fetch_prev_msg(self, link: Address) -> Result<UserResponse> {
         self.subscriber
             .borrow_mut()
             .fetch_prev_msg(link.as_inner())
             .await
-            .map(|msg| {
-                let msgs = vec![msg];
-                let responses = get_message_contents(msgs);
-                responses[0].copy()
-            })
+            .map(get_message_content)
             .into_js_result()
     }
 
@@ -324,6 +354,29 @@ impl Subscriber {
                 responses.into_iter().map(JsValue::from).collect()
             })
             .into_js_result()
+    }
+
+    /// Generate the next batch of message {@link Address} to poll
+    ///
+    /// Given the set of users registered as participants of the channel and their current registered
+    /// sequencing position, this method generates a set of new {@link Address} to poll for new messages
+    /// (one for each user, represented by its identifier). However, beware that it is not recommended to
+    /// use this method as a means to implement message traversal, as there's no guarantee that the addresses
+    /// returned are the immediately next addresses to be processed. use {@link Subscriber#fetchNextMsg} instead.
+    ///
+    /// Keep in mind that in multi-branch channels, the link returned corresponds to the next sequence message.
+    ///
+    /// @see Subscriber#fetchNextMsg
+    /// @see Subscriber#fetchNextMsgs
+    /// @returns {NextMsgAddress[]}
+    #[wasm_bindgen(js_name = "genNextMsgAddresses")]
+    pub fn gen_next_msg_addresses(&self) -> Array {
+        self.subscriber
+            .borrow()
+            .gen_next_msg_addresses()
+            .into_iter()
+            .map(|(id, cursor)| JsValue::from(NextMsgAddress::new(identifier_to_string(&id), cursor.link.into())))
+            .collect()
     }
 
     #[wasm_bindgen(catch)]

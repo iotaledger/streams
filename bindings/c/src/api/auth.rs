@@ -1,3 +1,5 @@
+use iota_streams::app_channels::api::tangle::futures::TryStreamExt;
+
 use super::*;
 
 pub type Author = iota_streams::app_channels::api::tangle::Author<TransportWrap>;
@@ -108,6 +110,19 @@ pub unsafe extern "C" fn auth_channel_address(addr: *mut *const ChannelAddress, 
         addr.as_mut().map_or(Err::NullArgument, |addr| {
             user.channel_address().map_or(Err::OperationFailed, |channel_address| {
                 *addr = channel_address as *const ChannelAddress;
+                Err::Ok
+            })
+        })
+    })
+}
+
+/// Channel announcement link.
+#[no_mangle]
+pub unsafe extern "C" fn auth_announcement_link(addr: *mut *const Address, user: *const Author) -> Err {
+    user.as_ref().map_or(Err::NullArgument, |user| {
+        addr.as_mut().map_or(Err::NullArgument, |addr| {
+            user.announcement_link().map_or(Err::OperationFailed, |ann_link| {
+                *addr = safe_into_ptr(ann_link);
                 Err::Ok
             })
         })
@@ -353,7 +368,7 @@ pub unsafe extern "C" fn auth_receive_sequence(r: *mut *const Address, user: *mu
 pub unsafe extern "C" fn auth_gen_next_msg_ids(ids: *mut *const NextMsgIds, user: *mut Author) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         ids.as_mut().map_or(Err::NullArgument, |ids| {
-            let next_msg_ids = user.gen_next_msg_ids(user.is_multi_branching());
+            let next_msg_ids = user.gen_next_msg_addresses();
             *ids = safe_into_ptr(next_msg_ids);
             Err::Ok
         })
@@ -398,12 +413,25 @@ pub unsafe extern "C" fn auth_receive_msg_by_sequence_number(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn auth_fetch_next_msg(umsg: *mut *const UnwrappedMessage, user: *mut Author) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        umsg.as_mut().map_or(Err::NullArgument, |umsg| {
+            run_async(user.messages().try_next()).map_or(Err::OperationFailed, |m| {
+                *umsg = m.map_or_else(null, safe_into_ptr);
+                Err::Ok
+            })
+        })
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn auth_fetch_next_msgs(umsgs: *mut *const UnwrappedMessages, user: *mut Author) -> Err {
     user.as_mut().map_or(Err::NullArgument, |user| {
         umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
-            let m = run_async(user.fetch_next_msgs());
-            *umsgs = safe_into_ptr(m);
-            Err::Ok
+            run_async(user.fetch_next_msgs()).map_or(Err::OperationFailed, |m| {
+                *umsgs = safe_into_ptr(m);
+                Err::Ok
+            })
         })
     })
 }
@@ -437,20 +465,10 @@ pub unsafe extern "C" fn auth_fetch_prev_msgs(umsgs: *mut *const UnwrappedMessag
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn auth_sync_state(umsgs: *mut *const UnwrappedMessages, user: *mut Author) -> Err {
+pub unsafe extern "C" fn auth_sync_state(user: *mut Author) -> Err {
+    // TODO: return message count
     user.as_mut().map_or(Err::NullArgument, |user| {
-        umsgs.as_mut().map_or(Err::NullArgument, |umsgs| {
-            let mut ms = Vec::new();
-            loop {
-                let m = run_async(user.fetch_next_msgs());
-                if m.is_empty() {
-                    break;
-                }
-                ms.extend(m);
-            }
-            *umsgs = safe_into_ptr(ms);
-            Err::Ok
-        })
+        run_async(user.sync_state()).map_or(Err::OperationFailed, |_| Err::Ok)
     })
 }
 
@@ -463,6 +481,13 @@ pub unsafe extern "C" fn auth_fetch_state(state: *mut *const UserState, user: *m
                 Err::Ok
             })
         })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn auth_reset_state(user: *mut Author) -> Err {
+    user.as_mut().map_or(Err::NullArgument, |user| {
+        user.reset_state().map_or(Err::OperationFailed, |_| Err::Ok)
     })
 }
 

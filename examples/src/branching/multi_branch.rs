@@ -8,7 +8,7 @@ use iota_streams::{
             ChannelType,
             Subscriber,
             Transport,
-        }
+        },
     },
     core::{
         prelude::HashMap,
@@ -78,11 +78,11 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     // Generate a simple PSK for storage by users
     let psk = psk_from_seed("A pre shared key".as_bytes());
     let pskid = pskid_from_psk(&psk);
-    author.store_psk(pskid.clone(), psk.clone())?;
+    author.store_psk(pskid, psk)?;
     subscriberC.store_psk(pskid, psk)?;
 
     // Fetch state of subscriber for comparison after reset
-    let sub_a_start_state: HashMap<_,_> = subscriberA.fetch_state()?.into_iter().collect();
+    let sub_a_start_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
 
     println!("\nSubscribe A");
     let subscribeA_link = {
@@ -108,7 +108,10 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         (msg, seq)
     };
 
-    println!("\nHandle Share keyload for everyone [SubscriberA, PSK]: {}", &keyload_link);
+    println!(
+        "\nHandle Share keyload for everyone [SubscriberA, PSK]: {}",
+        &keyload_link
+    );
     {
         let msg_tag = subscriberA.receive_sequence(&keyload_seq).await?;
         let resultB = subscriberB.receive_keyload(&msg_tag).await?;
@@ -120,15 +123,16 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
 
         subscriberC.receive_keyload(&msg_tag).await?;
         print!("  SubscriberC: {}", subscriberC);
-
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
     println!("\nTagged packet 1 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberA.send_tagged_packet(&keyload_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberA
+            .send_tagged_packet(&keyload_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
@@ -167,11 +171,13 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\nSigned packet");
     let (_signed_packet_link, signed_packet_seq) = {
-        let (msg, seq) = author.send_signed_packet(&tagged_packet_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = author
+            .send_signed_packet(&tagged_packet_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
@@ -232,11 +238,13 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber A fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberA).await;
+    utils::fetch_next_messages(&mut subscriberA).await?;
 
     println!("\nTagged packet 2 - SubscriberA");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberA.send_tagged_packet(&keyload_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberA
+            .send_tagged_packet(&keyload_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
@@ -271,11 +279,13 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber B fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberB).await;
+    utils::fetch_next_messages(&mut subscriberB).await?;
 
     println!("\nTagged packet 3 - SubscriberB");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberB.send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberB
+            .send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
@@ -311,11 +321,13 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     println!("\nSubscriber C fetching transactions...");
-    utils::s_fetch_next_messages(&mut subscriberC).await;
+    utils::fetch_next_messages(&mut subscriberC).await?;
 
     println!("\nTagged packet 4 - SubscriberC");
     let (tagged_packet_link, tagged_packet_seq) = {
-        let (msg, seq) = subscriberC.send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload).await?;
+        let (msg, seq) = subscriberC
+            .send_tagged_packet(&tagged_packet_link, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
         println!("  msg => <{}> {}", msg.msgid, msg);
         println!("  seq => <{}> {}", seq.msgid, seq);
@@ -348,15 +360,16 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
             masked_payload == unwrapped_masked,
             MaskedPayloadMismatch(masked_payload.to_string(), unwrapped_masked.to_string())
         )?;
-
     }
 
     println!("\nAuthor fetching transactions...");
-    utils::a_fetch_next_messages(&mut author).await;
+    utils::fetch_next_messages(&mut author).await?;
 
     println!("\nSigned packet");
     let (signed_packet_link, signed_packet_seq) = {
-        let (msg, seq) = author.send_signed_packet(&tagged_packet_seq, &public_payload, &masked_payload).await?;
+        let (msg, seq) = author
+            .send_signed_packet(&tagged_packet_seq, &public_payload, &masked_payload)
+            .await?;
         let seq = seq.unwrap();
         println!("  msg => <{}> <{:x}>", msg.msgid, msg.to_msg_index());
         println!("  seq => <{}> <{:x}>", seq.msgid, seq.to_msg_index());
@@ -370,9 +383,9 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
         print!("  Author     : {}", author);
 
         println!("\nSubscriber A fetching transactions...");
-        utils::s_fetch_next_messages(&mut subscriberA).await;
+        utils::fetch_next_messages(&mut subscriberA).await?;
         println!("\nSubscriber B fetching transactions...");
-        utils::s_fetch_next_messages(&mut subscriberB).await;
+        utils::fetch_next_messages(&mut subscriberB).await?;
 
         let (_signer_pk, unwrapped_public, unwrapped_masked) = subscriberA.receive_signed_packet(&msg_tag).await?;
         print!("  SubscriberA: {}", subscriberA);
@@ -416,7 +429,7 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     }
 
     subscriberA.reset_state()?;
-    let new_state: HashMap<_,_>  = subscriberA.fetch_state()?.into_iter().collect();
+    let new_state: HashMap<_, _> = subscriberA.fetch_state()?.into_iter().collect();
 
     println!("\nSubscriber A resetting state");
     let mut matches = false;
@@ -439,7 +452,10 @@ pub async fn example<T: Transport>(transport: T, channel_type: ChannelType, seed
     println!("\nAuthor sending new keyload to all subscribers");
     let new_keyload = author.send_keyload_for_everyone(&announcement_link).await?;
     println!("Subscriber B checking that they do not have access to new keyload");
-    try_or!(!subscriberB.receive_keyload(&new_keyload.0).await?, SubscriberAccessMismatch("B".to_string()))?;
+    try_or!(
+        !subscriberB.receive_keyload(&new_keyload.0).await?,
+        SubscriberAccessMismatch("B".to_string())
+    )?;
     println!("Subscriber B does not have access to the new keyload");
 
     Ok(())

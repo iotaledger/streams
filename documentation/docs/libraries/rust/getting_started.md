@@ -1,43 +1,32 @@
 # Getting Started
-Streams requires an asynchronous runtime environment to be set (we suggest using `tokio`). Streams also uses 
-`anyhow` for error handling, so for ease of use, new projects can use `anyhow::Result` and `anyhow::Error` 
-for easier integration. 
+Streams requires an asynchronous runtime environment to be set, we suggest using [tokio](https://docs.rs/tokio/latest/tokio/). Streams also uses [anyhow](https://docs.rs/anyhow/latest/anyhow/) for error handling, so projects can use `anyhow::Result` and `anyhow::Error` for easier integration. 
 
-
-If you don't have a rust project setup yet you can create one by running,
-
-    cargo new my-library
-
-**Remote**
-Add the following to your `Cargo.toml` file:
+To create a new Rust project, run:
 
 ```bash
-[dependencies]
-tokio = { version = "1.5.0", features = ["full"] }
-anyhow = { version = "1.0", default-features = false }
-iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "master"}
+cargo new PROJECT_NAME
 ```
 
-**Local**
+Create two of these Rust projects, one for the author and one for the subscriber, and add the following dependencies to both their `Cargo.toml` files:
 
-1. Clone the streams repository
+```toml
+tokio = { version = "1.5.0", features = ["full"] }
+anyhow = { version = "1.0" }
+iota-streams = { git = "https://github.com/iotaledger/streams", branch = "develop"}
 
-    ```bash
-    git clone https://github.com/iotaledger/streams
-    ```
-
-2. Add the following to your `Cargo.toml` file:
-
-    ```bash
-    [dependencies]
-    iota-streams = { version = "1.0.0", path = "../streams" }
-    ```
+# Temporarily needed because Streams is a work in progress
+bee-message = "=0.1.5"
+bee-rest-api = "=0.1.2"
+```
 
 ## Basic Usage
-Once installed, users can implement their author and subscribers and start a new channel.
+With the needed projects and their dependencies added, we can start using the Streams library. Below are two example scripts for both the author and the subscriber. The author script will announce a channel and print the announcement link. The subscriber script handles the announcement to let the subscriber know where to find the channel.
  
-### Author Implementation
+### Author
+Replace the seed of the author with a random string and run the script to get the announcement link.
+
 ```
+use anyhow::Result;
 use iota_streams::app_channels::api::tangle::{Author, ChannelType};
 use iota_streams::app::transport::tangle::client::Client;
 
@@ -47,20 +36,25 @@ async fn main() -> Result<()> {
     let client = Client::new_from_url(node);
 
     // Author implementation will set the Channel Type
-    let mut author = Author::new("AUTHORS_UNIQUE_SEED", ChannelType::SingleBranch, client);
+    let mut author = Author::new("AUTHOR_SEED", ChannelType::SingleBranch, client);
     
-    // Start the channel and retrieve the announcement address link
-    let ann_address = author.send_announce()?;   
+    // Start the channel and retrieve the announcement link
+    let ann_link = author.send_announce().await?;   
 
-    // Convert the announcement address to a string to share with others
-    println!("{}", ann_address.to_string()); 
+    // Convert the announcement link to a string to share with others
+    println!("{}", ann_link.to_string());
+    Ok(())
 }
 ```
 
-### Subscriber Implementation
+### Subscriber
+Replace the seed of the subscriber with a random string, paste the announcement link from the author script above and run the script to let the subscriber find the channel.
+
 ```
+use anyhow::Result;
 use iota_streams::app_channels::api::tangle::{Address, Subscriber};
 use iota_streams::app::transport::tangle::client::Client;
+use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -69,88 +63,80 @@ async fn main() -> Result<()> {
 
     // Subscriber implementation does not need to specify a channel type, it will be 
     // parsed from the announcement message
-    let mut subscriber = Subscriber::new("SUBSCRIBER_UNIQUE_SEED", client);
+    let mut subscriber = Subscriber::new("SUBSCRIBER_SEED", client);
     
-    // Create Address object from announcement address string
-    let ann_address = Address::from_str("Announcement link address provided by author")?;   
+    // Create Address object from announcement link string
+    let ann_link = Address::from_str("ANNOUNCEMENT_LINK")?;   
 
     // Process the announcement message
-    subscriber.receive_announcement(ann_address)?;
+    subscriber.receive_announcement(&ann_link).await?;
+    Ok(())
 }
 ```
 
 ## Next Steps
-From here you can now begin subscribing users to the channel and generating branches to specify access control 
-for publishers/readers via `Keyload` messages.  
+Now we can begin subscribing users to the channel and generating branches to specify access control for publishers and subscribers via keyload messages.  
 
-### Subscription 
-Subscribers generate their `Subscribe` messages linked to a channel `Announce` message. The link of this message 
-should then be provided to the `Author` for processing to include the users public key for access control and 
-validation purposes.
+### Subscription
+To subscribe to a channel, subscribers create a subscribe message that is linked to the channel announcement message. The link of this message should then be provided to the author. This allows the author to handle the subscription message and use the public key of the subscriber for access control and validation purposes.
 
-Example: 
+#### Subscriber
 ```
-Subscriber: 
 // Send subscription message
-let sub_link = subscriber.send_subscribe(&ann_address)?;
-// Provide this link to the author
+let sub_link = subscriber.send_subscribe(&ann_link).await?;
+// Provide the link to the author
 println!("{}", sub_link.to_string());
 ```
 
+#### Author
 ```
-Author: 
 // Process subscriber link 
-let sub_link = Address::from_str("Sub link provided by desired subscriber")?;
-author.receive_subscribe(&sub_link)?;
+let sub_link = Address::from_str("SUBSCRIPTION_LINK")?;
+author.receive_subscribe(&sub_link).await?;
 ```
 
 ### Keyloads 
-`Keyload` messages are used as an access control mechanism for a branch. A random key is generated and masked within the 
-message using the public keys or `Psk`'s included in them. This allows the `Author` to specify which channel 
-participants have access to which branches. There are 2 ways to send a keyload: 
-1. `send_keyload(&Address, &Vec<PskId>, &Vec<PublicKey>)` - In this function you need to specify:
-    - the message link that the `Keyload` message will be attached to (for generating new branches, this should be the 
-    `Announce` message) 
-    - a slice containing the `PskId`'s of the Pre-Shared Keys intended to be included 
-    - a slice containing the `ed25519::PublicKey`'s of each `Subscriber` that is meant to be granted access 
-2. `send_keyload_for_everyone(&Address)` - In this function you only need to specify the message link that the `Keyload` 
-will be attaching to. The `Keyload` will be sent including all stored `PSK`'s and all stored `Subscriber` public keys 
+Keyload messages are used as an access control mechanism for a branch. A random key is generated and masked within the message using the public keys or pre-shared keys included in them. This allows the author to specify which subscribers have access to which branches. There are two ways to send a keyload:
+- Send a keyload including specific pre-shared keys or subscriber public keys.
+- Send a keyload including all pre-shared keys and subscriber public keys known to the author.
 
 Example: 
 ```
-// Send Keyload for everyone (starting a new branch) 
-author.send_keyload_for_everyone(&announcement_link)?;
+// Send keyload including pre-shared key
+let psk = psk_from_seed("KEY_SEED".as_bytes());
+let psk_id = pskid_from_psk(&psk);
+author.store_psk(psk_id, psk)?;
+author.send_keyload(&ann_link, &vec![psk_id.into()]).await?;
 
-// Send Keyload including Pre Shared Key 2 
-author.send_keyload(&announcement_link, &vec![PskId2], &vec![])?;
+// Send keyload for subscriber
+author.send_keyload(&ann_link, &vec![subscriber_public_key.into()]).await?;
 
-// Send Keyload for Subscriber 3
-author.send_keyload(&announcement_link, &vec![], &vec![subscriber_3_pub_key])?;
+// Send keyload for everyone
+author.send_keyload_for_everyone(&ann_link).await?;
 ```
 
-### Pre-Shared Keys 
-As an alternative to subscribing via public key exchange, an `Author` may specify access control through the use of 
-a Pre-Shared Key (`PSK`). A `PSK` is a 32 byte array containing a secret key shared outside of the streams instance 
-that can be used to specify access through a `Keyload` message. If an `Author` issues a `Keyload` with a `PSK` included, 
-and a `Subscriber` reads this message with the same `PSK` stored within itself, then the `Subscriber` can participate in 
-the proceeding branch without being subscribed to the channel. 
+### Pre-shared keys 
+As an alternative to subscribing via public key exchange using subscribe messages, an author may specify access control through the use of a pre-shared key (PSK). A PSK is a 32 byte array containing a secret key, shared outside of the Streams instance, that can be used to specify access through a keyload message. If an author issues a keyload with a PSK included, and a subscriber reads this message with the same PSK stored within itself, then the subscriber can participate in the proceeding branch without being subscribed to the channel. 
 
 Example: 
 ```
-// Create a random key (for example) and make the Psk from it
-let key = rand::thread_rng().gen::<[u8; 32]>();
-let psk = iota_streams::core::psk::Psk::clone_from_slice(&key);
+use iota_streams::app_channels::api::{psk_from_seed, pskid_from_psk};
+use rand::Rng;
 
-// Store the psk and retrieve the pskid
-let pskid = author.store_psk(psk.clone());
+// Create a random key
+let key_seed = rand::thread_rng().gen::<[u8; 32]>();
+let psk = psk_from_seed(&key);
+let pskid = pskid_from_psk(&psk);
 
-// Create a keyload with the psk included
-let keyload_link = author.send_keyload(&prev_msg_link, &vec![pskid], &vec![])?;
+// Store the PSK in the author
+author.store_psk(pskid, psk)?;
 
-// Store the same psk in subscriber 
-let _sub_pskid = subscriber.store_psk(psk);
+// Create a keyload with the PSK included
+let keyload_link = author.send_keyload(&ann_link, &vec![psk_id.into()]).await?;
+
+// Store the same PSK in the subscriber 
+subscriber.store_psk(pskid, psk);
 
 // Process keyload message from subscriber end
-subscriber.receive_keyload(&keyload_link)?;
+subscriber.receive_keyload(&keyload_link).await?;
 ```
-

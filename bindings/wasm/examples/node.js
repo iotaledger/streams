@@ -1,10 +1,4 @@
-const streams = require("../node/iota_streams_wasm");
-const fetch = require("node-fetch");
-
-global.fetch = fetch;
-global.Headers = fetch.Headers;
-global.Request = fetch.Request;
-global.Response = fetch.Response;
+const streams = require("../node/streams");
 
 streams.set_panic_hook();
 
@@ -20,11 +14,17 @@ async function main() {
   // Default is a load balancer, if you have your own node it's recommended to use that instead
   let node = "https://chrysalis-nodes.iota.org/";
   let options = new streams.SendOptions(node, true);
+
+  const client = await new streams.ClientBuilder()
+    .node(node)
+    .build();
   let seed = make_seed(81);
-  let auth = new streams.Author(seed, options.clone(), streams.ChannelType.SingleBranch);
+  let auth = streams.Author.fromClient(streams.StreamsClient.fromClient(client), seed, streams.ChannelType.SingleBranch);
 
   console.log("channel address: ", auth.channel_address());
   console.log("multi branching: ", auth.is_multi_branching());
+  console.log("IOTA client info:", await client.getInfo());
+
 
   let response = await auth.clone().send_announce();
   let ann_link = response.link;
@@ -58,7 +58,7 @@ async function main() {
   console.log("Keyload message index: " + keyload_link.toMsgIndexHex());
 
   console.log("Subscriber syncing...");
-  await sub.clone().sync_state();
+  await sub.clone().syncState();
 
   let public_payload = to_bytes("Public");
   let masked_payload = to_bytes("Masked");
@@ -84,23 +84,28 @@ async function main() {
   }
 
   console.log("\nAuthor fetching next messages");
-  let exists = true;
-  while (exists) {
-    let next_msgs = await auth.clone().fetch_next_msgs();
+  for (const msg of await auth.clone().fetchNextMsgs()) {
+    console.log("Found a message...");
+    console.log(
+      "Public: ",
+      from_bytes(msg.message.get_public_payload()),
+      "\tMasked: ",
+      from_bytes(msg.message.get_masked_payload())
+    );
+  }
 
-    if (next_msgs.length === 0) {
-      exists = false;
-    }
-
-    for (var i = 0; i < next_msgs.length; i++) {
-      console.log("Found a message...");
-      console.log(
-        "Public: ",
-        from_bytes(next_msgs[i].message.get_public_payload()),
-        "\tMasked: ",
-        from_bytes(next_msgs[i].message.get_masked_payload())
-      );
-    }
+  console.log("\nSub sending unsubscribe message");
+  response = await sub.clone().send_unsubscribe(sub_link);
+  await auth.clone().receive_unsubscribe(response.link);
+  console.log("Author received unsubscribe and processed it");
+  
+  // Check that the subscriber is no longer included in keyloads following the unsubscription
+  console.log("\nAuthor sending new keyload to all subscribers");
+  response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
+  if (await sub.clone().receive_keyload(response.link)) {
+    console.log("unsubscription unsuccessful");
+  } else {
+    console.log("unsubscription successful");
   }
 
   console.log("\nSubscriber resetting state");
@@ -110,8 +115,8 @@ async function main() {
   var matches = true;
   for (var i = 0; i < reset_state.length; i++) {
     if (start_state[i].link.toString() != reset_state[i].link.toString() ||
-        start_state[i].seqNo != reset_state[i].seqNo ||
-        start_state[i].branchNo != reset_state[i].branchNo) {
+      start_state[i].seqNo != reset_state[i].seqNo ||
+      start_state[i].branchNo != reset_state[i].branchNo) {
       matches = false;
     }
   }
@@ -131,13 +136,19 @@ async function main() {
   let password = "password"
   let exp = auth.clone().export(password);
 
-  let client = new streams.Client(node, options.clone());
-  let auth2 = streams.Author.import(client, exp, password);
+  let client2 = new streams.StreamsClient(node, options.clone());
+  let auth2 = streams.Author.import(client2, exp, password);
 
   if (auth2.channel_address !== auth.channel_address) {
-      console.log("import failed");
+    console.log("import failed");
   } else {
-      console.log("import succesfull")
+    console.log("import succesfull")
+  }
+
+  if (auth2.announcementLink() != ann_link.toString()) {
+    console.log("recovered announcement does not match");
+  } else {
+    console.log("recovered announcement matches");
   }
 
   console.log("\nRecovering without state import");
@@ -146,20 +157,6 @@ async function main() {
     console.log("recovery failed")
   } else {
     console.log("recovery succesfull")
-  }
-
-  console.log("\nSub sending unsubscribe message");
-  response = await sub.clone().send_unsubscribe(sub_link);
-  await auth.clone().receive_unsubscribe(response.link);
-  console.log("Author received unsubscribe and processed it");
-  
-  // Check that the subscriber is no longer included in keyloads following the unsubscription
-  console.log("\nAuthor sending new keyload to all subscribers");
-  response = await auth.clone().send_keyload_for_everyone(ann_link.copy());
-  if (await sub.receive_keyload(response.link)) {
-    console.log("unsubscription unsuccessful");
-  } else {
-    console.log("unsubscription successful");
   }
 
   let seed3 = make_seed(81);

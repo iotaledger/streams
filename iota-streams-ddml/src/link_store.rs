@@ -1,7 +1,10 @@
 use core::hash;
 use iota_streams_core::Result;
 
-use core::fmt::Display;
+use core::fmt::{
+    Debug,
+    Display,
+};
 use iota_streams_core::{
     err,
     prelude::{
@@ -19,7 +22,7 @@ use iota_streams_core::{
     try_or,
     Errors::{
         GenericLinkNotFound,
-        MessageLinkNotFoundInTangle,
+        MessageLinkNotFoundInStore,
     },
 };
 
@@ -120,7 +123,7 @@ where
 {
     type Info = Info;
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Self::Info)> {
-        try_or!(self.link() == link, MessageLinkNotFoundInTangle(link.to_string()))?;
+        try_or!(self.link() == link, MessageLinkNotFoundInStore(link.to_string()))?;
         Ok((self.spongos().into(), self.info().clone()))
     }
     fn update(&mut self, link: &Link, spongos: Spongos<F>, info: Self::Info) -> Result<()> {
@@ -164,7 +167,7 @@ where
 
 impl<F: PRP, Link, Info> LinkStore<F, Link> for DefaultLinkStore<F, Link, Info>
 where
-    Link: Eq + hash::Hash + Clone + Display,
+    Link: Eq + hash::Hash + Clone + Display + Debug,
     Info: Clone,
 {
     type Info = Info;
@@ -173,7 +176,7 @@ where
     fn lookup(&self, link: &Link) -> Result<(Spongos<F>, Info)> {
         match self.map.get(link) {
             Some((inner, info)) => Ok((inner.into(), info.clone())),
-            None => err!(MessageLinkNotFoundInTangle(link.to_string())),
+            None => err!(MessageLinkNotFoundInStore(link.to_string())),
         }
     }
 
