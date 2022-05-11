@@ -8,8 +8,8 @@ use crypto::signatures::ed25519;
 
 // Streams
 use spongos::{
+    KeccakF1600,
     SpongosRng,
-    PRP,
 };
 
 // Local
@@ -21,12 +21,13 @@ impl Ed25519 {
         Self(secret)
     }
 
-    pub fn from_seed<F, T>(seed: T) -> Self
+    pub fn from_seed<T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
-        F: PRP + Default,
     {
-        Self(ed25519::SecretKey::generate_with(&mut SpongosRng::<F>::new(seed)))
+        Self(ed25519::SecretKey::generate_with(&mut SpongosRng::<KeccakF1600>::new(
+            seed,
+        )))
     }
 
     pub(crate) fn inner(&self) -> &ed25519::SecretKey {

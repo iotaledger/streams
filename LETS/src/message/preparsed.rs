@@ -18,17 +18,17 @@ use spongos::{
 use crate::{
     link,
     message::{
-        transport::TransportMessage,
         content::ContentUnwrap,
         hdf::HDF,
         pcf::PCF,
+        transport::TransportMessage,
         Message,
     },
 };
 
 /// Message context preparsed for unwrapping.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct PreparsedMessage<F = KeccakF1600, Address = link::MsgId,T=TransportMessage> {
+pub struct PreparsedMessage<F = KeccakF1600, Address = link::MsgId, T = TransportMessage> {
     transport_msg: T,
     header: HDF<Address>,
     spongos: Spongos<F>,

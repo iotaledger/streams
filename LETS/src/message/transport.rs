@@ -62,7 +62,10 @@ impl From<TransportMessage<Vec<u8>>> for Vec<u8> {
     }
 }
 
-impl<T> AsRef<[u8]> for TransportMessage<T> where T: AsRef<[u8]> {
+impl<T> AsRef<[u8]> for TransportMessage<T>
+where
+    T: AsRef<[u8]>,
+{
     fn as_ref(&self) -> &[u8] {
         self.body.as_ref()
     }

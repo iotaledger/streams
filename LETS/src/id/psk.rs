@@ -25,6 +25,7 @@ use spongos::{
         io,
         types::NBytes,
     },
+    KeccakF1600,
     Spongos,
     PRP,
 };
@@ -33,12 +34,15 @@ use spongos::{
 pub struct Psk([u8; 32]);
 
 impl Psk {
-    pub fn new<F, T>(seed: T) -> Self
+    pub fn new(array: [u8; 32]) -> Self {
+        Self(array)
+    }
+
+    pub fn from_seed<T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
-        F: PRP + Default,
     {
-        let mut spongos = Spongos::<F>::init();
+        let mut spongos = Spongos::<KeccakF1600>::init();
         spongos.absorb("PSK");
         spongos.sponge(seed)
     }
@@ -51,11 +55,8 @@ impl Psk {
         self.0
     }
 
-    pub fn to_pskid<F>(self) -> PskId
-    where
-        F: PRP + Default,
-    {
-        let mut spongos = Spongos::<F>::init();
+    pub fn to_pskid(self) -> PskId {
+        let mut spongos = Spongos::<KeccakF1600>::init();
         spongos.absorb("PSKID");
         spongos.sponge(self)
     }
@@ -85,12 +86,15 @@ impl TryFrom<&[u8]> for Psk {
 pub struct PskId([u8; 16]);
 
 impl PskId {
-    fn new<F, T>(seed: T) -> Self
+    fn new(array: [u8; 16]) -> Self {
+        Self(array)
+    }
+
+    fn from_seed<T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
-        F: PRP + Default,
     {
-        Psk::new::<F, T>(seed).to_pskid::<F>()
+        Psk::from_seed::<T>(seed).to_pskid()
     }
 
     pub(crate) fn as_bytes(&self) -> &[u8] {

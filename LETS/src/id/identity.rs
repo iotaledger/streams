@@ -306,7 +306,7 @@ where
                                 .as_str(),
                         )?;
                         self.absorb(&NBytes::new(signature))
-                    } 
+                    }
                     DID::Default => unreachable!(),
                     // TODO: Implement Account logic
                 }

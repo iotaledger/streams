@@ -52,29 +52,25 @@ use crate::{
     },
 };
 
-/// Tangle representation of a Message Link
+/// Abstract representation of a Message Address
 ///
-/// A `TangleAddress` is comprised of 2 distinct parts: the channel identifier
-/// ([`TangleAddress::appinst`]) and the message identifier
-/// ([`TangleAddress::msgid`]). The channel identifier, also refered to as
-/// the channel address, is unique per channel and is common in the
-/// `TangleAddress` of all messages published in it. The message identifier is
-/// produced pseudo-randomly out of the the message's sequence number, the
-/// previous message identifier, and other internal properties.
+/// An `Address` is comprised of 2 distinct parts: the application address
+/// ([`Address::appaddr`]) and the message identifier ([`Address::msgid`]). The
+/// application address is unique per application and is common in the `Address`
+/// of all messages published in it. The message identifier is produced
+/// pseudo-randomly out of the publisher's identifier and the message's sequence
+/// number
 ///
 /// ## Renderings
 /// ### Blake2b hash
-/// A `TangleAddress` is used as index of the message over the Tangle. For that,
-/// its content is hashed using [`TangleAddress::to_msg_index()`]. If the binary
-/// digest of the hash needs to be encoded in hexadecimal, you can use
-/// [`core::LowerHex`] or [`core::UpperHex`]:
+/// A `Address` is used as index of the message over the Transport layer. For that,
+/// its content is hashed using [`Address::to_msg_index()`].
 ///
 /// ```
-/// # use iota_streams_app::transport::tangle::TangleAddress;
-/// # use iota_streams_ddml::types::NBytes;
+/// # use LETS::link::Address;
 /// #
 /// # fn main() -> anyhow::Result<()> {
-/// let address = TangleAddress::new([172u8; 40][..].into(), [171u8; 12][..].into());
+/// let address = Address::new([172; 40], [171; 12]);
 /// assert_eq!(
 ///     address.to_msg_index().as_ref(),
 ///     &[
@@ -83,39 +79,38 @@ use crate::{
 ///     ],
 /// );
 /// assert_eq!(
-///     format!("{:x}", address.to_msg_index()),
-///     "2cb59b016d8da9b1d146e212be79282c5a6c9f6df1251e00b950f53beb4b8061".to_string()
+///     &format!("{}", hex::encode(address.to_msg_index())),
+///     "2cb59b016d8da9b1d146e212be79282c5a6c9f6df1251e00b950f53beb4b8061"
 /// );
 /// #   Ok(())
 /// # }
 /// ```
 ///
 /// ### exchangeable encoding
-/// In order to exchange a `TangleAddress` between channel participants, it can be encoded and decoded
-/// using [`TangleAddress::to_string()`][Display] (or [`format!()`]) and [`TangleAddress::from_str`] (or
-/// [`str::parse()`]). This method encodes the `TangleAddress` as a colon-separated string containing the `appinst` and
+/// In order to exchange an `Address` between application participants, it can be encoded and decoded
+/// using [`Address::to_string()`][Display] (or [`format!()`]) and [`Address::from_str`] (or
+/// [`str::parse()`]). This method encodes the `Address` as a colon-separated string containing the `appaddr` and
 /// `msgid` in hexadecimal:
 /// ```
-/// # use iota_streams_app::transport::tangle::TangleAddress;
-/// # use iota_streams_ddml::types::NBytes;
+/// # use LETS::link::Address;
 /// #
 /// # fn main() -> anyhow::Result<()> {
-/// let address = TangleAddress::new([170u8; 40][..].into(), [255u8; 12][..].into());
+/// let address = Address::new([170; 40], [255; 12]);
 /// let address_str = address.to_string();
 /// assert_eq!(
 ///     address_str,
 ///     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:ffffffffffffffffffffffff"
 ///         .to_string(),
 /// );
-/// assert_eq!(address_str.parse::<TangleAddress>()?, address);
+/// assert_eq!(address_str.parse::<Address>()?, address);
 /// #   Ok(())
 /// # }
 /// ```
 ///
 /// ## Debugging
 ///
-/// For debugging purposes, `TangleAddress` implements `Debug`, which can be triggered with the formatting `{:?}`
-/// or the pretty-printed `{:#?}`. These will output `appinst` and `msgid` as decimal arrays; you can also use
+/// For debugging purposes, `Address` implements `Debug`, which can be triggered with the formatting `{:?}`
+/// or the pretty-printed `{:#?}`. These will output `appaddr` and `msgid` as decimal arrays; you can also use
 /// `{:x?}` or `{:#x?}` to render them as hexadecimal arrays.
 ///
 /// [Display]: #impl-Display
@@ -126,8 +121,15 @@ pub struct Address {
 }
 
 impl Address {
-    fn new(appaddr: AppAddr, msgid: MsgId) -> Self {
-        Self { appaddr, msgid }
+    pub fn new<A, M>(appaddr: A, msgid: M) -> Self
+    where
+        A: Into<AppAddr>,
+        M: Into<MsgId>,
+    {
+        Self {
+            appaddr: appaddr.into(),
+            msgid: msgid.into(),
+        }
     }
 
     /// Hash the content of the [`Address`] using `Blake2b256`
@@ -152,28 +154,28 @@ impl Address {
 /// String representation of a Tangle Link
 ///
 /// The current string representation of a Tangle Link is the
-/// colon-separated conjunction of the hex-encoded `appinst` and `msgid`:
-/// `"<appinst>:<msgid>"`.
+/// colon-separated conjunction of the hex-encoded `appaddr` and `msgid`:
+/// `"<appaddr>:<msgid>"`.
 impl Display for Address {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:x}:{:x}", self.appaddr, self.msgid)
     }
 }
 
-/// Create a TangleAddress out of it's string representation
+/// Create a Address out of it's string representation
 ///
-/// This method is the opposite of [`TangleAddress::to_string()`][`Display`]
+/// This method is the opposite of [`Address::to_string()`][`Display`]
 /// (see [`Display`]): it expects a colon-separated string containing the
-/// hex-encoded `appinst` and `msgid`.
+/// hex-encoded `appaddr` and `msgid`.
 ///
 /// [`Display`]: #impl-Display
 impl FromStr for Address {
     type Err = anyhow::Error;
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let (appinst_str, msgid_str) = string.split_once(':').ok_or_else(|| {
-            anyhow!("Malformed address string: missing colon (':') separator between appinst and msgid")
+        let (appaddr_str, msgid_str) = string.split_once(':').ok_or_else(|| {
+            anyhow!("Malformed address string: missing colon (':') separator between appaddr and msgid")
         })?;
-        let appaddr = AppAddr::from_str(appinst_str).map_err(|e| {
+        let appaddr = AppAddr::from_str(appaddr_str).map_err(|e| {
             anyhow!(
                 "AppAddr is not encoded in hexadecimal or the encoding is incorrect: {}",
                 e
@@ -238,8 +240,8 @@ where
 impl<F> LinkGenerator<'_, AppAddr> for AddressGenerator<F> {
     type Data = (Identifier, usize);
 
-    fn gen(&mut self, (identifier, channel_idx): (Identifier, usize)) -> AppAddr {
-        AppAddr::new(identifier, channel_idx as u64)
+    fn gen(&mut self, (identifier, app_idx): (Identifier, usize)) -> AppAddr {
+        AppAddr::new(identifier, app_idx as u64)
     }
 }
 
@@ -250,16 +252,16 @@ pub struct AppAddr([u8; Self::SIZE]);
 impl AppAddr {
     const SIZE: usize = 40;
 
-    pub fn new(id: Identifier, channel_idx: u64) -> Self {
+    pub fn new(id: Identifier, app_idx: u64) -> Self {
         let mut addr = [0u8; 40];
         let id_bytes = id.as_bytes();
         assert_eq!(id_bytes.len(), 32, "identifier must be 32 bytes long");
         addr[..32].copy_from_slice(id_bytes);
-        addr[32..].copy_from_slice(&channel_idx.to_be_bytes());
+        addr[32..].copy_from_slice(&app_idx.to_be_bytes());
         Self(addr)
     }
 
-    /// Get the hexadecimal representation of the AppInst
+    /// Get the hexadecimal representation of the appaddr
     fn to_hex_string(self) -> String {
         hex::encode(self.0)
     }
@@ -290,7 +292,7 @@ impl FromStr for AppAddr {
     }
 }
 
-/// Display AppInst with its hexadecimal representation (lower case)
+/// Display appaddr with its hexadecimal representation (lower case)
 impl Display for AppAddr {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:x}", self)
@@ -318,6 +320,12 @@ impl AsRef<[u8]> for AppAddr {
 impl AsMut<[u8]> for AppAddr {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
+    }
+}
+
+impl From<[u8; 40]> for AppAddr {
+    fn from(array: [u8; 40]) -> Self {
+        Self(array)
     }
 }
 
@@ -381,6 +389,12 @@ impl AsRef<[u8]> for MsgId {
 impl AsMut<[u8]> for MsgId {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
+    }
+}
+
+impl From<[u8; 12]> for MsgId {
+    fn from(array: [u8; 12]) -> Self {
+        Self(array)
     }
 }
 

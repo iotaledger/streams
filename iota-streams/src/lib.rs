@@ -6,14 +6,27 @@
 //! [Client](../iota_streams_app/transport/tangle/client/struct.Client.html)
 //!
 //! ## Starting a new Channel
-//! ```no_run
-//! let client = Client::new_from_url("https://chrysalis-nodes.iota.org")?;
-//! let author = UserBuilder::new()
-//!     .with_identity(UserIdentity::new("A Seed"))
+//! ```
+//! # use anyhow::Result;
+//! use iota_streams::{
+//!     transport::tangle,
+//!     id::Ed25519,
+//!     User,
+//! };
+//! # use iota_streams::transport::bucket;
+//! #[tokio::main]
+//! async fn main() -> Result<()> {
+//! let client: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+//! # let client = bucket::Client::new();
+//! let mut author = User::builder()
+//!     .with_identity(Ed25519::from_seed("A cryptographically secure seed"))
 //!     .with_transport(client)
 //!     .build()?;
 //!
-//! let announcement_link = author.send_announce()?;
+//! author.create_stream(1)?;
+//! let announcement = author.announce().await?;
+//! # Ok(())
+//! # }
 //! ```
 
 #![no_std]

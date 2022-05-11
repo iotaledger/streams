@@ -63,7 +63,6 @@ use spongos::{
             Uint8,
         },
     },
-    KeccakF1600,
     PRP,
 };
 
@@ -163,7 +162,7 @@ impl From<PskId> for Identifier {
 impl From<Psk> for Identifier {
     fn from(psk: Psk) -> Self {
         // TODO: REMOVE TYPE PARAMETER OR REMOTE TYPE ARGUMENT ASSUMPTION
-        Identifier::PskId(psk.to_pskid::<KeccakF1600>())
+        Identifier::PskId(psk.to_pskid())
     }
 }
 
@@ -299,40 +298,38 @@ where
                 _ => Err(anyhow!("expected Identity type 'Ed25519', found something else")),
             },
             #[cfg(feature = "did")]
-            1 => {
-                match verifier {
-                    Identifier::DID(method_id) => {
-                        let mut hash = [0; 64];
-                        let mut fragment_bytes = Bytes::<Vec<u8>>::default();
-                        let mut signature_bytes = NBytes::new([0; 64]);
+            1 => match verifier {
+                Identifier::DID(method_id) => {
+                    let mut hash = [0; 64];
+                    let mut fragment_bytes = Bytes::<Vec<u8>>::default();
+                    let mut signature_bytes = NBytes::new([0; 64]);
 
-                        self.absorb(&mut fragment_bytes)?
-                            .commit()?
-                            .squeeze(External::new(&mut NBytes::new(&mut hash)))?
-                            .absorb(&mut signature_bytes)?;
+                    self.absorb(&mut fragment_bytes)?
+                        .commit()?
+                        .squeeze(External::new(&mut NBytes::new(&mut hash)))?
+                        .absorb(&mut signature_bytes)?;
 
-                        let fragment = format!(
-                            "#{}",
-                            fragment_bytes
-                                .to_str()
-                                .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
-                        );
+                    let fragment = format!(
+                        "#{}",
+                        fragment_bytes
+                            .to_str()
+                            .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
+                    );
 
-                        let did_url = method_id.try_to_did()?.join(fragment)?;
-                        let mut signature = Signature::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
-                        signature.set_value(SignatureValue::Signature(encode_b58(&signature_bytes)));
+                    let did_url = method_id.try_to_did()?.join(fragment)?;
+                    let mut signature = Signature::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
+                    signature.set_value(SignatureValue::Signature(encode_b58(&signature_bytes)));
 
-                        let data = DataWrapper::new(&hash).with_signature(signature);
+                    let data = DataWrapper::new(&hash).with_signature(signature);
 
-                        let doc = DIDClient::new().await?.read_document(did_url.did()).await?;
-                        doc.document
-                            .verify_data(&data, &VerifierOptions::new())
-                            .map_err(|e| anyhow!("There was an issue validating the signature: {}", e))?;
-                        Ok(self)
-                    }
-                    _ => Err(anyhow!("expected Identity type 'DID', found something else")),
+                    let doc = DIDClient::new().await?.read_document(did_url.did()).await?;
+                    doc.document
+                        .verify_data(&data, &VerifierOptions::new())
+                        .map_err(|e| anyhow!("There was an issue validating the signature: {}", e))?;
+                    Ok(self)
                 }
-            }
+                _ => Err(anyhow!("expected Identity type 'DID', found something else")),
+            },
             o => Err(anyhow!("{} is not a valid identity option", o)),
         }
     }

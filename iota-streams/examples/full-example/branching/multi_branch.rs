@@ -16,7 +16,6 @@ use iota_streams::{
     },
     User,
 };
-use spongos::KeccakF1600;
 
 // Local
 use super::utils::{
@@ -29,19 +28,19 @@ const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
 pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
-    let psk = Psk::new::<KeccakF1600, _>("A pre shared key");
+    let psk = Psk::from_seed("A pre shared key");
 
     let mut author = User::builder()
-        .with_identity(Ed25519::from_seed::<KeccakF1600, _>(author_seed))
+        .with_identity(Ed25519::from_seed(author_seed))
         .with_transport(transport.clone())
         .build()?;
 
     let mut subscriber_a = User::builder()
-        .with_identity(Ed25519::from_seed::<KeccakF1600, _>("SUBSCRIBERA9SEED"))
+        .with_identity(Ed25519::from_seed("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
         .build()?;
     let mut subscriber_b = User::builder()
-        .with_identity(Ed25519::from_seed::<KeccakF1600, _>("SUBSCRIBERB9SEED"))
+        .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
         .build()?;
     let mut subscriber_c = User::builder()
@@ -326,7 +325,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Statelessly recover users rereading the stream");
     let mut new_author = User::builder()
-        .with_identity(Ed25519::from_seed::<KeccakF1600, _>(author_seed))
+        .with_identity(Ed25519::from_seed(author_seed))
         .with_transport(transport.clone())
         .build()?;
     // OOB data must be recovered manually
@@ -340,7 +339,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     author = new_author;
 
     let mut new_subscriber_a = User::builder()
-        .with_identity(Ed25519::from_seed::<KeccakF1600, _>("SUBSCRIBERA9SEED"))
+        .with_identity(Ed25519::from_seed("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
         .build()?;
 
@@ -351,7 +350,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     subscriber_a = new_subscriber_a;
 
     let mut new_subscriber_b = User::builder()
-        .with_identity(Ed25519::from_seed::<KeccakF1600, _>("SUBSCRIBERB9SEED"))
+        .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
         .build()?;
     new_subscriber_b.receive_message(*announcement.address()).await?;
@@ -408,7 +407,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Author removes PSK");
-    author.remove_psk(psk.to_pskid::<KeccakF1600>());
+    author.remove_psk(psk.to_pskid());
     print_user("Author", &author);
 
     println!("> Author issues a new keyload to remove all subscribers from the branch");

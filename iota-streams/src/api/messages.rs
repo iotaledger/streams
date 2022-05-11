@@ -827,102 +827,116 @@ where
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use core::{
-//         cell::RefCell,
-//     };
-//     use alloc::rc::Rc;
+#[cfg(test)]
+mod tests {
+    use alloc::rc::Rc;
+    use core::cell::RefCell;
 
-//     use LETS::transport::bucket;
+    use anyhow::Result;
 
-//     type Transport = Rc<RefCell<bucket::Client>>;
+    use spongos::KeccakF1600;
+    use LETS::{
+        id::Ed25519,
+        link::Address,
+        transport::bucket,
+    };
 
-//     #[tokio::test]
-//     async fn messages_can_be_linked_to_sequence_messages() -> Result<()> {
-//         let p = Default::default();
-//         let (mut author, mut subscriber, announcement_link, transport) = author_subscriber_fixture().await?;
+    use crate::api::{
+        message::{
+            Message,
+            MessageContent::{
+                Keyload,
+                SignedPacket,
+            },
+        },
+        user::User,
+    };
 
-//         let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
-//         let (packet_link, _) = author.send_signed_packet(&keyload_link, &p, &p).await?;
-//         let (_, seq_link) = author.send_signed_packet(&packet_link, &p, &p).await?;
+    type Transport = Rc<RefCell<bucket::Client>>;
 
-//         subscriber.sync_state().await?;
+    #[tokio::test]
+    async fn messages_awake_pending_messages_link_to_them_even_if_their_content_is_unreadable() -> Result<()> {
+        let p = b"payload";
+        let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
 
-//         // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
-//         subscriber
-//             .send_signed_packet(&seq_link.expect("sequence link should be Some(link)"), &p, &p)
-//             .await?;
+        let keyload_1 = author.send_keyload_for_all_rw(announcement_link.relative()).await?;
+        subscriber1.sync().await?;
+        let packet_1 = subscriber1
+            .send_signed_packet(keyload_1.to_address().relative(), &p, &p)
+            .await?;
+        // This packet will never be readable by subscriber2. However, she will still be able to progress through the
+        // next messages
+        let packet_2 = subscriber1
+            .send_signed_packet(packet_1.to_address().relative(), &p, &p)
+            .await?;
 
-//         // Subscriber::reset_state() cannot be used, see https://github.com/iotaledger/streams/issues/161
-//         let mut subscriber = GenericUserBuilder::new()
-//             .with_identity(GenericUserIdentity::new("subscriber"))
-//             .with_transport(transport)
-//             .build()?;
-//         subscriber.receive_announcement(&announcement_link).await?;
-//         let n_msgs = subscriber.sync_state().await?;
-//         assert_eq!(n_msgs, 4); // keyload, 2 signed packets from author, and last signed-packet from herself
-//         Ok(())
-//     }
+        let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
 
-//     #[tokio::test]
-//     async fn sequence_messages_awake_pending_messages_link_to_them_even_if_the_referenced_messages_are_unreadable(
-//     ) -> Result<()> {
-//         let p = Default::default();
-//         let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
+        author.sync().await?;
 
-//         let (keyload_link, _) = author.send_keyload_for_everyone(&announcement_link).await?;
-//         subscriber1.sync_state().await?;
-//         let (packet_link, _) = subscriber1.send_signed_packet(&keyload_link, &p, &p).await?;
-//         // This packet will never be readable by subscriber2. However, the sequence is
-//         let (_, seq_link) = subscriber1.send_signed_packet(&packet_link, &p, &p).await?;
+        // This packet has to wait in the `Messages::msg_queue` until `packet` is processed
+        let keyload_2 = author.send_keyload_for_all_rw(packet_2.to_address().relative()).await?;
 
-//         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, &announcement_link, transport).await?;
+        subscriber1.sync().await?;
+        let last_signed_packet = subscriber1
+            .send_signed_packet(keyload_2.to_address().relative(), &p, &p)
+            .await?;
 
-//         author.sync_state().await?;
-//         // This keyload link to announcement is necessary (for now) to "introduce" both subscribers
-//         // otherwise subscriber2 isn't aware of subscriber1 and will never walk through the sequence messages
-//         //  of subscriber1 to reach keyload2
-//         author.send_keyload_for_everyone(&announcement_link).await?;
+        let msgs = subscriber2.fetch_next_messages().await?;
+        assert_eq!(3, msgs.len()); // keyload_1, keyload_2 and last signed packet
+        assert!(matches!(
+            msgs.as_slice(),
+            &[
+                Message {
+                    address: address_1,
+                    content: Keyload(..),
+                    ..
+                },
+                Message {
+                    address: address_2,
+                    content: Keyload(..),
+                    ..
+                },
+                Message {
+                    address: address_3,
+                    content: SignedPacket(..),
+                    ..
+                }
+            ]
+            if address_1 == keyload_1.to_address()
+            && address_2 == keyload_2.to_address()
+            && address_3 == last_signed_packet.to_address()
+        ));
+        Ok(())
+    }
 
-//         // This packet has to wait in the `Messages::msg_queue` until `seq_link` is processed
-//         let (keyload2_link, _) = author
-//             .send_keyload_for_everyone(&seq_link.expect("sequence link should be Some(link)"))
-//             .await?;
+    /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport
+    async fn author_subscriber_fixture() -> Result<(User<Transport>, User<Transport>, Address, Transport)> {
+        let transport = Rc::new(RefCell::new(bucket::Client::new()));
+        let mut author = User::builder()
+            .with_identity(Ed25519::from_seed("author"))
+            .with_transport(transport.clone())
+            .build()?;
+        author.create_stream(10)?;
+        let announcement = author.announce().await?;
+        let subscriber =
+            subscriber_fixture("subscriber", &mut author, announcement.to_address(), transport.clone()).await?;
+        Ok((author, subscriber, announcement.to_address(), transport))
+    }
 
-//         subscriber1.sync_state().await?;
-//         subscriber1.send_signed_packet(&keyload2_link, &p, &p).await?;
-
-//         let n_msgs = subscriber2.sync_state().await?;
-//         assert_eq!(n_msgs, 4); // first announcement, announcement keyload, keyload2 and last signed packet
-//         Ok(())
-//     }
-
-//     /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport
-//     async fn author_subscriber_fixture() -> Result<(GenericUser<Transport>, GenericUser<Transport>, Address,
-// Transport)> {         let transport = Rc::new(RefCell::new(BucketTransport::new()));
-//         let mut author = GenericUserBuilder::new()
-//             .with_identity(GenericUserIdentity::new("author"))
-//             .with_transport(transport.clone())
-//             .build()?;
-//         let announcement_link = author.send_announce().await?;
-//         let subscriber = subscriber_fixture("subscriber", &mut author, &announcement_link, transport.clone()).await?;
-//         Ok((author, subscriber, announcement_link, transport))
-//     }
-
-//     async fn subscriber_fixture(
-//         seed: &str,
-//         author: &mut GenericUser<Transport>,
-//         announcement_link: &Address,
-//         transport: Transport,
-//     ) -> Result<GenericUser<Transport>> {
-//         let mut subscriber = GenericUserBuilder::new()
-//             .with_identity(GenericUserIdentity::new(seed))
-//             .with_transport(transport)
-//             .build()?;
-//         subscriber.receive_announcement(announcement_link).await?;
-//         let subscription = subscriber.send_subscribe(announcement_link).await?;
-//         author.receive_subscribe(&subscription).await?;
-//         Ok(subscriber)
-//     }
-// }
+    async fn subscriber_fixture(
+        seed: &str,
+        author: &mut User<Transport>,
+        announcement_link: Address,
+        transport: Transport,
+    ) -> Result<User<Transport>> {
+        let mut subscriber = User::builder()
+            .with_identity(Ed25519::from_seed(seed))
+            .with_transport(transport)
+            .build()?;
+        subscriber.receive_message(announcement_link).await?;
+        let subscription = subscriber.subscribe(announcement_link.relative()).await?;
+        author.receive_message(subscription.to_address()).await?;
+        Ok(subscriber)
+    }
+}

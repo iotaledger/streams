@@ -33,7 +33,10 @@ use crate::{
 
 #[derive(Debug)]
 /// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
-pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(iota_client::Client, PhantomData<(Message, SendResponse)>);
+pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(
+    iota_client::Client,
+    PhantomData<(Message, SendResponse)>,
+);
 
 impl<Message, SendResponse> Client<Message, SendResponse> {
     // Create an instance of Client with a ready client and its send options

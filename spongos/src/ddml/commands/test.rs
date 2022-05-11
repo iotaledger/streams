@@ -308,20 +308,19 @@ fn test_ed25519() {
 
 fn x25519_transport<F: PRP + Default>() -> Result<()> {
     let mut prng = SpongosRng::<F>::new("seed for tests");
-    let local_secret_key = x25519::SecretKey::generate_with(&mut prng);
     let remote_secret_key = x25519::SecretKey::generate_with(&mut prng);
 
     let key_wrap = NBytes::<[u8; 32]>::new(prng.gen());
     let mut key_unwrap = NBytes::<[u8; 32]>::default();
 
     let mut ctx = sizeof::Context::new();
-    ctx.x25519(&local_secret_key.public_key(), &key_wrap)?;
+    ctx.x25519(&remote_secret_key.public_key(), &key_wrap)?;
     let buf_size = ctx.finalize();
 
     let mut buf = vec![0u8; buf_size];
 
     let mut ctx = wrap::Context::<F, &mut [u8]>::new(&mut buf[..]);
-    ctx.x25519(&local_secret_key.public_key(), &key_wrap)?;
+    ctx.x25519(&remote_secret_key.public_key(), &key_wrap)?;
     assert!(
         ctx.stream().is_empty(),
         "Output stream has not been exhausted. Remaining: {}",

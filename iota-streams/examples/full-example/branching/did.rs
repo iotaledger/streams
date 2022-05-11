@@ -37,10 +37,8 @@ use iota_streams::{
         DID,
     },
     transport::tangle,
-    TransportMessage,
     User,
 };
-use spongos::KeccakF1600;
 
 use super::utils::{
     print_send_result,
@@ -50,7 +48,6 @@ use super::utils::{
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
-
 pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let did_client = DIDClient::new().await?;
     println!("> Making DID with method for the Author");
@@ -59,7 +56,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let subscriber_did_info = make_did_info(&did_client, "sub_key").await?;
 
     // Generate a simple PSK for storage by users
-    let psk = Psk::new::<KeccakF1600, _>("A pre shared key");
+    let psk = Psk::from_seed("A pre shared key");
 
     let mut author = User::builder()
         .with_identity(DID::PrivateKey(author_did_info))
@@ -70,7 +67,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
         .with_transport(transport.clone())
         .build()?;
     let mut subscriber_b = User::builder()
-        .with_identity(Ed25519::from_seed::<KeccakF1600, _>("SUBSCRIBERB9SEED"))
+        .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
         .build()?;
     let mut subscriber_c = User::builder()

@@ -25,25 +25,14 @@ use iota_streams::{
 mod branching;
 
 trait GenericTransport:
-    for<'a> Transport<
-        'a,
-        Address = &'a Address,
-        Msg = TransportMessage,
-        SendResponse = TransportMessage,
-    > + Clone
+    for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage, SendResponse = TransportMessage> + Clone
 {
 }
 
 impl<T> GenericTransport for T where
-    T: for<'a> Transport<
-            'a,
-            Address = &'a Address,
-            Msg = TransportMessage,
-            SendResponse = TransportMessage,
-        > + Clone
+    T: for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage, SendResponse = TransportMessage> + Clone
 {
 }
-
 
 async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     println!("## Running DID Test ##\n");

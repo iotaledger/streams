@@ -1,8 +1,5 @@
 // Rust
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
+use alloc::boxed::Box;
 
 // 3rd-party
 use anyhow::{
@@ -98,27 +95,27 @@ impl<T> UserBuilder<T> {
     /// the essence of a [`User`] and is required for any use case.
     ///
     /// # Examples
-    /// ## User from seed
+    /// ## User from Ed25519
     /// ```
-    /// use iota_streams_app_channels::{
-    ///     Tangle,
-    ///     UserBuilder,
-    ///     UserIdentity,
+    /// # use std::cell::RefCell;
+    /// # use std::rc::Rc;
+    /// # use anyhow::Result;
+    /// # use iota_streams::transport::bucket;
+    /// use iota_streams::{
+    ///     id::Ed25519,
+    ///     transport::tangle,
+    ///     User,
     /// };
     ///
-    /// # use std::cell::RefCell;
-    /// # use iota_streams_core::{prelude::Rc, Result};
-    /// # use iota_streams_app_channels::api::BucketTransport;
-    /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
-    /// let transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
+    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
-    /// # let transport = Rc::new(RefCell::new(BucketTransport::new()));
+    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
     ///
-    /// let mut user = UserBuilder::new()
-    ///     .with_identity(UserIdentity::new(user_seed))
+    /// let mut user = User::builder()
+    ///     .with_identity(Ed25519::from_seed(user_seed))
     ///     .with_transport(transport)
     ///     .build()?;
     ///
@@ -126,34 +123,28 @@ impl<T> UserBuilder<T> {
     /// # }
     /// ```
     ///
-    /// ## User from PskId
+    /// ## User from Psk
     /// ```
-    /// use iota_streams_app_channels::{
-    ///     api::{
-    ///         psk_from_seed,
-    ///         pskid_from_psk,
-    ///     },
-    ///     Tangle,
-    ///     UserBuilder,
-    ///     UserIdentity,
-    /// };
     /// # use std::cell::RefCell;
-    /// # use iota_streams_core::{prelude::Rc, Result};
-    /// # use iota_streams_app_channels::api::BucketTransport;
-    /// #
+    /// # use std::rc::Rc;
+    /// # use anyhow::Result;
+    /// # use iota_streams::transport::bucket;
+    /// use iota_streams::{
+    ///     id::Psk,
+    ///     transport::tangle,
+    ///     User,
+    /// };
+    ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
-    /// let transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
+    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
-    /// # let transport = Rc::new(RefCell::new(BucketTransport::new()));
+    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
     /// #
     /// let psk_seed = "seed-for-pre-shared-key";
-    /// let psk = psk_from_seed(psk_seed.as_bytes());
-    /// let pskid = pskid_from_psk(&psk);
     ///
-    /// let user_identity = UserIdentity::new_from_psk(pskid, psk);
-    /// let mut user = UserBuilder::new()
-    ///     .with_identity(user_identity)
+    /// let mut user = User::builder()
+    ///     .with_identity(Psk::from_seed(psk_seed))
     ///     .with_transport(transport)
     ///     .build()?;
     ///
@@ -187,43 +178,38 @@ impl<T> UserBuilder<T> {
     ///
     /// # Errors
     /// This function will produce errors if the [`User`] tries to recover their
-    /// instance without a proper [`UserIdentity`]. It will also return an error
+    /// instance without a proper [`Identity`]. It will also return an error
     /// if the provided announcement link is not present on the transport layer.
     ///
     /// # Example
-    /// ```
+    /// ```compile_fail
     /// # use std::cell::RefCell;
-    /// # use iota_streams_core::{
-    /// #     prelude::Rc,
-    /// #     Result,
-    /// # };
-    /// # use iota_streams_app_channels::api::BucketTransport;
-    /// use iota_streams_app_channels::{
-    ///     Tangle,
-    ///     UserBuilder,
-    ///     UserIdentity,
+    /// # use std::rc::Rc;
+    /// # use anyhow::Result;
+    /// # use iota_streams::transport::bucket;
+    /// use iota_streams::{
+    ///     id::Ed25519,
+    ///     transport::tangle,
+    ///     User,
     /// };
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
-    /// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
-    ///
+    /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
     /// let author_seed = "author_secure_seed";
-    /// let transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
+    /// let transport = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
     /// # let transport = test_transport.clone();
-    /// #
-    /// # let mut author = UserBuilder::new()
-    /// #     .with_identity(UserIdentity::new(author_seed))
+    /// # let mut author = User::builder()
+    /// #     .with_identity(Ed25519::from_seed(author_seed))
     /// #     .with_transport(transport.clone())
     /// #     .build()?;
-    /// #
-    /// # let announcement_link = author.send_announce().await?;
+    /// # let announcement_address = author.announce().await?.to_address();
     ///
-    /// let mut author = UserBuilder::new()
-    ///     .with_identity(UserIdentity::new(author_seed))
+    /// let author = User::builder()
+    ///     .with_identity(Ed25519::from_seed(author_seed))
     ///     .with_transport(transport)
-    ///     .recover(&announcement_link)
+    ///     .recover(announcement_address)
     ///     .await?;
     ///
     /// # Ok(())

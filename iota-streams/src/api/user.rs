@@ -66,6 +66,7 @@ use LETS::{
     id::{
         Identifier,
         Identity,
+        PermissionDuration,
         Permissioned,
         Psk,
         PskId,
@@ -185,7 +186,7 @@ where
         let mut id_store = KeyStore::default();
         // If User is using a Psk as their base Identifier, store the Psk
         if let Identity::Psk(psk) = user_id {
-            id_store.insert_psk(psk.to_pskid::<F>(), psk);
+            id_store.insert_psk(psk.to_pskid(), psk);
         } else {
             id_store.insert_key(
                 user_id.to_identifier(),
@@ -263,7 +264,7 @@ where
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
-        self.state.id_store.insert_psk(psk.to_pskid::<F>(), psk)
+        self.state.id_store.insert_psk(psk.to_pskid(), psk)
     }
 
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
@@ -522,6 +523,17 @@ where
             link_to,
             // Alas, must collect to release the &self immutable borrow
             self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
+        )
+        .await
+    }
+
+    pub async fn send_keyload_for_all_rw(&mut self, link_to: A::Relative) -> Result<SendResponse<A, TSR>> {
+        self.send_keyload(
+            link_to,
+            // Alas, must collect to release the &self immutable borrow
+            self.subscribers()
+                .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
+                .collect::<Vec<_>>(),
         )
         .await
     }
