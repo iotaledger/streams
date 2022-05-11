@@ -6488,7 +6488,7 @@ __metadata:
 
 "iota-wiki-cli@iota-community/iota-wiki-cli#v2":
   version: 1.7.0
-  resolution: "iota-wiki-cli@https://github.com/iota-community/iota-wiki-cli.git#commit=3f484ffe1f28b15a23fd6b0c6ef3a116e6023566"
+  resolution: "iota-wiki-cli@https://github.com/iota-community/iota-wiki-cli.git#commit=ef2f73d6464205353a1660413a667b6318f378a7"
   dependencies:
     "@babel/generator": ^7.17.9
     "@babel/parser": ^7.17.9
@@ -6513,7 +6513,7 @@ __metadata:
     react-dom: ^17.0.2
   bin:
     iota-wiki: dist/index.js
-  checksum: 0c669499d34f29d6ea7390081a5d45bb7ff814101a6691404c7ffdbf872b0793718d6bcfd9cd0e2a323e597b9e3e9975bf30c79908ea3d6aea419b833feb75a1
+  checksum: 346cdf5c237e251e35d08a77385e690f118fa4aa20fbb7beb450210c43f564100dabe06cf516b7706c18ed967d50ac7c2e658269944874d7a548d1f2b8f837a1
   languageName: node
   linkType: hard
 
