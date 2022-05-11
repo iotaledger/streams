@@ -1,19 +1,6 @@
 const path = require('path');
 
 module.exports = {
-  title: 'Streams',
-  url: '/',
-  baseUrl: '/',
-  themes: ['@docusaurus/theme-classic'],
-  themeConfig: {
-    navbar: {
-        // Workaround to disable broken logo href on test build
-        logo: {
-            src: 'img/libraries.png',
-            href: 'https://wiki.iota.org/',
-        },
-    },
-  },
   plugins: [
     [
       '@docusaurus/plugin-content-docs',
