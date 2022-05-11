@@ -1,7 +1,4 @@
-use core::{
-    fmt,
-    hash,
-};
+use core::fmt;
 
 use alloc::{
     string::String,
@@ -35,11 +32,7 @@ where
     /// If the Bytes are valid UTF8, this method returns `Some(str)`, otherwise returns `None`
     /// This is the borrowed alternative of the owned [`Bytes::into_string()`].
     pub fn to_str(&self) -> Option<&str> {
-        core::str::from_utf8(&self.0.as_ref()).ok()
-    }
-
-    fn to_vec(self) -> Vec<u8> {
-        self.0.as_ref().to_vec()
+        core::str::from_utf8(self.0.as_ref()).ok()
     }
 
     pub fn as_slice(&self) -> &[u8] {
@@ -55,7 +48,7 @@ impl<T> Bytes<T>
 where
     T: AsMut<[u8]>,
 {
-    fn as_mut_slice(&mut self) -> &mut [u8] {
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
         self.0.as_mut()
     }
 }
@@ -67,7 +60,7 @@ impl Bytes<&mut Vec<u8>> {
 }
 
 impl Bytes<Vec<u8>> {
-    fn into_vec(self) -> Vec<u8> {
+    pub fn into_vec(self) -> Vec<u8> {
         self.0
     }
 
@@ -75,7 +68,7 @@ impl Bytes<Vec<u8>> {
     ///
     /// If the Bytes are valid UTF8, this method returns `Some(String)`, otherwise returns `None`
     /// This is the owned alternative of the borrowed [`Bytes::as_str()`].
-    fn to_string(self) -> Option<String> {
+    pub fn to_string(self) -> Option<String> {
         String::from_utf8(self.0).ok()
     }
 }

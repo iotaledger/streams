@@ -13,7 +13,7 @@ use spongos::{
     PRP,
 };
 
-// local
+// Local
 use crate::message::{
     content::ContentUnwrap,
     hdf::HDF,
@@ -44,14 +44,6 @@ impl<T, F, Address> PreparsedMessage<T, F, Address> {
             spongos,
             cursor,
         }
-    }
-
-    fn is_message_type(&self, content_type: u8) -> bool {
-        self.header().message_type() == content_type
-    }
-
-    fn message_type(&self) -> u8 {
-        self.header().message_type()
     }
 
     pub fn linked_msg_address(&self) -> &Option<Address> {

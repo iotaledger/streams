@@ -31,16 +31,6 @@ mod message;
 /// [`User`] API.
 mod api;
 
-// // Reexport the most frequently used types for an easier discoverability
-// #[cfg(feature = "tangle")]
-// use api::{
-//     Address,
-//     MessageContent,
-//     UnwrappedMessage,
-//     User,
-//     UserBuilder,
-// };
-
 pub use api::{
     message::Message,
     send_response::SendResponse,

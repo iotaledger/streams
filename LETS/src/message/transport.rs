@@ -1,6 +1,5 @@
 // Rust
 use alloc::vec::Vec;
-use core::fmt;
 
 // 3rd-party
 use anyhow::Result;
@@ -9,24 +8,15 @@ use anyhow::Result;
 
 // Streams
 use spongos::{
-    ddml::{
-        commands::{
-            unwrap,
-            Absorb,
-        },
-        modifiers::External,
-    },
+    ddml::commands::unwrap,
     PRP,
 };
 
 // Local
-use crate::{
-    link::Linked,
-    message::{
-        content::ContentUnwrap,
-        hdf::HDF,
-        preparsed::PreparsedMessage,
-    },
+use crate::message::{
+    content::ContentUnwrap,
+    hdf::HDF,
+    preparsed::PreparsedMessage,
 };
 
 /// Binary network Message representation.
@@ -38,10 +28,6 @@ pub struct TransportMessage<Body> {
 impl<Body> TransportMessage<Body> {
     pub(crate) fn new(body: Body) -> Self {
         Self { body }
-    }
-
-    fn map<B, F: FnOnce(Body) -> B>(self, f: F) -> TransportMessage<B> {
-        TransportMessage { body: f(self.body) }
     }
 
     pub(crate) fn body(&self) -> &Body {

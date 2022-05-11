@@ -1,15 +1,11 @@
 use anyhow::Result;
 use crypto::keys::x25519;
-use generic_array::ArrayLength;
 
 use crate::{
     core::prp::PRP,
     ddml::{
         commands::{
-            unwrap::{
-                Context,
-                Unwrap,
-            },
+            unwrap::Context,
             Absorb,
             Commit,
             Mask,
@@ -17,18 +13,8 @@ use crate::{
         },
         io,
         modifiers::External,
-        types::{
-            Bytes,
-            Mac,
-            NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+        types::NBytes,
     },
-    error::Error::BadMac,
 };
 
 impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> X25519<&'a x25519::SecretKey, &'a mut NBytes<T>> for Context<F, IS> {

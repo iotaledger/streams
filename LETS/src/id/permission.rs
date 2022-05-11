@@ -1,8 +1,4 @@
 // Rust
-use core::ops::{
-    Deref,
-    DerefMut,
-};
 
 // 3rd-party
 use anyhow::{
@@ -132,29 +128,6 @@ impl<Identifier> AsMut<Identifier> for Permissioned<Identifier> {
     }
 }
 
-// TODO: REMOVE
-// impl<Identifier> Deref for Permissioned<Identifier> {
-//     type Target = Identifier;
-
-//     fn deref(&self) -> &Self::Target {
-//         match self {
-//             Permissioned::Read(id) => id,
-//             Permissioned::ReadWrite(id, _) => id,
-//             Permissioned::Admin(id) => id,
-//         }
-//     }
-// }
-
-// impl<Identifier> DerefMut for Permissioned<Identifier> {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         match self {
-//             Permissioned::Read(id) => id,
-//             Permissioned::ReadWrite(id, _) => id,
-//             Permissioned::Admin(id) => id,
-//         }
-//     }
-// }
-
 impl<Identifier> Default for Permissioned<Identifier>
 where
     Identifier: Default,
@@ -164,8 +137,7 @@ where
     }
 }
 
-impl<'a> Mask<&'a Permissioned<Identifier>> for sizeof::Context
-{
+impl<'a> Mask<&'a Permissioned<Identifier>> for sizeof::Context {
     fn mask(&mut self, permission: &'a Permissioned<Identifier>) -> Result<&mut Self> {
         match permission {
             Permissioned::Read(identifier) => {

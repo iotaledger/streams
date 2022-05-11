@@ -31,7 +31,6 @@ pub trait Transport<'a> {
     type Address;
     type Msg;
     type SendResponse;
-    // TODO: CONSIDER CONVERTING TYPE PARAMETERS TO ASSOCIATED TYPES
     /// Send a message
     async fn send_message(&mut self, link: Self::Address, msg: Self::Msg) -> Result<Self::SendResponse>
     where

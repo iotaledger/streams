@@ -5,28 +5,14 @@ use generic_array::{
     GenericArray,
 };
 
-use crate::{
-    core::prp::PRP,
-    ddml::{
-        commands::{
-            wrap::{
-                Context,
-                Wrap,
-            },
-            Ed25519,
-        },
-        io,
-        modifiers::External,
-        types::{
-            Bytes,
-            NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+use crate::ddml::{
+    commands::{
+        wrap::Context,
+        Ed25519,
     },
+    io,
+    modifiers::External,
+    types::NBytes,
 };
 
 impl<F, OS: io::OStream> Ed25519<&ed25519::SecretKey, &External<NBytes<GenericArray<u8, U64>>>> for Context<F, OS> {

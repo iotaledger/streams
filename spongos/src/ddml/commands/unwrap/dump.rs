@@ -11,7 +11,6 @@ use crate::{
     },
 };
 
-#[cfg(feature = "std")]
 impl<F: PRP, IS: io::IStream> Dump for Context<F, IS> {
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {
         println!(

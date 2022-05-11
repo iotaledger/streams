@@ -29,7 +29,6 @@ use futures::{
     },
     Stream,
     StreamExt,
-    TryFutureExt,
     TryStream,
     TryStreamExt,
 };
@@ -60,15 +59,6 @@ use crate::api::{
     },
     user::User,
 };
-// use crate::api::{
-//     Address,
-//     BinaryMessage,
-//     Cursor,
-//     MessageContent,
-//     Transport,
-//     UnwrappedMessage,
-//     GenericUser,
-// };
 
 // TODO: aclarative comments
 // TODO: Documentation

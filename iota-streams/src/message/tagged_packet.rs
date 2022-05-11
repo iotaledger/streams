@@ -47,13 +47,10 @@ use spongos::{
     Spongos,
     PRP,
 };
-use LETS::{
-    id::Identifier,
-    message::{
-        ContentSizeof,
-        ContentUnwrap,
-        ContentWrap,
-    },
+use LETS::message::{
+    ContentSizeof,
+    ContentUnwrap,
+    ContentWrap,
 };
 
 // Local

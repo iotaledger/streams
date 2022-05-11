@@ -19,7 +19,7 @@ impl Size {
         let mut d = 0;
         let mut n = self.0;
         while n > 0 {
-            n = n >> 8;
+            n >>= 8;
             d += 1;
         }
         d
@@ -51,10 +51,3 @@ impl fmt::Display for Size {
         write!(f, "Size({})", self.0)
     }
 }
-
-// TODO: REMOVE
-// impl From<usize> for Size {
-//     fn from(n: usize) -> Self {
-//         Self(n)
-//     }
-// }

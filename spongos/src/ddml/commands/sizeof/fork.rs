@@ -1,5 +1,3 @@
-use anyhow::Result;
-
 use crate::ddml::commands::{
     sizeof::Context,
     Fork,

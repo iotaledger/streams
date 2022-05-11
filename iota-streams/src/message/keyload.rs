@@ -37,25 +37,14 @@ use alloc::{
     boxed::Box,
     vec::Vec,
 };
-use core::{
-    borrow::Borrow,
-    convert::TryFrom,
-    iter::{
-        FromIterator,
-        IntoIterator,
-    },
-    marker::PhantomData,
-};
+use core::iter::IntoIterator;
 
 // 3rd-party
 use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::keys::x25519;
 
 // Streams
 use spongos::{
@@ -69,7 +58,6 @@ use spongos::{
             Fork,
             Join,
             Mask,
-            Repeated,
         },
         io,
         modifiers::External,
@@ -100,35 +88,6 @@ use LETS::{
 
 // Local
 
-// use iota_streams_core::{
-//     async_trait,
-//     prelude::{
-//         typenum::Unsigned as _,
-//         Box,
-//         Vec,
-//     },
-//     psk,
-//     sponge::{
-//         prp::PRP,
-//         spongos,
-//     },
-//     wrapped_err,
-//     Errors::BadIdentifier,
-//     Result,
-//     WrappedError,
-// };
-// use iota_streams_ddml::{
-//     command::*,
-//     io,
-//     link_store::{
-//         EmptyLinkStore,
-//         LinkStore,
-//     },
-//     types::*,
-// };
-
-// use crate::Lookup;
-
 const NONCE_SIZE: usize = 16;
 const KEY_SIZE: usize = 32;
 
@@ -150,7 +109,7 @@ impl<'a, F, Subscribers> Wrap<'a, F, Subscribers> {
     ) -> Self
     where
         Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
-        Subscribers::IntoIter: ExactSizeIterator, 
+        Subscribers::IntoIter: ExactSizeIterator,
     {
         Self {
             initial_state,
@@ -166,12 +125,7 @@ impl<'a, F, Subscribers> Wrap<'a, F, Subscribers> {
 impl<'a, F, Subscribers> message::ContentSizeof<Wrap<'a, F, Subscribers>> for sizeof::Context
 where
     Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
-    Subscribers::IntoIter: ExactSizeIterator, /* /* where
-                                               *                                                                          * TODO: REMOVE
-                                               *                                                                          * F: 'a + PRP, // weird 'a constraint,
-                                               *                                                                            but compiler requires it
-                                               *                                                                          * somehow?! L: Link,
-                                               *                                                                          * L::Rel: 'a + Eq + SkipFallback<F>, */ */
+    Subscribers::IntoIter: ExactSizeIterator,
 {
     async fn sizeof(&mut self, keyload: &Wrap<'a, F, Subscribers>) -> Result<&mut sizeof::Context> {
         let subscribers = keyload.subscribers.clone().into_iter();
@@ -181,7 +135,7 @@ where
         for (subscriber, exchange_key) in subscribers {
             self.fork()
                 .mask(subscriber)?
-                .encrypt_sizeof(&subscriber.identifier(), &exchange_key, &keyload.key)
+                .encrypt_sizeof(subscriber.identifier(), exchange_key, &keyload.key)
                 .await?;
         }
         self.absorb(External::new(&NBytes::new(&keyload.key)))?
@@ -195,16 +149,10 @@ where
 #[async_trait(?Send)]
 impl<'a, F, OS, Subscribers> message::ContentWrap<Wrap<'a, F, Subscribers>> for wrap::Context<F, OS>
 where
-    // Subscribers: 'a,
     Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
     F: PRP + Clone,
     OS: io::OStream,
-    // where
-    //     F: 'a + PRP, // weird 'a constraint, but compiler requires it somehow?!
-    //     Link: HasLink,
-    //     <Link as HasLink>::Rel: 'a + Eq +
-    // SkipFallback<F>,
 {
     async fn wrap(&mut self, keyload: &mut Wrap<'a, F, Subscribers>) -> Result<&mut Self> {
         let subscribers = keyload.subscribers.clone().into_iter();
@@ -213,11 +161,10 @@ where
             .absorb(&NBytes::new(keyload.nonce))?
             .absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
-        for (mut subscriber, exchange_key) in subscribers {
-            // let fork = self.fork();
+        for (subscriber, exchange_key) in subscribers {
             self.fork()
-                .mask(&subscriber)?
-                .encrypt(&subscriber.identifier(), exchange_key, &keyload.key)
+                .mask(subscriber)?
+                .encrypt(subscriber.identifier(), exchange_key, &keyload.key)
                 .await?;
         }
         self.absorb(External::new(&NBytes::new(&keyload.key)))?

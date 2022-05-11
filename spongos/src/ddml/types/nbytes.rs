@@ -3,9 +3,7 @@ use core::{
         AsMut,
         AsRef,
     },
-    fmt,
     ops::{
-        Add,
         Index,
         IndexMut,
     },

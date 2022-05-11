@@ -24,7 +24,6 @@ use spongos::{
             Maybe,
             NBytes,
             Size,
-            Uint64,
             Uint8,
         },
     },
@@ -46,8 +45,6 @@ use crate::{
         },
     },
 };
-
-const FLAG_BRANCHING_MASK: u8 = 1;
 
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

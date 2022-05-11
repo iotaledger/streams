@@ -6,11 +6,6 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    borrow::{
-        Borrow,
-        BorrowMut,
-    },
-    convert::TryFrom,
     fmt::{
         self,
         Debug,
@@ -18,7 +13,6 @@ use core::{
         Formatter,
     },
     hash::Hash,
-    marker::PhantomData,
 };
 
 // 3rd-party
@@ -41,10 +35,7 @@ use rand::{
 };
 
 // IOTA
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::keys::x25519;
 
 // Streams
 use spongos::{
@@ -64,7 +55,6 @@ use spongos::{
             Maybe,
             NBytes,
             Size,
-            Uint8,
         },
     },
     KeccakF1600,
@@ -83,11 +73,8 @@ use LETS::{
     link::{
         Address,
         AddressGenerator,
-        AppAddr,
-        Cursor,
         Link,
         LinkGenerator,
-        MsgId,
     },
     message::{
         ContentSizeof,
@@ -124,9 +111,6 @@ use crate::{
         unsubscription,
     },
 };
-
-const ENCODING: &str = "utf-8";
-const PAYLOAD_LENGTH: usize = 32_000;
 
 const ANN_MESSAGE_NUM: usize = 1; // Announcement is always the first message of authors
 const SUB_MESSAGE_NUM: usize = 1; // Subscription is always the first message of subscribers
@@ -244,10 +228,10 @@ where
         &self.state.stream_address
     }
 
-    pub(crate) fn transport(&self) -> &T {
+    pub fn transport(&self) -> &T {
         &self.transport
     }
-    pub(crate) fn transport_mut(&mut self) -> &mut T {
+    pub fn transport_mut(&mut self) -> &mut T {
         &mut self.transport
     }
 
@@ -260,7 +244,7 @@ where
     }
 
     fn should_store_cursor(&self, subscriber: &Permissioned<Identifier>) -> bool {
-        let no_tracked_cursor = !self.state.id_store.contains_subscriber(subscriber.identifier());
+        let no_tracked_cursor = !self.state.id_store.is_cursor_tracked(subscriber.identifier());
         let must_track_cursor = !subscriber.identifier().is_psk() && !subscriber.is_readonly();
         must_track_cursor && no_tracked_cursor
     }
@@ -332,7 +316,7 @@ where
             .ok_or_else(|| anyhow!("before sending the announcement one must create the stream first"))?;
 
         // Update own's cursor
-        let user_cursor = INIT_MESSAGE_NUM;
+        let user_cursor = ANN_MESSAGE_NUM;
 
         // Prepare HDF and PCF
         let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, self.identifier())?;
@@ -349,7 +333,7 @@ where
         let send_response = self.transport.send_message(stream_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(self.identifier(), user_cursor);
+        self.state.id_store.insert_cursor(self.identifier(), INIT_MESSAGE_NUM);
         self.state
             .spongos_store
             .insert(stream_address.relative().clone(), spongos);
@@ -365,7 +349,7 @@ where
             .cloned()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
 
-        let user_cursor = INIT_MESSAGE_NUM;
+        let user_cursor = SUB_MESSAGE_NUM;
         // Update own's cursor
         let rel_address: A::Relative =
             self.address_generator
@@ -383,7 +367,7 @@ where
         let author_ke_pk = self
             .state
             .author_identifier
-            .and_then(|author_id| self.state.id_store.get_x25519(&author_id))
+            .and_then(|author_id| self.state.id_store.get_key(&author_id))
             .expect("a user that already have an stream address must know the author identifier");
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
@@ -395,7 +379,7 @@ where
             HDF::new(message_types::SUBSCRIPTION, user_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
-        let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
+        let (transport_msg, _spongos) = LetsMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
         let message_address = A::from_parts(stream_address.into_base(), rel_address.clone());
@@ -461,7 +445,6 @@ where
     ) -> Result<SendResponse<A, TSR>>
     where
         Subscribers: IntoIterator<Item = Permissioned<Identifier>> + Clone,
-        // for <'a> <&'a Subscribers as IntoIterator>::IntoIter: ExactSizeIterator,
     {
         // Check conditions
         let stream_address = self
@@ -477,13 +460,6 @@ where
                 .gen((stream_address.base(), self.identifier(), new_cursor));
 
         // Prepare HDF and PCF
-        // Spongos must be cloned because wrapping mutates it
-        // let mut linked_msg_spongos = self
-        //     .state.spongos_store
-        //     .get(link_to)
-        //     .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
-        //     .clone();
-        // TODO: EXPERIMENT: USE ANNOUNCEMENT SPONGOS FOR KEYLOADS, TO REMOVE SEQUENCE MESSAGES
         let mut announcement_spongos = self
             .state
             .spongos_store
@@ -503,7 +479,7 @@ where
                     subscriber,
                     self.state
                         .id_store
-                        .get_exchange_key(&subscriber.identifier())
+                        .get_exchange_key(subscriber.identifier())
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
                 ))
             })
@@ -706,7 +682,7 @@ where
         // its content. Therefore we must update the cursor of the publisher before handling the message
         self.state
             .id_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+            .insert_cursor(preparsed.header().publisher(), INIT_MESSAGE_NUM);
 
         // Unwrap message
         let announcement = announcement::Unwrap::default();
@@ -747,7 +723,7 @@ where
             anyhow!("reader of a stream must have an identity from which an x25519 secret-key can be derived")
         })?;
         let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
-        let (message, spongos) = preparsed.unwrap(subscription).await?;
+        let (message, _spongos) = preparsed.unwrap(subscription).await?;
 
         // Store spongos
         // Subscription messages are never stored in spongos to maintain consistency about the view of the
@@ -807,16 +783,6 @@ where
         let author_identifier = self.state.author_identifier.ok_or_else(|| {
             anyhow!("before receiving keyloads one must have received the announcement of a stream first")
         })?;
-        // let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
-        //     anyhow!("keyload messages must contain the address of the message they are linked to in the header")
-        // })?;
-        // // Spongos must be cloned because wrapping mutates it
-        // let mut linked_msg_spongos = self
-        //     .state.spongos_store
-        //     .get(linked_msg_address)
-        //     .ok_or_else(|| anyhow!("message '{}' not found in spongos store", linked_msg_address))?
-        //     .clone();
-        // TODO: EXPERIMENT: USE ANNOUNCEMENT SPONGOS FOR KEYLOADS, TO REMOVE SEQUENCE MESSAGES
         let stream_address = self
             .stream_address()
             .as_ref()
@@ -971,7 +937,7 @@ where
         P: AsRef<[u8]>,
     {
         let mut ctx = sizeof::Context::new();
-        ctx.sizeof(&mut self.state).await?;
+        ctx.sizeof(&self.state).await?;
         let buf_size = ctx.finalize();
 
         let mut buf = vec![0; buf_size];
@@ -1157,225 +1123,6 @@ where
         Ok(self)
     }
 }
-// #[async_trait(?Send)]
-// impl<F, Link, Store, LG, LS> ContentWrap<F, Store> for User<F, Link, LG, LS>
-// where
-//     F: PRP,
-//     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-//     Link::Base: Eq + ToString,
-//     Link::Rel: Eq + SkipFallback<F> + AbsorbFallback<F>,
-//     Store: LinkStore<F, Link::Rel>,
-//     LG: LinkGenerator<Link>,
-//     LS: LinkStore<F, Link::Rel> + Default,
-//     LS::Info: AbsorbFallback<F>,
-// {
-//     async fn wrap<'c, OS: io::OStream>(
-//         &self,
-//         store: &Store,
-//         ctx: &'c mut wrap::Context<F, OS>,
-//     ) -> Result<&'c mut wrap::Context<F, OS>> {
-//         ctx.mask(<&NBytes<U32>>::from(&self.state.user_id().sig_sk()?.to_bytes()[..]))?
-//             .absorb(<&Bytes>::from(&self.message_encoding))?
-//             .absorb(Uint64(self.uniform_payload_length as u64))?;
-
-//         let oneof_appinst = Uint8(if self.appaddr.is_some() { 1 } else { 0 });
-//         ctx.absorb(oneof_appinst)?;
-//         if let Some(ref appinst) = self.appaddr {
-//             ctx.absorb(<&Fallback<Link>>::from(appinst))?;
-//         }
-
-//         let oneof_author_id = Uint8(if self.author_id.is_some() { 1 } else { 0 });
-//         ctx.absorb(oneof_author_id)?;
-//         if let Some(ref author_id) = self.author_id {
-//             author_id.wrap(store, ctx).await?;
-//         }
-
-//         let repeated_links = Size(self.state.spongos_store.len());
-//         let keys = self.state.id_store.cursors();
-//         let repeated_keys = Size(self.state.id_store.cursors_size());
-
-//         ctx.absorb(repeated_links)?;
-//         for (link, (s, info)) in self.state.spongos_store.iter() {
-//             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(link))?
-//                 .mask(<&NBytes<F::CapacitySize>>::from(s.arr()))?
-//                 .absorb(<&Fallback<<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info>>::from(
-//                     info,
-//                 ))?;
-//         }
-
-//         ctx.absorb(repeated_keys)?;
-//         for (id, cursor) in keys {
-//             let ctx = id.clone().wrap(store.borrow(), ctx.borrow_mut()).await?;
-//             ctx.absorb(<&Fallback<<Link as HasLink>::Rel>>::from(&cursor.borrow().link))?
-//                 .absorb(Uint32(cursor.branch_no))?
-//                 .absorb(Uint32(cursor.seq_no))?;
-//         }
-//         ctx.commit()?.squeeze(Mac(32))?;
-//         Ok(ctx)
-//     }
-// }
-
-// #[async_trait(?Send)]
-// impl<F, Link, Store, LG, LS> ContentUnwrap<F, Store> for User<F, Link, LG, LS>
-// where
-//     F: PRP,
-//     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-//     Link::Rel: Eq + SkipFallback<F> + AbsorbFallback<F>,
-//     Store: LinkStore<F, Link::Rel>,
-//     LG: LinkGenerator<Link>,
-//     LS: LinkStore<F, Link::Rel> + Default,
-//     LS::Info: Default + AbsorbFallback<F>,
-// {
-//     async fn unwrap<'c, IS: io::IStream>(
-//         &mut self,
-//         store: &Store,
-//         ctx: &'c mut unwrap::Context<F, IS>,
-//     ) -> Result<&'c mut unwrap::Context<F, IS>> {
-//         let mut sig_sk_bytes = NBytes::<U32>::default();
-//         let mut message_encoding = Bytes::new();
-//         let mut uniform_payload_length = Uint64(0);
-//         ctx.mask(&mut sig_sk_bytes)?
-//             .absorb(&mut message_encoding)?
-//             .absorb(&mut uniform_payload_length)?;
-
-//         let mut oneof_appinst = Uint8(0);
-//         ctx.absorb(&mut oneof_appinst)?
-//             .guard(oneof_appinst.0 < 2, AppInstRecoveryFailure(oneof_appinst.0))?;
-
-//         let appinst = if oneof_appinst.0 == 1 {
-//             let mut appinst = Link::default();
-//             ctx.absorb(<&mut Fallback<Link>>::from(&mut appinst))?;
-//             Some(appinst)
-//         } else {
-//             None
-//         };
-
-//         let mut oneof_author_id = Uint8(0);
-//         ctx.absorb(&mut oneof_author_id)?
-//             .guard(oneof_author_id.0 < 2, AuthorSigPkRecoveryFailure(oneof_author_id.0))?;
-
-//         let author_id = if oneof_author_id.0 == 1 {
-//             let mut author_id = Identifier::default();
-//             author_id.unwrap(store, ctx).await?;
-//             Some(author_id)
-//         } else {
-//             None
-//         };
-
-//         let mut repeated_links = Size(0);
-//         let mut link_store = LS::default();
-
-//         ctx.absorb(&mut repeated_links)?;
-//         for _ in 0..repeated_links.0 {
-//             let mut link = Fallback(<Link as HasLink>::Rel::default());
-//             let mut s = NBytes::<F::CapacitySize>::default();
-//             let mut info = Fallback(<LS as LinkStore<F, <Link as HasLink>::Rel>>::Info::default());
-//             ctx.absorb(&mut link)?.mask(&mut s)?.absorb(&mut info)?;
-//             let a: GenericArray<u8, F::CapacitySize> = s.into();
-//             link_store.insert(&link.0, Inner::<F>::from(a), info.0)?;
-//         }
-
-//         let mut repeated_keys = Size(0);
-//         let mut key_store = KeyStore::default();
-//         ctx.absorb(&mut repeated_keys)?;
-//         for _ in 0..repeated_keys.0 {
-//             let mut link = Fallback(<Link as HasLink>::Rel::default());
-//             let mut branch_no = Uint32(0);
-//             let mut seq_no = Uint32(0);
-//             let id = Identifier::default();
-//             id.unwrap(ctx).await?;
-//             ctx.absorb(&mut link)?.absorb(&mut branch_no)?.absorb(&mut seq_no)?;
-//             key_store.insert_cursor(id, Cursor::new_at(link.0, branch_no.0, seq_no.0));
-//         }
-
-//         ctx.commit()?.squeeze(Mac(32))?;
-
-//         let sig_sk = ed25519::SecretKey::from_bytes(<[u8; 32]>::try_from(sig_sk_bytes.as_ref())?);
-//         let sig_pk = sig_sk.public_key();
-
-//         self.state.user_id = UserIdentity::from((sig_sk, sig_pk));
-//         self.state.spongos_store = link_store;
-//         self.state.id_store = key_store;
-//         self.author_id = author_id;
-//         if let Some(ref seed) = appinst {
-//             self.link_generator.reset(seed.clone());
-//         }
-//         self.appaddr = appinst;
-//         self.message_encoding = message_encoding.0;
-//         self.uniform_payload_length = uniform_payload_length.0 as usize;
-//         Ok(ctx)
-//     }
-// }
-// impl<F, Link, LG, LS> User<F, Link, LG, LS>
-// where
-//     F: PRP,
-//     Link: HasLink + AbsorbExternalFallback<F> + AbsorbFallback<F>,
-//     Link::Rel: Eq + SkipFallback<F> + AbsorbFallback<F>,
-//     LG: LinkGenerator<Link>,
-//     LS: LinkStore<F, Link::Rel> + Default,
-//     LS::Info: Default + AbsorbFallback<F>,
-// {
-//     async fn import(bytes: &[u8], pwd: &str) -> Result<Self> {
-//         const VERSION: u8 = 0;
-
-//         let mut ctx = unwrap::Context::new(bytes);
-//         let prng = prng::from_seed::<F>("IOTA Streams Channels app", pwd);
-//         let key = NBytes::<U32>(prng.gen_arr("user export key"));
-//         let mut version = Uint8(0);
-//         ctx.absorb(&mut version)?
-//             .guard(version.0 == VERSION, UserVersionRecoveryFailure(VERSION, version.0))?
-//             .absorb(External(&key))?;
-
-//         let mut user = User::default();
-//         let store = EmptyLinkStore::<F, Link::Rel, ()>::default();
-//         user.unwrap(&store, &mut ctx).await?;
-//         try_or!(ctx.stream.is_empty(), InputStreamNotFullyConsumed(ctx.stream.len()))?;
-//         Ok(user)
-//     }
-// }
-
-// // Newtype wrapper around KeyStore reference to be able to implement Lookup on it
-// // Direct implementation is not possible due to KeyStore trait having type parameters itself
-// struct KeysLookup<'a, F, Link>(&'a KeyStore<Link::Rel>, PhantomData<F>, PhantomData<Link>)
-// where
-//     F: PRP,
-//     Link: HasLink;
-// impl<'a, F, Link> KeysLookup<'a, F, Link>
-// where
-//     F: PRP,
-//     Link: HasLink,
-// {
-//     fn new(key_store: &'a KeyStore<Link::Rel>) -> Self {
-//         Self(key_store, PhantomData, PhantomData)
-//     }
-// }
-
-// impl<F, Link> Lookup<&Identifier, psk::Psk> for KeysLookup<'_, F, Link>
-// where
-//     F: PRP,
-//     Link: HasLink,
-// {
-//     fn lookup(&self, id: &Identifier) -> Option<psk::Psk> {
-//         if let Identifier::PskId(pskid) = id {
-//             self.0.get_psk(pskid).copied()
-//         } else {
-//             None
-//         }
-//     }
-// }
-
-// struct OwnKeys<'a, F>(&'a UserIdentity<F>);
-
-// impl<'a, F: PRP> Lookup<&Identifier, x25519::SecretKey> for OwnKeys<'a, F> {
-//     fn lookup(&self, id: &Identifier) -> Option<x25519::SecretKey> {
-//         let Self(UserIdentity { id: self_id, .. }) = self;
-//         if id == self_id {
-//             self.0.ke_kp().map_or(None, |(secret, _public)| Some(secret))
-//         } else {
-//             None
-//         }
-//     }
-// }
 
 impl<T, F, A, AG> IntoMessages<T, F, A, AG> for User<T, F, A, AG>
 where

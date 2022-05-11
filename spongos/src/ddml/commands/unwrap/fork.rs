@@ -1,14 +1,6 @@
-use anyhow::Result;
-
-use crate::{
-    core::prp::PRP,
-    ddml::{
-        commands::{
-            unwrap::Context,
-            Fork,
-        },
-        io,
-    },
+use crate::ddml::commands::{
+    unwrap::Context,
+    Fork,
 };
 
 impl<'a, F, IS> Fork<'a> for Context<F, IS>

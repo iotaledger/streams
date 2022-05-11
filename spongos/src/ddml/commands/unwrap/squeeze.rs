@@ -2,29 +2,19 @@ use anyhow::{
     ensure,
     Result,
 };
-use generic_array::ArrayLength;
 
 use crate::{
     core::prp::PRP,
     ddml::{
         commands::{
-            unwrap::{
-                Context,
-                Unwrap,
-            },
+            unwrap::Context,
             Squeeze,
         },
         io,
         modifiers::External,
         types::{
-            Bytes,
             Mac,
             NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
         },
     },
     error::Error::BadMac,

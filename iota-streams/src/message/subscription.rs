@@ -29,17 +29,13 @@
 //! ```
 // Rust
 use alloc::boxed::Box;
-use core::convert::TryInto;
 
-// 3rd_party
+// 3rd-party
 use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::keys::x25519;
 
 // Streams
 use spongos::{
@@ -73,21 +69,6 @@ use LETS::{
         ContentWrap,
     },
 };
-// use iota_streams_core::{
-//     async_trait,
-//     prelude::Box,
-//     sponge::prp::PRP,
-//     Result,
-// };
-// use iota_streams_ddml::{
-//     command::*,
-//     io,
-//     link_store::{
-//         EmptyLinkStore,
-//         LinkStore,
-//     },
-//     types::*,
-// };
 
 pub(crate) struct Wrap<'a, F> {
     initial_state: &'a mut Spongos<F>,

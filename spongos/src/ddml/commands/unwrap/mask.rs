@@ -3,7 +3,6 @@ use alloc::vec::Vec;
 
 // 3rd-party
 use anyhow::Result;
-use generic_array::ArrayLength;
 
 // IOTA
 use crypto::{
@@ -174,7 +173,6 @@ where
         let ctx = self.mask(&mut oneof)?;
         if oneof.inner() == 1 {
             let mut t = T::default();
-            // This hacky &mut is necessary to break the recursivity of the trait bound
             ctx.mask(&mut t)?;
             *maybe.into_inner() = Some(t);
         };

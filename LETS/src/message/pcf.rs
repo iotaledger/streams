@@ -1,14 +1,10 @@
-use alloc::{
-    borrow::ToOwned,
-    boxed::Box,
-};
+use alloc::boxed::Box;
 use core::convert::{
     TryFrom,
     TryInto,
 };
 
 use anyhow::{
-    anyhow,
     ensure,
     Result,
 };
@@ -129,7 +125,7 @@ impl<Content> PCF<Content> {
 }
 
 #[async_trait(?Send)]
-impl<Content> ContentSizeof<PCF<Content>> for sizeof::Context
+impl<'a, Content> ContentSizeof<PCF<Content>> for sizeof::Context
 where
     sizeof::Context: ContentSizeof<Content>,
 {

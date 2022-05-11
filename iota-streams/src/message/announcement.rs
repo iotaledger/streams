@@ -23,10 +23,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::keys::x25519;
 
 // Streams
 use spongos::{
@@ -40,7 +37,6 @@ use spongos::{
             Mask,
         },
         io,
-        types::Uint8,
     },
     PRP,
 };
@@ -60,18 +56,6 @@ use LETS::{
 };
 
 // Local
-
-// use iota_streams_core::{
-//     async_trait,
-//     prelude::Box,
-//     Result,
-// };
-
-// use iota_streams_ddml::{
-//     command::*,
-//     io,
-//     types::*,
-// };
 
 pub(crate) struct Wrap<'a> {
     user_id: &'a Identity,
@@ -144,10 +128,6 @@ impl Default for Unwrap {
 }
 
 impl Unwrap {
-    fn new() -> Self {
-        Self::default()
-    }
-
     pub(crate) fn author_id(self) -> Identifier {
         self.author_id
     }

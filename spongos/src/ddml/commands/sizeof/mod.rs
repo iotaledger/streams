@@ -20,6 +20,7 @@ impl Context {
 
 mod absorb;
 mod commit;
+#[cfg(feature = "std")]
 mod dump;
 mod fork;
 mod join;

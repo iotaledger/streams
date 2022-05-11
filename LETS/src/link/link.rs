@@ -1,18 +1,8 @@
 // Rust
-use alloc::vec::Vec;
-use core::{
-    convert::TryFrom,
-    fmt,
-};
 
 // 3rd-party
-use anyhow::Result;
 
 // Local
-use crate::{
-    id::Identifier,
-    link::Cursor,
-};
 
 pub trait Link {
     /// Type of "base" links. For http it's domain name.

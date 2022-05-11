@@ -79,8 +79,6 @@ pub async fn example(transport: Rc<RefCell<TangleClient>>) -> Result<()> {
         .with_transport(transport.clone())
         .build()?;
 
-    // let subA_xkey = subscriberA.key_exchange_public_key()?;
-
     println!("> Author creates stream and sends its announcement");
     author.create_stream(8)?;
     let announcement = author.announce().await?;

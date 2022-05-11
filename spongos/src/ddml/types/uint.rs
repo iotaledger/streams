@@ -34,7 +34,7 @@ impl From<Uint8> for u8 {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub(crate) struct Uint16(u16);
+pub struct Uint16(u16);
 
 impl Uint16 {
     pub fn new(u: u16) -> Self {
@@ -67,7 +67,7 @@ impl From<Uint16> for u16 {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub(crate) struct Uint32(u32);
+pub struct Uint32(u32);
 
 impl Uint32 {
     pub fn new(u: u32) -> Self {

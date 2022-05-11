@@ -11,10 +11,7 @@ use crate::ddml::{
         Ed25519,
     },
     modifiers::External,
-    types::{
-        Mac,
-        NBytes,
-    },
+    types::NBytes,
 };
 
 /// Signature size is 64 bytes

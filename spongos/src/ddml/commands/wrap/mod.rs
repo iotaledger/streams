@@ -15,8 +15,6 @@ use crate::{
     },
 };
 
-type BinContext<'a, F> = Context<F, &'a mut [u8]>;
-
 pub struct Context<F, OS> {
     spongos: Spongos<F>,
     stream: OS,
@@ -83,6 +81,7 @@ trait Wrap {
 mod absorb;
 mod absorb_external;
 mod commit;
+#[cfg(feature = "std")]
 mod dump;
 mod fork;
 mod guard;

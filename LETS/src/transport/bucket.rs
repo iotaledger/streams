@@ -4,15 +4,11 @@ use alloc::{
     collections::BTreeMap,
     vec::Vec,
 };
-use core::{
-    fmt::Display,
-    marker::PhantomData,
-};
+use core::fmt::Display;
 
 // 3rd-party
 use anyhow::{
     anyhow,
-    ensure,
     Result,
 };
 use async_trait::async_trait;
@@ -22,10 +18,7 @@ use async_trait::async_trait;
 // Streams
 
 // Local
-use crate::{
-    link::Addressable,
-    transport::Transport,
-};
+use crate::transport::Transport;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Client<Address, Msg> {

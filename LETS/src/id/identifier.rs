@@ -24,18 +24,13 @@ use crypto::{
 };
 #[cfg(feature = "did")]
 use identity::{
-    core::{
-        decode_b58,
-        encode_b58,
-    },
+    core::encode_b58,
     crypto::{
         Ed25519 as DIDEd25519,
         JcsEd25519,
         Named,
         Signature,
-        SignatureOptions,
         SignatureValue,
-        Signer,
     },
     did::{
         verifiable::VerifierOptions,
@@ -77,8 +72,6 @@ use spongos::{
 use crate::id::did::{
     DIDMethodId,
     DataWrapper,
-    DID,
-    DID_CORE,
 };
 use crate::{
     id::psk::{
@@ -86,13 +79,9 @@ use crate::{
         PskId,
     },
     message::{
-        ContentDecrypt,
         ContentEncrypt,
         ContentEncryptSizeOf,
-        ContentSizeof,
-        ContentUnwrap,
         ContentVerify,
-        ContentWrap,
     },
 };
 
@@ -116,11 +105,6 @@ impl core::fmt::Debug for Identifier {
 }
 
 impl Identifier {
-    /// Owned vector of the underlying Bytes array of the identifier
-    fn to_bytes(self) -> Vec<u8> {
-        self.as_bytes().to_vec()
-    }
-
     /// View into the underlying Byte array of the identifier
     pub(crate) fn as_bytes(&self) -> &[u8] {
         match self {
@@ -322,7 +306,7 @@ where
                         let mut fragment_bytes = Bytes::<Vec<u8>>::default();
                         let mut signature_bytes = NBytes::new([0; 64]);
 
-                        self.absorb(&mut fragment_bytes)? // TODO: MOVE FRAGMENT TO IDENTIFIER
+                        self.absorb(&mut fragment_bytes)?
                             .commit()?
                             .squeeze(External::new(&mut NBytes::new(&mut hash)))?
                             .absorb(&mut signature_bytes)?;

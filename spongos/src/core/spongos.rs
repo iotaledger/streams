@@ -20,10 +20,7 @@ use generic_array::{
 };
 
 use super::prp::PRP;
-use crate::Error::{
-    LengthMismatch,
-    SpongosNotCommitted,
-};
+use crate::Error::LengthMismatch;
 
 fn xor(s: &mut [u8], x: &[u8]) {
     for (si, xi) in s.iter_mut().zip(x.iter()) {
@@ -73,20 +70,6 @@ fn equals(s: &[u8], x: &[u8]) -> bool {
     }
     eq
 }
-
-/// Sponge fixed key size in buf.
-type KeySize<F> = <F as PRP>::CapacitySize;
-pub(crate) type KeyType<F> = GenericArray<u8, KeySize<F>>;
-
-/// Sponge fixed nonce size in buf.
-type NonceSize<F> = <F as PRP>::CapacitySize;
-pub(crate) type NonceType<F> = GenericArray<u8, NonceSize<F>>;
-
-/// Sponge fixed hash size in buf.
-type HashSize<F> = <F as PRP>::CapacitySize;
-
-/// Sponge fixed MAC size in buf.
-type MacSize<F> = <F as PRP>::CapacitySize;
 
 type Capacity<F> = GenericArray<u8, <F as PRP>::CapacitySize>;
 type Rate<F> = GenericArray<u8, <F as PRP>::RateSize>;
@@ -314,7 +297,7 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    fn decrypt<T, R>(&mut self, mut ciphertext: T) -> Result<R>
+    fn decrypt<T, R>(&mut self, ciphertext: T) -> Result<R>
     where
         T: AsRef<[u8]>,
         R: AsMut<[u8]> + Default,
@@ -368,19 +351,19 @@ impl<F: PRP> Spongos<F> {
         self.absorb(x.as_ref());
     }
 
-    pub(crate) fn outer(&self) -> &GenericArray<u8, F::RateSize> {
+    pub(crate) fn outer(&self) -> &Rate<F> {
         self.s.outer()
     }
 
-    pub(crate) fn inner(&self) -> &GenericArray<u8, F::CapacitySize> {
+    pub(crate) fn inner(&self) -> &Capacity<F> {
         self.s.inner()
     }
 
-    pub(crate) fn outer_mut(&mut self) -> &mut GenericArray<u8, F::RateSize> {
+    pub(crate) fn outer_mut(&mut self) -> &mut Rate<F> {
         self.s.outer_mut()
     }
 
-    pub(crate) fn inner_mut(&mut self) -> &mut GenericArray<u8, F::CapacitySize> {
+    pub(crate) fn inner_mut(&mut self) -> &mut Capacity<F> {
         self.s.inner_mut()
     }
 }
@@ -389,12 +372,6 @@ impl<F> Spongos<F>
 where
     F: Clone,
 {
-    /// Fork Spongos object into another.
-    /// Essentially this just creates a clone of self.
-    fn fork_at(&self, fork: &mut Self) {
-        fork.clone_from(self);
-    }
-
     /// Fork Spongos object into a new one.
     /// Essentially this just creates a clone of self.
     pub(crate) fn fork(&self) -> Self {
@@ -461,10 +438,12 @@ where
     }
 
     fn output_size() -> usize {
-        64
+        Self::OutputSize::USIZE
     }
 
     fn digest(data: &[u8]) -> GenericArray<u8, Self::OutputSize> {
-        Self::init().sponge(data)
+        let mut s = Self::new();
+        Digest::update(&mut s, data);
+        s.finalize()
     }
 }

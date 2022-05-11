@@ -11,13 +11,10 @@ use generic_array::{
 };
 
 use crate::{
-    core::prp::PRP,
     ddml::{
         commands::{
             unwrap::Context,
-            Commit,
             Ed25519,
-            Squeeze,
         },
         io,
         modifiers::External,

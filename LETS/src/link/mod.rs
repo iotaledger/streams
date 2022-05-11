@@ -1,5 +1,4 @@
 mod address;
-mod cursor;
 mod link;
 
 pub use address::{
@@ -8,7 +7,6 @@ pub use address::{
     AppAddr,
     MsgId,
 };
-pub use cursor::Cursor;
 pub(crate) use link::{
     Addressable,
     Linked,

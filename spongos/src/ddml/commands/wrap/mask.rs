@@ -3,7 +3,6 @@ use crypto::{
     keys::x25519,
     signatures::ed25519,
 };
-use generic_array::ArrayLength;
 
 use crate::{
     core::{
@@ -19,7 +18,6 @@ use crate::{
             Mask,
         },
         io,
-        modifiers::External,
         types::{
             Bytes,
             Maybe,

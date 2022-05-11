@@ -1,4 +1,4 @@
-// TODO: MOVE TO SPONGOS
+// TODO: MOVE TO SPONGOS?
 
 // Rust
 use alloc::boxed::Box;
@@ -8,20 +8,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
-use crypto::keys::x25519;
 
 // Streams
-use spongos::ddml::{
-    commands::{
-        sizeof,
-        unwrap,
-        wrap,
-    },
-    io,
-    types::NBytes,
-};
 
-// local
+// Local
 
 #[async_trait(?Send)]
 pub trait ContentSizeof<T> {
@@ -43,7 +33,6 @@ pub trait ContentSignSizeof<T> {
     async fn sign_sizeof(&mut self, ctx: &T) -> Result<&mut Self>;
 }
 
-// TODO: MAKE SURE 'a is not needed in the traits that don't yet have it
 #[async_trait(?Send)]
 pub trait ContentSign<T> {
     async fn sign(&mut self, signer: &T) -> Result<&mut Self>;

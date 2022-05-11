@@ -15,7 +15,7 @@ use core::{
     hash::Hash,
 };
 
-// 3rd party
+// 3rd-party
 use anyhow::{
     anyhow,
     Result,
@@ -167,14 +167,14 @@ impl DID {
     pub(crate) fn info(&self) -> &DIDInfo {
         match self {
             Self::PrivateKey(did_info) => did_info,
-            Empty => unreachable!(),
+            Self::Default => unreachable!(),
         }
     }
 
     fn info_mut(&mut self) -> &mut DIDInfo {
         match self {
             Self::PrivateKey(did_info) => did_info,
-            Empty => unreachable!(),
+            Self::Default => unreachable!(),
         }
     }
 }
@@ -202,10 +202,6 @@ impl DIDInfo {
     }
     pub(crate) fn did(&self) -> &IotaDID {
         &self.did
-    }
-
-    pub(crate) fn method_id(&self) -> &str {
-        self.did().method_id()
     }
 
     pub(crate) fn key_fragment(&self) -> &str {

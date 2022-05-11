@@ -3,31 +3,26 @@ use alloc::vec::Vec;
 
 // 3rd-party
 use anyhow::Result;
-use generic_array::ArrayLength;
 
 // Local
-use crate::{
-    core::prp::PRP,
-    ddml::{
-        commands::{
-            unwrap::{
-                Context,
-                Unwrap,
-            },
-            Skip,
+use crate::ddml::{
+    commands::{
+        unwrap::{
+            Context,
+            Unwrap,
         },
-        io,
-        types::{
-            Bytes,
-            NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+        Skip,
     },
-    error::Error::PublicKeyGenerationFailure,
+    io,
+    types::{
+        Bytes,
+        NBytes,
+        Size,
+        Uint16,
+        Uint32,
+        Uint64,
+        Uint8,
+    },
 };
 struct SkipContext<'a, F, IS> {
     ctx: &'a mut Context<F, IS>,

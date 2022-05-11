@@ -14,8 +14,6 @@ use iota_streams::{
         Permissioned,
         Psk,
     },
-    Address,
-    Message,
     User,
 };
 use spongos::KeccakF1600;
@@ -31,7 +29,6 @@ const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
 pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
-    // Generate a simple PSK for storage by users
     let psk = Psk::new::<KeccakF1600, _>("A pre shared key");
 
     let mut author = User::builder()
@@ -193,6 +190,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let next_messages = subscriber_b.fetch_next_messages().await?;
     let (new_keyload_as_b, signed_packet_as_b) = (&next_messages[0], &next_messages[1]);
     print_user("Subscriber B", &subscriber_b);
+    assert!(new_keyload_as_b.is_keyload());
     assert_eq!(
         signed_packet_as_b
             .public_payload()
@@ -284,7 +282,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .await?;
     print_send_result(&signed_packet_as_a);
     print_user("Subscriber A", &subscriber_a);
-    
+
     println!("> The other users receive the signed packet sent by Subscriber A");
     assert_eq!(author.sync().await?, 1);
     print_user("Author", &author);
@@ -292,7 +290,6 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Subscriber B", &subscriber_b);
     assert_eq!(subscriber_c.sync().await?, 2);
     print_user("Subscriber C", &subscriber_c);
-
 
     println!("> Backup & restore users");
     let author_backup = author.backup("my secret backup password").await?;

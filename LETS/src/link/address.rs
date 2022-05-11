@@ -46,12 +46,9 @@ use spongos::{
 // Local
 use crate::{
     id::Identifier,
-    link::{
-        cursor::Cursor,
-        link::{
-            Link,
-            LinkGenerator,
-        },
+    link::link::{
+        Link,
+        LinkGenerator,
     },
 };
 
@@ -263,11 +260,11 @@ impl AppAddr {
     }
 
     /// Get the hexadecimal representation of the AppInst
-    fn to_hex_string(&self) -> String {
+    fn to_hex_string(self) -> String {
         hex::encode(self.0)
     }
 
-    /// Get a view into the internal byte array that constitutes an `AppInst`
+    /// Get a view into the internal byte array that constitutes an [`AppAddr`]
     fn as_bytes(&self) -> &[u8] {
         &self.0
     }
@@ -332,7 +329,7 @@ impl MsgId {
     const SIZE: usize = 12;
 
     /// Get the hexadecimal representation of the MsgId
-    fn to_hex_string(&self) -> String {
+    fn to_hex_string(self) -> String {
         hex::encode(self.0)
     }
 

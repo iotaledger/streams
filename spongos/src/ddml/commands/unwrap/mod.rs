@@ -133,6 +133,7 @@ trait Unwrap {
 mod absorb;
 mod absorb_external;
 mod commit;
+#[cfg(feature = "std")]
 mod dump;
 mod fork;
 mod guard;

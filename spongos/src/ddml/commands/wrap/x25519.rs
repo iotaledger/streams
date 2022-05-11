@@ -13,16 +13,7 @@ use crate::{
         },
         io,
         modifiers::External,
-        types::{
-            Bytes,
-            Mac,
-            NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+        types::NBytes,
     },
 };
 

@@ -1,8 +1,5 @@
 // TODO: REMOVE Traits, make inherent?
-use alloc::{
-    string::String,
-    vec::Vec,
-};
+use alloc::string::String;
 use core::ops::{
     Deref,
     DerefMut,
@@ -30,7 +27,7 @@ pub trait OStream {
 /// Read
 pub trait IStream {
     /// Try get n bytes from the stream, returning a slice to the buffer.
-    fn try_advance<'a>(&'a mut self, n: usize) -> Result<&'a [u8]>;
+    fn try_advance(&mut self, n: usize) -> Result<&[u8]>;
 
     /// Dump stream debug info.
     fn dump(&self) -> String;

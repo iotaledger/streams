@@ -3,10 +3,7 @@ use alloc::{
     boxed::Box,
     vec::Vec,
 };
-use core::{
-    fmt::Display,
-    marker::PhantomData,
-};
+use core::marker::PhantomData;
 
 // 3rd-party
 use anyhow::{
@@ -15,10 +12,7 @@ use anyhow::{
 };
 use async_trait::async_trait;
 use futures::{
-    future::{
-        join_all,
-        try_join_all,
-    },
+    future::try_join_all,
     TryFutureExt,
 };
 
@@ -59,11 +53,11 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
         ))
     }
 
-    fn client(&self) -> &iota_client::Client {
+    pub fn client(&self) -> &iota_client::Client {
         &self.0
     }
 
-    fn client_mut(&mut self) -> &mut iota_client::Client {
+    pub fn client_mut(&mut self) -> &mut iota_client::Client {
         &mut self.0
     }
 }

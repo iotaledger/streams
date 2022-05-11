@@ -1,5 +1,4 @@
 use anyhow::Result;
-use generic_array::ArrayLength;
 
 use crate::ddml::{
     commands::{

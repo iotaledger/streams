@@ -1,10 +1,7 @@
 use alloc::vec::Vec;
 use core::borrow::BorrowMut;
 
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::Result;
 use crypto::{
     keys::x25519,
     signatures::ed25519,
@@ -189,7 +186,6 @@ where
             .commit()?
             .squeeze(&ents)?
             .squeeze(&mac)?
-            //
             .commit()?
             .squeeze(&tag_wrap)?;
         let buf_size = ctx.finalize();
@@ -206,7 +202,6 @@ where
             .commit()?
             .squeeze(&mut ents)?
             .squeeze(&mac)?
-            //
             .commit()?
             .squeeze(&mut tag_wrap)?;
         assert!(
@@ -232,7 +227,6 @@ where
             .commit()?
             .squeeze(&mut ents2)?
             .squeeze(&mac)?
-            //
             .commit()?
             .squeeze(&mut tag_unwrap)?;
         assert!(
@@ -335,7 +329,6 @@ fn x25519_transport<F: PRP + Default>() -> Result<()> {
     );
 
     let mut ctx = unwrap::Context::<F, &[u8]>::new(&buf[..]);
-    let mut unwrapped_public_key = x25519::PublicKey::from_bytes([0u8; 32]); // Default
     ctx.x25519(&remote_secret_key, &mut key_unwrap)?;
     assert!(
         ctx.stream().is_empty(),

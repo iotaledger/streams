@@ -1,23 +1,11 @@
-use core::fmt::{
-    Debug,
-    Display,
-};
-
 use anyhow::{
     ensure,
     Result,
 };
 
-use crate::{
-    core::prp::PRP,
-    ddml::{
-        commands::{
-            unwrap::Context,
-            Guard,
-        },
-        io,
-    },
-    error::Error,
+use crate::ddml::commands::{
+    unwrap::Context,
+    Guard,
 };
 
 impl<F, IS> Guard for Context<F, IS> {

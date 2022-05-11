@@ -3,10 +3,6 @@ use alloc::{
     boxed::Box,
     vec::Vec,
 };
-use core::{
-    fmt::Display,
-    hash::Hash,
-};
 
 // 3rd-party
 use anyhow::{
@@ -14,28 +10,13 @@ use anyhow::{
     Result,
 };
 use async_trait::async_trait;
-use futures::TryFutureExt;
 
 // IOTA
 
 // Streams
-use spongos::{
-    ddml::commands::{
-        unwrap,
-        Absorb,
-    },
-    PRP,
-};
 use LETS::{
-    id::{
-        Identifier,
-        Identity,
-    },
-    link::{
-        Address,
-        Link,
-        LinkGenerator,
-    },
+    id::Identity,
+    link::Address,
     message::TransportMessage,
     transport::Transport,
 };
@@ -250,16 +231,7 @@ impl<T> UserBuilder<T> {
     /// ```
     async fn recover(self, announcement: Address) -> Result<User<T>>
     where
-        //     A: Link + Display + Clone,
-        //     A::Base: Clone,
-        //     A::Relative: Clone + Eq + Hash + Default,
-        //     F: PRP + Default + Clone,
-        //     for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
-        //     // Hack necessary to workaround apparent infinite recursivity in Absorb<&mut Option<T>> for unwrap::Context.
-        //     // Investigate!
-        //     for<'a, 'b, 'c> &'a mut unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
         T: for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage<Vec<u8>>>,
-        //     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, u64)> + Default,
     {
         let mut user = self.build()?;
         user.receive_message(announcement).await?;

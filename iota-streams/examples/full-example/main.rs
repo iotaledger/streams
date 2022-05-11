@@ -19,7 +19,6 @@ use iota_streams::{
         Transport,
     },
     Address,
-    Message,
     TransportMessage,
 };
 
@@ -44,15 +43,6 @@ impl<T> GenericTransport for T where
         > + Clone
 {
 }
-
-// async fn run_recovery_test<T: GenericTransport>(transport: T, seed: &str) {
-//     println!("\tRunning Recovery Test, seed: {}", seed);
-//     match branching::recovery::example(transport, seed).await {
-//         Err(err) => println!("Error in recovery test: {:?}", err),
-//         Ok(_) => println!("\tRecovery test completed!!"),
-//     }
-//     println!("#######################################");
-// }
 
 type TangleClient = tangle::Client<TransportMessage<Vec<u8>>, TransportMessage<Vec<u8>>>;
 
@@ -89,7 +79,6 @@ async fn main_pure() -> Result<()> {
     let transport = Rc::new(RefCell::new(transport));
 
     run_multi_branch_test(transport.clone(), "PURESEEDA").await?;
-    // run_recovery_test(transport, "PURESEEDB").await;
     println!("################################################");
     println!("Done running pure tests without accessing Tangle");
     println!("################################################");
@@ -106,15 +95,13 @@ async fn main_client() -> Result<()> {
     println!("########################################{}", "#".repeat(node_url.len()));
     println!("\n");
 
-    let transport = Rc::new(RefCell::new(
-        tangle::Client::for_node(&node_url)
-            .await
-            .expect(&format!("error connecting Tangle client to '{}'", node_url)),
-    ));
+    let transport =
+        Rc::new(RefCell::new(tangle::Client::for_node(&node_url).await.unwrap_or_else(
+            |e| panic!("error connecting Tangle client to '{}': {}", node_url, e),
+        )));
 
     run_multi_branch_test(transport.clone(), &new_seed()).await?;
     run_did_test(transport).await?;
-    // run_recovery_test(transport.clone(), &new_seed()).await;
     println!(
         "#############################################{}",
         "#".repeat(node_url.len())

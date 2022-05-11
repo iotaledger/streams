@@ -27,7 +27,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
-use crypto::signatures::ed25519;
 
 // Streams
 use spongos::{
@@ -62,22 +61,6 @@ use LETS::{
 };
 
 // Local
-
-// use iota_streams_core::{
-//     async_trait,
-//     prelude::Box,
-//     sponge::prp::PRP,
-//     Result,
-// };
-// use iota_streams_ddml::{
-//     command::*,
-//     io,
-//     link_store::{
-//         EmptyLinkStore,
-//         LinkStore,
-//     },
-//     types::*,
-// };
 
 pub(crate) struct Wrap<'a, F> {
     initial_state: &'a mut Spongos<F>,
@@ -169,7 +152,7 @@ where
     IS: io::IStream,
 {
     async fn unwrap(&mut self, signed_packet: &mut Unwrap<F>) -> Result<&mut Self> {
-        self.join(&mut signed_packet.initial_state)?
+        self.join(signed_packet.initial_state)?
             .mask(&mut signed_packet.publisher_id)?
             .absorb(Bytes::new(&mut signed_packet.public_payload))?
             .mask(Bytes::new(&mut signed_packet.masked_payload))?

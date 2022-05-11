@@ -1,5 +1,3 @@
-use alloc::vec::Vec;
-
 use generic_array::typenum::Unsigned;
 
 use super::{
@@ -17,31 +15,25 @@ fn bytes_spongosn<F: PRP + Default>(n: usize) {
     let k = rng.squeeze_n(n);
     let p = rng.squeeze_n(n);
     let x = rng.squeeze_n(n);
-    let y: Vec<u8>;
-    let mut z: Vec<u8>;
-    let t: Vec<u8>;
-    let u: Vec<u8>;
-    let t2: Vec<u8>;
-    let t3: Vec<u8>;
 
     let mut s = Spongos::<F>::init();
     s.absorb(&k);
     s.absorb(&p);
     s.commit();
-    y = s.encrypt_n(&x).unwrap();
+    let y = s.encrypt_n(&x).unwrap();
     s.commit();
-    t = s.squeeze_n(n);
-    t2 = s.squeeze_n(n);
-    t3 = s.squeeze_n(n);
+    let t = s.squeeze_n(n);
+    let t2 = s.squeeze_n(n);
+    let t3 = s.squeeze_n(n);
 
     let mut s = Spongos::<F>::init();
     s.absorb(&k);
     s.absorb(&p);
     s.commit();
-    z = y;
+    let mut z = y;
     s.decrypt_inplace(&mut z);
     s.commit();
-    u = s.squeeze_n(n);
+    let u = s.squeeze_n(n);
     assert!(s.squeeze_eq(&t2));
     assert!(s.squeeze_eq(&t3));
 
@@ -59,8 +51,7 @@ fn slice_spongosn<F: PRP + Default>(n: usize) {
     let mut u = vec![0u8; n];
     let mut t23 = vec![0u8; n + n];
 
-    let mut s: Spongos<F>;
-    s = Spongos::init();
+    let mut s = Spongos::<F>::init();
     s.absorb(&k[..]);
     s.commit();
     s.squeeze_mut(&mut k[..]);
