@@ -233,7 +233,6 @@ where
     OS: io::OStream,
 {
     fn skip(&mut self, frame_num: PayloadFrameNum) -> Result<&mut Self> {
-        // PayloadFrameNum validates bounds at creation, does not need to validate now
         self.skip(&NBytes::from(frame_num))
     }
 }
@@ -243,7 +242,6 @@ where
     Self: for<'a> Skip<&'a mut NBytes<[u8; 3]>>,
 {
     fn skip(&mut self, frame_num: &mut PayloadFrameNum) -> Result<&mut Self> {
-        // PayloadFrameNum validates bounds at creation, does not need to validate now
         let mut bytes = NBytes::new([0u8; 3]);
         self.skip(&mut bytes)?;
         *frame_num = bytes.into();
@@ -253,7 +251,6 @@ where
 
 impl Skip<PayloadFrameNum> for sizeof::Context {
     fn skip(&mut self, frame_num: PayloadFrameNum) -> Result<&mut Self> {
-        // PayloadFrameNum validates bounds at creation, does not need to validate now
         self.skip(&NBytes::from(frame_num))
     }
 }

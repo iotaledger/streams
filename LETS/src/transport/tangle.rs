@@ -3,16 +3,26 @@ use alloc::{
     boxed::Box,
     vec::Vec,
 };
-use core::marker::PhantomData;
+use core::{
+    convert::{
+        TryFrom,
+        TryInto,
+    },
+    marker::PhantomData,
+};
 
 // 3rd-party
 use anyhow::{
+    anyhow,
     ensure,
     Result,
 };
 use async_trait::async_trait;
 use futures::{
-    future::try_join_all,
+    future::{
+        ready,
+        try_join_all,
+    },
     TryFutureExt,
 };
 
@@ -32,7 +42,6 @@ use crate::{
 };
 
 #[derive(Debug)]
-/// Stub type for iota_client::Client.  Removed: Copy, Default, Clone
 pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(
     iota_client::Client,
     PhantomData<(Message, SendResponse)>,
@@ -68,8 +77,8 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
 #[async_trait(?Send)]
 impl<'a, Message, SendResponse> Transport<'a> for Client<Message, SendResponse>
 where
-    Message: Into<Vec<u8>> + From<IotaMessage>,
-    SendResponse: From<IotaMessage>,
+    Message: Into<Vec<u8>> + TryFrom<IotaMessage, Error = anyhow::Error>,
+    SendResponse: TryFrom<IotaMessage, Error = anyhow::Error>,
 {
     type Address = &'a Address;
     type Msg = Message;
@@ -79,39 +88,40 @@ where
     where
         Message: 'async_trait,
     {
-        Ok(self
-            .client()
+        self.client()
             .message()
             .with_index(address.to_msg_index())
             .with_data(msg.into())
             .finish()
             .await?
-            .into())
+            .try_into()
     }
 
     async fn recv_messages(&mut self, address: &'a Address) -> Result<Vec<Message>> {
         let msg_ids = self.client().get_message().index(address.to_msg_index()).await?;
         ensure!(!msg_ids.is_empty(), "no message found at index '{}'", address);
 
-        let msgs = try_join_all(
-            msg_ids
-                .iter()
-                .map(|msg| self.client().get_message().data(msg).map_ok(Into::into)),
-        )
+        let msgs = try_join_all(msg_ids.iter().map(|msg| {
+            self.client()
+                .get_message()
+                .data(msg)
+                .map_err(Into::into)
+                .and_then(|iota_message| ready(iota_message.try_into()))
+        }))
         .await?;
         Ok(msgs)
     }
 }
 
-impl<T> From<IotaMessage> for TransportMessage<T>
-where
-    T: for<'a> From<&'a [u8]>,
-{
-    fn from(message: IotaMessage) -> Self {
+impl TryFrom<IotaMessage> for TransportMessage {
+    type Error = anyhow::Error;
+    fn try_from(message: IotaMessage) -> Result<Self> {
         if let Some(Payload::Indexation(indexation)) = message.payload() {
-            Self::new(indexation.data().into())
+            Ok(Self::new(indexation.data().into()))
         } else {
-            Self::new((&[][..]).into())
+            Err(anyhow!(
+                "expected an indexation payload from the Tangle, received something else"
+            ))
         }
     }
 }

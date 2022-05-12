@@ -109,6 +109,7 @@ impl<Address> HDF<Address> {
         self.linked_msg_address = Some(address);
         self
     }
+
     fn with_payload_length(mut self, payload_length: u16) -> Result<Self> {
         ensure!(
             payload_length >> 10 == 0,

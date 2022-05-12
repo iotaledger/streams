@@ -20,26 +20,25 @@ use crate::message::{
 };
 
 /// Binary network Message representation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct TransportMessage<Body = Vec<u8>> {
-    body: Body,
-}
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct TransportMessage(Vec<u8>);
 
-impl<Body> TransportMessage<Body> {
-    pub(crate) fn new(body: Body) -> Self {
-        Self { body }
+impl TransportMessage {
+    pub(crate) fn new(body: Vec<u8>) -> Self {
+        Self(body)
     }
 
-    pub(crate) fn body(&self) -> &Body {
-        &self.body
+    pub(crate) fn body(&self) -> &Vec<u8> {
+        &self.0
+    }
+
+    pub(crate) fn into_body(self) -> Vec<u8> {
+        self.0
     }
 }
 
-impl<T> TransportMessage<T>
-where
-    T: AsRef<[u8]>,
-{
-    pub async fn parse_header<F, Address>(self) -> Result<PreparsedMessage<F, Address, Self>>
+impl TransportMessage {
+    pub async fn parse_header<F, Address>(self) -> Result<PreparsedMessage<F, Address>>
     where
         for<'a> unwrap::Context<F, &'a [u8]>: ContentUnwrap<HDF<Address>>,
         F: PRP + Default,
@@ -56,17 +55,14 @@ where
     }
 }
 
-impl From<TransportMessage<Vec<u8>>> for Vec<u8> {
-    fn from(message: TransportMessage<Vec<u8>>) -> Self {
-        message.body
+impl From<TransportMessage> for Vec<u8> {
+    fn from(message: TransportMessage) -> Self {
+        message.into_body()
     }
 }
 
-impl<T> AsRef<[u8]> for TransportMessage<T>
-where
-    T: AsRef<[u8]>,
-{
+impl AsRef<[u8]> for TransportMessage {
     fn as_ref(&self) -> &[u8] {
-        self.body.as_ref()
+        self.body().as_ref()
     }
 }

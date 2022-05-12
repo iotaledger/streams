@@ -113,9 +113,9 @@ use crate::{
     },
 };
 
-const ANN_MESSAGE_NUM: usize = 1; // Announcement is always the first message of authors
-const SUB_MESSAGE_NUM: usize = 1; // Subscription is always the first message of subscribers
-const INIT_MESSAGE_NUM: usize = 5; // First non-reserved message number
+const ANN_MESSAGE_NUM: usize = 0; // Announcement is always the first message of authors
+const SUB_MESSAGE_NUM: usize = 0; // Subscription is always the first message of subscribers
+const INIT_MESSAGE_NUM: usize = 1; // First non-reserved message number
 
 #[derive(PartialEq, Eq)]
 struct State<F, A>
