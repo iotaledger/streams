@@ -82,11 +82,11 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     print_user("Author", &author);
 
     println!("> Subscribers read the announcement to connect to the stream");
-    subscriber_a.receive_message(*announcement.address()).await?;
+    subscriber_a.receive_message(announcement.to_address()).await?;
     print_user("Subscriber A", &subscriber_a);
-    subscriber_b.receive_message(*announcement.address()).await?;
+    subscriber_b.receive_message(announcement.to_address()).await?;
     print_user("Subscriber B", &subscriber_b);
-    subscriber_c.receive_message(*announcement.address()).await?;
+    subscriber_c.receive_message(announcement.to_address()).await?;
     print_user("Subscriber C", &subscriber_c);
 
     // Predefine Subscriber A
@@ -103,8 +103,8 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     author.add_psk(psk);
 
     println!("> Author reads subscription of subscribers A and B");
-    let _subscription_a_as_author = author.receive_message(*subscription_a_as_a.address()).await?;
-    let subscription_b_as_author = author.receive_message(*subscription_b_as_b.address()).await?;
+    let _subscription_a_as_author = author.receive_message(subscription_a_as_a.to_address()).await?;
+    let subscription_b_as_author = author.receive_message(subscription_b_as_b.to_address()).await?;
     print_user("Author", &author);
 
     println!("> Author issues keyload for everybody [Subscriber A, Subscriber B, PSK]");

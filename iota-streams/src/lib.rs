@@ -16,11 +16,12 @@
 //! # use iota_streams::transport::bucket;
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//! let client: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
-//! # let client = bucket::Client::new();
+//! let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+//! # let test_transport = bucket::Client::new();
 //! let mut author = User::builder()
 //!     .with_identity(Ed25519::from_seed("A cryptographically secure seed"))
-//!     .with_transport(client)
+//!     .with_transport(transport)
+//! #     .with_transport(test_transport)
 //!     .build()?;
 //!
 //! author.create_stream(1)?;

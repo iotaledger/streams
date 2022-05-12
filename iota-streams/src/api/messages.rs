@@ -84,62 +84,61 @@ pub(crate) trait IntoMessages<T, F, A, AG> {
 /// This type implements [`futures::Stream`] and [`futures::TryStream`], therefore it can be used with all the adapters
 /// provided by [`futures::StreamExt`] and [`futures::TryStreamExt`]:
 ///
-/// ## Iterate over the pending messages
 /// ```
-/// use iota_streams_app_channels::{
-///     api::tangle::futures::TryStreamExt,
+/// use futures::TryStreamExt;
+///
+/// use iota_streams::{
+///     id::Ed25519,
+///     transport::tangle,
 ///     Address,
-///     Bytes,
-///     GenericUserBuilder,
-///     GenericUserIdentity,
-///     MessageContent,
-///     Tangle,
-///     UnwrappedMessage,
+///     User,
 /// };
 ///
-/// #
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
-/// # use iota_streams_app_channels::api::BucketTransport;
-/// # use iota_streams_core::Result;
+/// # use anyhow::Result;
+/// # use iota_streams::transport::bucket;
 /// #
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
-/// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
+/// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
-/// let author_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
+/// let author_transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
 /// #
-/// # let author_transport = test_transport.clone();
+/// # let test_author_transport = test_transport.clone();
 /// #
-/// let mut author = GenericUserBuilder::new()
-///     .with_identity(GenericUserIdentity::new(author_seed))
+/// let mut author = User::builder()
+///     .with_identity(Ed25519::from_seed(author_seed))
 ///     .with_transport(author_transport)
+/// #     .with_transport(test_author_transport)
 ///     .build()?;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-/// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
+/// let subscriber_transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
-/// let mut subscriber = GenericUserBuilder::new()
-///     .with_identity(GenericUserIdentity::new(subscriber_seed))
+/// let mut subscriber = User::builder()
+///     .with_identity(Ed25519::from_seed(subscriber_seed))
 ///     .with_transport(subscriber_transport)
 ///     .build()?;
 ///
-/// let announcement_link = author.send_announce().await?;
-/// subscriber.receive_announcement(&announcement_link).await?;
-/// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
-/// author.receive_subscribe(&subscription_link).await?;
-/// let (keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
-/// let (first_packet_link, sequence_link) = author
-///     .send_signed_packet(&keyload_link, &b"public payload".into(), &b"masked payload".into())
-///     .await?;
-/// let (second_packet_link, sequence_link) = author
+/// author.create_stream(1)?;
+/// let announcement = author.announce().await?;
+/// subscriber.receive_message(announcement.to_address()).await?;
+/// let first_packet = author
 ///     .send_signed_packet(
-///         &first_packet_link,
-///         &b"another public payload".into(),
-///         &b"another masked payload".into(),
+///         announcement.to_address().relative(),
+///         b"public payload",
+///         b"masked payload",
+///     )
+///     .await?;
+/// let second_packet = author
+///     .send_signed_packet(
+///         first_packet.to_address().relative(),
+///         b"another public payload",
+///         b"another masked payload",
 ///     )
 ///     .await?;
 ///
@@ -149,433 +148,19 @@ pub(crate) trait IntoMessages<T, F, A, AG> {
 /// let mut messages = subscriber.messages();
 /// while let Some(msg) = messages.try_next().await? {
 ///     println!(
-///         "New message!\n\tPublic: {}\n\tMasked: {}\n",
-///         msg.body.public_payload().and_then(Bytes::as_str).unwrap_or("None"),
-///         msg.body.masked_payload().and_then(Bytes::as_str).unwrap_or("None")
+///         "New message!\n\tPublic: {:?}\n\tMasked: {:?}\n",
+///         msg.public_payload().unwrap_or(b"None"),
+///         msg.masked_payload().unwrap_or(b"None")
 ///     );
 /// #
 /// #   n += 1;
 /// #
 /// }
 /// #
-/// # assert_eq!(n, 3);
+/// # assert_eq!(n, 2);
 /// # Ok(())
 /// # }
 /// ```
-///
-/// ## Collect all the pending messages into a Vector (or any other collection type)
-/// ```
-/// use iota_streams_app_channels::{
-///     api::tangle::futures::TryStreamExt,
-///     Address,
-///     GenericUserBuilder,
-///     GenericUserIdentity,
-///     MessageContent,
-///     Tangle,
-///     UnwrappedMessage,
-/// };
-///
-/// #
-/// # use std::cell::RefCell;
-/// # use std::rc::Rc;
-/// # use iota_streams_app_channels::api::BucketTransport;
-/// # use iota_streams_core::Result;
-/// #
-/// # #[tokio::main]
-/// # async fn main() -> Result<()> {
-/// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
-/// #
-/// let author_seed = "cryptographically-secure-random-author-seed";
-/// let author_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let author_transport = test_transport.clone();
-/// #
-/// let author_transport = test_transport.clone();
-/// let mut author = GenericUserBuilder::new()
-///     .with_identity(GenericUserIdentity::new(author_seed))
-///     .with_transport(author_transport)
-///     .build()?;
-///
-/// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-/// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let subscriber_transport = test_transport.clone();
-/// #
-/// # let mut subscriber = GenericUserBuilder::new()
-/// #    .with_identity(GenericUserIdentity::new(subscriber_seed))
-/// #    .with_transport(subscriber_transport)
-/// #    .build()?;
-///
-/// let announcement_link = author.send_announce().await?;
-/// subscriber.receive_announcement(&announcement_link).await?;
-/// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
-/// author.receive_subscribe(&subscription_link).await?;
-/// let (keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
-/// let (first_packet_link, sequence_link) = author
-///     .send_signed_packet(&keyload_link, &b"public payload".into(), &b"masked payload".into())
-///     .await?;
-/// let (second_packet_link, sequence_link) = author
-///     .send_signed_packet(
-///         &first_packet_link,
-///         &b"another public payload".into(),
-///         &b"another masked payload".into(),
-///     )
-///     .await?;
-///
-/// let messages: Vec<UnwrappedMessage> = subscriber.messages().try_collect().await?;
-/// assert_eq!(
-///     messages,
-///     vec![
-///         UnwrappedMessage::new(keyload_link, announcement_link, MessageContent::new_keyload()),
-///         UnwrappedMessage::new(
-///             first_packet_link,
-///             keyload_link,
-///             MessageContent::new_signed_packet(author.id().clone(), b"public payload", b"masked payload")
-///         ),
-///         UnwrappedMessage::new(
-///             second_packet_link,
-///             first_packet_link,
-///             MessageContent::new_signed_packet(
-///                 author.id().clone(),
-///                 b"another public payload",
-///                 b"another masked payload"
-///             )
-///         ),
-///     ]
-/// );
-/// #
-/// # Ok(())
-/// # }
-/// ```
-///
-/// ## Iterate over the channel messages indefinitely
-///
-/// ### Author
-/// ```
-/// # use core::cell::RefCell;
-/// use iota_streams_app_channels::{
-///     api::tangle::futures::TryStreamExt,
-///     Bytes,
-///     GenericUserBuilder,
-///     GenericUserIdentity,
-///     Tangle,
-/// };
-/// # use iota_streams_app_channels::api::BucketTransport;
-/// # use iota_streams_core::{prelude::Rc, Result};
-///
-/// # #[tokio::main]
-/// # async fn main() -> Result<()> {
-/// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
-/// #
-/// let author_seed = "cryptographically-secure-random-author-seed";
-/// let author_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let author_transport = test_transport.clone();
-/// let mut author = GenericUserBuilder::new()
-///     .with_identity(GenericUserIdentity::new(author_seed))
-///     .with_transport(author_transport)
-///     .build()?;
-///
-/// let announcement_link = author.send_announce().await?;
-/// let shareable_announcement_link = announcement_link.to_string();
-///
-/// # let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-/// # let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let subscriber_transport = test_transport.clone();
-/// # let mut subscriber = GenericUserBuilder::new()
-/// #    .with_identity(GenericUserIdentity::new(subscriber_seed))
-/// #    .with_transport(subscriber_transport)
-/// #    .build()?;
-/// #
-/// # let announcement_link = shareable_announcement_link.parse().expect("parsing announcement link");
-/// # subscriber.receive_announcement(&announcement_link).await?;
-/// # let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
-/// #
-/// # let subscriber_process = async move {
-/// #
-/// # let mut n = 0;
-/// # let mut messages = subscriber.messages();
-/// # loop {
-/// #   if n >= 6 {
-/// #       break;
-/// #   }
-/// #   if let Some(msg) = messages.try_next().await? {
-/// #       println!(
-/// #           "New message!\n\tPublic: {}\n\tMasked: {}\n",
-/// #           msg.body.public_payload().and_then(Bytes::as_str).unwrap_or("None"),
-/// #           msg.body.masked_payload().and_then(Bytes::as_str).unwrap_or("None")
-/// #       );
-/// #     n += 1;
-/// #   }
-/// # }
-/// #
-/// # let r: Result<()> = Ok(());
-/// # r
-/// # };
-/// #
-/// // The subscription link is provided by the subscriber once she sends the subscription message
-/// let shareable_susbcription_link = "<subscription-link>";
-/// # let shareable_subscription_link = subscription_link.to_string();
-/// let subscription_link = shareable_subscription_link.parse().expect("parsing subscription link");
-/// author.receive_subscribe(&subscription_link).await?;
-/// let (keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
-/// let mut last_link = keyload_link;
-/// #
-/// # let author_process = async move {
-/// #
-/// loop {
-/// #
-/// # break;
-/// # }
-/// # for _ in 0..5 {
-/// #
-///     let (packet_link, sequence_link) = author
-///         .send_signed_packet(&last_link, &b"public payload".into(), &b"masked payload".into())
-///         .await?;
-///     last_link = packet_link;
-/// }
-/// #
-/// # let r: Result<()> = Ok(());
-/// # r
-/// # };
-/// #
-/// # author_process.await?;
-/// # subscriber_process.await?;
-/// # Ok(())
-/// # }
-/// #
-/// ```
-///
-/// # Subscriber
-/// ```
-/// # use core::cell::RefCell;
-/// use iota_streams_app_channels::{
-///     api::tangle::futures::TryStreamExt,
-///     Bytes,
-///     GenericUserBuilder,
-///     GenericUserIdentity,
-///     Tangle,
-/// };
-/// # use iota_streams_app_channels::api::BucketTransport;
-/// # use iota_streams_core::{prelude::Rc, Result};
-/// #
-/// # #[tokio::main]
-/// # async fn main() -> Result<()> {
-/// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
-/// #
-/// # let author_seed = "cryptographically-secure-random-author-seed";
-/// # let author_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let author_transport = test_transport.clone();
-/// #
-/// # let mut author = GenericUserBuilder::new()
-/// #     .with_identity(GenericUserIdentity::new(author_seed))
-/// #     .with_transport(author_transport)
-/// #     .build()?;
-/// # let announcement_link = author.send_announce().await?;
-///
-/// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-/// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let subscriber_transport = test_transport.clone();
-/// #
-/// let mut subscriber = GenericUserBuilder::new()
-///     .with_identity(GenericUserIdentity::new(subscriber_seed))
-///     .with_transport(subscriber_transport)
-///     .build()?;
-///
-/// // Announcement link is provided by author
-/// let shareable_announcement_link = "<channel-announcement-link>";
-/// # let shareable_announcement_link = announcement_link.to_string();
-/// let announcement_link = shareable_announcement_link.parse().expect("parsing announcement link");
-/// subscriber.receive_announcement(&announcement_link).await?;
-/// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
-/// let shareable_subscription_link = subscription_link.to_string();
-/// #
-/// # let subscriber_process = async move {
-/// #
-/// # let mut n = 0;
-///
-/// let mut messages = subscriber.messages();
-/// loop {
-/// #   if n >= 6 {
-/// #       break;
-/// #   }
-///     if let Some(msg) = messages.try_next().await? {
-///         println!(
-///             "New message!\n\tPublic: {}\n\tMasked: {}\n",
-///             msg.body.public_payload().and_then(Bytes::as_str).unwrap_or("None"),
-///             msg.body.masked_payload().and_then(Bytes::as_str).unwrap_or("None")
-///         );
-/// #       n += 1;
-///     }
-/// }
-/// #
-/// # let r: Result<()> = Ok(());
-/// # r
-/// # };
-/// #
-/// # // The subscription link is provided by the subscriber once she sends the subscription message
-/// # let subscription_link = shareable_subscription_link.parse().expect("parsing subscription link");
-/// # author.receive_subscribe(&subscription_link).await?;
-/// # let (keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
-/// # let mut last_link = keyload_link;
-/// #
-/// # let author_process = async move {
-/// #
-/// # loop {
-/// #
-/// # break;
-/// # }
-/// # for _ in 0..5 {
-/// #
-/// #     let (packet_link, sequence_link) = author
-/// #         .send_signed_packet(&last_link, &b"public payload".into(), &b"masked payload".into())
-/// #         .await?;
-/// #     last_link = packet_link;
-/// # }
-/// #
-/// # let r: Result<()> = Ok(());
-/// # r
-/// # };
-/// #
-/// # author_process.await?;
-/// # subscriber_process.await?;
-/// # Ok(())
-/// # }
-/// #
-/// ```
-/// ## Filter the messages of a particular branch
-/// ```
-/// use iota_streams_app_channels::{
-///     api::tangle::futures::{
-///         future,
-///         StreamExt,
-///         TryStreamExt,
-///     },
-///     Address,
-///     Bytes,
-///     GenericUserBuilder,
-///     GenericUserIdentity,
-///     MessageContent,
-///     Tangle,
-///     UnwrappedMessage,
-/// };
-///
-/// #
-/// # use std::cell::RefCell;
-/// # use std::rc::Rc;
-/// # use iota_streams_app_channels::api::BucketTransport;
-/// # use iota_streams_core::Result;
-/// #
-/// # #[tokio::main]
-/// # async fn main() -> Result<()> {
-/// # let test_transport = Rc::new(RefCell::new(BucketTransport::new()));
-/// #
-/// let author_seed = "cryptographically-secure-random-author-seed";
-/// let author_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let author_transport = test_transport.clone();
-/// #
-/// let mut author = GenericUserBuilder::new()
-///     .with_identity(GenericUserIdentity::new(author_seed))
-///     .with_transport(author_transport)
-///     .build()?;
-/// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-/// let subscriber_transport = Tangle::new_from_url("https://chrysalis-nodes.iota.org");
-/// #
-/// # let subscriber_transport = test_transport.clone();
-/// #
-/// let mut subscriber = GenericUserBuilder::new()
-///     .with_identity(GenericUserIdentity::new(subscriber_seed))
-///     .with_transport(subscriber_transport)
-///     .build()?;
-///
-/// let announcement_link = author.send_announce().await?;
-/// subscriber.receive_announcement(&announcement_link).await?;
-/// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
-/// author.receive_subscribe(&subscription_link).await?;
-///
-/// let (first_keyload_link, _sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
-/// let (tag_first_branch_link, _sequence_link) = author
-///     .send_signed_packet(&first_keyload_link, &Default::default(), &b"branch 1".into())
-///     .await?;
-/// let (first_packet_first_branch_link, _sequence_link) = author
-///     .send_signed_packet(
-///         &tag_first_branch_link,
-///         &Default::default(),
-///         &b"masked payload in branch 1".into(),
-///     )
-///     .await?;
-/// let (second_packet_first_branch_link, _sequence_link) = author
-///     .send_signed_packet(
-///         &first_packet_first_branch_link,
-///         &Default::default(),
-///         &b"another masked payload in branch 1".into(),
-///     )
-///     .await?;
-///
-/// let (second_keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
-/// let (tag_second_branch_link, _sequence_link) = author
-///     .send_signed_packet(&second_keyload_link, &Default::default(), &b"branch 2".into())
-///     .await?;
-/// let (first_packet_second_branch_link, sequence_link) = author
-///     .send_signed_packet(
-///         &tag_second_branch_link,
-///         &Default::default(),
-///         &b"masked payload in branch 2".into(),
-///     )
-///     .await?;
-/// let (second_packet_second_branch_link, sequence_link) = author
-///     .send_signed_packet(
-///         &first_packet_second_branch_link,
-///         &Default::default(),
-///         &b"another masked payload in branch 2".into(),
-///     )
-///     .await?;
-///
-/// let messages: Vec<UnwrappedMessage> = subscriber
-///     .messages()
-///     .filter_branch(|msg| {
-///         future::ok(
-///             msg.body
-///                 .masked_payload()
-///                 .and_then(Bytes::as_str)
-///                 .map(|payload| payload != "branch 2")
-///                 .unwrap_or(true),
-///         )
-///     })
-///     .skip(1) // Skip tag message
-///     .try_collect()
-///     .await?;
-///
-/// assert_eq!(
-///     messages,
-///     vec![
-///         UnwrappedMessage::new(
-///             first_packet_second_branch_link,
-///             tag_second_branch_link,
-///             MessageContent::new_signed_packet(author.id().clone(), b"", b"masked payload in branch 2")
-///         ),
-///         UnwrappedMessage::new(
-///             second_packet_second_branch_link,
-///             first_packet_second_branch_link,
-///             MessageContent::new_signed_packet(author.id().clone(), b"", b"another masked payload in branch 2")
-///         ),
-///     ]
-/// );
-/// # Ok(())
-/// # }
-/// ```
-/// ## Iterate until finding a particular message
-/// See [Filter the Messages of a Particular Branch example](#filter-the-messages-of-a-particular-branch)
-/// ## Iterate over multiple channels at the same time
-/// **TODO signal synchronization using zip**
-/// ## Concatenate payloads
-/// **TODO accounting using fold**
-/// ## Wait over multiple channels concurrently and handle the first that has a new message ready
-/// **TODO RPC server using select**
 ///
 /// # Technical Details
 /// This [`Stream`] makes sure the messages are traversed in topological order (preorder). This means any parent
@@ -583,10 +168,6 @@ pub(crate) trait IntoMessages<T, F, A, AG> {
 /// calls before a message is yielded, and several messages can be accumulated in memory until their turn.
 /// Therefore, some jitter might be expected, with a worst case of fetching all the messages before any is
 /// yielded.
-///
-/// Sequence messages and unreadable messages are not yielded, as they are not considered to add any end-user value.
-/// Particularly unreadable messages are optimistically considered children waiting for their parent, thus accumulated
-/// in memory and reprocessed instead of being yielded.
 ///
 /// After the last currently available message has been returned, [`Messages::next()`] returns `None`, at which point
 /// the [`StreamExt`] and [`TryStreamExt`] methods will consider the [`Stream`] finished and stop iterating.
@@ -834,7 +415,6 @@ mod tests {
 
     use anyhow::Result;
 
-    use spongos::KeccakF1600;
     use LETS::{
         id::Ed25519,
         link::Address,
