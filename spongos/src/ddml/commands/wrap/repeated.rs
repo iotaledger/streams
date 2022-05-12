@@ -7,10 +7,10 @@ use crate::ddml::commands::{
     Repeated,
 };
 
-impl<I, C, F, OS> Repeated<I, C> for Context<F, OS>
+impl<'a, I, C, F, OS> Repeated<I, C> for Context<OS, F>
 where
     I: iter::Iterator,
-    C: for<'a> FnMut(&'a mut Self, <I as iter::Iterator>::Item) -> Result<&'a mut Self>,
+    C: for<'b> FnMut(&'b mut Self, <I as iter::Iterator>::Item) -> Result<&'b mut Self>,
 {
     fn repeated(&mut self, values_iter: I, mut value_handle: C) -> Result<&mut Self> {
         values_iter.fold(Ok(self), |rctx, item| -> Result<&mut Self> {

@@ -139,7 +139,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, OS, Content> ContentWrap<PCF<Content>> for wrap::Context<F, OS>
+impl<F, OS, Content> ContentWrap<PCF<Content>> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -158,11 +158,11 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, IS, Content> ContentUnwrap<PCF<Content>> for unwrap::Context<F, IS>
+impl<F, IS, Content> ContentUnwrap<PCF<Content>> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
-    unwrap::Context<F, IS>: ContentUnwrap<Content>,
+    unwrap::Context<IS, F>: ContentUnwrap<Content>,
 {
     async fn unwrap(&mut self, pcf: &mut PCF<Content>) -> Result<&mut Self> {
         let mut frame_type = Uint8::default();
@@ -227,7 +227,7 @@ impl From<NBytes<[u8; 3]>> for PayloadFrameNum {
     }
 }
 
-impl<F, OS> Skip<PayloadFrameNum> for wrap::Context<F, OS>
+impl<'a, OS, F> Skip<PayloadFrameNum> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -237,7 +237,7 @@ where
     }
 }
 
-impl<F, OS> Skip<&mut PayloadFrameNum> for unwrap::Context<F, OS>
+impl<OS, F> Skip<&mut PayloadFrameNum> for unwrap::Context<OS, F>
 where
     Self: for<'a> Skip<&'a mut NBytes<[u8; 3]>>,
 {

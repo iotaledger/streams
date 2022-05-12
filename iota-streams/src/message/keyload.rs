@@ -67,7 +67,6 @@ use spongos::{
         },
     },
     Spongos,
-    PRP,
 };
 use LETS::{
     id::{
@@ -91,17 +90,17 @@ use LETS::{
 const NONCE_SIZE: usize = 16;
 const KEY_SIZE: usize = 32;
 
-pub(crate) struct Wrap<'a, F, Subscribers> {
-    initial_state: &'a mut Spongos<F>,
+pub(crate) struct Wrap<'a, Subscribers> {
+    initial_state: &'a mut Spongos,
     nonce: [u8; NONCE_SIZE],
     key: [u8; KEY_SIZE],
     subscribers: Subscribers,
     author_id: &'a Identity,
 }
 
-impl<'a, F, Subscribers> Wrap<'a, F, Subscribers> {
+impl<'a, Subscribers> Wrap<'a, Subscribers> {
     pub(crate) fn new(
-        initial_state: &'a mut Spongos<F>,
+        initial_state: &'a mut Spongos,
         subscribers: Subscribers,
         key: [u8; KEY_SIZE],
         nonce: [u8; NONCE_SIZE],
@@ -122,12 +121,12 @@ impl<'a, F, Subscribers> Wrap<'a, F, Subscribers> {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, Subscribers> message::ContentSizeof<Wrap<'a, F, Subscribers>> for sizeof::Context
+impl<'a, Subscribers> message::ContentSizeof<Wrap<'a, Subscribers>> for sizeof::Context
 where
     Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
 {
-    async fn sizeof(&mut self, keyload: &Wrap<'a, F, Subscribers>) -> Result<&mut sizeof::Context> {
+    async fn sizeof(&mut self, keyload: &Wrap<'a, Subscribers>) -> Result<&mut sizeof::Context> {
         let subscribers = keyload.subscribers.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
         self.absorb(&NBytes::new(keyload.nonce))?.absorb(n_subscribers)?;
@@ -147,14 +146,13 @@ where
 }
 
 #[async_trait(?Send)]
-impl<'a, F, OS, Subscribers> message::ContentWrap<Wrap<'a, F, Subscribers>> for wrap::Context<F, OS>
+impl<'a, OS, Subscribers> message::ContentWrap<Wrap<'a, Subscribers>> for wrap::Context<OS>
 where
     Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
-    F: PRP + Clone,
     OS: io::OStream,
 {
-    async fn wrap(&mut self, keyload: &mut Wrap<'a, F, Subscribers>) -> Result<&mut Self> {
+    async fn wrap(&mut self, keyload: &mut Wrap<'a, Subscribers>) -> Result<&mut Self> {
         let subscribers = keyload.subscribers.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
         self.join(keyload.initial_state)?
@@ -175,17 +173,17 @@ where
     }
 }
 
-pub(crate) struct Unwrap<'a, F> {
-    initial_state: &'a mut Spongos<F>,
+pub(crate) struct Unwrap<'a> {
+    initial_state: &'a mut Spongos,
     subscribers: Vec<Permissioned<Identifier>>,
     author_id: Identifier,
     user_id: &'a Identity,
     user_ke_key: &'a [u8],
 }
 
-impl<'a, F> Unwrap<'a, F> {
+impl<'a> Unwrap<'a> {
     pub(crate) fn new(
-        initial_state: &'a mut Spongos<F>,
+        initial_state: &'a mut Spongos,
         user_id: &'a Identity,
         user_ke_key: &'a [u8],
         author_id: Identifier,
@@ -209,12 +207,11 @@ impl<'a, F> Unwrap<'a, F> {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, IS> message::ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
+impl<'a, IS> message::ContentUnwrap<Unwrap<'a>> for unwrap::Context<IS>
 where
-    F: PRP + Clone,
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, keyload: &mut Unwrap<'a, F>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, keyload: &mut Unwrap<'a>) -> Result<&mut Self> {
         let mut nonce = [0u8; NONCE_SIZE];
         let mut key = None;
         let mut n_subscribers = Size::default();

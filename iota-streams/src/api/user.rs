@@ -60,7 +60,6 @@ use spongos::{
     KeccakF1600,
     Spongos,
     SpongosRng,
-    PRP,
 };
 use LETS::{
     id::{
@@ -95,10 +94,7 @@ use crate::{
     api::{
         key_store::KeyStore,
         message::Message,
-        messages::{
-            IntoMessages,
-            Messages,
-        },
+        messages::Messages,
         send_response::SendResponse,
         user_builder::UserBuilder,
     },
@@ -118,7 +114,7 @@ const SUB_MESSAGE_NUM: usize = 0; // Subscription is always the first message of
 const INIT_MESSAGE_NUM: usize = 1; // First non-reserved message number
 
 #[derive(PartialEq, Eq)]
-struct State<F, A>
+struct State<A>
 where
     A: Link,
     A::Relative: Eq + Hash,
@@ -136,10 +132,10 @@ where
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     id_store: KeyStore,
 
-    spongos_store: HashMap<A::Relative, Spongos<F>>,
+    spongos_store: HashMap<A::Relative, Spongos>,
 }
 
-impl<F, A> Default for State<F, A>
+impl<A> Default for State<A>
 where
     A: Link,
     A::Relative: Eq + Hash,
@@ -155,7 +151,7 @@ where
     }
 }
 
-pub struct User<T, F = KeccakF1600, A = Address, AG = AddressGenerator<KeccakF1600>>
+pub struct User<T, A = Address, AG = AddressGenerator>
 where
     A: Link,
     A::Relative: Eq + Hash,
@@ -164,20 +160,19 @@ where
 
     /// Address generator.
     address_generator: AG,
-    state: State<F, A>,
+    state: State<A>,
 }
 
-impl User<(), KeccakF1600, Address, AddressGenerator<KeccakF1600>> {
+impl User<(), Address, AddressGenerator> {
     pub fn builder() -> UserBuilder<()> {
         UserBuilder::new()
     }
 }
 
-impl<T, F, A, AG> User<T, F, A, AG>
+impl<T, A, AG> User<T, A, AG>
 where
     A: Link,
     A::Relative: Eq + Hash,
-    F: PRP + Default,
 {
     pub(crate) fn new(user_id: Identity, transport: T) -> Self
     where
@@ -297,14 +292,13 @@ where
     }
 }
 
-impl<T, F, A, AG, TSR> User<T, F, A, AG>
+impl<T, A, AG, TSR> User<T, A, AG>
 where
     T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage, SendResponse = TSR>,
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Display,
     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)>,
-    F: PRP + Default + Clone,
-    for<'a, 'b> wrap::Context<F, &'a mut [u8]>: Absorb<&'b A::Relative>,
+    for<'a, 'b> wrap::Context<&'a mut [u8]>: Absorb<&'b A::Relative>,
     for<'a> sizeof::Context: Absorb<&'a A::Relative>,
 {
     /// Prepare Announcement message.
@@ -362,8 +356,8 @@ where
             .state
             .spongos_store
             .get(&link_to)
-            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
-            .clone();
+            .copied()
+            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?;
         let unsubscribe_key = StdRng::from_entropy().gen();
         let author_ke_pk = self
             .state
@@ -415,8 +409,8 @@ where
             .state
             .spongos_store
             .get(&link_to)
-            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
-            .clone();
+            .copied()
+            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?;
         let content = PCF::new_final_frame()
             .with_content(unsubscription::Wrap::new(&mut linked_msg_spongos, &self.state.user_id));
         let header =
@@ -465,9 +459,8 @@ where
             .state
             .spongos_store
             .get(stream_address.relative())
-            .expect("a subscriber that has received an stream announcement must keep its spongos in store")
-            // Spongos must be cloned because wrapping mutates it
-            .clone();
+            .copied()
+            .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
         let mut rng = StdRng::from_entropy();
         let encryption_key = rng.gen();
@@ -565,8 +558,8 @@ where
             .state
             .spongos_store
             .get(&link_to)
-            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
-            .clone();
+            .copied()
+            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?;
         let content = PCF::new_final_frame().with_content(signed_packet::Wrap::new(
             &mut linked_msg_spongos,
             &self.state.user_id,
@@ -620,8 +613,8 @@ where
             .state
             .spongos_store
             .get(&link_to)
-            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
-            .clone();
+            .copied()
+            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?;
         let content = PCF::new_final_frame().with_content(tagged_packet::Wrap::new(
             &mut linked_msg_spongos,
             public_payload.as_ref(),
@@ -648,14 +641,13 @@ where
     }
 }
 
-impl<T, F, A, AG> User<T, F, A, AG>
+impl<T, A, AG> User<T, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
     A::Base: Clone,
     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
-    F: PRP + Default + Clone,
-    for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
+    for<'a, 'b> unwrap::Context<&'a [u8]>: Absorb<&'b mut A::Relative>,
 {
     pub async fn receive_message(&mut self, address: A) -> Result<Message<A>>
     where
@@ -666,7 +658,7 @@ where
     }
 
     pub(crate) async fn handle_message(&mut self, address: A, msg: TransportMessage) -> Result<Message<A>> {
-        let preparsed = msg.parse_header::<F, A::Relative>().await?;
+        let preparsed = msg.parse_header().await?;
         match preparsed.header().message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
             message_types::SUBSCRIPTION => self.handle_subscription(address, preparsed).await,
@@ -683,7 +675,7 @@ where
     async fn handle_announcement<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
+        preparsed: PreparsedMessage<A::Relative>,
     ) -> Result<Message<A>> {
         // Check conditions
         if let Some(stream_address) = self.stream_address() {
@@ -715,7 +707,7 @@ where
     async fn handle_subscription<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
+        preparsed: PreparsedMessage<A::Relative>,
     ) -> Result<Message<A>> {
         // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
 
@@ -726,7 +718,7 @@ where
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
                 // Spongos must be cloned because wrapping mutates it
-                spongos.clone()
+                *spongos
             } else {
                 return Ok(Message::orphan(address, preparsed));
             }
@@ -752,7 +744,7 @@ where
     async fn handle_unsubscription<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
+        preparsed: PreparsedMessage<A::Relative>,
     ) -> Result<Message<A>> {
         // Cursor is not stored, as user is unsubscribing
 
@@ -762,8 +754,7 @@ where
         })?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
-                // Spongos must be cloned because wrapping mutates it
-                spongos.clone()
+                *spongos
             } else {
                 return Ok(Message::orphan(address, preparsed));
             }
@@ -780,11 +771,7 @@ where
         Ok(Message::from_lets_message(address, message))
     }
 
-    async fn handle_keyload<'a>(
-        &mut self,
-        address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
-    ) -> Result<Message<A>> {
+    async fn handle_keyload<'a>(&mut self, address: A, preparsed: PreparsedMessage<A::Relative>) -> Result<Message<A>> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
         // its content. Therefore we must update the cursor of the publisher before handling the message
         self.state
@@ -803,9 +790,8 @@ where
             .state
             .spongos_store
             .get(stream_address.relative())
-            .expect("a subscriber that has received an stream announcement must keep its spongos in store")
-            // Spongos must be cloned because wrapping mutates it
-            .clone();
+            .copied()
+            .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
         // TODO: Remove Psk from Identity and Identifier, and manage it as a complementary permission
         let user_ke_sk = self.state.user_id._ke();
@@ -835,7 +821,7 @@ where
     async fn handle_signed_packet<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
+        preparsed: PreparsedMessage<A::Relative>,
     ) -> Result<Message<A>> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
         // its content. Therefore we must update the cursor of the publisher before handling the message
@@ -850,7 +836,7 @@ where
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
                 // Spongos must be cloned because wrapping mutates it
-                spongos.clone()
+                *spongos
             } else {
                 return Ok(Message::orphan(address, preparsed));
             }
@@ -869,7 +855,7 @@ where
     async fn handle_tagged_packet<'a>(
         &mut self,
         address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
+        preparsed: PreparsedMessage<A::Relative>,
     ) -> Result<Message<A>> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
         // its content. Therefore we must update the cursor of the publisher before handling the message
@@ -901,21 +887,20 @@ where
     }
 }
 
-impl<T, F, A, AG> User<T, F, A, AG>
+impl<T, A, AG> User<T, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
     A::Base: Clone,
     AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
-    F: PRP + Default + Clone,
-    for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
+    for<'a, 'b> unwrap::Context<&'a [u8]>: Absorb<&'b mut A::Relative>,
     T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage>,
 {
     /// Start a [`Messages`] stream to traverse the channel messages
     ///
     /// See the documentation in [`Messages`] for more details and examples.
-    pub fn messages(&mut self) -> Messages<T, F, A, AG> {
-        IntoMessages::messages(self)
+    pub fn messages(&mut self) -> Messages<T, A, AG> {
+        Messages::new(self)
     }
 
     /// Iteratively fetches all the next messages until internal state has caught up
@@ -936,13 +921,12 @@ where
     }
 }
 
-impl<T, F, A, AG> User<T, F, A, AG>
+impl<T, A, AG> User<T, A, AG>
 where
-    F: PRP + Default,
     A: Link,
     A::Relative: Eq + Hash,
     for<'a> sizeof::Context: Mask<&'a A> + Mask<&'a A::Relative>,
-    for<'a, 'b> wrap::Context<F, &'a mut [u8]>: Mask<&'b A> + Mask<&'b A::Relative>,
+    for<'a, 'b> wrap::Context<&'a mut [u8]>: Mask<&'b A> + Mask<&'b A::Relative>,
 {
     pub async fn backup<P>(&mut self, pwd: P) -> Result<Vec<u8>>
     where
@@ -955,7 +939,7 @@ where
         let mut buf = vec![0; buf_size];
 
         let mut ctx = wrap::Context::new(&mut buf[..]);
-        let key: [u8; 32] = SpongosRng::<F>::new(pwd).gen();
+        let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
         ctx.absorb(External::new(NBytes::new(&key)))?;
         ctx.wrap(&mut self.state).await?;
         assert!(
@@ -968,21 +952,20 @@ where
     }
 }
 
-impl<T, F, A, AG> User<T, F, A, AG>
+impl<T, A, AG> User<T, A, AG>
 where
-    F: PRP + Default,
     A: Link + Default,
     A::Relative: Eq + Hash + Default,
     AG: Default,
-    for<'a, 'b> unwrap::Context<F, &'a [u8]>: Mask<&'b mut A> + Mask<&'b mut A::Relative>,
+    for<'a, 'b> unwrap::Context<&'a [u8]>: Mask<&'b mut A> + Mask<&'b mut A::Relative>,
 {
     pub async fn restore<B, P>(backup: B, pwd: P, transport: T) -> Result<Self>
     where
         P: AsRef<[u8]>,
         B: AsRef<[u8]>,
     {
-        let mut ctx = unwrap::Context::<F, _>::new(backup.as_ref());
-        let key: [u8; 32] = SpongosRng::<F>::new(pwd).gen();
+        let mut ctx = unwrap::Context::new(backup.as_ref());
+        let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
         ctx.absorb(&External::new(NBytes::new(&key)))?;
         let mut state = State::default();
         ctx.unwrap(&mut state).await?;
@@ -995,14 +978,13 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, A> ContentSizeof<State<F, A>> for sizeof::Context
+impl<A> ContentSizeof<State<A>> for sizeof::Context
 where
-    F: PRP,
     A: Link,
     A::Relative: Eq + Hash,
     for<'a> sizeof::Context: Mask<&'a A> + Mask<&'a A::Relative>,
 {
-    async fn sizeof(&mut self, user_state: &State<F, A>) -> Result<&mut Self> {
+    async fn sizeof(&mut self, user_state: &State<A>) -> Result<&mut Self> {
         self.mask(&user_state.user_id)?
             .mask(Maybe::new(user_state.stream_address.as_ref()))?
             .mask(Maybe::new(user_state.author_identifier.as_ref()))?;
@@ -1039,14 +1021,13 @@ where
 }
 
 #[async_trait(?Send)]
-impl<'a, F, A> ContentWrap<State<F, A>> for wrap::Context<F, &'a mut [u8]>
+impl<'a, A> ContentWrap<State<A>> for wrap::Context<&'a mut [u8]>
 where
-    F: PRP,
     A: Link,
     A::Relative: Eq + Hash,
-    for<'b> wrap::Context<F, &'a mut [u8]>: Mask<&'b A> + Mask<&'b A::Relative>,
+    for<'b> wrap::Context<&'a mut [u8]>: Mask<&'b A> + Mask<&'b A::Relative>,
 {
-    async fn wrap(&mut self, user_state: &mut State<F, A>) -> Result<&mut Self> {
+    async fn wrap(&mut self, user_state: &mut State<A>) -> Result<&mut Self> {
         self.mask(&user_state.user_id)?
             .mask(Maybe::new(user_state.stream_address.as_ref()))?
             .mask(Maybe::new(user_state.author_identifier.as_ref()))?;
@@ -1083,14 +1064,13 @@ where
 }
 
 #[async_trait(?Send)]
-impl<'a, F, A> ContentUnwrap<State<F, A>> for unwrap::Context<F, &'a [u8]>
+impl<'a, A> ContentUnwrap<State<A>> for unwrap::Context<&'a [u8]>
 where
-    F: PRP + Default,
     A: Link + Default,
     A::Relative: Eq + Hash + Default,
-    for<'b> unwrap::Context<F, &'a [u8]>: Mask<&'b mut A> + Mask<&'b mut A::Relative>,
+    for<'b> unwrap::Context<&'a [u8]>: Mask<&'b mut A> + Mask<&'b mut A::Relative>,
 {
-    async fn unwrap(&mut self, user_state: &mut State<F, A>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, user_state: &mut State<A>) -> Result<&mut Self> {
         self.mask(&mut user_state.user_id)?
             .mask(Maybe::new(&mut user_state.stream_address))?
             .mask(Maybe::new(&mut user_state.author_identifier))?;
@@ -1136,26 +1116,10 @@ where
     }
 }
 
-impl<T, F, A, AG> IntoMessages<T, F, A, AG> for User<T, F, A, AG>
-where
-    A: Link + Display + Clone,
-    A::Relative: Clone + Eq + Hash + Default,
-    A::Base: Clone,
-    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
-    F: PRP + Default + Clone,
-    for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
-    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage>,
-{
-    fn messages(&mut self) -> Messages<'_, T, F, A, AG> {
-        Messages::new(self)
-    }
-}
-
-impl<T, F, A, AG> Debug for User<T, F, A, AG>
+impl<T, A, AG> Debug for User<T, A, AG>
 where
     A: Link,
     A::Relative: Display + Eq + Hash,
-    F: PRP + Default,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
@@ -1174,11 +1138,10 @@ where
 
 /// An streams user equality is determined by the equality of its state. The major consequence of this
 /// fact is that two users with the same identity but different transport configurations are considered equal
-impl<T, F, A, AG> PartialEq for User<T, F, A, AG>
+impl<T, A, AG> PartialEq for User<T, A, AG>
 where
     A: Link + PartialEq,
     A::Relative: Eq + Hash,
-    F: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.state == other.state
@@ -1187,10 +1150,9 @@ where
 
 /// An streams user equality is determined by the equality of its state. The major consequence of this
 /// fact is that two users with the same identity but different transport configurations are considered equal
-impl<T, F, A, AG> Eq for User<T, F, A, AG>
+impl<T, A, AG> Eq for User<T, A, AG>
 where
     A: Link + PartialEq,
     A::Relative: Eq + Hash,
-    F: PartialEq,
 {
 }

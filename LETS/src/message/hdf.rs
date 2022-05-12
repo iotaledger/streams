@@ -170,7 +170,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, OS, Address> ContentWrap<HDF<Address>> for wrap::Context<F, OS>
+impl<F, OS, Address> ContentWrap<HDF<Address>> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -207,11 +207,11 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, IS, Address> ContentUnwrap<HDF<Address>> for unwrap::Context<F, IS>
+impl<F, IS, Address> ContentUnwrap<HDF<Address>> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
-    for<'a> unwrap::Context<F, IS>: Absorb<&'a mut Address> + Absorb<&'a mut Uint8>,
+    for<'a> unwrap::Context<IS, F>: Absorb<&'a mut Address> + Absorb<&'a mut Uint8>,
     Address: Default,
 {
     async fn unwrap(&mut self, mut hdf: &mut HDF<Address>) -> Result<&mut Self> {

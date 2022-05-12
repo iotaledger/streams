@@ -52,7 +52,7 @@ impl Mask<&PermissionDuration> for sizeof::Context {
     }
 }
 
-impl<F, OS> Mask<&PermissionDuration> for wrap::Context<F, OS>
+impl<'a, OS, F> Mask<&PermissionDuration> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -68,7 +68,7 @@ where
     }
 }
 
-impl<F, IS> Mask<&mut PermissionDuration> for unwrap::Context<F, IS>
+impl<'a, IS, F> Mask<&mut PermissionDuration> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -159,7 +159,7 @@ impl<'a> Mask<&'a Permissioned<Identifier>> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Mask<&'a Permissioned<Identifier>> for wrap::Context<F, OS>
+impl<'a, F, OS> Mask<&'a Permissioned<Identifier>> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -185,7 +185,7 @@ where
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut Permissioned<Identifier>> for unwrap::Context<F, IS>
+impl<'a, F, IS> Mask<&'a mut Permissioned<Identifier>> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,

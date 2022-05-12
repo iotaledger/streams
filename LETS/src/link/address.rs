@@ -39,6 +39,7 @@ use spongos::{
         io,
         types::NBytes,
     },
+    KeccakF1600,
     Spongos,
     PRP,
 };
@@ -219,7 +220,7 @@ impl Link for Address {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
-pub struct AddressGenerator<F>(PhantomData<F>);
+pub struct AddressGenerator<F = KeccakF1600>(PhantomData<F>);
 
 impl<'a, F> LinkGenerator<'a, MsgId> for AddressGenerator<F>
 where
@@ -404,7 +405,7 @@ impl<'a> Absorb<&'a MsgId> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Absorb<&'a MsgId> for wrap::Context<F, OS>
+impl<'a, F, OS> Absorb<&'a MsgId> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -414,7 +415,7 @@ where
     }
 }
 
-impl<'a, F, IS> Absorb<&'a mut MsgId> for unwrap::Context<F, IS>
+impl<'a, F, IS> Absorb<&'a mut MsgId> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -430,7 +431,7 @@ impl<'a> Absorb<&'a AppAddr> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Absorb<&'a AppAddr> for wrap::Context<F, OS>
+impl<'a, F, OS> Absorb<&'a AppAddr> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -440,7 +441,7 @@ where
     }
 }
 
-impl<'a, F, IS> Absorb<&'a mut AppAddr> for unwrap::Context<F, IS>
+impl<'a, F, IS> Absorb<&'a mut AppAddr> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -456,7 +457,7 @@ impl<'a> Absorb<&'a Address> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Absorb<&'a Address> for wrap::Context<F, OS>
+impl<'a, F, OS> Absorb<&'a Address> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -466,7 +467,7 @@ where
     }
 }
 
-impl<'a, F, IS> Absorb<&'a mut Address> for unwrap::Context<F, IS>
+impl<'a, F, IS> Absorb<&'a mut Address> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -482,7 +483,7 @@ impl<'a> Mask<&'a MsgId> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Mask<&'a MsgId> for wrap::Context<F, OS>
+impl<'a, F, OS> Mask<&'a MsgId> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -492,7 +493,7 @@ where
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut MsgId> for unwrap::Context<F, IS>
+impl<'a, F, IS> Mask<&'a mut MsgId> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -508,7 +509,7 @@ impl<'a> Mask<&'a AppAddr> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Mask<&'a AppAddr> for wrap::Context<F, OS>
+impl<'a, F, OS> Mask<&'a AppAddr> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -518,7 +519,7 @@ where
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut AppAddr> for unwrap::Context<F, IS>
+impl<'a, F, IS> Mask<&'a mut AppAddr> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -534,7 +535,7 @@ impl<'a> Mask<&'a Address> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Mask<&'a Address> for wrap::Context<F, OS>
+impl<'a, F, OS> Mask<&'a Address> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -544,7 +545,7 @@ where
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut Address> for unwrap::Context<F, IS>
+impl<'a, F, IS> Mask<&'a mut Address> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,

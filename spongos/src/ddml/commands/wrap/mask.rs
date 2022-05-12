@@ -32,11 +32,11 @@ use crate::{
 };
 
 struct MaskContext<'a, F, OS> {
-    ctx: &'a mut Context<F, OS>,
+    ctx: &'a mut Context<OS, F>,
 }
 
 impl<'a, F, OS> MaskContext<'a, F, OS> {
-    fn new(ctx: &'a mut Context<F, OS>) -> Self {
+    fn new(ctx: &'a mut Context<OS, F>) -> Self {
         Self { ctx }
     }
 }
@@ -53,49 +53,49 @@ impl<'a, F: PRP, OS: io::OStream> Wrap for MaskContext<'a, F, OS> {
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Uint8> for Context<F, OS> {
+impl<'a, F: PRP, OS: io::OStream> Mask<Uint8> for Context<OS, F> {
     fn mask(&mut self, u: Uint8) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u8(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Uint16> for Context<F, OS> {
+impl<'a, F: PRP, OS: io::OStream> Mask<Uint16> for Context<OS, F> {
     fn mask(&mut self, u: Uint16) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u16(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Uint32> for Context<F, OS> {
+impl<'a, F: PRP, OS: io::OStream> Mask<Uint32> for Context<OS, F> {
     fn mask(&mut self, u: Uint32) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u32(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Uint64> for Context<F, OS> {
+impl<'a, F: PRP, OS: io::OStream> Mask<Uint64> for Context<OS, F> {
     fn mask(&mut self, u: Uint64) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u64(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Size> for Context<F, OS> {
+impl<'a, F: PRP, OS: io::OStream> Mask<Size> for Context<OS, F> {
     fn mask(&mut self, size: Size) -> Result<&mut Self> {
         MaskContext::new(self).wrap_size(size)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, T: AsRef<[u8]> + ?Sized, OS: io::OStream> Mask<NBytes<&'a T>> for Context<F, OS> {
+impl<'a, F: PRP, T: AsRef<[u8]> + ?Sized, OS: io::OStream> Mask<NBytes<&'a T>> for Context<OS, F> {
     fn mask(&mut self, bytes: NBytes<&'a T>) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(bytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, T, OS: io::OStream> Mask<&'a NBytes<T>> for Context<F, OS>
+impl<'a, F: PRP, T, OS: io::OStream> Mask<&'a NBytes<T>> for Context<OS, F>
 where
     Self: Mask<NBytes<&'a T>>,
 {
@@ -104,7 +104,7 @@ where
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream, T> Mask<Bytes<&'a T>> for Context<F, OS>
+impl<'a, F: PRP, OS: io::OStream, T> Mask<Bytes<&'a T>> for Context<OS, F>
 where
     T: AsRef<[u8]> + ?Sized,
 {
@@ -115,7 +115,7 @@ where
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream, T> Mask<&'a Bytes<T>> for Context<F, OS>
+impl<'a, F: PRP, OS: io::OStream, T> Mask<&'a Bytes<T>> for Context<OS, F>
 where
     Self: Mask<Bytes<&'a T>>,
 {
@@ -124,21 +124,21 @@ where
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<F, OS> {
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<OS, F> {
     fn mask(&mut self, public_key: &'a x25519::PublicKey) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(public_key)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<F, OS> {
+impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<OS, F> {
     fn mask(&mut self, public_key: &'a ed25519::PublicKey) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(public_key)?;
         Ok(self)
     }
 }
 
-impl<F, OS> Mask<&Spongos<F>> for Context<F, OS>
+impl<'a, OS, F> Mask<&Spongos<F>> for Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -149,7 +149,7 @@ where
     }
 }
 
-impl<F, OS, T> Mask<Maybe<Option<T>>> for Context<F, OS>
+impl<'a, F, OS, T> Mask<Maybe<Option<T>>> for Context<OS, F>
 where
     Self: Mask<T> + Mask<Uint8>,
 {

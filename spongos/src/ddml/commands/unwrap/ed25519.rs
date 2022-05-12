@@ -25,7 +25,7 @@ use crate::{
 
 /// Recover public key.
 impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes<GenericArray<u8, U64>>>>
-    for Context<F, IS>
+    for Context<IS, F>
 {
     fn ed25519(
         &mut self,
@@ -41,7 +41,7 @@ impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes
     }
 }
 
-impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes<[u8; 64]>>> for Context<F, IS> {
+impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes<[u8; 64]>>> for Context<IS, F> {
     fn ed25519(
         &mut self,
         public_key: &'a ed25519::PublicKey,

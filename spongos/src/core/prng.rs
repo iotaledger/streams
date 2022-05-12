@@ -6,14 +6,17 @@ use rand::{
 };
 
 use super::{
-    prp::PRP,
+    prp::{
+        keccak::KeccakF1600,
+        PRP,
+    },
     spongos::Spongos,
 };
 
 type Nonce = [u8; 16];
 type Key = [u8; 32];
 
-pub struct SpongosRng<F> {
+pub struct SpongosRng<F = KeccakF1600> {
     spongos: Spongos<F>,
     nonce: Nonce,
 }

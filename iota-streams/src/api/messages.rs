@@ -10,12 +10,9 @@ use core::{
     hash::Hash,
     pin::Pin,
 };
-use spongos::{
-    ddml::commands::{
-        unwrap,
-        Absorb,
-    },
-    PRP,
+use spongos::ddml::commands::{
+    unwrap,
+    Absorb,
 };
 
 // 3rd-party
@@ -59,20 +56,6 @@ use crate::api::{
     },
     user::User,
 };
-
-// TODO: aclarative comments
-// TODO: Documentation
-// TODO: backwards stream
-// TODO: next_msg in C bindings
-// TODO: Consider renaming msgs => messages
-// TODO: run examples in actions
-
-pub(crate) trait IntoMessages<T, F, A, AG> {
-    fn messages(&mut self) -> Messages<'_, T, F, A, AG>
-    where
-        A: Link,
-        A::Relative: Eq + Hash;
-}
 
 /// a [`Stream`] over the messages of the channel pending to be fetch from the transport
 ///
@@ -179,31 +162,31 @@ pub(crate) trait IntoMessages<T, F, A, AG> {
 /// network failure, [`Messages::next()`] will return `Err`. It is strongly suggested that, when suitable, use the
 /// methods in [`futures::TryStreamExt`] to make the error-handling much more ergonomic (with the use of `?`) and
 /// shortcircuit the [`futures::Stream`] on the first error.
-pub struct Messages<'a, T, F, A, AG>(PinBoxFut<'a, (MessagesState<'a, T, F, A, AG>, Option<Result<Message<A>>>)>)
+pub struct Messages<'a, T, A, AG>(PinBoxFut<'a, (MessagesState<'a, T, A, AG>, Option<Result<Message<A>>>)>)
 where
     A: Link,
     A::Relative: Eq + Hash;
 
 type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
-struct MessagesState<'a, T, F, A, AG>
+struct MessagesState<'a, T, A, AG>
 where
     A: Link,
     A::Relative: Eq + Hash,
 {
-    user: &'a mut User<T, F, A, AG>,
+    user: &'a mut User<T, A, AG>,
     ids_stack: Vec<(Identifier, usize)>,
     msg_queue: HashMap<A::Relative, VecDeque<(A::Relative, TransportMessage)>>,
     stage: VecDeque<(A::Relative, TransportMessage)>,
     successful_round: bool,
 }
 
-impl<'a, T, F, A, AG> MessagesState<'a, T, F, A, AG>
+impl<'a, T, A, AG> MessagesState<'a, T, A, AG>
 where
     A: Link,
     A::Relative: Eq + Hash,
 {
-    fn new(user: &'a mut User<T, F, A, AG>) -> Self {
+    fn new(user: &'a mut User<T, A, AG>) -> Self {
         Self {
             user,
             ids_stack: Vec::new(),
@@ -222,9 +205,8 @@ where
         A: Link + Display + Clone,
         A::Relative: Clone + Eq + Hash + Default,
         A::Base: Clone,
-        F: PRP + Default + Clone,
         AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
-        for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
+        for<'b, 'c> unwrap::Context<&'b [u8]>: Absorb<&'c mut A::Relative>,
         T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
     {
         if let Some((relative_address, binary_msg)) = self.stage.pop_front() {
@@ -313,17 +295,16 @@ where
     }
 }
 
-impl<'a, T, F, A, AG> Messages<'a, T, F, A, AG>
+impl<'a, T, A, AG> Messages<'a, T, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
     A::Base: Clone,
-    F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
-    for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
+    for<'b, 'c> unwrap::Context<&'b [u8]>: Absorb<&'c mut A::Relative>,
     T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
 {
-    pub(crate) fn new(user: &'a mut User<T, F, A, AG>) -> Self {
+    pub(crate) fn new(user: &'a mut User<T, A, AG>) -> Self {
         let mut state = MessagesState::new(user);
         Self(Box::pin(async move {
             let r = state.next().await;
@@ -367,29 +348,27 @@ where
     }
 }
 
-impl<'a, T, F, A, AG> From<&'a mut User<T, F, A, AG>> for Messages<'a, T, F, A, AG>
+impl<'a, T, A, AG> From<&'a mut User<T, A, AG>> for Messages<'a, T, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
     A::Base: Clone,
-    F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
-    for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
+    for<'b, 'c> unwrap::Context<&'b [u8]>: Absorb<&'c mut A::Relative>,
     T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
 {
-    fn from(user: &'a mut User<T, F, A, AG>) -> Self {
+    fn from(user: &'a mut User<T, A, AG>) -> Self {
         Self::new(user)
     }
 }
 
-impl<'a, T, F, A, AG> Stream for Messages<'a, T, F, A, AG>
+impl<'a, T, A, AG> Stream for Messages<'a, T, A, AG>
 where
     A: Link + Display + Clone,
     A::Relative: Clone + Eq + Hash + Default,
     A::Base: Clone,
-    F: PRP + Default + Clone,
     AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
-    for<'b, 'c> unwrap::Context<F, &'b [u8]>: Absorb<&'c mut A::Relative>,
+    for<'b, 'c> unwrap::Context<&'b [u8]>: Absorb<&'c mut A::Relative>,
     T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
 {
     type Item = Result<Message<A>>;

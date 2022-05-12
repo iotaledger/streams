@@ -8,7 +8,7 @@ use crate::ddml::commands::{
     Guard,
 };
 
-impl<F, IS> Guard for Context<F, IS> {
+impl<'a, OS, F> Guard for Context<OS, F> {
     fn guard<E>(&mut self, cond: bool, err: E) -> Result<&mut Self>
     where
         E: Into<anyhow::Error>,

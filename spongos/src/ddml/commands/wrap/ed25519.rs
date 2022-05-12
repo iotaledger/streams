@@ -15,7 +15,7 @@ use crate::ddml::{
     types::NBytes,
 };
 
-impl<F, OS: io::OStream> Ed25519<&ed25519::SecretKey, &External<NBytes<GenericArray<u8, U64>>>> for Context<F, OS> {
+impl<'a, F, OS: io::OStream> Ed25519<&ed25519::SecretKey, &External<NBytes<GenericArray<u8, U64>>>> for Context<OS, F> {
     fn ed25519(
         &mut self,
         secret_key: &ed25519::SecretKey,
@@ -29,7 +29,7 @@ impl<F, OS: io::OStream> Ed25519<&ed25519::SecretKey, &External<NBytes<GenericAr
     }
 }
 
-impl<F, OS: io::OStream> Ed25519<&ed25519::SecretKey, &External<NBytes<[u8; 64]>>> for Context<F, OS> {
+impl<'a, F, OS: io::OStream> Ed25519<&ed25519::SecretKey, &External<NBytes<[u8; 64]>>> for Context<OS, F> {
     fn ed25519(&mut self, secret_key: &ed25519::SecretKey, hash: &External<NBytes<[u8; 64]>>) -> Result<&mut Self> {
         let signature = secret_key.sign(hash.inner().as_slice());
         self.stream

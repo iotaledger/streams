@@ -43,7 +43,6 @@ use spongos::{
         io,
     },
     Spongos,
-    PRP,
 };
 use LETS::{
     id::{
@@ -62,13 +61,13 @@ use LETS::{
 
 // Local
 
-pub(crate) struct Wrap<'a, F> {
-    initial_state: &'a mut Spongos<F>,
+pub(crate) struct Wrap<'a> {
+    initial_state: &'a mut Spongos,
     subscriber_id: &'a Identity,
 }
 
-impl<'a, F> Wrap<'a, F> {
-    pub(crate) fn new(initial_state: &'a mut Spongos<F>, subscriber_id: &'a Identity) -> Self {
+impl<'a> Wrap<'a> {
+    pub(crate) fn new(initial_state: &'a mut Spongos, subscriber_id: &'a Identity) -> Self {
         Self {
             initial_state,
             subscriber_id,
@@ -77,8 +76,8 @@ impl<'a, F> Wrap<'a, F> {
 }
 
 #[async_trait(?Send)]
-impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
-    async fn sizeof(&mut self, unsubscription: &Wrap<'a, F>) -> Result<&mut Self> {
+impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
+    async fn sizeof(&mut self, unsubscription: &Wrap<'a>) -> Result<&mut Self> {
         self.mask(&unsubscription.subscriber_id.to_identifier())?
             .commit()?
             .sign_sizeof(unsubscription.subscriber_id)
@@ -88,12 +87,11 @@ impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, OS> ContentWrap<Wrap<'a, F>> for wrap::Context<F, OS>
+impl<'a, OS> ContentWrap<Wrap<'a>> for wrap::Context<OS>
 where
-    F: PRP,
     OS: io::OStream,
 {
-    async fn wrap(&mut self, unsubscription: &mut Wrap<'a, F>) -> Result<&mut Self> {
+    async fn wrap(&mut self, unsubscription: &mut Wrap<'a>) -> Result<&mut Self> {
         self.join(unsubscription.initial_state)?
             .mask(&unsubscription.subscriber_id.to_identifier())?
             .commit()?
@@ -103,13 +101,13 @@ where
     }
 }
 
-pub(crate) struct Unwrap<'a, F> {
-    initial_state: &'a mut Spongos<F>,
+pub(crate) struct Unwrap<'a> {
+    initial_state: &'a mut Spongos,
     subscriber_id: Identifier,
 }
 
-impl<'a, F> Unwrap<'a, F> {
-    pub(crate) fn new(initial_state: &'a mut Spongos<F>) -> Self {
+impl<'a> Unwrap<'a> {
+    pub(crate) fn new(initial_state: &'a mut Spongos) -> Self {
         Self {
             initial_state,
             subscriber_id: Identifier::default(),
@@ -122,12 +120,11 @@ impl<'a, F> Unwrap<'a, F> {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, IS> ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
+impl<'a, IS> ContentUnwrap<Unwrap<'a>> for unwrap::Context<IS>
 where
-    F: PRP,
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, unsubscription: &mut Unwrap<'a, F>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, unsubscription: &mut Unwrap<'a>) -> Result<&mut Self> {
         self.join(unsubscription.initial_state)?
             .mask(&mut unsubscription.subscriber_id)?
             .commit()?

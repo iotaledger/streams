@@ -21,11 +21,11 @@ use crate::ddml::{
 };
 
 struct SkipContext<'a, F, OS> {
-    ctx: &'a mut Context<F, OS>,
+    ctx: &'a mut Context<OS, F>,
 }
 
 impl<'a, F, OS> SkipContext<'a, F, OS> {
-    fn new(ctx: &'a mut Context<F, OS>) -> Self {
+    fn new(ctx: &'a mut Context<OS, F>) -> Self {
         Self { ctx }
     }
 }
@@ -41,49 +41,49 @@ impl<'a, F, OS: io::OStream> Wrap for SkipContext<'a, F, OS> {
     }
 }
 
-impl<F, OS: io::OStream> Skip<Uint8> for Context<F, OS> {
+impl<'a, F, OS: io::OStream> Skip<Uint8> for Context<OS, F> {
     fn skip(&mut self, u: Uint8) -> Result<&mut Self> {
         SkipContext::new(self).wrap_u8(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Uint16> for Context<F, OS> {
+impl<'a, F, OS: io::OStream> Skip<Uint16> for Context<OS, F> {
     fn skip(&mut self, u: Uint16) -> Result<&mut Self> {
         SkipContext::new(self).wrap_u16(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Uint32> for Context<F, OS> {
+impl<'a, F, OS: io::OStream> Skip<Uint32> for Context<OS, F> {
     fn skip(&mut self, u: Uint32) -> Result<&mut Self> {
         SkipContext::new(self).wrap_u32(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Uint64> for Context<F, OS> {
+impl<'a, F, OS: io::OStream> Skip<Uint64> for Context<OS, F> {
     fn skip(&mut self, u: Uint64) -> Result<&mut Self> {
         SkipContext::new(self).wrap_u64(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Size> for Context<F, OS> {
+impl<'a, F, OS: io::OStream> Skip<Size> for Context<OS, F> {
     fn skip(&mut self, size: Size) -> Result<&mut Self> {
         SkipContext::new(self).wrap_size(size)?;
         Ok(self)
     }
 }
 
-impl<'a, F, T: AsRef<[u8]>, OS: io::OStream> Skip<NBytes<&'a T>> for Context<F, OS> {
+impl<'a, F, T: AsRef<[u8]>, OS: io::OStream> Skip<NBytes<&'a T>> for Context<OS, F> {
     fn skip(&mut self, bytes: NBytes<&'a T>) -> Result<&mut Self> {
         SkipContext::new(self).wrapn(bytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F, T, OS: io::OStream> Skip<&'a NBytes<T>> for Context<F, OS>
+impl<'a, F, T, OS: io::OStream> Skip<&'a NBytes<T>> for Context<OS, F>
 where
     Self: Skip<NBytes<&'a T>>,
 {
@@ -92,7 +92,7 @@ where
     }
 }
 
-impl<'a, F, OS: io::OStream, T> Skip<&'a Bytes<T>> for Context<F, OS>
+impl<'a, F, OS: io::OStream, T> Skip<&'a Bytes<T>> for Context<OS, F>
 where
     T: AsRef<[u8]>,
 {

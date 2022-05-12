@@ -59,7 +59,7 @@ where
         }
     }
 
-    pub(crate) fn orphan<F>(address: Address, mut preparsed: PreparsedMessage<F, Address::Relative>) -> Self
+    pub(crate) fn orphan(address: Address, mut preparsed: PreparsedMessage<Address::Relative>) -> Self
     where
         Address::Relative: Default,
     {
@@ -274,24 +274,24 @@ impl From<announcement::Unwrap> for MessageContent {
     }
 }
 
-impl<'a, F> From<subscription::Unwrap<'a, F>> for MessageContent {
-    fn from(subscription: subscription::Unwrap<'a, F>) -> Self {
+impl<'a> From<subscription::Unwrap<'a>> for MessageContent {
+    fn from(subscription: subscription::Unwrap<'a>) -> Self {
         Self::Subscription(Subscription {
             subscriber_identifier: subscription.subscriber_identifier(),
         })
     }
 }
 
-impl<'a, F> From<keyload::Unwrap<'a, F>> for MessageContent {
-    fn from(keyload: keyload::Unwrap<'a, F>) -> Self {
+impl<'a> From<keyload::Unwrap<'a>> for MessageContent {
+    fn from(keyload: keyload::Unwrap<'a>) -> Self {
         Self::Keyload(Keyload {
             subscribers: keyload.into_subscribers(),
         })
     }
 }
 
-impl<'a, F> From<signed_packet::Unwrap<'a, F>> for MessageContent {
-    fn from(mut signed_packet: signed_packet::Unwrap<'a, F>) -> Self {
+impl<'a> From<signed_packet::Unwrap<'a>> for MessageContent {
+    fn from(mut signed_packet: signed_packet::Unwrap<'a>) -> Self {
         Self::SignedPacket(SignedPacket {
             publisher_identifier: signed_packet.publisher_identifier(),
             masked_payload: signed_packet.take_masked_payload(),
@@ -300,8 +300,8 @@ impl<'a, F> From<signed_packet::Unwrap<'a, F>> for MessageContent {
     }
 }
 
-impl<'a, F> From<tagged_packet::Unwrap<'a, F>> for MessageContent {
-    fn from(mut tagged_packet: tagged_packet::Unwrap<'a, F>) -> Self {
+impl<'a> From<tagged_packet::Unwrap<'a>> for MessageContent {
+    fn from(mut tagged_packet: tagged_packet::Unwrap<'a>) -> Self {
         Self::TaggedPacket(TaggedPacket {
             masked_payload: tagged_packet.take_masked_payload(),
             public_payload: tagged_packet.take_public_payload(),
@@ -309,8 +309,8 @@ impl<'a, F> From<tagged_packet::Unwrap<'a, F>> for MessageContent {
     }
 }
 
-impl<'a, F> From<unsubscription::Unwrap<'a, F>> for MessageContent {
-    fn from(unsubscriptiokn: unsubscription::Unwrap<'a, F>) -> Self {
+impl<'a> From<unsubscription::Unwrap<'a>> for MessageContent {
+    fn from(unsubscriptiokn: unsubscription::Unwrap<'a>) -> Self {
         Self::Unsubscription(Unsubscription {
             subscriber_identifier: unsubscriptiokn.subscriber_identifier(),
         })

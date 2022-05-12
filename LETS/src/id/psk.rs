@@ -140,7 +140,7 @@ impl<'a> Mask<&'a PskId> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Mask<&'a PskId> for wrap::Context<F, OS>
+impl<'a, F, OS> Mask<&'a PskId> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -150,7 +150,7 @@ where
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut PskId> for unwrap::Context<F, IS>
+impl<'a, F, IS> Mask<&'a mut PskId> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -166,7 +166,7 @@ impl<'a> Mask<&'a Psk> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Mask<&'a Psk> for wrap::Context<F, OS>
+impl<'a, F, OS> Mask<&'a Psk> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -176,7 +176,7 @@ where
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut Psk> for unwrap::Context<F, IS>
+impl<'a, F, IS> Mask<&'a mut Psk> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,

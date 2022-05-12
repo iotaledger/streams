@@ -53,7 +53,6 @@ use spongos::{
         types::NBytes,
     },
     Spongos,
-    PRP,
 };
 use LETS::{
     id::{
@@ -70,16 +69,16 @@ use LETS::{
     },
 };
 
-pub(crate) struct Wrap<'a, F> {
-    initial_state: &'a mut Spongos<F>,
+pub(crate) struct Wrap<'a> {
+    initial_state: &'a mut Spongos,
     unsubscribe_key: [u8; 32],
     subscriber_id: &'a Identity,
     author_ke_pk: &'a x25519::PublicKey,
 }
 
-impl<'a, F> Wrap<'a, F> {
+impl<'a> Wrap<'a> {
     pub(crate) fn new(
-        initial_state: &'a mut Spongos<F>,
+        initial_state: &'a mut Spongos,
         unsubscribe_key: [u8; 32],
         subscriber_id: &'a Identity,
         author_ke_pk: &'a x25519::PublicKey,
@@ -94,8 +93,8 @@ impl<'a, F> Wrap<'a, F> {
 }
 
 #[async_trait(?Send)]
-impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
-    async fn sizeof(&mut self, subscription: &Wrap<'a, F>) -> Result<&mut Self> {
+impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
+    async fn sizeof(&mut self, subscription: &Wrap<'a>) -> Result<&mut Self> {
         self.x25519(subscription.author_ke_pk, &NBytes::new(&subscription.unsubscribe_key))?
             .mask(&subscription.subscriber_id.to_identifier())?
             .absorb(
@@ -112,12 +111,11 @@ impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, OS> ContentWrap<Wrap<'a, F>> for wrap::Context<F, OS>
+impl<'a, OS> ContentWrap<Wrap<'a>> for wrap::Context<OS>
 where
-    F: PRP,
     OS: io::OStream,
 {
-    async fn wrap(&mut self, subscription: &mut Wrap<'a, F>) -> Result<&mut Self> {
+    async fn wrap(&mut self, subscription: &mut Wrap<'a>) -> Result<&mut Self> {
         self.join(subscription.initial_state)?
             .x25519(subscription.author_ke_pk, &NBytes::new(&subscription.unsubscribe_key))?
             .mask(&subscription.subscriber_id.to_identifier())?
@@ -134,8 +132,8 @@ where
     }
 }
 
-pub(crate) struct Unwrap<'a, F> {
-    initial_state: &'a mut Spongos<F>,
+pub(crate) struct Unwrap<'a> {
+    initial_state: &'a mut Spongos,
     unsubscribe_key: [u8; 32],
     subscriber_identifier: Identifier,
     // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
@@ -143,8 +141,8 @@ pub(crate) struct Unwrap<'a, F> {
     author_ke_sk: &'a x25519::SecretKey,
 }
 
-impl<'a, F> Unwrap<'a, F> {
-    pub(crate) fn new(initial_state: &'a mut Spongos<F>, author_ke_sk: &'a x25519::SecretKey) -> Self {
+impl<'a> Unwrap<'a> {
+    pub(crate) fn new(initial_state: &'a mut Spongos, author_ke_sk: &'a x25519::SecretKey) -> Self {
         Self {
             initial_state,
             unsubscribe_key: Default::default(),
@@ -165,12 +163,11 @@ impl<'a, F> Unwrap<'a, F> {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, IS> ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
+impl<'a, IS> ContentUnwrap<Unwrap<'a>> for unwrap::Context<IS>
 where
-    F: PRP,
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, subscription: &mut Unwrap<'a, F>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, subscription: &mut Unwrap<'a>) -> Result<&mut Self> {
         self.join(subscription.initial_state)?
             .x25519(
                 subscription.author_ke_sk,

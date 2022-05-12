@@ -20,7 +20,10 @@ use generic_array::{
 };
 
 use super::prp::PRP;
-use crate::Error::LengthMismatch;
+use crate::{
+    Error::LengthMismatch,
+    KeccakF1600,
+};
 
 fn xor(s: &mut [u8], x: &[u8]) {
     for (si, xi) in s.iter_mut().zip(x.iter()) {
@@ -75,7 +78,7 @@ type Capacity<F> = GenericArray<u8, <F as PRP>::CapacitySize>;
 type Rate<F> = GenericArray<u8, <F as PRP>::RateSize>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
-pub struct Spongos<F> {
+pub struct Spongos<F = KeccakF1600> {
     /// Spongos transform together with its internal state.
     s: F,
 

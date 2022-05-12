@@ -5,7 +5,10 @@ use anyhow::Result;
 
 use crate::{
     core::{
-        prp::PRP,
+        prp::{
+            keccak::KeccakF1600,
+            PRP,
+        },
         spongos::Spongos,
     },
     ddml::{
@@ -21,13 +24,13 @@ use crate::{
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct Context<F, IS> {
+pub struct Context<IS, F = KeccakF1600> {
     spongos: Spongos<F>,
     stream: IS,
     cursor: usize,
 }
 
-impl<F, IS> Context<F, IS> {
+impl<IS, F> Context<IS, F> {
     pub fn new(stream: IS) -> Self
     where
         F: Default,
@@ -73,7 +76,7 @@ impl<F, IS> Context<F, IS> {
     }
 }
 
-impl<F, IS> fmt::Debug for Context<F, IS> {
+impl<'a, IS, F> fmt::Debug for Context<IS, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{header: {:?}, ctx: {:?}}}", "self.header", "self.ctx")
     }

@@ -43,7 +43,6 @@ use spongos::{
         types::Bytes,
     },
     Spongos,
-    PRP,
 };
 use LETS::{
     id::{
@@ -62,16 +61,16 @@ use LETS::{
 
 // Local
 
-pub(crate) struct Wrap<'a, F> {
-    initial_state: &'a mut Spongos<F>,
+pub(crate) struct Wrap<'a> {
+    initial_state: &'a mut Spongos,
     public_payload: &'a [u8],
     masked_payload: &'a [u8],
     user_id: &'a Identity,
 }
 
-impl<'a, F> Wrap<'a, F> {
+impl<'a> Wrap<'a> {
     pub(crate) fn new(
-        initial_state: &'a mut Spongos<F>,
+        initial_state: &'a mut Spongos,
         user_id: &'a Identity,
         public_payload: &'a [u8],
         masked_payload: &'a [u8],
@@ -86,8 +85,8 @@ impl<'a, F> Wrap<'a, F> {
 }
 
 #[async_trait(?Send)]
-impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
-    async fn sizeof(&mut self, signed_packet: &Wrap<'a, F>) -> Result<&mut Self> {
+impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
+    async fn sizeof(&mut self, signed_packet: &Wrap<'a>) -> Result<&mut Self> {
         self.mask(&signed_packet.user_id.to_identifier())?
             .absorb(&Bytes::new(signed_packet.public_payload))?
             .mask(&Bytes::new(signed_packet.masked_payload))?
@@ -98,12 +97,11 @@ impl<'a, F> ContentSizeof<Wrap<'a, F>> for sizeof::Context {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, OS> ContentWrap<Wrap<'a, F>> for wrap::Context<F, OS>
+impl<'a, OS> ContentWrap<Wrap<'a>> for wrap::Context<OS>
 where
-    F: PRP,
     OS: io::OStream,
 {
-    async fn wrap(&mut self, signed_packet: &mut Wrap<'a, F>) -> Result<&mut Self> {
+    async fn wrap(&mut self, signed_packet: &mut Wrap<'a>) -> Result<&mut Self> {
         self.join(signed_packet.initial_state)?
             .mask(&signed_packet.user_id.to_identifier())?
             .absorb(&Bytes::new(signed_packet.public_payload))?
@@ -115,15 +113,15 @@ where
 }
 
 #[derive(PartialEq, Eq, Hash)]
-pub(crate) struct Unwrap<'a, F> {
-    initial_state: &'a mut Spongos<F>,
+pub(crate) struct Unwrap<'a> {
+    initial_state: &'a mut Spongos,
     public_payload: Vec<u8>,
     masked_payload: Vec<u8>,
     publisher_id: Identifier,
 }
 
-impl<'a, F> Unwrap<'a, F> {
-    pub(crate) fn new(initial_state: &'a mut Spongos<F>) -> Self {
+impl<'a> Unwrap<'a> {
+    pub(crate) fn new(initial_state: &'a mut Spongos) -> Self {
         Self {
             initial_state,
             public_payload: Default::default(),
@@ -146,12 +144,11 @@ impl<'a, F> Unwrap<'a, F> {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, IS> ContentUnwrap<Unwrap<'a, F>> for unwrap::Context<F, IS>
+impl<'a, IS> ContentUnwrap<Unwrap<'a>> for unwrap::Context<IS>
 where
-    F: PRP,
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, signed_packet: &mut Unwrap<F>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, signed_packet: &mut Unwrap) -> Result<&mut Self> {
         self.join(signed_packet.initial_state)?
             .mask(&mut signed_packet.publisher_id)?
             .absorb(Bytes::new(&mut signed_packet.public_payload))?

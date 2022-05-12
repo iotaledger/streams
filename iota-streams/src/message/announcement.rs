@@ -87,9 +87,8 @@ impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
 }
 
 #[async_trait(?Send)]
-impl<'a, F, OS> ContentWrap<Wrap<'a>> for wrap::Context<F, OS>
+impl<'a, OS> ContentWrap<Wrap<'a>> for wrap::Context<OS>
 where
-    F: PRP,
     OS: io::OStream,
 {
     async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
@@ -139,7 +138,7 @@ impl Unwrap {
 }
 
 #[async_trait(?Send)]
-impl<F, IS> ContentUnwrap<Unwrap> for unwrap::Context<F, IS>
+impl<'a, IS, F> ContentUnwrap<Unwrap> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,

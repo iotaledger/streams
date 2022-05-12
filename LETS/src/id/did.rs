@@ -277,7 +277,7 @@ impl Mask<&DID> for sizeof::Context {
     }
 }
 
-impl<F, OS> Mask<&DID> for wrap::Context<F, OS>
+impl<'a, OS, F> Mask<&DID> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -289,7 +289,7 @@ where
     }
 }
 
-impl<F, IS> Mask<&mut DID> for unwrap::Context<F, IS>
+impl<'a, IS, F> Mask<&mut DID> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,

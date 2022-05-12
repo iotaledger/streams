@@ -28,14 +28,14 @@ use crate::{
 
 /// Message context preparsed for unwrapping.
 #[derive(Clone, PartialEq, Eq, Hash, Default)]
-pub struct PreparsedMessage<F = KeccakF1600, Address = link::MsgId> {
+pub struct PreparsedMessage<Address = link::MsgId, F = KeccakF1600> {
     transport_msg: TransportMessage,
     header: HDF<Address>,
     spongos: Spongos<F>,
     cursor: usize,
 }
 
-impl<F, Address> PreparsedMessage<F, Address> {
+impl<Address, F> PreparsedMessage<Address, F> {
     pub(crate) fn new(
         transport_msg: TransportMessage,
         header: HDF<Address>,
@@ -83,7 +83,7 @@ impl<F, Address> PreparsedMessage<F, Address> {
 
     pub async fn unwrap<Content>(self, content: Content) -> Result<(Message<Address, Content>, Spongos<F>)>
     where
-        for<'a> unwrap::Context<F, &'a [u8]>: ContentUnwrap<PCF<Content>>,
+        for<'a> unwrap::Context<&'a [u8], F>: ContentUnwrap<PCF<Content>>,
         F: PRP,
     {
         let mut pcf = PCF::<()>::default().with_content(content);
@@ -98,9 +98,9 @@ impl<F, Address> PreparsedMessage<F, Address> {
     }
 }
 
-impl<F, Link> fmt::Debug for PreparsedMessage<F, Link>
+impl<Address, F> fmt::Debug for PreparsedMessage<Address, F>
 where
-    Link: fmt::Debug,
+    Address: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

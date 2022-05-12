@@ -23,35 +23,35 @@ use crate::{
     },
 };
 
-impl<F: PRP, OS> Absorb<External<Uint8>> for Context<F, OS> {
+impl<'a, F: PRP, OS> Absorb<External<Uint8>> for Context<OS, F> {
     fn absorb(&mut self, u: External<Uint8>) -> Result<&mut Self> {
         self.spongos.absorb(u.into_inner().to_bytes());
         Ok(self)
     }
 }
 
-impl<F: PRP, OS> Absorb<External<Uint16>> for Context<F, OS> {
+impl<'a, F: PRP, OS> Absorb<External<Uint16>> for Context<OS, F> {
     fn absorb(&mut self, u: External<Uint16>) -> Result<&mut Self> {
         self.spongos.absorb(u.into_inner().to_bytes());
         Ok(self)
     }
 }
 
-impl<F: PRP, OS> Absorb<External<Uint32>> for Context<F, OS> {
+impl<'a, F: PRP, OS> Absorb<External<Uint32>> for Context<OS, F> {
     fn absorb(&mut self, u: External<Uint32>) -> Result<&mut Self> {
         self.spongos.absorb(u.into_inner().to_bytes());
         Ok(self)
     }
 }
 
-impl<F: PRP, OS> Absorb<External<Uint64>> for Context<F, OS> {
+impl<'a, F: PRP, OS> Absorb<External<Uint64>> for Context<OS, F> {
     fn absorb(&mut self, u: External<Uint64>) -> Result<&mut Self> {
         self.spongos.absorb(u.into_inner().to_bytes());
         Ok(self)
     }
 }
 
-impl<F: PRP, OS> Absorb<External<Size>> for Context<F, OS> {
+impl<'a, F: PRP, OS> Absorb<External<Size>> for Context<OS, F> {
     fn absorb(&mut self, size: External<Size>) -> Result<&mut Self> {
         size.into_inner().encode(|byte| {
             self.spongos.absorb(&[byte]);
@@ -61,14 +61,14 @@ impl<F: PRP, OS> Absorb<External<Size>> for Context<F, OS> {
     }
 }
 
-impl<'a, F: PRP, T: AsRef<[u8]>, OS> Absorb<External<NBytes<&'a T>>> for Context<F, OS> {
+impl<'a, F: PRP, T: AsRef<[u8]>, OS> Absorb<External<NBytes<&'a T>>> for Context<OS, F> {
     fn absorb(&mut self, bytes: External<NBytes<&'a T>>) -> Result<&mut Self> {
         self.spongos.absorb(bytes);
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, T, OS> Absorb<External<&'a NBytes<T>>> for Context<F, OS>
+impl<'a, F: PRP, T, OS> Absorb<External<&'a NBytes<T>>> for Context<OS, F>
 where
     Self: Absorb<External<NBytes<&'a T>>>,
 {
@@ -77,14 +77,14 @@ where
     }
 }
 
-impl<'a, F: PRP, OS> Absorb<External<&'a ed25519::PublicKey>> for Context<F, OS> {
+impl<'a, F: PRP, OS> Absorb<External<&'a ed25519::PublicKey>> for Context<OS, F> {
     fn absorb(&mut self, public_key: External<&'a ed25519::PublicKey>) -> Result<&mut Self> {
         self.spongos.absorb(public_key);
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS> Absorb<External<&'a x25519::PublicKey>> for Context<F, OS> {
+impl<'a, F: PRP, OS> Absorb<External<&'a x25519::PublicKey>> for Context<OS, F> {
     fn absorb(&mut self, public_key: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
         self.spongos.absorb(public_key);
         Ok(self)
@@ -92,7 +92,7 @@ impl<'a, F: PRP, OS> Absorb<External<&'a x25519::PublicKey>> for Context<F, OS> 
 }
 
 // Implement &External<T> for any External<&T> implementation
-impl<'a, T, F, OS> Absorb<&'a External<T>> for Context<F, OS>
+impl<'a, T, F, OS> Absorb<&'a External<T>> for Context<OS, F>
 where
     Self: Absorb<External<&'a T>>,
 {

@@ -3,13 +3,13 @@ use crate::ddml::commands::{
     Fork,
 };
 
-impl<'a, F, IS> Fork<'a> for Context<F, IS>
+impl<'a, F, IS> Fork<'a> for Context<IS, F>
 where
     F: Clone,
     IS: 'a,
 {
-    type Forked = Context<F, &'a mut IS>;
-    fn fork(&'a mut self) -> Context<F, &'a mut IS> {
+    type Forked = Context<&'a mut IS, F>;
+    fn fork(&'a mut self) -> Context<&'a mut IS, F> {
         let fork = self.spongos.fork();
         Context::new_with_spongos(self.stream_mut(), fork)
     }

@@ -70,7 +70,7 @@ impl<Address, Payload> Message<Address, Payload> {
     pub async fn wrap<F>(&mut self) -> Result<(TransportMessage, Spongos<F>)>
     where
         F: PRP + Default,
-        for<'b> wrap::Context<F, &'b mut [u8]>: ContentWrap<HDF<Address>> + ContentWrap<PCF<Payload>>,
+        for<'b> wrap::Context<&'b mut [u8], F>: ContentWrap<HDF<Address>> + ContentWrap<PCF<Payload>>,
         sizeof::Context: ContentSizeof<HDF<Address>> + ContentSizeof<PCF<Payload>>,
     {
         let mut ctx = sizeof::Context::new();

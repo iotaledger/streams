@@ -3,7 +3,10 @@ use anyhow::Result;
 
 use crate::{
     core::{
-        prp::PRP,
+        prp::{
+            keccak::KeccakF1600,
+            PRP,
+        },
         spongos::Spongos,
     },
     ddml::types::{
@@ -15,12 +18,12 @@ use crate::{
     },
 };
 
-pub struct Context<F, OS> {
+pub struct Context<OS, F = KeccakF1600> {
     spongos: Spongos<F>,
     stream: OS,
 }
 
-impl<F, OS> Context<F, OS> {
+impl<OS, F> Context<OS, F> {
     pub fn new(stream: OS) -> Self
     where
         F: Default,
