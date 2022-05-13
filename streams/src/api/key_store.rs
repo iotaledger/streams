@@ -1,5 +1,10 @@
 // Rust
 use core::fmt;
+use alloc::vec::Vec;
+use anyhow::{
+    anyhow,
+    Result,
+};
 
 // 3rd-party
 use hashbrown::HashMap;
@@ -9,8 +14,142 @@ use crypto::keys::x25519;
 
 // Streams
 use lets::id::{Identifier, Psk, PskId};
+=======
+use LETS::{
+    id::{
+        Identifier,
+        Psk,
+        PskId,
+    },
+    message::topic::Topic,
+};
+>>>>>>> First pass branching:iota-streams/src/api/key_store.rs
 
 // Local
+
+#[derive(Default, Clone, PartialEq, Eq)]
+pub(crate) struct BranchStore(HashMap<Topic, KeyStore>);
+
+impl BranchStore {
+    pub(crate) fn new() -> Self {
+        Default::default()
+    }
+
+    pub(crate) fn new_branch(&mut self, topic: Topic) -> bool {
+        self.0.insert(topic, KeyStore::default()).is_none()
+    }
+
+    pub(crate) fn topics(&self) -> Vec<&Topic> {
+        self.0.keys().collect()
+    }
+
+    pub(crate) fn is_cursor_tracked(&self, topic: &Topic, id: &Identifier) -> bool {
+        self.get_branch(topic).map_or(false, |branch| branch.cursors.contains_key(id))
+    }
+
+<<<<<<< HEAD:streams/src/api/key_store.rs
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + Clone + '_ {
+        self.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor))
+=======
+    pub(crate) fn remove_from_all(&mut self, id: &Identifier) -> bool {
+        self.0.iter_mut()
+            .fold(false, |acc, (_topic, branch)| acc || branch.remove(id))
+    }
+
+    pub(crate) fn remove_psk_from_all(&mut self, pskid: PskId) -> bool {
+        self.0.iter_mut()
+            .fold(false, |acc, (_topic, branch)| acc || branch.remove_psk(pskid))
+>>>>>>> First pass branching:iota-streams/src/api/key_store.rs
+    }
+
+    pub(crate) fn insert_branch(&mut self, topic: Topic, branch: KeyStore) -> bool {
+        self.0.insert(topic, branch).is_none()
+    }
+
+    pub(crate) fn get_branch(&self, topic: &Topic) -> Result<&KeyStore> {
+        self.0.get(topic).ok_or(anyhow!("Branch not found in store"))
+    }
+
+    pub(crate) fn get_branch_mut(&mut self, topic: &Topic) -> Result<&mut KeyStore> {
+        self.0.get_mut(topic).ok_or(anyhow!("Branch not found in store"))
+    }
+
+    pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
+        self.get_branch(topic).ok().and_then(|branch| branch.cursors.get(id).copied())
+    }
+
+    pub(crate) fn cursors(
+        &self,
+        topic: &Topic,
+    ) -> Result<impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + Clone + '_> {
+        self.get_branch(topic)
+            .map(|branch| branch.cursors.iter()
+                .map(|(identifier, cursor)| (*identifier, *cursor))
+            )
+    }
+
+    pub(crate) fn keys(
+        &self,
+        topic: &Topic,
+    ) -> Result<impl Iterator<Item = (Identifier, x25519::PublicKey)> + ExactSizeIterator + Clone + '_> {
+        self.get_branch(topic)
+            .map(|branch| branch.keys.iter()
+                .map(|(identifier, key)| (*identifier, *key))
+            )
+    }
+
+<<<<<<< HEAD:streams/src/api/key_store.rs
+    pub(crate) fn insert_psk(&mut self, id: PskId, psk: Psk) -> bool {
+        self.psks.insert(id, psk).is_none()
+    }
+=======
+
+    pub(crate) fn psks(
+        &self,
+        topic: &Topic,
+    ) -> Result<impl Iterator<Item = (PskId, Psk)> + ExactSizeIterator + Clone + '_> {
+        self.get_branch(topic)
+            .map(|branch| branch.psks.iter()
+                .map(|(pskid, psk)| (*pskid, *psk))
+            )
+    }
+
+    pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> bool {
+        self.get_branch_mut(topic)
+            .map_or(false, |branch| branch.cursors.insert(id, cursor).is_none())
+    }
+
+
+    pub(crate) fn insert_key(&mut self, topic: &Topic, id: Identifier, xkey: x25519::PublicKey) -> bool {
+        self.get_branch_mut(topic)
+            .map_or(false, |branch| branch.keys.insert(id, xkey).is_none())
+    }
+
+    pub(crate) fn insert_psk(&mut self, topic: &Topic, id: PskId, psk: Psk) -> bool {
+        self.get_branch_mut(topic)
+            .map_or(false, |branch| branch.psks.insert(id, psk).is_none())
+    }
+
+    pub(crate) fn remove_cursor(&mut self, topic: &Topic, id: &Identifier) -> bool {
+        self.get_branch_mut(topic)
+            .map_or(false, |branch| branch.remove(id))
+    }
+
+    pub(crate) fn get_key(&self, topic: &Topic, identifier: &Identifier) -> Option<&x25519::PublicKey> {
+        self.get_branch(&topic).ok().and_then(|branch| branch.keys.get(identifier))
+    }
+
+    pub(crate) fn get_exchange_key(&self, topic: &Topic, identifier: &Identifier) -> Option<&[u8]> {
+        self.get_branch(topic).ok().and_then(|branch| {
+            match identifier {
+                Identifier::PskId(pskid) => branch.psks.get(pskid).map(AsRef::as_ref),
+                _ => branch.keys.get(identifier).map(AsRef::as_ref),
+            }
+        })
+    }
+
+}
+
 
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct KeyStore {
@@ -24,46 +163,20 @@ impl KeyStore {
         Default::default()
     }
 
-    pub(crate) fn is_cursor_tracked(&self, id: &Identifier) -> bool {
-        self.cursors.contains_key(id)
+
+    fn contains_psk(&self, pskid: &PskId) -> bool {
+        self.psks.contains_key(pskid)
     }
 
-    pub(crate) fn get_cursor(&self, id: &Identifier) -> Option<usize> {
-        self.cursors.get(id).copied()
+    fn get_psk(&self, pskid: &PskId) -> Option<&Psk> {
+        self.psks.get(pskid)
     }
 
-    pub(crate) fn insert_cursor(&mut self, id: Identifier, cursor: usize) -> bool {
-        self.cursors.insert(id, cursor).is_none()
-    }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + Clone + '_ {
-        self.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor))
-    }
-
-    pub(crate) fn get_key(&self, identifier: &Identifier) -> Option<&x25519::PublicKey> {
-        self.keys.get(identifier)
-    }
-
-    pub(crate) fn insert_key(&mut self, id: Identifier, xkey: x25519::PublicKey) -> bool {
-        self.keys.insert(id, xkey).is_none()
-    }
-
-    pub(crate) fn keys(
-        &self,
-    ) -> impl Iterator<Item = (Identifier, x25519::PublicKey)> + ExactSizeIterator + Clone + '_ {
-        self.keys.iter().map(|(identifier, key)| (*identifier, *key))
-    }
-
-    pub(crate) fn insert_psk(&mut self, id: PskId, psk: Psk) -> bool {
-        self.psks.insert(id, psk).is_none()
-    }
+>>>>>>> First pass branching:iota-streams/src/api/key_store.rs
 
     pub(crate) fn remove_psk(&mut self, pskid: PskId) -> bool {
         self.psks.remove(&pskid).is_some()
-    }
-
-    pub(crate) fn psks(&self) -> impl Iterator<Item = (PskId, Psk)> + ExactSizeIterator + Clone + '_ {
-        self.psks.iter().map(|(pskid, psk)| (*pskid, *psk))
     }
 
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
@@ -77,13 +190,6 @@ impl KeyStore {
             .map(Into::into)
             .chain(self.keys.keys().copied())
     }
-
-    pub(crate) fn get_exchange_key(&self, identifier: &Identifier) -> Option<&[u8]> {
-        match identifier {
-            Identifier::PskId(pskid) => self.psks.get(pskid).map(AsRef::as_ref),
-            _ => self.keys.get(identifier).map(AsRef::as_ref),
-        }
-    }
 }
 
 impl fmt::Debug for KeyStore {
@@ -95,6 +201,16 @@ impl fmt::Debug for KeyStore {
         writeln!(f, "* PSKs:")?;
         for pskid in self.psks.keys() {
             writeln!(f, "\t<{:x}>", pskid)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Debug for BranchStore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "* branches:")?;
+        for topic in self.topics() {
+            writeln!(f, "\t{:?} => \n\t{:?}", topic, self.get_branch(topic).unwrap())?;
         }
         Ok(())
     }

@@ -1,4 +1,8 @@
-use alloc::boxed::Box;
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
+use core::convert::TryInto;
 
 use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
@@ -21,6 +25,7 @@ use crate::{
         version::{HDF_ID, STREAMS_1_VER, UTF8},
     },
 };
+use crate::message::topic::Topic;
 
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -38,6 +43,7 @@ pub struct HDF {
     pub linked_msg_address: Option<MsgId>,
     pub sequence: usize,
     pub publisher: Identifier,
+    pub topic: Topic,
 }
 
 impl Default for HDF {
@@ -52,12 +58,13 @@ impl Default for HDF {
             linked_msg_address: Default::default(),
             sequence: 0,
             publisher: Default::default(),
+            topic: Default::default(),
         }
     }
 }
 
 impl HDF {
-    pub fn new(message_type: u8, sequence: usize, publisher: Identifier) -> Result<Self> {
+    pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: Topic) -> Result<Self> {
         ensure!(
             message_type >> 4 == 0,
             anyhow!(
@@ -75,6 +82,7 @@ impl HDF {
             linked_msg_address: None,
             sequence,
             publisher,
+            topic,
         })
     }
 
@@ -118,6 +126,10 @@ impl HDF {
     pub fn linked_msg_address(&self) -> Option<MsgId> {
         self.linked_msg_address
     }
+
+    pub fn topic(&self) -> &Topic {
+        &self.topic
+    }
 }
 
 #[async_trait(?Send)]
@@ -132,6 +144,7 @@ impl ContentSizeof<HDF> for sizeof::Context {
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
+            .absorb(&NBytes::new(hdf.topic.inner()))?
             .mask(&hdf.publisher)?
             .skip(Size::new(hdf.sequence))?;
 
@@ -168,6 +181,7 @@ where
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
+            .absorb(&NBytes::new(hdf.topic.inner()))?
             .mask(&hdf.publisher)?
             .skip(Size::new(hdf.sequence))?;
 
@@ -190,6 +204,7 @@ where
         let mut frame_type = Uint8::default();
         let mut payload_frame_count_bytes = NBytes::<[u8; 3]>::default();
         let mut seq_num = Size::default();
+        let mut topic = NBytes::<[u8; 32]>::default();
 
         self.absorb(&mut encoding)?
             .absorb(&mut version)?
@@ -217,6 +232,7 @@ where
                 anyhow!("first 2 bits of payload-frame-count are reserved"),
             )?
             .absorb(Maybe::new(&mut hdf.linked_msg_address))?
+            .absorb(&mut topic)?
             .mask(&mut hdf.publisher)?
             .skip(&mut seq_num)?;
 
@@ -232,7 +248,7 @@ where
         x[2] = payload_frame_count_bytes[1];
         x[3] = payload_frame_count_bytes[2];
         hdf.payload_frame_count = u32::from_be_bytes(x);
-
+        hdf.topic = topic.as_slice().try_into()?;
         hdf.sequence = seq_num.inner();
 
         Ok(self)

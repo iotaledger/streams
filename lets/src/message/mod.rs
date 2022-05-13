@@ -12,6 +12,8 @@ mod version;
 /// Linked Message with header already parsed
 mod preparsed;
 
+pub mod topic;
+
 mod message;
 
 pub use content::{
