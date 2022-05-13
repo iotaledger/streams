@@ -125,7 +125,7 @@ impl<Content> PCF<Content> {
 }
 
 #[async_trait(?Send)]
-impl<'a, Content> ContentSizeof<PCF<Content>> for sizeof::Context
+impl<Content> ContentSizeof<PCF<Content>> for sizeof::Context
 where
     sizeof::Context: ContentSizeof<Content>,
 {
@@ -227,7 +227,7 @@ impl From<NBytes<[u8; 3]>> for PayloadFrameNum {
     }
 }
 
-impl<'a, OS, F> Skip<PayloadFrameNum> for wrap::Context<OS, F>
+impl<OS, F> Skip<PayloadFrameNum> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,

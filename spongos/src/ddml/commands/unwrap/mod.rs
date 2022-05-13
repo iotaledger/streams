@@ -76,7 +76,7 @@ impl<IS, F> Context<IS, F> {
     }
 }
 
-impl<'a, IS, F> fmt::Debug for Context<IS, F> {
+impl<IS, F> fmt::Debug for Context<IS, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{header: {:?}, ctx: {:?}}}", "self.header", "self.ctx")
     }

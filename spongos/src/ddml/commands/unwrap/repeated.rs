@@ -5,7 +5,7 @@ use crate::ddml::commands::{
     Repeated,
 };
 
-impl<'a, C, F, IS> Repeated<usize, C> for Context<IS, F>
+impl<C, F, IS> Repeated<usize, C> for Context<IS, F>
 where
     C: for<'b> FnMut(&'b mut Self) -> Result<&'b mut Self>,
 {

@@ -49,35 +49,35 @@ impl<'a, F: PRP, OS: io::OStream> Wrap for AbsorbContext<'a, F, OS> {
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Absorb<Uint8> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Absorb<Uint8> for Context<OS, F> {
     fn absorb(&mut self, u: Uint8) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_u8(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Absorb<Uint16> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Absorb<Uint16> for Context<OS, F> {
     fn absorb(&mut self, u: Uint16) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_u16(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Absorb<Uint32> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Absorb<Uint32> for Context<OS, F> {
     fn absorb(&mut self, u: Uint32) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_u32(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Absorb<Uint64> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Absorb<Uint64> for Context<OS, F> {
     fn absorb(&mut self, u: Uint64) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_u64(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Absorb<Size> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Absorb<Size> for Context<OS, F> {
     fn absorb(&mut self, size: Size) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_size(size)?;
         Ok(self)
@@ -139,7 +139,7 @@ impl<'a, F: PRP, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<OS, 
     }
 }
 
-impl<'a, F, OS, T> Absorb<Maybe<Option<T>>> for Context<OS, F>
+impl<F, OS, T> Absorb<Maybe<Option<T>>> for Context<OS, F>
 where
     Self: Absorb<T> + Absorb<Uint8>,
 {

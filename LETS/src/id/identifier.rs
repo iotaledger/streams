@@ -220,7 +220,7 @@ impl Mask<&Identifier> for sizeof::Context {
     }
 }
 
-impl<'a, OS, F> Mask<&Identifier> for wrap::Context<OS, F>
+impl<OS, F> Mask<&Identifier> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -247,7 +247,7 @@ where
     }
 }
 
-impl<'a, IS, F> Mask<&mut Identifier> for unwrap::Context<IS, F>
+impl<IS, F> Mask<&mut Identifier> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -280,7 +280,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<'a, IS, F> ContentVerify<Identifier> for unwrap::Context<IS, F>
+impl<IS, F> ContentVerify<Identifier> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -354,7 +354,7 @@ impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
 }
 
 #[async_trait(?Send)]
-impl<'a, OS, F> ContentEncrypt<Identifier> for wrap::Context<OS, F>
+impl<OS, F> ContentEncrypt<Identifier> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,

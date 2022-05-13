@@ -134,54 +134,54 @@ impl UpperHex for PskId {
     }
 }
 
-impl<'a> Mask<&'a PskId> for sizeof::Context {
-    fn mask(&mut self, pskid: &'a PskId) -> Result<&mut Self> {
+impl Mask<&PskId> for sizeof::Context {
+    fn mask(&mut self, pskid: &PskId) -> Result<&mut Self> {
         self.mask(NBytes::new(pskid))
     }
 }
 
-impl<'a, F, OS> Mask<&'a PskId> for wrap::Context<OS, F>
+impl<OS, F> Mask<&PskId> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, pskid: &'a PskId) -> Result<&mut Self> {
+    fn mask(&mut self, pskid: &PskId) -> Result<&mut Self> {
         self.mask(NBytes::new(pskid))
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut PskId> for unwrap::Context<IS, F>
+impl<IS, F> Mask<&mut PskId> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, pskid: &'a mut PskId) -> Result<&mut Self> {
+    fn mask(&mut self, pskid: &mut PskId) -> Result<&mut Self> {
         self.mask(NBytes::new(pskid))
     }
 }
 
-impl<'a> Mask<&'a Psk> for sizeof::Context {
-    fn mask(&mut self, psk: &'a Psk) -> Result<&mut Self> {
+impl Mask<&Psk> for sizeof::Context {
+    fn mask(&mut self, psk: &Psk) -> Result<&mut Self> {
         self.mask(NBytes::new(psk))
     }
 }
 
-impl<'a, F, OS> Mask<&'a Psk> for wrap::Context<OS, F>
+impl<OS, F> Mask<&Psk> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, psk: &'a Psk) -> Result<&mut Self> {
+    fn mask(&mut self, psk: &Psk) -> Result<&mut Self> {
         self.mask(NBytes::new(psk))
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut Psk> for unwrap::Context<IS, F>
+impl<IS, F> Mask<&mut Psk> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, psk: &'a mut Psk) -> Result<&mut Self> {
+    fn mask(&mut self, psk: &mut Psk) -> Result<&mut Self> {
         self.mask(NBytes::new(psk))
     }
 }

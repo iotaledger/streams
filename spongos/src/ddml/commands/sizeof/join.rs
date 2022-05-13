@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Join does not take any space in the binary stream.
-impl<'a, F> Join<F> for Context {
+impl<F> Join<F> for Context {
     fn join(&mut self, _joinee: &mut Spongos<F>) -> Result<&mut Self> {
         Ok(self)
     }

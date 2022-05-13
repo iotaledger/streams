@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Commit Spongos.
-impl<'a, F: PRP, OS> Commit for Context<OS, F> {
+impl<F: PRP, OS> Commit for Context<OS, F> {
     fn commit(&mut self) -> Result<&mut Self> {
         self.spongos.commit();
         Ok(self)

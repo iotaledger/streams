@@ -49,7 +49,7 @@ impl<'a, F: PRP, IS: io::IStream> AbsorbContext<'a, F, IS> {
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Unwrap for AbsorbContext<'_, F, IS> {
+impl<F: PRP, IS: io::IStream> Unwrap for AbsorbContext<'_, F, IS> {
     fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self>
     where
         T: AsMut<[u8]>,
@@ -63,35 +63,35 @@ impl<'a, F: PRP, IS: io::IStream> Unwrap for AbsorbContext<'_, F, IS> {
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Absorb<&mut Uint8> for Context<IS, F> {
+impl<F: PRP, IS: io::IStream> Absorb<&mut Uint8> for Context<IS, F> {
     fn absorb(&mut self, u: &mut Uint8) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_u8(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Absorb<&mut Uint16> for Context<IS, F> {
+impl<F: PRP, IS: io::IStream> Absorb<&mut Uint16> for Context<IS, F> {
     fn absorb(&mut self, u: &mut Uint16) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_u16(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Absorb<&mut Uint32> for Context<IS, F> {
+impl<F: PRP, IS: io::IStream> Absorb<&mut Uint32> for Context<IS, F> {
     fn absorb(&mut self, u: &mut Uint32) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_u32(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Absorb<&mut Uint64> for Context<IS, F> {
+impl<F: PRP, IS: io::IStream> Absorb<&mut Uint64> for Context<IS, F> {
     fn absorb(&mut self, u: &mut Uint64) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_u64(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Absorb<&mut Size> for Context<IS, F> {
+impl<F: PRP, IS: io::IStream> Absorb<&mut Size> for Context<IS, F> {
     fn absorb(&mut self, size: &mut Size) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_size(size)?;
         Ok(self)
@@ -120,7 +120,7 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut Bytes<Vec<u8>>> for Context<IS,
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Absorb<Bytes<&mut Vec<u8>>> for Context<IS, F> {
+impl<F: PRP, IS: io::IStream> Absorb<Bytes<&mut Vec<u8>>> for Context<IS, F> {
     fn absorb(&mut self, mut bytes: Bytes<&mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.absorb(&mut size)?;

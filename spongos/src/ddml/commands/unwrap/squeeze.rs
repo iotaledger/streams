@@ -27,7 +27,7 @@ impl<'a, F: PRP, IS: io::IStream> Squeeze<&'a Mac> for Context<IS, F> {
     }
 }
 
-impl<'a, F: PRP, IS: io::IStream> Squeeze<Mac> for Context<IS, F> {
+impl<F: PRP, IS: io::IStream> Squeeze<Mac> for Context<IS, F> {
     fn squeeze(&mut self, val: Mac) -> Result<&mut Self> {
         self.squeeze(&val)
     }

@@ -63,11 +63,11 @@ impl Absorb<Size> for Context {
 }
 
 /// `bytes` has variable size thus the size is encoded before the content bytes.
-impl<'a, T> Absorb<Bytes<&'a T>> for Context
+impl<T> Absorb<Bytes<&T>> for Context
 where
     T: AsRef<[u8]>,
 {
-    fn absorb(&mut self, bytes: Bytes<&'a T>) -> Result<&mut Self> {
+    fn absorb(&mut self, bytes: Bytes<&T>) -> Result<&mut Self> {
         let bytes_size = Size::new(bytes.len());
         self.absorb(bytes_size)?;
         self.size += bytes.len();
@@ -85,8 +85,8 @@ where
 }
 
 /// `byte [n]` is fixed-size and is encoded with `n` bytes.
-impl<'a, T: AsRef<[u8]>> Absorb<NBytes<&'a T>> for Context {
-    fn absorb(&mut self, nbytes: NBytes<&'a T>) -> Result<&mut Self> {
+impl<T: AsRef<[u8]>> Absorb<NBytes<&T>> for Context {
+    fn absorb(&mut self, nbytes: NBytes<&T>) -> Result<&mut Self> {
         self.size += nbytes.as_ref().len();
         Ok(self)
     }
@@ -102,16 +102,16 @@ where
 }
 
 /// ed25519 public key has fixed size of 32 bytes.
-impl<'a> Absorb<&'a ed25519::PublicKey> for Context {
-    fn absorb(&mut self, _pk: &'a ed25519::PublicKey) -> Result<&mut Self> {
+impl Absorb<&ed25519::PublicKey> for Context {
+    fn absorb(&mut self, _pk: &ed25519::PublicKey) -> Result<&mut Self> {
         self.size += ed25519::PUBLIC_KEY_LENGTH;
         Ok(self)
     }
 }
 
 /// X25519 public key has fixed size of 32 bytes.
-impl<'a> Absorb<&'a x25519::PublicKey> for Context {
-    fn absorb(&mut self, _pk: &'a x25519::PublicKey) -> Result<&mut Self> {
+impl Absorb<&x25519::PublicKey> for Context {
+    fn absorb(&mut self, _pk: &x25519::PublicKey) -> Result<&mut Self> {
         self.size += x25519::PUBLIC_KEY_LENGTH;
         Ok(self)
     }
@@ -186,8 +186,8 @@ where
 }
 
 // TODO: REMOVE
-impl<'a> Absorb<&'a ()> for Context {
-    fn absorb(&mut self, _: &'a ()) -> Result<&mut Self> {
+impl Absorb<&()> for Context {
+    fn absorb(&mut self, _: &()) -> Result<&mut Self> {
         Ok(self)
     }
 }

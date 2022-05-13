@@ -151,7 +151,7 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<I
     }
 }
 
-impl<'a, IS, F> Mask<&mut Spongos<F>> for Context<IS, F>
+impl<IS, F> Mask<&mut Spongos<F>> for Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,

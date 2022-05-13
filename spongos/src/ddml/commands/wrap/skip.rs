@@ -41,35 +41,35 @@ impl<'a, F, OS: io::OStream> Wrap for SkipContext<'a, F, OS> {
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Uint8> for Context<OS, F> {
+impl<F, OS: io::OStream> Skip<Uint8> for Context<OS, F> {
     fn skip(&mut self, u: Uint8) -> Result<&mut Self> {
         SkipContext::new(self).wrap_u8(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Uint16> for Context<OS, F> {
+impl<F, OS: io::OStream> Skip<Uint16> for Context<OS, F> {
     fn skip(&mut self, u: Uint16) -> Result<&mut Self> {
         SkipContext::new(self).wrap_u16(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Uint32> for Context<OS, F> {
+impl<F, OS: io::OStream> Skip<Uint32> for Context<OS, F> {
     fn skip(&mut self, u: Uint32) -> Result<&mut Self> {
         SkipContext::new(self).wrap_u32(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Uint64> for Context<OS, F> {
+impl<F, OS: io::OStream> Skip<Uint64> for Context<OS, F> {
     fn skip(&mut self, u: Uint64) -> Result<&mut Self> {
         SkipContext::new(self).wrap_u64(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F, OS: io::OStream> Skip<Size> for Context<OS, F> {
+impl<F, OS: io::OStream> Skip<Size> for Context<OS, F> {
     fn skip(&mut self, size: Size) -> Result<&mut Self> {
         SkipContext::new(self).wrap_size(size)?;
         Ok(self)

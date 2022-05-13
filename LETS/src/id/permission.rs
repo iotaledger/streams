@@ -52,7 +52,7 @@ impl Mask<&PermissionDuration> for sizeof::Context {
     }
 }
 
-impl<'a, OS, F> Mask<&PermissionDuration> for wrap::Context<OS, F>
+impl<OS, F> Mask<&PermissionDuration> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -68,7 +68,7 @@ where
     }
 }
 
-impl<'a, IS, F> Mask<&mut PermissionDuration> for unwrap::Context<IS, F>
+impl<IS, F> Mask<&mut PermissionDuration> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
@@ -137,8 +137,8 @@ where
     }
 }
 
-impl<'a> Mask<&'a Permissioned<Identifier>> for sizeof::Context {
-    fn mask(&mut self, permission: &'a Permissioned<Identifier>) -> Result<&mut Self> {
+impl Mask<&Permissioned<Identifier>> for sizeof::Context {
+    fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
         match permission {
             Permissioned::Read(identifier) => {
                 let oneof = Uint8::new(0);
@@ -159,12 +159,12 @@ impl<'a> Mask<&'a Permissioned<Identifier>> for sizeof::Context {
     }
 }
 
-impl<'a, F, OS> Mask<&'a Permissioned<Identifier>> for wrap::Context<OS, F>
+impl<OS, F> Mask<&Permissioned<Identifier>> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, permission: &'a Permissioned<Identifier>) -> Result<&mut Self> {
+    fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
         match permission {
             Permissioned::Read(identifier) => {
                 let oneof = Uint8::new(0);
@@ -185,12 +185,12 @@ where
     }
 }
 
-impl<'a, F, IS> Mask<&'a mut Permissioned<Identifier>> for unwrap::Context<IS, F>
+impl<IS, F> Mask<&mut Permissioned<Identifier>> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, permission: &'a mut Permissioned<Identifier>) -> Result<&mut Self> {
+    fn mask(&mut self, permission: &mut Permissioned<Identifier>) -> Result<&mut Self> {
         let mut oneof = Uint8::new(0);
         self.mask(&mut oneof)?;
         match oneof.inner() {

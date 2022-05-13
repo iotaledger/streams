@@ -138,7 +138,7 @@ impl Unwrap {
 }
 
 #[async_trait(?Send)]
-impl<'a, IS, F> ContentUnwrap<Unwrap> for unwrap::Context<IS, F>
+impl<IS, F> ContentUnwrap<Unwrap> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,

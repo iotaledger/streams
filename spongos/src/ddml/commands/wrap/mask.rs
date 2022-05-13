@@ -53,35 +53,35 @@ impl<'a, F: PRP, OS: io::OStream> Wrap for MaskContext<'a, F, OS> {
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Uint8> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Mask<Uint8> for Context<OS, F> {
     fn mask(&mut self, u: Uint8) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u8(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Uint16> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Mask<Uint16> for Context<OS, F> {
     fn mask(&mut self, u: Uint16) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u16(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Uint32> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Mask<Uint32> for Context<OS, F> {
     fn mask(&mut self, u: Uint32) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u32(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Uint64> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Mask<Uint64> for Context<OS, F> {
     fn mask(&mut self, u: Uint64) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u64(u)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, OS: io::OStream> Mask<Size> for Context<OS, F> {
+impl<F: PRP, OS: io::OStream> Mask<Size> for Context<OS, F> {
     fn mask(&mut self, size: Size) -> Result<&mut Self> {
         MaskContext::new(self).wrap_size(size)?;
         Ok(self)
@@ -138,7 +138,7 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<OS, F
     }
 }
 
-impl<'a, OS, F> Mask<&Spongos<F>> for Context<OS, F>
+impl<OS, F> Mask<&Spongos<F>> for Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
@@ -149,7 +149,7 @@ where
     }
 }
 
-impl<'a, F, OS, T> Mask<Maybe<Option<T>>> for Context<OS, F>
+impl<F, OS, T> Mask<Maybe<Option<T>>> for Context<OS, F>
 where
     Self: Mask<T> + Mask<Uint8>,
 {
