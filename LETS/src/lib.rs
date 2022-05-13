@@ -35,7 +35,7 @@ extern crate alloc;
 pub mod message;
 
 /// Message addressing and linking
-pub mod link;
+pub mod address;
 
 /// Transport-related abstractions.
 pub mod transport;

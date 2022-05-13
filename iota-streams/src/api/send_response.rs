@@ -1,10 +1,12 @@
+use LETS::address::Address;
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Default)]
-pub struct SendResponse<Address, TSR> {
+pub struct SendResponse<TSR> {
     address: Address,
     transport_response: TSR,
 }
 
-impl<Address, TSR> SendResponse<Address, TSR> {
+impl<TSR> SendResponse<TSR> {
     pub(crate) fn new(address: Address, transport_response: TSR) -> Self {
         Self {
             address,
@@ -12,18 +14,7 @@ impl<Address, TSR> SendResponse<Address, TSR> {
         }
     }
 
-    pub fn address(&self) -> &Address {
-        &self.address
-    }
-
-    pub fn into_address(self) -> Address {
-        self.address
-    }
-
-    pub fn to_address(&self) -> Address
-    where
-        Address: Copy,
-    {
+    pub fn address(&self) -> Address {
         self.address
     }
 

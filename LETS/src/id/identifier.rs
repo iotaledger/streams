@@ -161,7 +161,6 @@ impl From<PskId> for Identifier {
 
 impl From<Psk> for Identifier {
     fn from(psk: Psk) -> Self {
-        // TODO: REMOVE TYPE PARAMETER OR REMOTE TYPE ARGUMENT ASSUMPTION
         Identifier::PskId(psk.to_pskid())
     }
 }

@@ -10,7 +10,6 @@ use core::{
         LowerHex,
         UpperHex,
     },
-    marker::PhantomData,
     str::FromStr,
 };
 
@@ -21,10 +20,6 @@ use anyhow::{
 };
 
 // IOTA
-use crypto::hashes::{
-    blake2b::Blake2b256,
-    Digest,
-};
 
 // Streams
 use spongos::{
@@ -45,13 +40,7 @@ use spongos::{
 };
 
 // Local
-use crate::{
-    id::Identifier,
-    link::link::{
-        Link,
-        LinkGenerator,
-    },
-};
+use crate::id::Identifier;
 
 /// Abstract representation of a Message Address
 ///
@@ -62,38 +51,13 @@ use crate::{
 /// pseudo-randomly out of the publisher's identifier and the message's sequence
 /// number
 ///
-/// ## Renderings
-/// ### Blake2b hash
-/// A `Address` is used as index of the message over the Transport layer. For that,
-/// its content is hashed using [`Address::to_msg_index()`].
-///
-/// ```
-/// # use LETS::link::Address;
-/// #
-/// # fn main() -> anyhow::Result<()> {
-/// let address = Address::new([172; 40], [171; 12]);
-/// assert_eq!(
-///     address.to_msg_index().as_ref(),
-///     &[
-///         44, 181, 155, 1, 109, 141, 169, 177, 209, 70, 226, 18, 190, 121, 40, 44, 90, 108, 159, 109, 241, 37, 30, 0,
-///         185, 80, 245, 59, 235, 75, 128, 97
-///     ],
-/// );
-/// assert_eq!(
-///     &format!("{}", hex::encode(address.to_msg_index())),
-///     "2cb59b016d8da9b1d146e212be79282c5a6c9f6df1251e00b950f53beb4b8061"
-/// );
-/// #   Ok(())
-/// # }
-/// ```
-///
-/// ### exchangeable encoding
+/// ## exchangeable encoding
 /// In order to exchange an `Address` between application participants, it can be encoded and decoded
 /// using [`Address::to_string()`][Display] (or [`format!()`]) and [`Address::from_str`] (or
 /// [`str::parse()`]). This method encodes the `Address` as a colon-separated string containing the `appaddr` and
 /// `msgid` in hexadecimal:
 /// ```
-/// # use LETS::link::Address;
+/// # use LETS::address::Address;
 /// #
 /// # fn main() -> anyhow::Result<()> {
 /// let address = Address::new([170; 40], [255; 12]);
@@ -131,16 +95,6 @@ impl Address {
             appaddr: appaddr.into(),
             msgid: msgid.into(),
         }
-    }
-
-    /// Hash the content of the [`Address`] using `Blake2b256`
-    pub fn to_blake2b(self) -> [u8; 32] {
-        let hasher = Blake2b256::new();
-        hasher.chain(&self.appaddr).chain(&self.msgid).finalize().into()
-    }
-
-    pub fn to_msg_index(self) -> [u8; 32] {
-        self.to_blake2b()
     }
 
     pub fn relative(self) -> MsgId {
@@ -194,58 +148,6 @@ impl FromStr for Address {
     }
 }
 
-impl Link for Address {
-    type Base = AppAddr;
-    type Relative = MsgId;
-
-    fn base(&self) -> &AppAddr {
-        &self.appaddr
-    }
-
-    fn into_base(self) -> AppAddr {
-        self.appaddr
-    }
-
-    fn relative(&self) -> &MsgId {
-        &self.msgid
-    }
-
-    fn into_relative(self) -> MsgId {
-        self.msgid
-    }
-
-    fn from_parts(appaddr: AppAddr, msgid: MsgId) -> Self {
-        Self::new(appaddr, msgid)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
-pub struct AddressGenerator<F = KeccakF1600>(PhantomData<F>);
-
-impl<'a, F> LinkGenerator<'a, MsgId> for AddressGenerator<F>
-where
-    F: Default + PRP,
-{
-    type Data = (&'a AppAddr, Identifier, usize);
-
-    fn gen(&mut self, (appaddr, identifier, seq_num): (&AppAddr, Identifier, usize)) -> MsgId {
-        let mut s = Spongos::<F>::init();
-        s.absorb(appaddr);
-        s.absorb(identifier);
-        s.absorb(seq_num.to_be_bytes());
-        s.commit();
-        s.squeeze()
-    }
-}
-
-impl<F> LinkGenerator<'_, AppAddr> for AddressGenerator<F> {
-    type Data = (Identifier, usize);
-
-    fn gen(&mut self, (identifier, app_idx): (Identifier, usize)) -> AppAddr {
-        AppAddr::new(identifier, app_idx as u64)
-    }
-}
-
 /// 40 byte Application Instance identifier.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AppAddr([u8; Self::SIZE]);
@@ -253,13 +155,17 @@ pub struct AppAddr([u8; Self::SIZE]);
 impl AppAddr {
     const SIZE: usize = 40;
 
-    pub fn new(id: Identifier, app_idx: u64) -> Self {
+    pub fn new(bytes: [u8; Self::SIZE]) -> Self {
+        Self(bytes)
+    }
+
+    pub fn gen(identifier: Identifier, app_idx: usize) -> AppAddr {
         let mut addr = [0u8; 40];
-        let id_bytes = id.as_bytes();
+        let id_bytes = identifier.as_bytes();
         assert_eq!(id_bytes.len(), 32, "identifier must be 32 bytes long");
         addr[..32].copy_from_slice(id_bytes);
         addr[32..].copy_from_slice(&app_idx.to_be_bytes());
-        Self(addr)
+        Self::new(addr)
     }
 
     /// Get the hexadecimal representation of the appaddr
@@ -336,6 +242,19 @@ pub struct MsgId([u8; Self::SIZE]);
 
 impl MsgId {
     const SIZE: usize = 12;
+
+    pub fn new(bytes: [u8; Self::SIZE]) -> Self {
+        Self(bytes)
+    }
+
+    pub fn gen(appaddr: AppAddr, identifier: Identifier, seq_num: usize) -> MsgId {
+        let mut s = Spongos::<KeccakF1600>::init();
+        s.absorb(appaddr);
+        s.absorb(identifier);
+        s.absorb(seq_num.to_be_bytes());
+        s.commit();
+        s.squeeze()
+    }
 
     /// Get the hexadecimal representation of the MsgId
     fn to_hex_string(self) -> String {

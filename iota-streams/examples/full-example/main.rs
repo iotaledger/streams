@@ -18,19 +18,15 @@ use iota_streams::{
         tangle,
         Transport,
     },
-    Address,
     TransportMessage,
 };
 
 mod branching;
 
-trait GenericTransport:
-    for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage, SendResponse = TransportMessage> + Clone
-{
-}
+trait GenericTransport: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone {}
 
 impl<T> GenericTransport for T where
-    T: for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage, SendResponse = TransportMessage> + Clone
+    T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone
 {
 }
 

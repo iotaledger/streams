@@ -51,8 +51,8 @@ pub use api::{
     user::User,
 };
 pub use LETS::{
+    address::Address,
     id,
-    link::Address,
     message::TransportMessage,
     transport,
 };

@@ -5,14 +5,8 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    fmt::Display,
     future::Future,
-    hash::Hash,
     pin::Pin,
-};
-use spongos::ddml::commands::{
-    unwrap,
-    Absorb,
 };
 
 // 3rd-party
@@ -35,11 +29,11 @@ use hashbrown::HashMap;
 
 // Streams
 use LETS::{
-    id::Identifier,
-    link::{
-        Link,
-        LinkGenerator,
+    address::{
+        Address,
+        MsgId,
     },
+    id::Identifier,
     message::{
         TransportMessage,
         HDF,
@@ -109,17 +103,13 @@ use crate::api::{
 ///
 /// author.create_stream(1)?;
 /// let announcement = author.announce().await?;
-/// subscriber.receive_message(announcement.to_address()).await?;
+/// subscriber.receive_message(announcement.address()).await?;
 /// let first_packet = author
-///     .send_signed_packet(
-///         announcement.to_address().relative(),
-///         b"public payload",
-///         b"masked payload",
-///     )
+///     .send_signed_packet(announcement.address().relative(), b"public payload", b"masked payload")
 ///     .await?;
 /// let second_packet = author
 ///     .send_signed_packet(
-///         first_packet.to_address().relative(),
+///         first_packet.address().relative(),
 ///         b"another public payload",
 ///         b"another masked payload",
 ///     )
@@ -162,31 +152,20 @@ use crate::api::{
 /// network failure, [`Messages::next()`] will return `Err`. It is strongly suggested that, when suitable, use the
 /// methods in [`futures::TryStreamExt`] to make the error-handling much more ergonomic (with the use of `?`) and
 /// shortcircuit the [`futures::Stream`] on the first error.
-pub struct Messages<'a, T, A, AG>(PinBoxFut<'a, (MessagesState<'a, T, A, AG>, Option<Result<Message<A>>>)>)
-where
-    A: Link,
-    A::Relative: Eq + Hash;
+pub struct Messages<'a, T>(PinBoxFut<'a, (MessagesState<'a, T>, Option<Result<Message>>)>);
 
 type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
-struct MessagesState<'a, T, A, AG>
-where
-    A: Link,
-    A::Relative: Eq + Hash,
-{
-    user: &'a mut User<T, A, AG>,
+struct MessagesState<'a, T> {
+    user: &'a mut User<T>,
     ids_stack: Vec<(Identifier, usize)>,
-    msg_queue: HashMap<A::Relative, VecDeque<(A::Relative, TransportMessage)>>,
-    stage: VecDeque<(A::Relative, TransportMessage)>,
+    msg_queue: HashMap<MsgId, VecDeque<(MsgId, TransportMessage)>>,
+    stage: VecDeque<(MsgId, TransportMessage)>,
     successful_round: bool,
 }
 
-impl<'a, T, A, AG> MessagesState<'a, T, A, AG>
-where
-    A: Link,
-    A::Relative: Eq + Hash,
-{
-    fn new(user: &'a mut User<T, A, AG>) -> Self {
+impl<'a, T> MessagesState<'a, T> {
+    fn new(user: &'a mut User<T>) -> Self {
         Self {
             user,
             ids_stack: Vec::new(),
@@ -200,21 +179,13 @@ where
     ///
     /// See [`Messages`] documentation and examples for more details.
     #[async_recursion(?Send)]
-    async fn next(&mut self) -> Option<Result<Message<A>>>
+    async fn next(&mut self) -> Option<Result<Message>>
     where
-        A: Link + Display + Clone,
-        A::Relative: Clone + Eq + Hash + Default,
-        A::Base: Clone,
-        AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
-        for<'b, 'c> unwrap::Context<&'b [u8]>: Absorb<&'c mut A::Relative>,
-        T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
+        T: for<'b> Transport<'b, Msg = TransportMessage>,
     {
         if let Some((relative_address, binary_msg)) = self.stage.pop_front() {
             // Drain stage if not empty...
-            let address = A::from_parts(
-                self.user.stream_address().as_ref()?.base().clone(),
-                relative_address.clone(),
-            );
+            let address = Address::new(self.user.stream_address()?.base(), relative_address);
             match self.user.handle_message(address, binary_msg).await {
                 Ok(Message {
                     header:
@@ -246,7 +217,7 @@ where
                 }
                 Ok(message) => {
                     // Check if message has descendants pending to process and stage them for processing
-                    if let Some(msgs) = self.msg_queue.remove(message.address().relative()) {
+                    if let Some(msgs) = self.msg_queue.remove(&message.address().relative()) {
                         self.stage.extend(msgs);
                     }
 
@@ -268,12 +239,12 @@ where
                     next
                 }
             };
-            let base_address = self.user.stream_address().as_ref()?.base();
-            let rel_address = AG::default().gen((base_address, publisher, cursor + 1));
-            let address = A::from_parts(base_address.clone(), rel_address);
-            match self.user.transport_mut().recv_message(&address).await {
+            let base_address = self.user.stream_address()?.base();
+            let rel_address = MsgId::gen(base_address, publisher, cursor + 1);
+            let address = Address::new(base_address, rel_address);
+            match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {
-                    self.stage.push_back((address.into_relative(), msg));
+                    self.stage.push_back((address.relative(), msg));
                     self.successful_round = true;
                     self.next().await
                 }
@@ -295,16 +266,11 @@ where
     }
 }
 
-impl<'a, T, A, AG> Messages<'a, T, A, AG>
+impl<'a, T> Messages<'a, T>
 where
-    A: Link + Display + Clone,
-    A::Relative: Clone + Eq + Hash + Default,
-    A::Base: Clone,
-    AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
-    for<'b, 'c> unwrap::Context<&'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
+    T: for<'b> Transport<'b, Msg = TransportMessage>,
 {
-    pub(crate) fn new(user: &'a mut User<T, A, AG>) -> Self {
+    pub(crate) fn new(user: &'a mut User<T>) -> Self {
         let mut state = MessagesState::new(user);
         Self(Box::pin(async move {
             let r = state.next().await;
@@ -312,7 +278,7 @@ where
         }))
     }
 
-    pub async fn next(&mut self) -> Option<Result<Message<A>>> {
+    pub async fn next(&mut self) -> Option<Result<Message>> {
         StreamExt::next(self).await
     }
 
@@ -325,19 +291,19 @@ where
     /// for more details.
     pub fn filter_branch<Fut>(
         self,
-        predicate: impl FnMut(&Message<A>) -> Fut + 'a,
-    ) -> impl Stream<Item = Result<Message<A>>> + 'a
+        predicate: impl FnMut(&Message) -> Fut + 'a,
+    ) -> impl Stream<Item = Result<Message>> + 'a
     where
         Fut: Future<Output = Result<bool>> + 'a,
-        Self: TryStream<Ok = Message<A>, Error = anyhow::Error>,
+        Self: TryStream<Ok = Message, Error = anyhow::Error>,
     {
         self.try_skip_while(predicate)
             .scan(None, |branch_last_address, msg| {
                 future::ready(Some(msg.map(|msg| {
-                    let msg_linked_address = msg.header().linked_msg_address().as_ref()?;
-                    let branch_last_address = branch_last_address.get_or_insert_with(|| msg_linked_address.clone());
-                    if msg_linked_address == branch_last_address {
-                        *branch_last_address = msg.address().relative().clone();
+                    let msg_linked_address = msg.header().linked_msg_address()?;
+                    let branch_last_address = branch_last_address.get_or_insert(msg_linked_address);
+                    if msg_linked_address == *branch_last_address {
+                        *branch_last_address = msg.address().relative();
                         Some(msg)
                     } else {
                         None
@@ -348,30 +314,20 @@ where
     }
 }
 
-impl<'a, T, A, AG> From<&'a mut User<T, A, AG>> for Messages<'a, T, A, AG>
+impl<'a, T> From<&'a mut User<T>> for Messages<'a, T>
 where
-    A: Link + Display + Clone,
-    A::Relative: Clone + Eq + Hash + Default,
-    A::Base: Clone,
-    AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
-    for<'b, 'c> unwrap::Context<&'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
+    T: for<'b> Transport<'b, Msg = TransportMessage>,
 {
-    fn from(user: &'a mut User<T, A, AG>) -> Self {
+    fn from(user: &'a mut User<T>) -> Self {
         Self::new(user)
     }
 }
 
-impl<'a, T, A, AG> Stream for Messages<'a, T, A, AG>
+impl<'a, T> Stream for Messages<'a, T>
 where
-    A: Link + Display + Clone,
-    A::Relative: Clone + Eq + Hash + Default,
-    A::Base: Clone,
-    AG: for<'b> LinkGenerator<'b, A::Relative, Data = (&'b A::Base, Identifier, usize)> + Default,
-    for<'b, 'c> unwrap::Context<&'b [u8]>: Absorb<&'c mut A::Relative>,
-    T: for<'b> Transport<'b, Address = &'b A, Msg = TransportMessage>,
+    T: for<'b> Transport<'b, Msg = TransportMessage>,
 {
-    type Item = Result<Message<A>>;
+    type Item = Result<Message>;
 
     fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.0.as_mut().poll(ctx) {
@@ -395,8 +351,8 @@ mod tests {
     use anyhow::Result;
 
     use LETS::{
+        address::Address,
         id::Ed25519,
-        link::Address,
         transport::bucket,
     };
 
@@ -421,12 +377,12 @@ mod tests {
         let keyload_1 = author.send_keyload_for_all_rw(announcement_link.relative()).await?;
         subscriber1.sync().await?;
         let packet_1 = subscriber1
-            .send_signed_packet(keyload_1.to_address().relative(), &p, &p)
+            .send_signed_packet(keyload_1.address().relative(), &p, &p)
             .await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress through the
         // next messages
         let packet_2 = subscriber1
-            .send_signed_packet(packet_1.to_address().relative(), &p, &p)
+            .send_signed_packet(packet_1.address().relative(), &p, &p)
             .await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
@@ -434,11 +390,11 @@ mod tests {
         author.sync().await?;
 
         // This packet has to wait in the `Messages::msg_queue` until `packet` is processed
-        let keyload_2 = author.send_keyload_for_all_rw(packet_2.to_address().relative()).await?;
+        let keyload_2 = author.send_keyload_for_all_rw(packet_2.address().relative()).await?;
 
         subscriber1.sync().await?;
         let last_signed_packet = subscriber1
-            .send_signed_packet(keyload_2.to_address().relative(), &p, &p)
+            .send_signed_packet(keyload_2.address().relative(), &p, &p)
             .await?;
 
         let msgs = subscriber2.fetch_next_messages().await?;
@@ -462,9 +418,9 @@ mod tests {
                     ..
                 }
             ]
-            if address_1 == keyload_1.to_address()
-            && address_2 == keyload_2.to_address()
-            && address_3 == last_signed_packet.to_address()
+            if address_1 == keyload_1.address()
+            && address_2 == keyload_2.address()
+            && address_3 == last_signed_packet.address()
         ));
         Ok(())
     }
@@ -479,8 +435,8 @@ mod tests {
         author.create_stream(10)?;
         let announcement = author.announce().await?;
         let subscriber =
-            subscriber_fixture("subscriber", &mut author, announcement.to_address(), transport.clone()).await?;
-        Ok((author, subscriber, announcement.to_address(), transport))
+            subscriber_fixture("subscriber", &mut author, announcement.address(), transport.clone()).await?;
+        Ok((author, subscriber, announcement.address(), transport))
     }
 
     async fn subscriber_fixture(
@@ -495,7 +451,7 @@ mod tests {
             .build()?;
         subscriber.receive_message(announcement_link).await?;
         let subscription = subscriber.subscribe(announcement_link.relative()).await?;
-        author.receive_message(subscription.to_address()).await?;
+        author.receive_message(subscription.address()).await?;
         Ok(subscriber)
     }
 }

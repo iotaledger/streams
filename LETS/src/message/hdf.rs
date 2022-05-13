@@ -31,6 +31,7 @@ use spongos::{
 };
 
 use crate::{
+    address::MsgId,
     id::Identifier,
     message::{
         content::{
@@ -49,7 +50,7 @@ use crate::{
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[allow(clippy::upper_case_acronyms)]
-pub struct HDF<Address> {
+pub struct HDF {
     encoding: u8,
     pub version: u8,
     // content type is 4 bits
@@ -59,15 +60,12 @@ pub struct HDF<Address> {
     frame_type: u8,
     // frame count is 22 bits
     payload_frame_count: u32,
-    pub linked_msg_address: Option<Address>,
+    pub linked_msg_address: Option<MsgId>,
     pub sequence: usize,
     pub publisher: Identifier,
 }
 
-impl<Address> Default for HDF<Address>
-where
-    Address: Default,
-{
+impl Default for HDF {
     fn default() -> Self {
         Self {
             encoding: UTF8,
@@ -83,7 +81,7 @@ where
     }
 }
 
-impl<Address> HDF<Address> {
+impl HDF {
     pub fn new(message_type: u8, sequence: usize, publisher: Identifier) -> Result<Self> {
         ensure!(
             message_type >> 4 == 0,
@@ -105,7 +103,7 @@ impl<Address> HDF<Address> {
         })
     }
 
-    pub fn with_linked_msg_address(mut self, address: Address) -> Self {
+    pub fn with_linked_msg_address(mut self, address: MsgId) -> Self {
         self.linked_msg_address = Some(address);
         self
     }
@@ -142,17 +140,14 @@ impl<Address> HDF<Address> {
         self.sequence
     }
 
-    pub fn linked_msg_address(&self) -> &Option<Address> {
-        &self.linked_msg_address
+    pub fn linked_msg_address(&self) -> Option<MsgId> {
+        self.linked_msg_address
     }
 }
 
 #[async_trait(?Send)]
-impl<Address> ContentSizeof<HDF<Address>> for sizeof::Context
-where
-    for<'a> Self: Absorb<&'a Address> + Absorb<&'a ()>,
-{
-    async fn sizeof(&mut self, hdf: &HDF<Address>) -> Result<&mut Self> {
+impl ContentSizeof<HDF> for sizeof::Context {
+    async fn sizeof(&mut self, hdf: &HDF) -> Result<&mut Self> {
         let message_type_and_payload_length = NBytes::<[u8; 2]>::default();
         let payload_frame_count = NBytes::<[u8; 3]>::default();
         self.absorb(Uint8::new(hdf.encoding))?
@@ -170,13 +165,12 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, OS, Address> ContentWrap<HDF<Address>> for wrap::Context<OS, F>
+impl<F, OS> ContentWrap<HDF> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
-    Self: for<'a> Absorb<&'a Address> + Absorb<Uint8>,
 {
-    async fn wrap(&mut self, hdf: &mut HDF<Address>) -> Result<&mut Self> {
+    async fn wrap(&mut self, hdf: &mut HDF) -> Result<&mut Self> {
         let message_type_and_payload_length = {
             let mut nbytes = NBytes::<[u8; 2]>::default();
             nbytes[0] = (hdf.message_type << 4) | ((hdf.payload_length >> 8) as u8 & 0b0011);
@@ -207,14 +201,12 @@ where
 }
 
 #[async_trait(?Send)]
-impl<F, IS, Address> ContentUnwrap<HDF<Address>> for unwrap::Context<IS, F>
+impl<F, IS> ContentUnwrap<HDF> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
-    for<'a> unwrap::Context<IS, F>: Absorb<&'a mut Address> + Absorb<&'a mut Uint8>,
-    Address: Default,
 {
-    async fn unwrap(&mut self, mut hdf: &mut HDF<Address>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, mut hdf: &mut HDF) -> Result<&mut Self> {
         let mut encoding = Uint8::default();
         let mut version = Uint8::default();
         // [message_type x 4][reserved x 2][payload_length x 2]

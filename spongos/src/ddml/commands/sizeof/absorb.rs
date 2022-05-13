@@ -184,10 +184,3 @@ where
         Ok(self)
     }
 }
-
-// TODO: REMOVE
-impl Absorb<&()> for Context {
-    fn absorb(&mut self, _: &()) -> Result<&mut Self> {
-        Ok(self)
-    }
-}

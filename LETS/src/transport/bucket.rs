@@ -4,7 +4,6 @@ use alloc::{
     collections::BTreeMap,
     vec::Vec,
 };
-use core::fmt::Display;
 
 // 3rd-party
 use anyhow::{
@@ -19,25 +18,25 @@ use async_trait::async_trait;
 
 // Local
 use crate::{
-    link,
+    address::Address,
     message::TransportMessage,
     transport::Transport,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Client<Address = link::Address, Msg = TransportMessage> {
+pub struct Client<Msg = TransportMessage> {
     // Use BTreeMap instead of HashMap to make BucketTransport nostd without pulling hashbrown
     // (this transport is for hacking purposes only, performance is no concern)
     bucket: BTreeMap<Address, Vec<Msg>>,
 }
 
-impl<Address, Msg> Client<Address, Msg> {
+impl<Msg> Client<Msg> {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl<Link, Msg> Default for Client<Link, Msg> {
+impl<Msg> Default for Client<Msg> {
     // Implement default manually because derive puts Default bounds in type parameters
     fn default() -> Self {
         Self {
@@ -47,27 +46,23 @@ impl<Link, Msg> Default for Client<Link, Msg> {
 }
 
 #[async_trait(?Send)]
-impl<'a, Address, Msg> Transport<'a> for Client<Address, Msg>
+impl<Msg> Transport<'_> for Client<Msg>
 where
-    Address: Ord + Display + Clone + 'a,
     Msg: Clone,
 {
-    type Address = &'a Address;
     type Msg = Msg;
     type SendResponse = Msg;
-    async fn send_message(&mut self, addr: &'a Address, msg: Msg) -> Result<Msg>
+    async fn send_message(&mut self, addr: Address, msg: Msg) -> Result<Msg>
     where
-        Self::Address: 'async_trait,
         Self::Msg: 'async_trait,
-        'a: 'async_trait,
     {
-        self.bucket.entry(addr.clone()).or_default().push(msg.clone());
+        self.bucket.entry(addr).or_default().push(msg.clone());
         Ok(msg)
     }
 
-    async fn recv_messages(&mut self, address: &'a Address) -> Result<Vec<Msg>> {
+    async fn recv_messages(&mut self, address: Address) -> Result<Vec<Msg>> {
         self.bucket
-            .get(address)
+            .get(&address)
             .cloned()
             .ok_or_else(|| anyhow!("No messages found at address {}", address))
     }

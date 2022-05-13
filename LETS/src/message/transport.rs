@@ -38,11 +38,9 @@ impl TransportMessage {
 }
 
 impl TransportMessage {
-    pub async fn parse_header<F, Address>(self) -> Result<PreparsedMessage<Address, F>>
+    pub async fn parse_header<F>(self) -> Result<PreparsedMessage<F>>
     where
-        for<'a> unwrap::Context<&'a [u8], F>: ContentUnwrap<HDF<Address>>,
         F: PRP + Default,
-        Address: Default,
     {
         let mut ctx = unwrap::Context::new(self.body().as_ref());
         let mut header = HDF::default();

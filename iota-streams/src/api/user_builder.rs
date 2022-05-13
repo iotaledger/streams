@@ -12,8 +12,8 @@ use async_trait::async_trait;
 
 // Streams
 use LETS::{
+    address::Address,
     id::Identity,
-    link::Address,
     message::TransportMessage,
     transport::Transport,
 };
@@ -204,7 +204,7 @@ impl<T> UserBuilder<T> {
     /// #     .with_identity(Ed25519::from_seed(author_seed))
     /// #     .with_transport(transport.clone())
     /// #     .build()?;
-    /// # let announcement_address = author.announce().await?.to_address();
+    /// # let announcement_address = author.announce().await?.address();
     ///
     /// let author = User::builder()
     ///     .with_identity(Ed25519::from_seed(author_seed))
@@ -217,7 +217,7 @@ impl<T> UserBuilder<T> {
     /// ```
     async fn recover(self, announcement: Address) -> Result<User<T>>
     where
-        T: for<'a> Transport<'a, Address = &'a Address, Msg = TransportMessage>,
+        T: for<'a> Transport<'a, Msg = TransportMessage>,
     {
         let mut user = self.build()?;
         user.receive_message(announcement).await?;

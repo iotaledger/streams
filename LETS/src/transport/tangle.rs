@@ -27,6 +27,10 @@ use futures::{
 };
 
 // IOTA
+use crypto::hashes::{
+    blake2b::Blake2b256,
+    Digest,
+};
 use iota_client::bee_message::{
     payload::Payload,
     Message as IotaMessage,
@@ -36,7 +40,7 @@ use iota_client::bee_message::{
 
 // Local
 use crate::{
-    link::Address,
+    address::Address,
     message::TransportMessage,
     transport::Transport,
 };
@@ -75,16 +79,15 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
 }
 
 #[async_trait(?Send)]
-impl<'a, Message, SendResponse> Transport<'a> for Client<Message, SendResponse>
+impl<Message, SendResponse> Transport<'_> for Client<Message, SendResponse>
 where
     Message: Into<Vec<u8>> + TryFrom<IotaMessage, Error = anyhow::Error>,
     SendResponse: TryFrom<IotaMessage, Error = anyhow::Error>,
 {
-    type Address = &'a Address;
     type Msg = Message;
     type SendResponse = SendResponse;
 
-    async fn send_message(&mut self, address: &'a Address, msg: Message) -> Result<SendResponse>
+    async fn send_message(&mut self, address: Address, msg: Message) -> Result<SendResponse>
     where
         Message: 'async_trait,
     {
@@ -97,7 +100,7 @@ where
             .try_into()
     }
 
-    async fn recv_messages(&mut self, address: &'a Address) -> Result<Vec<Message>> {
+    async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
         let msg_ids = self.client().get_message().index(address.to_msg_index()).await?;
         ensure!(!msg_ids.is_empty(), "no message found at index '{}'", address);
 
@@ -123,5 +126,39 @@ impl TryFrom<IotaMessage> for TransportMessage {
                 "expected an indexation payload from the Tangle, received something else"
             ))
         }
+    }
+}
+
+impl Address {
+    /// Hash the content of the [`Address`] using `Blake2b256`
+    pub fn to_blake2b(self) -> [u8; 32] {
+        let hasher = Blake2b256::new();
+        hasher.chain(self.base()).chain(self.relative()).finalize().into()
+    }
+
+    /// An `Address` is used as index of the message over the Tangle. For that,
+    /// its content is hashed using [`Address::to_blake2b()`].
+    ///
+    /// ```
+    /// # use LETS::address::Address;
+    /// #
+    /// # fn main() -> anyhow::Result<()> {
+    /// let address = Address::new([172; 40], [171; 12]);
+    /// assert_eq!(
+    ///     address.to_msg_index().as_ref(),
+    ///     &[
+    ///         44, 181, 155, 1, 109, 141, 169, 177, 209, 70, 226, 18, 190, 121, 40, 44, 90, 108, 159, 109, 241, 37, 30, 0,
+    ///         185, 80, 245, 59, 235, 75, 128, 97
+    ///     ],
+    /// );
+    /// assert_eq!(
+    ///     &format!("{}", hex::encode(address.to_msg_index())),
+    ///     "2cb59b016d8da9b1d146e212be79282c5a6c9f6df1251e00b950f53beb4b8061"
+    /// );
+    /// #   Ok(())
+    /// # }
+    /// ```
+    pub fn to_msg_index(self) -> [u8; 32] {
+        self.to_blake2b()
     }
 }

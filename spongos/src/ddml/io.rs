@@ -1,4 +1,3 @@
-// TODO: REMOVE Traits, make inherent?
 use alloc::string::String;
 use core::ops::{
     Deref,

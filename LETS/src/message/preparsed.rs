@@ -15,33 +15,25 @@ use spongos::{
 };
 
 // Local
-use crate::{
-    link,
-    message::{
-        content::ContentUnwrap,
-        hdf::HDF,
-        message::Message,
-        pcf::PCF,
-        transport::TransportMessage,
-    },
+use crate::message::{
+    content::ContentUnwrap,
+    hdf::HDF,
+    message::Message,
+    pcf::PCF,
+    transport::TransportMessage,
 };
 
 /// Message context preparsed for unwrapping.
 #[derive(Clone, PartialEq, Eq, Hash, Default)]
-pub struct PreparsedMessage<Address = link::MsgId, F = KeccakF1600> {
+pub struct PreparsedMessage<F = KeccakF1600> {
     transport_msg: TransportMessage,
-    header: HDF<Address>,
+    header: HDF,
     spongos: Spongos<F>,
     cursor: usize,
 }
 
-impl<Address, F> PreparsedMessage<Address, F> {
-    pub(crate) fn new(
-        transport_msg: TransportMessage,
-        header: HDF<Address>,
-        spongos: Spongos<F>,
-        cursor: usize,
-    ) -> Self {
+impl<F> PreparsedMessage<F> {
+    pub(crate) fn new(transport_msg: TransportMessage, header: HDF, spongos: Spongos<F>, cursor: usize) -> Self {
         Self {
             transport_msg,
             header,
@@ -50,19 +42,8 @@ impl<Address, F> PreparsedMessage<Address, F> {
         }
     }
 
-    pub fn linked_msg_address(&self) -> &Option<Address> {
-        self.header().linked_msg_address()
-    }
-
-    pub fn header(&self) -> &HDF<Address> {
-        &self.header
-    }
-
-    pub fn take_header(&mut self) -> HDF<Address>
-    where
-        Address: Default,
-    {
-        core::mem::take(&mut self.header)
+    pub fn header(&self) -> HDF {
+        self.header
     }
 
     pub fn transport_msg(&self) -> &TransportMessage {
@@ -81,7 +62,7 @@ impl<Address, F> PreparsedMessage<Address, F> {
         &self.transport_msg.as_ref()[self.cursor..]
     }
 
-    pub async fn unwrap<Content>(self, content: Content) -> Result<(Message<Address, Content>, Spongos<F>)>
+    pub async fn unwrap<Content>(self, content: Content) -> Result<(Message<Content>, Spongos<F>)>
     where
         for<'a> unwrap::Context<&'a [u8], F>: ContentUnwrap<PCF<Content>>,
         F: PRP,
@@ -98,10 +79,7 @@ impl<Address, F> PreparsedMessage<Address, F> {
     }
 }
 
-impl<Address, F> fmt::Debug for PreparsedMessage<Address, F>
-where
-    Address: fmt::Debug,
-{
+impl<F> fmt::Debug for PreparsedMessage<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

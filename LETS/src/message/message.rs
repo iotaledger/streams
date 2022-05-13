@@ -28,17 +28,17 @@ use super::{
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
-pub struct Message<Address, Content> {
-    header: HDF<Address>,
+pub struct Message<Content> {
+    header: HDF,
     payload: PCF<Content>,
 }
 
-impl<Address, Payload> Message<Address, Payload> {
-    pub fn new(header: HDF<Address>, payload: PCF<Payload>) -> Self {
+impl<Payload> Message<Payload> {
+    pub fn new(header: HDF, payload: PCF<Payload>) -> Self {
         Self { header, payload }
     }
 
-    pub(crate) fn with_header(&mut self, header: HDF<Address>) -> &mut Self {
+    pub(crate) fn with_header(&mut self, header: HDF) -> &mut Self {
         self.header = header;
         self
     }
@@ -48,15 +48,8 @@ impl<Address, Payload> Message<Address, Payload> {
         self
     }
 
-    pub fn header(&self) -> &HDF<Address> {
-        &self.header
-    }
-
-    pub fn take_header(&mut self) -> HDF<Address>
-    where
-        Address: Default,
-    {
-        core::mem::take(&mut self.header)
+    pub fn header(&self) -> HDF {
+        self.header
     }
 
     pub fn payload(&self) -> &PCF<Payload> {
@@ -70,8 +63,8 @@ impl<Address, Payload> Message<Address, Payload> {
     pub async fn wrap<F>(&mut self) -> Result<(TransportMessage, Spongos<F>)>
     where
         F: PRP + Default,
-        for<'b> wrap::Context<&'b mut [u8], F>: ContentWrap<HDF<Address>> + ContentWrap<PCF<Payload>>,
-        sizeof::Context: ContentSizeof<HDF<Address>> + ContentSizeof<PCF<Payload>>,
+        for<'b> wrap::Context<&'b mut [u8], F>: ContentWrap<HDF> + ContentWrap<PCF<Payload>>,
+        sizeof::Context: ContentSizeof<HDF> + ContentSizeof<PCF<Payload>>,
     {
         let mut ctx = sizeof::Context::new();
         ctx.sizeof(&self.header).await?.commit()?.sizeof(&self.payload).await?;

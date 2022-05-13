@@ -7,11 +7,11 @@ use alloc::vec::Vec;
 
 // Streams
 use LETS::{
+    address::Address,
     id::{
         Identifier,
         Permissioned,
     },
-    link::Link,
     message::{
         Message as LetsMessage,
         PreparsedMessage,
@@ -31,41 +31,28 @@ use crate::message::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Message<Address>
-where
-    Address: Link,
-{
+pub struct Message {
     pub address: Address,
-    pub header: HDF<Address::Relative>,
+    pub header: HDF,
     pub content: MessageContent,
 }
 
-impl<Address> Message<Address>
-where
-    Address: Link,
-{
-    pub(crate) fn from_lets_message<Unwrap>(
-        address: Address,
-        mut lets_message: LetsMessage<Address::Relative, Unwrap>,
-    ) -> Self
+impl Message {
+    pub(crate) fn from_lets_message<Unwrap>(address: Address, lets_message: LetsMessage<Unwrap>) -> Self
     where
         Unwrap: Into<MessageContent>,
-        Address::Relative: Default,
     {
         Message {
             address,
-            header: lets_message.take_header(),
+            header: lets_message.header(),
             content: lets_message.into_payload().into_content().into(),
         }
     }
 
-    pub(crate) fn orphan(address: Address, mut preparsed: PreparsedMessage<Address::Relative>) -> Self
-    where
-        Address::Relative: Default,
-    {
+    pub(crate) fn orphan(address: Address, preparsed: PreparsedMessage) -> Self {
         Self {
             address,
-            header: preparsed.take_header(),
+            header: preparsed.header(),
             content: MessageContent::Orphan(Orphan {
                 cursor: preparsed.cursor(),
                 message: preparsed.into_transport_msg(),
@@ -73,16 +60,12 @@ where
         }
     }
 
-    pub fn address(&self) -> &Address {
-        &self.address
-    }
-
-    pub(crate) fn into_address(self) -> Address {
+    pub fn address(&self) -> Address {
         self.address
     }
 
-    pub fn header(&self) -> &HDF<Address::Relative> {
-        &self.header
+    pub fn header(&self) -> HDF {
+        self.header
     }
 
     pub fn content(&self) -> &MessageContent {

@@ -151,10 +151,3 @@ where
         Ok(self)
     }
 }
-
-// TODO: REMOVE
-impl<'a, F, OS> Absorb<&'a ()> for Context<OS, F> {
-    fn absorb(&mut self, _: &'a ()) -> Result<&mut Self> {
-        Ok(self)
-    }
-}

@@ -11,7 +11,7 @@ description = "A Rust framework for developing cryptographic communication proto
 [features]
 default = ["tangle-client", "did"]
 # Enable the IOTA-Tangle transport client (implies `std` features)
-tangle-client = ["iota-client/async", "futures"]
+tangle-client = ["iota-client/async", "futures", "iota-crypto/blake2b"]
 # Enable the wasm-compatible IOTA-Tangle transport client (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`. Implies `std` feature)
 tangle-client-wasm = ["iota-client/wasm", "futures"]
 # Enable Iota Identity for use with Streams
@@ -28,7 +28,7 @@ did = ["identity", "serde"]
 spongos = { path = "../spongos", default-features = false, features = ["osrng"] }
 
 # IOTA dependencies
-iota-crypto = { version = "0.9.1", default-features = false, features = ["blake2b", "x25519", "ed25519", "sha"]}
+iota-crypto = { version = "0.9.1", default-features = false, features = ["x25519", "ed25519", "sha"]}
 
 # 3rd-party dependencies
 async-trait = { version = "0.1", default-features = false }
