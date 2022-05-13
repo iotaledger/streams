@@ -69,38 +69,45 @@ impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
     }
 }
 
+// Arc<Mutex<Transport>> blanket impl is provided only behind the "sync-spin" or "sync-parking-lot" features,
+//  as a convenience for users that want to share a transport through several user instances.
+// We provide 2 flavours of Mutex: `parking_lot` and `spin`:
+// - `sync-parking-lot` feature enables `parking_lot::Mutex` Mutex (requires `std`)
+// - `sync-spin` feature enables `spin::Mutex` (supports no-std)
+// If both features are provided, `parking_lot` is used.
 #[cfg(any(feature = "sync-spin", feature = "sync-parking-lot"))]
 mod sync {
-    use super::{
-        Transport,
-        TransportDetails,
-        TransportOptions,
-    };
-    use iota_streams_core::{
-        async_trait,
-        prelude::{
-            Arc,
-            Box,
-            Mutex,
-            Vec,
-        },
-        Result,
+    use alloc::{
+        boxed::Box,
+        sync::Arc, vec::Vec,
     };
 
+    use anyhow::Result;
+    use async_trait::async_trait;
+    #[cfg(feature = "sync-parking-lot")]
+    use parking_lot::Mutex;
+    #[cfg(all(feature = "sync-spin", not(feature = "sync-parking-lot")))]
+    use spin::Mutex;
+
+    use crate::address::Address;
+
+    use super::Transport;
+
     #[async_trait(?Send)]
-    impl<address, Msg, Tsp: Transport<address, Msg>> Transport<address, Msg> for Arc<Mutex<Tsp>> {
+    impl<'a, Tsp: Transport<'a>> Transport<'a> for Arc<Mutex<Tsp>> {
+        type Msg = Tsp::Msg;
+        type SendResponse = Tsp::SendResponse;
+
         // Send a message.
-        async fn send_message(&mut self, address: address, msg: Msg) -> Result<()>
+        async fn send_message(&mut self, address: Address, msg: Self::Msg) -> Result<Self::SendResponse>
         where
-            Msg: 'async_trait,
+            Self::Msg: 'async_trait,
         {
             self.lock().send_message(address, msg).await
         }
 
         // Receive messages with default options.
-        async fn recv_messages(&mut self, address: address) -> Result<Vec<Msg>>
-        where
-            address: 'async_trait,
+        async fn recv_messages(&mut self, address: Address) -> Result<Vec<Self::Msg>>
         {
             self.lock().recv_messages(address).await
         }

@@ -18,8 +18,6 @@ std = []
 # if X25519 wrapping is needed (see https://docs.rs/getrandom/latest/getrandom/#custom-implementations). 
 # X25519 unwrapping command does *not* need the "rand" feature nor `getrandom` support
 osrng = ["rand/std_rng", "rand/getrandom", "iota-crypto/rand"]
-sync-spin = ["spin"]
-sync-parking-lot = ["parking_lot"]
 
 [dependencies]
 # IOTA Dependencies
@@ -37,7 +35,3 @@ rand = { version = "0.8", default-features = false}
 # anyhow is forcing spongos (and anything depending on it) to pull in libstd
 # anyhow is going to be replaced by typeful checking soon anyway, no point in making it work with no_std
 anyhow = { version = "1.0", default-features = false, features = ["std"], optional = false }
-
-# Optional Dependencies
-parking_lot = { version = "0.11.2", default-features = false, optional = true }
-spin = { version = "0.9.2", default-features = false, features = ["mutex", "spin_mutex"], optional = true }
