@@ -49,8 +49,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .build()?;
 
     println!("> Author creates stream and sends its announcement");
-    author.create_stream(8)?;
-    let announcement = author.announce().await?;
+    let announcement = author.create_stream(8).await?;
     print_send_result(&announcement);
     print_user("Author", &author);
 

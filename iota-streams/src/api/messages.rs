@@ -101,8 +101,7 @@ use crate::api::{
 ///     .with_transport(subscriber_transport)
 ///     .build()?;
 ///
-/// author.create_stream(1)?;
-/// let announcement = author.announce().await?;
+/// let announcement = author.create_stream(1).await?;
 /// subscriber.receive_message(announcement.address()).await?;
 /// let first_packet = author
 ///     .send_signed_packet(announcement.address().relative(), b"public payload", b"masked payload")
@@ -432,8 +431,7 @@ mod tests {
             .with_identity(Ed25519::from_seed("author"))
             .with_transport(transport.clone())
             .build()?;
-        author.create_stream(10)?;
-        let announcement = author.announce().await?;
+        let announcement = author.create_stream(10).await?;
         let subscriber =
             subscriber_fixture("subscriber", &mut author, announcement.address(), transport.clone()).await?;
         Ok((author, subscriber, announcement.address(), transport))

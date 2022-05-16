@@ -24,8 +24,7 @@
 //! #     .with_transport(test_transport)
 //!     .build()?;
 //!
-//! author.create_stream(1)?;
-//! let announcement = author.announce().await?;
+//! let announcement = author.create_stream(1).await?;
 //! # Ok(())
 //! # }
 //! ```

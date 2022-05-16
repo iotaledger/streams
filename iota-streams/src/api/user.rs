@@ -226,24 +226,6 @@ impl<T> User<T> {
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
         self.state.id_store.remove_psk(pskid)
     }
-
-    /// Create a new stream (without announcing it). User now becomes Author.
-    pub fn create_stream(&mut self, channel_idx: usize) -> Result<()> {
-        // TODO: MERGE WITH ANNOUNCE
-        if let Some(appaddr) = self.stream_address() {
-            bail!(
-                "Cannot create a channel, user is already registered to channel {}",
-                appaddr
-            );
-        }
-        let user_identifier = self.identifier();
-        let stream_base_address = AppAddr::gen(user_identifier, channel_idx);
-        let stream_rel_address = MsgId::gen(stream_base_address, user_identifier, INIT_MESSAGE_NUM);
-        self.state.stream_address = Some(Address::new(stream_base_address, stream_rel_address));
-        self.state.author_identifier = Some(self.identifier());
-
-        Ok(())
-    }
 }
 
 impl<T, TSR> User<T>
@@ -251,12 +233,19 @@ where
     T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TSR>,
 {
     /// Prepare Announcement message.
-    pub async fn announce(&mut self) -> Result<SendResponse<TSR>> {
+    pub async fn create_stream(&mut self, stream_idx: usize) -> Result<SendResponse<TSR>> {
         // Check conditions
-        let stream_address = self
-            .state
-            .stream_address
-            .ok_or_else(|| anyhow!("before sending the announcement one must create the stream first"))?;
+        if let Some(appaddr) = self.stream_address() {
+            bail!(
+                "Cannot create a channel, user is already registered to channel {}",
+                appaddr
+            );
+        }
+
+        // Generate stream address
+        let stream_base_address = AppAddr::gen(self.identifier(), stream_idx);
+        let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), INIT_MESSAGE_NUM);
+        let stream_address = Address::new(stream_base_address, stream_rel_address);
 
         // Update own's cursor
         let user_cursor = ANN_MESSAGE_NUM;
@@ -276,6 +265,8 @@ where
         let send_response = self.transport.send_message(stream_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
+        self.state.stream_address = Some(stream_address);
+        self.state.author_identifier = Some(self.identifier());
         self.state.id_store.insert_cursor(self.identifier(), INIT_MESSAGE_NUM);
         self.state.spongos_store.insert(stream_address.relative(), spongos);
         Ok(SendResponse::new(stream_address, send_response))
