@@ -129,8 +129,6 @@ fn encrypt_decrypt_n<F: PRP + Default + Clone>(n: usize) {
 
     let x = s.clone().squeeze_n(n);
     let mut s2 = s.clone();
-    let mut s3 = s.clone();
-    let mut s4 = s.clone();
 
     let mut ex = x.clone();
     s.encrypt_mut(&x, &mut ex).unwrap();

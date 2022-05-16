@@ -140,7 +140,7 @@ impl User<()> {
 
 impl<T> User<T> {
     pub(crate) fn new(user_id: Identity, transport: T) -> Self {
-        let mut id_store = KeyStore::default();
+        let mut id_store = KeyStore::new();
         // If User is using a Psk as their base Identifier, store the Psk
         if let Identity::Psk(psk) = user_id {
             id_store.insert_psk(psk.to_pskid(), psk);

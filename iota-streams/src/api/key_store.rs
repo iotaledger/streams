@@ -40,10 +40,6 @@ impl KeyStore {
         self.cursors.insert(id, cursor).is_none()
     }
 
-    pub(crate) fn remove_cursor(&mut self, id: &Identifier) -> bool {
-        self.cursors.remove(id).is_some()
-    }
-
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + Clone + '_ {
         self.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor))
     }
@@ -60,14 +56,6 @@ impl KeyStore {
         &self,
     ) -> impl Iterator<Item = (Identifier, x25519::PublicKey)> + ExactSizeIterator + Clone + '_ {
         self.keys.iter().map(|(identifier, key)| (*identifier, *key))
-    }
-
-    fn contains_psk(&self, pskid: &PskId) -> bool {
-        self.psks.contains_key(pskid)
-    }
-
-    fn get_psk(&self, pskid: &PskId) -> Option<&Psk> {
-        self.psks.get(pskid)
     }
 
     pub(crate) fn insert_psk(&mut self, id: PskId, psk: Psk) -> bool {
