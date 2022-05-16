@@ -45,21 +45,6 @@ fn decrypt_xor(s: &mut [u8], y: &[u8], x: &mut [u8]) {
     }
 }
 
-fn encrypt_xor_inplace(s: &mut [u8], x: &mut [u8]) {
-    for (si, xi) in s.iter_mut().zip(x.iter_mut()) {
-        *xi ^= *si;
-        *si = *xi;
-    }
-}
-
-fn decrypt_xor_inplace(s: &mut [u8], y: &mut [u8]) {
-    for (si, yi) in s.iter_mut().zip(y.iter_mut()) {
-        let t = *yi;
-        *yi ^= *si;
-        *si = t;
-    }
-}
-
 fn copy(s: &[u8], y: &mut [u8]) {
     for (si, yi) in s.iter().zip(y.iter_mut()) {
         *yi = *si;
@@ -200,15 +185,6 @@ impl<F: PRP> Spongos<F> {
         self.squeeze_mut(r)
     }
 
-    fn hash<T, R>(data: T) -> R
-    where
-        F: PRP + Default,
-        T: AsRef<[u8]>,
-        R: AsMut<[u8]> + Default,
-    {
-        Self::init().sponge(data)
-    }
-
     /// Encrypt a byte slice with Spongos object.
     /// Input and output slices must be non-overlapping.
     pub(crate) fn encrypt_mut<P, C>(&mut self, plain: P, mut cipher: C) -> Result<()>
@@ -230,37 +206,13 @@ impl<F: PRP> Spongos<F> {
         Ok(())
     }
 
-    /// Encrypt in-place a byte slice with Spongos object.
-    pub(crate) fn encrypt_inplace<T>(&mut self, mut xyr: T)
-    where
-        T: AsMut<[u8]>,
-    {
-        let mut xy = xyr.as_mut();
-        while !xy.is_empty() {
-            let s = self.outer_min_mut(xy.len());
-            let n = s.len();
-            encrypt_xor_inplace(s, &mut xy[..n]);
-            xy = &mut xy[n..];
-            self.update(n);
-        }
-    }
-
-    fn encrypt<T>(&mut self, plain: T) -> Result<T>
+    pub(crate) fn encrypt<T>(&mut self, plain: &T) -> Result<T>
     where
         T: AsRef<[u8]> + AsMut<[u8]> + Default,
     {
         let mut cipher = Default::default();
         self.encrypt_mut(plain, &mut cipher)?;
         Ok(cipher)
-    }
-
-    pub(crate) fn encrypt_n<T>(&mut self, x: T) -> Result<Vec<u8>>
-    where
-        T: AsRef<[u8]>,
-    {
-        let mut y = vec![0; x.as_ref().len()];
-        self.encrypt_mut(x, &mut y)?;
-        Ok(y)
     }
 
     /// Decrypt a byte slice with Spongos object.
@@ -284,37 +236,13 @@ impl<F: PRP> Spongos<F> {
         Ok(())
     }
 
-    /// Decrypt in-place a byte slice with Spongos object.
-    pub(crate) fn decrypt_inplace<T>(&mut self, mut xyr: T)
-    where
-        T: AsMut<[u8]>,
-    {
-        let mut xy = xyr.as_mut();
-        while !xy.is_empty() {
-            let s = self.outer_min_mut(xy.len());
-            let n = s.len();
-            decrypt_xor_inplace(s, &mut xy[..n]);
-            xy = &mut xy[n..];
-            self.update(n);
-        }
-    }
-
-    fn decrypt<T>(&mut self, ciphertext: T) -> Result<T>
+    pub(crate) fn decrypt<T>(&mut self, ciphertext: &T) -> Result<T>
     where
         T: AsRef<[u8]> + AsMut<[u8]> + Default,
     {
         let mut plaintext = Default::default();
         self.decrypt_mut(ciphertext, &mut plaintext)?;
         Ok(plaintext)
-    }
-
-    pub(crate) fn decrypt_n<T>(&mut self, y: T) -> Result<Vec<u8>>
-    where
-        T: AsRef<[u8]>,
-    {
-        let mut x = vec![0; y.as_ref().len()];
-        self.decrypt_mut(y, &mut x)?;
-        Ok(x)
     }
 
     /// Force transform even if for incomplete (but non-empty!) outer state.
@@ -390,16 +318,6 @@ impl<F: PRP> fmt::Debug for Spongos<F> {
             hex::encode(self.s.inner().as_ref())
         )
     }
-}
-
-/// Hash data with Spongos.
-fn hash<F, T, R>(data: T) -> R
-where
-    F: PRP + Default,
-    T: AsRef<[u8]>,
-    R: AsMut<[u8]> + Default,
-{
-    Spongos::<F>::hash(data)
 }
 
 impl<F> Digest for Spongos<F>
