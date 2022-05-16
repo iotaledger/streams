@@ -25,3 +25,4 @@ pub use message::Message;
 pub use pcf::PCF;
 pub use preparsed::PreparsedMessage;
 pub use transport::TransportMessage;
+pub use topic::Topic;

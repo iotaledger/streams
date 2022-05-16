@@ -52,3 +52,9 @@ impl core::fmt::Display for Topic {
         write!(f, "{}", String::from_utf8_lossy(&self.0))
     }
 }
+
+impl AsRef<[u8]> for Topic {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}

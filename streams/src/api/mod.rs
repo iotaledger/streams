@@ -10,7 +10,6 @@ pub(crate) mod send_response;
 pub(crate) mod user;
 pub(crate) mod user_builder;
 
-use LETS::message::topic::Topic;
 /// The base branch constant for the start of a new channel. All branches require a topic for
 /// address generation, and all new branches will be linked to the Announcement on the base branch
-const BASE_BRANCH: Topic = Topic([0u8;32]);
+const BASE_BRANCH: lets::message::Topic = lets::message::Topic([0u8;32]);

@@ -13,17 +13,10 @@ use hashbrown::HashMap;
 use crypto::keys::x25519;
 
 // Streams
-use lets::id::{Identifier, Psk, PskId};
-=======
-use LETS::{
-    id::{
-        Identifier,
-        Psk,
-        PskId,
-    },
-    message::topic::Topic,
+use lets::{
+    id::{Identifier, Psk, PskId},
+    message::Topic,
 };
->>>>>>> First pass branching:iota-streams/src/api/key_store.rs
 
 // Local
 
@@ -47,10 +40,6 @@ impl BranchStore {
         self.get_branch(topic).map_or(false, |branch| branch.cursors.contains_key(id))
     }
 
-<<<<<<< HEAD:streams/src/api/key_store.rs
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + Clone + '_ {
-        self.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor))
-=======
     pub(crate) fn remove_from_all(&mut self, id: &Identifier) -> bool {
         self.0.iter_mut()
             .fold(false, |acc, (_topic, branch)| acc || branch.remove(id))
@@ -59,7 +48,6 @@ impl BranchStore {
     pub(crate) fn remove_psk_from_all(&mut self, pskid: PskId) -> bool {
         self.0.iter_mut()
             .fold(false, |acc, (_topic, branch)| acc || branch.remove_psk(pskid))
->>>>>>> First pass branching:iota-streams/src/api/key_store.rs
     }
 
     pub(crate) fn insert_branch(&mut self, topic: Topic, branch: KeyStore) -> bool {
@@ -97,12 +85,6 @@ impl BranchStore {
                 .map(|(identifier, key)| (*identifier, *key))
             )
     }
-
-<<<<<<< HEAD:streams/src/api/key_store.rs
-    pub(crate) fn insert_psk(&mut self, id: PskId, psk: Psk) -> bool {
-        self.psks.insert(id, psk).is_none()
-    }
-=======
 
     pub(crate) fn psks(
         &self,
@@ -171,9 +153,6 @@ impl KeyStore {
     fn get_psk(&self, pskid: &PskId) -> Option<&Psk> {
         self.psks.get(pskid)
     }
-
-
->>>>>>> First pass branching:iota-streams/src/api/key_store.rs
 
     pub(crate) fn remove_psk(&mut self, pskid: PskId) -> bool {
         self.psks.remove(&pskid).is_some()

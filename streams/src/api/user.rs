@@ -1,25 +1,8 @@
 // Rust
-<<<<<<< HEAD:streams/src/api/user.rs
 use alloc::{boxed::Box, format, string::String, vec::Vec};
-use core::fmt::{self, Debug, Formatter};
-=======
-use alloc::{
-    boxed::Box,
-    format,
-    string::String,
-    vec::Vec,
-};
 use core::{
-    fmt::{
-        self,
-        Debug,
-        Display,
-        Formatter,
-    },
     hash::Hash,
 };
-use core::convert::TryInto;
->>>>>>> First pass branching:iota-streams/src/api/user.rs
 
 // 3rd-party
 use anyhow::{anyhow, bail, ensure, Result};
@@ -36,7 +19,8 @@ use lets::{
     address::{Address, AppAddr, MsgId},
     id::{Identifier, Identity, PermissionDuration, Permissioned, Psk, PskId},
     message::{
-        ContentSizeof, ContentUnwrap, ContentWrap, Message as LetsMessage, PreparsedMessage, TransportMessage, HDF, PCF,
+        ContentSizeof, ContentUnwrap, ContentWrap, Message as LetsMessage, PreparsedMessage, Topic,
+        TransportMessage, HDF, PCF,
     },
     transport::Transport,
 };
@@ -48,28 +32,14 @@ use spongos::{
     },
     KeccakF1600, Spongos, SpongosRng,
 };
-use LETS::message::topic::Topic;
 use spongos::ddml::types::Bytes;
 
 // Local
 use crate::{
     api::{
-<<<<<<< HEAD:streams/src/api/user.rs
-        key_store::KeyStore, message::Message, messages::Messages, send_response::SendResponse,
-=======
         BASE_BRANCH,
-        key_store::{
-            BranchStore,
-            KeyStore,
-        },
-        message::Message,
-        messages::{
-            IntoMessages,
-            Messages,
-        },
-        send_response::SendResponse,
->>>>>>> First pass branching:iota-streams/src/api/user.rs
-        user_builder::UserBuilder,
+        key_store::{BranchStore, KeyStore},
+        message::Message, messages::Messages, send_response::SendResponse, user_builder::UserBuilder,
     },
     message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
 };
@@ -109,25 +79,11 @@ impl User<()> {
     }
 }
 
-<<<<<<< HEAD:streams/src/api/user.rs
 impl<T> User<T> {
     pub(crate) fn new(user_id: Identity, transport: T) -> Self {
-        let mut id_store = KeyStore::new();
-=======
-impl<T, F, A, AG> User<T, F, A, AG>
-where
-    A: Link,
-    A::Relative: Eq + Hash,
-    F: PRP + Default,
-{
-    pub(crate) fn new(user_id: Identity, transport: T) -> Self
-    where
-        AG: Default,
-    {
         let mut id_store = BranchStore::default();
         id_store.insert_branch(BASE_BRANCH, KeyStore::default());
 
->>>>>>> First pass branching:iota-streams/src/api/user.rs
         // If User is using a Psk as their base Identifier, store the Psk
         if let Identity::Psk(psk) = user_id {
             id_store.insert_psk(&BASE_BRANCH, psk.to_pskid(), psk);
@@ -245,28 +201,9 @@ where
         }
     }
 
-<<<<<<< HEAD:streams/src/api/user.rs
     /// Bind Subscriber to the channel announced
     /// in the message.
     async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-=======
-impl<T, F, A, AG, TSR> User<T, F, A, AG>
-where
-    T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage, SendResponse = TSR>,
-    A: Link + Display + Clone,
-    A::Relative: Clone + Eq + Hash + Display,
-    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)>,
-    F: PRP + Default + Clone,
-    for<'a, 'b> wrap::Context<F, &'a mut [u8]>: Absorb<&'b A::Relative>,
-    for<'a> sizeof::Context: Absorb<&'a A::Relative>,
-{
-    /// Prepare Announcement message.
-    pub async fn announce(&mut self) -> Result<SendResponse<A, TSR>> {
-        self.new_branch(None).await
-    }
-
-    pub async fn new_branch(&mut self, topic: Option<Topic>) -> Result<SendResponse<A, TSR>> {
->>>>>>> First pass branching:iota-streams/src/api/user.rs
         // Check conditions
         if let Some(stream_address) = self.stream_address() {
             bail!(
@@ -275,31 +212,22 @@ where
             );
         }
 
-<<<<<<< HEAD:streams/src/api/user.rs
+        let topic = *preparsed.header().topic();
+        // If the topic of the announcement is not base branch, a new branch must be added to store
+        if topic.eq(&BASE_BRANCH) {
+            self.state.id_store.new_branch(topic);
+        }
+
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
             .id_store
-            .insert_cursor(preparsed.header().publisher(), INIT_MESSAGE_NUM);
+            .insert_cursor(&topic, preparsed.header().publisher(), INIT_MESSAGE_NUM);
 
         // Unwrap message
         let announcement = announcement::Unwrap::default();
         let (message, spongos) = preparsed.unwrap(announcement).await?;
-=======
-        // Update own's cursor
-        let (user_cursor, topic) = match topic {
-            Some(topic) => {
-                let cursor = self.cursor(&BASE_BRANCH).ok_or_else(|| anyhow!("No cursor found in base branch"))?;
-                (cursor, topic)
-            },
-            None => (ANN_MESSAGE_NUM, BASE_BRANCH)
-        };
-
-        // Prepare HDF and PCF
-        let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, self.identifier(), topic.clone())?;
-        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(&self.state.user_id));
->>>>>>> First pass branching:iota-streams/src/api/user.rs
 
         // Store spongos
         self.state.spongos_store.insert(address.relative(), spongos);
@@ -307,30 +235,16 @@ where
         // Store message content into stores
         let author_id = message.payload().content().author_id();
         let author_ke_pk = message.payload().content().author_ke_pk();
-        self.state.id_store.insert_key(author_id, author_ke_pk);
+        self.state.id_store.insert_key(&topic, author_id, author_ke_pk);
         self.state.stream_address = Some(address);
         self.state.author_identifier = Some(author_id);
 
-<<<<<<< HEAD:streams/src/api/user.rs
         Ok(Message::from_lets_message(address, message))
-=======
-        // If the branch has not been created yet, create it
-        if !topic.eq(&BASE_BRANCH) {
-            self.state.id_store.new_branch(topic);
-        }
-
-        // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(&topic, self.identifier(), INIT_MESSAGE_NUM);
-        self.state
-            .spongos_store
-            .insert(stream_address.relative().clone(), spongos);
-        Ok(SendResponse::new(stream_address.clone(), send_response))
->>>>>>> First pass branching:iota-streams/src/api/user.rs
     }
+
     async fn handle_subscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
 
-<<<<<<< HEAD:streams/src/api/user.rs
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
             anyhow!("subscription messages must contain the address of the message they are linked to in the header")
@@ -343,51 +257,12 @@ where
                 return Ok(Message::orphan(address, preparsed));
             }
         };
+        let topic = *preparsed.header().topic();
         let user_ke_sk = &self.state.user_id._ke_sk().ok_or_else(|| {
             anyhow!("reader of a stream must have an identity from which an x25519 secret-key can be derived")
         })?;
         let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
         let (message, _spongos) = preparsed.unwrap(subscription).await?;
-=======
-    /// Prepare Subscribe message.
-    pub async fn subscribe(&mut self, link_to: A::Relative) -> Result<SendResponse<A, TSR>> {
-        // Check conditions
-        let stream_address = self
-            .stream_address()
-            .as_ref()
-            .cloned()
-            .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
-
-        let user_cursor = SUB_MESSAGE_NUM;
-        // Update own's cursor
-        let rel_address: A::Relative =
-            self.address_generator
-                .gen((stream_address.base(), self.identifier(), user_cursor));
-
-        // Prepare HDF and PCF
-        // Spongos must be cloned because wrapping mutates it
-        let mut linked_msg_spongos = self
-            .state
-            .spongos_store
-            .get(&link_to)
-            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
-            .clone();
-        let unsubscribe_key = StdRng::from_entropy().gen();
-        let author_ke_pk = self
-            .state
-            .author_identifier
-            .and_then(|author_id| self.state.id_store.get_key(&BASE_BRANCH, &author_id))
-            .expect("a user that already have an stream address must know the author identifier");
-        let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
-            &mut linked_msg_spongos,
-            unsubscribe_key,
-            &self.state.user_id,
-            author_ke_pk,
-        ));
-        let header =
-            HDF::new(message_types::SUBSCRIPTION, user_cursor, self.identifier(), BASE_BRANCH)?
-                .with_linked_msg_address(link_to);
->>>>>>> First pass branching:iota-streams/src/api/user.rs
 
         // Store spongos
         // Subscription messages are never stored in spongos to maintain consistency about the view of the
@@ -396,73 +271,46 @@ where
         // Store message content into stores
         let subscriber_identifier = message.payload().content().subscriber_identifier();
         let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
-        self.state.id_store.insert_key(subscriber_identifier, subscriber_ke_pk);
+        self.state.id_store.insert_key(&topic, subscriber_identifier, subscriber_ke_pk);
 
         Ok(Message::from_lets_message(address, message))
     }
 
-<<<<<<< HEAD:streams/src/api/user.rs
     async fn handle_unsubscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Cursor is not stored, as user is unsubscribing
 
         // Unwrap message
-        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
+        let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
             anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
         })?;
         let mut linked_msg_spongos = {
-            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address) {
-                *spongos
+            if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
+                // Spongos must be cloned because wrapping mutates it
+                spongos.clone()
             } else {
                 return Ok(Message::orphan(address, preparsed));
             }
         };
         let unsubscription = unsubscription::Unwrap::new(&mut linked_msg_spongos);
         let (message, spongos) = preparsed.unwrap(unsubscription).await?;
-=======
-    pub async fn unsubscribe(&mut self, link_to: A::Relative) -> Result<SendResponse<A, TSR>> {
-        // Check conditions
-        let stream_address = self.stream_address().as_ref().cloned().ok_or_else(|| {
-            anyhow!("before sending a subscription one must receive the announcement of a stream first")
-        })?;
-
-        // Update own's cursor
-        let new_cursor = self.next_cursor(&BASE_BRANCH)?;
-        let rel_address: A::Relative =
-            self.address_generator
-                .gen((stream_address.base(), self.identifier(), new_cursor));
-
-        // Prepare HDF and PCF
-        // Spongos must be cloned because wrapping mutates it
-        let mut linked_msg_spongos = self
-            .state
-            .spongos_store
-            .get(&link_to)
-            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?
-            .clone();
-        let content = PCF::new_final_frame()
-            .with_content(unsubscription::Wrap::new(&mut linked_msg_spongos, &self.state.user_id));
-        let header =
-            HDF::new(message_types::UNSUBSCRIPTION, new_cursor, self.identifier(), BASE_BRANCH)?
-                .with_linked_msg_address(link_to);
->>>>>>> First pass branching:iota-streams/src/api/user.rs
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.state.spongos_store.insert(address.relative().clone(), spongos);
 
         // Store message content into stores
         self.remove_subscriber(message.payload().content().subscriber_identifier());
 
-<<<<<<< HEAD:streams/src/api/user.rs
         Ok(Message::from_lets_message(address, message))
     }
 
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        let topic = *preparsed.header().topic();
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
             .id_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+            .insert_cursor(preparsed.header().topic(), preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
         let author_identifier = self.state.author_identifier.ok_or_else(|| {
@@ -471,107 +319,33 @@ where
         let stream_address = self
             .stream_address()
             .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
-=======
-        // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(&BASE_BRANCH, self.identifier(), new_cursor);
-        self.state.spongos_store.insert(rel_address, spongos);
-        Ok(SendResponse::new(message_address, send_response))
-    }
-
-    pub async fn send_keyload<'a, Subscribers>(
-        &mut self,
-        topic: Topic,
-        link_to: A::Relative,
-        subscribers: Subscribers,
-    ) -> Result<SendResponse<A, TSR>>
-    where
-        Subscribers: IntoIterator<Item = Permissioned<Identifier>> + Clone,
-    {
-        // Check conditions
-        let stream_address = self
-            .stream_address()
-            .as_ref()
-            .cloned()
-            .ok_or_else(|| anyhow!("before sending a keyload one must create a stream first"))?;
-
-        // Update own's cursor
-        let new_cursor = self.next_cursor(&topic)?;
-        let rel_address: A::Relative =
-            self.address_generator
-                .gen((stream_address.base(), self.identifier(), new_cursor));
-
-        // Prepare HDF and PCF
->>>>>>> First pass branching:iota-streams/src/api/user.rs
         let mut announcement_spongos = self
             .state
             .spongos_store
             .get(&stream_address.relative())
-            .copied()
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
-<<<<<<< HEAD:streams/src/api/user.rs
         // TODO: Remove Psk from Identity and Identifier, and manage it as a complementary permission
         let user_ke_sk = self.state.user_id._ke();
         let keyload = keyload::Unwrap::new(
-=======
-        let mut rng = StdRng::from_entropy();
-        let encryption_key = rng.gen();
-        let nonce = rng.gen();
-        let subscribers_with_keys = subscribers
-            .clone()
-            .into_iter()
-            .map(|subscriber| {
-                Ok((
-                    subscriber,
-                    self.state
-                        .id_store
-                        .get_exchange_key(&topic, subscriber.identifier())
-                        .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
-                ))
-            })
-            .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
-        let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
->>>>>>> First pass branching:iota-streams/src/api/user.rs
             &mut announcement_spongos,
             &self.state.user_id,
-<<<<<<< HEAD:streams/src/api/user.rs
             &user_ke_sk,
             author_identifier,
-=======
-        ));
-        let header = HDF::new(message_types::KEYLOAD, new_cursor, self.identifier(), topic)?
-            .with_linked_msg_address(link_to);
-
-        // Wrap message
-        let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
-
-        // Attempt to send message
-        let message_address = A::from_parts(stream_address.into_base(), rel_address.clone());
-        ensure!(
-            self.transport.recv_message(&message_address).await.is_err(),
-            anyhow!("there's already a message with address '{}'", message_address)
->>>>>>> First pass branching:iota-streams/src/api/user.rs
         );
         let (message, spongos) = preparsed.unwrap(keyload).await?;
 
-<<<<<<< HEAD:streams/src/api/user.rs
         // Store spongos
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
         for subscriber in message.payload().content().subscribers() {
-            if self.should_store_cursor(subscriber) {
-=======
-        // If message has been sent successfully, commit message to stores
-        for subscriber in subscribers {
-            if self.should_store_cursor(&topic, &subscriber) {
->>>>>>> First pass branching:iota-streams/src/api/user.rs
+            if self.should_store_cursor(&topic, subscriber) {
                 self.state
                     .id_store
                     .insert_cursor(&topic, *subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
-<<<<<<< HEAD:streams/src/api/user.rs
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -582,7 +356,7 @@ where
         // handling the message
         self.state
             .id_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+            .insert_cursor(preparsed.header().topic(), preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -613,7 +387,7 @@ where
         // handling the message
         self.state
             .id_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+            .insert_cursor(preparsed.header().topic(), preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -662,42 +436,6 @@ where
     }
 
     pub async fn restore<B, P>(backup: B, pwd: P, transport: T) -> Result<Self>
-=======
-        self.state.id_store.insert_cursor(&topic, self.identifier(), new_cursor);
-        self.state.spongos_store.insert(rel_address, spongos);
-        Ok(SendResponse::new(message_address, send_response))
-    }
-
-    pub async fn send_keyload_for_all(&mut self, topic: Topic, link_to: A::Relative) -> Result<SendResponse<A, TSR>> {
-        self.send_keyload(
-            topic,
-            link_to,
-            // Alas, must collect to release the &self immutable borrow
-            self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
-        )
-        .await
-    }
-
-    pub async fn send_keyload_for_all_rw(&mut self, topic: Topic, link_to: A::Relative) -> Result<SendResponse<A, TSR>> {
-        self.send_keyload(
-            topic,
-            link_to,
-            // Alas, must collect to release the &self immutable borrow
-            self.subscribers()
-                .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
-                .collect::<Vec<_>>(),
-        )
-        .await
-    }
-
-    pub async fn send_signed_packet<P, M>(
-        &mut self,
-        topic: Topic,
-        link_to: A::Relative,
-        public_payload: P,
-        masked_payload: M,
-    ) -> Result<SendResponse<A, TSR>>
->>>>>>> First pass branching:iota-streams/src/api/user.rs
     where
         P: AsRef<[u8]>,
         B: AsRef<[u8]>,
@@ -752,7 +490,7 @@ impl<T, TSR> User<T>
 where
     T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TSR>,
 {
-    /// Prepare Announcement message.
+    /// Prepare channel Announcement message.
     pub async fn create_stream(&mut self, stream_idx: usize) -> Result<SendResponse<TSR>> {
         // Check conditions
         if let Some(appaddr) = self.stream_address() {
@@ -762,14 +500,39 @@ where
             );
         }
 
-<<<<<<< HEAD:streams/src/api/user.rs
         // Generate stream address
         let stream_base_address = AppAddr::gen(self.identifier(), stream_idx);
         let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), INIT_MESSAGE_NUM);
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
+        // Commit Author Identifier and Stream Address to store
+        self.state.stream_address = Some(stream_address);
+        self.state.author_identifier = Some(self.identifier());
+
+        // Create Base Branch
+        self.new_branch(BASE_BRANCH).await
+    }
+
+    /// Prepare new branch Announcement message
+    pub async fn new_branch<Top: AsRef<[u8]>>(&mut self, topic: Top) -> Result<SendResponse<TSR>> {
+        // Check conditions
+        if self.stream_address().is_none() {
+            bail!("Channel has not been created yet");
+        }
+
+        // Check Topic
+        let topic = Topic::new(topic.as_ref())?;
+
+        // Update own's cursor
+        let (user_cursor, topic) = if topic.eq(&BASE_BRANCH) {
+            (ANN_MESSAGE_NUM, BASE_BRANCH)
+        } else {
+            let cursor = self.cursor(&BASE_BRANCH).ok_or_else(|| anyhow!("No cursor found in base branch"))?;
+            (cursor, topic)
+        };
+
         // Prepare HDF and PCF
-        let header = HDF::new(message_types::ANNOUNCEMENT, ANN_MESSAGE_NUM, self.identifier())?;
+        let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, self.identifier(), topic)?;
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(&self.state.user_id));
 
         // Wrap message
@@ -782,10 +545,13 @@ where
         );
         let send_response = self.transport.send_message(stream_address, transport_msg).await?;
 
+        // If the branch has not been created yet, create it
+        if !topic.eq(&BASE_BRANCH) {
+            self.state.id_store.new_branch(topic);
+        }
+
         // If message has been sent successfully, commit message to stores
-        self.state.stream_address = Some(stream_address);
-        self.state.author_identifier = Some(self.identifier());
-        self.state.id_store.insert_cursor(self.identifier(), INIT_MESSAGE_NUM);
+        self.state.id_store.insert_cursor(&topic, self.identifier(), INIT_MESSAGE_NUM);
         self.state.spongos_store.insert(stream_address.relative(), spongos);
         Ok(SendResponse::new(stream_address, send_response))
     }
@@ -798,13 +564,6 @@ where
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
 
         let rel_address = MsgId::gen(stream_address.base(), self.identifier(), SUB_MESSAGE_NUM);
-=======
-        // Update own's cursor
-        let new_cursor = self.next_cursor(&topic)?;
-        let rel_address: A::Relative =
-            self.address_generator
-                .gen((stream_address.base(), self.identifier(), new_cursor));
->>>>>>> First pass branching:iota-streams/src/api/user.rs
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -818,7 +577,7 @@ where
         let author_ke_pk = self
             .state
             .author_identifier
-            .and_then(|author_id| self.state.id_store.get_key(&author_id))
+            .and_then(|author_id| self.state.id_store.get_key(&BASE_BRANCH, &author_id))
             .expect("a user that already have an stream address must know the author identifier");
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
@@ -827,12 +586,8 @@ where
             author_ke_pk,
         ));
         let header =
-<<<<<<< HEAD:streams/src/api/user.rs
-            HDF::new(message_types::SUBSCRIPTION, SUB_MESSAGE_NUM, self.identifier())?.with_linked_msg_address(link_to);
-=======
-            HDF::new(message_types::SIGNED_PACKET, new_cursor, self.identifier(), topic)?
+            HDF::new(message_types::SUBSCRIPTION, user_cursor, self.identifier(), BASE_BRANCH)?
                 .with_linked_msg_address(link_to);
->>>>>>> First pass branching:iota-streams/src/api/user.rs
 
         // Wrap message
         let (transport_msg, _spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -846,7 +601,6 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-<<<<<<< HEAD:streams/src/api/user.rs
         // - Subscription messages are not stored in the cursor store
         // - Subscription messages are never stored in spongos to maintain consistency about the view of the
         // set of messages of the stream between all the subscribers and across stateless recovers
@@ -854,39 +608,14 @@ where
     }
 
     pub async fn unsubscribe(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
-=======
-        self.state.id_store.insert_cursor(&topic, self.identifier(), new_cursor);
-        self.state.spongos_store.insert(rel_address, spongos);
-        Ok(SendResponse::new(message_address, send_response))
-    }
-
-    pub async fn send_tagged_packet<P, M>(
-        &mut self,
-        topic: Topic,
-        link_to: A::Relative,
-        public_payload: P,
-        masked_payload: M,
-    ) -> Result<SendResponse<A, TSR>>
-    where
-        M: AsRef<[u8]>,
-        P: AsRef<[u8]>,
-    {
->>>>>>> First pass branching:iota-streams/src/api/user.rs
         // Check conditions
         let stream_address = self.stream_address().ok_or_else(|| {
             anyhow!("before sending a subscription one must receive the announcement of a stream first")
         })?;
 
         // Update own's cursor
-<<<<<<< HEAD:streams/src/api/user.rs
-        let new_cursor = self.next_cursor()?;
+        let new_cursor = self.next_cursor(&BASE_BRANCH)?;
         let rel_address = MsgId::gen(stream_address.base(), self.identifier(), new_cursor);
-=======
-        let new_cursor = self.next_cursor(&topic)?;
-        let rel_address: A::Relative =
-            self.address_generator
-                .gen((stream_address.base(), self.identifier(), new_cursor));
->>>>>>> First pass branching:iota-streams/src/api/user.rs
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -899,12 +628,8 @@ where
         let content = PCF::new_final_frame()
             .with_content(unsubscription::Wrap::new(&mut linked_msg_spongos, &self.state.user_id));
         let header =
-<<<<<<< HEAD:streams/src/api/user.rs
-            HDF::new(message_types::UNSUBSCRIPTION, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
-=======
-            HDF::new(message_types::TAGGED_PACKET, new_cursor, self.identifier(), topic)?
+            HDF::new(message_types::UNSUBSCRIPTION, new_cursor, self.identifier(), BASE_BRANCH)?
                 .with_linked_msg_address(link_to);
->>>>>>> First pass branching:iota-streams/src/api/user.rs
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -922,182 +647,27 @@ where
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
-<<<<<<< HEAD:streams/src/api/user.rs
-=======
-}
 
-impl<T, F, A, AG> User<T, F, A, AG>
-where
-    A: Link + Display + Clone,
-    A::Relative: Clone + Eq + Hash + Default,
-    A::Base: Clone,
-    AG: for<'a> LinkGenerator<'a, A::Relative, Data = (&'a A::Base, Identifier, usize)> + Default,
-    F: PRP + Default + Clone,
-    for<'a, 'b> unwrap::Context<F, &'a [u8]>: Absorb<&'b mut A::Relative>,
-{
-    pub async fn receive_message(&mut self, address: A) -> Result<Message<A>>
-    where
-        T: for<'a> Transport<'a, Address = &'a A, Msg = TransportMessage>,
-    {
-        let msg = self.transport.recv_message(&address).await?;
-        self.handle_message(address, msg).await
-    }
-
-    pub(crate) async fn handle_message(&mut self, address: A, msg: TransportMessage) -> Result<Message<A>> {
-        let preparsed = msg.parse_header::<F, A::Relative>().await?;
-        match preparsed.header().message_type() {
-            message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
-            message_types::SUBSCRIPTION => self.handle_subscription(address, preparsed).await,
-            message_types::UNSUBSCRIPTION => self.handle_unsubscription(address, preparsed).await,
-            message_types::KEYLOAD => self.handle_keyload(address, preparsed).await,
-            message_types::SIGNED_PACKET => self.handle_signed_packet(address, preparsed).await,
-            message_types::TAGGED_PACKET => self.handle_tagged_packet(address, preparsed).await,
-            unknown => Err(anyhow!("unexpected message type {}", unknown)),
-        }
-    }
-
-    /// Bind Subscriber to the channel announced
-    /// in the message.
-    async fn handle_announcement<'a>(
+    pub async fn send_keyload<'a, Subscribers, Top>(
         &mut self,
-        address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
-    ) -> Result<Message<A>> {
-        // Check conditions
-        if let Some(stream_address) = self.stream_address() {
-            bail!("user is already connected to the stream {}", stream_address);
-        }
-
-        let topic = *preparsed.header().topic();
-        // If the topic of the announcement is not base branch, a new branch must be added to store
-        if topic.eq(&BASE_BRANCH) {
-            self.state.id_store.new_branch(topic);
-        }
-
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(&topic, preparsed.header().publisher(), INIT_MESSAGE_NUM);
-
-        // Unwrap message
-        let announcement = announcement::Unwrap::default();
-        let (message, spongos) = preparsed.unwrap(announcement).await?;
-
-        // Store spongos
-        self.state.spongos_store.insert(address.relative().clone(), spongos);
-
-        // Store message content into stores
-        let author_id = message.payload().content().author_id();
-        let author_ke_pk = message.payload().content().author_ke_pk();
-        self.state.id_store.insert_key(&topic, author_id, author_ke_pk);
-        self.state.stream_address = Some(address.clone());
-        self.state.author_identifier = Some(author_id);
-
-        Ok(Message::from_lets_message(address, message))
-    }
-    async fn handle_subscription<'a>(
-        &mut self,
-        address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
-    ) -> Result<Message<A>> {
-        // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
-
-        // Unwrap message
-        let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
-            anyhow!("subscription messages must contain the address of the message they are linked to in the header")
-        })?;
-        let mut linked_msg_spongos = {
-            if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
-                // Spongos must be cloned because wrapping mutates it
-                spongos.clone()
-            } else {
-                return Ok(Message::orphan(address, preparsed));
-            }
-        };
-        let topic = *preparsed.header().topic();
-        let user_ke_sk = &self.state.user_id._ke_sk().ok_or_else(|| {
-            anyhow!("reader of a stream must have an identity from which an x25519 secret-key can be derived")
-        })?;
-        let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
-        let (message, _spongos) = preparsed.unwrap(subscription).await?;
-
-        // Store spongos
-        // Subscription messages are never stored in spongos to maintain consistency about the view of the
-        // set of messages of the stream between all the subscribers and across stateless recovers
-
-        // Store message content into stores
-        let subscriber_identifier = message.payload().content().subscriber_identifier();
-        let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
-        self.state.id_store.insert_key(&topic, subscriber_identifier, subscriber_ke_pk);
-
-        Ok(Message::from_lets_message(address, message))
-    }
-
-    async fn handle_unsubscription<'a>(
-        &mut self,
-        address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
-    ) -> Result<Message<A>> {
-        // Cursor is not stored, as user is unsubscribing
-
-        // Unwrap message
-        let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
-            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
-        })?;
-        let mut linked_msg_spongos = {
-            if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
-                // Spongos must be cloned because wrapping mutates it
-                spongos.clone()
-            } else {
-                return Ok(Message::orphan(address, preparsed));
-            }
-        };
-        let unsubscription = unsubscription::Unwrap::new(&mut linked_msg_spongos);
-        let (message, spongos) = preparsed.unwrap(unsubscription).await?;
-
-        // Store spongos
-        self.state.spongos_store.insert(address.relative().clone(), spongos);
-
-        // Store message content into stores
-        self.remove_subscriber(message.payload().content().subscriber_identifier());
-
-        Ok(Message::from_lets_message(address, message))
-    }
->>>>>>> First pass branching:iota-streams/src/api/user.rs
-
-    pub async fn send_keyload<'a, Subscribers>(
-        &mut self,
-<<<<<<< HEAD:streams/src/api/user.rs
+        topic: Top,
         link_to: MsgId,
         subscribers: Subscribers,
     ) -> Result<SendResponse<TSR>>
     where
         Subscribers: IntoIterator<Item = Permissioned<Identifier>> + Clone,
+        Top: AsRef<[u8]>,
     {
         // Check conditions
-=======
-        address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
-    ) -> Result<Message<A>> {
-        let topic = *preparsed.header().topic();
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(&topic, preparsed.header().publisher(), preparsed.header().sequence());
-
-        // Unwrap message
-        let author_identifier = self.state.author_identifier.ok_or_else(|| {
-            anyhow!("before receiving keyloads one must have received the announcement of a stream first")
-        })?;
->>>>>>> First pass branching:iota-streams/src/api/user.rs
         let stream_address = self
             .stream_address()
             .ok_or_else(|| anyhow!("before sending a keyload one must create a stream first"))?;
 
+        // Check Topic
+        let topic = Topic::new(topic.as_ref())?;
+
         // Update own's cursor
-        let new_cursor = self.next_cursor()?;
+        let new_cursor = self.next_cursor(&topic)?;
         let rel_address = MsgId::gen(stream_address.base(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
@@ -1119,7 +689,7 @@ where
                     subscriber,
                     self.state
                         .id_store
-                        .get_exchange_key(subscriber.identifier())
+                        .get_exchange_key(&topic, subscriber.identifier())
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
                 ))
             })
@@ -1131,12 +701,12 @@ where
             nonce,
             &self.state.user_id,
         ));
-        let header = HDF::new(message_types::KEYLOAD, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::KEYLOAD, new_cursor, self.identifier(), topic)?
+            .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
 
-<<<<<<< HEAD:streams/src/api/user.rs
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
         ensure!(
@@ -1147,66 +717,36 @@ where
 
         // If message has been sent successfully, commit message to stores
         for subscriber in subscribers {
-            if self.should_store_cursor(&subscriber) {
-=======
-        // Store message content into stores
-        for subscriber in message.payload().content().subscribers() {
-            if self.should_store_cursor(&topic, subscriber) {
->>>>>>> First pass branching:iota-streams/src/api/user.rs
+            if self.should_store_cursor(&topic, &subscriber) {
                 self.state
                     .id_store
                     .insert_cursor(&topic,*subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
-        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.id_store.insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
 
-<<<<<<< HEAD:streams/src/api/user.rs
-    pub async fn send_keyload_for_all(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
+    pub async fn send_keyload_for_all<Top>(&mut self, topic: Top, link_to: MsgId) -> Result<SendResponse<TSR>>
+    where
+        Top: AsRef<[u8]>,
+    {
         self.send_keyload(
+            topic,
             link_to,
             // Alas, must collect to release the &self immutable borrow
             self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
         )
         .await
     }
-=======
-    async fn handle_signed_packet<'a>(
-        &mut self,
-        address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
-    ) -> Result<Message<A>> {
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(preparsed.header().topic(),preparsed.header().publisher(), preparsed.header().sequence());
 
-        // Unwrap message
-        let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
-            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
-        })?;
-        let mut linked_msg_spongos = {
-            if let Some(spongos) = self.state.spongos_store.get(linked_msg_address) {
-                // Spongos must be cloned because wrapping mutates it
-                spongos.clone()
-            } else {
-                return Ok(Message::orphan(address, preparsed));
-            }
-        };
-        let signed_packet = signed_packet::Unwrap::new(&mut linked_msg_spongos);
-        let (message, spongos) = preparsed.unwrap(signed_packet).await?;
-
-        // Store spongos
-        self.state.spongos_store.insert(address.relative().clone(), spongos);
-
-        // Store message content into stores
->>>>>>> First pass branching:iota-streams/src/api/user.rs
-
-    pub async fn send_keyload_for_all_rw(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
+    pub async fn send_keyload_for_all_rw<Top>(&mut self, topic: Top, link_to: MsgId) -> Result<SendResponse<TSR>>
+    where
+        Top: AsRef<[u8]>,
+    {
         self.send_keyload(
+            topic,
             link_to,
             // Alas, must collect to release the &self immutable borrow
             self.subscribers()
@@ -1216,9 +756,9 @@ where
         .await
     }
 
-    pub async fn send_signed_packet<P, M>(
+    pub async fn send_signed_packet<P, M, Top>(
         &mut self,
-<<<<<<< HEAD:streams/src/api/user.rs
+        topic: Top,
         link_to: MsgId,
         public_payload: P,
         masked_payload: M,
@@ -1226,28 +766,18 @@ where
     where
         M: AsRef<[u8]>,
         P: AsRef<[u8]>,
+        Top: AsRef<[u8]>,
     {
         // Check conditions
         let stream_address = self.stream_address().ok_or_else(|| {
             anyhow!("before sending a signed packet one must receive the announcement of a stream first")
-=======
-        address: A,
-        preparsed: PreparsedMessage<F, A::Relative>,
-    ) -> Result<Message<A>> {
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(preparsed.header().topic(), preparsed.header().publisher(), preparsed.header().sequence());
-
-        // Unwrap message
-        let linked_msg_address = preparsed.linked_msg_address().as_ref().ok_or_else(|| {
-            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
->>>>>>> First pass branching:iota-streams/src/api/user.rs
         })?;
 
+        // Check Topic
+        let topic = Topic::new(topic.as_ref())?;
+
         // Update own's cursor
-        let new_cursor = self.next_cursor()?;
+        let new_cursor = self.next_cursor(&topic)?;
         let rel_address = MsgId::gen(stream_address.base(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
@@ -1265,7 +795,8 @@ where
             masked_payload.as_ref(),
         ));
         let header =
-            HDF::new(message_types::SIGNED_PACKET, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
+            HDF::new(message_types::SIGNED_PACKET, new_cursor, self.identifier(), topic)?
+                .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -1279,13 +810,14 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.id_store.insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
 
-    pub async fn send_tagged_packet<P, M>(
+    pub async fn send_tagged_packet<P, M, Top>(
         &mut self,
+        topic: Top,
         link_to: MsgId,
         public_payload: P,
         masked_payload: M,
@@ -1293,14 +825,18 @@ where
     where
         M: AsRef<[u8]>,
         P: AsRef<[u8]>,
+        Top: AsRef<[u8]>,
     {
         // Check conditions
         let stream_address = self.stream_address().ok_or_else(|| {
             anyhow!("before sending a tagged packet one must receive the announcement of a stream first")
         })?;
 
+        // Check Topic
+        let topic = Topic::new(topic.as_ref())?;
+
         // Update own's cursor
-        let new_cursor = self.next_cursor()?;
+        let new_cursor = self.next_cursor(&topic)?;
         let rel_address = MsgId::gen(stream_address.base(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
@@ -1317,7 +853,8 @@ where
             masked_payload.as_ref(),
         ));
         let header =
-            HDF::new(message_types::TAGGED_PACKET, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
+            HDF::new(message_types::TAGGED_PACKET, new_cursor, self.identifier(), topic)?
+                .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -1331,7 +868,7 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.id_store.insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
