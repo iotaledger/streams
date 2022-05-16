@@ -528,11 +528,8 @@ where
         let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), INIT_MESSAGE_NUM);
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
-        // Update own's cursor
-        let user_cursor = ANN_MESSAGE_NUM;
-
         // Prepare HDF and PCF
-        let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, self.identifier())?;
+        let header = HDF::new(message_types::ANNOUNCEMENT, ANN_MESSAGE_NUM, self.identifier())?;
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(&self.state.user_id));
 
         // Wrap message
@@ -560,9 +557,7 @@ where
             .stream_address()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
 
-        let user_cursor = SUB_MESSAGE_NUM;
-        // Update own's cursor
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), user_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -585,7 +580,7 @@ where
             author_ke_pk,
         ));
         let header =
-            HDF::new(message_types::SUBSCRIPTION, user_cursor, self.identifier())?.with_linked_msg_address(link_to);
+            HDF::new(message_types::SUBSCRIPTION, SUB_MESSAGE_NUM, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, _spongos) = LetsMessage::new(header, content).wrap().await?;
