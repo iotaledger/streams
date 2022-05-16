@@ -245,10 +245,9 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    fn encrypt<T, R>(&mut self, plain: T) -> Result<R>
+    fn encrypt<T>(&mut self, plain: T) -> Result<T>
     where
-        T: AsRef<[u8]>,
-        R: AsMut<[u8]> + Default,
+        T: AsRef<[u8]> + AsMut<[u8]> + Default,
     {
         let mut cipher = Default::default();
         self.encrypt_mut(plain, &mut cipher)?;
@@ -300,10 +299,9 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    fn decrypt<T, R>(&mut self, ciphertext: T) -> Result<R>
+    fn decrypt<T>(&mut self, ciphertext: T) -> Result<T>
     where
-        T: AsRef<[u8]>,
-        R: AsMut<[u8]> + Default,
+        T: AsRef<[u8]> + AsMut<[u8]> + Default,
     {
         let mut plaintext = Default::default();
         self.decrypt_mut(ciphertext, &mut plaintext)?;

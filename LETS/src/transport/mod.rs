@@ -79,7 +79,8 @@ impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
 mod sync {
     use alloc::{
         boxed::Box,
-        sync::Arc, vec::Vec,
+        sync::Arc,
+        vec::Vec,
     };
 
     use anyhow::Result;
@@ -107,8 +108,7 @@ mod sync {
         }
 
         // Receive messages with default options.
-        async fn recv_messages(&mut self, address: Address) -> Result<Vec<Self::Msg>>
-        {
+        async fn recv_messages(&mut self, address: Address) -> Result<Vec<Self::Msg>> {
             self.lock().recv_messages(address).await
         }
     }
