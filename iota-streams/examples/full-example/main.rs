@@ -40,12 +40,12 @@ async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     result
 }
 
-async fn run_multi_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
-    println!("## Running multi branch test with seed: {} ##\n", seed);
-    let result = branching::multi_branch::example(transport, seed).await;
+async fn run_single_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+    println!("## Running single branch test with seed: {} ##\n", seed);
+    let result = branching::single_branch::example(transport, seed).await;
     match &result {
-        Err(err) => eprintln!("Error in Multi Branch test: {:?}", err),
-        Ok(_) => println!("\n## Multi Branch Test completed successfully!! ##\n"),
+        Err(err) => eprintln!("Error in Single Branch test: {:?}", err),
+        Ok(_) => println!("\n## Single Branch Test completed successfully!! ##\n"),
     };
     result
 }
@@ -62,7 +62,7 @@ async fn main_pure() -> Result<()> {
     // hence the Rc<RefCell<BucketTransport>>
     let transport = Rc::new(RefCell::new(transport));
 
-    run_multi_branch_test(transport.clone(), "PURESEEDA").await?;
+    run_single_branch_test(transport.clone(), "PURESEEDA").await?;
     println!("################################################");
     println!("Done running pure tests without accessing Tangle");
     println!("################################################");
@@ -84,7 +84,7 @@ async fn main_client() -> Result<()> {
             |e| panic!("error connecting Tangle client to '{}': {}", node_url, e),
         )));
 
-    run_multi_branch_test(transport.clone(), &new_seed()).await?;
+    run_single_branch_test(transport.clone(), &new_seed()).await?;
     run_did_test(transport).await?;
     println!(
         "#############################################{}",
