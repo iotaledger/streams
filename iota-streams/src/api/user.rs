@@ -226,6 +226,287 @@ impl<T> User<T> {
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
         self.state.id_store.remove_psk(pskid)
     }
+
+    pub(crate) async fn handle_message(&mut self, address: Address, msg: TransportMessage) -> Result<Message> {
+        let preparsed = msg.parse_header().await?;
+        match preparsed.header().message_type() {
+            message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
+            message_types::SUBSCRIPTION => self.handle_subscription(address, preparsed).await,
+            message_types::UNSUBSCRIPTION => self.handle_unsubscription(address, preparsed).await,
+            message_types::KEYLOAD => self.handle_keyload(address, preparsed).await,
+            message_types::SIGNED_PACKET => self.handle_signed_packet(address, preparsed).await,
+            message_types::TAGGED_PACKET => self.handle_tagged_packet(address, preparsed).await,
+            unknown => Err(anyhow!("unexpected message type {}", unknown)),
+        }
+    }
+
+    /// Bind Subscriber to the channel announced
+    /// in the message.
+    async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // Check conditions
+        if let Some(stream_address) = self.stream_address() {
+            bail!("user is already connected to the stream {}", stream_address);
+        }
+
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.state
+            .id_store
+            .insert_cursor(preparsed.header().publisher(), INIT_MESSAGE_NUM);
+
+        // Unwrap message
+        let announcement = announcement::Unwrap::default();
+        let (message, spongos) = preparsed.unwrap(announcement).await?;
+
+        // Store spongos
+        self.state.spongos_store.insert(address.relative(), spongos);
+
+        // Store message content into stores
+        let author_id = message.payload().content().author_id();
+        let author_ke_pk = message.payload().content().author_ke_pk();
+        self.state.id_store.insert_key(author_id, author_ke_pk);
+        self.state.stream_address = Some(address);
+        self.state.author_identifier = Some(author_id);
+
+        Ok(Message::from_lets_message(address, message))
+    }
+    async fn handle_subscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
+
+        // Unwrap message
+        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
+            anyhow!("subscription messages must contain the address of the message they are linked to in the header")
+        })?;
+        let mut linked_msg_spongos = {
+            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
+                // Spongos must be copied because wrapping mutates it
+                spongos
+            } else {
+                return Ok(Message::orphan(address, preparsed));
+            }
+        };
+        let user_ke_sk = &self.state.user_id._ke_sk().ok_or_else(|| {
+            anyhow!("reader of a stream must have an identity from which an x25519 secret-key can be derived")
+        })?;
+        let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
+        let (message, _spongos) = preparsed.unwrap(subscription).await?;
+
+        // Store spongos
+        // Subscription messages are never stored in spongos to maintain consistency about the view of the
+        // set of messages of the stream between all the subscribers and across stateless recovers
+
+        // Store message content into stores
+        let subscriber_identifier = message.payload().content().subscriber_identifier();
+        let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
+        self.state.id_store.insert_key(subscriber_identifier, subscriber_ke_pk);
+
+        Ok(Message::from_lets_message(address, message))
+    }
+
+    async fn handle_unsubscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // Cursor is not stored, as user is unsubscribing
+
+        // Unwrap message
+        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
+            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
+        })?;
+        let mut linked_msg_spongos = {
+            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address) {
+                *spongos
+            } else {
+                return Ok(Message::orphan(address, preparsed));
+            }
+        };
+        let unsubscription = unsubscription::Unwrap::new(&mut linked_msg_spongos);
+        let (message, spongos) = preparsed.unwrap(unsubscription).await?;
+
+        // Store spongos
+        self.state.spongos_store.insert(address.relative(), spongos);
+
+        // Store message content into stores
+        self.remove_subscriber(message.payload().content().subscriber_identifier());
+
+        Ok(Message::from_lets_message(address, message))
+    }
+
+    async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.state
+            .id_store
+            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+
+        // Unwrap message
+        let author_identifier = self.state.author_identifier.ok_or_else(|| {
+            anyhow!("before receiving keyloads one must have received the announcement of a stream first")
+        })?;
+        let stream_address = self
+            .stream_address()
+            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
+        let mut announcement_spongos = self
+            .state
+            .spongos_store
+            .get(&stream_address.relative())
+            .copied()
+            .expect("a subscriber that has received an stream announcement must keep its spongos in store");
+
+        // TODO: Remove Psk from Identity and Identifier, and manage it as a complementary permission
+        let user_ke_sk = self.state.user_id._ke();
+        let keyload = keyload::Unwrap::new(
+            &mut announcement_spongos,
+            &self.state.user_id,
+            &user_ke_sk,
+            author_identifier,
+        );
+        let (message, spongos) = preparsed.unwrap(keyload).await?;
+
+        // Store spongos
+        self.state.spongos_store.insert(address.relative(), spongos);
+
+        // Store message content into stores
+        for subscriber in message.payload().content().subscribers() {
+            if self.should_store_cursor(subscriber) {
+                self.state
+                    .id_store
+                    .insert_cursor(*subscriber.identifier(), INIT_MESSAGE_NUM);
+            }
+        }
+
+        Ok(Message::from_lets_message(address, message))
+    }
+
+    async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.state
+            .id_store
+            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+
+        // Unwrap message
+        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
+            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
+        })?;
+        let mut linked_msg_spongos = {
+            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
+                // Spongos must be copied because wrapping mutates it
+                spongos
+            } else {
+                return Ok(Message::orphan(address, preparsed));
+            }
+        };
+        let signed_packet = signed_packet::Unwrap::new(&mut linked_msg_spongos);
+        let (message, spongos) = preparsed.unwrap(signed_packet).await?;
+
+        // Store spongos
+        self.state.spongos_store.insert(address.relative(), spongos);
+
+        // Store message content into stores
+
+        Ok(Message::from_lets_message(address, message))
+    }
+
+    async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
+        // its content. Therefore we must update the cursor of the publisher before handling the message
+        self.state
+            .id_store
+            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+
+        // Unwrap message
+        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
+            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
+        })?;
+        let mut linked_msg_spongos = {
+            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
+                // Spongos must be copied because wrapping mutates it
+                spongos
+            } else {
+                return Ok(Message::orphan(address, preparsed));
+            }
+        };
+        let tagged_packet = tagged_packet::Unwrap::new(&mut linked_msg_spongos);
+        let (message, spongos) = preparsed.unwrap(tagged_packet).await?;
+
+        // Store spongos
+        self.state.spongos_store.insert(address.relative(), spongos);
+
+        // Store message content into stores
+
+        Ok(Message::from_lets_message(address, message))
+    }
+
+    pub async fn backup<P>(&mut self, pwd: P) -> Result<Vec<u8>>
+    where
+        P: AsRef<[u8]>,
+    {
+        let mut ctx = sizeof::Context::new();
+        ctx.sizeof(&self.state).await?;
+        let buf_size = ctx.finalize();
+
+        let mut buf = vec![0; buf_size];
+
+        let mut ctx = wrap::Context::new(&mut buf[..]);
+        let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
+        ctx.absorb(External::new(NBytes::new(&key)))?;
+        ctx.wrap(&mut self.state).await?;
+        assert!(
+            ctx.stream().is_empty(),
+            "Missmatch between buffer size expected by SizeOf ({buf_size}) and actual size of Wrap ({})",
+            ctx.stream().len()
+        );
+
+        Ok(buf)
+    }
+
+    pub async fn restore<B, P>(backup: B, pwd: P, transport: T) -> Result<Self>
+    where
+        P: AsRef<[u8]>,
+        B: AsRef<[u8]>,
+    {
+        let mut ctx = unwrap::Context::new(backup.as_ref());
+        let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
+        ctx.absorb(&External::new(NBytes::new(&key)))?;
+        let mut state = State::default();
+        ctx.unwrap(&mut state).await?;
+        Ok(User { transport, state })
+    }
+}
+
+impl<T> User<T>
+where
+    T: for<'a> Transport<'a, Msg = TransportMessage>,
+{
+    pub async fn receive_message(&mut self, address: Address) -> Result<Message>
+    where
+        T: for<'a> Transport<'a, Msg = TransportMessage>,
+    {
+        let msg = self.transport.recv_message(address).await?;
+        self.handle_message(address, msg).await
+    }
+
+    /// Start a [`Messages`] stream to traverse the channel messages
+    ///
+    /// See the documentation in [`Messages`] for more details and examples.
+    pub fn messages(&mut self) -> Messages<T> {
+        Messages::new(self)
+    }
+
+    /// Iteratively fetches all the next messages until internal state has caught up
+    ///
+    /// If succeeded, returns the number of messages advanced.
+    pub async fn sync(&mut self) -> Result<usize> {
+        // ignoring the result is sound as Drain::Error is Infallible
+        self.messages().try_fold(0, |n, _| future::ok(n + 1)).await
+    }
+
+    /// Iteratively fetches all the pending messages from the transport
+    ///
+    /// Return a vector with all the messages collected. This is a convenience
+    /// method around the [`Messages`] stream. Check out its docs for more
+    /// advanced usages.
+    pub async fn fetch_next_messages(&mut self) -> Result<Vec<Message>> {
+        self.messages().try_collect().await
+    }
 }
 
 impl<T, TSR> User<T>
@@ -561,293 +842,6 @@ where
         self.state.id_store.insert_cursor(self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
-    }
-}
-
-impl<T> User<T> {
-    pub async fn receive_message(&mut self, address: Address) -> Result<Message>
-    where
-        T: for<'a> Transport<'a, Msg = TransportMessage>,
-    {
-        let msg = self.transport.recv_message(address).await?;
-        self.handle_message(address, msg).await
-    }
-
-    pub(crate) async fn handle_message(&mut self, address: Address, msg: TransportMessage) -> Result<Message> {
-        let preparsed = msg.parse_header().await?;
-        match preparsed.header().message_type() {
-            message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
-            message_types::SUBSCRIPTION => self.handle_subscription(address, preparsed).await,
-            message_types::UNSUBSCRIPTION => self.handle_unsubscription(address, preparsed).await,
-            message_types::KEYLOAD => self.handle_keyload(address, preparsed).await,
-            message_types::SIGNED_PACKET => self.handle_signed_packet(address, preparsed).await,
-            message_types::TAGGED_PACKET => self.handle_tagged_packet(address, preparsed).await,
-            unknown => Err(anyhow!("unexpected message type {}", unknown)),
-        }
-    }
-
-    /// Bind Subscriber to the channel announced
-    /// in the message.
-    async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // Check conditions
-        if let Some(stream_address) = self.stream_address() {
-            bail!("user is already connected to the stream {}", stream_address);
-        }
-
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(preparsed.header().publisher(), INIT_MESSAGE_NUM);
-
-        // Unwrap message
-        let announcement = announcement::Unwrap::default();
-        let (message, spongos) = preparsed.unwrap(announcement).await?;
-
-        // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
-
-        // Store message content into stores
-        let author_id = message.payload().content().author_id();
-        let author_ke_pk = message.payload().content().author_ke_pk();
-        self.state.id_store.insert_key(author_id, author_ke_pk);
-        self.state.stream_address = Some(address);
-        self.state.author_identifier = Some(author_id);
-
-        Ok(Message::from_lets_message(address, message))
-    }
-    async fn handle_subscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
-
-        // Unwrap message
-        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
-            anyhow!("subscription messages must contain the address of the message they are linked to in the header")
-        })?;
-        let mut linked_msg_spongos = {
-            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
-                // Spongos must be copied because wrapping mutates it
-                spongos
-            } else {
-                return Ok(Message::orphan(address, preparsed));
-            }
-        };
-        let user_ke_sk = &self.state.user_id._ke_sk().ok_or_else(|| {
-            anyhow!("reader of a stream must have an identity from which an x25519 secret-key can be derived")
-        })?;
-        let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
-        let (message, _spongos) = preparsed.unwrap(subscription).await?;
-
-        // Store spongos
-        // Subscription messages are never stored in spongos to maintain consistency about the view of the
-        // set of messages of the stream between all the subscribers and across stateless recovers
-
-        // Store message content into stores
-        let subscriber_identifier = message.payload().content().subscriber_identifier();
-        let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
-        self.state.id_store.insert_key(subscriber_identifier, subscriber_ke_pk);
-
-        Ok(Message::from_lets_message(address, message))
-    }
-
-    async fn handle_unsubscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // Cursor is not stored, as user is unsubscribing
-
-        // Unwrap message
-        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
-            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
-        })?;
-        let mut linked_msg_spongos = {
-            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address) {
-                *spongos
-            } else {
-                return Ok(Message::orphan(address, preparsed));
-            }
-        };
-        let unsubscription = unsubscription::Unwrap::new(&mut linked_msg_spongos);
-        let (message, spongos) = preparsed.unwrap(unsubscription).await?;
-
-        // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
-
-        // Store message content into stores
-        self.remove_subscriber(message.payload().content().subscriber_identifier());
-
-        Ok(Message::from_lets_message(address, message))
-    }
-
-    async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
-
-        // Unwrap message
-        let author_identifier = self.state.author_identifier.ok_or_else(|| {
-            anyhow!("before receiving keyloads one must have received the announcement of a stream first")
-        })?;
-        let stream_address = self
-            .stream_address()
-            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
-        let mut announcement_spongos = self
-            .state
-            .spongos_store
-            .get(&stream_address.relative())
-            .copied()
-            .expect("a subscriber that has received an stream announcement must keep its spongos in store");
-
-        // TODO: Remove Psk from Identity and Identifier, and manage it as a complementary permission
-        let user_ke_sk = self.state.user_id._ke();
-        let keyload = keyload::Unwrap::new(
-            &mut announcement_spongos,
-            &self.state.user_id,
-            &user_ke_sk,
-            author_identifier,
-        );
-        let (message, spongos) = preparsed.unwrap(keyload).await?;
-
-        // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
-
-        // Store message content into stores
-        for subscriber in message.payload().content().subscribers() {
-            if self.should_store_cursor(subscriber) {
-                self.state
-                    .id_store
-                    .insert_cursor(*subscriber.identifier(), INIT_MESSAGE_NUM);
-            }
-        }
-
-        Ok(Message::from_lets_message(address, message))
-    }
-
-    async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
-
-        // Unwrap message
-        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
-            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
-        })?;
-        let mut linked_msg_spongos = {
-            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
-                // Spongos must be copied because wrapping mutates it
-                spongos
-            } else {
-                return Ok(Message::orphan(address, preparsed));
-            }
-        };
-        let signed_packet = signed_packet::Unwrap::new(&mut linked_msg_spongos);
-        let (message, spongos) = preparsed.unwrap(signed_packet).await?;
-
-        // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
-
-        // Store message content into stores
-
-        Ok(Message::from_lets_message(address, message))
-    }
-
-    async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
-        self.state
-            .id_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
-
-        // Unwrap message
-        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
-            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
-        })?;
-        let mut linked_msg_spongos = {
-            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
-                // Spongos must be copied because wrapping mutates it
-                spongos
-            } else {
-                return Ok(Message::orphan(address, preparsed));
-            }
-        };
-        let tagged_packet = tagged_packet::Unwrap::new(&mut linked_msg_spongos);
-        let (message, spongos) = preparsed.unwrap(tagged_packet).await?;
-
-        // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
-
-        // Store message content into stores
-
-        Ok(Message::from_lets_message(address, message))
-    }
-}
-
-impl<T> User<T>
-where
-    T: for<'a> Transport<'a, Msg = TransportMessage>,
-{
-    /// Start a [`Messages`] stream to traverse the channel messages
-    ///
-    /// See the documentation in [`Messages`] for more details and examples.
-    pub fn messages(&mut self) -> Messages<T> {
-        Messages::new(self)
-    }
-
-    /// Iteratively fetches all the next messages until internal state has caught up
-    ///
-    /// If succeeded, returns the number of messages advanced.
-    pub async fn sync(&mut self) -> Result<usize> {
-        // ignoring the result is sound as Drain::Error is Infallible
-        self.messages().try_fold(0, |n, _| future::ok(n + 1)).await
-    }
-
-    /// Iteratively fetches all the pending messages from the transport
-    ///
-    /// Return a vector with all the messages collected. This is a convenience
-    /// method around the [`Messages`] stream. Check out its docs for more
-    /// advanced usages.
-    pub async fn fetch_next_messages(&mut self) -> Result<Vec<Message>> {
-        self.messages().try_collect().await
-    }
-}
-
-impl<T> User<T> {
-    pub async fn backup<P>(&mut self, pwd: P) -> Result<Vec<u8>>
-    where
-        P: AsRef<[u8]>,
-    {
-        let mut ctx = sizeof::Context::new();
-        ctx.sizeof(&self.state).await?;
-        let buf_size = ctx.finalize();
-
-        let mut buf = vec![0; buf_size];
-
-        let mut ctx = wrap::Context::new(&mut buf[..]);
-        let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
-        ctx.absorb(External::new(NBytes::new(&key)))?;
-        ctx.wrap(&mut self.state).await?;
-        assert!(
-            ctx.stream().is_empty(),
-            "Missmatch between buffer size expected by SizeOf ({buf_size}) and actual size of Wrap ({})",
-            ctx.stream().len()
-        );
-
-        Ok(buf)
-    }
-}
-
-impl<T> User<T> {
-    pub async fn restore<B, P>(backup: B, pwd: P, transport: T) -> Result<Self>
-    where
-        P: AsRef<[u8]>,
-        B: AsRef<[u8]>,
-    {
-        let mut ctx = unwrap::Context::new(backup.as_ref());
-        let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
-        ctx.absorb(&External::new(NBytes::new(&key)))?;
-        let mut state = State::default();
-        ctx.unwrap(&mut state).await?;
-        Ok(User { transport, state })
     }
 }
 
