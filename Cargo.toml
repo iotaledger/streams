@@ -1,9 +1,9 @@
 [workspace]
 
 members = [
-    "spongos",
-    "LETS",
-    "iota-streams"
+  "spongos",
+  "LETS",
+  "iota-streams",
 ]
 
 [profile.dev]
