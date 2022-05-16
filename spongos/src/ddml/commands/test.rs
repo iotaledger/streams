@@ -256,8 +256,8 @@ fn absorb_ed25519<F: PRP + Default>() -> Result<()> {
 
     let tag_wrap = Bytes::new([3u8; 17].to_vec());
     let mut tag_unwrap = Bytes::default();
-    let mut hash_wrap = External::new(NBytes::<GenericArray<u8, U64>>::default());
-    let mut hash_unwrap = External::new(NBytes::<GenericArray<u8, U64>>::default());
+    let mut hash_wrap = External::new(NBytes::new([0; 64]));
+    let mut hash_unwrap = External::new(NBytes::new([0; 64]));
 
     let mut ctx = sizeof::Context::new();
     ctx.absorb(&tag_wrap)?
