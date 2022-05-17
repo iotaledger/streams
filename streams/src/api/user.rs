@@ -1,107 +1,42 @@
 // Rust
-use alloc::{
-    boxed::Box,
-    format,
-    string::String,
-    vec::Vec,
-};
-use core::fmt::{
-    self,
-    Debug,
-    Formatter,
-};
+use alloc::{boxed::Box, format, string::String, vec::Vec};
+use core::fmt::{self, Debug, Formatter};
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    bail,
-    ensure,
-    Result,
-};
+use anyhow::{anyhow, bail, ensure, Result};
 use async_trait::async_trait;
-use futures::{
-    future,
-    TryStreamExt,
-};
+use futures::{future, TryStreamExt};
 use hashbrown::HashMap;
-use rand::{
-    rngs::StdRng,
-    Rng,
-    SeedableRng,
-};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 // IOTA
 use crypto::keys::x25519;
 
 // Streams
-use spongos::{
-    ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Commit,
-            Mask,
-            Squeeze,
-        },
-        modifiers::External,
-        types::{
-            Mac,
-            Maybe,
-            NBytes,
-            Size,
-        },
-    },
-    KeccakF1600,
-    Spongos,
-    SpongosRng,
-};
 use lets::{
-    address::{
-        Address,
-        AppAddr,
-        MsgId,
-    },
-    id::{
-        Identifier,
-        Identity,
-        PermissionDuration,
-        Permissioned,
-        Psk,
-        PskId,
-    },
+    address::{Address, AppAddr, MsgId},
+    id::{Identifier, Identity, PermissionDuration, Permissioned, Psk, PskId},
     message::{
-        ContentSizeof,
-        ContentUnwrap,
-        ContentWrap,
-        Message as LetsMessage,
-        PreparsedMessage,
-        TransportMessage,
-        HDF,
-        PCF,
+        ContentSizeof, ContentUnwrap, ContentWrap, Message as LetsMessage, PreparsedMessage, TransportMessage, HDF, PCF,
     },
     transport::Transport,
+};
+use spongos::{
+    ddml::{
+        commands::{sizeof, unwrap, wrap, Absorb, Commit, Mask, Squeeze},
+        modifiers::External,
+        types::{Mac, Maybe, NBytes, Size},
+    },
+    KeccakF1600, Spongos, SpongosRng,
 };
 
 // Local
 use crate::{
     api::{
-        key_store::KeyStore,
-        message::Message,
-        messages::Messages,
-        send_response::SendResponse,
+        key_store::KeyStore, message::Message, messages::Messages, send_response::SendResponse,
         user_builder::UserBuilder,
     },
-    message::{
-        announcement,
-        keyload,
-        message_types,
-        signed_packet,
-        subscription,
-        tagged_packet,
-        unsubscription,
-    },
+    message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
 };
 
 const ANN_MESSAGE_NUM: usize = 0; // Announcement is always the first message of authors
@@ -245,11 +180,15 @@ impl<T> User<T> {
     async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Check conditions
         if let Some(stream_address) = self.stream_address() {
-            bail!("cannot handle announcement: user is already connected to the stream {}", stream_address);
+            bail!(
+                "cannot handle announcement: user is already connected to the stream {}",
+                stream_address
+            );
         }
 
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or
+        // accessibility to its content. Therefore we must update the cursor of the publisher before
+        // handling the message
         self.state
             .id_store
             .insert_cursor(preparsed.header().publisher(), INIT_MESSAGE_NUM);
@@ -330,8 +269,9 @@ impl<T> User<T> {
     }
 
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or
+        // accessibility to its content. Therefore we must update the cursor of the publisher before
+        // handling the message
         self.state
             .id_store
             .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
@@ -376,8 +316,9 @@ impl<T> User<T> {
     }
 
     async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or
+        // accessibility to its content. Therefore we must update the cursor of the publisher before
+        // handling the message
         self.state
             .id_store
             .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
@@ -406,8 +347,9 @@ impl<T> User<T> {
     }
 
     async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
-        // its content. Therefore we must update the cursor of the publisher before handling the message
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or
+        // accessibility to its content. Therefore we must update the cursor of the publisher before
+        // handling the message
         self.state
             .id_store
             .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
@@ -980,14 +922,16 @@ impl<T> Debug for User<T> {
     }
 }
 
-/// An streams user equality is determined by the equality of its state. The major consequence of this
-/// fact is that two users with the same identity but different transport configurations are considered equal
+/// An streams user equality is determined by the equality of its state. The major consequence of
+/// this fact is that two users with the same identity but different transport configurations are
+/// considered equal
 impl<T> PartialEq for User<T> {
     fn eq(&self, other: &Self) -> bool {
         self.state == other.state
     }
 }
 
-/// An streams user equality is determined by the equality of its state. The major consequence of this
-/// fact is that two users with the same identity but different transport configurations are considered equal
+/// An streams user equality is determined by the equality of its state. The major consequence of
+/// this fact is that two users with the same identity but different transport configurations are
+/// considered equal
 impl<T> Eq for User<T> {}

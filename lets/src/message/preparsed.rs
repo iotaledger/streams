@@ -7,21 +7,10 @@ use anyhow::Result;
 // IOTA
 
 // Streams
-use spongos::{
-    ddml::commands::unwrap,
-    KeccakF1600,
-    Spongos,
-    PRP,
-};
+use spongos::{ddml::commands::unwrap, KeccakF1600, Spongos, PRP};
 
 // Local
-use crate::message::{
-    content::ContentUnwrap,
-    hdf::HDF,
-    message::Message,
-    pcf::PCF,
-    transport::TransportMessage,
-};
+use crate::message::{content::ContentUnwrap, hdf::HDF, message::Message, pcf::PCF, transport::TransportMessage};
 
 /// Message context preparsed for unwrapping.
 #[derive(Clone, PartialEq, Eq, Hash, Default)]

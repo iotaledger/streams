@@ -5,36 +5,18 @@ use alloc::vec::Vec;
 use anyhow::Result;
 
 // IOTA
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::{keys::x25519, signatures::ed25519};
 
 // Local
 use crate::{
-    core::{
-        prp::PRP,
-        spongos::Spongos,
-    },
+    core::{prp::PRP, spongos::Spongos},
     ddml::{
         commands::{
-            unwrap::{
-                Context,
-                Unwrap,
-            },
+            unwrap::{Context, Unwrap},
             Mask,
         },
         io,
-        types::{
-            Bytes,
-            Maybe,
-            NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+        types::{Bytes, Maybe, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
     error::Error::PublicKeyGenerationFailure,
 };

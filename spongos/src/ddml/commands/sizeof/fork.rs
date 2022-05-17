@@ -1,7 +1,4 @@
-use crate::ddml::commands::{
-    sizeof::Context,
-    Fork,
-};
+use crate::ddml::commands::{sizeof::Context, Fork};
 
 impl<'a> Fork<'a> for Context {
     type Forked = &'a mut Context;

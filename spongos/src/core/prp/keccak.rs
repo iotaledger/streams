@@ -1,8 +1,5 @@
 use generic_array::{
-    typenum::{
-        U168,
-        U32,
-    },
+    typenum::{U168, U32},
     GenericArray,
 };
 

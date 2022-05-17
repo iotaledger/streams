@@ -1,22 +1,14 @@
 // Rust
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    Result,
-};
+use anyhow::{anyhow, Result};
 
 // IOTA
 
 // Streams
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Mask,
-        },
+        commands::{sizeof, unwrap, wrap, Mask},
         io,
         types::Uint8,
     },

@@ -1,33 +1,17 @@
 use core::{
-    convert::{
-        TryFrom,
-        TryInto,
-    },
-    fmt::{
-        LowerHex,
-        UpperHex,
-    },
+    convert::{TryFrom, TryInto},
+    fmt::{LowerHex, UpperHex},
 };
 
-use anyhow::{
-    Error,
-    Result,
-};
+use anyhow::{Error, Result};
 
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Mask,
-        },
+        commands::{sizeof, unwrap, wrap, Mask},
         io,
         types::NBytes,
     },
-    KeccakF1600,
-    Spongos,
-    PRP,
+    KeccakF1600, Spongos, PRP,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]

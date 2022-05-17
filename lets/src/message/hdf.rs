@@ -1,31 +1,14 @@
 use alloc::boxed::Box;
 
-use anyhow::{
-    anyhow,
-    ensure,
-    Result,
-};
+use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Guard,
-            Mask,
-            Skip,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Guard, Mask, Skip},
         io,
         modifiers::External,
-        types::{
-            Maybe,
-            NBytes,
-            Size,
-            Uint8,
-        },
+        types::{Maybe, NBytes, Size, Uint8},
     },
     PRP,
 };
@@ -34,16 +17,8 @@ use crate::{
     address::MsgId,
     id::Identifier,
     message::{
-        content::{
-            ContentSizeof,
-            ContentUnwrap,
-            ContentWrap,
-        },
-        version::{
-            HDF_ID,
-            STREAMS_1_VER,
-            UTF8,
-        },
+        content::{ContentSizeof, ContentUnwrap, ContentWrap},
+        version::{HDF_ID, STREAMS_1_VER, UTF8},
     },
 };
 

@@ -8,11 +8,7 @@ use hashbrown::HashMap;
 use crypto::keys::x25519;
 
 // Streams
-use lets::id::{
-    Identifier,
-    Psk,
-    PskId,
-};
+use lets::id::{Identifier, Psk, PskId};
 
 // Local
 

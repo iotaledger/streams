@@ -2,10 +2,7 @@ use anyhow::Result;
 
 use crate::{
     core::prp::PRP,
-    ddml::commands::{
-        unwrap::Context,
-        Commit,
-    },
+    ddml::commands::{unwrap::Context, Commit},
 };
 
 /// Commit Spongos.

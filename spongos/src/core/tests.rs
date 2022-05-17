@@ -1,10 +1,7 @@
 use generic_array::{typenum::Unsigned, GenericArray};
 
 use super::{
-    prp::{
-        keccak::KeccakF1600,
-        PRP,
-    },
+    prp::{keccak::KeccakF1600, PRP},
     spongos::Spongos,
 };
 

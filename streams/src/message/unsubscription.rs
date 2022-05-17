@@ -30,33 +30,16 @@ use async_trait::async_trait;
 // IOTA
 
 // Streams
+use lets::{
+    id::{Identifier, Identity},
+    message::{ContentSign, ContentSignSizeof, ContentSizeof, ContentUnwrap, ContentVerify, ContentWrap},
+};
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Commit,
-            Join,
-            Mask,
-        },
+        commands::{sizeof, unwrap, wrap, Commit, Join, Mask},
         io,
     },
     Spongos,
-};
-use lets::{
-    id::{
-        Identifier,
-        Identity,
-    },
-    message::{
-        ContentSign,
-        ContentSignSizeof,
-        ContentSizeof,
-        ContentUnwrap,
-        ContentVerify,
-        ContentWrap,
-    },
 };
 
 // Local

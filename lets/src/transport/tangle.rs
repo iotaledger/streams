@@ -1,49 +1,26 @@
 // Rust
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
+use alloc::{boxed::Box, vec::Vec};
 use core::{
-    convert::{
-        TryFrom,
-        TryInto,
-    },
+    convert::{TryFrom, TryInto},
     marker::PhantomData,
 };
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    ensure,
-    Result,
-};
+use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 use futures::{
-    future::{
-        ready,
-        try_join_all,
-    },
+    future::{ready, try_join_all},
     TryFutureExt,
 };
 
 // IOTA
-use crypto::hashes::{
-    blake2b::Blake2b256,
-    Digest,
-};
-use iota_client::bee_message::{
-    payload::Payload,
-    Message as IotaMessage,
-};
+use crypto::hashes::{blake2b::Blake2b256, Digest};
+use iota_client::bee_message::{payload::Payload, Message as IotaMessage};
 
 // Streams
 
 // Local
-use crate::{
-    address::Address,
-    message::TransportMessage,
-    transport::Transport,
-};
+use crate::{address::Address, message::TransportMessage, transport::Transport};
 
 #[derive(Debug)]
 pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(

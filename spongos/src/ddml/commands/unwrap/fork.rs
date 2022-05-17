@@ -1,7 +1,4 @@
-use crate::ddml::commands::{
-    unwrap::Context,
-    Fork,
-};
+use crate::ddml::commands::{unwrap::Context, Fork};
 
 impl<'a, F, IS> Fork<'a> for Context<IS, F>
 where

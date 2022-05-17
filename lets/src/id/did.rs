@@ -1,65 +1,33 @@
 // Rust
 use alloc::{
-    string::{
-        String,
-        ToString,
-    },
+    string::{String, ToString},
     vec::Vec,
 };
 use core::{
     convert::TryInto,
-    fmt::{
-        LowerHex,
-        UpperHex,
-    },
+    fmt::{LowerHex, UpperHex},
     hash::Hash,
 };
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    Result,
-};
+use anyhow::{anyhow, Result};
 use serde::Serialize;
 
 // IOTA
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::{keys::x25519, signatures::ed25519};
 use identity::{
-    core::{
-        decode_b58,
-        encode_b58,
-    },
-    crypto::{
-        SetSignature,
-        Signature,
-        TrySignature,
-        TrySignatureMut,
-    },
-    did::{
-        MethodUriType,
-        TryMethod,
-        DID as IdentityDID,
-    },
+    core::{decode_b58, encode_b58},
+    crypto::{SetSignature, Signature, TrySignature, TrySignatureMut},
+    did::{MethodUriType, TryMethod, DID as IdentityDID},
     iota::IotaDID,
 };
 
 // Streams
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Mask,
-        },
+        commands::{sizeof, unwrap, wrap, Mask},
         io,
-        types::{
-            Bytes,
-            NBytes,
-        },
+        types::{Bytes, NBytes},
     },
     PRP,
 };

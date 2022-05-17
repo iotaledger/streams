@@ -3,16 +3,10 @@ use anyhow::Result;
 use crate::{
     core::prp::PRP,
     ddml::{
-        commands::{
-            wrap::Context,
-            Squeeze,
-        },
+        commands::{wrap::Context, Squeeze},
         io,
         modifiers::External,
-        types::{
-            Mac,
-            NBytes,
-        },
+        types::{Mac, NBytes},
     },
 };
 

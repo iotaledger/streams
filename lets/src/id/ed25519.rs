@@ -7,10 +7,7 @@ use core::hash::Hash;
 use crypto::signatures::ed25519;
 
 // Streams
-use spongos::{
-    KeccakF1600,
-    SpongosRng,
-};
+use spongos::{KeccakF1600, SpongosRng};
 
 // Local
 

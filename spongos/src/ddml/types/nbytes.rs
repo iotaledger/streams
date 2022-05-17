@@ -1,12 +1,6 @@
 use core::{
-    convert::{
-        AsMut,
-        AsRef,
-    },
-    ops::{
-        Index,
-        IndexMut,
-    },
+    convert::{AsMut, AsRef},
+    ops::{Index, IndexMut},
     slice::SliceIndex,
 };
 

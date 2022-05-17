@@ -1,49 +1,27 @@
 // Rust
 
-use std::{
-    cell::RefCell,
-    rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc};
 
 // 3rd-arty
-use anyhow::{
-    anyhow,
-    Result,
-};
-use textwrap::{
-    fill,
-    indent,
-};
+use anyhow::{anyhow, Result};
+use textwrap::{fill, indent};
 
 // IOTA
 use identity::{
     core::Timestamp,
     did::MethodScope,
     iota::IotaVerificationMethod,
-    prelude::{
-        Client as DIDClient,
-        IotaDocument,
-        KeyPair as DIDKeyPair,
-    },
+    prelude::{Client as DIDClient, IotaDocument, KeyPair as DIDKeyPair},
 };
 
 // Streams
 use streams::{
-    id::{
-        DIDInfo,
-        Ed25519,
-        Permissioned,
-        Psk,
-        DID,
-    },
+    id::{DIDInfo, Ed25519, Permissioned, Psk, DID},
     transport::tangle,
     User,
 };
 
-use super::utils::{
-    print_send_result,
-    print_user,
-};
+use super::utils::{print_send_result, print_user};
 
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";

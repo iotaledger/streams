@@ -1,15 +1,8 @@
 // Rust
-use alloc::{
-    boxed::Box,
-    collections::BTreeMap,
-    vec::Vec,
-};
+use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    Result,
-};
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
@@ -17,11 +10,7 @@ use async_trait::async_trait;
 // Streams
 
 // Local
-use crate::{
-    address::Address,
-    message::TransportMessage,
-    transport::Transport,
-};
+use crate::{address::Address, message::TransportMessage, transport::Transport};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Client<Msg = TransportMessage> {

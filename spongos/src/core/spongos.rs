@@ -1,28 +1,14 @@
-use core::{
-    fmt,
-    ops::Mul,
-};
+use core::{fmt, ops::Mul};
 
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::{ensure, Result};
 use digest::Digest;
 use generic_array::{
-    typenum::{
-        Prod,
-        Unsigned,
-        U2,
-    },
-    ArrayLength,
-    GenericArray,
+    typenum::{Prod, Unsigned, U2},
+    ArrayLength, GenericArray,
 };
 
 use super::prp::PRP;
-use crate::{
-    Error::LengthMismatch,
-    KeccakF1600,
-};
+use crate::{Error::LengthMismatch, KeccakF1600};
 
 fn xor(s: &mut [u8], x: &[u8]) {
     for (si, xi) in s.iter_mut().zip(x.iter()) {
@@ -257,9 +243,9 @@ impl<F: PRP> Spongos<F> {
     /// Join two Spongos objects.
     ///
     /// Joiner (self) absorbs data squeezed from joinee.
-    /// Be aware that before squeezing the joinee, this is commited, its outer state is zeroed, and a transformation is
-    /// performed. This means the joinee will be mutated. if this is not desirable, make sure to clone the joinee
-    /// beforehand.
+    /// Be aware that before squeezing the joinee, this is commited, its outer state is zeroed, and
+    /// a transformation is performed. This means the joinee will be mutated. if this is not
+    /// desirable, make sure to clone the joinee beforehand.
     pub(crate) fn join(&mut self, joinee: &mut Self) {
         joinee.commit();
         // Clear outer state, this is equivalent to having joinee initialized from inner state

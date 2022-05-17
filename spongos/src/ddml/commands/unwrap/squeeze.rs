@@ -1,21 +1,12 @@
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::{ensure, Result};
 
 use crate::{
     core::prp::PRP,
     ddml::{
-        commands::{
-            unwrap::Context,
-            Squeeze,
-        },
+        commands::{unwrap::Context, Squeeze},
         io,
         modifiers::External,
-        types::{
-            Mac,
-            NBytes,
-        },
+        types::{Mac, NBytes},
     },
     error::Error::BadMac,
 };

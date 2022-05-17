@@ -17,9 +17,6 @@ pub mod ddml;
 
 pub use crate::core::{
     prng::SpongosRng,
-    prp::{
-        keccak::KeccakF1600,
-        PRP,
-    },
+    prp::{keccak::KeccakF1600, PRP},
     spongos::Spongos,
 };

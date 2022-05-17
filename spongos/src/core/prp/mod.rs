@@ -1,7 +1,4 @@
-use generic_array::{
-    ArrayLength,
-    GenericArray,
-};
+use generic_array::{ArrayLength, GenericArray};
 
 pub(crate) mod keccak;
 

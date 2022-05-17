@@ -1,15 +1,8 @@
 //! Spongos-based pseudo-random number generator.
-use rand::{
-    CryptoRng,
-    RngCore,
-    SeedableRng,
-};
+use rand::{CryptoRng, RngCore, SeedableRng};
 
 use super::{
-    prp::{
-        keccak::KeccakF1600,
-        PRP,
-    },
+    prp::{keccak::KeccakF1600, PRP},
     spongos::Spongos,
 };
 
@@ -88,10 +81,7 @@ where
 mod tests {
     use rand::Rng;
 
-    use crate::core::{
-        prp::keccak::KeccakF1600,
-        spongos::Spongos,
-    };
+    use crate::core::{prp::keccak::KeccakF1600, spongos::Spongos};
 
     use super::SpongosRng;
 

@@ -1,30 +1,12 @@
 use anyhow::Result;
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::{keys::x25519, signatures::ed25519};
 use generic_array::typenum::Unsigned;
 
 use crate::{
-    core::{
-        prp::PRP,
-        spongos::Spongos,
-    },
+    core::{prp::PRP, spongos::Spongos},
     ddml::{
-        commands::{
-            sizeof::Context,
-            Mask,
-        },
-        types::{
-            Bytes,
-            Maybe,
-            NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+        commands::{sizeof::Context, Mask},
+        types::{Bytes, Maybe, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
 };
 

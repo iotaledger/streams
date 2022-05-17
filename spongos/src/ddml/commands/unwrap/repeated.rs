@@ -1,9 +1,6 @@
 use anyhow::Result;
 
-use crate::ddml::commands::{
-    unwrap::Context,
-    Repeated,
-};
+use crate::ddml::commands::{unwrap::Context, Repeated};
 
 impl<C, F, IS> Repeated<usize, C> for Context<IS, F>
 where

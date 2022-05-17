@@ -1,27 +1,14 @@
 // Rust
-use alloc::{
-    boxed::Box,
-    collections::VecDeque,
-    vec::Vec,
-};
-use core::{
-    future::Future,
-    pin::Pin,
-};
+use alloc::{boxed::Box, collections::VecDeque, vec::Vec};
+use core::{future::Future, pin::Pin};
 
 // 3rd-party
 use anyhow::Result;
 use async_recursion::async_recursion;
 use futures::{
     future,
-    task::{
-        Context,
-        Poll,
-    },
-    Stream,
-    StreamExt,
-    TryStream,
-    TryStreamExt,
+    task::{Context, Poll},
+    Stream, StreamExt, TryStream, TryStreamExt,
 };
 use hashbrown::HashMap;
 
@@ -29,47 +16,32 @@ use hashbrown::HashMap;
 
 // Streams
 use lets::{
-    address::{
-        Address,
-        MsgId,
-    },
+    address::{Address, MsgId},
     id::Identifier,
-    message::{
-        TransportMessage,
-        HDF,
-    },
+    message::{TransportMessage, HDF},
     transport::Transport,
 };
 
 // Local
 use crate::api::{
-    message::{
-        Message,
-        MessageContent,
-        Orphan,
-    },
+    message::{Message, MessageContent, Orphan},
     user::User,
 };
 
 /// a [`Stream`] over the messages of the channel pending to be fetch from the transport
 ///
 /// Use this stream to preorderly traverse the messages of the channel. This stream is usually
-/// created from any type implementing [`IntoMessages`], calling its [`IntoMessages::messages()`] method.
-/// The main method is [`Messages::next()`], which returns the next message in the channel that is readable
-/// by the user.
+/// created from any type implementing [`IntoMessages`], calling its [`IntoMessages::messages()`]
+/// method. The main method is [`Messages::next()`], which returns the next message in the channel
+/// that is readable by the user.
 ///
-/// This type implements [`futures::Stream`] and [`futures::TryStream`], therefore it can be used with all the adapters
-/// provided by [`futures::StreamExt`] and [`futures::TryStreamExt`]:
+/// This type implements [`futures::Stream`] and [`futures::TryStream`], therefore it can be used
+/// with all the adapters provided by [`futures::StreamExt`] and [`futures::TryStreamExt`]:
 ///
 /// ```
 /// use futures::TryStreamExt;
 ///
-/// use streams::{
-///     id::Ed25519,
-///     transport::tangle,
-///     Address,
-///     User,
-/// };
+/// use streams::{id::Ed25519, transport::tangle, Address, User};
 ///
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
@@ -135,22 +107,23 @@ use crate::api::{
 /// ```
 ///
 /// # Technical Details
-/// This [`Stream`] makes sure the messages are traversed in topological order (preorder). This means any parent
-/// message is yielded before its childs. As a consequence, there might be multiple transport
-/// calls before a message is yielded, and several messages can be accumulated in memory until their turn.
-/// Therefore, some jitter might be expected, with a worst case of fetching all the messages before any is
-/// yielded.
+/// This [`Stream`] makes sure the messages are traversed in topological order (preorder). This
+/// means any parent message is yielded before its childs. As a consequence, there might be multiple
+/// transport calls before a message is yielded, and several messages can be accumulated in memory
+/// until their turn. Therefore, some jitter might be expected, with a worst case of fetching all
+/// the messages before any is yielded.
 ///
-/// After the last currently available message has been returned, [`Messages::next()`] returns `None`, at which point
-/// the [`StreamExt`] and [`TryStreamExt`] methods will consider the [`Stream`] finished and stop iterating.
-/// It is safe to continue calling [`Messages::next()`] or any method from [`StreamExt`] and [`TryStreamExt`] polling
-/// for new messages.
+/// After the last currently available message has been returned, [`Messages::next()`] returns
+/// `None`, at which point the [`StreamExt`] and [`TryStreamExt`] methods will consider the
+/// [`Stream`] finished and stop iterating. It is safe to continue calling [`Messages::next()`] or
+/// any method from [`StreamExt`] and [`TryStreamExt`] polling for new messages.
 ///
-/// Being a [`futures::Stream`] that fetches data from an external source, it's naturally defined as a
-/// [`futures::TryStream`], which means it returns a [`Result`] wrapping the [`UnwrappedMessage`]. In the event of a
-/// network failure, [`Messages::next()`] will return `Err`. It is strongly suggested that, when suitable, use the
-/// methods in [`futures::TryStreamExt`] to make the error-handling much more ergonomic (with the use of `?`) and
-/// shortcircuit the [`futures::Stream`] on the first error.
+/// Being a [`futures::Stream`] that fetches data from an external source, it's naturally defined as
+/// a [`futures::TryStream`], which means it returns a [`Result`] wrapping the [`UnwrappedMessage`].
+/// In the event of a network failure, [`Messages::next()`] will return `Err`. It is strongly
+/// suggested that, when suitable, use the methods in [`futures::TryStreamExt`] to make the
+/// error-handling much more ergonomic (with the use of `?`) and shortcircuit the
+/// [`futures::Stream`] on the first error.
 pub struct Messages<'a, T>(PinBoxFut<'a, (MessagesState<'a, T>, Option<Result<Message>>)>);
 
 type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
@@ -286,8 +259,8 @@ where
     /// Once that message is fetched and yielded, the returned [`Stream`] will yield only
     /// descendants of that message.
     ///
-    ///  See [example in `Messages` docs](struct.Messages.html#filter-the-messages-of-a-particular-branch)
-    /// for more details.
+    ///  See [example in `Messages`
+    /// docs](struct.Messages.html#filter-the-messages-of-a-particular-branch) for more details.
     pub fn filter_branch<Fut>(
         self,
         predicate: impl FnMut(&Message) -> Fut + 'a,
@@ -349,19 +322,12 @@ mod tests {
 
     use anyhow::Result;
 
-    use lets::{
-        address::Address,
-        id::Ed25519,
-        transport::bucket,
-    };
+    use lets::{address::Address, id::Ed25519, transport::bucket};
 
     use crate::api::{
         message::{
             Message,
-            MessageContent::{
-                Keyload,
-                SignedPacket,
-            },
+            MessageContent::{Keyload, SignedPacket},
         },
         user::User,
     };
@@ -378,8 +344,8 @@ mod tests {
         let packet_1 = subscriber1
             .send_signed_packet(keyload_1.address().relative(), &p, &p)
             .await?;
-        // This packet will never be readable by subscriber2. However, she will still be able to progress through the
-        // next messages
+        // This packet will never be readable by subscriber2. However, she will still be able to progress
+        // through the next messages
         let packet_2 = subscriber1
             .send_signed_packet(packet_1.address().relative(), &p, &p)
             .await?;
@@ -424,7 +390,8 @@ mod tests {
         Ok(())
     }
 
-    /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket transport
+    /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket
+    /// transport
     async fn author_subscriber_fixture() -> Result<(User<Transport>, User<Transport>, Address, Transport)> {
         let transport = Rc::new(RefCell::new(bucket::Client::new()));
         let mut author = User::builder()

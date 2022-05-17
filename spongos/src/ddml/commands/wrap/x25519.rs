@@ -4,13 +4,7 @@ use crypto::keys::x25519;
 use crate::{
     core::prp::PRP,
     ddml::{
-        commands::{
-            wrap::Context,
-            Absorb,
-            Commit,
-            Mask,
-            X25519,
-        },
+        commands::{wrap::Context, Absorb, Commit, Mask, X25519},
         io,
         modifiers::External,
         types::NBytes,
@@ -18,12 +12,9 @@ use crate::{
 };
 
 #[cfg(feature = "osrng")]
-use rand::{
-    rngs::StdRng,
-    SeedableRng,
-};
-// X25519 wrap command requires randomly generating an x25519 keypair. Because of that, it can only be compiled
-// on architectures supported by `getrandom`.
+use rand::{rngs::StdRng, SeedableRng};
+// X25519 wrap command requires randomly generating an x25519 keypair. Because of that, it can only
+// be compiled on architectures supported by `getrandom`.
 #[cfg(feature = "osrng")]
 impl<'a, F: PRP, T: AsRef<[u8]>, OS: io::OStream> X25519<&'a x25519::PublicKey, NBytes<T>> for Context<OS, F> {
     fn x25519(&mut self, remote_public_key: &x25519::PublicKey, key: NBytes<T>) -> Result<&mut Self> {

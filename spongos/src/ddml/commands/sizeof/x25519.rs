@@ -2,10 +2,7 @@ use anyhow::Result;
 use crypto::keys::x25519;
 
 use crate::ddml::{
-    commands::{
-        sizeof::Context,
-        X25519,
-    },
+    commands::{sizeof::Context, X25519},
     types::NBytes,
 };
 

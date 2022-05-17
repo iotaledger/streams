@@ -8,27 +8,12 @@ use alloc::vec::Vec;
 // Streams
 use lets::{
     address::Address,
-    id::{
-        Identifier,
-        Permissioned,
-    },
-    message::{
-        Message as LetsMessage,
-        PreparsedMessage,
-        TransportMessage,
-        HDF,
-    },
+    id::{Identifier, Permissioned},
+    message::{Message as LetsMessage, PreparsedMessage, TransportMessage, HDF},
 };
 
 // Local
-use crate::message::{
-    announcement,
-    keyload,
-    signed_packet,
-    subscription,
-    tagged_packet,
-    unsubscription,
-};
+use crate::message::{announcement, keyload, signed_packet, subscription, tagged_packet, unsubscription};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Message {

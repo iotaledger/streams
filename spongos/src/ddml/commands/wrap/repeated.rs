@@ -2,10 +2,7 @@ use core::iter;
 
 use anyhow::Result;
 
-use crate::ddml::commands::{
-    wrap::Context,
-    Repeated,
-};
+use crate::ddml::commands::{wrap::Context, Repeated};
 
 impl<I, C, F, OS> Repeated<I, C> for Context<OS, F>
 where

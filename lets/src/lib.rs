@@ -22,7 +22,6 @@
 //! messages of your Application. And when DDML is not powerful enough,
 //! it can be extended with custom commands.
 #![allow(clippy::module_inception)]
-
 #![no_std]
 
 #[macro_use]

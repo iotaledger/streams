@@ -1,17 +1,9 @@
 // Rust
-use alloc::{
-    boxed::Box,
-    rc::Rc,
-    vec::Vec,
-};
+use alloc::{boxed::Box, rc::Rc, vec::Vec};
 use core::cell::RefCell;
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    ensure,
-    Result,
-};
+use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 
 // IOTA
@@ -69,19 +61,15 @@ impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
     }
 }
 
-// Arc<Mutex<Transport>> blanket impl is provided only behind the "sync-spin" or "sync-parking-lot" features,
-//  as a convenience for users that want to share a transport through several user instances.
-// We provide 2 flavours of Mutex: `parking_lot` and `spin`:
+// Arc<Mutex<Transport>> blanket impl is provided only behind the "sync-spin" or "sync-parking-lot"
+// features,  as a convenience for users that want to share a transport through several user
+// instances. We provide 2 flavours of Mutex: `parking_lot` and `spin`:
 // - `sync-parking-lot` feature enables `parking_lot::Mutex` Mutex (requires `std`)
 // - `sync-spin` feature enables `spin::Mutex` (supports no-std)
 // If both features are provided, `parking_lot` is used.
 #[cfg(any(feature = "sync-spin", feature = "sync-parking-lot"))]
 mod sync {
-    use alloc::{
-        boxed::Box,
-        sync::Arc,
-        vec::Vec,
-    };
+    use alloc::{boxed::Box, sync::Arc, vec::Vec};
 
     use anyhow::Result;
     use async_trait::async_trait;

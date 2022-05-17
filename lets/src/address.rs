@@ -2,41 +2,23 @@
 use alloc::string::String;
 use core::{
     convert::TryInto,
-    fmt::{
-        self,
-        Debug,
-        Display,
-        Formatter,
-        LowerHex,
-        UpperHex,
-    },
+    fmt::{self, Debug, Display, Formatter, LowerHex, UpperHex},
     str::FromStr,
 };
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    Result,
-};
+use anyhow::{anyhow, Result};
 
 // IOTA
 
 // Streams
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Mask,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Mask},
         io,
         types::NBytes,
     },
-    KeccakF1600,
-    Spongos,
-    PRP,
+    KeccakF1600, Spongos, PRP,
 };
 
 // Local
@@ -52,10 +34,10 @@ use crate::id::Identifier;
 /// number
 ///
 /// ## exchangeable encoding
-/// In order to exchange an `Address` between application participants, it can be encoded and decoded
-/// using [`Address::to_string()`][Display] (or [`format!()`]) and [`Address::from_str`] (or
-/// [`str::parse()`]). This method encodes the `Address` as a colon-separated string containing the `appaddr` and
-/// `msgid` in hexadecimal:
+/// In order to exchange an `Address` between application participants, it can be encoded and
+/// decoded using [`Address::to_string()`][Display] (or [`format!()`]) and [`Address::from_str`] (or
+/// [`str::parse()`]). This method encodes the `Address` as a colon-separated string containing the
+/// `appaddr` and `msgid` in hexadecimal:
 /// ```
 /// # use lets::address::Address;
 /// #
@@ -74,9 +56,9 @@ use crate::id::Identifier;
 ///
 /// ## Debugging
 ///
-/// For debugging purposes, `Address` implements `Debug`, which can be triggered with the formatting `{:?}`
-/// or the pretty-printed `{:#?}`. These will output `appaddr` and `msgid` as decimal arrays; you can also use
-/// `{:x?}` or `{:#x?}` to render them as hexadecimal arrays.
+/// For debugging purposes, `Address` implements `Debug`, which can be triggered with the formatting
+/// `{:?}` or the pretty-printed `{:#?}`. These will output `appaddr` and `msgid` as decimal arrays;
+/// you can also use `{:x?}` or `{:#x?}` to render them as hexadecimal arrays.
 ///
 /// [Display]: #impl-Display
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]

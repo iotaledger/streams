@@ -1,9 +1,5 @@
 // Rust
-use std::{
-    cell::RefCell,
-    env,
-    rc::Rc,
-};
+use std::{cell::RefCell, env, rc::Rc};
 
 // 3rd-party
 use anyhow::Result;
@@ -13,11 +9,7 @@ use rand::Rng;
 
 // Streams
 use streams::{
-    transport::{
-        bucket,
-        tangle,
-        Transport,
-    },
+    transport::{bucket, tangle, Transport},
     TransportMessage,
 };
 

@@ -3,19 +3,10 @@ use anyhow::Result;
 
 use crate::{
     core::{
-        prp::{
-            keccak::KeccakF1600,
-            PRP,
-        },
+        prp::{keccak::KeccakF1600, PRP},
         spongos::Spongos,
     },
-    ddml::types::{
-        Size,
-        Uint16,
-        Uint32,
-        Uint64,
-        Uint8,
-    },
+    ddml::types::{Size, Uint16, Uint32, Uint64, Uint8},
 };
 
 pub struct Context<OS, F = KeccakF1600> {

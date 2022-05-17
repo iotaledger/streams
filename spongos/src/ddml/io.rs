@@ -1,18 +1,9 @@
 use alloc::string::String;
-use core::ops::{
-    Deref,
-    DerefMut,
-};
+use core::ops::{Deref, DerefMut};
 
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::{ensure, Result};
 
-use crate::Error::{
-    StreamAllocationExceededIn,
-    StreamAllocationExceededOut,
-};
+use crate::Error::{StreamAllocationExceededIn, StreamAllocationExceededOut};
 
 /// Write
 pub trait OStream {

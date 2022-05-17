@@ -2,49 +2,19 @@ use alloc::vec::Vec;
 use core::borrow::BorrowMut;
 
 use anyhow::Result;
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
-use generic_array::{
-    typenum::{
-        U64,
-    },
-    GenericArray,
-};
-use rand::{
-    distributions::Standard,
-    Rng,
-};
+use crypto::{keys::x25519, signatures::ed25519};
+use generic_array::{typenum::U64, GenericArray};
+use rand::{distributions::Standard, Rng};
 
 use crate::{
     core::{
         prng::SpongosRng,
-        prp::{
-            keccak::KeccakF1600,
-            PRP,
-        },
+        prp::{keccak::KeccakF1600, PRP},
     },
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Commit,
-            Ed25519,
-            Mask,
-            Squeeze,
-            X25519,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze, X25519},
         modifiers::External,
-        types::{
-            Bytes,
-            Mac,
-            NBytes,
-            Size,
-            Uint8,
-        },
+        types::{Bytes, Mac, NBytes, Size, Uint8},
     },
 };
 

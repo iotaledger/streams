@@ -1,14 +1,8 @@
 use anyhow::Result;
 
 use crate::{
-    core::{
-        prp::PRP,
-        spongos::Spongos,
-    },
-    ddml::commands::{
-        wrap::Context,
-        Join,
-    },
+    core::{prp::PRP, spongos::Spongos},
+    ddml::commands::{wrap::Context, Join},
 };
 
 impl<F: PRP, OS> Join<F> for Context<OS, F> {

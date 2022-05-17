@@ -1,25 +1,12 @@
 use anyhow::Result;
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::{keys::x25519, signatures::ed25519};
 
 use crate::{
     core::prp::PRP,
     ddml::{
-        commands::{
-            unwrap::Context,
-            Absorb,
-        },
+        commands::{unwrap::Context, Absorb},
         modifiers::External,
-        types::{
-            NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+        types::{NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
 };
 

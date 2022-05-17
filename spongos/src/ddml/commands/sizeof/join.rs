@@ -2,10 +2,7 @@ use anyhow::Result;
 
 use crate::{
     core::spongos::Spongos,
-    ddml::commands::{
-        sizeof::Context,
-        Join,
-    },
+    ddml::commands::{sizeof::Context, Join},
 };
 
 /// Join does not take any space in the binary stream.

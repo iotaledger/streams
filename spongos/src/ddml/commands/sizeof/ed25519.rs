@@ -2,10 +2,7 @@ use anyhow::Result;
 use crypto::signatures::ed25519;
 
 use crate::ddml::{
-    commands::{
-        sizeof::Context,
-        Ed25519,
-    },
+    commands::{sizeof::Context, Ed25519},
     modifiers::External,
     types::NBytes,
 };

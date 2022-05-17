@@ -5,21 +5,12 @@ use anyhow::Result;
 
 use crate::{
     core::{
-        prp::{
-            keccak::KeccakF1600,
-            PRP,
-        },
+        prp::{keccak::KeccakF1600, PRP},
         spongos::Spongos,
     },
     ddml::{
         io,
-        types::{
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+        types::{Size, Uint16, Uint32, Uint64, Uint8},
     },
 };
 

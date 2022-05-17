@@ -26,33 +26,16 @@ use async_trait::async_trait;
 use crypto::keys::x25519;
 
 // Streams
+use lets::{
+    id::{Identifier, Identity},
+    message::{ContentSign, ContentSignSizeof, ContentSizeof, ContentUnwrap, ContentVerify, ContentWrap},
+};
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Commit,
-            Mask,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Commit, Mask},
         io,
     },
     PRP,
-};
-use lets::{
-    id::{
-        Identifier,
-        Identity,
-    },
-    message::{
-        ContentSign,
-        ContentSignSizeof,
-        ContentSizeof,
-        ContentUnwrap,
-        ContentVerify,
-        ContentWrap,
-    },
 };
 
 // Local

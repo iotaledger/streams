@@ -1,15 +1,9 @@
 use anyhow::Result;
 
 use crate::ddml::{
-    commands::{
-        sizeof::Context,
-        Squeeze,
-    },
+    commands::{sizeof::Context, Squeeze},
     modifiers::External,
-    types::{
-        Mac,
-        NBytes,
-    },
+    types::{Mac, NBytes},
 };
 
 /// Mac is just like NBytes.

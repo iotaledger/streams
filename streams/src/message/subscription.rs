@@ -38,35 +38,17 @@ use async_trait::async_trait;
 use crypto::keys::x25519;
 
 // Streams
+use lets::{
+    id::{Identifier, Identity},
+    message::{ContentSign, ContentSignSizeof, ContentSizeof, ContentUnwrap, ContentVerify, ContentWrap},
+};
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Join,
-            Mask,
-            X25519,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Join, Mask, X25519},
         io,
         types::NBytes,
     },
     Spongos,
-};
-use lets::{
-    id::{
-        Identifier,
-        Identity,
-    },
-    message::{
-        ContentSign,
-        ContentSignSizeof,
-        ContentSizeof,
-        ContentUnwrap,
-        ContentVerify,
-        ContentWrap,
-    },
 };
 
 pub(crate) struct Wrap<'a> {

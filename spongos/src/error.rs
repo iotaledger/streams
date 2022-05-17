@@ -1,7 +1,4 @@
-use core::fmt::{
-    Debug,
-    Display,
-};
+use core::fmt::{Debug, Display};
 
 use displaydoc::Display;
 

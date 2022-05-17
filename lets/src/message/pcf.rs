@@ -1,44 +1,21 @@
 use alloc::boxed::Box;
-use core::convert::{
-    TryFrom,
-    TryInto,
-};
+use core::convert::{TryFrom, TryInto};
 
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::{ensure, Result};
 use async_trait::async_trait;
 
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Skip,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Skip},
         io,
-        types::{
-            NBytes,
-            Uint8,
-        },
+        types::{NBytes, Uint8},
     },
     PRP,
 };
 
 use crate::message::{
-    content::{
-        ContentSizeof,
-        ContentUnwrap,
-        ContentWrap,
-    },
-    version::{
-        FINAL_PCF_ID,
-        INIT_PCF_ID,
-        INTER_PCF_ID,
-    },
+    content::{ContentSizeof, ContentUnwrap, ContentWrap},
+    version::{FINAL_PCF_ID, INIT_PCF_ID, INTER_PCF_ID},
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

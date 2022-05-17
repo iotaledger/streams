@@ -1,9 +1,6 @@
 use anyhow::Result;
 
-use crate::ddml::commands::{
-    sizeof::Context,
-    Dump,
-};
+use crate::ddml::commands::{sizeof::Context, Dump};
 
 impl Dump for Context {
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {

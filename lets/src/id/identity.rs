@@ -1,82 +1,40 @@
 // Rust
-use alloc::{
-    boxed::Box,
-    string::ToString,
-};
+use alloc::{boxed::Box, string::ToString};
 use core::{
-    convert::{
-        AsRef,
-        TryFrom,
-    },
+    convert::{AsRef, TryFrom},
     hash::Hash,
 };
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    Result,
-};
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::{keys::x25519, signatures::ed25519};
 #[cfg(feature = "did")]
 use identity::{
     core::decode_b58,
-    crypto::{
-        Ed25519 as DIDEd25519,
-        JcsEd25519,
-        SignatureOptions,
-        Signer,
-    },
+    crypto::{Ed25519 as DIDEd25519, JcsEd25519, SignatureOptions, Signer},
     did::DID as IdentityDID,
 };
 
 // IOTA-Streams
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Commit,
-            Ed25519 as Ed25519Command,
-            Mask,
-            Squeeze,
-            X25519,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519 as Ed25519Command, Mask, Squeeze, X25519},
         io,
         modifiers::External,
-        types::{
-            Bytes,
-            NBytes,
-            Uint8,
-        },
+        types::{Bytes, NBytes, Uint8},
     },
     PRP,
 };
 
 // Local
 #[cfg(feature = "did")]
-use crate::id::did::{
-    DataWrapper,
-    DID,
-};
+use crate::id::did::{DataWrapper, DID};
 use crate::{
-    id::{
-        ed25519::Ed25519,
-        identifier::Identifier,
-        psk::Psk,
-    },
-    message::{
-        ContentDecrypt,
-        ContentSign,
-        ContentSignSizeof,
-    },
+    id::{ed25519::Ed25519, identifier::Identifier, psk::Psk},
+    message::{ContentDecrypt, ContentSign, ContentSignSizeof},
 };
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]

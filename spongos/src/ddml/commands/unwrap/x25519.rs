@@ -4,13 +4,7 @@ use crypto::keys::x25519;
 use crate::{
     core::prp::PRP,
     ddml::{
-        commands::{
-            unwrap::Context,
-            Absorb,
-            Commit,
-            Mask,
-            X25519,
-        },
+        commands::{unwrap::Context, Absorb, Commit, Mask, X25519},
         io,
         modifiers::External,
         types::NBytes,

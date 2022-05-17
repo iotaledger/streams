@@ -1,86 +1,39 @@
 // Rust
-use alloc::{
-    boxed::Box,
-    string::ToString,
-};
-use core::convert::{
-    TryFrom,
-    TryInto,
-};
+use alloc::{boxed::Box, string::ToString};
+use core::convert::{TryFrom, TryInto};
 use spongos::ddml::commands::X25519;
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    Result,
-};
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::{keys::x25519, signatures::ed25519};
 #[cfg(feature = "did")]
 use identity::{
     core::encode_b58,
-    crypto::{
-        Ed25519 as DIDEd25519,
-        JcsEd25519,
-        Named,
-        Signature,
-        SignatureValue,
-    },
-    did::{
-        verifiable::VerifierOptions,
-        DID as IdentityDID,
-    },
-    iota::{
-        Client as DIDClient,
-        IotaDID,
-    },
+    crypto::{Ed25519 as DIDEd25519, JcsEd25519, Named, Signature, SignatureValue},
+    did::{verifiable::VerifierOptions, DID as IdentityDID},
+    iota::{Client as DIDClient, IotaDID},
 };
 
 // Streams
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Commit,
-            Ed25519,
-            Mask,
-            Squeeze,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze},
         io,
         modifiers::External,
-        types::{
-            Bytes,
-            NBytes,
-            Uint8,
-        },
+        types::{Bytes, NBytes, Uint8},
     },
     PRP,
 };
 
 // Local
 #[cfg(feature = "did")]
-use crate::id::did::{
-    DIDMethodId,
-    DataWrapper,
-};
+use crate::id::did::{DIDMethodId, DataWrapper};
 use crate::{
-    id::psk::{
-        Psk,
-        PskId,
-    },
-    message::{
-        ContentEncrypt,
-        ContentEncryptSizeOf,
-        ContentVerify,
-    },
+    id::psk::{Psk, PskId},
+    message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify},
 };
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -290,7 +243,9 @@ where
             0 => match verifier {
                 Identifier::Ed25519(public_key) => {
                     let mut hash = External::new(NBytes::new([0; 64]));
-                    self.commit()?.squeeze(hash.as_mut())?.ed25519(public_key, hash.as_ref())?;
+                    self.commit()?
+                        .squeeze(hash.as_mut())?
+                        .ed25519(public_key, hash.as_ref())?;
                     Ok(self)
                 }
                 _ => Err(anyhow!("expected Identity type 'Ed25519', found something else")),

@@ -1,12 +1,6 @@
-use anyhow::{
-    ensure,
-    Result,
-};
+use anyhow::{ensure, Result};
 
-use crate::ddml::commands::{
-    unwrap::Context,
-    Guard,
-};
+use crate::ddml::commands::{unwrap::Context, Guard};
 
 impl<IS, F> Guard for Context<IS, F> {
     fn guard<E>(&mut self, cond: bool, err: E) -> Result<&mut Self>

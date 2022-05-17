@@ -3,10 +3,7 @@ use anyhow::Result;
 use crate::{
     core::prp::PRP,
     ddml::{
-        commands::{
-            unwrap::Context,
-            Dump,
-        },
+        commands::{unwrap::Context, Dump},
         io,
     },
 };

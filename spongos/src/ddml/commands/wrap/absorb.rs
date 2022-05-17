@@ -1,30 +1,15 @@
 use anyhow::Result;
-use crypto::{
-    keys::x25519,
-    signatures::ed25519,
-};
+use crypto::{keys::x25519, signatures::ed25519};
 
 use crate::{
     core::prp::PRP,
     ddml::{
         commands::{
-            wrap::{
-                Context,
-                Wrap,
-            },
+            wrap::{Context, Wrap},
             Absorb,
         },
         io,
-        types::{
-            Bytes,
-            Maybe,
-            NBytes,
-            Size,
-            Uint16,
-            Uint32,
-            Uint64,
-            Uint8,
-        },
+        types::{Bytes, Maybe, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
 };
 struct AbsorbContext<'a, F, OS> {

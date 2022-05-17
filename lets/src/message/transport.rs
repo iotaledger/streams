@@ -7,17 +7,10 @@ use anyhow::Result;
 // IOTA
 
 // Streams
-use spongos::{
-    ddml::commands::unwrap,
-    PRP,
-};
+use spongos::{ddml::commands::unwrap, PRP};
 
 // Local
-use crate::message::{
-    content::ContentUnwrap,
-    hdf::HDF,
-    preparsed::PreparsedMessage,
-};
+use crate::message::{content::ContentUnwrap, hdf::HDF, preparsed::PreparsedMessage};
 
 /// Binary network Message representation.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]

@@ -2,21 +2,13 @@
 use alloc::boxed::Box;
 
 // 3rd-party
-use anyhow::{
-    anyhow,
-    Result,
-};
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
 
 // Streams
-use lets::{
-    address::Address,
-    id::Identity,
-    message::TransportMessage,
-    transport::Transport,
-};
+use lets::{address::Address, id::Identity, message::TransportMessage, transport::Transport};
 
 // Local
 use crate::api::user::User;
@@ -77,8 +69,8 @@ impl<T> UserBuilder<T> {
     where
         T: for<'a> Transport<'a> + DefaultTransport,
     {
-        // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke bound T:
-        // DefaultTransport for all transports
+        // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke
+        // bound T: DefaultTransport for all transports
         self.transport = Some(T::try_default().await?);
         Ok(self)
     }
@@ -87,8 +79,8 @@ impl<T> UserBuilder<T> {
     ///
     /// If a [`Transport`] is not provided the builder will use a default client
     /// ([`Client`](streams_app::transport::tangle::client::Client) at <https://chrysalis-nodes.iota.org>
-    /// if the `tangle` feature is enabled, [`BucketTransport`](streams_app::transport::BucketTransport)
-    /// if not)
+    /// if the `tangle` feature is enabled,
+    /// [`BucketTransport`](streams_app::transport::BucketTransport) if not)
     ///
     /// # Errors
     /// This function will error out if the [`UserIdentity`] parameter is missing, as this makes up
@@ -101,11 +93,7 @@ impl<T> UserBuilder<T> {
     /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
-    /// use streams::{
-    ///     id::Ed25519,
-    ///     transport::tangle,
-    ///     User,
-    /// };
+    /// use streams::{id::Ed25519, transport::tangle, User};
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
@@ -129,11 +117,7 @@ impl<T> UserBuilder<T> {
     /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
-    /// use streams::{
-    ///     id::Psk,
-    ///     transport::tangle,
-    ///     User,
-    /// };
+    /// use streams::{id::Psk, transport::tangle, User};
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
@@ -166,7 +150,8 @@ impl<T> UserBuilder<T> {
     /// Recover a user instance from the builder parameters.
     ///
     /// # Arguements
-    /// * `announcement` - An existing announcement message link from which to recover the state of the user
+    /// * `announcement` - An existing announcement message link from which to recover the state of
+    ///   the user
     ///
     /// # Caveats
     /// Under the hood, this method recovers the user by rereading all the
@@ -187,11 +172,7 @@ impl<T> UserBuilder<T> {
     /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
-    /// use streams::{
-    ///     id::Ed25519,
-    ///     transport::tangle,
-    ///     User,
-    /// };
+    /// use streams::{id::Ed25519, transport::tangle, User};
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {

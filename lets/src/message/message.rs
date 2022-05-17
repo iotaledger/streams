@@ -7,21 +7,13 @@ use anyhow::Result;
 
 // Streams
 use spongos::{
-    ddml::commands::{
-        sizeof,
-        wrap,
-        Commit,
-    },
-    Spongos,
-    PRP,
+    ddml::commands::{sizeof, wrap, Commit},
+    Spongos, PRP,
 };
 
 // Local
 use super::{
-    content::{
-        ContentSizeof,
-        ContentWrap,
-    },
+    content::{ContentSizeof, ContentWrap},
     hdf::HDF,
     pcf::PCF,
     transport::TransportMessage,

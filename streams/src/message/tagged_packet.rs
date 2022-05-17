@@ -14,10 +14,7 @@
 //! }
 //! ```
 // Rust
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
+use alloc::{boxed::Box, vec::Vec};
 
 // 3rd-party
 use anyhow::Result;
@@ -26,30 +23,14 @@ use async_trait::async_trait;
 // IOTA
 
 // Streams
+use lets::message::{ContentSizeof, ContentUnwrap, ContentWrap};
 use spongos::{
     ddml::{
-        commands::{
-            sizeof,
-            unwrap,
-            wrap,
-            Absorb,
-            Commit,
-            Join,
-            Mask,
-            Squeeze,
-        },
+        commands::{sizeof, unwrap, wrap, Absorb, Commit, Join, Mask, Squeeze},
         io,
-        types::{
-            Bytes,
-            Mac,
-        },
+        types::{Bytes, Mac},
     },
     Spongos,
-};
-use lets::message::{
-    ContentSizeof,
-    ContentUnwrap,
-    ContentWrap,
 };
 
 // Local
