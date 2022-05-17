@@ -13,7 +13,7 @@ use streams::{
     TransportMessage,
 };
 
-mod branching;
+mod scenarios;
 
 trait GenericTransport: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone {}
 
@@ -24,7 +24,7 @@ impl<T> GenericTransport for T where
 
 async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     println!("## Running DID Test ##\n");
-    let result = branching::did::example(transport).await;
+    let result = scenarios::did::example(transport).await;
     match &result {
         Err(err) => eprintln!("Error in DID test: {:?}", err),
         Ok(_) => println!("\n## DID test completed successfully!! ##\n"),
@@ -34,7 +34,7 @@ async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
 async fn run_single_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
     println!("## Running single branch test with seed: {} ##\n", seed);
-    let result = branching::single_branch::example(transport, seed).await;
+    let result = scenarios::basic::example(transport, seed).await;
     match &result {
         Err(err) => eprintln!("Error in Single Branch test: {:?}", err),
         Ok(_) => println!("\n## Single Branch Test completed successfully!! ##\n"),

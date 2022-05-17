@@ -200,9 +200,9 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         MASKED_PAYLOAD
     );
 
-    author.sync().await?;
-    subscriber_a.sync().await?;
-    subscriber_b.sync().await?;
+    assert_eq!(author.sync().await?, 0);
+    assert_eq!(subscriber_a.sync().await?, 2);
+    assert_eq!(subscriber_b.sync().await?, 0);
 
     println!("> Subscriber C attempts to send a signed packet (but PSK users cannot send packets!)");
     let messages_in_branch_as_c = subscriber_c
@@ -268,7 +268,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         )
         .await?;
     println!("> Subscriber A publishes signed packet");
-    subscriber_a.sync().await?;
+    assert_eq!(subscriber_a.sync().await?, 1);
     let signed_packet_as_a = subscriber_a
         .send_signed_packet(
             new_keyload_as_author.address().relative(),
@@ -330,7 +330,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     new_author.add_subscriber(subscriber_b.identifier());
     new_author.receive_message(announcement.address()).await?;
     new_author.receive_message(subscription_a_as_a.address()).await?;
-    new_author.sync().await?;
+    assert_eq!(new_author.sync().await?, 6);
     print_user("Recovered Author", &new_author);
     assert_eq!(author, new_author);
     author = new_author;
@@ -341,7 +341,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .build()?;
 
     new_subscriber_a.receive_message(announcement.address()).await?;
-    new_subscriber_a.sync().await?;
+    assert_eq!(new_subscriber_a.sync().await?, 6);
     print_user("Recovered Subscriber A", &new_subscriber_a);
     assert_eq!(subscriber_a, new_subscriber_a);
     subscriber_a = new_subscriber_a;
@@ -351,7 +351,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_transport(transport.clone())
         .build()?;
     new_subscriber_b.receive_message(announcement.address()).await?;
-    new_subscriber_b.sync().await?;
+    assert_eq!(new_subscriber_b.sync().await?, 5);
     print_user("Recovered Subscriber B", &new_subscriber_b);
     assert_eq!(subscriber_b, new_subscriber_b);
     subscriber_b = new_subscriber_b;
@@ -361,7 +361,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_transport(transport.clone())
         .build()?;
     new_subscriber_c.receive_message(announcement.address()).await?;
-    new_subscriber_c.sync().await?;
+    assert_eq!(new_subscriber_c.sync().await?, 6);
     print_user("Recovered Subscriber C", &new_subscriber_c);
     assert_eq!(subscriber_c, new_subscriber_c);
     subscriber_c = new_subscriber_c;
@@ -387,13 +387,13 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     // print_send_result(&unsubscription);
     // print_user("Subscriber B", &subscriber_b);
     // println!("> Author receives unsubscription");
-    // author.sync().await?;
+    // assert_eq!(author.sync().await?, 1);
     // print_user("Author", &author);
 
     println!("> ~The rest of subscribers also receive the unsubscription~ [CURRENTLY BROKEN]");
-    // subscriber_a.sync().await?;
+    // assert_eq!(subscriber_a.sync().await?, 1);
     // print_user("Subscriber A", &subscriber_a);
-    // subscriber_c.sync().await?;
+    // assert_eq!(subscriber_c.sync().await?, 1);
     // print_user("Subscriber C", &subscriber_c);
     println!("> Alternative: users manually unsubscribe Subscriber B");
     author.remove_subscriber(subscriber_b.identifier());
