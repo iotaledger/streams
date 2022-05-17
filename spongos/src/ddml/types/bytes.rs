@@ -1,4 +1,4 @@
-use core::fmt;
+use core::{fmt, iter::FromIterator};
 
 use alloc::{
     string::String,
@@ -7,7 +7,7 @@ use alloc::{
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary representation.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Bytes<T>(T);
+pub struct Bytes<T = Vec<u8>>(T);
 
 impl<T> Bytes<T> {
     pub fn new(bytes: T) -> Self {
@@ -20,6 +20,14 @@ impl<T> Bytes<T> {
 
     pub(crate) fn inner_mut(&mut self) -> &mut T {
         &mut self.0
+    }
+
+    pub fn as_ref(&self) -> Bytes<&T> {
+        Bytes::new(self.inner())
+    }
+
+    pub fn as_mut(&mut self) -> Bytes<&mut T> {
+        Bytes::new(self.inner_mut())
     }
 }
 
@@ -115,5 +123,11 @@ where
 {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
+    }
+}
+
+impl<T, A> FromIterator<A> for Bytes<T> where T: FromIterator<A> {
+    fn from_iter<I>(iter: I) -> Self where I: IntoIterator<Item = A> {
+        Bytes::new(iter.into_iter().collect())
     }
 }

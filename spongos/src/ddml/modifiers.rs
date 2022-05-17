@@ -19,6 +19,14 @@ impl<T> External<T> {
     pub(crate) fn inner_mut(&mut self) -> &mut T {
         &mut self.0
     }
+
+    pub fn as_ref(&self) -> External<&T> {
+        External::new(self.inner())
+    }
+
+    pub fn as_mut(&mut self) -> External<&mut T> {
+        External::new(self.inner_mut())
+    }
 }
 
 impl<I, R> AsRef<R> for External<I>

@@ -96,25 +96,10 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Size> for Context<IS, F> {
     }
 }
 
-impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Mask<NBytes<&'a mut T>> for Context<IS, F> {
-    fn mask(&mut self, nbytes: NBytes<&'a mut T>) -> Result<&mut Self> {
+impl<F: PRP, T: AsMut<[u8]>, IS: io::IStream> Mask<NBytes<T>> for Context<IS, F> {
+    fn mask(&mut self, nbytes: NBytes<T>) -> Result<&mut Self> {
         MaskContext::new(self).unwrapn(nbytes)?;
         Ok(self)
-    }
-}
-
-impl<'a, F: PRP, T, IS: io::IStream> Mask<&'a mut NBytes<T>> for Context<IS, F>
-where
-    Self: Mask<NBytes<&'a mut T>>,
-{
-    fn mask(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
-        self.mask(NBytes::new(nbytes.inner_mut()))
-    }
-}
-
-impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut Bytes<Vec<u8>>> for Context<IS, F> {
-    fn mask(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
-        self.mask(Bytes::new(bytes.inner_mut()))
     }
 }
 

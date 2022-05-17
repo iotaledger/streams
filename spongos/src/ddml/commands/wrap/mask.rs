@@ -88,39 +88,21 @@ impl<F: PRP, OS: io::OStream> Mask<Size> for Context<OS, F> {
     }
 }
 
-impl<'a, F: PRP, T: AsRef<[u8]> + ?Sized, OS: io::OStream> Mask<NBytes<&'a T>> for Context<OS, F> {
-    fn mask(&mut self, bytes: NBytes<&'a T>) -> Result<&mut Self> {
+impl<F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<NBytes<T>> for Context<OS, F> {
+    fn mask(&mut self, bytes: NBytes<T>) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(bytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, T, OS: io::OStream> Mask<&'a NBytes<T>> for Context<OS, F>
+impl<F: PRP, OS: io::OStream, T> Mask<Bytes<T>> for Context<OS, F>
 where
-    Self: Mask<NBytes<&'a T>>,
+    T: AsRef<[u8]>,
 {
-    fn mask(&mut self, bytes: &'a NBytes<T>) -> Result<&mut Self> {
-        self.mask(NBytes::new(bytes.inner()))
-    }
-}
-
-impl<'a, F: PRP, OS: io::OStream, T> Mask<Bytes<&'a T>> for Context<OS, F>
-where
-    T: AsRef<[u8]> + ?Sized,
-{
-    fn mask(&mut self, bytes: Bytes<&'a T>) -> Result<&mut Self> {
+    fn mask(&mut self, bytes: Bytes<T>) -> Result<&mut Self> {
         self.mask(Size::new(bytes.len()))?;
         MaskContext::new(self).wrapn(bytes)?;
         Ok(self)
-    }
-}
-
-impl<'a, F: PRP, OS: io::OStream, T> Mask<&'a Bytes<T>> for Context<OS, F>
-where
-    Self: Mask<Bytes<&'a T>>,
-{
-    fn mask(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
-        self.mask(Bytes::new(bytes.inner()))
     }
 }
 

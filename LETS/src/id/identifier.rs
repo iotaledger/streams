@@ -2,7 +2,6 @@
 use alloc::{
     boxed::Box,
     string::ToString,
-    vec::Vec,
 };
 use core::convert::{
     TryFrom,
@@ -206,13 +205,13 @@ impl Mask<&Identifier> for sizeof::Context {
             }
             Identifier::PskId(pskid) => {
                 let oneof = Uint8::new(1);
-                self.mask(oneof)?.mask(&NBytes::new(pskid))?;
+                self.mask(oneof)?.mask(NBytes::new(pskid))?;
                 Ok(self)
             }
             #[cfg(feature = "did")]
             Identifier::DID(did) => {
                 let oneof = Uint8::new(2);
-                self.mask(oneof)?.mask(&NBytes::new(did))?;
+                self.mask(oneof)?.mask(NBytes::new(did))?;
                 Ok(self)
             }
         }
@@ -233,13 +232,13 @@ where
             }
             Identifier::PskId(pskid) => {
                 let oneof = Uint8::new(1);
-                self.mask(oneof)?.mask(&NBytes::new(pskid))?;
+                self.mask(oneof)?.mask(NBytes::new(pskid))?;
                 Ok(self)
             }
             #[cfg(feature = "did")]
             Identifier::DID(did) => {
                 let oneof = Uint8::new(2);
-                self.mask(oneof)?.mask(&NBytes::new(did))?;
+                self.mask(oneof)?.mask(NBytes::new(did))?;
                 Ok(self)
             }
         }
@@ -291,7 +290,7 @@ where
             0 => match verifier {
                 Identifier::Ed25519(public_key) => {
                     let mut hash = External::new(NBytes::new([0; 64]));
-                    self.commit()?.squeeze(&mut hash)?.ed25519(public_key, &hash)?;
+                    self.commit()?.squeeze(hash.as_mut())?.ed25519(public_key, hash.as_ref())?;
                     Ok(self)
                 }
                 _ => Err(anyhow!("expected Identity type 'Ed25519', found something else")),
@@ -300,13 +299,13 @@ where
             1 => match verifier {
                 Identifier::DID(method_id) => {
                     let mut hash = [0; 64];
-                    let mut fragment_bytes = Bytes::<Vec<u8>>::default();
-                    let mut signature_bytes = NBytes::new([0; 64]);
+                    let mut fragment_bytes = Bytes::default();
+                    let mut signature_bytes = [0; 64];
 
-                    self.absorb(&mut fragment_bytes)?
+                    self.absorb(fragment_bytes.as_mut())?
                         .commit()?
                         .squeeze(External::new(&mut NBytes::new(&mut hash)))?
-                        .absorb(&mut signature_bytes)?;
+                        .absorb(NBytes::new(&mut signature_bytes))?;
 
                     let fragment = format!(
                         "#{}",
@@ -342,10 +341,10 @@ impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
             Identifier::PskId(_) => self
                 .absorb(External::new(&NBytes::new(Psk::try_from(exchange_key)?)))?
                 .commit()?
-                .mask(&NBytes::new(key)),
+                .mask(NBytes::new(key)),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
             _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(slice) => self.x25519(&x25519::PublicKey::from(slice), &NBytes::new(key)),
+                Ok(slice) => self.x25519(&x25519::PublicKey::from(slice), NBytes::new(key)),
                 Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
             },
         }
@@ -363,10 +362,10 @@ where
             Identifier::PskId(_) => self
                 .absorb(External::new(&NBytes::new(Psk::try_from(exchange_key)?)))?
                 .commit()?
-                .mask(&NBytes::new(key)),
+                .mask(NBytes::new(key)),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
             _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(byte_array) => self.x25519(&x25519::PublicKey::from(byte_array), &NBytes::new(key)),
+                Ok(byte_array) => self.x25519(&x25519::PublicKey::from(byte_array), NBytes::new(key)),
                 Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
             },
         }

@@ -222,7 +222,7 @@ impl From<PayloadFrameNum> for NBytes<[u8; 3]> {
 impl From<NBytes<[u8; 3]>> for PayloadFrameNum {
     fn from(nbytes: NBytes<[u8; 3]>) -> Self {
         let mut bytes = [0u8; 4];
-        bytes[1..=3].copy_from_slice(nbytes.as_ref());
+        bytes[1..=3].copy_from_slice(nbytes.inner());
         Self::from_u32_unchecked(u32::from_be_bytes(bytes))
     }
 }
@@ -233,17 +233,17 @@ where
     OS: io::OStream,
 {
     fn skip(&mut self, frame_num: PayloadFrameNum) -> Result<&mut Self> {
-        self.skip(&NBytes::from(frame_num))
+        self.skip(NBytes::from(frame_num))
     }
 }
 
 impl<OS, F> Skip<&mut PayloadFrameNum> for unwrap::Context<OS, F>
 where
-    Self: for<'a> Skip<&'a mut NBytes<[u8; 3]>>,
+    Self: for<'a> Skip<NBytes<&'a mut [u8; 3]>>,
 {
     fn skip(&mut self, frame_num: &mut PayloadFrameNum) -> Result<&mut Self> {
         let mut bytes = NBytes::new([0u8; 3]);
-        self.skip(&mut bytes)?;
+        self.skip(bytes.as_mut())?;
         *frame_num = bytes.into();
         Ok(self)
     }
@@ -251,6 +251,6 @@ where
 
 impl Skip<PayloadFrameNum> for sizeof::Context {
     fn skip(&mut self, frame_num: PayloadFrameNum) -> Result<&mut Self> {
-        self.skip(&NBytes::from(frame_num))
+        self.skip(NBytes::from(frame_num))
     }
 }

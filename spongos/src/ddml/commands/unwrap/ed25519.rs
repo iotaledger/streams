@@ -19,11 +19,11 @@ use crate::{
     error::Error::SignatureMismatch,
 };
 
-impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, &'a External<NBytes<[u8; 64]>>> for Context<IS, F> {
+impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, External<&'a NBytes<[u8; 64]>>> for Context<IS, F> {
     fn ed25519(
         &mut self,
         public_key: &'a ed25519::PublicKey,
-        hash: &'a External<NBytes<[u8; 64]>>,
+        hash: External<&'a NBytes<[u8; 64]>>,
     ) -> Result<&mut Self> {
         let signature_bytes = self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?;
         self.cursor += ed25519::SIGNATURE_LENGTH;

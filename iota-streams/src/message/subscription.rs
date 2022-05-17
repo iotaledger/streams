@@ -95,7 +95,7 @@ impl<'a> Wrap<'a> {
 #[async_trait(?Send)]
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, subscription: &Wrap<'a>) -> Result<&mut Self> {
-        self.x25519(subscription.author_ke_pk, &NBytes::new(&subscription.unsubscribe_key))?
+        self.x25519(subscription.author_ke_pk, NBytes::new(subscription.unsubscribe_key))?
             .mask(&subscription.subscriber_id.to_identifier())?
             .absorb(
                 &subscription
@@ -117,7 +117,7 @@ where
 {
     async fn wrap(&mut self, subscription: &mut Wrap<'a>) -> Result<&mut Self> {
         self.join(subscription.initial_state)?
-            .x25519(subscription.author_ke_pk, &NBytes::new(&subscription.unsubscribe_key))?
+            .x25519(subscription.author_ke_pk, NBytes::new(subscription.unsubscribe_key))?
             .mask(&subscription.subscriber_id.to_identifier())?
             .absorb(
                 &subscription
@@ -171,7 +171,7 @@ where
         self.join(subscription.initial_state)?
             .x25519(
                 subscription.author_ke_sk,
-                &mut NBytes::new(&mut subscription.unsubscribe_key),
+                NBytes::new(&mut subscription.unsubscribe_key),
             )?
             .mask(&mut subscription.subscriber_identifier)?
             .absorb(&mut subscription.subscriber_ke_pk)?

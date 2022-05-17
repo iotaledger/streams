@@ -11,8 +11,8 @@ use crate::ddml::{
 };
 
 /// Signature size is 64 bytes
-impl Ed25519<&ed25519::SecretKey, &External<NBytes<[u8; 64]>>> for Context {
-    fn ed25519(&mut self, _sk: &ed25519::SecretKey, _hash: &External<NBytes<[u8; 64]>>) -> Result<&mut Self> {
+impl Ed25519<&ed25519::SecretKey, External<&NBytes<[u8; 64]>>> for Context {
+    fn ed25519(&mut self, _sk: &ed25519::SecretKey, _hash: External<&NBytes<[u8; 64]>>) -> Result<&mut Self> {
         self.size += ed25519::SIGNATURE_LENGTH;
         Ok(self)
     }

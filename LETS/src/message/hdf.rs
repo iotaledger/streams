@@ -152,10 +152,10 @@ impl ContentSizeof<HDF> for sizeof::Context {
         let payload_frame_count = NBytes::<[u8; 3]>::default();
         self.absorb(Uint8::new(hdf.encoding))?
             .absorb(Uint8::new(hdf.version))?
-            .skip(&message_type_and_payload_length)?
+            .skip(message_type_and_payload_length)?
             .absorb(External::new(Uint8::new(hdf.message_type << 4)))?
             .absorb(Uint8::new(hdf.frame_type))?
-            .skip(&payload_frame_count)?
+            .skip(payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
             .mask(&hdf.publisher)?
             .skip(Size::new(hdf.sequence))?;
@@ -188,10 +188,10 @@ where
 
         self.absorb(Uint8::new(hdf.encoding))?
             .absorb(Uint8::new(hdf.version))?
-            .skip(&message_type_and_payload_length)?
+            .skip(message_type_and_payload_length)?
             .absorb(External::new(Uint8::new(hdf.message_type << 4)))?
             .absorb(Uint8::new(hdf.frame_type))?
-            .skip(&payload_frame_count)?
+            .skip(payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
             .mask(&hdf.publisher)?
             .skip(Size::new(hdf.sequence))?;
@@ -222,7 +222,7 @@ where
                 version.inner() == STREAMS_1_VER,
                 anyhow!("Msg version '{}' not supported", version),
             )?
-            .skip(&mut message_type_and_payload_length)?
+            .skip(message_type_and_payload_length.as_mut())?
             .guard(
                 0 == message_type_and_payload_length[0] & 0b1100,
                 anyhow!("bits 5 and 6 between content-type and payload-length are reserved"),
@@ -236,7 +236,7 @@ where
                 frame_type.inner() == HDF_ID,
                 anyhow!("Invalid message type. Found '{}', expected '{}'", frame_type, HDF_ID),
             )?
-            .skip(&mut payload_frame_count_bytes)?
+            .skip(payload_frame_count_bytes.as_mut())?
             .guard(
                 0 == payload_frame_count_bytes[0] & 0b1100,
                 anyhow!("first 2 bits of payload-frame-count are reserved"),

@@ -98,25 +98,10 @@ impl<F: PRP, IS: io::IStream> Absorb<&mut Size> for Context<IS, F> {
     }
 }
 
-impl<'a, F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<NBytes<&'a mut T>> for Context<IS, F> {
-    fn absorb(&mut self, nbytes: NBytes<&'a mut T>) -> Result<&mut Self> {
+impl<F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<NBytes<T>> for Context<IS, F> {
+    fn absorb(&mut self, nbytes: NBytes<T>) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrapn(nbytes)?;
         Ok(self)
-    }
-}
-
-impl<'a, F: PRP, IS: io::IStream, T> Absorb<&'a mut NBytes<T>> for Context<IS, F>
-where
-    Self: Absorb<NBytes<&'a mut T>>,
-{
-    fn absorb(&mut self, nbytes: &'a mut NBytes<T>) -> Result<&mut Self> {
-        self.absorb(NBytes::new(nbytes.inner_mut()))
-    }
-}
-
-impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut Bytes<Vec<u8>>> for Context<IS, F> {
-    fn absorb(&mut self, bytes: &'a mut Bytes<Vec<u8>>) -> Result<&mut Self> {
-        self.absorb(Bytes::new(bytes.inner_mut()))
     }
 }
 

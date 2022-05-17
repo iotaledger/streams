@@ -76,27 +76,18 @@ impl<F, OS: io::OStream> Skip<Size> for Context<OS, F> {
     }
 }
 
-impl<'a, F, T: AsRef<[u8]>, OS: io::OStream> Skip<NBytes<&'a T>> for Context<OS, F> {
-    fn skip(&mut self, bytes: NBytes<&'a T>) -> Result<&mut Self> {
+impl<F, T: AsRef<[u8]>, OS: io::OStream> Skip<NBytes<T>> for Context<OS, F> {
+    fn skip(&mut self, bytes: NBytes<T>) -> Result<&mut Self> {
         SkipContext::new(self).wrapn(bytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F, T, OS: io::OStream> Skip<&'a NBytes<T>> for Context<OS, F>
-where
-    Self: Skip<NBytes<&'a T>>,
-{
-    fn skip(&mut self, bytes: &'a NBytes<T>) -> Result<&mut Self> {
-        self.skip(NBytes::new(bytes.inner()))
-    }
-}
-
-impl<'a, F, OS: io::OStream, T> Skip<&'a Bytes<T>> for Context<OS, F>
+impl<F, OS: io::OStream, T> Skip<Bytes<T>> for Context<OS, F>
 where
     T: AsRef<[u8]>,
 {
-    fn skip(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
+    fn skip(&mut self, bytes: Bytes<T>) -> Result<&mut Self> {
         self.skip(Size::new(bytes.len()))?;
         SkipContext::new(self).wrapn(bytes)?;
         Ok(self)

@@ -62,11 +62,11 @@ impl Absorb<Size> for Context {
 }
 
 /// `bytes` has variable size thus the size is encoded before the content bytes.
-impl<T> Absorb<Bytes<&T>> for Context
+impl<T> Absorb<Bytes<T>> for Context
 where
     T: AsRef<[u8]>,
 {
-    fn absorb(&mut self, bytes: Bytes<&T>) -> Result<&mut Self> {
+    fn absorb(&mut self, bytes: Bytes<T>) -> Result<&mut Self> {
         let bytes_size = Size::new(bytes.len());
         self.absorb(bytes_size)?;
         self.size += bytes.len();
@@ -74,29 +74,11 @@ where
     }
 }
 
-impl<'a, T> Absorb<&'a Bytes<T>> for Context
-where
-    Self: Absorb<Bytes<&'a T>>,
-{
-    fn absorb(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
-        self.absorb(Bytes::new(bytes.inner()))
-    }
-}
-
 /// `byte [n]` is fixed-size and is encoded with `n` bytes.
-impl<T: AsRef<[u8]>> Absorb<NBytes<&T>> for Context {
-    fn absorb(&mut self, nbytes: NBytes<&T>) -> Result<&mut Self> {
-        self.size += nbytes.as_ref().len();
+impl<T: AsRef<[u8]>> Absorb<NBytes<T>> for Context {
+    fn absorb(&mut self, nbytes: NBytes<T>) -> Result<&mut Self> {
+        self.size += nbytes.inner().as_ref().len();
         Ok(self)
-    }
-}
-
-impl<'a, T> Absorb<&'a NBytes<T>> for Context
-where
-    Self: Absorb<NBytes<&'a T>>,
-{
-    fn absorb(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
-        self.absorb(NBytes::new(nbytes.inner()))
     }
 }
 

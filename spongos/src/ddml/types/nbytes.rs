@@ -10,7 +10,8 @@ use core::{
     slice::SliceIndex,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
+// Don't implement Copy, to avoid unexpected behaviour when taken by value by mistake
 pub struct NBytes<T>(T);
 
 impl<T> NBytes<T> {
@@ -32,12 +33,20 @@ impl<T> NBytes<T> {
         self.0.as_mut()
     }
 
-    pub(crate) fn inner(&self) -> &T {
+    pub fn inner(&self) -> &T {
         &self.0
     }
 
-    pub(crate) fn inner_mut(&mut self) -> &mut T {
+    pub fn inner_mut(&mut self) -> &mut T {
         &mut self.0
+    }
+
+    pub fn as_ref(&self) -> NBytes<&T> {
+        NBytes::new(self.inner())
+    }
+
+    pub fn as_mut(&mut self) -> NBytes<&mut T> {
+        NBytes::new(self.inner_mut())
     }
 }
 
@@ -67,7 +76,7 @@ where
     type Output = Idx::Output;
 
     fn index(&self, index: Idx) -> &Self::Output {
-        self.as_ref().index(index)
+        self.inner().as_ref().index(index)
     }
 }
 
@@ -77,7 +86,7 @@ where
     Idx: SliceIndex<[u8]>,
 {
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
-        self.as_mut().index_mut(index)
+        self.inner_mut().as_mut().index_mut(index)
     }
 }
 

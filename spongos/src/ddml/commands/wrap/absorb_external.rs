@@ -61,19 +61,10 @@ impl<F: PRP, OS> Absorb<External<Size>> for Context<OS, F> {
     }
 }
 
-impl<'a, F: PRP, T: AsRef<[u8]>, OS> Absorb<External<NBytes<&'a T>>> for Context<OS, F> {
-    fn absorb(&mut self, bytes: External<NBytes<&'a T>>) -> Result<&mut Self> {
+impl<'a, F: PRP, T: AsRef<[u8]>, OS> Absorb<External<&'a NBytes<T>>> for Context<OS, F> {
+    fn absorb(&mut self, bytes: External<&'a NBytes<T>>) -> Result<&mut Self> {
         self.spongos.absorb(bytes);
         Ok(self)
-    }
-}
-
-impl<'a, F: PRP, T, OS> Absorb<External<&'a NBytes<T>>> for Context<OS, F>
-where
-    Self: Absorb<External<NBytes<&'a T>>>,
-{
-    fn absorb(&mut self, bytes: External<&'a NBytes<T>>) -> Result<&mut Self> {
-        self.absorb(External::new(NBytes::new(bytes.into_inner().inner())))
     }
 }
 
@@ -88,15 +79,5 @@ impl<'a, F: PRP, OS> Absorb<External<&'a x25519::PublicKey>> for Context<OS, F> 
     fn absorb(&mut self, public_key: External<&'a x25519::PublicKey>) -> Result<&mut Self> {
         self.spongos.absorb(public_key);
         Ok(self)
-    }
-}
-
-// Implement &External<T> for any External<&T> implementation
-impl<'a, T, F, OS> Absorb<&'a External<T>> for Context<OS, F>
-where
-    Self: Absorb<External<&'a T>>,
-{
-    fn absorb(&mut self, external: &'a External<T>) -> Result<&mut Self> {
-        self.absorb(External::new(external.inner()))
     }
 }

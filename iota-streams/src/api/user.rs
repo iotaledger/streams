@@ -245,7 +245,7 @@ impl<T> User<T> {
     async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Check conditions
         if let Some(stream_address) = self.stream_address() {
-            bail!("user is already connected to the stream {}", stream_address);
+            bail!("cannot handle announcement: user is already connected to the stream {}", stream_address);
         }
 
         // From the point of view of cursor tracking, the message exists, regardless of the validity or accessibility to
@@ -447,7 +447,7 @@ impl<T> User<T> {
 
         let mut ctx = wrap::Context::new(&mut buf[..]);
         let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
-        ctx.absorb(External::new(NBytes::new(&key)))?;
+        ctx.absorb(External::new(&NBytes::new(key)))?;
         ctx.wrap(&mut self.state).await?;
         assert!(
             ctx.stream().is_empty(),
@@ -465,7 +465,7 @@ impl<T> User<T> {
     {
         let mut ctx = unwrap::Context::new(backup.as_ref());
         let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
-        ctx.absorb(&External::new(NBytes::new(&key)))?;
+        ctx.absorb(External::new(&NBytes::new(key)))?;
         let mut state = State::default();
         ctx.unwrap(&mut state).await?;
         Ok(User { transport, state })

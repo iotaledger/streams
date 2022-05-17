@@ -84,44 +84,26 @@ impl<F: PRP, OS: io::OStream> Absorb<Size> for Context<OS, F> {
     }
 }
 
-impl<'a, F, T, OS> Absorb<NBytes<&'a T>> for Context<OS, F>
+impl<F, T, OS> Absorb<NBytes<T>> for Context<OS, F>
 where
     F: PRP,
     T: AsRef<[u8]>,
     OS: io::OStream,
 {
-    fn absorb(&mut self, nbytes: NBytes<&'a T>) -> Result<&mut Self> {
+    fn absorb(&mut self, nbytes: NBytes<T>) -> Result<&mut Self> {
         AbsorbContext::new(self).wrapn(nbytes)?;
         Ok(self)
     }
 }
 
-impl<'a, F: PRP, T, OS: io::OStream> Absorb<&'a NBytes<T>> for Context<OS, F>
-where
-    Self: Absorb<NBytes<&'a T>>,
-{
-    fn absorb(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
-        self.absorb(NBytes::new(nbytes.inner()))
-    }
-}
-
-impl<'a, F: PRP, OS: io::OStream, T> Absorb<Bytes<&'a T>> for Context<OS, F>
+impl<F: PRP, OS: io::OStream, T> Absorb<Bytes<T>> for Context<OS, F>
 where
     T: AsRef<[u8]>,
 {
-    fn absorb(&mut self, bytes: Bytes<&'a T>) -> Result<&mut Self> {
+    fn absorb(&mut self, bytes: Bytes<T>) -> Result<&mut Self> {
         self.absorb(Size::new(bytes.len()))?;
         AbsorbContext::new(self).wrapn(bytes)?;
         Ok(self)
-    }
-}
-
-impl<'a, F: PRP, OS: io::OStream, T> Absorb<&'a Bytes<T>> for Context<OS, F>
-where
-    Self: Absorb<Bytes<&'a T>>,
-{
-    fn absorb(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
-        self.absorb(Bytes::new(bytes.inner()))
     }
 }
 

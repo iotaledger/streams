@@ -300,7 +300,7 @@ where
         let mut private_key_bytes = [0; ed25519::SECRET_KEY_LENGTH];
         self.mask(Bytes::new(&mut did_bytes))?
             .mask(Bytes::new(&mut fragment_bytes))?
-            .mask(&mut NBytes::new(&mut private_key_bytes))?;
+            .mask(NBytes::new(&mut private_key_bytes))?;
 
         *did.info_mut().did_mut() = core::str::from_utf8(&did_bytes)?.try_into()?;
         *did.info_mut().key_fragment_mut() = String::from_utf8(fragment_bytes)?;

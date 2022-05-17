@@ -129,7 +129,7 @@ where
     async fn sizeof(&mut self, keyload: &Wrap<'a, Subscribers>) -> Result<&mut sizeof::Context> {
         let subscribers = keyload.subscribers.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
-        self.absorb(&NBytes::new(keyload.nonce))?.absorb(n_subscribers)?;
+        self.absorb(NBytes::new(keyload.nonce))?.absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
         for (subscriber, exchange_key) in subscribers {
             self.fork()
@@ -156,7 +156,7 @@ where
         let subscribers = keyload.subscribers.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
         self.join(keyload.initial_state)?
-            .absorb(&NBytes::new(keyload.nonce))?
+            .absorb(NBytes::new(keyload.nonce))?
             .absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
         for (subscriber, exchange_key) in subscribers {

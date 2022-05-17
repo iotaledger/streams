@@ -44,27 +44,8 @@ impl Absorb<External<Uint64>> for Context {
 }
 
 /// External values are not encoded in the binary stream.
-impl<T: AsRef<[u8]>> Absorb<External<NBytes<&T>>> for Context {
-    fn absorb(&mut self, _external: External<NBytes<&T>>) -> Result<&mut Self> {
+impl<T: AsRef<[u8]>> Absorb<External<&NBytes<T>>> for Context {
+    fn absorb(&mut self, _external: External<&NBytes<T>>) -> Result<&mut Self> {
         Ok(self)
-    }
-}
-
-impl<'a, T> Absorb<External<&'a NBytes<T>>> for Context
-where
-    Self: Absorb<External<NBytes<&'a T>>>,
-{
-    fn absorb(&mut self, external: External<&'a NBytes<T>>) -> Result<&mut Self> {
-        self.absorb(External::new(NBytes::new(external.into_inner().inner())))
-    }
-}
-
-// Implement &External<T> for any External<&T> implementation
-impl<'a, T> Absorb<&'a External<T>> for Context
-where
-    Self: Absorb<External<&'a T>>,
-{
-    fn absorb(&mut self, external: &'a External<T>) -> Result<&mut Self> {
-        self.absorb(External::new(external.inner()))
     }
 }

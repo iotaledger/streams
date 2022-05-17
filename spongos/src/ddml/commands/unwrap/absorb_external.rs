@@ -81,13 +81,3 @@ impl<'a, F: PRP, IS> Absorb<External<&'a x25519::PublicKey>> for Context<IS, F> 
         Ok(self)
     }
 }
-
-// Implement &External<T> for any External<&T> implementation
-impl<'a, T, F, IS> Absorb<&'a External<T>> for Context<IS, F>
-where
-    Self: Absorb<External<&'a T>>,
-{
-    fn absorb(&mut self, external: &'a External<T>) -> Result<&mut Self> {
-        self.absorb(External::new(external.inner()))
-    }
-}

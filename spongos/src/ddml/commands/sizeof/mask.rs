@@ -69,41 +69,23 @@ impl Mask<Size> for Context {
 }
 
 /// Mask `n` bytes.
-impl<T: AsRef<[u8]>> Mask<NBytes<&T>> for Context {
-    fn mask(&mut self, nbytes: NBytes<&T>) -> Result<&mut Self> {
-        self.size += nbytes.as_ref().len();
+impl<T: AsRef<[u8]>> Mask<NBytes<T>> for Context {
+    fn mask(&mut self, nbytes: NBytes<T>) -> Result<&mut Self> {
+        self.size += nbytes.inner().as_ref().len();
         Ok(self)
-    }
-}
-
-impl<'a, T> Mask<&'a NBytes<T>> for Context
-where
-    Self: Mask<NBytes<&'a T>>,
-{
-    fn mask(&mut self, nbytes: &'a NBytes<T>) -> Result<&mut Self> {
-        self.mask(NBytes::new(nbytes.inner()))
     }
 }
 
 /// Mask bytes, the size prefixed before the content bytes is also masked.
-impl<T> Mask<Bytes<&T>> for Context
+impl<T> Mask<Bytes<T>> for Context
 where
-    T: AsRef<[u8]> + ?Sized,
+    T: AsRef<[u8]>,
 {
-    fn mask(&mut self, bytes: Bytes<&T>) -> Result<&mut Self> {
+    fn mask(&mut self, bytes: Bytes<T>) -> Result<&mut Self> {
         let size = Size::new(bytes.len());
         self.mask(size)?;
         self.size += bytes.len();
         Ok(self)
-    }
-}
-
-impl<'a, T> Mask<&'a Bytes<T>> for Context
-where
-    Self: Mask<Bytes<&'a T>>,
-{
-    fn mask(&mut self, bytes: &'a Bytes<T>) -> Result<&mut Self> {
-        self.mask(Bytes::new(bytes.inner()))
     }
 }
 

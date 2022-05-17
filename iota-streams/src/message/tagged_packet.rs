@@ -75,8 +75,8 @@ impl<'a> Wrap<'a> {
 #[async_trait(?Send)]
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, tagged_packet: &Wrap<'a>) -> Result<&mut Self> {
-        self.absorb(&Bytes::new(tagged_packet.public_payload))?
-            .mask(&Bytes::new(tagged_packet.masked_payload))?
+        self.absorb(Bytes::new(tagged_packet.public_payload))?
+            .mask(Bytes::new(tagged_packet.masked_payload))?
             .commit()?
             .squeeze(&MAC)?;
         Ok(self)
@@ -90,8 +90,8 @@ where
 {
     async fn wrap(&mut self, tagged_packet: &mut Wrap<'a>) -> Result<&mut Self> {
         self.join(tagged_packet.initial_state)?
-            .absorb(&Bytes::new(tagged_packet.public_payload))?
-            .mask(&Bytes::new(tagged_packet.masked_payload))?
+            .absorb(Bytes::new(tagged_packet.public_payload))?
+            .mask(Bytes::new(tagged_packet.masked_payload))?
             .commit()?
             .squeeze(&MAC)?;
         Ok(self)

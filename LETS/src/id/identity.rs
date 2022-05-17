@@ -231,8 +231,8 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
                 let hash = External::new(NBytes::new([0; 64]));
                 self.absorb(Uint8::new(0))?
                     .commit()?
-                    .squeeze(&hash)?
-                    .ed25519(ed25519.inner(), &hash)?;
+                    .squeeze(hash.as_ref())?
+                    .ed25519(ed25519.inner(), hash.as_ref())?;
                 Ok(self)
             }
 
@@ -245,10 +245,10 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
                     let key_fragment = info.key_fragment().as_bytes().to_vec();
                     let signature = [0; 64];
                     self.absorb(Uint8::new(1))?
-                        .absorb(&Bytes::new(key_fragment))?
+                        .absorb(Bytes::new(key_fragment))?
                         .commit()?
                         .squeeze(External::new(&NBytes::new(&hash)))?
-                        .absorb(&NBytes::new(signature))
+                        .absorb(NBytes::new(signature))
                 }
                 DID::Default => unreachable!(),
             },
@@ -268,8 +268,8 @@ where
                 let mut hash = External::new(NBytes::new([0; 64]));
                 self.absorb(Uint8::new(0))?
                     .commit()?
-                    .squeeze(&mut hash)?
-                    .ed25519(ed25519.inner(), &hash)?;
+                    .squeeze(hash.as_mut())?
+                    .ed25519(ed25519.inner(), hash.as_ref())?;
                 Ok(self)
             }
 
@@ -282,7 +282,7 @@ where
                         let mut hash = [0; 64];
                         let key_fragment = info.key_fragment().as_bytes().to_vec();
                         self.absorb(Uint8::new(1))?
-                            .absorb(&Bytes::new(key_fragment))?
+                            .absorb(Bytes::new(key_fragment))?
                             .commit()?
                             .squeeze(External::new(&mut NBytes::new(&mut hash)))?;
 
@@ -305,7 +305,7 @@ where
                                 .value()
                                 .as_str(),
                         )?;
-                        self.absorb(&NBytes::new(signature))
+                        self.absorb(NBytes::new(signature))
                     }
                     DID::Default => unreachable!(),
                     // TODO: Implement Account logic
@@ -326,10 +326,10 @@ where
             Identity::Psk(_) => self
                 .absorb(External::new(&NBytes::new(Psk::try_from(exchange_key)?)))?
                 .commit()?
-                .mask(&mut NBytes::new(key)),
+                .mask(NBytes::new(key)),
             // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introduction)
             _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(byte_array) => self.x25519(&x25519::SecretKey::from_bytes(byte_array), &mut NBytes::new(key)),
+                Ok(byte_array) => self.x25519(&x25519::SecretKey::from_bytes(byte_array), NBytes::new(key)),
                 Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
             },
         }
