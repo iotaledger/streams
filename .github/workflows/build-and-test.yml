@@ -67,4 +67,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --release --manifest-path '${{ github.workspace }}/examples/Cargo.toml'
+          args: --release --example full-example
