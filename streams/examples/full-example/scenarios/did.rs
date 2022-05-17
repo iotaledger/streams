@@ -54,7 +54,8 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
         .build()?;
 
     println!("> Author creates stream and sends its announcement");
-    let announcement = author.create_stream(8).await?;
+    // Start at index 1, because we can. Will error if its already in use
+    let announcement = author.create_stream(1).await?;
     print_send_result(&announcement);
     print_user("Author", &author);
 
