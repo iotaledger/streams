@@ -1,7 +1,7 @@
 #![no_std]
 
 // Spongos requires heap allocation for Vectors and Strings
-#[cfg_attr(not(feature = "std"), macro_use)]
+#[cfg_attr(test, macro_use)]
 extern crate alloc;
 
 // Spongos requires the feature "std" for the Dump DDML command

@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use core::{
     fmt,
     ops::Mul,
@@ -158,13 +157,6 @@ impl<F: PRP> Spongos<F> {
         output
     }
 
-    /// Squeeze vector, length is known at runtime.
-    pub(crate) fn squeeze_n(&mut self, n: usize) -> Vec<u8> {
-        let mut v = vec![0; n];
-        self.squeeze_mut(&mut v);
-        v
-    }
-
     pub fn sponge<T, R>(&mut self, data: T) -> R
     where
         T: AsRef<[u8]>,
@@ -206,7 +198,7 @@ impl<F: PRP> Spongos<F> {
         Ok(())
     }
 
-    pub(crate) fn encrypt<T>(&mut self, plain: &T) -> Result<T>
+    pub fn encrypt<T>(&mut self, plain: &T) -> Result<T>
     where
         T: AsRef<[u8]> + AsMut<[u8]> + Default,
     {
@@ -236,7 +228,7 @@ impl<F: PRP> Spongos<F> {
         Ok(())
     }
 
-    pub(crate) fn decrypt<T>(&mut self, ciphertext: &T) -> Result<T>
+    pub fn decrypt<T>(&mut self, ciphertext: &T) -> Result<T>
     where
         T: AsRef<[u8]> + AsMut<[u8]> + Default,
     {
@@ -258,7 +250,7 @@ impl<F: PRP> Spongos<F> {
     }
 
     /// Check whether spongos state is committed.
-    fn is_committed(&self) -> bool {
+    pub fn is_committed(&self) -> bool {
         0 == self.pos
     }
 

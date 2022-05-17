@@ -1,4 +1,4 @@
-use generic_array::typenum::Unsigned;
+use generic_array::{typenum::Unsigned, GenericArray};
 
 use super::{
     prp::{
@@ -12,9 +12,12 @@ fn bytes_spongosn<F: PRP + Default>(n: usize) {
     let mut rng = Spongos::<F>::init();
     rng.absorb(&vec![0; 10]);
     rng.commit();
-    let k = rng.squeeze_n(n);
-    let p = rng.squeeze_n(n);
-    let x = rng.squeeze_n(n);
+    let mut k = vec![0; n];
+    let mut p = vec![0; n];
+    let mut x = vec![0; n];
+    rng.squeeze_mut(&mut k);
+    rng.squeeze_mut(&mut p);
+    rng.squeeze_mut(&mut x);
 
     let mut s = Spongos::<F>::init();
     s.absorb(&k);
@@ -23,9 +26,12 @@ fn bytes_spongosn<F: PRP + Default>(n: usize) {
     let mut y = x.clone();
     s.encrypt_mut(&x, &mut y).unwrap();
     s.commit();
-    let t = s.squeeze_n(n);
-    let t2 = s.squeeze_n(n);
-    let t3 = s.squeeze_n(n);
+    let mut t = vec![0; n];
+    let mut t2 = vec![0; n];
+    let mut t3 = vec![0; n];
+    s.squeeze_mut(&mut t);
+    s.squeeze_mut(&mut t2);
+    s.squeeze_mut(&mut t3);
 
     let mut s = Spongos::<F>::init();
     s.absorb(&k);
@@ -34,7 +40,8 @@ fn bytes_spongosn<F: PRP + Default>(n: usize) {
     let mut z = y.clone();
     s.decrypt_mut(&y, &mut z).unwrap();
     s.commit();
-    let u = s.squeeze_n(n);
+    let mut u = vec![0; n];
+    s.squeeze_mut(&mut u);
     assert!(s.squeeze_eq(&t2));
     assert!(s.squeeze_eq(&t3));
 
@@ -122,22 +129,22 @@ fn slices_with_size_boundary_cases() {
 }
 
 fn encrypt_decrypt_n<F: PRP + Default + Clone>(n: usize) {
-    let rate = F::RateSize::USIZE;
     let mut s = Spongos::<F>::init();
     s.absorb(&vec![1; 32]);
     s.commit();
 
-    let x = s.clone().squeeze_n(n);
+    let mut x = vec![0; n];
+    s.clone().squeeze_mut(&mut x);
     let mut s2 = s.clone();
 
     let mut ex = x.clone();
     s.encrypt_mut(&x, &mut ex).unwrap();
     s.commit();
-    let tag = s.squeeze_n(rate);
+    let tag: GenericArray<u8, F::RateSize> = s.squeeze();
 
     let mut dex = ex.clone();
     s2.decrypt_mut(&ex, &mut dex).unwrap();
     assert_eq!(x, dex);
     s2.commit();
-    assert_eq!(tag, s2.squeeze_n(rate));
+    assert_eq!(tag, s2.squeeze());
 }
