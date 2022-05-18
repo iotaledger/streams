@@ -20,7 +20,6 @@ use streams::{
     transport::tangle,
     User,
 };
-use LETS::message::topic::Topic;
 
 use super::utils::{print_send_result, print_user};
 

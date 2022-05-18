@@ -11,7 +11,6 @@ use streams::{
     id::{Ed25519, PermissionDuration, Permissioned, Psk},
     User,
 };
-use LETS::message::topic::Topic;
 
 // Local
 use super::utils::{print_send_result, print_user};
@@ -69,6 +68,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
 
     println!("> Author creates a new branch");
+    println!("Branch topic: {}", String::from_utf8(branch1_topic.to_vec())?);
     let branch_announcement = author.new_branch(branch1_topic).await?;
     print_user("Author", &author);
 
@@ -76,6 +76,38 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let keyload_as_author = author.send_keyload_for_all(branch1_topic, branch_announcement.address().relative()).await?;
     print_send_result(&keyload_as_author);
     print_user("Author", &author);
+
+    println!("> Subscribers read branch announcement");
+    let branch_1_ann_as_a = subscriber_a
+        .messages()
+        .try_next()
+        .await?
+        .expect("Subscriber A did not receive the expected branch announcement");
+    assert!(branch_1_ann_as_a
+        .as_announcement()
+        .expect("expected announcement, found something else")
+        .author_identifier.eq(&author.identifier()));
+    print_user("Subscriber A", &subscriber_a);
+    let branch_1_ann_as_b = subscriber_b
+        .messages()
+        .try_next()
+        .await?
+        .expect("Subscriber B did not receive the expected branch announcement");
+    assert!(branch_1_ann_as_b
+        .as_announcement()
+        .expect("expected announcement, found something else")
+        .author_identifier.eq(&author.identifier()));
+    print_user("Subscriber B", &subscriber_b);
+    let branch_1_ann_as_c = subscriber_c
+        .messages()
+        .try_next()
+        .await?
+        .expect("Subscriber C did not receive the expected branch announcement");
+    assert!(branch_1_ann_as_c
+        .as_announcement()
+        .expect("expected announcement, found something else")
+        .author_identifier.eq(&author.identifier()));
+    print_user("Subscriber C", &subscriber_c);
 
     println!("> Subscribers read the keyload");
     let keyload_as_a = subscriber_a
@@ -173,7 +205,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Author issues new keyload in the same branch to incorporate SubscriberB");
     let new_keyload_as_author = author
-        .send_keyload_for_all(branch1_topic, tagged_packet_as_author.address().relative())
+        .send_keyload_for_all(branch1_topic, branch_announcement.address().relative())
         .await?;
     print_send_result(&new_keyload_as_author);
     print_user("Author", &author);

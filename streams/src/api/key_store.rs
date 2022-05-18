@@ -173,13 +173,13 @@ impl KeyStore {
 
 impl fmt::Debug for KeyStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "* cursors:")?;
+        writeln!(f, "\t* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
-            writeln!(f, "\t{:?} => {}", id, cursor)?;
+            writeln!(f, "\t\t{} => {}", id, cursor)?;
         }
-        writeln!(f, "* PSKs:")?;
+        writeln!(f, "\t* PSKs:")?;
         for pskid in self.psks.keys() {
-            writeln!(f, "\t<{:x}>", pskid)?;
+            writeln!(f, "\t\t<{:x}>", pskid)?;
         }
         Ok(())
     }
@@ -189,7 +189,7 @@ impl fmt::Debug for BranchStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "* branches:")?;
         for topic in self.topics() {
-            writeln!(f, "\t{:?} => \n\t{:?}", topic, self.get_branch(topic).unwrap())?;
+            writeln!(f, "{:?} => \n{:?}", topic, self.get_branch(topic).unwrap())?;
         }
         Ok(())
     }

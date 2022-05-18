@@ -144,7 +144,7 @@ impl ContentSizeof<HDF> for sizeof::Context {
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
-            .absorb(&NBytes::new(hdf.topic.inner()))?
+            .mask(&hdf.topic)?
             .mask(&hdf.publisher)?
             .skip(Size::new(hdf.sequence))?;
 
@@ -181,7 +181,7 @@ where
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
-            .absorb(&NBytes::new(hdf.topic.inner()))?
+            .mask(&hdf.topic)?
             .mask(&hdf.publisher)?
             .skip(Size::new(hdf.sequence))?;
 
@@ -204,7 +204,6 @@ where
         let mut frame_type = Uint8::default();
         let mut payload_frame_count_bytes = NBytes::<[u8; 3]>::default();
         let mut seq_num = Size::default();
-        let mut topic = NBytes::<[u8; 32]>::default();
 
         self.absorb(&mut encoding)?
             .absorb(&mut version)?
@@ -232,7 +231,7 @@ where
                 anyhow!("first 2 bits of payload-frame-count are reserved"),
             )?
             .absorb(Maybe::new(&mut hdf.linked_msg_address))?
-            .absorb(&mut topic)?
+            .mask(&mut hdf.topic)?
             .mask(&mut hdf.publisher)?
             .skip(&mut seq_num)?;
 
@@ -248,7 +247,6 @@ where
         x[2] = payload_frame_count_bytes[1];
         x[3] = payload_frame_count_bytes[2];
         hdf.payload_frame_count = u32::from_be_bytes(x);
-        hdf.topic = topic.as_slice().try_into()?;
         hdf.sequence = seq_num.inner();
 
         Ok(self)

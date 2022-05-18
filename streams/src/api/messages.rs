@@ -18,7 +18,7 @@ use hashbrown::HashMap;
 use lets::{
     address::{Address, MsgId},
     id::Identifier,
-    message::{TransportMessage, HDF},
+    message::{Topic, TransportMessage, HDF},
     transport::Transport,
 };
 
@@ -130,7 +130,7 @@ type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 struct MessagesState<'a, T> {
     user: &'a mut User<T>,
-    ids_stack: Vec<(Identifier, usize)>,
+    ids_stack: Vec<(Identifier, Topic, usize)>,
     msg_queue: HashMap<MsgId, VecDeque<(MsgId, TransportMessage)>>,
     stage: VecDeque<(MsgId, TransportMessage)>,
     successful_round: bool,
@@ -200,19 +200,26 @@ impl<'a, T> MessagesState<'a, T> {
             }
         } else {
             // Stage is empty, populate it with some more messages
-            let (publisher, cursor) = match self.ids_stack.pop() {
+            let (publisher, topic, cursor) = match self.ids_stack.pop() {
                 Some(id_cursor) => id_cursor,
                 None => {
                     // new round
                     self.successful_round = false;
-                    let mut publisher_cursors = self.user.cursors();
-                    let next = publisher_cursors.next()?;
-                    self.ids_stack = publisher_cursors.collect();
+                    let mut publishers_cursors: Vec<(Identifier, Topic, usize)> = Vec::new();
+                    for topic in self.user.topics() {
+                        let cursors_set: Vec<(Identifier, Topic, usize)> = self.user.cursors(topic)
+                            .ok()?
+                            .map(|(id, cursor)| (id, *topic, cursor))
+                            .collect();
+                        publishers_cursors.extend_from_slice(&cursors_set);
+                    }
+                    let next = publishers_cursors.pop()?;
+                    self.ids_stack = publishers_cursors;
                     next
                 }
             };
             let base_address = self.user.stream_address()?.base();
-            let rel_address = MsgId::gen(base_address, publisher, cursor + 1);
+            let rel_address = MsgId::gen(base_address, publisher, topic,cursor + 1);
             let address = Address::new(base_address, rel_address);
             match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {

@@ -5,6 +5,15 @@ use alloc::{
 };
 use core::fmt::Formatter;
 use anyhow::{anyhow, ensure, Error};
+use spongos::ddml::{commands::{
+    Mask,
+    sizeof,
+    wrap,
+    unwrap,
+}, io};
+use spongos::ddml::commands::Absorb;
+use spongos::ddml::types::NBytes;
+use spongos::PRP;
 
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Hash)]
@@ -55,6 +64,38 @@ impl core::fmt::Display for Topic {
 
 impl AsRef<[u8]> for Topic {
     fn as_ref(&self) -> &[u8] {
-        &self.0
+        self.0.as_ref()
+    }
+}
+
+impl AsMut<[u8]> for Topic {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+
+impl Mask<&Topic> for sizeof::Context {
+    fn mask(&mut self, topic: &Topic) -> anyhow::Result<&mut Self> {
+        self.mask(NBytes::new(topic))
+    }
+}
+
+impl<OS, F> Mask<&Topic> for wrap::Context<OS, F>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, topic: &Topic) -> anyhow::Result<&mut Self> {
+        self.mask(NBytes::new(topic))
+    }
+}
+
+impl<IS, F> Mask<&mut Topic> for unwrap::Context<IS, F>
+    where
+        F: PRP,
+        IS: io::IStream,
+{
+    fn mask(&mut self, topic: &mut Topic) -> anyhow::Result<&mut Self> {
+        self.mask(NBytes::new(topic))
     }
 }

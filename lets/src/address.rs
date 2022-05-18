@@ -23,6 +23,7 @@ use spongos::{
 
 // Local
 use crate::id::Identifier;
+use crate::message::Topic;
 
 /// Abstract representation of a Message Address
 ///
@@ -229,10 +230,11 @@ impl MsgId {
         Self(bytes)
     }
 
-    pub fn gen(appaddr: AppAddr, identifier: Identifier, seq_num: usize) -> MsgId {
+    pub fn gen(appaddr: AppAddr, identifier: Identifier, topic: Topic, seq_num: usize) -> MsgId {
         let mut s = Spongos::<KeccakF1600>::init();
         s.absorb(appaddr);
         s.absorb(identifier);
+        s.absorb(topic);
         s.absorb(seq_num.to_be_bytes());
         s.commit();
         s.squeeze()
