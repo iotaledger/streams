@@ -1,0 +1,42 @@
+[package]
+authors = [
+  "Vlad Semenov <vlad.semenov@iota.org>",
+  "Dyrell Chapman <dyrell.chapman@iota.org>",
+  "Brord van Wierst <brord@iota.org>",
+  "Arnau Orriols <arnau.orriols@iota.org>",
+]
+description = "A Rust implementation of the cryptographic de/serialization library Spongos"
+edition = "2018"
+keywords = ["iota", "spongos", "streams", "encoding", "binary", "serialization"]
+license = "Apache-2.0/MIT"
+name = "spongos"
+readme = "README.md"
+version = "0.1.2"
+
+[features]
+default = ["osrng"]
+# std is needed within spongos to enable the Dump DDML command
+std = []
+# rand and particularly its getrandom feature are necessary for the X25519 wrapping command. 
+# This means that X25519 wrapping can only be used on architectures supported by `getrandom` (see https://docs.rs/getrandom/latest/getrandom/).
+# When compiling for other architectures, the binary can still implement a custom random backing function
+# if X25519 wrapping is needed (see https://docs.rs/getrandom/latest/getrandom/#custom-implementations). 
+# X25519 unwrapping command does *not* need the "rand" feature nor `getrandom` support
+osrng = ["rand/std_rng", "rand/getrandom", "iota-crypto/rand"]
+
+[dependencies]
+# IOTA Dependencies
+iota-crypto = {version = "0.9.1", default-features = false, features = ["ed25519", "x25519"]}
+
+# 3rd-party dependencies 
+digest = {version = "0.9", default-features = false}
+displaydoc = {version = "0.2", default-features = false}
+generic-array = {version = "0.14", default-features = false}
+hex = {version = "0.4", default-features = false}
+keccak = {version = "0.1", default-features = false}
+rand = {version = "0.8", default-features = false}
+
+# quarentine
+# anyhow is forcing spongos (and anything depending on it) to pull in libstd
+# anyhow is going to be replaced by typeful checking soon anyway, no point in making it work with no_std
+anyhow = {version = "1.0", default-features = false, features = ["std"], optional = false}

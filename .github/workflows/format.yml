@@ -20,10 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        package:
-          - "."
-          - "examples"
     steps:
       - uses: actions/checkout@v2
       - name: Install rustfmt with nightly toolchain
@@ -36,4 +32,4 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --manifest-path=${{ matrix.package }}/Cargo.toml --check
+          args: --check
