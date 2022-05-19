@@ -324,7 +324,7 @@ mod tests {
 
     use anyhow::Result;
 
-    use lets::{address::Address, id::Ed25519, transport::bucket, message::Topic};
+    use lets::{address::Address, id::Ed25519, message::Topic, transport::bucket};
 
     use crate::api::{
         message::{
@@ -345,14 +345,10 @@ mod tests {
         let branch_announcement = author.new_branch(branch_1).await?;
         let keyload_1 = author.send_keyload_for_all_rw(branch_1).await?;
         subscriber1.sync().await?;
-        let _packet_1 = subscriber1
-            .send_signed_packet(branch_1, &p, &p)
-            .await?;
+        let _packet_1 = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress
         // through the next messages
-        let _packet_2 = subscriber1
-            .send_signed_packet(branch_1, &p, &p)
-            .await?;
+        let _packet_2 = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
 
@@ -362,9 +358,7 @@ mod tests {
         let keyload_2 = author.send_keyload_for_all_rw(branch_1).await?;
 
         subscriber1.sync().await?;
-        let last_signed_packet = subscriber1
-            .send_signed_packet(branch_1, &p, &p)
-            .await?;
+        let last_signed_packet = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
 
         let msgs = subscriber2.fetch_next_messages().await?;
         assert_eq!(4, msgs.len()); // branch_announcement, keyload_1, keyload_2 and last signed packet
