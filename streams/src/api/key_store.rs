@@ -14,6 +14,7 @@ use crypto::keys::x25519;
 
 // Streams
 use lets::{
+    address::{Address, MsgId},
     id::{Identifier, Psk, PskId},
     message::Topic,
 };
@@ -130,6 +131,22 @@ impl BranchStore {
         })
     }
 
+    pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
+        self.get_branch_mut(topic).map(|branch| branch.anchor = anchor)
+    }
+
+    pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: Address) -> Result<()> {
+        self.get_branch_mut(topic).map(|branch| branch.latest_link = latest_link)
+    }
+
+
+    pub(crate) fn get_anchor(&self, topic: &Topic) -> Result<Address> {
+        self.get_branch(topic).map(|branch| branch.anchor)
+    }
+
+    pub(crate) fn get_latest_link(&self, topic: &Topic) -> Result<Address> {
+        self.get_branch(topic).map(|branch| branch.latest_link)
+    }
 }
 
 
@@ -138,6 +155,8 @@ pub(crate) struct KeyStore {
     cursors: HashMap<Identifier, usize>,
     keys: HashMap<Identifier, x25519::PublicKey>,
     psks: HashMap<PskId, Psk>,
+    anchor: Address,
+    latest_link: Address,
 }
 
 impl KeyStore {
@@ -173,6 +192,8 @@ impl KeyStore {
 
 impl fmt::Debug for KeyStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "\t* anchor: {}", self.anchor)?;
+        writeln!(f, "\t* latest link: {}", self.latest_link.relative())?;
         writeln!(f, "\t* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
             writeln!(f, "\t\t{} => {}", id, cursor)?;
@@ -201,6 +222,8 @@ impl Default for KeyStore {
             cursors: HashMap::new(),
             keys: HashMap::new(),
             psks: HashMap::new(),
+            anchor: Address::default(),
+            latest_link: Address::default(),
         }
     }
 }

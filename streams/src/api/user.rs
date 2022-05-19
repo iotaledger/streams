@@ -186,6 +186,23 @@ impl<T> User<T> {
         self.state.id_store.remove_psk_from_all(pskid)
     }
 
+    fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
+        self.state.id_store.set_anchor(topic, anchor)
+    }
+
+    fn set_latest_link(&mut self, topic: &Topic, latest_link: Address) -> Result<()> {
+        self.state.id_store.set_latest_link(topic, latest_link)
+    }
+
+    fn get_anchor(&self, topic: &Topic) -> Result<MsgId> {
+        self.state.id_store.get_anchor(topic).map(|a| a.relative())
+    }
+
+    fn get_latest_link(&self, topic: &Topic) -> Result<MsgId> {
+        self.state.id_store.get_latest_link(topic).map(|a| a.relative())
+    }
+
+
     pub(crate) async fn handle_message(&mut self, address: Address, msg: TransportMessage) -> Result<Message> {
         let preparsed = msg.parse_header().await?;
         match preparsed.header().message_type() {
@@ -237,6 +254,9 @@ impl<T> User<T> {
             self.state.id_store.insert_key(&topic, author_id, author_ke_pk);
             self.state.stream_address = Some(address);
         }
+        // Update branch links
+        self.set_anchor(&topic, address)?;
+        self.set_latest_link(&topic, address)?;
         self.state.author_identifier = Some(author_id);
 
         Ok(Message::from_lets_message(address, message))
@@ -304,7 +324,9 @@ impl<T> User<T> {
     }
 
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // Retrieve the topic from header
         let topic = *preparsed.header().topic();
+
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
@@ -350,10 +372,17 @@ impl<T> User<T> {
             }
         }
 
-        Ok(Message::from_lets_message(address, message))
+        // Have to make message before setting branch links due to immutable borrow in keyload::unwrap
+        let final_message = Message::from_lets_message(address, message);
+        // Update branch links
+        self.set_latest_link(&topic, address)?;
+        Ok(final_message)
     }
 
     async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // Retrieve the topic from header
+        let topic = *preparsed.header().topic();
+
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
@@ -380,11 +409,14 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-
+        self.set_latest_link(&topic, address)?;
         Ok(Message::from_lets_message(address, message))
     }
 
     async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // Retrieve the topic from header
+        let topic = *preparsed.header().topic();
+
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
@@ -411,6 +443,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
+        self.set_latest_link(&topic, address)?;
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -560,15 +593,22 @@ where
         // If message has been sent successfully, commit message to stores
         self.state.id_store.insert_cursor(&topic, self.identifier(), INIT_MESSAGE_NUM);
         self.state.spongos_store.insert(address.relative(), spongos);
+
+        // Update branch links
+        self.set_anchor(&topic, address)?;
+        self.set_latest_link(&topic, address)?;
         Ok(SendResponse::new(address, send_response))
     }
 
     /// Prepare Subscribe message.
-    pub async fn subscribe(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
+    pub async fn subscribe(&mut self) -> Result<SendResponse<TSR>> {
         // Check conditions
         let stream_address = self
             .stream_address()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
+
+        // Link message to channel announcement
+        let link_to = self.get_anchor(&BASE_BRANCH)?;
 
         let rel_address = MsgId::gen(stream_address.base(), self.identifier(), BASE_BRANCH, SUB_MESSAGE_NUM);
 
@@ -614,11 +654,14 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
-    pub async fn unsubscribe(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
+    pub async fn unsubscribe(&mut self) -> Result<SendResponse<TSR>> {
         // Check conditions
         let stream_address = self.stream_address().ok_or_else(|| {
             anyhow!("before sending a subscription one must receive the announcement of a stream first")
         })?;
+
+        // Link message to channel announcement
+        let link_to = self.get_anchor(&BASE_BRANCH)?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&BASE_BRANCH)?;
@@ -658,7 +701,6 @@ where
     pub async fn send_keyload<'a, Subscribers, Top>(
         &mut self,
         topic: Top,
-        link_to: MsgId,
         subscribers: Subscribers,
     ) -> Result<SendResponse<TSR>>
     where
@@ -672,6 +714,8 @@ where
 
         // Check Topic
         let topic = Topic::new(topic.as_ref())?;
+        // Link message to anchor in branch
+        let link_to = self.get_anchor(&topic)?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -732,29 +776,29 @@ where
         }
         self.state.id_store.insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
+        // Update Branch Links
+        self.set_latest_link(&topic, message_address)?;
         Ok(SendResponse::new(message_address, send_response))
     }
 
-    pub async fn send_keyload_for_all<Top>(&mut self, topic: Top, link_to: MsgId) -> Result<SendResponse<TSR>>
+    pub async fn send_keyload_for_all<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
         Top: AsRef<[u8]>,
     {
         self.send_keyload(
             topic,
-            link_to,
             // Alas, must collect to release the &self immutable borrow
             self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
         )
         .await
     }
 
-    pub async fn send_keyload_for_all_rw<Top>(&mut self, topic: Top, link_to: MsgId) -> Result<SendResponse<TSR>>
+    pub async fn send_keyload_for_all_rw<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
         Top: AsRef<[u8]>,
     {
         self.send_keyload(
             topic,
-            link_to,
             // Alas, must collect to release the &self immutable borrow
             self.subscribers()
                 .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
@@ -766,7 +810,6 @@ where
     pub async fn send_signed_packet<P, M, Top>(
         &mut self,
         topic: Top,
-        link_to: MsgId,
         public_payload: P,
         masked_payload: M,
     ) -> Result<SendResponse<TSR>>
@@ -782,6 +825,8 @@ where
 
         // Check Topic
         let topic = Topic::new(topic.as_ref())?;
+        // Link message to latest message in branch
+        let link_to = self.get_latest_link(&topic)?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -819,13 +864,14 @@ where
         // If message has been sent successfully, commit message to stores
         self.state.id_store.insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
+        // Update Branch Links
+        self.set_latest_link(&topic, message_address)?;
         Ok(SendResponse::new(message_address, send_response))
     }
 
     pub async fn send_tagged_packet<P, M, Top>(
         &mut self,
         topic: Top,
-        link_to: MsgId,
         public_payload: P,
         masked_payload: M,
     ) -> Result<SendResponse<TSR>>
@@ -841,6 +887,8 @@ where
 
         // Check Topic
         let topic = Topic::new(topic.as_ref())?;
+        // Link message to latest message in branch
+        let link_to = self.get_latest_link(&topic)?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -877,6 +925,8 @@ where
         // If message has been sent successfully, commit message to stores
         self.state.id_store.insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
+        // Update Branch Links
+        self.set_latest_link(&topic, message_address)?;
         Ok(SendResponse::new(message_address, send_response))
     }
 }
@@ -900,6 +950,9 @@ impl ContentSizeof<State> for sizeof::Context {
 
         for topic in topics {
             self.mask(topic)?;
+            let anchor = user_state.id_store.get_anchor(topic)?;
+            let latest_link = user_state.id_store.get_latest_link(topic)?;
+            self.mask(&anchor)?.mask(&latest_link)?;
 
             let cursors = user_state.id_store.cursors(topic)?;
             let amount_cursors = cursors.len();
@@ -947,6 +1000,9 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
 
         for topic in topics {
             self.mask(topic)?;
+            let anchor = user_state.id_store.get_anchor(topic)?;
+            let latest_link = user_state.id_store.get_latest_link(topic)?;
+            self.mask(&anchor)?.mask(&latest_link)?;
 
             let cursors = user_state.id_store.cursors(topic)?;
             let amount_cursors = cursors.len();
@@ -999,11 +1055,18 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
         for _ in 0..amount_topics.inner() {
             let mut topic = Topic::default();
             self.mask(&mut topic)?;
+            let mut anchor = Address::default();
+            let mut latest_link = Address::default();
+            self.mask(&mut anchor)?.mask(&mut latest_link)?;
+
 
             // If the topic has not been registered yet in store, add it
             if user_state.id_store.get_branch(&topic).is_err() {
                 user_state.id_store.new_branch(topic);
             }
+
+            user_state.id_store.set_anchor(&topic, anchor)?;
+            user_state.id_store.set_latest_link(&topic, latest_link)?;
 
             let mut amount_cursors = Size::default();
             self.mask(&mut amount_cursors)?;
@@ -1042,11 +1105,9 @@ impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
             f,
-            "\n* identifier: <{}>\n{:?}\n*author_id: <{:?}>\n*streams address: <{}>\n* messages:\n{}\n",
+            "\n* identifier: <{}>\n{:?}\n* messages:\n{}\n",
             self.identifier(),
             self.state.id_store,
-            self.state.author_identifier,
-            self.state.stream_address.as_ref().unwrap(),
             self.state
                 .spongos_store
                 .keys()
