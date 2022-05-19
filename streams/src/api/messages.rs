@@ -41,7 +41,7 @@ use crate::api::{
 /// ```
 /// use futures::TryStreamExt;
 ///
-/// use streams::{id::Ed25519, transport::tangle, Address, User};
+/// use streams::{BASE_BRANCH, id::Ed25519, transport::tangle, Address, User};
 ///
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
@@ -75,16 +75,9 @@ use crate::api::{
 ///
 /// let announcement = author.create_stream(1).await?;
 /// subscriber.receive_message(announcement.address()).await?;
-/// let first_packet = author
-///     .send_signed_packet(announcement.address().relative(), b"public payload", b"masked payload")
-///     .await?;
+/// let first_packet = author.send_signed_packet(&BASE_BRANCH, b"public payload", b"masked payload").await?;
 /// let second_packet = author
-///     .send_signed_packet(
-///         first_packet.address().relative(),
-///         b"another public payload",
-///         b"another masked payload",
-///     )
-///     .await?;
+///     .send_signed_packet(&BASE_BRANCH, b"another public payload", b"another masked payload").await?;
 ///
 /// #
 /// # let mut n = 0;
@@ -331,12 +324,12 @@ mod tests {
 
     use anyhow::Result;
 
-    use lets::{address::Address, id::Ed25519, transport::bucket};
+    use lets::{address::Address, id::Ed25519, transport::bucket, message::Topic};
 
     use crate::api::{
         message::{
             Message,
-            MessageContent::{Keyload, SignedPacket},
+            MessageContent::{Announcement, Keyload, SignedPacket},
         },
         user::User,
     };
@@ -348,15 +341,17 @@ mod tests {
         let p = b"payload";
         let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
 
-        let keyload_1 = author.send_keyload_for_all_rw(announcement_link.relative()).await?;
+        let branch_1 = Topic::new(b"Branch 1")?;
+        let branch_announcement = author.new_branch(branch_1).await?;
+        let keyload_1 = author.send_keyload_for_all_rw(branch_1).await?;
         subscriber1.sync().await?;
-        let packet_1 = subscriber1
-            .send_signed_packet(keyload_1.address().relative(), &p, &p)
+        let _packet_1 = subscriber1
+            .send_signed_packet(branch_1, &p, &p)
             .await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress
         // through the next messages
-        let packet_2 = subscriber1
-            .send_signed_packet(packet_1.address().relative(), &p, &p)
+        let _packet_2 = subscriber1
+            .send_signed_packet(branch_1, &p, &p)
             .await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
@@ -364,18 +359,23 @@ mod tests {
         author.sync().await?;
 
         // This packet has to wait in the `Messages::msg_queue` until `packet` is processed
-        let keyload_2 = author.send_keyload_for_all_rw(packet_2.address().relative()).await?;
+        let keyload_2 = author.send_keyload_for_all_rw(branch_1).await?;
 
         subscriber1.sync().await?;
         let last_signed_packet = subscriber1
-            .send_signed_packet(keyload_2.address().relative(), &p, &p)
+            .send_signed_packet(branch_1, &p, &p)
             .await?;
 
         let msgs = subscriber2.fetch_next_messages().await?;
-        assert_eq!(3, msgs.len()); // keyload_1, keyload_2 and last signed packet
+        assert_eq!(4, msgs.len()); // branch_announcement, keyload_1, keyload_2 and last signed packet
         assert!(matches!(
             msgs.as_slice(),
             &[
+                Message {
+                    address: address_0,
+                    content: Announcement(..),
+                    ..
+                },
                 Message {
                     address: address_1,
                     content: Keyload(..),
@@ -392,7 +392,8 @@ mod tests {
                     ..
                 }
             ]
-            if address_1 == keyload_1.address()
+            if address_0 == branch_announcement.address()
+            && address_1 == keyload_1.address()
             && address_2 == keyload_2.address()
             && address_3 == last_signed_packet.address()
         ));
@@ -424,7 +425,7 @@ mod tests {
             .with_transport(transport)
             .build()?;
         subscriber.receive_message(announcement_link).await?;
-        let subscription = subscriber.subscribe(announcement_link.relative()).await?;
+        let subscription = subscriber.subscribe().await?;
         author.receive_message(subscription.address()).await?;
         Ok(subscriber)
     }

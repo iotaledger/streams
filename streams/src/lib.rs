@@ -44,5 +44,5 @@ mod message;
 /// [`User`] API.
 mod api;
 
-pub use api::{message::Message, send_response::SendResponse, user::User};
+pub use api::{BASE_BRANCH, message::Message, send_response::SendResponse, user::User};
 pub use lets::{address::Address, id, message::TransportMessage, transport};

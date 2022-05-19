@@ -249,7 +249,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         })
         .try_collect::<Vec<_>>()
         .await?;
-    let last_message_in_branch_as_c = messages_in_branch_as_c
+    messages_in_branch_as_c
         .last()
         .expect("Subscriber C hasn't received any of the new messages");
     let result = subscriber_c
