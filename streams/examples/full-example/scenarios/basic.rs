@@ -70,6 +70,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Author creates a new branch");
     println!("Branch topic: {}", String::from_utf8(branch1_topic.to_vec())?);
     let branch_announcement = author.new_branch(branch1_topic).await?;
+    print_send_result(&branch_announcement);
     print_user("Author", &author);
 
     println!("> Author issues keyload for every user subscribed so far [SubscriberA, PSK] for Branch 1");
@@ -374,7 +375,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     new_author.add_subscriber(subscriber_b.identifier());
     new_author.receive_message(announcement.address()).await?;
     new_author.receive_message(subscription_a_as_a.address()).await?;
-    assert_eq!(new_author.sync().await?, 6);
+    assert_eq!(new_author.sync().await?, 7);
     print_user("Recovered Author", &new_author);
     assert_eq!(author, new_author);
     author = new_author;
@@ -385,7 +386,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .build()?;
 
     new_subscriber_a.receive_message(announcement.address()).await?;
-    assert_eq!(new_subscriber_a.sync().await?, 6);
+    assert_eq!(new_subscriber_a.sync().await?, 7);
     print_user("Recovered Subscriber A", &new_subscriber_a);
     assert_eq!(subscriber_a, new_subscriber_a);
     subscriber_a = new_subscriber_a;
@@ -395,7 +396,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_transport(transport.clone())
         .build()?;
     new_subscriber_b.receive_message(announcement.address()).await?;
-    assert_eq!(new_subscriber_b.sync().await?, 5);
+    assert_eq!(new_subscriber_b.sync().await?, 6);
     print_user("Recovered Subscriber B", &new_subscriber_b);
     assert_eq!(subscriber_b, new_subscriber_b);
     subscriber_b = new_subscriber_b;
@@ -405,7 +406,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_transport(transport.clone())
         .build()?;
     new_subscriber_c.receive_message(announcement.address()).await?;
-    assert_eq!(new_subscriber_c.sync().await?, 6);
+    assert_eq!(new_subscriber_c.sync().await?, 7);
     print_user("Recovered Subscriber C", &new_subscriber_c);
     assert_eq!(subscriber_c, new_subscriber_c);
     subscriber_c = new_subscriber_c;

@@ -202,14 +202,7 @@ impl<T> User<T> {
     /// Bind Subscriber to the channel announced
     /// in the message.
     async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // Check conditions
-        if let Some(stream_address) = self.stream_address() {
-            bail!(
-                "cannot handle announcement: user is already connected to the stream {}",
-                stream_address
-            );
-        }
-
+        // Check Topic
         let topic = *preparsed.header().topic();
         let publisher = preparsed.header().publisher();
         let is_base_branch = topic.eq(&BASE_BRANCH);
@@ -538,7 +531,7 @@ where
         let (user_cursor, address, topic) = if is_base_branch {
             (ANN_MESSAGE_NUM, stream_address, BASE_BRANCH)
         } else {
-            let cursor = self.next_cursor(&topic).map_err(|_| anyhow!("No cursor found in base branch"))?;
+            let cursor = self.next_cursor(&BASE_BRANCH).map_err(|_| anyhow!("No cursor found in base branch"))?;
             let msgid = MsgId::gen(stream_address.base(), self.identifier(), BASE_BRANCH, cursor);
             let address = Address::new(stream_address.base(), msgid);
             (cursor, address, topic)
@@ -556,7 +549,7 @@ where
             self.transport.recv_message(address).await.is_err(),
             anyhow!("stream with address '{}' already exists", address)
         );
-        let send_response = self.transport.send_message(stream_address, transport_msg).await?;
+        let send_response = self.transport.send_message(address, transport_msg).await?;
 
         // If the branch has not been created yet, create it
         if !is_base_branch {
