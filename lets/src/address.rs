@@ -22,8 +22,7 @@ use spongos::{
 };
 
 // Local
-use crate::id::Identifier;
-use crate::message::Topic;
+use crate::{id::Identifier, message::Topic};
 
 /// Abstract representation of a Message Address
 ///

@@ -1,7 +1,9 @@
 use alloc::{string::String, vec::Vec};
 use anyhow::{anyhow, ensure, Error};
-use core::convert::{TryFrom, TryInto};
-use core::fmt::Formatter;
+use core::{
+    convert::{TryFrom, TryInto},
+    fmt::Formatter,
+};
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Mask},

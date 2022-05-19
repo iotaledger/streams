@@ -41,7 +41,7 @@ use crate::api::{
 /// ```
 /// use futures::TryStreamExt;
 ///
-/// use streams::{BASE_BRANCH, id::Ed25519, transport::tangle, Address, User};
+/// use streams::{id::Ed25519, transport::tangle, Address, User, BASE_BRANCH};
 ///
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
@@ -75,9 +75,12 @@ use crate::api::{
 ///
 /// let announcement = author.create_stream(1).await?;
 /// subscriber.receive_message(announcement.address()).await?;
-/// let first_packet = author.send_signed_packet(&BASE_BRANCH, b"public payload", b"masked payload").await?;
+/// let first_packet = author
+///     .send_signed_packet(&BASE_BRANCH, b"public payload", b"masked payload")
+///     .await?;
 /// let second_packet = author
-///     .send_signed_packet(&BASE_BRANCH, b"another public payload", b"another masked payload").await?;
+///     .send_signed_packet(&BASE_BRANCH, b"another public payload", b"another masked payload")
+///     .await?;
 ///
 /// #
 /// # let mut n = 0;

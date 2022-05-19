@@ -84,33 +84,39 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .try_next()
         .await?
         .expect("Subscriber A did not receive the expected branch announcement");
-    assert!(branch_1_ann_as_a
-        .as_announcement()
-        .expect("expected announcement, found something else")
-        .author_identifier
-        .eq(&author.identifier()));
+    assert!(
+        branch_1_ann_as_a
+            .as_announcement()
+            .expect("expected announcement, found something else")
+            .author_identifier
+            .eq(&author.identifier())
+    );
     print_user("Subscriber A", &subscriber_a);
     let branch_1_ann_as_b = subscriber_b
         .messages()
         .try_next()
         .await?
         .expect("Subscriber B did not receive the expected branch announcement");
-    assert!(branch_1_ann_as_b
-        .as_announcement()
-        .expect("expected announcement, found something else")
-        .author_identifier
-        .eq(&author.identifier()));
+    assert!(
+        branch_1_ann_as_b
+            .as_announcement()
+            .expect("expected announcement, found something else")
+            .author_identifier
+            .eq(&author.identifier())
+    );
     print_user("Subscriber B", &subscriber_b);
     let branch_1_ann_as_c = subscriber_c
         .messages()
         .try_next()
         .await?
         .expect("Subscriber C did not receive the expected branch announcement");
-    assert!(branch_1_ann_as_c
-        .as_announcement()
-        .expect("expected announcement, found something else")
-        .author_identifier
-        .eq(&author.identifier()));
+    assert!(
+        branch_1_ann_as_c
+            .as_announcement()
+            .expect("expected announcement, found something else")
+            .author_identifier
+            .eq(&author.identifier())
+    );
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Subscribers read the keyload");
@@ -120,30 +126,36 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .await?
         .expect("subscriber A did not receive the expected keyload");
     print_user("Subscriber A", &subscriber_a);
-    assert!(keyload_as_a
-        .as_keyload()
-        .expect("expected keyload, found something else")
-        .includes(subscriber_a.identifier()));
+    assert!(
+        keyload_as_a
+            .as_keyload()
+            .expect("expected keyload, found something else")
+            .includes(subscriber_a.identifier())
+    );
     let keyload_as_b = subscriber_b
         .messages()
         .try_next()
         .await?
         .expect("subscriber B did not receive the expected keyload");
     print_user("Subscriber B", &subscriber_b);
-    assert!(!keyload_as_b
-        .as_keyload()
-        .expect("expected keyload, found something else")
-        .includes(subscriber_b.identifier()));
+    assert!(
+        !keyload_as_b
+            .as_keyload()
+            .expect("expected keyload, found something else")
+            .includes(subscriber_b.identifier())
+    );
     let keyload_as_c = subscriber_c
         .messages()
         .try_next()
         .await?
         .expect("subscriber C did not receive the expected keyload");
     print_user("Subscriber C", &subscriber_c);
-    assert!(keyload_as_c
-        .as_keyload()
-        .expect("expected keyload, found something else")
-        .includes(subscriber_c.identifier()));
+    assert!(
+        keyload_as_c
+            .as_keyload()
+            .expect("expected keyload, found something else")
+            .includes(subscriber_c.identifier())
+    );
 
     println!("> Author sends a tagged packet linked to the keyload");
     let tagged_packet_as_author = author

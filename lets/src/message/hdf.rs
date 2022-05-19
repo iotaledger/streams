@@ -12,12 +12,12 @@ use spongos::{
     PRP,
 };
 
-use crate::message::topic::Topic;
 use crate::{
     address::MsgId,
     id::Identifier,
     message::{
         content::{ContentSizeof, ContentUnwrap, ContentWrap},
+        topic::Topic,
         version::{HDF_ID, STREAMS_1_VER, UTF8},
     },
 };
