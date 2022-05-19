@@ -99,7 +99,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let mut last_msg = first_keyload_as_author.clone();
     for _ in 0..3 {
         last_msg = author
-            .send_signed_packet(branch1_topic,  PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+            .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
             .await?;
         print_send_result(&last_msg);
     }
@@ -122,7 +122,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let mut last_msg = second_keyload_as_author;
     for _ in 0..2 {
         last_msg = author
-            .send_signed_packet(branch1_topic,  PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+            .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
             .await?;
         print_send_result(&last_msg);
     }
@@ -130,11 +130,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     println!("> Author sends 1 more signed packet linked to the first keyload");
     let last_msg = author
-        .send_signed_packet(
-            branch1_topic,
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&last_msg);
     print_user("Author", &author);

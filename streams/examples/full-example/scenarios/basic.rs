@@ -87,7 +87,8 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     assert!(branch_1_ann_as_a
         .as_announcement()
         .expect("expected announcement, found something else")
-        .author_identifier.eq(&author.identifier()));
+        .author_identifier
+        .eq(&author.identifier()));
     print_user("Subscriber A", &subscriber_a);
     let branch_1_ann_as_b = subscriber_b
         .messages()
@@ -97,7 +98,8 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     assert!(branch_1_ann_as_b
         .as_announcement()
         .expect("expected announcement, found something else")
-        .author_identifier.eq(&author.identifier()));
+        .author_identifier
+        .eq(&author.identifier()));
     print_user("Subscriber B", &subscriber_b);
     let branch_1_ann_as_c = subscriber_c
         .messages()
@@ -107,7 +109,8 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     assert!(branch_1_ann_as_c
         .as_announcement()
         .expect("expected announcement, found something else")
-        .author_identifier.eq(&author.identifier()));
+        .author_identifier
+        .eq(&author.identifier()));
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Subscribers read the keyload");
@@ -117,36 +120,30 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .await?
         .expect("subscriber A did not receive the expected keyload");
     print_user("Subscriber A", &subscriber_a);
-    assert!(
-        keyload_as_a
-            .as_keyload()
-            .expect("expected keyload, found something else")
-            .includes(subscriber_a.identifier())
-    );
+    assert!(keyload_as_a
+        .as_keyload()
+        .expect("expected keyload, found something else")
+        .includes(subscriber_a.identifier()));
     let keyload_as_b = subscriber_b
         .messages()
         .try_next()
         .await?
         .expect("subscriber B did not receive the expected keyload");
     print_user("Subscriber B", &subscriber_b);
-    assert!(
-        !keyload_as_b
-            .as_keyload()
-            .expect("expected keyload, found something else")
-            .includes(subscriber_b.identifier())
-    );
+    assert!(!keyload_as_b
+        .as_keyload()
+        .expect("expected keyload, found something else")
+        .includes(subscriber_b.identifier()));
     let keyload_as_c = subscriber_c
         .messages()
         .try_next()
         .await?
         .expect("subscriber C did not receive the expected keyload");
     print_user("Subscriber C", &subscriber_c);
-    assert!(
-        keyload_as_c
-            .as_keyload()
-            .expect("expected keyload, found something else")
-            .includes(subscriber_c.identifier())
-    );
+    assert!(keyload_as_c
+        .as_keyload()
+        .expect("expected keyload, found something else")
+        .includes(subscriber_c.identifier()));
 
     println!("> Author sends a tagged packet linked to the keyload");
     let tagged_packet_as_author = author
@@ -205,19 +202,13 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
 
     println!("> Author issues new keyload in the same branch to incorporate SubscriberB");
-    let new_keyload_as_author = author
-        .send_keyload_for_all(branch1_topic)
-        .await?;
+    let new_keyload_as_author = author.send_keyload_for_all(branch1_topic).await?;
     print_send_result(&new_keyload_as_author);
     print_user("Author", &author);
 
     println!("> Author sends a signed packet");
     let signed_packet_as_author = author
-        .send_signed_packet(
-            branch1_topic,
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&signed_packet_as_author);
     print_user("Author", &author);
@@ -262,11 +253,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .last()
         .expect("Subscriber C hasn't received any of the new messages");
     let result = subscriber_c
-        .send_signed_packet(
-            branch1_topic,
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await;
     assert!(
         result.is_err(),
@@ -276,11 +263,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Subscriber A attempts to send a signed packet (but he has readonly permission over the branch!)");
     let result = subscriber_a
-        .send_signed_packet(
-            branch1_topic,
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await;
     assert!(
         result.is_err(),
@@ -311,11 +294,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Subscriber A publishes signed packet");
     assert_eq!(subscriber_a.sync().await?, 1);
     let signed_packet_as_a = subscriber_a
-        .send_signed_packet(
-            branch1_topic,
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&signed_packet_as_a);
     print_user("Subscriber A", &subscriber_a);
@@ -449,9 +428,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
 
     println!("> Author issues a new keyload to remove all subscribers from the branch");
-    let last_keyload = author
-        .send_keyload_for_all(branch1_topic)
-        .await?;
+    let last_keyload = author.send_keyload_for_all(branch1_topic).await?;
     print_send_result(&last_keyload);
     print_user("Author", &author);
     println!("> Author sends a new signed packet");

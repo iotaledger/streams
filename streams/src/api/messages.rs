@@ -207,7 +207,9 @@ impl<'a, T> MessagesState<'a, T> {
                     self.successful_round = false;
                     let mut publishers_cursors: Vec<(Identifier, Topic, usize)> = Vec::new();
                     for topic in self.user.topics() {
-                        let cursors_set: Vec<(Identifier, Topic, usize)> = self.user.cursors(topic)
+                        let cursors_set: Vec<(Identifier, Topic, usize)> = self
+                            .user
+                            .cursors(topic)
                             .ok()?
                             .map(|(id, cursor)| (id, *topic, cursor))
                             .collect();
@@ -219,7 +221,7 @@ impl<'a, T> MessagesState<'a, T> {
                 }
             };
             let base_address = self.user.stream_address()?.base();
-            let rel_address = MsgId::gen(base_address, publisher, topic,cursor + 1);
+            let rel_address = MsgId::gen(base_address, publisher, topic, cursor + 1);
             let address = Address::new(base_address, rel_address);
             match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {

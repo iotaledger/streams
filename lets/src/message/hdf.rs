@@ -1,9 +1,4 @@
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
-use core::convert::TryInto;
-
+use alloc::boxed::Box;
 use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 
@@ -17,6 +12,7 @@ use spongos::{
     PRP,
 };
 
+use crate::message::topic::Topic;
 use crate::{
     address::MsgId,
     id::Identifier,
@@ -25,7 +21,6 @@ use crate::{
         version::{HDF_ID, STREAMS_1_VER, UTF8},
     },
 };
-use crate::message::topic::Topic;
 
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

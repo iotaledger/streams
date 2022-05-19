@@ -1,10 +1,7 @@
 // Rust
-use core::fmt;
 use alloc::vec::Vec;
-use anyhow::{
-    anyhow,
-    Result,
-};
+use anyhow::{anyhow, Result};
+use core::fmt;
 
 // 3rd-party
 use hashbrown::HashMap;
@@ -14,7 +11,7 @@ use crypto::keys::x25519;
 
 // Streams
 use lets::{
-    address::{Address, MsgId},
+    address::Address,
     id::{Identifier, Psk, PskId},
     message::Topic,
 };
@@ -38,16 +35,19 @@ impl BranchStore {
     }
 
     pub(crate) fn is_cursor_tracked(&self, topic: &Topic, id: &Identifier) -> bool {
-        self.get_branch(topic).map_or(false, |branch| branch.cursors.contains_key(id))
+        self.get_branch(topic)
+            .map_or(false, |branch| branch.cursors.contains_key(id))
     }
 
     pub(crate) fn remove_from_all(&mut self, id: &Identifier) -> bool {
-        self.0.iter_mut()
+        self.0
+            .iter_mut()
             .fold(false, |acc, (_topic, branch)| acc || branch.remove(id))
     }
 
     pub(crate) fn remove_psk_from_all(&mut self, pskid: PskId) -> bool {
-        self.0.iter_mut()
+        self.0
+            .iter_mut()
             .fold(false, |acc, (_topic, branch)| acc || branch.remove_psk(pskid))
     }
 
@@ -56,15 +56,19 @@ impl BranchStore {
     }
 
     pub(crate) fn get_branch(&self, topic: &Topic) -> Result<&KeyStore> {
-        self.0.get(topic).ok_or(anyhow!("Branch not found in store"))
+        self.0.get(topic).ok_or_else(|| anyhow!("Branch not found in store"))
     }
 
     pub(crate) fn get_branch_mut(&mut self, topic: &Topic) -> Result<&mut KeyStore> {
-        self.0.get_mut(topic).ok_or(anyhow!("Branch not found in store"))
+        self.0
+            .get_mut(topic)
+            .ok_or_else(|| anyhow!("Branch not found in store"))
     }
 
     pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
-        self.get_branch(topic).ok().and_then(|branch| branch.cursors.get(id).copied())
+        self.get_branch(topic)
+            .ok()
+            .and_then(|branch| branch.cursors.get(id).copied())
     }
 
     pub(crate) fn cursors(
@@ -72,9 +76,7 @@ impl BranchStore {
         topic: &Topic,
     ) -> Result<impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + Clone + '_> {
         self.get_branch(topic)
-            .map(|branch| branch.cursors.iter()
-                .map(|(identifier, cursor)| (*identifier, *cursor))
-            )
+            .map(|branch| branch.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor)))
     }
 
     pub(crate) fn keys(
@@ -82,9 +84,7 @@ impl BranchStore {
         topic: &Topic,
     ) -> Result<impl Iterator<Item = (Identifier, x25519::PublicKey)> + ExactSizeIterator + Clone + '_> {
         self.get_branch(topic)
-            .map(|branch| branch.keys.iter()
-                .map(|(identifier, key)| (*identifier, *key))
-            )
+            .map(|branch| branch.keys.iter().map(|(identifier, key)| (*identifier, *key)))
     }
 
     pub(crate) fn psks(
@@ -92,16 +92,13 @@ impl BranchStore {
         topic: &Topic,
     ) -> Result<impl Iterator<Item = (PskId, Psk)> + ExactSizeIterator + Clone + '_> {
         self.get_branch(topic)
-            .map(|branch| branch.psks.iter()
-                .map(|(pskid, psk)| (*pskid, *psk))
-            )
+            .map(|branch| branch.psks.iter().map(|(pskid, psk)| (*pskid, *psk)))
     }
 
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> bool {
         self.get_branch_mut(topic)
             .map_or(false, |branch| branch.cursors.insert(id, cursor).is_none())
     }
-
 
     pub(crate) fn insert_key(&mut self, topic: &Topic, id: Identifier, xkey: x25519::PublicKey) -> bool {
         self.get_branch_mut(topic)
@@ -113,21 +110,16 @@ impl BranchStore {
             .map_or(false, |branch| branch.psks.insert(id, psk).is_none())
     }
 
-    pub(crate) fn remove_cursor(&mut self, topic: &Topic, id: &Identifier) -> bool {
-        self.get_branch_mut(topic)
-            .map_or(false, |branch| branch.remove(id))
-    }
-
     pub(crate) fn get_key(&self, topic: &Topic, identifier: &Identifier) -> Option<&x25519::PublicKey> {
-        self.get_branch(&topic).ok().and_then(|branch| branch.keys.get(identifier))
+        self.get_branch(topic)
+            .ok()
+            .and_then(|branch| branch.keys.get(identifier))
     }
 
     pub(crate) fn get_exchange_key(&self, topic: &Topic, identifier: &Identifier) -> Option<&[u8]> {
-        self.get_branch(topic).ok().and_then(|branch| {
-            match identifier {
-                Identifier::PskId(pskid) => branch.psks.get(pskid).map(AsRef::as_ref),
-                _ => branch.keys.get(identifier).map(AsRef::as_ref),
-            }
+        self.get_branch(topic).ok().and_then(|branch| match identifier {
+            Identifier::PskId(pskid) => branch.psks.get(pskid).map(AsRef::as_ref),
+            _ => branch.keys.get(identifier).map(AsRef::as_ref),
         })
     }
 
@@ -136,9 +128,9 @@ impl BranchStore {
     }
 
     pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: Address) -> Result<()> {
-        self.get_branch_mut(topic).map(|branch| branch.latest_link = latest_link)
+        self.get_branch_mut(topic)
+            .map(|branch| branch.latest_link = latest_link)
     }
-
 
     pub(crate) fn get_anchor(&self, topic: &Topic) -> Result<Address> {
         self.get_branch(topic).map(|branch| branch.anchor)
@@ -148,7 +140,6 @@ impl BranchStore {
         self.get_branch(topic).map(|branch| branch.latest_link)
     }
 }
-
 
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct KeyStore {
@@ -161,16 +152,7 @@ pub(crate) struct KeyStore {
 
 impl KeyStore {
     pub(crate) fn new() -> Self {
-        Default::default()
-    }
-
-
-    fn contains_psk(&self, pskid: &PskId) -> bool {
-        self.psks.contains_key(pskid)
-    }
-
-    fn get_psk(&self, pskid: &PskId) -> Option<&Psk> {
-        self.psks.get(pskid)
+        Self::default()
     }
 
     pub(crate) fn remove_psk(&mut self, pskid: PskId) -> bool {

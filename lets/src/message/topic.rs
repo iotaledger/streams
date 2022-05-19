@@ -1,23 +1,18 @@
-use core::convert::{TryFrom, TryInto};
-use alloc::{
-    vec::Vec,
-    string::String,
-};
-use core::fmt::Formatter;
+use alloc::{string::String, vec::Vec};
 use anyhow::{anyhow, ensure, Error};
-use spongos::ddml::{commands::{
-    Mask,
-    sizeof,
-    wrap,
-    unwrap,
-}, io};
-use spongos::ddml::commands::Absorb;
-use spongos::ddml::types::NBytes;
-use spongos::PRP;
-
+use core::convert::{TryFrom, TryInto};
+use core::fmt::Formatter;
+use spongos::{
+    ddml::{
+        commands::{sizeof, unwrap, wrap, Mask},
+        io,
+        types::NBytes,
+    },
+    PRP,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Hash)]
-pub struct Topic(pub [u8;32]);
+pub struct Topic(pub [u8; 32]);
 
 impl Topic {
     pub fn new(t: &[u8]) -> Result<Self, Error> {
@@ -43,14 +38,17 @@ impl TryFrom<Vec<u8>> for Topic {
 impl TryFrom<&[u8]> for Topic {
     type Error = anyhow::Error;
     fn try_from(t: &[u8]) -> Result<Self, Self::Error> {
-        ensure!(t.len() <= 32, anyhow!("Topic cannot exceed 32 bytes in length: {}", t.len()));
-        let mut topic = [0u8;32];
-        topic[..t.len()].copy_from_slice(&t);
+        ensure!(
+            t.len() <= 32,
+            anyhow!("Topic cannot exceed 32 bytes in length: {}", t.len())
+        );
+        let mut topic = [0u8; 32];
+        topic[..t.len()].copy_from_slice(t);
         Ok(Topic(topic))
     }
 }
 
-impl From<[u8;32]> for Topic {
+impl From<[u8; 32]> for Topic {
     fn from(t: [u8; 32]) -> Self {
         Self(t)
     }
@@ -91,9 +89,9 @@ where
 }
 
 impl<IS, F> Mask<&mut Topic> for unwrap::Context<IS, F>
-    where
-        F: PRP,
-        IS: io::IStream,
+where
+    F: PRP,
+    IS: io::IStream,
 {
     fn mask(&mut self, topic: &mut Topic) -> anyhow::Result<&mut Self> {
         self.mask(NBytes::new(topic))
