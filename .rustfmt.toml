@@ -1,9 +1,12 @@
 unstable_features = true
-imports_layout = "Vertical"
-imports_granularity = "Crate"
-comment_width = 120
+imports_granularity = "crate"
 max_width = 120
+comment_width = 100  # make sure examples in docs fit when rendered
+wrap_comments = true
 format_code_in_doc_comments = true
+format_macro_bodies = true
+format_macro_matchers = true
 normalize_comments = true
 normalize_doc_attributes = true
-wrap_comments = true
+use_field_init_shorthand = true
+version = "Two"

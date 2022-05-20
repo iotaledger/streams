@@ -20,10 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        package:
-          - "."
-          - "examples"
 
     steps:
       - uses: actions/checkout@v2
@@ -37,5 +33,5 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all-features --manifest-path=${{ matrix.package }}/Cargo.toml
-          name: clippy check (${{ matrix.package }})
+          args: --all-features
+          name: clippy check

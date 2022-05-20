@@ -1,2 +1,0 @@
-# IOTA Streams DDML implementation
-

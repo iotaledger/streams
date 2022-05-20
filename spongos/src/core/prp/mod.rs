@@ -1,0 +1,32 @@
+use generic_array::{ArrayLength, GenericArray};
+
+pub(crate) mod keccak;
+
+/// Pseudo-random permutation.
+///
+/// Actually, it may be non-bijective as the inverse transform is not used in sponge construction.
+#[allow(clippy::upper_case_acronyms)]
+pub trait PRP {
+    /// Size of the outer state in bytes.
+    /// In other words, size of data chunk that PRP can process in one transform.
+    type RateSize: ArrayLength<u8>;
+
+    /// Size of the inner state in bits, determines the security of sponge constructions.
+    /// Other sizes such as sizes of hash/key/nonce/etc. are derived from the capacity.
+    type CapacitySize: ArrayLength<u8>;
+
+    /// Transform full state.
+    fn transform(&mut self);
+
+    /// Ref for ejecting outer state.
+    fn outer(&self) -> &GenericArray<u8, Self::RateSize>;
+
+    /// Mut ref for injecting outer state.
+    fn outer_mut(&mut self) -> &mut GenericArray<u8, Self::RateSize>;
+
+    /// Ref to inner state.
+    fn inner(&self) -> &GenericArray<u8, Self::CapacitySize>;
+
+    /// Mut ref to inner state
+    fn inner_mut(&mut self) -> &mut GenericArray<u8, Self::CapacitySize>;
+}
