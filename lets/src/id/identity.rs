@@ -255,7 +255,8 @@ where
     IS: io::IStream,
 {
     async fn decrypt(&mut self, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
-        // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introduction)
+        // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
+        // introduction)
         match <[u8; 32]>::try_from(exchange_key) {
             Ok(byte_array) => self.x25519(&x25519::SecretKey::from_bytes(byte_array), NBytes::new(key)),
             Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),

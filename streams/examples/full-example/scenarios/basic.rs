@@ -267,7 +267,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
                     }
                 })
                 .collect::<Vec<_>>(),
-            vec![psk.to_pskid()],
+            [psk.to_pskid()],
         )
         .await?;
     println!("> Subscriber A publishes signed packet");

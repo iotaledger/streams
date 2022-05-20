@@ -55,12 +55,7 @@ impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
         self.mask(&announcement.user_id.to_identifier())?
             // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
-            .absorb(
-                &announcement
-                    .user_id
-                    ._ke_sk()
-                    .public_key(),
-            )?
+            .absorb(&announcement.user_id._ke_sk().public_key())?
             .sign_sizeof(announcement.user_id)
             .await?
             .commit()?;
@@ -76,12 +71,7 @@ where
     async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
         self.mask(&announcement.user_id.to_identifier())?
             // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
-            .absorb(
-                &announcement
-                    .user_id
-                    ._ke_sk()
-                    .public_key(),
-            )?
+            .absorb(&announcement.user_id._ke_sk().public_key())?
             .sign(announcement.user_id)
             .await?
             .commit()?;

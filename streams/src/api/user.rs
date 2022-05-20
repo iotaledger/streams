@@ -86,12 +86,7 @@ impl<T> User<T> {
             psk_store.insert(*pskid, *psk);
         }
 
-        id_store.insert_key(
-            user_id.to_identifier(),
-            user_id
-                ._ke_sk()
-                .public_key(),
-        );
+        id_store.insert_key(user_id.to_identifier(), user_id._ke_sk().public_key());
 
         Self {
             transport,
@@ -638,9 +633,9 @@ where
                         .psk_store
                         .get(&pskid)
                         .ok_or_else(|| anyhow!("unkown psk '{:?}'", pskid))?,
-                    ))
+                ))
             })
-            .collect::<Result<Vec<(_,_)>>>()?; // collect to handle possible error
+            .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut announcement_spongos,
             &subscribers_with_keys,
@@ -676,25 +671,25 @@ where
     }
 
     pub async fn send_keyload_for_all(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
-        let psks: Vec<PskId> = self.state.psk_store.keys().map(|k| *k).collect();
+        let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
         self.send_keyload(
             link_to,
             // Alas, must collect to release the &self immutable borrow
             self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
-            psks
+            psks,
         )
         .await
     }
 
     pub async fn send_keyload_for_all_rw(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
-        let psks: Vec<PskId> = self.state.psk_store.keys().map(|k| *k).collect();
+        let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
         self.send_keyload(
             link_to,
             // Alas, must collect to release the &self immutable borrow
             self.subscribers()
                 .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
                 .collect::<Vec<_>>(),
-                psks
+            psks,
         )
         .await
     }

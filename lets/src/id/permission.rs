@@ -16,8 +16,7 @@ use spongos::{
 };
 
 // Local
-use crate::id::identifier::Identifier;
-use crate::id::PskId;
+use crate::id::{identifier::Identifier, PskId};
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum PermissionDuration {
@@ -209,7 +208,6 @@ where
     }
 }
 
-
 impl Mask<&Permissioned<PskId>> for sizeof::Context {
     fn mask(&mut self, permission: &Permissioned<PskId>) -> Result<&mut Self> {
         match permission {
@@ -218,15 +216,15 @@ impl Mask<&Permissioned<PskId>> for sizeof::Context {
                 self.mask(oneof)?.mask(pskid)?;
                 Ok(self)
             }
-            _ => return Err(anyhow!("Psk's can only be used as ReadOnly Permissioned"))
+            _ => return Err(anyhow!("Psk's can only be used as ReadOnly Permissioned")),
         }
     }
 }
 
 impl<OS, F> Mask<&Permissioned<PskId>> for wrap::Context<OS, F>
-    where
-        F: PRP,
-        OS: io::OStream,
+where
+    F: PRP,
+    OS: io::OStream,
 {
     fn mask(&mut self, permission: &Permissioned<PskId>) -> Result<&mut Self> {
         match permission {
@@ -235,15 +233,15 @@ impl<OS, F> Mask<&Permissioned<PskId>> for wrap::Context<OS, F>
                 self.mask(oneof)?.mask(pskid)?;
                 Ok(self)
             }
-            _ => return Err(anyhow!("Psk's can only be used as ReadOnly Permissioned"))
+            _ => return Err(anyhow!("Psk's can only be used as ReadOnly Permissioned")),
         }
     }
 }
 
 impl<IS, F> Mask<&mut Permissioned<PskId>> for unwrap::Context<IS, F>
-    where
-        F: PRP,
-        IS: io::IStream,
+where
+    F: PRP,
+    IS: io::IStream,
 {
     fn mask(&mut self, permission: &mut Permissioned<PskId>) -> Result<&mut Self> {
         let mut oneof = Uint8::new(0);
@@ -254,7 +252,7 @@ impl<IS, F> Mask<&mut Permissioned<PskId>> for unwrap::Context<IS, F>
                 self.mask(&mut psk_id)?;
                 *permission = Permissioned::Read(psk_id);
             }
-            o => return Err(anyhow!("{} is not a valid permission option", o))
+            o => return Err(anyhow!("{} is not a valid permission option", o)),
         }
         Ok(self)
     }

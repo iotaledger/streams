@@ -8,10 +8,9 @@ use alloc::vec::Vec;
 // Streams
 use lets::{
     address::Address,
-    id::{Identifier, Permissioned},
+    id::{Identifier, Permissioned, PskId},
     message::{Message as LetsMessage, PreparsedMessage, TransportMessage, HDF},
 };
-use lets::id::PskId;
 
 // Local
 use crate::message::{announcement, keyload, signed_packet, subscription, tagged_packet, unsubscription};

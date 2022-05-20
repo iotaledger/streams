@@ -255,7 +255,8 @@ where
 #[async_trait(?Send)]
 impl ContentEncryptSizeOf for sizeof::Context {
     async fn encrypt_sizeof(&mut self, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
-        // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
+        // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
+        // introdution)
         match <[u8; 32]>::try_from(exchange_key) {
             Ok(slice) => self.x25519(&x25519::PublicKey::from(slice), NBytes::new(key)),
             Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
@@ -270,7 +271,8 @@ where
     OS: io::OStream,
 {
     async fn encrypt(&mut self, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
-        // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introdution)
+        // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
+        // introdution)
         match <[u8; 32]>::try_from(exchange_key) {
             Ok(byte_array) => self.x25519(&x25519::PublicKey::from(byte_array), NBytes::new(key)),
             Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),

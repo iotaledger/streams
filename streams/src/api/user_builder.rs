@@ -8,7 +8,12 @@ use async_trait::async_trait;
 // IOTA
 
 // Streams
-use lets::{address::Address, id::{PskId, Psk, Identity}, message::TransportMessage, transport::Transport};
+use lets::{
+    address::Address,
+    id::{Identity, Psk, PskId},
+    message::TransportMessage,
+    transport::Transport,
+};
 
 // Local
 use crate::api::user::User;
@@ -64,7 +69,7 @@ impl<T> UserBuilder<T> {
         UserBuilder {
             transport: Some(transport),
             id: self.id,
-            psks: self.psks
+            psks: self.psks,
         }
     }
 
@@ -84,23 +89,25 @@ impl<T> UserBuilder<T> {
     /// # Examples
     /// ## Add Multiple Psks
     /// ```
+    /// # use std::cell::RefCell;
+    /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
-    /// use streams::{id::Ed25519, transport::tangle, User};
     /// use lets::id::Psk;
+    /// use streams::{id::Ed25519, transport::tangle, User};
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
-    /// # let transport = bucket::Client::new();
-    /// let psk1 = "Psk1".as_bytes();
-    /// let psk2 = psk_from_seed("Psk2".as_bytes());
-    /// let pskid1 = pskid_from_psk(&psk1);
-    /// let pskid2 = pskid_from_psk(&psk2);
-    ///
-    /// let user = UserBuilder::new()
+    /// let author_seed = "author_secure_seed";
+    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
+    /// let psk1 = Psk::from_seed(b"Psk1");
+    /// let psk2 = Psk::from_seed(b"Psk2");
+    /// let user = User::builder()
+    /// #   .with_identity(Ed25519::from_seed(author_seed))
     /// #   .with_transport(transport)
-    ///     .with_psk(pskid1, psk1)
-    ///     .with_psk(pskid2, psk2)
-    ///     .build();
+    ///     .with_psk(psk1.to_pskid(), psk1)
+    ///     .with_psk(psk2.to_pskid(), psk2)
+    ///     .build()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -142,31 +149,6 @@ impl<T> UserBuilder<T> {
     ///
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .with_transport(transport)
-    ///     .build()?;
-    ///
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// ## User from Psk
-    /// ```
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
-    /// # use anyhow::Result;
-    /// # use streams::transport::bucket;
-    /// use streams::{id::Psk, transport::tangle, User};
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<()> {
-    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
-    /// #
-    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
-    /// #
-    /// let psk_seed = "seed-for-pre-shared-key";
-    ///
-    /// let mut user = User::builder()
-    ///     .with_identity(Psk::from_seed(psk_seed))
     ///     .with_transport(transport)
     ///     .build()?;
     ///

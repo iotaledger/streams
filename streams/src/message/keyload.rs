@@ -230,7 +230,7 @@ where
 {
     async fn unwrap(&mut self, keyload: &mut Unwrap<'a>) -> Result<&mut Self> {
         let mut nonce = [0u8; NONCE_SIZE];
-        let mut key: Option<[u8;KEY_SIZE]> = None;
+        let mut key: Option<[u8; KEY_SIZE]> = None;
         let mut n_subscribers = Size::default();
         let mut n_psks = Size::default();
         self.join(keyload.initial_state)?
@@ -244,7 +244,7 @@ where
             fork.mask(&mut subscriber_id)?;
 
             if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
-                fork.decrypt( keyload.user_ke_key, key.get_or_insert([0u8; KEY_SIZE]))
+                fork.decrypt(keyload.user_ke_key, key.get_or_insert([0u8; KEY_SIZE]))
                     .await?;
             } else {
                 // Key is meant for another subscriber, skip it
