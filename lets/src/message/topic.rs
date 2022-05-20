@@ -20,21 +20,6 @@ impl Topic {
     pub fn new(t: &[u8]) -> Result<Self, Error> {
         t.try_into()
     }
-
-    pub fn inner(&self) -> &[u8] {
-        &self.0
-    }
-
-    pub fn to_inner(&self) -> Vec<u8> {
-        self.0.to_vec()
-    }
-}
-
-impl TryFrom<Vec<u8>> for Topic {
-    type Error = anyhow::Error;
-    fn try_from(topic: Vec<u8>) -> Result<Self, Self::Error> {
-        topic.as_slice().try_into()
-    }
 }
 
 impl TryFrom<&[u8]> for Topic {
@@ -47,12 +32,6 @@ impl TryFrom<&[u8]> for Topic {
         let mut topic = [0u8; 32];
         topic[..t.len()].copy_from_slice(t);
         Ok(Topic(topic))
-    }
-}
-
-impl From<[u8; 32]> for Topic {
-    fn from(t: [u8; 32]) -> Self {
-        Self(t)
     }
 }
 
