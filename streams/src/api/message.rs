@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use lets::{
     address::Address,
     id::{Identifier, Permissioned},
-    message::{Message as LetsMessage, PreparsedMessage, TransportMessage, HDF},
+    message::{AppMessage, PreparsedMessage, TransportMessage, HDF},
 };
 
 // Local
@@ -23,7 +23,7 @@ pub struct Message {
 }
 
 impl Message {
-    pub(crate) fn from_lets_message<Unwrap>(address: Address, lets_message: LetsMessage<Unwrap>) -> Self
+    pub(crate) fn from_app_message<Unwrap>(address: Address, lets_message: AppMessage<Unwrap>) -> Self
     where
         Unwrap: Into<MessageContent>,
     {

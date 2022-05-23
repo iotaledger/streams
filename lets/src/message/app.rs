@@ -20,12 +20,12 @@ use super::{
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
-pub struct Message<Content> {
+pub struct AppMessage<Content> {
     header: HDF,
     payload: PCF<Content>,
 }
 
-impl<Payload> Message<Payload> {
+impl<Payload> AppMessage<Payload> {
     pub fn new(header: HDF, payload: PCF<Payload>) -> Self {
         Self { header, payload }
     }

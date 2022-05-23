@@ -12,14 +12,14 @@ mod version;
 /// Linked Message with header already parsed
 mod preparsed;
 
-mod message;
+mod app;
 
+pub use app::AppMessage;
 pub use content::{
     ContentDecrypt, ContentEncrypt, ContentEncryptSizeOf, ContentSign, ContentSignSizeof, ContentSizeof, ContentUnwrap,
     ContentVerify, ContentWrap,
 };
 pub use hdf::HDF;
-pub use message::Message;
 pub use pcf::PCF;
 pub use preparsed::PreparsedMessage;
 pub use transport::TransportMessage;

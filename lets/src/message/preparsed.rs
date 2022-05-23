@@ -10,7 +10,7 @@ use anyhow::Result;
 use spongos::{ddml::commands::unwrap, KeccakF1600, Spongos, PRP};
 
 // Local
-use crate::message::{content::ContentUnwrap, hdf::HDF, message::Message, pcf::PCF, transport::TransportMessage};
+use crate::message::{app::AppMessage, content::ContentUnwrap, hdf::HDF, pcf::PCF, transport::TransportMessage};
 
 /// Message context preparsed for unwrapping.
 #[derive(Clone, PartialEq, Eq, Hash, Default)]
@@ -51,7 +51,7 @@ impl<F> PreparsedMessage<F> {
         &self.transport_msg.as_ref()[self.cursor..]
     }
 
-    pub async fn unwrap<Content>(self, content: Content) -> Result<(Message<Content>, Spongos<F>)>
+    pub async fn unwrap<Content>(self, content: Content) -> Result<(AppMessage<Content>, Spongos<F>)>
     where
         for<'a> unwrap::Context<&'a [u8], F>: ContentUnwrap<PCF<Content>>,
         F: PRP,
@@ -64,7 +64,7 @@ impl<F> PreparsedMessage<F> {
         ctx.unwrap(&mut pcf).await?;
         // discard `self.ctx.stream` that should be empty
         let (spongos, _) = ctx.finalize();
-        Ok((Message::new(self.header, pcf), spongos))
+        Ok((AppMessage::new(self.header, pcf), spongos))
     }
 }
 

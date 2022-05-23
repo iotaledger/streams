@@ -38,7 +38,6 @@ use crate::{
 };
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[allow(clippy::large_enum_variant)]
 pub enum Identity {
     Ed25519(Ed25519),
     Psk(Psk),

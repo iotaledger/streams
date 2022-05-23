@@ -16,9 +16,7 @@ use crypto::keys::x25519;
 use lets::{
     address::{Address, AppAddr, MsgId},
     id::{Identifier, Identity, PermissionDuration, Permissioned, Psk, PskId},
-    message::{
-        ContentSizeof, ContentUnwrap, ContentWrap, Message as LetsMessage, PreparsedMessage, TransportMessage, HDF, PCF,
-    },
+    message::{AppMessage, ContentSizeof, ContentUnwrap, ContentWrap, PreparsedMessage, TransportMessage, HDF, PCF},
     transport::Transport,
 };
 use spongos::{
@@ -207,7 +205,7 @@ impl<T> User<T> {
         self.state.stream_address = Some(address);
         self.state.author_identifier = Some(author_id);
 
-        Ok(Message::from_lets_message(address, message))
+        Ok(Message::from_app_message(address, message))
     }
     async fn handle_subscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
@@ -239,7 +237,7 @@ impl<T> User<T> {
         let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
         self.state.id_store.insert_key(subscriber_identifier, subscriber_ke_pk);
 
-        Ok(Message::from_lets_message(address, message))
+        Ok(Message::from_app_message(address, message))
     }
 
     async fn handle_unsubscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
@@ -265,7 +263,7 @@ impl<T> User<T> {
         // Store message content into stores
         self.remove_subscriber(message.payload().content().subscriber_identifier());
 
-        Ok(Message::from_lets_message(address, message))
+        Ok(Message::from_app_message(address, message))
     }
 
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
@@ -312,7 +310,7 @@ impl<T> User<T> {
             }
         }
 
-        Ok(Message::from_lets_message(address, message))
+        Ok(Message::from_app_message(address, message))
     }
 
     async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
@@ -343,7 +341,7 @@ impl<T> User<T> {
 
         // Store message content into stores
 
-        Ok(Message::from_lets_message(address, message))
+        Ok(Message::from_app_message(address, message))
     }
 
     async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
@@ -374,7 +372,7 @@ impl<T> User<T> {
 
         // Store message content into stores
 
-        Ok(Message::from_lets_message(address, message))
+        Ok(Message::from_app_message(address, message))
     }
 
     pub async fn backup<P>(&mut self, pwd: P) -> Result<Vec<u8>>
@@ -475,7 +473,7 @@ where
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(&self.state.user_id));
 
         // Wrap message
-        let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
+        let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
         ensure!(
@@ -525,7 +523,7 @@ where
             HDF::new(message_types::SUBSCRIPTION, SUB_MESSAGE_NUM, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
-        let (transport_msg, _spongos) = LetsMessage::new(header, content).wrap().await?;
+        let (transport_msg, _spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
@@ -566,7 +564,7 @@ where
             HDF::new(message_types::UNSUBSCRIPTION, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
-        let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
+        let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
@@ -633,7 +631,7 @@ where
         let header = HDF::new(message_types::KEYLOAD, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
-        let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
+        let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
@@ -713,7 +711,7 @@ where
             HDF::new(message_types::SIGNED_PACKET, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
-        let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
+        let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
@@ -765,7 +763,7 @@ where
             HDF::new(message_types::TAGGED_PACKET, new_cursor, self.identifier())?.with_linked_msg_address(link_to);
 
         // Wrap message
-        let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
+        let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);

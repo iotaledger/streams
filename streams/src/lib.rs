@@ -45,4 +45,9 @@ mod message;
 mod api;
 
 pub use api::{message::Message, send_response::SendResponse, user::User};
-pub use lets::{address::Address, id, message::TransportMessage, transport};
+pub use lets::{
+    address::Address,
+    id,
+    message::{AppMessage, TransportMessage},
+    transport,
+};

@@ -43,6 +43,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Author creates stream and sends its announcement");
     // Start at index 1, because we can. Will error if its already in use
     let announcement = author.create_stream(1).await?;
+    println!("  Stream address: {}", announcement.address());
     print_send_result(&announcement);
     print_user("Author", &author);
 
