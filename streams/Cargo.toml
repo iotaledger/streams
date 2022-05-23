@@ -38,6 +38,7 @@ hashbrown = {version = "0.12.0", default-features = false, features = ["ahash"]}
 rand = {version = "0.8.5", default-features = false}
 
 [dev-dependencies]
+chrono = {version = "0.4.19", default-features = false, features = ["clock"]}
 dotenv = {version = "0.15.0", default-features = false}
 hex = {version = "0.4.3", default-features = false}
 identity = {git = "https://github.com/iotaledger/identity.rs", rev = "86edaad"}
