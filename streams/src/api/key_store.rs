@@ -40,15 +40,27 @@ impl BranchStore {
     }
 
     pub(crate) fn remove_from_all(&mut self, id: &Identifier) -> bool {
+        let mut removed = false;
         self.0
             .iter_mut()
-            .fold(false, |acc, (_topic, branch)| acc || branch.remove(id))
+            .for_each(|(_topic, branch)| {
+                if branch.remove(id) {
+                    removed = true
+                }
+            });
+        removed
     }
 
     pub(crate) fn remove_psk_from_all(&mut self, pskid: PskId) -> bool {
+        let mut removed = false;
         self.0
             .iter_mut()
-            .fold(false, |acc, (_topic, branch)| acc || branch.remove_psk(pskid))
+            .for_each(|(_topic, branch)| {
+                if branch.remove_psk(pskid) {
+                    removed = true;
+                }
+            });
+        removed
     }
 
     pub(crate) fn insert_branch(&mut self, topic: Topic, branch: KeyStore) -> bool {
