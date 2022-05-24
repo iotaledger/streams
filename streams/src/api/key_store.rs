@@ -221,3 +221,31 @@ impl Default for KeyStore {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{BranchStore, KeyStore};
+    use lets::{
+        id::{Ed25519, Identity},
+        message::Topic,
+    };
+
+    #[test]
+    fn branch_store_can_remove_a_cursor_from_all_branches_at_once() {
+        let mut branch_store = BranchStore::new();
+        let identifier = Identity::Ed25519(Ed25519::from_seed("identifier 1")).to_identifier();
+        let topic_1 = Topic::new(b"topic 1").unwrap();
+        let topic_2 = Topic::new(b"topic 2").unwrap();
+
+        branch_store.insert_branch(topic_1, KeyStore::new());
+        branch_store.insert_branch(topic_2, KeyStore::new());
+
+        branch_store.insert_cursor(&topic_1, identifier, 10);
+        branch_store.insert_cursor(&topic_2, identifier, 20);
+
+        branch_store.remove_from_all(&identifier);
+
+        assert!(!branch_store.is_cursor_tracked(&topic_1, &identifier));
+        assert!(!branch_store.is_cursor_tracked(&topic_2, &identifier));
+    }
+}
