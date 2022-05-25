@@ -39,7 +39,6 @@ use crate::{
         messages::Messages,
         send_response::SendResponse,
         user_builder::UserBuilder,
-        BASE_BRANCH,
     },
     message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
 };
@@ -65,6 +64,8 @@ struct State {
     id_store: BranchStore,
 
     spongos_store: HashMap<MsgId, Spongos>,
+
+    base_topic: Topic,
 }
 
 pub struct User<T> {
@@ -80,16 +81,16 @@ impl User<()> {
 }
 
 impl<T> User<T> {
-    pub(crate) fn new(user_id: Identity, transport: T) -> Self {
+    pub(crate) fn new(user_id: Identity, base_topic: Topic, transport: T) -> Self {
         let mut id_store = BranchStore::new();
-        id_store.insert_branch(BASE_BRANCH, KeyStore::new());
+        id_store.insert_branch(base_topic, KeyStore::new());
 
         // If User is using a Psk as their base Identifier, store the Psk
         if let Identity::Psk(psk) = user_id {
-            id_store.insert_psk(&BASE_BRANCH, psk.to_pskid(), psk);
+            id_store.insert_psk(&base_topic, psk.to_pskid(), psk);
         } else {
             id_store.insert_key(
-                &BASE_BRANCH,
+                &base_topic,
                 user_id.to_identifier(),
                 user_id
                     ._ke_sk()
@@ -106,6 +107,7 @@ impl<T> User<T> {
                 spongos_store: Default::default(),
                 stream_address: None,
                 author_identifier: None,
+                base_topic,
             },
         }
     }
@@ -124,6 +126,10 @@ impl<T> User<T> {
         self.cursor(topic)
             .map(|c| c + 1)
             .ok_or_else(|| anyhow!("User is not a publisher"))
+    }
+
+    pub(crate) fn base_branch(&self) -> Topic {
+        self.state.base_topic
     }
 
     pub(crate) fn stream_address(&self) -> Option<Address> {
@@ -150,7 +156,7 @@ impl<T> User<T> {
 
     pub fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
         // unwrap is fine here because the base branch is created when user is generated
-        self.state.id_store.get_branch(&BASE_BRANCH).unwrap().subscribers()
+        self.state.id_store.get_branch(&self.base_branch()).unwrap().subscribers()
     }
 
     fn should_store_cursor(&self, topic: &Topic, subscriber: &Permissioned<Identifier>) -> bool {
@@ -161,7 +167,7 @@ impl<T> User<T> {
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
         self.state.id_store.insert_key(
-            &BASE_BRANCH,
+            &self.base_branch(),
             subscriber,
             subscriber
                 ._ke_pk()
@@ -174,7 +180,7 @@ impl<T> User<T> {
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
-        self.state.id_store.insert_psk(&BASE_BRANCH, psk.to_pskid(), psk)
+        self.state.id_store.insert_psk(&self.base_branch(), psk.to_pskid(), psk)
     }
 
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
@@ -216,7 +222,7 @@ impl<T> User<T> {
         // Check Topic
         let topic = *preparsed.header().topic();
         let publisher = preparsed.header().publisher();
-        let is_base_branch = topic.eq(&BASE_BRANCH);
+        let is_base_branch = self.state.stream_address.is_none();
 
         // If the topic of the announcement is not base branch, a new branch must be added to store
         // and the author cursor needs to be iterated on the base branch
@@ -224,7 +230,14 @@ impl<T> User<T> {
             self.state.id_store.new_branch(topic);
             self.state
                 .id_store
-                .insert_cursor(&BASE_BRANCH, publisher, preparsed.header().sequence());
+                .insert_cursor(&self.base_branch(), publisher, preparsed.header().sequence());
+        }
+
+        // The user may have already stored a base branch with a default topic. If the topic provided in the
+        // announcement is not default, but is the base branch, remove the old branch and place a new branch
+        // into store to replace it
+        if is_base_branch && !topic.eq(&Topic::default()) {
+            self.state.id_store.move_branch(&Topic::default(), &topic);
         }
 
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
@@ -246,6 +259,7 @@ impl<T> User<T> {
         let author_ke_pk = message.payload().content().author_ke_pk();
         if is_base_branch {
             self.state.id_store.insert_key(&topic, author_id, author_ke_pk);
+            self.state.base_topic = topic;
             self.state.stream_address = Some(address);
         }
         // Update branch links
@@ -530,7 +544,7 @@ where
     T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TSR>,
 {
     /// Prepare channel Announcement message.
-    pub async fn create_stream(&mut self, stream_idx: usize) -> Result<SendResponse<TSR>> {
+    pub async fn create_stream(&mut self) -> Result<SendResponse<TSR>> {
         // Check conditions
         if let Some(appaddr) = self.stream_address() {
             bail!(
@@ -539,17 +553,21 @@ where
             );
         }
 
+        // Convert topic
+        let topic = self.base_branch();
+
         // Generate stream address
-        let stream_base_address = AppAddr::gen(self.identifier(), stream_idx);
-        let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), BASE_BRANCH, INIT_MESSAGE_NUM);
+        let stream_base_address = AppAddr::gen(self.identifier(), topic);
+        let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), topic, INIT_MESSAGE_NUM);
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
         // Commit Author Identifier and Stream Address to store
         self.state.stream_address = Some(stream_address);
         self.state.author_identifier = Some(self.identifier());
+        self.state.base_topic = topic;
 
         // Create Base Branch
-        self.new_branch(BASE_BRANCH).await
+        self.new_branch(&topic).await
     }
 
     /// Prepare new branch Announcement message
@@ -561,16 +579,17 @@ where
 
         // Check Topic
         let topic = Topic::new(topic.as_ref())?;
-        let is_base_branch = topic.eq(&BASE_BRANCH);
+        let base_topic = self.base_branch();
+        let is_base_branch = topic.eq(&base_topic);
 
         // Update own's cursor
         let (user_cursor, address, topic) = if is_base_branch {
-            (ANN_MESSAGE_NUM, stream_address, BASE_BRANCH)
+            (ANN_MESSAGE_NUM, stream_address, base_topic)
         } else {
             let cursor = self
-                .next_cursor(&BASE_BRANCH)
+                .next_cursor(&base_topic)
                 .map_err(|_| anyhow!("No cursor found in base branch"))?;
-            let msgid = MsgId::gen(stream_address.base(), self.identifier(), BASE_BRANCH, cursor);
+            let msgid = MsgId::gen(stream_address.base(), self.identifier(), base_topic, cursor);
             let address = Address::new(stream_address.base(), msgid);
             (cursor, address, topic)
         };
@@ -594,7 +613,7 @@ where
             self.state.id_store.new_branch(topic);
             self.state
                 .id_store
-                .insert_cursor(&BASE_BRANCH, self.identifier(), self.next_cursor(&BASE_BRANCH)?);
+                .insert_cursor(&base_topic, self.identifier(), self.next_cursor(&base_topic)?);
         }
 
         // If message has been sent successfully, commit message to stores
@@ -615,11 +634,12 @@ where
         let stream_address = self
             .stream_address()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
-
+        // Get base branch topic
+        let base_branch = self.base_branch();
         // Link message to channel announcement
-        let link_to = self.get_anchor(&BASE_BRANCH)?;
+        let link_to = self.get_anchor(&base_branch)?;
 
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), BASE_BRANCH, SUB_MESSAGE_NUM);
+        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), base_branch, SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -633,7 +653,7 @@ where
         let author_ke_pk = self
             .state
             .author_identifier
-            .and_then(|author_id| self.state.id_store.get_key(&BASE_BRANCH, &author_id))
+            .and_then(|author_id| self.state.id_store.get_key(&base_branch, &author_id))
             .expect("a user that already have an stream address must know the author identifier");
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
@@ -645,7 +665,7 @@ where
             message_types::SUBSCRIPTION,
             SUB_MESSAGE_NUM,
             self.identifier(),
-            BASE_BRANCH,
+            base_branch,
         )?
         .with_linked_msg_address(link_to);
 
@@ -672,13 +692,14 @@ where
         let stream_address = self.stream_address().ok_or_else(|| {
             anyhow!("before sending a subscription one must receive the announcement of a stream first")
         })?;
-
+        // Get base branch topic
+        let base_branch = self.base_branch();
         // Link message to channel announcement
-        let link_to = self.get_anchor(&BASE_BRANCH)?;
+        let link_to = self.get_anchor(&base_branch)?;
 
         // Update own's cursor
-        let new_cursor = self.next_cursor(&BASE_BRANCH)?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), BASE_BRANCH, new_cursor);
+        let new_cursor = self.next_cursor(&base_branch)?;
+        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), base_branch, new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -694,7 +715,7 @@ where
             message_types::UNSUBSCRIPTION,
             new_cursor,
             self.identifier(),
-            BASE_BRANCH,
+            base_branch,
         )?
         .with_linked_msg_address(link_to);
 
@@ -712,7 +733,7 @@ where
         // If message has been sent successfully, commit message to stores
         self.state
             .id_store
-            .insert_cursor(&BASE_BRANCH, self.identifier(), new_cursor);
+            .insert_cursor(&base_branch, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -759,7 +780,7 @@ where
                     subscriber,
                     self.state
                         .id_store
-                        .get_exchange_key(&BASE_BRANCH, subscriber.identifier())
+                        .get_exchange_key(&self.base_branch(), subscriber.identifier())
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
                 ))
             })
@@ -953,7 +974,8 @@ impl ContentSizeof<State> for sizeof::Context {
     async fn sizeof(&mut self, user_state: &State) -> Result<&mut Self> {
         self.mask(&user_state.user_id)?
             .mask(Maybe::new(user_state.stream_address.as_ref()))?
-            .mask(Maybe::new(user_state.author_identifier.as_ref()))?;
+            .mask(Maybe::new(user_state.author_identifier.as_ref()))?
+            .mask(&user_state.base_topic)?;
 
         let amount_spongos = user_state.spongos_store.len();
         self.mask(Size::new(amount_spongos))?;
@@ -1003,7 +1025,8 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
     async fn wrap(&mut self, user_state: &mut State) -> Result<&mut Self> {
         self.mask(&user_state.user_id)?
             .mask(Maybe::new(user_state.stream_address.as_ref()))?
-            .mask(Maybe::new(user_state.author_identifier.as_ref()))?;
+            .mask(Maybe::new(user_state.author_identifier.as_ref()))?
+            .mask(&user_state.base_topic)?;
 
         let amount_spongos = user_state.spongos_store.len();
         self.mask(Size::new(amount_spongos))?;
@@ -1053,7 +1076,8 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
     async fn unwrap(&mut self, user_state: &mut State) -> Result<&mut Self> {
         self.mask(&mut user_state.user_id)?
             .mask(Maybe::new(&mut user_state.stream_address))?
-            .mask(Maybe::new(&mut user_state.author_identifier))?;
+            .mask(Maybe::new(&mut user_state.author_identifier))?
+            .mask(&mut user_state.base_topic)?;
 
         let mut amount_spongos = Size::default();
         self.mask(&mut amount_spongos)?;
@@ -1119,8 +1143,9 @@ impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
             f,
-            "\n* identifier: <{}>\n{:?}\n* messages:\n{}\n",
+            "\n* identifier: <{}>\n* topic: {}\n{:?}\n* messages:\n{}\n",
             self.identifier(),
+            self.base_branch(),
             self.state.id_store,
             self.state
                 .spongos_store

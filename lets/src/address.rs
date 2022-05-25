@@ -141,12 +141,17 @@ impl AppAddr {
         Self(bytes)
     }
 
-    pub fn gen(identifier: Identifier, app_idx: usize) -> AppAddr {
+    pub fn gen(identifier: Identifier, base_topic: Topic) -> AppAddr {
         let mut addr = [0u8; 40];
         let id_bytes = identifier.as_bytes();
+        // Create spongos to squeeze topic into final 8 bytes
+        let mut s = Spongos::<KeccakF1600>::init();
+        s.absorb(base_topic);
+        s.commit();
+        let squeezed_topic: [u8;8] = s.squeeze();
         assert_eq!(id_bytes.len(), 32, "identifier must be 32 bytes long");
         addr[..32].copy_from_slice(id_bytes);
-        addr[32..].copy_from_slice(&app_idx.to_be_bytes());
+        addr[32..].copy_from_slice(&squeezed_topic);
         Self::new(addr)
     }
 

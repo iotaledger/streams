@@ -63,6 +63,11 @@ impl BranchStore {
         removed
     }
 
+    pub(crate) fn move_branch(&mut self, old_topic: &Topic, new_topic: &Topic) -> bool {
+        let old_branch = self.0.remove(old_topic);
+        old_branch.map_or(false, |key_store| self.0.insert(*new_topic, key_store).is_none())
+    }
+
     pub(crate) fn insert_branch(&mut self, topic: Topic, branch: KeyStore) -> bool {
         self.0.insert(topic, branch).is_none()
     }
@@ -191,6 +196,10 @@ impl fmt::Debug for KeyStore {
         writeln!(f, "\t* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
             writeln!(f, "\t\t{} => {}", id, cursor)?;
+        }
+        writeln!(f, "\t* keys")?;
+        for (id, key) in self.keys.iter() {
+            writeln!(f, "\t\t{} => {:?}", id, key.as_ref())?;
         }
         writeln!(f, "\t* PSKs:")?;
         for pskid in self.psks.keys() {

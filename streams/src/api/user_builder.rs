@@ -9,6 +9,7 @@ use async_trait::async_trait;
 
 // Streams
 use lets::{address::Address, id::Identity, message::TransportMessage, transport::Transport};
+use lets::message::Topic;
 
 // Local
 use crate::api::user::User;
@@ -17,6 +18,7 @@ use crate::api::user::User;
 pub struct UserBuilder<T> {
     /// Base Identity that will be used to Identifier a Streams User
     id: Option<Identity>,
+    topic: Option<Topic>,
     /// Transport Client instance
     transport: Option<T>,
 }
@@ -25,6 +27,7 @@ impl<T> Default for UserBuilder<T> {
     fn default() -> Self {
         UserBuilder {
             id: None,
+            topic: None,
             transport: None,
         }
     }
@@ -60,6 +63,7 @@ impl<T> UserBuilder<T> {
     {
         UserBuilder {
             transport: Some(transport),
+            topic: self.topic,
             id: self.id,
         }
     }
@@ -72,6 +76,16 @@ impl<T> UserBuilder<T> {
         // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke
         // bound T: DefaultTransport for all transports
         self.transport = Some(T::try_default().await?);
+        Ok(self)
+    }
+
+    /// Insert a topic to be used in the channel creation
+    pub fn with_topic<Top>(mut self, topic: Top) -> Result<Self>
+    where
+        Top: AsRef<[u8]>,
+    {
+        let topic = Topic::new(topic.as_ref())?;
+        self.topic = Some(topic);
         Ok(self)
     }
 
@@ -144,7 +158,11 @@ impl<T> UserBuilder<T> {
             .transport
             .ok_or_else(|| anyhow!("transport not specified, cannot build User without Transport"))?;
 
-        Ok(User::new(id, transport))
+        let topic = self
+            .topic
+            .unwrap_or_default();
+
+        Ok(User::new(id, topic, transport))
     }
 
     /// Recover a user instance from the builder parameters.
