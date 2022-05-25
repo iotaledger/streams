@@ -253,8 +253,8 @@ where
 
 // TODO: Find a better way to represent this logic without the need for an additional trait
 #[async_trait(?Send)]
-impl ContentEncryptSizeOf for sizeof::Context {
-    async fn encrypt_sizeof(&mut self, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
+impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
+    async fn encrypt_sizeof(&mut self, _recipient: &Identifier, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introdution)
         match <[u8; 32]>::try_from(exchange_key) {
@@ -265,12 +265,12 @@ impl ContentEncryptSizeOf for sizeof::Context {
 }
 
 #[async_trait(?Send)]
-impl<OS, F> ContentEncrypt for wrap::Context<OS, F>
+impl<OS, F> ContentEncrypt<Identifier> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
 {
-    async fn encrypt(&mut self, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
+    async fn encrypt(&mut self, _recipient: &Identifier, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introdution)
         match <[u8; 32]>::try_from(exchange_key) {

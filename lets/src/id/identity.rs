@@ -66,21 +66,6 @@ impl Identity {
         }
     }
 
-    // #[deprecated = "to be removed once key exchange is encapsulated within Identity"]
-    pub fn _ke(&self) -> [u8; 32] {
-        match self {
-            Self::Ed25519(ed25519) => {
-                let x_secret: x25519::SecretKey = ed25519.inner().into();
-                x_secret.to_bytes()
-            }
-            #[cfg(feature = "did")]
-            Self::DID(DID::PrivateKey(info)) => info.ke_kp().0.to_bytes(),
-            #[cfg(feature = "did")]
-            Self::DID(DID::Default) => unreachable!(),
-            // TODO: Account implementation
-        }
-    }
-
     pub fn to_identifier(&self) -> Identifier {
         match self {
             Self::Ed25519(ed25519) => ed25519.inner().public_key().into(),
@@ -249,12 +234,12 @@ where
 }
 
 #[async_trait(?Send)]
-impl<IS, F> ContentDecrypt for unwrap::Context<IS, F>
+impl<IS, F> ContentDecrypt<Identity> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
 {
-    async fn decrypt(&mut self, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
+    async fn decrypt(&mut self, _recipient: &Identity, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introduction)
         match <[u8; 32]>::try_from(exchange_key) {

@@ -158,7 +158,7 @@ impl<T> User<T> {
     }
 
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
-        self.state.psk_store.remove(&pskid).is_none()
+        self.state.psk_store.remove(&pskid).is_some()
     }
 
     pub(crate) async fn handle_message(&mut self, address: Address, msg: TransportMessage) -> Result<Message> {
@@ -288,11 +288,9 @@ impl<T> User<T> {
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
         // TODO: Remove Psk from Identity and Identifier, and manage it as a complementary permission
-        let user_ke_sk = self.state.user_id._ke();
         let keyload = keyload::Unwrap::new(
             &mut announcement_spongos,
             &self.state.user_id,
-            &user_ke_sk,
             author_identifier,
             &self.state.psk_store,
         );
@@ -588,7 +586,7 @@ where
     ) -> Result<SendResponse<TSR>>
     where
         Subscribers: IntoIterator<Item = Permissioned<Identifier>> + Clone,
-        Psks: IntoIterator<Item = PskId> + Clone,
+        Psks: IntoIterator<Item = PskId>,
     {
         // Check conditions
         let stream_address = self
@@ -624,7 +622,6 @@ where
             })
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let psk_ids_with_psks = psk_ids
-            .clone()
             .into_iter()
             .map(|pskid| {
                 Ok((
@@ -639,7 +636,7 @@ where
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut announcement_spongos,
             &subscribers_with_keys,
-            psk_ids_with_psks,
+            &psk_ids_with_psks,
             encryption_key,
             nonce,
             &self.state.user_id,
@@ -672,10 +669,11 @@ where
 
     pub async fn send_keyload_for_all(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
+        let subscribers: Vec<Permissioned<Identifier>> = self.subscribers().map(Permissioned::Read).collect();
         self.send_keyload(
             link_to,
             // Alas, must collect to release the &self immutable borrow
-            self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
+            subscribers,
             psks,
         )
         .await
@@ -683,12 +681,14 @@ where
 
     pub async fn send_keyload_for_all_rw(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
+        let subscribers: Vec<Permissioned<Identifier>> = self
+            .subscribers()
+            .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
+            .collect();
         self.send_keyload(
             link_to,
             // Alas, must collect to release the &self immutable borrow
-            self.subscribers()
-                .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
-                .collect::<Vec<_>>(),
+            subscribers,
             psks,
         )
         .await

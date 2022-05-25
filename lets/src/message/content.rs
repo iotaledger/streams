@@ -44,16 +44,16 @@ pub trait ContentVerify<T> {
 }
 
 #[async_trait(?Send)]
-pub trait ContentEncryptSizeOf {
-    async fn encrypt_sizeof(&mut self, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self>;
+pub trait ContentEncryptSizeOf<T> {
+    async fn encrypt_sizeof(&mut self, recipient: &T, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self>;
 }
 
 #[async_trait(?Send)]
-pub trait ContentEncrypt {
-    async fn encrypt(&mut self, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self>;
+pub trait ContentEncrypt<T> {
+    async fn encrypt(&mut self, recipient: &T, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self>;
 }
 
 #[async_trait(?Send)]
-pub trait ContentDecrypt {
-    async fn decrypt(&mut self, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self>;
+pub trait ContentDecrypt<T> {
+    async fn decrypt(&mut self, recipient: &T, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self>;
 }

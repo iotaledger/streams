@@ -61,8 +61,8 @@ impl KeyStore {
         self.keys.keys().copied()
     }
 
-    pub(crate) fn get_exchange_key(&self, identifier: &Identifier) -> Option<&[u8]> {
-        self.keys.get(identifier).map(AsRef::as_ref)
+    pub(crate) fn get_exchange_key(&self, identifier: &Identifier) -> Option<&x25519::PublicKey> {
+        self.keys.get(identifier)
     }
 }
 
