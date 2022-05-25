@@ -16,7 +16,7 @@ use spongos::{
 };
 
 // Local
-use crate::id::{identifier::Identifier, PskId};
+use crate::id::identifier::Identifier;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum PermissionDuration {

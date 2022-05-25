@@ -164,7 +164,7 @@ impl<T> UserBuilder<T> {
             .transport
             .ok_or_else(|| anyhow!("transport not specified, cannot build User without Transport"))?;
 
-        Ok(User::new(id, &self.psks, transport))
+        Ok(User::new(id, self.psks, transport))
     }
 
     /// Recover a user instance from the builder parameters.

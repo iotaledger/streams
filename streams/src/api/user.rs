@@ -77,14 +77,17 @@ impl User<()> {
 }
 
 impl<T> User<T> {
-    pub(crate) fn new(user_id: Identity, psks: &[(PskId, Psk)], transport: T) -> Self {
+    pub(crate) fn new<Psks>(user_id: Identity, psks: Psks, transport: T) -> Self
+    where
+        Psks: IntoIterator<Item = (PskId, Psk)>,
+    {
         let mut id_store = KeyStore::new();
         let mut psk_store = HashMap::new();
 
         // Store any pre shared keys
-        for (pskid, psk) in psks {
-            psk_store.insert(*pskid, *psk);
-        }
+        psks.into_iter().for_each(|(pskid, psk)| {
+            psk_store.insert(pskid, psk);
+        });
 
         id_store.insert_key(user_id.to_identifier(), user_id._ke_sk().public_key());
 
