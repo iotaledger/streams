@@ -1,43 +1,46 @@
-use alloc::{string::String, vec::Vec};
-use anyhow::{anyhow, ensure, Error};
+use alloc::{string::String};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use core::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt::Formatter,
 };
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Mask},
         io,
-        types::NBytes,
+        types::Bytes,
     },
     PRP,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Hash)]
-pub struct Topic(pub [u8; 32]);
+#[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
+pub struct Topic(String);
 
 impl Topic {
-    pub fn new(t: &[u8]) -> Result<Self, Error> {
-        t.try_into()
+    pub fn new(t: String) -> Self {
+        Self(t)
     }
 }
+
+impl From<&str> for Topic {
+    fn from(t: &str) -> Self {
+        Self(t.to_string())
+    }
+}
+
 
 impl TryFrom<&[u8]> for Topic {
     type Error = anyhow::Error;
     fn try_from(t: &[u8]) -> Result<Self, Self::Error> {
-        ensure!(
-            t.len() <= 32,
-            anyhow!("Topic cannot exceed 32 bytes in length: {}", t.len())
-        );
-        let mut topic = [0u8; 32];
-        topic[..t.len()].copy_from_slice(t);
+        let topic = String::from_utf8(t.to_vec())?;
         Ok(Topic(topic))
     }
 }
 
 impl core::fmt::Display for Topic {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", String::from_utf8_lossy(&self.0))
+        write!(f, "{}", &self.0)
     }
 }
 
@@ -47,15 +50,17 @@ impl AsRef<[u8]> for Topic {
     }
 }
 
-impl AsMut<[u8]> for Topic {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
+impl AsMut<Vec<u8>> for Topic {
+    fn as_mut(&mut self) -> &mut Vec<u8> {
+        unsafe {
+            self.0.as_mut_vec()
+        }
     }
 }
 
 impl Mask<&Topic> for sizeof::Context {
     fn mask(&mut self, topic: &Topic) -> anyhow::Result<&mut Self> {
-        self.mask(NBytes::new(topic))
+        self.mask(Bytes::new(topic))
     }
 }
 
@@ -65,7 +70,7 @@ where
     OS: io::OStream,
 {
     fn mask(&mut self, topic: &Topic) -> anyhow::Result<&mut Self> {
-        self.mask(NBytes::new(topic))
+        self.mask(Bytes::new(topic))
     }
 }
 
@@ -75,6 +80,7 @@ where
     IS: io::IStream,
 {
     fn mask(&mut self, topic: &mut Topic) -> anyhow::Result<&mut Self> {
-        self.mask(NBytes::new(topic))
+        self.mask(Bytes::new(topic.as_mut()))?;
+        Ok(self)
     }
 }

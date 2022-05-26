@@ -50,7 +50,7 @@ impl Message {
     }
 
     pub fn header(&self) -> HDF {
-        self.header
+        self.header.clone()
     }
 
     pub fn content(&self) -> &MessageContent {

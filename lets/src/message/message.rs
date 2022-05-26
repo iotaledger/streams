@@ -19,7 +19,7 @@ use super::{
     transport::TransportMessage,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Default, Debug)]
 pub struct Message<Content> {
     header: HDF,
     payload: PCF<Content>,
@@ -41,7 +41,7 @@ impl<Payload> Message<Payload> {
     }
 
     pub fn header(&self) -> HDF {
-        self.header
+        self.header.clone()
     }
 
     pub fn payload(&self) -> &PCF<Payload> {

@@ -32,7 +32,7 @@ impl<F> PreparsedMessage<F> {
     }
 
     pub fn header(&self) -> HDF {
-        self.header
+        self.header.clone()
     }
 
     pub fn transport_msg(&self) -> &TransportMessage {

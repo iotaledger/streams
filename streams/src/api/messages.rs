@@ -207,7 +207,7 @@ impl<'a, T> MessagesState<'a, T> {
                             .user
                             .cursors(topic)
                             .ok()?
-                            .map(|(id, cursor)| (id, *topic, cursor))
+                            .map(|(id, cursor)| (id, topic.clone(), cursor))
                             .collect();
                         publishers_cursors.extend_from_slice(&cursors_set);
                     }

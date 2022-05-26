@@ -65,7 +65,7 @@ impl BranchStore {
 
     pub(crate) fn move_branch(&mut self, old_topic: &Topic, new_topic: &Topic) -> bool {
         let old_branch = self.0.remove(old_topic);
-        old_branch.map_or(false, |key_store| self.0.insert(*new_topic, key_store).is_none())
+        old_branch.map_or(false, |key_store| self.0.insert(new_topic.clone(), key_store).is_none())
     }
 
     pub(crate) fn insert_branch(&mut self, topic: Topic, branch: KeyStore) -> bool {
@@ -233,6 +233,7 @@ impl Default for KeyStore {
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString;
     use super::{BranchStore, KeyStore};
     use lets::{
         id::{Ed25519, Identity},
@@ -243,11 +244,11 @@ mod tests {
     fn branch_store_can_remove_a_cursor_from_all_branches_at_once() {
         let mut branch_store = BranchStore::new();
         let identifier = Identity::Ed25519(Ed25519::from_seed("identifier 1")).to_identifier();
-        let topic_1 = Topic::new(b"topic 1").unwrap();
-        let topic_2 = Topic::new(b"topic 2").unwrap();
+        let topic_1 = Topic::new("topic 1".to_string());
+        let topic_2 = Topic::new("topic 2".to_string());
 
-        branch_store.insert_branch(topic_1, KeyStore::new());
-        branch_store.insert_branch(topic_2, KeyStore::new());
+        branch_store.insert_branch(topic_1.clone(), KeyStore::new());
+        branch_store.insert_branch(topic_2.clone(), KeyStore::new());
 
         branch_store.insert_cursor(&topic_1, identifier, 10);
         branch_store.insert_cursor(&topic_2, identifier, 20);

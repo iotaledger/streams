@@ -1,5 +1,6 @@
 // Rust
 use alloc::boxed::Box;
+use core::convert::TryInto;
 
 // 3rd-party
 use anyhow::{anyhow, Result};
@@ -84,7 +85,7 @@ impl<T> UserBuilder<T> {
     where
         Top: AsRef<[u8]>,
     {
-        let topic = Topic::new(topic.as_ref())?;
+        let topic = topic.as_ref().try_into()?;
         self.topic = Some(topic);
         Ok(self)
     }
