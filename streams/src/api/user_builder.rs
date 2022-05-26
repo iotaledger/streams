@@ -80,13 +80,11 @@ impl<T> UserBuilder<T> {
     {
         // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke
         // bound T: DefaultTransport for all transports
-        Ok(
-            UserBuilder {
-                transport: Some(NewTransport::try_default().await?),
-                id: self.id,
-                psks: self.psks,
-            }
-        )
+        Ok(UserBuilder {
+            transport: Some(NewTransport::try_default().await?),
+            id: self.id,
+            psks: self.psks,
+        })
     }
 
     /// Inject a new Pre Shared Key and Id into the User Builder
