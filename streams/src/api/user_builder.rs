@@ -25,7 +25,7 @@ pub struct UserBuilder<T> {
     /// Transport Client instance
     transport: Option<T>,
     /// Pre Shared Keys
-    pub psks: Vec<(PskId, Psk)>,
+    psks: Vec<(PskId, Psk)>,
 }
 
 impl<T> Default for UserBuilder<T> {
@@ -74,14 +74,17 @@ impl<T> UserBuilder<T> {
     }
 
     /// Use the default version of the Transport Client
-    pub async fn with_default_transport(mut self) -> Result<Self>
+    pub async fn with_default_transport<NewTransport>(self) -> Result<UserBuilder<NewTransport>>
     where
-        T: for<'a> Transport<'a> + DefaultTransport,
+        NewTransport: for<'a> Transport<'a> + DefaultTransport,
     {
         // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke
         // bound T: DefaultTransport for all transports
-        self.transport = Some(T::try_default().await?);
-        Ok(self)
+        Ok(UserBuilder {
+            transport: Some(NewTransport::try_default().await?),
+            id: self.id,
+            psks: self.psks,
+        })
     }
 
     /// Inject a new Pre Shared Key and Id into the User Builder
@@ -89,22 +92,18 @@ impl<T> UserBuilder<T> {
     /// # Examples
     /// ## Add Multiple Psks
     /// ```
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
     /// # use anyhow::Result;
-    /// # use streams::transport::bucket;
     /// use lets::id::Psk;
     /// use streams::{id::Ed25519, transport::tangle, User};
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let author_seed = "author_secure_seed";
-    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
-    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
     /// let psk1 = Psk::from_seed(b"Psk1");
     /// let psk2 = Psk::from_seed(b"Psk2");
     /// let user = User::builder()
-    /// #   .with_identity(Ed25519::from_seed(author_seed))
-    /// #   .with_transport(transport)
+    ///     .with_identity(Ed25519::from_seed(author_seed))
+    ///     .with_default_transport::<tangle::Client>()
+    ///     .await?
     ///     .with_psk(psk1.to_pskid(), psk1)
     ///     .with_psk(psk2.to_pskid(), psk2)
     ///     .build()?;
@@ -134,22 +133,17 @@ impl<T> UserBuilder<T> {
     /// # Examples
     /// ## User from Ed25519
     /// ```
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
     /// # use anyhow::Result;
-    /// # use streams::transport::bucket;
     /// use streams::{id::Ed25519, transport::tangle, User};
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
-    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
-    /// #
-    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
-    ///
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .with_transport(transport)
+    ///     .with_default_transport::<tangle::Client>()
+    ///     .await?
+    ///     .with_identity(Ed25519::from_seed(user_seed))
     ///     .build()?;
     ///
     /// # Ok(())

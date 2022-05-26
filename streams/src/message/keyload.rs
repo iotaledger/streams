@@ -183,8 +183,8 @@ where
 
 pub(crate) struct Unwrap<'a> {
     initial_state: &'a mut Spongos,
-    subscribers: Vec<Permissioned<Identifier>>,
-    psks: Vec<PskId>,
+    pub(crate) subscribers: Vec<Permissioned<Identifier>>,
+    pub(crate) psks: Vec<PskId>,
     psk_store: &'a HashMap<PskId, Psk>,
     author_id: Identifier,
     user_id: &'a Identity,
@@ -205,18 +205,6 @@ impl<'a> Unwrap<'a> {
             author_id,
             user_id,
         }
-    }
-
-    pub(crate) fn subscribers(&self) -> &[Permissioned<Identifier>] {
-        &self.subscribers
-    }
-
-    pub(crate) fn into_subscribers(self) -> Vec<Permissioned<Identifier>> {
-        self.subscribers
-    }
-
-    pub(crate) fn psks(&self) -> &[PskId] {
-        &self.psks
     }
 }
 
@@ -257,6 +245,7 @@ where
 
         for _ in 0..n_psks.inner() {
             let mut fork = self.fork();
+
             // Loop thorugh provided psks and keys
             let mut psk_id = PskId::default();
             fork.mask(&mut psk_id)?;
@@ -267,6 +256,7 @@ where
                     .commit()?
                     .mask(NBytes::new(&mut masked_key))?;
                 key = Some(masked_key);
+
                 keyload.psks.push(psk_id);
             } else {
                 fork.drop(KEY_SIZE)?;

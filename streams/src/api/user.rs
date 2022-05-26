@@ -308,7 +308,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        for subscriber in message.payload().content().subscribers() {
+        for subscriber in &message.payload().content().subscribers {
             if self.should_store_cursor(subscriber) {
                 self.state
                     .cursor_store
@@ -936,9 +936,14 @@ impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "\n* identifier: <{}>\n{:?}\n* messages:\n{}\n",
+            "\n* identifier: <{}>\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
             self.identifier(),
             self.state.cursor_store,
+            self.state
+                .psk_store
+                .keys()
+                .map(|pskid| format!("\t<{:?}>\n", pskid))
+                .collect::<String>(),
             self.state
                 .spongos_store
                 .keys()
