@@ -223,46 +223,43 @@ where
             .absorb(&mut n_subscribers)?;
 
         for _ in 0..n_subscribers.inner() {
-            if key.is_none() {
-                let mut fork = self.fork();
-                // Loop through provided number of identifiers and subsequent keys
-                let mut subscriber_id = Permissioned::<Identifier>::default();
-                fork.mask(&mut subscriber_id)?;
+            let mut fork = self.fork();
+            // Loop through provided number of identifiers and subsequent keys
+            let mut subscriber_id = Permissioned::<Identifier>::default();
+            fork.mask(&mut subscriber_id)?;
 
-                if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
-                    fork.decrypt(
-                        keyload.user_id,
-                        &keyload.user_id._ke_sk().to_bytes(),
-                        key.get_or_insert([0u8; KEY_SIZE]),
-                    )
-                    .await?;
-                } else {
-                    // Key is meant for another subscriber, skip it
-                    fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
-                }
-                keyload.subscribers.push(subscriber_id);
+            if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
+                fork.decrypt(
+                    keyload.user_id,
+                    &keyload.user_id._ke_sk().to_bytes(),
+                    key.get_or_insert([0u8; KEY_SIZE]),
+                )
+                .await?;
+            } else {
+                // Key is meant for another subscriber, skip it
+                fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
             }
+            keyload.subscribers.push(subscriber_id);
         }
         self.absorb(&mut n_psks)?;
 
         for _ in 0..n_psks.inner() {
-            if key.is_none() {
-                let mut fork = self.fork();
+            let mut fork = self.fork();
 
-                // Loop thorugh provided psks and keys
-                let mut psk_id = PskId::default();
-                fork.mask(&mut psk_id)?;
+            // Loop thorugh provided psks and keys
+            let mut psk_id = PskId::default();
+            fork.mask(&mut psk_id)?;
 
-                let mut masked_key = [0u8; KEY_SIZE];
-                if let Some(psk) = keyload.psk_store.get(&psk_id) {
-                    fork.absorb(External::new(&NBytes::new(psk)))?
-                        .commit()?
-                        .mask(NBytes::new(&mut masked_key))?;
-                    key = Some(masked_key);
-                    keyload.psks.push(psk_id);
-                } else {
-                    fork.drop(KEY_SIZE)?;
-                }
+            let mut masked_key = [0u8; KEY_SIZE];
+            if let Some(psk) = keyload.psk_store.get(&psk_id) {
+                fork.absorb(External::new(&NBytes::new(psk)))?
+                    .commit()?
+                    .mask(NBytes::new(&mut masked_key))?;
+                key = Some(masked_key);
+
+                keyload.psks.push(psk_id);
+            } else {
+                fork.drop(KEY_SIZE)?;
             }
         }
 
