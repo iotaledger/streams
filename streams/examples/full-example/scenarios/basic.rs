@@ -83,7 +83,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         keyload_as_a
             .as_keyload()
             .expect("expected keyload, found something else")
-            .includes(subscriber_a.identifier())
+            .includes_subscriber(subscriber_a.identifier())
     );
     let keyload_as_b = subscriber_b
         .messages()
@@ -95,7 +95,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         !keyload_as_b
             .as_keyload()
             .expect("expected keyload, found something else")
-            .includes(subscriber_b.identifier())
+            .includes_subscriber(subscriber_b.identifier())
     );
     let keyload_as_c = subscriber_c
         .messages()

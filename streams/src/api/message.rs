@@ -189,12 +189,12 @@ pub struct Keyload {
 }
 
 impl Keyload {
-    pub fn includes(&self, subscriber: Identifier) -> bool {
+    pub fn includes_subscriber(&self, subscriber: Identifier) -> bool {
         self.subscribers.iter().any(|s| s.identifier() == &subscriber)
     }
 
     pub fn includes_psk(&self, psk_id: &PskId) -> bool {
-        self.psks.iter().any(|id| id.eq(psk_id))
+        self.psks.iter().any(|id| id == psk_id)
     }
 }
 
@@ -258,8 +258,8 @@ impl<'a> From<subscription::Unwrap<'a>> for MessageContent {
 impl<'a> From<keyload::Unwrap<'a>> for MessageContent {
     fn from(keyload: keyload::Unwrap<'a>) -> Self {
         Self::Keyload(Keyload {
-            psks: keyload.psks().to_vec(),
-            subscribers: keyload.into_subscribers(),
+            psks: keyload.psks,
+            subscribers: keyload.subscribers,
         })
     }
 }

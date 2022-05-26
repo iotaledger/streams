@@ -60,10 +60,6 @@ impl KeyStore {
     pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
         self.keys.keys().copied()
     }
-
-    pub(crate) fn get_exchange_key(&self, identifier: &Identifier) -> Option<&x25519::PublicKey> {
-        self.keys.get(identifier)
-    }
 }
 
 impl fmt::Debug for KeyStore {

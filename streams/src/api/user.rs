@@ -303,7 +303,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        for subscriber in message.payload().content().subscribers() {
+        for subscriber in &message.payload().content().subscribers {
             if self.should_store_cursor(subscriber) {
                 self.state
                     .id_store
@@ -619,7 +619,7 @@ where
                     subscriber,
                     self.state
                         .id_store
-                        .get_exchange_key(subscriber.identifier())
+                        .get_key(subscriber.identifier())
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
                 ))
             })
