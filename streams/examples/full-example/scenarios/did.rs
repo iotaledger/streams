@@ -1,10 +1,10 @@
 // Rust
-
-use std::{cell::RefCell, rc::Rc};
+use std::sync::Arc;
 
 // 3rd-arty
 use anyhow::{anyhow, Result};
 use textwrap::{fill, indent};
+use tokio::sync::Mutex;
 
 // IOTA
 use identity::{
@@ -26,7 +26,7 @@ use super::utils::{print_send_result, print_user};
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
-pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
+pub async fn example(transport: Arc<Mutex<tangle::Client>>) -> Result<()> {
     let did_client = DIDClient::new().await?;
     println!("> Making DID with method for the Author");
     let author_did_info = make_did_info(&did_client, "auth_key").await?;
@@ -125,11 +125,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     println!("> Author sends 1 more signed packet linked to the first keyload");
     let last_msg = author
-        .send_signed_packet(
-            first_keyload_as_author.address().relative(),
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(first_keyload_as_author.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&last_msg);
     print_user("Author", &author);

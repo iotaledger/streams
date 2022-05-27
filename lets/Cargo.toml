@@ -21,10 +21,8 @@ tangle-client = ["iota-client/async", "futures", "iota-crypto/blake2b"]
 tangle-client-wasm = ["iota-client/wasm", "futures"]
 # Enable Iota Identity for use with Streams
 did = ["identity", "serde"]
-# # Enable synchronized transports using parking-lot
-sync-parking-lot = ["parking_lot"]
-# # Enable synchronized transports using spin 
-sync-spin = ["spin"]
+# Enable sharing a Transport instance between users using Tokio's Mutex
+sync-tokio = ["tokio"]
 
 [dependencies]
 # Local dependencies
@@ -43,6 +41,5 @@ hex = {version = "0.4", default-features = false}
 futures = {version = "0.3.8", default-features = false, optional = true}
 identity = {git = "https://github.com/iotaledger/identity.rs", rev = "86edaad", default-features = false, features = ["async"], optional = true}
 iota-client = {version = "1.1.1", default-features = false, optional = true}
-parking_lot = {version = "0.11.2", default-features = false, optional = true}
 serde = {version = "1.0", default-features = false, features = ["derive"], optional = true}
-spin = {version = "0.9.2", default-features = false, features = ["mutex", "spin_mutex"], optional = true}
+tokio = {version = "1.18.2", default-features = false, optional = true}

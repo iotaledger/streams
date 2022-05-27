@@ -96,11 +96,11 @@ impl<'a, Subscribers> Wrap<'a, Subscribers> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a, Subscribers> message::ContentSizeof<Wrap<'a, Subscribers>> for sizeof::Context
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
-    Subscribers::IntoIter: ExactSizeIterator,
+    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone + Send + Sync,
+    Subscribers::IntoIter: ExactSizeIterator + Send,
 {
     async fn sizeof(&mut self, keyload: &Wrap<'a, Subscribers>) -> Result<&mut sizeof::Context> {
         let subscribers = keyload.subscribers.clone().into_iter();
@@ -121,12 +121,12 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a, OS, Subscribers> message::ContentWrap<Wrap<'a, Subscribers>> for wrap::Context<OS>
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
-    Subscribers::IntoIter: ExactSizeIterator,
-    OS: io::OStream,
+    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone + Send + Sync,
+    Subscribers::IntoIter: ExactSizeIterator + Send,
+    OS: io::OStream + Send,
 {
     async fn wrap(&mut self, keyload: &mut Wrap<'a, Subscribers>) -> Result<&mut Self> {
         let subscribers = keyload.subscribers.clone().into_iter();
@@ -182,10 +182,10 @@ impl<'a> Unwrap<'a> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a, IS> message::ContentUnwrap<Unwrap<'a>> for unwrap::Context<IS>
 where
-    IS: io::IStream,
+    IS: io::IStream + Send,
 {
     async fn unwrap(&mut self, keyload: &mut Unwrap<'a>) -> Result<&mut Self> {
         let mut nonce = [0u8; NONCE_SIZE];

@@ -33,7 +33,7 @@ impl TransportMessage {
 impl TransportMessage {
     pub async fn parse_header<F>(self) -> Result<PreparsedMessage<F>>
     where
-        F: PRP + Default,
+        F: PRP + Default + Send,
     {
         let mut ctx = unwrap::Context::new(self.body().as_ref());
         let mut header = HDF::default();

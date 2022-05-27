@@ -414,7 +414,7 @@ impl<T> User<T> {
 
 impl<T> User<T>
 where
-    T: for<'a> Transport<'a, Msg = TransportMessage>,
+    T: for<'a> Transport<'a, Msg = TransportMessage> + Send,
 {
     pub async fn receive_message(&mut self, address: Address) -> Result<Message>
     where
@@ -451,7 +451,7 @@ where
 
 impl<T, TSR> User<T>
 where
-    T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TSR>,
+    T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TSR> + Send,
 {
     /// Prepare Announcement message.
     pub async fn create_stream(&mut self, stream_idx: usize) -> Result<SendResponse<TSR>> {
@@ -780,7 +780,7 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ContentSizeof<State> for sizeof::Context {
     async fn sizeof(&mut self, user_state: &State) -> Result<&mut Self> {
         self.mask(&user_state.user_id)?
@@ -818,7 +818,7 @@ impl ContentSizeof<State> for sizeof::Context {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
     async fn wrap(&mut self, user_state: &mut State) -> Result<&mut Self> {
         self.mask(&user_state.user_id)?
@@ -856,7 +856,7 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
     async fn unwrap(&mut self, user_state: &mut State) -> Result<&mut Self> {
         self.mask(&mut user_state.user_id)?

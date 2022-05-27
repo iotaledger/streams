@@ -34,10 +34,10 @@ impl<Msg> Default for Client<Msg> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<Msg> Transport<'_> for Client<Msg>
 where
-    Msg: Clone,
+    Msg: Clone + Send,
 {
     type Msg = Msg;
     type SendResponse = Msg;

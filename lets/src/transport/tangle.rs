@@ -55,11 +55,11 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<Message, SendResponse> Transport<'_> for Client<Message, SendResponse>
 where
-    Message: Into<Vec<u8>> + TryFrom<IotaMessage, Error = anyhow::Error>,
-    SendResponse: TryFrom<IotaMessage, Error = anyhow::Error>,
+    Message: Into<Vec<u8>> + TryFrom<IotaMessage, Error = anyhow::Error> + Send,
+    SendResponse: TryFrom<IotaMessage, Error = anyhow::Error> + Send,
 {
     type Msg = Message;
     type SendResponse = SendResponse;
@@ -68,8 +68,10 @@ where
     where
         Message: 'async_trait,
     {
-        self.client()
-            .message()
+        // taking &iota_client::Client in a variable to release the &Message and &SendResponse borrows
+        // so they don't need to be Sync
+        let c = self.client();
+        c.message()
             .with_index(address.to_msg_index())
             .with_data(msg.into())
             .finish()
@@ -78,12 +80,14 @@ where
     }
 
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
-        let msg_ids = self.client().get_message().index(address.to_msg_index()).await?;
+        // taking &iota_client::Client in a variable to release the &Message and &SendResponse borrows
+        // so they don't need to be Sync
+        let c = self.client();
+        let msg_ids = c.get_message().index(address.to_msg_index()).await?;
         ensure!(!msg_ids.is_empty(), "no message found at index '{}'", address);
 
         let msgs = try_join_all(msg_ids.iter().map(|msg| {
-            self.client()
-                .get_message()
+            c.get_message()
                 .data(msg)
                 .map_err(Into::into)
                 .and_then(|iota_message| ready(iota_message.try_into()))

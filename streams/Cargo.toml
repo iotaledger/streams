@@ -45,3 +45,4 @@ identity = {git = "https://github.com/iotaledger/identity.rs", rev = "86edaad"}
 rand = {version = "0.8.5", default-features = false, features = ["std", "std_rng"]}
 textwrap = {version = "0.15.0", default-features = false}
 tokio = {version = "1.15", default-features = false}
+lets = {path = "../lets", features = ["sync-tokio"]}

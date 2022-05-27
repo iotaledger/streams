@@ -89,8 +89,6 @@ impl<T> UserBuilder<T> {
     /// # Examples
     /// ## User from Ed25519
     /// ```
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
     /// use streams::{id::Ed25519, transport::tangle, User};
@@ -100,7 +98,7 @@ impl<T> UserBuilder<T> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
     /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
-    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
+    /// # let transport: bucket::Client = bucket::Client::new();
     ///
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
@@ -113,8 +111,6 @@ impl<T> UserBuilder<T> {
     ///
     /// ## User from Psk
     /// ```
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
     /// use streams::{id::Psk, transport::tangle, User};
@@ -123,7 +119,7 @@ impl<T> UserBuilder<T> {
     /// # async fn main() -> Result<()> {
     /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
-    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
+    /// # let transport: bucket::Client = bucket::Client::new();
     /// #
     /// let psk_seed = "seed-for-pre-shared-key";
     ///
@@ -168,15 +164,15 @@ impl<T> UserBuilder<T> {
     ///
     /// # Example
     /// ```
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
+    /// # use std::sync::Arc;
     /// # use anyhow::Result;
+    /// # use tokio::sync::Mutex;
     /// # use streams::transport::bucket;
     /// use streams::{id::Ed25519, transport::tangle, User};
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
-    /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
+    /// # let test_transport = Arc::new(Mutex::new(bucket::Client::new()));
     /// let author_seed = "author_secure_seed";
     /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
@@ -198,7 +194,7 @@ impl<T> UserBuilder<T> {
     /// ```
     pub async fn recover(self, announcement: Address) -> Result<User<T>>
     where
-        T: for<'a> Transport<'a, Msg = TransportMessage>,
+        T: for<'a> Transport<'a, Msg = TransportMessage> + Send,
     {
         let mut user = self.build()?;
         user.receive_message(announcement).await?;
@@ -207,7 +203,7 @@ impl<T> UserBuilder<T> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait DefaultTransport
 where
     Self: Sized,
@@ -215,7 +211,7 @@ where
     async fn try_default() -> Result<Self>;
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
 impl<Message, SendResponse> DefaultTransport for lets::transport::tangle::Client<Message, SendResponse> {
     async fn try_default() -> Result<Self> {

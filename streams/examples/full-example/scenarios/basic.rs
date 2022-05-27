@@ -175,11 +175,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Author sends a signed packet");
     let signed_packet_as_author = author
-        .send_signed_packet(
-            new_keyload_as_author.address().relative(),
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(new_keyload_as_author.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&signed_packet_as_author);
     print_user("Author", &author);
@@ -238,11 +234,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Subscriber A attempts to send a signed packet (but he has readonly permission over the branch!)");
     let result = subscriber_a
-        .send_signed_packet(
-            new_keyload_as_author.address().relative(),
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(new_keyload_as_author.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await;
     assert!(
         result.is_err(),
@@ -272,11 +264,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Subscriber A publishes signed packet");
     assert_eq!(subscriber_a.sync().await?, 1);
     let signed_packet_as_a = subscriber_a
-        .send_signed_packet(
-            new_keyload_as_author.address().relative(),
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(new_keyload_as_author.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&signed_packet_as_a);
     print_user("Subscriber A", &subscriber_a);
@@ -385,7 +373,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Subscriber C", &subscriber_c);
 
     println!("> ~Subscriber B sends unsubscription~ [CURRENTLY BROKEN]");
-    // let unsubscription = subscriber_b.unsubscribe(new_keyload_as_b.address().relative()).await?;
+    // let unsubscription = subscriber_b.unsubscribe(new_keyload_as_b.address().msg()).await?;
     // print_send_result(&unsubscription);
     // print_user("Subscriber B", &subscriber_b);
     // println!("> Author receives unsubscription");

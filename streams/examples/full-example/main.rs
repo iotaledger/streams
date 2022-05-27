@@ -1,9 +1,10 @@
 // Rust
-use std::{cell::RefCell, env, rc::Rc};
+use std::{env, sync::Arc};
 
 // 3rd-party
 use anyhow::Result;
 use rand::Rng;
+use tokio::sync::Mutex;
 
 // IOTA
 
@@ -15,14 +16,14 @@ use streams::{
 
 mod scenarios;
 
-trait GenericTransport: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone {}
+trait GenericTransport: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone + Send {}
 
 impl<T> GenericTransport for T where
-    T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone
+    T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone + Send
 {
 }
 
-async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
+async fn run_did_scenario(transport: Arc<Mutex<tangle::Client>>) -> Result<()> {
     println!("## Running DID Test ##\n");
     let result = scenarios::did::example(transport).await;
     match &result {
@@ -32,7 +33,7 @@ async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     result
 }
 
-async fn run_single_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+async fn run_basic_scenario<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
     println!("## Running single branch test with seed: {} ##\n", seed);
     let result = scenarios::basic::example(transport, seed).await;
     match &result {
@@ -49,12 +50,11 @@ async fn main_pure() -> Result<()> {
     println!("###########################################");
     println!("\n");
 
-    let transport = bucket::Client::new();
     // BucketTransport is an in-memory storage that needs to be shared between all the users,
-    // hence the Rc<RefCell<BucketTransport>>
-    let transport = Rc::new(RefCell::new(transport));
+    // hence the Arc<Mutex<BucketTransport>>
+    let transport = Arc::new(Mutex::new(bucket::Client::new()));
 
-    run_single_branch_test(transport.clone(), "PURESEEDA").await?;
+    run_basic_scenario(transport.clone(), "PURESEEDA").await?;
     println!("################################################");
     println!("Done running pure tests without accessing Tangle");
     println!("################################################");
@@ -72,12 +72,12 @@ async fn main_client() -> Result<()> {
     println!("\n");
 
     let transport =
-        Rc::new(RefCell::new(tangle::Client::for_node(&node_url).await.unwrap_or_else(
+        Arc::new(Mutex::new(tangle::Client::for_node(&node_url).await.unwrap_or_else(
             |e| panic!("error connecting Tangle client to '{}': {}", node_url, e),
         )));
 
-    run_single_branch_test(transport.clone(), &new_seed()).await?;
-    run_did_test(transport).await?;
+    run_basic_scenario(transport.clone(), &new_seed()).await?;
+    run_did_scenario(transport).await?;
     println!(
         "#############################################{}",
         "#".repeat(node_url.len())

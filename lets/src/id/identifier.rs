@@ -230,11 +230,11 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<IS, F> ContentVerify<Identifier> for unwrap::Context<IS, F>
 where
-    F: PRP,
-    IS: io::IStream,
+    F: PRP + Send,
+    IS: io::IStream + Send,
 {
     async fn verify(&mut self, verifier: &Identifier) -> Result<&mut Self> {
         let mut oneof = Uint8::default();
@@ -289,7 +289,7 @@ where
 }
 
 // TODO: Find a better way to represent this logic without the need for an additional trait
-#[async_trait(?Send)]
+#[async_trait]
 impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
     async fn encrypt_sizeof(&mut self, recipient: &Identifier, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
         match recipient {
@@ -306,11 +306,11 @@ impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<OS, F> ContentEncrypt<Identifier> for wrap::Context<OS, F>
 where
-    F: PRP,
-    OS: io::OStream,
+    F: PRP + Send,
+    OS: io::OStream + Send,
 {
     async fn encrypt(&mut self, recipient: &Identifier, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
         match recipient {

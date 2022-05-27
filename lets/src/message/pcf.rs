@@ -101,10 +101,11 @@ impl<Content> PCF<Content> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<Content> ContentSizeof<PCF<Content>> for sizeof::Context
 where
     sizeof::Context: ContentSizeof<Content>,
+    Content: Send + Sync,
 {
     async fn sizeof(&mut self, pcf: &PCF<Content>) -> Result<&mut Self> {
         self.absorb(Uint8::new(pcf.frame_type))?
@@ -115,12 +116,13 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, OS, Content> ContentWrap<PCF<Content>> for wrap::Context<OS, F>
 where
-    F: PRP,
-    OS: io::OStream,
+    F: PRP + Send,
+    OS: io::OStream + Send,
     Self: ContentWrap<Content>,
+    Content: Send,
 {
     async fn wrap(&mut self, pcf: &mut PCF<Content>) -> Result<&mut Self>
     where
@@ -134,12 +136,13 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<F, IS, Content> ContentUnwrap<PCF<Content>> for unwrap::Context<IS, F>
 where
-    F: PRP,
-    IS: io::IStream,
+    F: PRP + Send,
+    IS: io::IStream + Send,
     unwrap::Context<IS, F>: ContentUnwrap<Content>,
+    Content: Send,
 {
     async fn unwrap(&mut self, pcf: &mut PCF<Content>) -> Result<&mut Self> {
         let mut frame_type = Uint8::default();

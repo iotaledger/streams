@@ -180,7 +180,7 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ContentSignSizeof<Identity> for sizeof::Context {
     async fn sign_sizeof(&mut self, signer: &Identity) -> Result<&mut Self> {
         match signer {
@@ -213,11 +213,11 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<OS, F> ContentSign<Identity> for wrap::Context<OS, F>
 where
-    F: PRP,
-    OS: io::OStream,
+    F: PRP + Send,
+    OS: io::OStream + Send,
 {
     async fn sign(&mut self, signer: &Identity) -> Result<&mut Self> {
         match signer {
@@ -272,11 +272,11 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<IS, F> ContentDecrypt<Identity> for unwrap::Context<IS, F>
 where
-    F: PRP,
-    IS: io::IStream,
+    F: PRP + Send,
+    IS: io::IStream + Send,
 {
     async fn decrypt(&mut self, recipient: &Identity, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
         match recipient {

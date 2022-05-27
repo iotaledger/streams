@@ -43,14 +43,14 @@ use crate::api::{
 ///
 /// use streams::{id::Ed25519, transport::tangle, Address, User};
 ///
-/// # use std::cell::RefCell;
-/// # use std::rc::Rc;
+/// # use std::sync::Arc;
 /// # use anyhow::Result;
+/// # use tokio::sync::Mutex;
 /// # use streams::transport::bucket;
 /// #
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
-/// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
+/// # let test_transport = Arc::new(Mutex::new(bucket::Client::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
 /// let author_transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
@@ -76,11 +76,11 @@ use crate::api::{
 /// let announcement = author.create_stream(1).await?;
 /// subscriber.receive_message(announcement.address()).await?;
 /// let first_packet = author
-///     .send_signed_packet(announcement.address().relative(), b"public payload", b"masked payload")
+///     .send_signed_packet(announcement.address().msg(), b"public payload", b"masked payload")
 ///     .await?;
 /// let second_packet = author
 ///     .send_signed_packet(
-///         first_packet.address().relative(),
+///         first_packet.address().msg(),
 ///         b"another public payload",
 ///         b"another masked payload",
 ///     )
@@ -153,7 +153,7 @@ impl<'a, T> MessagesState<'a, T> {
     #[async_recursion(?Send)]
     async fn next(&mut self) -> Option<Result<Message>>
     where
-        T: for<'b> Transport<'b, Msg = TransportMessage>,
+        T: for<'b> Transport<'b, Msg = TransportMessage> + Send,
     {
         if let Some((relative_address, binary_msg)) = self.stage.pop_front() {
             // Drain stage if not empty...
@@ -240,7 +240,7 @@ impl<'a, T> MessagesState<'a, T> {
 
 impl<'a, T> Messages<'a, T>
 where
-    T: for<'b> Transport<'b, Msg = TransportMessage>,
+    T: for<'b> Transport<'b, Msg = TransportMessage> + Send,
 {
     pub(crate) fn new(user: &'a mut User<T>) -> Self {
         let mut state = MessagesState::new(user);
@@ -288,7 +288,7 @@ where
 
 impl<'a, T> From<&'a mut User<T>> for Messages<'a, T>
 where
-    T: for<'b> Transport<'b, Msg = TransportMessage>,
+    T: for<'b> Transport<'b, Msg = TransportMessage> + Send,
 {
     fn from(user: &'a mut User<T>) -> Self {
         Self::new(user)
@@ -297,7 +297,7 @@ where
 
 impl<'a, T> Stream for Messages<'a, T>
 where
-    T: for<'b> Transport<'b, Msg = TransportMessage>,
+    T: for<'b> Transport<'b, Msg = TransportMessage> + Send,
 {
     type Item = Result<Message>;
 
@@ -317,10 +317,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use alloc::rc::Rc;
-    use core::cell::RefCell;
+    use alloc::sync::Arc;
 
     use anyhow::Result;
+    use tokio::sync::Mutex;
 
     use lets::{address::Address, id::Ed25519, transport::bucket};
 
@@ -332,7 +332,7 @@ mod tests {
         user::User,
     };
 
-    type Transport = Rc<RefCell<bucket::Client>>;
+    type Transport = Arc<Mutex<bucket::Client>>;
 
     #[tokio::test]
     async fn messages_awake_pending_messages_link_to_them_even_if_their_content_is_unreadable() -> Result<()> {
@@ -346,9 +346,7 @@ mod tests {
             .await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress
         // through the next messages
-        let packet_2 = subscriber1
-            .send_signed_packet(packet_1.address().relative(), &p, &p)
-            .await?;
+        let packet_2 = subscriber1.send_signed_packet(packet_1.address().relative(), &p, &p).await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
 
@@ -393,7 +391,7 @@ mod tests {
     /// Prepare a simple scenario with an author, a subscriber, a channel announcement and a bucket
     /// transport
     async fn author_subscriber_fixture() -> Result<(User<Transport>, User<Transport>, Address, Transport)> {
-        let transport = Rc::new(RefCell::new(bucket::Client::new()));
+        let transport = Arc::new(Mutex::new(bucket::Client::new()));
         let mut author = User::builder()
             .with_identity(Ed25519::from_seed("author"))
             .with_transport(transport.clone())
