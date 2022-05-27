@@ -17,7 +17,7 @@ pub fn print_user<T>(user_name: &str, user: &User<T>) {
 pub fn print_send_result(msg: &SendResponse<TransportMessage>) {
     println!(
         "  msg => <{}> [{}]",
-        msg.address().relative(),
+        msg.address().msg(),
         hex::encode(msg.address().to_msg_index())
     );
 }

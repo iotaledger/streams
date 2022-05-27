@@ -157,7 +157,7 @@ impl<'a, T> MessagesState<'a, T> {
     {
         if let Some((relative_address, binary_msg)) = self.stage.pop_front() {
             // Drain stage if not empty...
-            let address = Address::new(self.user.stream_address()?.base(), relative_address);
+            let address = Address::new(self.user.stream_address()?.app(), relative_address);
             match self.user.handle_message(address, binary_msg).await {
                 Ok(Message {
                     header:
@@ -189,7 +189,7 @@ impl<'a, T> MessagesState<'a, T> {
                 }
                 Ok(message) => {
                     // Check if message has descendants pending to process and stage them for processing
-                    if let Some(msgs) = self.msg_queue.remove(&message.address().relative()) {
+                    if let Some(msgs) = self.msg_queue.remove(&message.address().msg()) {
                         self.stage.extend(msgs);
                     }
 
@@ -211,12 +211,12 @@ impl<'a, T> MessagesState<'a, T> {
                     next
                 }
             };
-            let base_address = self.user.stream_address()?.base();
+            let base_address = self.user.stream_address()?.app();
             let rel_address = MsgId::gen(base_address, publisher, cursor + 1);
             let address = Address::new(base_address, rel_address);
             match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {
-                    self.stage.push_back((address.relative(), msg));
+                    self.stage.push_back((address.msg(), msg));
                     self.successful_round = true;
                     self.next().await
                 }
@@ -275,7 +275,7 @@ where
                     let msg_linked_address = msg.header().linked_msg_address()?;
                     let branch_last_address = branch_last_address.get_or_insert(msg_linked_address);
                     if msg_linked_address == *branch_last_address {
-                        *branch_last_address = msg.address().relative();
+                        *branch_last_address = msg.address().msg();
                         Some(msg)
                     } else {
                         None
@@ -339,25 +339,25 @@ mod tests {
         let p = b"payload";
         let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
 
-        let keyload_1 = author.send_keyload_for_all_rw(announcement_link.relative()).await?;
+        let keyload_1 = author.send_keyload_for_all_rw(announcement_link.msg()).await?;
         subscriber1.sync().await?;
         let packet_1 = subscriber1
-            .send_signed_packet(keyload_1.address().relative(), &p, &p)
+            .send_signed_packet(keyload_1.address().msg(), &p, &p)
             .await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress
         // through the next messages
-        let packet_2 = subscriber1.send_signed_packet(packet_1.address().relative(), &p, &p).await?;
+        let packet_2 = subscriber1.send_signed_packet(packet_1.address().msg(), &p, &p).await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
 
         author.sync().await?;
 
         // This packet has to wait in the `Messages::msg_queue` until `packet` is processed
-        let keyload_2 = author.send_keyload_for_all_rw(packet_2.address().relative()).await?;
+        let keyload_2 = author.send_keyload_for_all_rw(packet_2.address().msg()).await?;
 
         subscriber1.sync().await?;
         let last_signed_packet = subscriber1
-            .send_signed_packet(keyload_2.address().relative(), &p, &p)
+            .send_signed_packet(keyload_2.address().msg(), &p, &p)
             .await?;
 
         let msgs = subscriber2.fetch_next_messages().await?;
@@ -413,7 +413,7 @@ mod tests {
             .with_transport(transport)
             .build()?;
         subscriber.receive_message(announcement_link).await?;
-        let subscription = subscriber.subscribe(announcement_link.relative()).await?;
+        let subscription = subscriber.subscribe(announcement_link.msg()).await?;
         author.receive_message(subscription.address()).await?;
         Ok(subscriber)
     }

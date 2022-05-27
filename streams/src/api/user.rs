@@ -196,7 +196,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed.unwrap(announcement).await?;
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.state.spongos_store.insert(address.msg(), spongos);
 
         // Store message content into stores
         let author_id = message.payload().content().author_id();
@@ -258,7 +258,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed.unwrap(unsubscription).await?;
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.state.spongos_store.insert(address.msg(), spongos);
 
         // Store message content into stores
         self.remove_subscriber(message.payload().content().subscriber_identifier());
@@ -284,7 +284,7 @@ impl<T> User<T> {
         let mut announcement_spongos = self
             .state
             .spongos_store
-            .get(&stream_address.relative())
+            .get(&stream_address.msg())
             .copied()
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
@@ -299,7 +299,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed.unwrap(keyload).await?;
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.state.spongos_store.insert(address.msg(), spongos);
 
         // Store message content into stores
         for subscriber in message.payload().content().subscribers() {
@@ -337,7 +337,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed.unwrap(signed_packet).await?;
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.state.spongos_store.insert(address.msg(), spongos);
 
         // Store message content into stores
 
@@ -368,7 +368,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed.unwrap(tagged_packet).await?;
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.state.spongos_store.insert(address.msg(), spongos);
 
         // Store message content into stores
 
@@ -486,7 +486,7 @@ where
         self.state.stream_address = Some(stream_address);
         self.state.author_identifier = Some(self.identifier());
         self.state.id_store.insert_cursor(self.identifier(), INIT_MESSAGE_NUM);
-        self.state.spongos_store.insert(stream_address.relative(), spongos);
+        self.state.spongos_store.insert(stream_address.msg(), spongos);
         Ok(SendResponse::new(stream_address, send_response))
     }
 
@@ -497,7 +497,7 @@ where
             .stream_address()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
 
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), SUB_MESSAGE_NUM);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -526,7 +526,7 @@ where
         let (transport_msg, _spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
-        let message_address = Address::new(stream_address.base(), rel_address);
+        let message_address = Address::new(stream_address.app(), rel_address);
         ensure!(
             self.transport.recv_message(message_address).await.is_err(),
             anyhow!("there's already a message with address '{}'", message_address)
@@ -548,7 +548,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor()?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), new_cursor);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -567,7 +567,7 @@ where
         let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
-        let message_address = Address::new(stream_address.base(), rel_address);
+        let message_address = Address::new(stream_address.app(), rel_address);
         ensure!(
             self.transport.recv_message(message_address).await.is_err(),
             anyhow!("there's already a message with address '{}'", message_address)
@@ -595,13 +595,13 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor()?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), new_cursor);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
         let mut announcement_spongos = self
             .state
             .spongos_store
-            .get(&stream_address.relative())
+            .get(&stream_address.msg())
             .copied()
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
@@ -634,7 +634,7 @@ where
         let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
-        let message_address = Address::new(stream_address.base(), rel_address);
+        let message_address = Address::new(stream_address.app(), rel_address);
         ensure!(
             self.transport.recv_message(message_address).await.is_err(),
             anyhow!("there's already a message with address '{}'", message_address)
@@ -691,7 +691,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor()?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), new_cursor);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -714,7 +714,7 @@ where
         let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
-        let message_address = Address::new(stream_address.base(), rel_address);
+        let message_address = Address::new(stream_address.app(), rel_address);
         ensure!(
             self.transport.recv_message(message_address).await.is_err(),
             anyhow!("there's already a message with address '{}'", message_address)
@@ -744,7 +744,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor()?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), new_cursor);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -766,7 +766,7 @@ where
         let (transport_msg, spongos) = AppMessage::new(header, content).wrap().await?;
 
         // Attempt to send message
-        let message_address = Address::new(stream_address.base(), rel_address);
+        let message_address = Address::new(stream_address.app(), rel_address);
         ensure!(
             self.transport.recv_message(message_address).await.is_err(),
             anyhow!("there's already a message with address '{}'", message_address)

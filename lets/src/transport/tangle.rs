@@ -114,7 +114,7 @@ impl Address {
     /// Hash the content of the [`Address`] using `Blake2b256`
     pub fn to_blake2b(self) -> [u8; 32] {
         let hasher = Blake2b256::new();
-        hasher.chain(self.base()).chain(self.relative()).finalize().into()
+        hasher.chain(self.app()).chain(self.msg()).finalize().into()
     }
 
     /// An `Address` is used as index of the message over the Tangle. For that,

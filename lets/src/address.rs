@@ -79,11 +79,11 @@ impl Address {
         }
     }
 
-    pub fn relative(self) -> MsgId {
+    pub fn msg(self) -> MsgId {
         self.msgid
     }
 
-    pub fn base(self) -> AppAddr {
+    pub fn app(self) -> AppAddr {
         self.appaddr
     }
 }
