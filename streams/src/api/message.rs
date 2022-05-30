@@ -184,12 +184,12 @@ pub struct Announcement {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Keyload {
-    pub subscribers: Vec<Permissioned<Identifier>>,
+    pub subscribers: Vec<(Permissioned<Identifier>, usize)>,
 }
 
 impl Keyload {
     pub fn includes(&self, subscriber: Identifier) -> bool {
-        self.subscribers.iter().any(|s| s.identifier() == &subscriber)
+        self.subscribers.iter().any(|(s, _)| s.identifier() == &subscriber)
     }
 }
 

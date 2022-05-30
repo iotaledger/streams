@@ -16,7 +16,10 @@ use streams::{
 
 mod scenarios;
 
-trait GenericTransport: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone + Send {}
+trait GenericTransport:
+    for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone + Send
+{
+}
 
 impl<T> GenericTransport for T where
     T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone + Send

@@ -56,7 +56,7 @@ use spongos::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Fork, Join, Mask},
         io,
         modifiers::External,
-        types::{NBytes, Size},
+        types::{NBytes, Size, Uint64},
     },
     Spongos,
 };
@@ -83,7 +83,7 @@ impl<'a, Subscribers> Wrap<'a, Subscribers> {
         author_id: &'a Identity,
     ) -> Self
     where
-        Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
+        Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, usize, &'a [u8])> + Clone,
         Subscribers::IntoIter: ExactSizeIterator,
     {
         Self {
@@ -99,7 +99,7 @@ impl<'a, Subscribers> Wrap<'a, Subscribers> {
 #[async_trait]
 impl<'a, Subscribers> message::ContentSizeof<Wrap<'a, Subscribers>> for sizeof::Context
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone + Send + Sync,
+    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, usize, &'a [u8])> + Clone + Send + Sync,
     Subscribers::IntoIter: ExactSizeIterator + Send,
 {
     async fn sizeof(&mut self, keyload: &Wrap<'a, Subscribers>) -> Result<&mut sizeof::Context> {
@@ -107,9 +107,10 @@ where
         let n_subscribers = Size::new(subscribers.len());
         self.absorb(NBytes::new(keyload.nonce))?.absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
-        for (subscriber, exchange_key) in subscribers {
+        for (subscriber, cursor, exchange_key) in subscribers {
             self.fork()
                 .mask(subscriber)?
+                .absorb(Uint64::new(*cursor as u64))?
                 .encrypt_sizeof(subscriber.identifier(), exchange_key, &keyload.key)
                 .await?;
         }
@@ -124,7 +125,7 @@ where
 #[async_trait]
 impl<'a, OS, Subscribers> message::ContentWrap<Wrap<'a, Subscribers>> for wrap::Context<OS>
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone + Send + Sync,
+    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, usize, &'a [u8])> + Clone + Send + Sync,
     Subscribers::IntoIter: ExactSizeIterator + Send,
     OS: io::OStream + Send,
 {
@@ -135,9 +136,10 @@ where
             .absorb(NBytes::new(keyload.nonce))?
             .absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
-        for (subscriber, exchange_key) in subscribers {
+        for (subscriber, cursor, exchange_key) in subscribers {
             self.fork()
                 .mask(subscriber)?
+                .absorb(Uint64::new(*cursor as u64))?
                 .encrypt(subscriber.identifier(), exchange_key, &keyload.key)
                 .await?;
         }
@@ -151,7 +153,7 @@ where
 
 pub(crate) struct Unwrap<'a> {
     initial_state: &'a mut Spongos,
-    subscribers: Vec<Permissioned<Identifier>>,
+    subscribers: Vec<(Permissioned<Identifier>, usize)>,
     author_id: Identifier,
     user_id: &'a Identity,
     user_ke_key: &'a [u8],
@@ -173,11 +175,11 @@ impl<'a> Unwrap<'a> {
         }
     }
 
-    pub(crate) fn subscribers(&self) -> &[Permissioned<Identifier>] {
+    pub(crate) fn subscribers(&self) -> &[(Permissioned<Identifier>, usize)] {
         &self.subscribers
     }
 
-    pub(crate) fn into_subscribers(self) -> Vec<Permissioned<Identifier>> {
+    pub(crate) fn into_subscribers(self) -> Vec<(Permissioned<Identifier>, usize)> {
         self.subscribers
     }
 }
@@ -199,7 +201,8 @@ where
             let mut fork = self.fork();
             // Loop through provided number of identifiers and subsequent keys
             let mut subscriber_id = Permissioned::<Identifier>::default();
-            fork.mask(&mut subscriber_id)?;
+            let mut cursor = Uint64::default();
+            fork.mask(&mut subscriber_id)?.absorb(&mut cursor)?;
 
             if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
                 fork.decrypt(keyload.user_id, keyload.user_ke_key, key.get_or_insert([0; KEY_SIZE]))
@@ -212,7 +215,7 @@ where
                     fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
                 }
             }
-            keyload.subscribers.push(subscriber_id);
+            keyload.subscribers.push((subscriber_id, cursor.inner() as usize));
         }
         if let Some(key) = key {
             self.absorb(External::new(&NBytes::new(&key)))?

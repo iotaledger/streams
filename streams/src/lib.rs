@@ -32,8 +32,8 @@
 #![no_std]
 
 // Uncomment to enable printing for development
-// #[macro_use]
-// extern crate std;
+#[macro_use]
+extern crate std;
 
 #[macro_use]
 extern crate alloc;

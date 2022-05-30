@@ -130,7 +130,7 @@ type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 struct MessagesState<'a, T> {
     user: &'a mut User<T>,
-    ids_stack: Vec<(Identifier, usize)>,
+    ids_stack: Vec<(Identifier, usize, Vec<u8>)>,
     msg_queue: HashMap<MsgId, VecDeque<(MsgId, TransportMessage)>>,
     stage: VecDeque<(MsgId, TransportMessage)>,
     successful_round: bool,
@@ -200,20 +200,23 @@ impl<'a, T> MessagesState<'a, T> {
             }
         } else {
             // Stage is empty, populate it with some more messages
-            let (publisher, cursor) = match self.ids_stack.pop() {
+            let (publisher, cursor, t) = match self.ids_stack.pop() {
                 Some(id_cursor) => id_cursor,
                 None => {
                     // new round
                     self.successful_round = false;
-                    let mut publisher_cursors = self.user.cursors();
+                    let mut publisher_cursors = self.user.next_cursors();
                     let next = publisher_cursors.next()?;
                     self.ids_stack = publisher_cursors.collect();
                     next
                 }
             };
             let base_address = self.user.stream_address()?.app();
-            let rel_address = MsgId::gen(base_address, publisher, cursor + 1);
+            let rel_address = MsgId::gen(base_address, publisher, cursor, t.clone());
             let address = Address::new(base_address, rel_address);
+            if t == b"keyload" {
+                println!("trying to fetch keyload {}", cursor);
+            }
             match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {
                     self.stage.push_back((address.msg(), msg));
@@ -221,6 +224,13 @@ impl<'a, T> MessagesState<'a, T> {
                     self.next().await
                 }
                 Err(_e) => {
+                    if t != b"keyload" && !self.user.fetched_all_known_messages(&publisher) {
+                        self.user.jump_to_newest_known_cursor(&publisher);
+                        self.successful_round = true;
+                    } else if t == b"keyload" && !self.user.fetched_all_known_keyloads() {
+                        self.user.jump_to_timely_keyload_cursor();
+                        self.successful_round = true;
+                    }
                     // Message not found or network error. Right now we are not distinguishing
                     // between each case, so we must assume it's message not found.
                     // When we introduce typed error handling and are able to distinguish,
@@ -396,7 +406,7 @@ mod tests {
             .with_identity(Ed25519::from_seed("author"))
             .with_transport(transport.clone())
             .build()?;
-        let announcement = author.create_stream(10).await?;
+        let announcement = author.create_stream(10, 0).await?;
         let subscriber =
             subscriber_fixture("subscriber", &mut author, announcement.address(), transport.clone()).await?;
         Ok((author, subscriber, announcement.address(), transport))
