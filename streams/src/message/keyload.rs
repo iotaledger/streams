@@ -228,7 +228,9 @@ where
             let mut subscriber_id = Permissioned::<Identifier>::default();
             fork.mask(&mut subscriber_id)?;
 
-            if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
+            if key.is_some() {
+                fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
+            } else if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
                 fork.decrypt(
                     keyload.user_id,
                     &keyload.user_id._ke_sk().to_bytes(),
@@ -250,16 +252,20 @@ where
             let mut psk_id = PskId::default();
             fork.mask(&mut psk_id)?;
 
-            let mut masked_key = [0u8; KEY_SIZE];
-            if let Some(psk) = keyload.psk_store.get(&psk_id) {
-                fork.absorb(External::new(&NBytes::new(psk)))?
-                    .commit()?
-                    .mask(NBytes::new(&mut masked_key))?;
-                key = Some(masked_key);
-
-                keyload.psks.push(psk_id);
-            } else {
+            if key.is_some() {
                 fork.drop(KEY_SIZE)?;
+            } else {
+                let mut masked_key = [0u8; KEY_SIZE];
+                if let Some(psk) = keyload.psk_store.get(&psk_id) {
+                    fork.absorb(External::new(&NBytes::new(psk)))?
+                        .commit()?
+                        .mask(NBytes::new(&mut masked_key))?;
+                    key = Some(masked_key);
+
+                    keyload.psks.push(psk_id);
+                } else {
+                    fork.drop(KEY_SIZE)?;
+                }
             }
         }
 
