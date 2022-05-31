@@ -149,12 +149,15 @@ impl<T> User<T> {
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        self.state.exchange_keys.insert(
-            subscriber,
-            subscriber
-                ._ke_pk()
-                .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
-        ).is_none()
+        self.state
+            .exchange_keys
+            .insert(
+                subscriber,
+                subscriber
+                    ._ke_pk()
+                    .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
+            )
+            .is_none()
     }
 
     pub fn remove_subscriber(&mut self, id: Identifier) -> bool {
@@ -491,7 +494,9 @@ where
         // If message has been sent successfully, commit message to stores
         self.state.stream_address = Some(stream_address);
         self.state.author_identifier = Some(self.identifier());
-        self.state.cursor_store.insert_cursor(self.identifier(), INIT_MESSAGE_NUM);
+        self.state
+            .cursor_store
+            .insert_cursor(self.identifier(), INIT_MESSAGE_NUM);
         self.state.spongos_store.insert(stream_address.relative(), spongos);
         Ok(SendResponse::new(stream_address, send_response))
     }
