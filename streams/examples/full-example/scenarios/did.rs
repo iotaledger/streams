@@ -49,7 +49,8 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
         .with_transport(transport.clone())
         .build()?;
     let mut subscriber_c = User::builder()
-        .with_identity(psk)
+        .with_identity(Ed25519::from_seed("SUBSCRIBERC9SEED"))
+        .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
         .build()?;
 
@@ -104,10 +105,8 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let second_keyload_as_author = author
         .send_keyload(
             last_msg.address().relative(),
-            [
-                Permissioned::Read(subscription_b_as_author.header().publisher()),
-                Permissioned::Read(psk.into()),
-            ],
+            [Permissioned::Read(subscription_b_as_author.header().publisher())],
+            [psk.to_pskid()],
         )
         .await?;
     print_send_result(&second_keyload_as_author);

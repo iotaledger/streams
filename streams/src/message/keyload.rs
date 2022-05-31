@@ -43,10 +43,11 @@ use async_trait::async_trait;
 
 // IOTA
 use crypto::keys::x25519;
+use hashbrown::HashMap;
 
 // Streams
 use lets::{
-    id::{Identifier, Identity, Permissioned},
+    id::{Identifier, Identity, Permissioned, Psk, PskId},
     message::{
         self, ContentDecrypt, ContentEncrypt, ContentEncryptSizeOf, ContentSign, ContentSignSizeof, ContentVerify,
     },
@@ -66,29 +67,34 @@ use spongos::{
 const NONCE_SIZE: usize = 16;
 const KEY_SIZE: usize = 32;
 
-pub(crate) struct Wrap<'a, Subscribers> {
+pub(crate) struct Wrap<'a, Subscribers, Psks> {
     initial_state: &'a mut Spongos,
     nonce: [u8; NONCE_SIZE],
     key: [u8; KEY_SIZE],
     subscribers: Subscribers,
+    psks: Psks,
     author_id: &'a Identity,
 }
 
-impl<'a, Subscribers> Wrap<'a, Subscribers> {
+impl<'a, Subscribers, Psks> Wrap<'a, Subscribers, Psks> {
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
         subscribers: Subscribers,
+        psks: Psks,
         key: [u8; KEY_SIZE],
         nonce: [u8; NONCE_SIZE],
         author_id: &'a Identity,
     ) -> Self
     where
-        Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
+        Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
         Subscribers::IntoIter: ExactSizeIterator,
+        Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
+        Psks::IntoIter: ExactSizeIterator,
     {
         Self {
             initial_state,
             subscribers,
+            psks,
             key,
             nonce,
             author_id,
@@ -97,21 +103,34 @@ impl<'a, Subscribers> Wrap<'a, Subscribers> {
 }
 
 #[async_trait(?Send)]
-impl<'a, Subscribers> message::ContentSizeof<Wrap<'a, Subscribers>> for sizeof::Context
+impl<'a, Subscribers, Psks> message::ContentSizeof<Wrap<'a, Subscribers, Psks>> for sizeof::Context
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
+    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
+    Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
+    Psks::IntoIter: ExactSizeIterator,
 {
-    async fn sizeof(&mut self, keyload: &Wrap<'a, Subscribers>) -> Result<&mut sizeof::Context> {
+    async fn sizeof(&mut self, keyload: &Wrap<'a, Subscribers, Psks>) -> Result<&mut sizeof::Context> {
         let subscribers = keyload.subscribers.clone().into_iter();
+        let psks = keyload.psks.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
+        let n_psks = Size::new(psks.len());
         self.absorb(NBytes::new(keyload.nonce))?.absorb(n_subscribers)?;
         // Loop through provided identifiers, masking the shared key for each one
         for (subscriber, exchange_key) in subscribers {
             self.fork()
                 .mask(subscriber)?
-                .encrypt_sizeof(subscriber.identifier(), exchange_key, &keyload.key)
+                .encrypt_sizeof(subscriber.identifier(), &exchange_key.to_bytes(), &keyload.key)
                 .await?;
+        }
+        self.absorb(n_psks)?;
+        // Loop through provided pskids, masking the shared key for each one
+        for (pskid, psk) in psks {
+            self.fork()
+                .mask(pskid)?
+                .absorb(External::new(&NBytes::new(psk)))?
+                .commit()?
+                .mask(NBytes::new(&keyload.key))?;
         }
         self.absorb(External::new(&NBytes::new(&keyload.key)))?
             .sign_sizeof(keyload.author_id)
@@ -122,15 +141,19 @@ where
 }
 
 #[async_trait(?Send)]
-impl<'a, OS, Subscribers> message::ContentWrap<Wrap<'a, Subscribers>> for wrap::Context<OS>
+impl<'a, OS, Subscribers, Psks> message::ContentWrap<Wrap<'a, Subscribers, Psks>> for wrap::Context<OS>
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a [u8])> + Clone,
+    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
+    Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
+    Psks::IntoIter: ExactSizeIterator,
     OS: io::OStream,
 {
-    async fn wrap(&mut self, keyload: &mut Wrap<'a, Subscribers>) -> Result<&mut Self> {
+    async fn wrap(&mut self, keyload: &mut Wrap<'a, Subscribers, Psks>) -> Result<&mut Self> {
         let subscribers = keyload.subscribers.clone().into_iter();
+        let psks = keyload.psks.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
+        let n_psks = Size::new(psks.len());
         self.join(keyload.initial_state)?
             .absorb(NBytes::new(keyload.nonce))?
             .absorb(n_subscribers)?;
@@ -138,8 +161,17 @@ where
         for (subscriber, exchange_key) in subscribers {
             self.fork()
                 .mask(subscriber)?
-                .encrypt(subscriber.identifier(), exchange_key, &keyload.key)
+                .encrypt(subscriber.identifier(), &exchange_key.to_bytes(), &keyload.key)
                 .await?;
+        }
+        self.absorb(n_psks)?;
+        // Loop through provided pskids, masking the shared key for each one
+        for (pskid, psk) in psks {
+            self.fork()
+                .mask(pskid)?
+                .absorb(External::new(&NBytes::new(psk)))?
+                .commit()?
+                .mask(NBytes::new(&keyload.key))?;
         }
         self.absorb(External::new(&NBytes::new(&keyload.key)))?
             .sign(keyload.author_id)
@@ -151,34 +183,28 @@ where
 
 pub(crate) struct Unwrap<'a> {
     initial_state: &'a mut Spongos,
-    subscribers: Vec<Permissioned<Identifier>>,
+    pub(crate) subscribers: Vec<Permissioned<Identifier>>,
+    pub(crate) psks: Vec<PskId>,
+    psk_store: &'a HashMap<PskId, Psk>,
     author_id: Identifier,
     user_id: &'a Identity,
-    user_ke_key: &'a [u8],
 }
 
 impl<'a> Unwrap<'a> {
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
         user_id: &'a Identity,
-        user_ke_key: &'a [u8],
         author_id: Identifier,
+        psk_store: &'a HashMap<PskId, Psk>,
     ) -> Self {
         Self {
             initial_state,
-            subscribers: Default::default(),
+            subscribers: Vec::default(),
+            psks: Vec::default(),
+            psk_store,
             author_id,
             user_id,
-            user_ke_key,
         }
-    }
-
-    pub(crate) fn subscribers(&self) -> &[Permissioned<Identifier>] {
-        &self.subscribers
-    }
-
-    pub(crate) fn into_subscribers(self) -> Vec<Permissioned<Identifier>> {
-        self.subscribers
     }
 }
 
@@ -189,8 +215,9 @@ where
 {
     async fn unwrap(&mut self, keyload: &mut Unwrap<'a>) -> Result<&mut Self> {
         let mut nonce = [0u8; NONCE_SIZE];
-        let mut key = None;
+        let mut key: Option<[u8; KEY_SIZE]> = None;
         let mut n_subscribers = Size::default();
+        let mut n_psks = Size::default();
         self.join(keyload.initial_state)?
             .absorb(NBytes::new(&mut nonce))?
             .absorb(&mut n_subscribers)?;
@@ -201,19 +228,47 @@ where
             let mut subscriber_id = Permissioned::<Identifier>::default();
             fork.mask(&mut subscriber_id)?;
 
-            if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
-                fork.decrypt(keyload.user_id, keyload.user_ke_key, key.get_or_insert([0; KEY_SIZE]))
-                    .await?;
+            if key.is_some() {
+                fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
+            } else if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
+                fork.decrypt(
+                    keyload.user_id,
+                    &keyload.user_id._ke_sk().to_bytes(),
+                    key.get_or_insert([0u8; KEY_SIZE]),
+                )
+                .await?;
             } else {
                 // Key is meant for another subscriber, skip it
-                if subscriber_id.identifier().is_psk() {
-                    fork.drop(KEY_SIZE)?;
-                } else {
-                    fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
-                }
+                fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
             }
             keyload.subscribers.push(subscriber_id);
         }
+        self.absorb(&mut n_psks)?;
+
+        for _ in 0..n_psks.inner() {
+            let mut fork = self.fork();
+
+            // Loop thorugh provided psks and keys
+            let mut psk_id = PskId::default();
+            fork.mask(&mut psk_id)?;
+
+            if key.is_some() {
+                fork.drop(KEY_SIZE)?;
+            } else {
+                let mut masked_key = [0u8; KEY_SIZE];
+                if let Some(psk) = keyload.psk_store.get(&psk_id) {
+                    fork.absorb(External::new(&NBytes::new(psk)))?
+                        .commit()?
+                        .mask(NBytes::new(&mut masked_key))?;
+                    key = Some(masked_key);
+
+                    keyload.psks.push(psk_id);
+                } else {
+                    fork.drop(KEY_SIZE)?;
+                }
+            }
+        }
+
         if let Some(key) = key {
             self.absorb(External::new(&NBytes::new(&key)))?
                 .verify(&keyload.author_id)

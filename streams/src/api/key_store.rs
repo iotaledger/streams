@@ -8,7 +8,7 @@ use hashbrown::HashMap;
 use crypto::keys::x25519;
 
 // Streams
-use lets::id::{Identifier, Psk, PskId};
+use lets::id::Identifier;
 
 // Local
 
@@ -16,7 +16,6 @@ use lets::id::{Identifier, Psk, PskId};
 pub(crate) struct KeyStore {
     cursors: HashMap<Identifier, usize>,
     keys: HashMap<Identifier, x25519::PublicKey>,
-    psks: HashMap<PskId, Psk>,
 }
 
 impl KeyStore {
@@ -54,35 +53,12 @@ impl KeyStore {
         self.keys.iter().map(|(identifier, key)| (*identifier, *key))
     }
 
-    pub(crate) fn insert_psk(&mut self, id: PskId, psk: Psk) -> bool {
-        self.psks.insert(id, psk).is_none()
-    }
-
-    pub(crate) fn remove_psk(&mut self, pskid: PskId) -> bool {
-        self.psks.remove(&pskid).is_some()
-    }
-
-    pub(crate) fn psks(&self) -> impl Iterator<Item = (PskId, Psk)> + ExactSizeIterator + Clone + '_ {
-        self.psks.iter().map(|(pskid, psk)| (*pskid, *psk))
-    }
-
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
         self.cursors.remove(id).is_some() | self.keys.remove(id).is_some()
     }
 
     pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
-        self.psks
-            .keys()
-            .copied()
-            .map(Into::into)
-            .chain(self.keys.keys().copied())
-    }
-
-    pub(crate) fn get_exchange_key(&self, identifier: &Identifier) -> Option<&[u8]> {
-        match identifier {
-            Identifier::PskId(pskid) => self.psks.get(pskid).map(AsRef::as_ref),
-            _ => self.keys.get(identifier).map(AsRef::as_ref),
-        }
+        self.keys.keys().copied()
     }
 }
 
@@ -91,10 +67,6 @@ impl fmt::Debug for KeyStore {
         writeln!(f, "* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
             writeln!(f, "\t{:?} => {}", id, cursor)?;
-        }
-        writeln!(f, "* PSKs:")?;
-        for pskid in self.psks.keys() {
-            writeln!(f, "\t<{:x}>", pskid)?;
         }
         Ok(())
     }
@@ -105,7 +77,6 @@ impl Default for KeyStore {
         Self {
             cursors: HashMap::new(),
             keys: HashMap::new(),
-            psks: HashMap::new(),
         }
     }
 }

@@ -33,7 +33,7 @@ use spongos::{
 #[cfg(feature = "did")]
 use crate::id::did::{DataWrapper, DID};
 use crate::{
-    id::{ed25519::Ed25519, identifier::Identifier, psk::Psk},
+    id::{ed25519::Ed25519, identifier::Identifier},
     message::{ContentDecrypt, ContentSign, ContentSignSizeof},
 };
 
@@ -41,7 +41,6 @@ use crate::{
 #[allow(clippy::large_enum_variant)]
 pub enum Identity {
     Ed25519(Ed25519),
-    Psk(Psk),
     #[cfg(feature = "did")]
     DID(DID),
 }
@@ -56,31 +55,11 @@ impl Default for Identity {
 
 impl Identity {
     // #[deprecated = "to be removed once key exchange is encapsulated within Identity"]
-    pub fn _ke_sk(&self) -> Option<x25519::SecretKey> {
+    pub fn _ke_sk(&self) -> x25519::SecretKey {
         match self {
-            Self::Ed25519(ed25519) => {
-                let x_secret: x25519::SecretKey = ed25519.inner().into();
-                Some(x_secret)
-            }
-            Self::Psk(_) => None,
+            Self::Ed25519(ed25519) => ed25519.inner().into(),
             #[cfg(feature = "did")]
-            Self::DID(DID::PrivateKey(info)) => Some(info.ke_kp().0),
-            #[cfg(feature = "did")]
-            Self::DID(DID::Default) => unreachable!(),
-            // TODO: Account implementation
-        }
-    }
-
-    // #[deprecated = "to be removed once key exchange is encapsulated within Identity"]
-    pub fn _ke(&self) -> [u8; 32] {
-        match self {
-            Self::Psk(psk) => psk.to_bytes(),
-            Self::Ed25519(ed25519) => {
-                let x_secret: x25519::SecretKey = ed25519.inner().into();
-                x_secret.to_bytes()
-            }
-            #[cfg(feature = "did")]
-            Self::DID(DID::PrivateKey(info)) => info.ke_kp().0.to_bytes(),
+            Self::DID(DID::PrivateKey(info)) => info.ke_kp().0,
             #[cfg(feature = "did")]
             Self::DID(DID::Default) => unreachable!(),
             // TODO: Account implementation
@@ -90,7 +69,6 @@ impl Identity {
     pub fn to_identifier(&self) -> Identifier {
         match self {
             Self::Ed25519(ed25519) => ed25519.inner().public_key().into(),
-            &Self::Psk(psk) => psk.into(),
             #[cfg(feature = "did")]
             Self::DID(did) => did.info().did().into(),
         }
@@ -100,12 +78,6 @@ impl Identity {
 impl From<Ed25519> for Identity {
     fn from(ed25519: Ed25519) -> Self {
         Self::Ed25519(ed25519)
-    }
-}
-
-impl From<Psk> for Identity {
-    fn from(psk: Psk) -> Self {
-        Self::Psk(psk)
     }
 }
 
@@ -125,10 +97,9 @@ impl From<Identity> for Identifier {
 impl Mask<&Identity> for sizeof::Context {
     fn mask(&mut self, identity: &Identity) -> Result<&mut Self> {
         match identity {
-            Identity::Psk(psk) => self.mask(Uint8::new(0))?.mask(NBytes::new(psk)),
-            Identity::Ed25519(ed25519) => self.mask(Uint8::new(1))?.mask(NBytes::new(ed25519)),
+            Identity::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
             #[cfg(feature = "did")]
-            Identity::DID(did) => self.mask(Uint8::new(2))?.mask(did),
+            Identity::DID(did) => self.mask(Uint8::new(1))?.mask(did),
         }
     }
 }
@@ -140,10 +111,9 @@ where
 {
     fn mask(&mut self, identity: &Identity) -> Result<&mut Self> {
         match identity {
-            Identity::Psk(psk) => self.mask(Uint8::new(0))?.mask(NBytes::new(psk)),
-            Identity::Ed25519(ed25519) => self.mask(Uint8::new(1))?.mask(NBytes::new(ed25519)),
+            Identity::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
             #[cfg(feature = "did")]
-            Identity::DID(did) => self.mask(Uint8::new(2))?.mask(did),
+            Identity::DID(did) => self.mask(Uint8::new(1))?.mask(did),
         }
     }
 }
@@ -158,19 +128,13 @@ where
         self.mask(&mut oneof)?;
         match oneof.inner() {
             0 => {
-                let mut psk = Psk::default();
-                self.mask(NBytes::new(&mut psk))?;
-                *identity = Identity::Psk(psk);
-                Ok(self)
-            }
-            1 => {
                 let mut ed25519_bytes = [0; ed25519::SECRET_KEY_LENGTH];
                 self.mask(NBytes::new(&mut ed25519_bytes))?;
                 *identity = Identity::Ed25519(ed25519::SecretKey::from_bytes(ed25519_bytes).into());
                 Ok(self)
             }
             #[cfg(feature = "did")]
-            2 => {
+            1 => {
                 let mut did = DID::default();
                 self.mask(&mut did)?;
                 *identity = Identity::DID(did);
@@ -193,8 +157,6 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
                     .ed25519(ed25519.inner(), hash.as_ref())?;
                 Ok(self)
             }
-
-            Identity::Psk(_) => Err(anyhow!("PSKs cannot be used as signature keys")),
 
             #[cfg(feature = "did")]
             Identity::DID(did_impl) => match did_impl {
@@ -230,8 +192,6 @@ where
                     .ed25519(ed25519.inner(), hash.as_ref())?;
                 Ok(self)
             }
-
-            Identity::Psk(_) => Err(anyhow!("PSKs cannot be used as signature keys")),
 
             #[cfg(feature = "did")]
             Identity::DID(did_impl) => {
@@ -279,17 +239,12 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn decrypt(&mut self, recipient: &Identity, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
-        match recipient {
-            Identity::Psk(_) => self
-                .absorb(External::new(&NBytes::new(Psk::try_from(exchange_key)?)))?
-                .commit()?
-                .mask(NBytes::new(key)),
-            // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey introduction)
-            _ => match <[u8; 32]>::try_from(exchange_key) {
-                Ok(byte_array) => self.x25519(&x25519::SecretKey::from_bytes(byte_array), NBytes::new(key)),
-                Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
-            },
+    async fn decrypt(&mut self, _recipient: &Identity, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
+        // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
+        // introduction)
+        match <[u8; 32]>::try_from(exchange_key) {
+            Ok(byte_array) => self.x25519(&x25519::SecretKey::from_bytes(byte_array), NBytes::new(key)),
+            Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
         }
     }
 }
