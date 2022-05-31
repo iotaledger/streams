@@ -203,7 +203,6 @@ impl<T> UserBuilder<T> {
     /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
-    /// use lets::message::Topic;
     /// use streams::{id::Ed25519, transport::tangle, User};
     /// #
     /// # #[tokio::main]
@@ -215,14 +214,14 @@ impl<T> UserBuilder<T> {
     /// # let transport = test_transport.clone();
     /// # let mut author = User::builder()
     /// #     .with_identity(Ed25519::from_seed(author_seed))
-    /// #     .with_topic(Topic::from("Channel Base Topic"))
+    /// #     .with_topic("BASE_BRANCH")?
     /// #     .with_transport(transport.clone())
     /// #     .build()?;
     /// # let announcement_address = author.create_stream().await?.address();
     ///
     /// let author = User::builder()
     ///     .with_identity(Ed25519::from_seed(author_seed))
-    ///     .with_topic(Topic::from("Channel Base Topic"))
+    ///     .with_topic("BASE_BRANCH")?
     ///     .with_transport(transport)
     ///     .recover(announcement_address)
     ///     .await?;

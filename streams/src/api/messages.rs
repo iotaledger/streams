@@ -41,7 +41,7 @@ use crate::api::{
 /// ```
 /// use futures::TryStreamExt;
 ///
-/// use streams::{id::Ed25519, transport::tangle, Address, User, BASE_BRANCH};
+/// use streams::{id::Ed25519, transport::tangle, Address, User};
 ///
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
@@ -60,6 +60,7 @@ use crate::api::{
 /// let mut author = User::builder()
 ///     .with_identity(Ed25519::from_seed(author_seed))
 ///     .with_transport(author_transport)
+///     .with_topic("BASE_BRANCH")?
 /// #     .with_transport(test_author_transport)
 ///     .build()?;
 ///
@@ -73,13 +74,13 @@ use crate::api::{
 ///     .with_transport(subscriber_transport)
 ///     .build()?;
 ///
-/// let announcement = author.create_stream(1).await?;
+/// let announcement = author.create_stream().await?;
 /// subscriber.receive_message(announcement.address()).await?;
 /// let first_packet = author
-///     .send_signed_packet(&BASE_BRANCH, b"public payload", b"masked payload")
+///     .send_signed_packet("BASE_BRANCH", b"public payload", b"masked payload")
 ///     .await?;
 /// let second_packet = author
-///     .send_signed_packet(&BASE_BRANCH, b"another public payload", b"another masked payload")
+///     .send_signed_packet("BASE_BRANCH", b"another public payload", b"another masked payload")
 ///     .await?;
 ///
 /// #
@@ -344,21 +345,21 @@ mod tests {
         let p = b"payload";
         let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
 
-        let branch_1 = Topic::new(b"Branch 1")?;
-        let branch_announcement = author.new_branch(branch_1).await?;
-        let keyload_1 = author.send_keyload_for_all_rw(branch_1).await?;
+        let branch_1 = Topic::from("Branch 1");
+        let branch_announcement = author.new_branch(branch_1.clone()).await?;
+        let keyload_1 = author.send_keyload_for_all_rw(branch_1.clone()).await?;
         subscriber1.sync().await?;
-        let _packet_1 = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
+        let _packet_1 = subscriber1.send_signed_packet(branch_1.clone(), &p, &p).await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress
         // through the next messages
-        let _packet_2 = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
+        let _packet_2 = subscriber1.send_signed_packet(branch_1.clone(), &p, &p).await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
 
         author.sync().await?;
 
         // This packet has to wait in the `Messages::msg_queue` until `packet` is processed
-        let keyload_2 = author.send_keyload_for_all_rw(branch_1).await?;
+        let keyload_2 = author.send_keyload_for_all_rw(branch_1.clone()).await?;
 
         subscriber1.sync().await?;
         let last_signed_packet = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
@@ -403,9 +404,10 @@ mod tests {
         let transport = Rc::new(RefCell::new(bucket::Client::new()));
         let mut author = User::builder()
             .with_identity(Ed25519::from_seed("author"))
+            .with_topic("BASE_BRANCH")?
             .with_transport(transport.clone())
             .build()?;
-        let announcement = author.create_stream(10).await?;
+        let announcement = author.create_stream().await?;
         let subscriber =
             subscriber_fixture("subscriber", &mut author, announcement.address(), transport.clone()).await?;
         Ok((author, subscriber, announcement.address(), transport))
