@@ -163,4 +163,3 @@ mod tests {
         assert!(!branch_store.is_cursor_tracked(&topic_2, &identifier));
     }
 }
-

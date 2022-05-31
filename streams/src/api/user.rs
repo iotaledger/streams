@@ -36,7 +36,10 @@ use spongos::{
 
 // Local
 use crate::{
-    api::{cursor_store::BranchStore, message::Message, messages::Messages, send_response::SendResponse, user_builder::UserBuilder},
+    api::{
+        cursor_store::BranchStore, message::Message, messages::Messages, send_response::SendResponse,
+        user_builder::UserBuilder,
+    },
     message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
 };
 
@@ -162,18 +165,23 @@ impl<T> User<T> {
     }
 
     fn should_store_cursor(&self, topic: &Topic, subscriber: &Permissioned<Identifier>) -> bool {
-        let no_tracked_cursor = !self.state.cursor_store.is_cursor_tracked(topic, subscriber.identifier());
+        let no_tracked_cursor = !self
+            .state
+            .cursor_store
+            .is_cursor_tracked(topic, subscriber.identifier());
         !subscriber.is_readonly() && no_tracked_cursor
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        self.state.exchange_keys
+        self.state
+            .exchange_keys
             .insert(
                 subscriber,
                 subscriber
                     ._ke_pk()
                     .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
-            ).is_none()
+            )
+            .is_none()
     }
 
     pub fn remove_subscriber(&mut self, id: Identifier) -> bool {
@@ -839,7 +847,9 @@ where
                     .insert_cursor(&topic, *subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
-        self.state.cursor_store.insert_cursor(&topic, self.identifier(), new_cursor);
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address)?;
@@ -938,7 +948,9 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.cursor_store.insert_cursor(&topic, self.identifier(), new_cursor);
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address)?;
@@ -1003,7 +1015,9 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.cursor_store.insert_cursor(&topic, self.identifier(), new_cursor);
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address)?;
@@ -1154,7 +1168,9 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
                 let mut subscriber = Identifier::default();
                 let mut cursor = Size::default();
                 self.mask(&mut subscriber)?.mask(&mut cursor)?;
-                user_state.cursor_store.insert_cursor(&topic, subscriber, cursor.inner());
+                user_state
+                    .cursor_store
+                    .insert_cursor(&topic, subscriber, cursor.inner());
             }
         }
 
