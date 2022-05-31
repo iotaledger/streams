@@ -137,7 +137,7 @@ impl Default for CursorStore {
 
 #[cfg(test)]
 mod tests {
-    use super::{BranchStore, CursorStore};
+    use super::BranchStore;
     use alloc::string::ToString;
     use lets::{
         id::{Ed25519, Identity},
@@ -151,8 +151,8 @@ mod tests {
         let topic_1 = Topic::new("topic 1".to_string());
         let topic_2 = Topic::new("topic 2".to_string());
 
-        branch_store.insert_branch(topic_1.clone(), CursorStore::new());
-        branch_store.insert_branch(topic_2.clone(), CursorStore::new());
+        branch_store.new_branch(topic_1.clone());
+        branch_store.new_branch(topic_2.clone());
 
         branch_store.insert_cursor(&topic_1, identifier, 10);
         branch_store.insert_cursor(&topic_2, identifier, 20);
