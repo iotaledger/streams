@@ -7,7 +7,6 @@ use core::fmt;
 use hashbrown::HashMap;
 
 // IOTA
-use crypto::keys::x25519;
 
 // Streams
 use lets::{address::Address, id::Identifier, message::Topic};
@@ -15,7 +14,7 @@ use lets::{address::Address, id::Identifier, message::Topic};
 // Local
 
 #[derive(Default, Clone, PartialEq, Eq)]
-pub(crate) struct BranchStore(HashMap<Topic, KeyStore>);
+pub(crate) struct BranchStore(HashMap<Topic, CursorStore>);
 
 impl BranchStore {
     pub(crate) fn new() -> Self {
@@ -23,7 +22,7 @@ impl BranchStore {
     }
 
     pub(crate) fn new_branch(&mut self, topic: Topic) -> bool {
-        self.0.insert(topic, KeyStore::default()).is_none()
+        self.0.insert(topic, CursorStore::default()).is_none()
     }
 
     pub(crate) fn topics(&self) -> Vec<&Topic> {
@@ -38,7 +37,7 @@ impl BranchStore {
     pub(crate) fn remove_from_all(&mut self, id: &Identifier) -> bool {
         let mut removed = false;
         self.0.iter_mut().for_each(|(_topic, branch)| {
-            if branch.remove(id) {
+            if branch.cursors.remove(id).is_some() {
                 removed = true
             }
         });
@@ -50,15 +49,11 @@ impl BranchStore {
         old_branch.map_or(false, |key_store| self.0.insert(new_topic.clone(), key_store).is_none())
     }
 
-    pub(crate) fn insert_branch(&mut self, topic: Topic, branch: KeyStore) -> bool {
-        self.0.insert(topic, branch).is_none()
-    }
-
-    pub(crate) fn get_branch(&self, topic: &Topic) -> Result<&KeyStore> {
+    fn get_branch(&self, topic: &Topic) -> Result<&CursorStore> {
         self.0.get(topic).ok_or_else(|| anyhow!("Branch not found in store"))
     }
 
-    pub(crate) fn get_branch_mut(&mut self, topic: &Topic) -> Result<&mut KeyStore> {
+    fn get_branch_mut(&mut self, topic: &Topic) -> Result<&mut CursorStore> {
         self.0
             .get_mut(topic)
             .ok_or_else(|| anyhow!("Branch not found in store"))
@@ -78,28 +73,9 @@ impl BranchStore {
             .map(|branch| branch.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor)))
     }
 
-    pub(crate) fn keys(
-        &self,
-        topic: &Topic,
-    ) -> Result<impl Iterator<Item = (Identifier, x25519::PublicKey)> + ExactSizeIterator + Clone + '_> {
-        self.get_branch(topic)
-            .map(|branch| branch.keys.iter().map(|(identifier, key)| (*identifier, *key)))
-    }
-
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> bool {
         self.get_branch_mut(topic)
             .map_or(false, |branch| branch.cursors.insert(id, cursor).is_none())
-    }
-
-    pub(crate) fn insert_key(&mut self, topic: &Topic, id: Identifier, xkey: x25519::PublicKey) -> bool {
-        self.get_branch_mut(topic)
-            .map_or(false, |branch| branch.keys.insert(id, xkey).is_none())
-    }
-
-    pub(crate) fn get_key(&self, topic: &Topic, identifier: &Identifier) -> Option<&x25519::PublicKey> {
-        self.get_branch(topic)
-            .ok()
-            .and_then(|branch| branch.keys.get(identifier))
     }
 
     pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
@@ -121,38 +97,19 @@ impl BranchStore {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub(crate) struct KeyStore {
+pub(crate) struct CursorStore {
     cursors: HashMap<Identifier, usize>,
-    keys: HashMap<Identifier, x25519::PublicKey>,
     anchor: Address,
     latest_link: Address,
 }
 
-impl KeyStore {
-    pub(crate) fn new() -> Self {
-        Self::default()
-    }
-
-    pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
-        self.cursors.remove(id).is_some() | self.keys.remove(id).is_some()
-    }
-
-    pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
-        self.keys.keys().copied()
-    }
-}
-
-impl fmt::Debug for KeyStore {
+impl fmt::Debug for CursorStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "\t* anchor: {}", self.anchor)?;
         writeln!(f, "\t* latest link: {}", self.latest_link.relative())?;
         writeln!(f, "\t* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
             writeln!(f, "\t\t{} => {}", id, cursor)?;
-        }
-        writeln!(f, "\t* keys")?;
-        for (id, key) in self.keys.iter() {
-            writeln!(f, "\t\t{} => {:?}", id, key.as_ref())?;
         }
         Ok(())
     }
@@ -168,11 +125,10 @@ impl fmt::Debug for BranchStore {
     }
 }
 
-impl Default for KeyStore {
+impl Default for CursorStore {
     fn default() -> Self {
         Self {
             cursors: HashMap::new(),
-            keys: HashMap::new(),
             anchor: Address::default(),
             latest_link: Address::default(),
         }
@@ -181,7 +137,7 @@ impl Default for KeyStore {
 
 #[cfg(test)]
 mod tests {
-    use super::{BranchStore, KeyStore};
+    use super::{BranchStore, CursorStore};
     use alloc::string::ToString;
     use lets::{
         id::{Ed25519, Identity},
@@ -195,8 +151,8 @@ mod tests {
         let topic_1 = Topic::new("topic 1".to_string());
         let topic_2 = Topic::new("topic 2".to_string());
 
-        branch_store.insert_branch(topic_1.clone(), KeyStore::new());
-        branch_store.insert_branch(topic_2.clone(), KeyStore::new());
+        branch_store.insert_branch(topic_1.clone(), CursorStore::new());
+        branch_store.insert_branch(topic_2.clone(), CursorStore::new());
 
         branch_store.insert_cursor(&topic_1, identifier, 10);
         branch_store.insert_cursor(&topic_2, identifier, 20);
@@ -207,3 +163,4 @@ mod tests {
         assert!(!branch_store.is_cursor_tracked(&topic_2, &identifier));
     }
 }
+

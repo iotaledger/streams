@@ -1,5 +1,5 @@
 /// Identifier Key storage. Used for keeping track of channel state
-mod key_store;
+mod cursor_store;
 
 pub(crate) mod message;
 mod messages;
