@@ -10,11 +10,7 @@ use hashbrown::HashMap;
 use crypto::keys::x25519;
 
 // Streams
-use lets::{
-    address::Address,
-    id::Identifier,
-    message::Topic,
-};
+use lets::{address::Address, id::Identifier, message::Topic};
 
 // Local
 
@@ -41,13 +37,11 @@ impl BranchStore {
 
     pub(crate) fn remove_from_all(&mut self, id: &Identifier) -> bool {
         let mut removed = false;
-        self.0
-            .iter_mut()
-            .for_each(|(_topic, branch)| {
-                if branch.remove(id) {
-                    removed = true
-                }
-            });
+        self.0.iter_mut().for_each(|(_topic, branch)| {
+            if branch.remove(id) {
+                removed = true
+            }
+        });
         removed
     }
 
@@ -187,8 +181,8 @@ impl Default for KeyStore {
 
 #[cfg(test)]
 mod tests {
-    use alloc::string::ToString;
     use super::{BranchStore, KeyStore};
+    use alloc::string::ToString;
     use lets::{
         id::{Ed25519, Identity},
         message::Topic,

@@ -65,9 +65,10 @@ impl Bytes<&mut Vec<u8>> {
     // TODO: Remove anyhow error and replace with no_std compatible error handling
     pub(crate) fn resize(&mut self, new_size: usize) -> anyhow::Result<()> {
         if new_size > u32::MAX as usize {
-            return Err(anyhow!("{} exceeds maximum available space for Byte resize", new_size))
+            return Err(anyhow!("{} exceeds maximum available space for Byte resize", new_size));
         }
-        Ok(self.0.resize(new_size, 0))
+        self.0.resize(new_size, 0);
+        Ok(())
     }
 }
 

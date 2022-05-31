@@ -1,10 +1,8 @@
-use alloc::{string::String};
-use alloc::string::ToString;
-use alloc::vec::Vec;
-use core::{
-    convert::TryFrom,
-    fmt::Formatter,
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
 };
+use core::{convert::TryFrom, fmt::Formatter};
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Mask},
@@ -29,7 +27,6 @@ impl From<&str> for Topic {
     }
 }
 
-
 impl TryFrom<&[u8]> for Topic {
     type Error = anyhow::Error;
     fn try_from(t: &[u8]) -> Result<Self, Self::Error> {
@@ -52,9 +49,7 @@ impl AsRef<[u8]> for Topic {
 
 impl AsMut<Vec<u8>> for Topic {
     fn as_mut(&mut self) -> &mut Vec<u8> {
-        unsafe {
-            self.0.as_mut_vec()
-        }
+        unsafe { self.0.as_mut_vec() }
     }
 }
 

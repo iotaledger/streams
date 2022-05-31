@@ -148,7 +148,7 @@ impl AppAddr {
         let mut s = Spongos::<KeccakF1600>::init();
         s.absorb(base_topic);
         s.commit();
-        let squeezed_topic: [u8;8] = s.squeeze();
+        let squeezed_topic: [u8; 8] = s.squeeze();
         assert_eq!(id_bytes.len(), 32, "identifier must be 32 bytes long");
         addr[..32].copy_from_slice(id_bytes);
         addr[32..].copy_from_slice(&squeezed_topic);

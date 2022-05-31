@@ -1,7 +1,9 @@
 // Rust
 use alloc::{boxed::Box, format, string::String, vec::Vec};
-use core::convert::TryInto;
-use core::fmt::{Debug, Formatter, Result as FormatResult};
+use core::{
+    convert::TryInto,
+    fmt::{Debug, Formatter, Result as FormatResult},
+};
 
 // 3rd-party
 use anyhow::{anyhow, bail, ensure, Result};
@@ -98,13 +100,7 @@ impl<T> User<T> {
             psk_store.insert(pskid, psk);
         });
 
-        id_store.insert_key(
-                &base_topic,
-                user_id.to_identifier(),
-                user_id
-                    ._ke_sk()
-                    .public_key(),
-        );
+        id_store.insert_key(&base_topic, user_id.to_identifier(), user_id._ke_sk().public_key());
 
         Self {
             transport,
@@ -164,7 +160,11 @@ impl<T> User<T> {
 
     pub fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
         // unwrap is fine here because the base branch is created when user is generated
-        self.state.id_store.get_branch(&self.base_branch()).unwrap().subscribers()
+        self.state
+            .id_store
+            .get_branch(&self.base_branch())
+            .unwrap()
+            .subscribers()
     }
 
     fn should_store_cursor(&self, topic: &Topic, subscriber: &Permissioned<Identifier>) -> bool {
@@ -599,7 +599,12 @@ where
         };
 
         // Prepare HDF and PCF
-        let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, self.identifier(), topic.clone())?;
+        let header = HDF::new(
+            message_types::ANNOUNCEMENT,
+            user_cursor,
+            self.identifier(),
+            topic.clone(),
+        )?;
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(&self.state.user_id));
 
         // Wrap message
@@ -643,7 +648,12 @@ where
         // Link message to channel announcement
         let link_to = self.get_anchor(&base_branch)?;
 
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), base_branch.clone(), SUB_MESSAGE_NUM);
+        let rel_address = MsgId::gen(
+            stream_address.base(),
+            self.identifier(),
+            base_branch.clone(),
+            SUB_MESSAGE_NUM,
+        );
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -703,7 +713,12 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&base_branch)?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), base_branch.clone(), new_cursor);
+        let rel_address = MsgId::gen(
+            stream_address.base(),
+            self.identifier(),
+            base_branch.clone(),
+            new_cursor,
+        );
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -811,8 +826,8 @@ where
             nonce,
             &self.state.user_id,
         ));
-        let header =
-            HDF::new(message_types::KEYLOAD, new_cursor, self.identifier(), topic.clone())?.with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::KEYLOAD, new_cursor, self.identifier(), topic.clone())?
+            .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -912,8 +927,13 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::SIGNED_PACKET, new_cursor, self.identifier(), topic.clone())?
-            .with_linked_msg_address(link_to);
+        let header = HDF::new(
+            message_types::SIGNED_PACKET,
+            new_cursor,
+            self.identifier(),
+            topic.clone(),
+        )?
+        .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -972,8 +992,13 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::TAGGED_PACKET, new_cursor, self.identifier(), topic.clone())?
-            .with_linked_msg_address(link_to);
+        let header = HDF::new(
+            message_types::TAGGED_PACKET,
+            new_cursor,
+            self.identifier(),
+            topic.clone(),
+        )?
+        .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;

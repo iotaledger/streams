@@ -9,8 +9,12 @@ use async_trait::async_trait;
 // IOTA
 
 // Streams
-use lets::{address::Address, id::{Identity, Psk, PskId}, message::TransportMessage, transport::Transport};
-use lets::message::Topic;
+use lets::{
+    address::Address,
+    id::{Identity, Psk, PskId},
+    message::{Topic, TransportMessage},
+    transport::Transport,
+};
 
 // Local
 use crate::api::user::User;
@@ -169,9 +173,7 @@ impl<T> UserBuilder<T> {
             .transport
             .ok_or_else(|| anyhow!("transport not specified, cannot build User without Transport"))?;
 
-        let topic = self
-            .topic
-            .unwrap_or_default();
+        let topic = self.topic.unwrap_or_default();
 
         Ok(User::new(id, topic, self.psks, transport))
     }
@@ -201,8 +203,8 @@ impl<T> UserBuilder<T> {
     /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
-    /// use streams::{id::Ed25519, transport::tangle, User};
     /// use lets::message::Topic;
+    /// use streams::{id::Ed25519, transport::tangle, User};
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
