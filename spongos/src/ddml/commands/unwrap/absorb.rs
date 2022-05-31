@@ -91,7 +91,7 @@ impl<F: PRP, IS: io::IStream> Absorb<Bytes<&mut Vec<u8>>> for Context<IS, F> {
     fn absorb(&mut self, mut bytes: Bytes<&mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.absorb(&mut size)?;
-        bytes.resize(size.inner());
+        bytes.resize(size.inner())?;
         AbsorbContext::new(self).unwrapn(bytes)?;
         Ok(self)
     }

@@ -89,7 +89,7 @@ impl<'a, F: PRP, IS: io::IStream> Mask<Bytes<&'a mut Vec<u8>>> for Context<IS, F
     fn mask(&mut self, mut bytes: Bytes<&'a mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
         self.mask(&mut size)?;
-        bytes.resize(size.inner());
+        bytes.resize(size.inner())?;
         MaskContext::new(self).unwrapn(bytes)?;
         Ok(self)
     }
