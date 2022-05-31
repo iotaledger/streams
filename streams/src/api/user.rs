@@ -33,7 +33,7 @@ use spongos::{
 // Local
 use crate::{
     api::{
-        key_store::CursorStore, message::Message, messages::Messages, send_response::SendResponse,
+        cursor_store::CursorStore, message::Message, messages::Messages, send_response::SendResponse,
         user_builder::UserBuilder,
     },
     message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
