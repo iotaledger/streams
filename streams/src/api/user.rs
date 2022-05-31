@@ -64,6 +64,9 @@ struct State {
     /// by branch topic Vec.
     id_store: BranchStore,
 
+    /// Mapping of trusted pre shared keys and identifiers
+    psk_store: HashMap<PskId, Psk>,
+
     spongos_store: HashMap<MsgId, Spongos>,
 
     base_topic: Topic,
@@ -82,29 +85,33 @@ impl User<()> {
 }
 
 impl<T> User<T> {
-    pub(crate) fn new(user_id: Identity, base_topic: Topic, transport: T) -> Self {
+    pub(crate) fn new<Psks>(user_id: Identity, base_topic: Topic, psks: Psks, transport: T) -> Self
+    where
+        Psks: IntoIterator<Item = (PskId, Psk)>,
+    {
         let mut id_store = BranchStore::new();
         id_store.insert_branch(base_topic.clone(), KeyStore::new());
 
-        // If User is using a Psk as their base Identifier, store the Psk
-        if let Identity::Psk(psk) = user_id {
-            id_store.insert_psk(&base_topic, psk.to_pskid(), psk);
-        } else {
-            id_store.insert_key(
+        let mut psk_store = HashMap::new();
+        // Store any pre shared keys
+        psks.into_iter().for_each(|(pskid, psk)| {
+            psk_store.insert(pskid, psk);
+        });
+
+        id_store.insert_key(
                 &base_topic,
                 user_id.to_identifier(),
                 user_id
                     ._ke_sk()
-                    .expect("except PSK, all identities must be able to derive an x25519 key")
                     .public_key(),
-            );
-        }
+        );
 
         Self {
             transport,
             state: State {
                 user_id,
                 id_store,
+                psk_store,
                 spongos_store: Default::default(),
                 stream_address: None,
                 author_identifier: None,
@@ -162,8 +169,7 @@ impl<T> User<T> {
 
     fn should_store_cursor(&self, topic: &Topic, subscriber: &Permissioned<Identifier>) -> bool {
         let no_tracked_cursor = !self.state.id_store.is_cursor_tracked(topic, subscriber.identifier());
-        let must_track_cursor = !subscriber.identifier().is_psk() && !subscriber.is_readonly();
-        must_track_cursor && no_tracked_cursor
+        !subscriber.is_readonly() && no_tracked_cursor
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
@@ -181,11 +187,11 @@ impl<T> User<T> {
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
-        self.state.id_store.insert_psk(&self.base_branch(), psk.to_pskid(), psk)
+        self.state.psk_store.insert(psk.to_pskid(), psk).is_none()
     }
 
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
-        self.state.id_store.remove_psk_from_all(pskid)
+        self.state.psk_store.remove(&pskid).is_some()
     }
 
     fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
@@ -287,9 +293,7 @@ impl<T> User<T> {
             }
         };
         let topic = preparsed.header().topic().clone();
-        let user_ke_sk = &self.state.user_id._ke_sk().ok_or_else(|| {
-            anyhow!("reader of a stream must have an identity from which an x25519 secret-key can be derived")
-        })?;
+        let user_ke_sk = &self.state.user_id._ke_sk();
         let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
         let (message, _spongos) = preparsed.unwrap(subscription).await?;
 
@@ -365,12 +369,11 @@ impl<T> User<T> {
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
         // TODO: Remove Psk from Identity and Identifier, and manage it as a complementary permission
-        let user_ke_sk = self.state.user_id._ke();
         let keyload = keyload::Unwrap::new(
             &mut announcement_spongos,
             &self.state.user_id,
-            &user_ke_sk,
             author_identifier,
+            &self.state.psk_store,
         );
         let (message, spongos) = preparsed.unwrap(keyload).await?;
 
@@ -378,7 +381,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        for subscriber in message.payload().content().subscribers() {
+        for subscriber in &message.payload().content().subscribers {
             if self.should_store_cursor(&topic, subscriber) {
                 self.state
                     .id_store
@@ -739,14 +742,16 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
-    pub async fn send_keyload<'a, Subscribers, Top>(
+    pub async fn send_keyload<'a, Subscribers, Psks, Top>(
         &mut self,
         topic: Top,
         subscribers: Subscribers,
+        psk_ids: Psks,
     ) -> Result<SendResponse<TSR>>
     where
         Subscribers: IntoIterator<Item = Permissioned<Identifier>> + Clone,
         Top: AsRef<[u8]>,
+        Psks: IntoIterator<Item = PskId>,
     {
         // Check conditions
         let stream_address = self
@@ -781,14 +786,27 @@ where
                     subscriber,
                     self.state
                         .id_store
-                        .get_exchange_key(&self.base_branch(), subscriber.identifier())
+                        .get_key(&self.base_branch(), subscriber.identifier())
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
+                ))
+            })
+            .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
+        let psk_ids_with_psks = psk_ids
+            .into_iter()
+            .map(|pskid| {
+                Ok((
+                    pskid,
+                    self.state
+                        .psk_store
+                        .get(&pskid)
+                        .ok_or_else(|| anyhow!("unkown psk '{:?}'", pskid))?,
                 ))
             })
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut linked_msg_spongos,
             &subscribers_with_keys,
+            &psk_ids_with_psks,
             encryption_key,
             nonce,
             &self.state.user_id,
@@ -826,10 +844,13 @@ where
     where
         Top: AsRef<[u8]>,
     {
+        let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
+        let subscribers: Vec<Permissioned<Identifier>> = self.subscribers().map(Permissioned::Read).collect();
         self.send_keyload(
             topic,
             // Alas, must collect to release the &self immutable borrow
-            self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
+            subscribers,
+            psks,
         )
         .await
     }
@@ -838,12 +859,16 @@ where
     where
         Top: AsRef<[u8]>,
     {
+        let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
+        let subscribers: Vec<Permissioned<Identifier>> = self
+            .subscribers()
+            .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
+            .collect();
         self.send_keyload(
             topic,
             // Alas, must collect to release the &self immutable borrow
-            self.subscribers()
-                .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
-                .collect::<Vec<_>>(),
+            subscribers,
+            psks,
         )
         .await
     }
@@ -1007,13 +1032,13 @@ impl ContentSizeof<State> for sizeof::Context {
             for (subscriber, ke_pk) in keys {
                 self.mask(&subscriber)?.mask(&ke_pk)?;
             }
+        }
 
-            let psks = user_state.id_store.psks(topic)?;
-            let amount_psks = psks.len();
-            self.mask(Size::new(amount_psks))?;
-            for (pskid, psk) in psks {
-                self.mask(&pskid)?.mask(&psk)?;
-            }
+        let psks = user_state.psk_store.iter();
+        let amount_psks = psks.len();
+        self.mask(Size::new(amount_psks))?;
+        for (pskid, psk) in psks {
+            self.mask(pskid)?.mask(psk)?;
         }
 
         self.commit()?.squeeze(Mac::new(32))?;
@@ -1058,13 +1083,13 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
             for (subscriber, ke_pk) in keys {
                 self.mask(&subscriber)?.mask(&ke_pk)?;
             }
+        }
 
-            let psks = user_state.id_store.psks(topic)?;
-            let amount_psks = psks.len();
-            self.mask(Size::new(amount_psks))?;
-            for (pskid, psk) in psks {
-                self.mask(&pskid)?.mask(&psk)?;
-            }
+        let psks = user_state.psk_store.iter();
+        let amount_psks = psks.len();
+        self.mask(Size::new(amount_psks))?;
+        for (pskid, psk) in psks {
+            self.mask(pskid)?.mask(psk)?;
         }
 
         self.commit()?.squeeze(Mac::new(32))?;
@@ -1124,15 +1149,15 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
                 self.mask(&mut subscriber)?.mask(&mut key)?;
                 user_state.id_store.insert_key(&topic, subscriber, key);
             }
+        }
 
-            let mut amount_psks = Size::default();
-            self.mask(&mut amount_psks)?;
-            for _ in 0..amount_psks.inner() {
-                let mut pskid = PskId::default();
-                let mut psk = Psk::default();
-                self.mask(&mut pskid)?.mask(&mut psk)?;
-                user_state.id_store.insert_psk(&topic, pskid, psk);
-            }
+        let mut amount_psks = Size::default();
+        self.mask(&mut amount_psks)?;
+        for _ in 0..amount_psks.inner() {
+            let mut pskid = PskId::default();
+            let mut psk = Psk::default();
+            self.mask(&mut pskid)?.mask(&mut psk)?;
+            user_state.psk_store.insert(pskid, psk);
         }
 
         self.commit()?.squeeze(Mac::new(32))?;
@@ -1144,10 +1169,15 @@ impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
             f,
-            "\n* identifier: <{}>\n* topic: {}\n{:?}\n* messages:\n{}\n",
+            "\n* identifier: <{}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
             self.identifier(),
             self.base_branch(),
             self.state.id_store,
+            self.state
+                .psk_store
+                .keys()
+                .map(|pskid| format!("\t<{:?}>\n", pskid))
+                .collect::<String>(),
             self.state
                 .spongos_store
                 .keys()

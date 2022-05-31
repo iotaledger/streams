@@ -79,13 +79,7 @@ impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, subscription: &Wrap<'a>) -> Result<&mut Self> {
         self.x25519(subscription.author_ke_pk, NBytes::new(subscription.unsubscribe_key))?
             .mask(&subscription.subscriber_id.to_identifier())?
-            .absorb(
-                &subscription
-                    .subscriber_id
-                    ._ke_sk()
-                    .expect("only users with an identity capable of key exchange can send subscriptions")
-                    .public_key(),
-            )?
+            .absorb(&subscription.subscriber_id._ke_sk().public_key())?
             .sign_sizeof(subscription.subscriber_id)
             .await?;
         Ok(self)
@@ -101,13 +95,7 @@ where
         self.join(subscription.initial_state)?
             .x25519(subscription.author_ke_pk, NBytes::new(subscription.unsubscribe_key))?
             .mask(&subscription.subscriber_id.to_identifier())?
-            .absorb(
-                &subscription
-                    .subscriber_id
-                    ._ke_sk()
-                    .expect("only users with an identity capable of key exchange can send subscriptions")
-                    .public_key(),
-            )?
+            .absorb(&subscription.subscriber_id._ke_sk().public_key())?
             .sign(subscription.subscriber_id)
             .await?;
         Ok(self)

@@ -31,14 +31,6 @@ impl Psk {
         spongos.sponge(seed)
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.0
-    }
-
-    pub(crate) fn to_bytes(self) -> [u8; 32] {
-        self.0
-    }
-
     pub fn to_pskid(self) -> PskId {
         let mut spongos = Spongos::<KeccakF1600>::init();
         spongos.absorb("PSKID");
@@ -79,10 +71,6 @@ impl PskId {
         T: AsRef<[u8]>,
     {
         Psk::from_seed::<T>(seed).to_pskid()
-    }
-
-    pub(crate) fn as_bytes(&self) -> &[u8] {
-        &self.0
     }
 }
 

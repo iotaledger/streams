@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 // Streams
 use lets::{
     address::Address,
-    id::{Identifier, Permissioned},
+    id::{Identifier, Permissioned, PskId},
     message::{Message as LetsMessage, PreparsedMessage, TransportMessage, HDF},
 };
 
@@ -185,11 +185,16 @@ pub struct Announcement {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Keyload {
     pub subscribers: Vec<Permissioned<Identifier>>,
+    pub psks: Vec<PskId>,
 }
 
 impl Keyload {
-    pub fn includes(&self, subscriber: Identifier) -> bool {
+    pub fn includes_subscriber(&self, subscriber: Identifier) -> bool {
         self.subscribers.iter().any(|s| s.identifier() == &subscriber)
+    }
+
+    pub fn includes_psk(&self, psk_id: &PskId) -> bool {
+        self.psks.iter().any(|id| id == psk_id)
     }
 }
 
@@ -253,7 +258,8 @@ impl<'a> From<subscription::Unwrap<'a>> for MessageContent {
 impl<'a> From<keyload::Unwrap<'a>> for MessageContent {
     fn from(keyload: keyload::Unwrap<'a>) -> Self {
         Self::Keyload(Keyload {
-            subscribers: keyload.into_subscribers(),
+            psks: keyload.psks,
+            subscribers: keyload.subscribers,
         })
     }
 }

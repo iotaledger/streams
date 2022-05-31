@@ -1,5 +1,5 @@
 // Rust
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 use core::convert::TryInto;
 
 // 3rd-party
@@ -9,7 +9,7 @@ use async_trait::async_trait;
 // IOTA
 
 // Streams
-use lets::{address::Address, id::Identity, message::TransportMessage, transport::Transport};
+use lets::{address::Address, id::{Identity, Psk, PskId}, message::TransportMessage, transport::Transport};
 use lets::message::Topic;
 
 // Local
@@ -22,6 +22,8 @@ pub struct UserBuilder<T> {
     topic: Option<Topic>,
     /// Transport Client instance
     transport: Option<T>,
+    /// Pre Shared Keys
+    psks: Vec<(PskId, Psk)>,
 }
 
 impl<T> Default for UserBuilder<T> {
@@ -30,6 +32,7 @@ impl<T> Default for UserBuilder<T> {
             id: None,
             topic: None,
             transport: None,
+            psks: Default::default(),
         }
     }
 }
@@ -66,18 +69,55 @@ impl<T> UserBuilder<T> {
             transport: Some(transport),
             topic: self.topic,
             id: self.id,
+            psks: self.psks,
         }
     }
 
     /// Use the default version of the Transport Client
-    pub async fn with_default_transport(mut self) -> Result<Self>
+    pub async fn with_default_transport<NewTransport>(self) -> Result<UserBuilder<NewTransport>>
     where
-        T: for<'a> Transport<'a> + DefaultTransport,
+        NewTransport: for<'a> Transport<'a> + DefaultTransport,
     {
         // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke
         // bound T: DefaultTransport for all transports
-        self.transport = Some(T::try_default().await?);
-        Ok(self)
+        Ok(UserBuilder {
+            transport: Some(NewTransport::try_default().await?),
+            topic: self.topic,
+            id: self.id,
+            psks: self.psks,
+        })
+    }
+
+    /// Inject a new Pre Shared Key and Id into the User Builder
+    ///
+    /// # Examples
+    /// ## Add Multiple Psks
+    /// ```
+    /// # use anyhow::Result;
+    /// use lets::id::Psk;
+    /// use streams::{id::Ed25519, transport::tangle, User};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let author_seed = "author_secure_seed";
+    /// let psk1 = Psk::from_seed(b"Psk1");
+    /// let psk2 = Psk::from_seed(b"Psk2");
+    /// let user = User::builder()
+    ///     .with_identity(Ed25519::from_seed(author_seed))
+    ///     .with_default_transport::<tangle::Client>()
+    ///     .await?
+    ///     .with_psk(psk1.to_pskid(), psk1)
+    ///     .with_psk(psk2.to_pskid(), psk2)
+    ///     .build()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Arguments
+    /// * `pskid` - Pre Shared Key Identifier
+    /// * `psk` - Pre Shared Key shared outside of Streams scope
+    pub fn with_psk(mut self, pskid: PskId, psk: Psk) -> Self {
+        self.psks.push((pskid, psk));
+        self
     }
 
     /// Insert a topic to be used in the channel creation
@@ -104,47 +144,17 @@ impl<T> UserBuilder<T> {
     /// # Examples
     /// ## User from Ed25519
     /// ```
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
     /// # use anyhow::Result;
-    /// # use streams::transport::bucket;
     /// use streams::{id::Ed25519, transport::tangle, User};
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
-    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
-    /// #
-    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
-    ///
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .with_transport(transport)
-    ///     .build()?;
-    ///
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// ## User from Psk
-    /// ```
-    /// # use std::cell::RefCell;
-    /// # use std::rc::Rc;
-    /// # use anyhow::Result;
-    /// # use streams::transport::bucket;
-    /// use streams::{id::Psk, transport::tangle, User};
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<()> {
-    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
-    /// #
-    /// # let transport: Rc<RefCell<bucket::Client>> = Rc::new(RefCell::new(bucket::Client::new()));
-    /// #
-    /// let psk_seed = "seed-for-pre-shared-key";
-    ///
-    /// let mut user = User::builder()
-    ///     .with_identity(Psk::from_seed(psk_seed))
-    ///     .with_transport(transport)
+    ///     .with_default_transport::<tangle::Client>()
+    ///     .await?
+    ///     .with_identity(Ed25519::from_seed(user_seed))
     ///     .build()?;
     ///
     /// # Ok(())
@@ -163,7 +173,7 @@ impl<T> UserBuilder<T> {
             .topic
             .unwrap_or_default();
 
-        Ok(User::new(id, topic, transport))
+        Ok(User::new(id, topic, self.psks, transport))
     }
 
     /// Recover a user instance from the builder parameters.
@@ -192,6 +202,7 @@ impl<T> UserBuilder<T> {
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
     /// use streams::{id::Ed25519, transport::tangle, User};
+    /// use lets::message::Topic;
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
@@ -202,12 +213,14 @@ impl<T> UserBuilder<T> {
     /// # let transport = test_transport.clone();
     /// # let mut author = User::builder()
     /// #     .with_identity(Ed25519::from_seed(author_seed))
+    /// #     .with_topic(Topic::from("Channel Base Topic"))
     /// #     .with_transport(transport.clone())
     /// #     .build()?;
-    /// # let announcement_address = author.create_stream(2).await?.address();
+    /// # let announcement_address = author.create_stream().await?.address();
     ///
     /// let author = User::builder()
     ///     .with_identity(Ed25519::from_seed(author_seed))
+    ///     .with_topic(Topic::from("Channel Base Topic"))
     ///     .with_transport(transport)
     ///     .recover(announcement_address)
     ///     .await?;

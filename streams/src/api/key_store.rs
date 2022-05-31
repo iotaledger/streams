@@ -12,7 +12,7 @@ use crypto::keys::x25519;
 // Streams
 use lets::{
     address::Address,
-    id::{Identifier, Psk, PskId},
+    id::Identifier,
     message::Topic,
 };
 
@@ -46,18 +46,6 @@ impl BranchStore {
             .for_each(|(_topic, branch)| {
                 if branch.remove(id) {
                     removed = true
-                }
-            });
-        removed
-    }
-
-    pub(crate) fn remove_psk_from_all(&mut self, pskid: PskId) -> bool {
-        let mut removed = false;
-        self.0
-            .iter_mut()
-            .for_each(|(_topic, branch)| {
-                if branch.remove_psk(pskid) {
-                    removed = true;
                 }
             });
         removed
@@ -104,14 +92,6 @@ impl BranchStore {
             .map(|branch| branch.keys.iter().map(|(identifier, key)| (*identifier, *key)))
     }
 
-    pub(crate) fn psks(
-        &self,
-        topic: &Topic,
-    ) -> Result<impl Iterator<Item = (PskId, Psk)> + ExactSizeIterator + Clone + '_> {
-        self.get_branch(topic)
-            .map(|branch| branch.psks.iter().map(|(pskid, psk)| (*pskid, *psk)))
-    }
-
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> bool {
         self.get_branch_mut(topic)
             .map_or(false, |branch| branch.cursors.insert(id, cursor).is_none())
@@ -122,22 +102,10 @@ impl BranchStore {
             .map_or(false, |branch| branch.keys.insert(id, xkey).is_none())
     }
 
-    pub(crate) fn insert_psk(&mut self, topic: &Topic, id: PskId, psk: Psk) -> bool {
-        self.get_branch_mut(topic)
-            .map_or(false, |branch| branch.psks.insert(id, psk).is_none())
-    }
-
     pub(crate) fn get_key(&self, topic: &Topic, identifier: &Identifier) -> Option<&x25519::PublicKey> {
         self.get_branch(topic)
             .ok()
             .and_then(|branch| branch.keys.get(identifier))
-    }
-
-    pub(crate) fn get_exchange_key(&self, topic: &Topic, identifier: &Identifier) -> Option<&[u8]> {
-        self.get_branch(topic).ok().and_then(|branch| match identifier {
-            Identifier::PskId(pskid) => branch.psks.get(pskid).map(AsRef::as_ref),
-            _ => branch.keys.get(identifier).map(AsRef::as_ref),
-        })
     }
 
     pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
@@ -162,7 +130,6 @@ impl BranchStore {
 pub(crate) struct KeyStore {
     cursors: HashMap<Identifier, usize>,
     keys: HashMap<Identifier, x25519::PublicKey>,
-    psks: HashMap<PskId, Psk>,
     anchor: Address,
     latest_link: Address,
 }
@@ -172,20 +139,12 @@ impl KeyStore {
         Self::default()
     }
 
-    pub(crate) fn remove_psk(&mut self, pskid: PskId) -> bool {
-        self.psks.remove(&pskid).is_some()
-    }
-
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
         self.cursors.remove(id).is_some() | self.keys.remove(id).is_some()
     }
 
     pub(crate) fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
-        self.psks
-            .keys()
-            .copied()
-            .map(Into::into)
-            .chain(self.keys.keys().copied())
+        self.keys.keys().copied()
     }
 }
 
@@ -200,10 +159,6 @@ impl fmt::Debug for KeyStore {
         writeln!(f, "\t* keys")?;
         for (id, key) in self.keys.iter() {
             writeln!(f, "\t\t{} => {:?}", id, key.as_ref())?;
-        }
-        writeln!(f, "\t* PSKs:")?;
-        for pskid in self.psks.keys() {
-            writeln!(f, "\t\t<{:x}>", pskid)?;
         }
         Ok(())
     }
@@ -224,7 +179,6 @@ impl Default for KeyStore {
         Self {
             cursors: HashMap::new(),
             keys: HashMap::new(),
-            psks: HashMap::new(),
             anchor: Address::default(),
             latest_link: Address::default(),
         }

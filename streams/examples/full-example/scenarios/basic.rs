@@ -38,7 +38,8 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_transport(transport.clone())
         .build()?;
     let mut subscriber_c = User::builder()
-        .with_identity(psk)
+        .with_identity(Ed25519::from_seed("SUBSCRIBERC9SEED"))
+        .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
         .build()?;
 
@@ -131,7 +132,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         keyload_as_a
             .as_keyload()
             .expect("expected keyload, found something else")
-            .includes(subscriber_a.identifier())
+            .includes_subscriber(subscriber_a.identifier())
     );
     let keyload_as_b = subscriber_b
         .messages()
@@ -143,7 +144,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         !keyload_as_b
             .as_keyload()
             .expect("expected keyload, found something else")
-            .includes(subscriber_b.identifier())
+            .includes_subscriber(subscriber_b.identifier())
     );
     let keyload_as_c = subscriber_c
         .messages()
@@ -155,7 +156,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         keyload_as_c
             .as_keyload()
             .expect("expected keyload, found something else")
-            .includes(subscriber_c.identifier())
+            .includes_psk(&psk.to_pskid())
     );
 
     println!("> Author sends a tagged packet linked to the keyload");
@@ -301,6 +302,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
                     }
                 })
                 .collect::<Vec<_>>(),
+            [psk.to_pskid()],
         )
         .await?;
     print_send_result(&new_keyload_as_author);
@@ -391,7 +393,8 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     subscriber_b = new_subscriber_b;
 
     let mut new_subscriber_c = User::builder()
-        .with_identity(psk)
+        .with_identity(Ed25519::from_seed("SUBSCRIBERC9SEED"))
+        .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
         .build()?;
     new_subscriber_c.receive_message(announcement.address()).await?;
