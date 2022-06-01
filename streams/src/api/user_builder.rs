@@ -150,15 +150,11 @@ impl<T> UserBuilder<T> {
     /// # }
     /// ```
     pub fn build(self) -> Result<User<T>> {
-        let id = self
-            .id
-            .ok_or_else(|| anyhow!("user Identity not specified, cannot build User without Identity"))?;
-
         let transport = self
             .transport
             .ok_or_else(|| anyhow!("transport not specified, cannot build User without Transport"))?;
 
-        Ok(User::new(id, self.psks, transport))
+        Ok(User::new(self.id, self.psks, transport))
     }
 
     /// Recover a user instance from the builder parameters.
