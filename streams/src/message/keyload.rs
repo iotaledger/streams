@@ -157,6 +157,7 @@ pub(crate) struct Unwrap<'a> {
     author_id: Identifier,
     user_id: &'a Identity,
     user_ke_key: &'a [u8],
+    included: bool,
 }
 
 impl<'a> Unwrap<'a> {
@@ -172,6 +173,7 @@ impl<'a> Unwrap<'a> {
             author_id,
             user_id,
             user_ke_key,
+            included: false,
         }
     }
 
@@ -181,6 +183,10 @@ impl<'a> Unwrap<'a> {
 
     pub(crate) fn into_subscribers(self) -> Vec<(Permissioned<Identifier>, usize)> {
         self.subscribers
+    }
+
+    pub(crate) fn is_user_included(&self) -> bool {
+        self.included
     }
 }
 
@@ -221,6 +227,7 @@ where
             self.absorb(External::new(&NBytes::new(&key)))?
                 .verify(&keyload.author_id)
                 .await?;
+            keyload.included = true;
         }
         self.commit()?;
         Ok(self)

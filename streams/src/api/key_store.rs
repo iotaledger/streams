@@ -15,7 +15,6 @@ use lets::id::{Identifier, Psk, PskId};
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct KeyStore {
     cursors: HashMap<Identifier, (usize, usize)>,
-    keyload_cursors: HashMap<Identifier, usize>,
     keys: HashMap<Identifier, x25519::PublicKey>,
     psks: HashMap<PskId, Psk>,
 }
@@ -27,10 +26,6 @@ impl KeyStore {
 
     pub(crate) fn get_cursor(&self, id: &Identifier) -> Option<usize> {
         self.cursors.get(id).map(|(cursor, _)| *cursor)
-    }
-
-    pub(crate) fn get_keyload_cursor(&self, id: &Identifier) -> Option<usize> {
-        self.keyload_cursors.get(id).copied()
     }
 
     pub(crate) fn insert_cursor(&mut self, id: Identifier, cursor: usize) -> bool {
@@ -46,21 +41,6 @@ impl KeyStore {
                 }
             })
             .or_insert((cursor, cursor));
-        updated
-    }
-
-    pub(crate) fn insert_keyload_cursor(&mut self, id: Identifier, cursor: usize) -> bool {
-        let mut updated = true;
-        self.keyload_cursors
-            .entry(id)
-            .and_modify(|current_cursor| {
-                if cursor > *current_cursor {
-                    *current_cursor = cursor;
-                } else {
-                    updated = false;
-                }
-            })
-            .or_insert(cursor);
         updated
     }
 
@@ -163,7 +143,6 @@ impl Default for KeyStore {
     fn default() -> Self {
         Self {
             cursors: HashMap::new(),
-            keyload_cursors: HashMap::new(),
             keys: HashMap::new(),
             psks: HashMap::new(),
         }

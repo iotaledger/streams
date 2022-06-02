@@ -6,12 +6,9 @@ use core::{
 };
 
 // 3rd-party
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use futures::{
-    future::{ready, try_join_all},
-    TryFutureExt,
-};
+use futures::{future::ready, TryFutureExt};
 
 // IOTA
 use crypto::hashes::{blake2b::Blake2b256, Digest};
@@ -84,16 +81,17 @@ where
         // so they don't need to be Sync
         let c = self.client();
         let msg_ids = c.get_message().index(address.to_msg_index()).await?;
-        ensure!(!msg_ids.is_empty(), "no message found at index '{}'", address);
 
-        let msgs = try_join_all(msg_ids.iter().map(|msg| {
-            c.get_message()
-                .data(msg)
-                .map_err(Into::into)
-                .and_then(|iota_message| ready(iota_message.try_into()))
-        }))
-        .await?;
-        Ok(msgs)
+        let msg_id = msg_ids
+            .first()
+            .ok_or_else(|| anyhow!("no message found at index '{}'", address))?;
+        let msg = c
+            .get_message()
+            .data(msg_id)
+            .map_err(Into::into)
+            .and_then(|iota_message| ready(iota_message.try_into()))
+            .await?;
+        Ok(vec![msg])
     }
 }
 

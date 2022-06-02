@@ -126,11 +126,11 @@ use crate::api::{
 /// [`futures::Stream`] on the first error.
 pub struct Messages<'a, T>(PinBoxFut<'a, (MessagesState<'a, T>, Option<Result<Message>>)>);
 
-type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
+type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 struct MessagesState<'a, T> {
     user: &'a mut User<T>,
-    ids_stack: Vec<(Identifier, usize, Vec<u8>)>,
+    ids_stack: Vec<(Identifier, usize)>,
     msg_queue: HashMap<MsgId, VecDeque<(MsgId, TransportMessage)>>,
     stage: VecDeque<(MsgId, TransportMessage)>,
     successful_round: bool,
@@ -150,7 +150,7 @@ impl<'a, T> MessagesState<'a, T> {
     /// Fetch the next message of the channel
     ///
     /// See [`Messages`] documentation and examples for more details.
-    #[async_recursion(?Send)]
+    #[async_recursion]
     async fn next(&mut self) -> Option<Result<Message>>
     where
         T: for<'b> Transport<'b, Msg = TransportMessage> + Send,
@@ -200,7 +200,7 @@ impl<'a, T> MessagesState<'a, T> {
             }
         } else {
             // Stage is empty, populate it with some more messages
-            let (publisher, cursor, t) = match self.ids_stack.pop() {
+            let (publisher, cursor) = match self.ids_stack.pop() {
                 Some(id_cursor) => id_cursor,
                 None => {
                     // new round
@@ -212,11 +212,8 @@ impl<'a, T> MessagesState<'a, T> {
                 }
             };
             let base_address = self.user.stream_address()?.app();
-            let rel_address = MsgId::gen(base_address, publisher, cursor, t.clone());
+            let rel_address = MsgId::gen(base_address, publisher, cursor);
             let address = Address::new(base_address, rel_address);
-            if t == b"keyload" {
-                println!("trying to fetch keyload {}", cursor);
-            }
             match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {
                     self.stage.push_back((address.msg(), msg));
@@ -224,11 +221,8 @@ impl<'a, T> MessagesState<'a, T> {
                     self.next().await
                 }
                 Err(_e) => {
-                    if t != b"keyload" && !self.user.fetched_all_known_messages(&publisher) {
+                    if !self.user.is_snapshot_cursor(cursor) && !self.user.fetched_all_known_messages(&publisher) {
                         self.user.jump_to_newest_known_cursor(&publisher);
-                        self.successful_round = true;
-                    } else if t == b"keyload" && !self.user.fetched_all_known_keyloads() {
-                        self.user.jump_to_timely_keyload_cursor();
                         self.successful_round = true;
                     }
                     // Message not found or network error. Right now we are not distinguishing

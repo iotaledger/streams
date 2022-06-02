@@ -1,15 +1,14 @@
 // Rust
 use alloc::{boxed::Box, format, string::String, vec::Vec};
 use core::{
-    cmp::max,
     fmt::{self, Debug, Formatter},
     iter::once,
 };
 
 // 3rd-party
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use futures::{future, TryStreamExt};
 use hashbrown::HashMap;
 use rand::{rngs::StdRng, Rng, SeedableRng};
@@ -120,26 +119,18 @@ impl<T> User<T> {
         self.state.id_store.get_cursor(&self.identifier())
     }
 
-    fn keyload_cursor(&self) -> usize {
-        self.state
-            .id_store
-            .get_keyload_cursor(
-                &self
-                    .state
-                    .author_identifier
-                    .expect("stream should have an author by the time it tracks the keyload cursors"),
-            )
-            .unwrap_or(0)
-    }
-
     fn next_cursor(&self) -> Result<usize> {
         self.cursor()
-            .map(|c| c + 1)
+            .map(|c| self.increase_cursor(c))
             .ok_or_else(|| anyhow!("user is not a publisher"))
     }
 
-    fn next_keyload_cursor(&self) -> usize {
-        max(self.keyload_cursor() + 1, self.timely_keyload_cursor())
+    fn increase_cursor(&self, cursor: usize) -> usize {
+        let mut new_cursor = cursor + 1;
+        if new_cursor % self.state.retention_policy as usize == 0 {
+            new_cursor += 1;
+        }
+        new_cursor
     }
 
     pub(crate) fn stream_address(&self) -> Option<Address> {
@@ -153,43 +144,44 @@ impl<T> User<T> {
         &mut self.transport
     }
 
-    pub(crate) fn next_cursors(&self) -> impl Iterator<Item = (Identifier, usize, Vec<u8>)> + '_ {
-        let cursors = self.state.id_store.cursors().map(|(id, c)| (id, c + 1, vec![]));
-        once((
-            self.state
-                .author_identifier
-                .expect("cursors should be called after connecting to a stream"),
-            self.keyload_cursor() + 1,
-            b"keyload".to_vec(),
-        ))
-        .chain(cursors)
+    pub(crate) fn next_cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + '_ {
+        let cursors = self
+            .state
+            .id_store
+            .cursors()
+            .map(move |(id, c)| (id, self.increase_cursor(c)));
+        let author_id = self
+            .state
+            .author_identifier
+            .expect("cursors should be called after connecting to a stream");
+        once((author_id, self.timely_snapshot_cursor()))
+            .filter(move |(_, cursor)| {
+                !self.state.spongos_store.contains_key(&MsgId::gen(
+                    self.stream_address()
+                        .expect("user should have an stream address by the time it fetches next cursors")
+                        .app(),
+                    author_id,
+                    *cursor,
+                ))
+            })
+            .chain(cursors)
     }
 
-    fn timely_keyload_cursor(&self) -> usize {
-        let c = ((Utc::now().timestamp() - self.state.genesis_ts) / self.state.retention_policy as i64) as usize;
-        println!("timely cursor is {}", c);
-        c
+    fn timely_snapshot_cursor(&self) -> usize {
+        ((Utc::now().timestamp() - self.state.genesis_ts) / self.state.retention_policy as i64
+            * self.state.retention_policy as i64) as usize
+    }
+
+    pub(crate) fn is_snapshot_cursor(&self, cursor: usize) -> bool {
+        cursor % self.state.retention_policy as usize == 0
     }
 
     pub(crate) fn fetched_all_known_messages(&self, id: &Identifier) -> bool {
         self.state.id_store.is_at_newest_known_cursor(id)
     }
 
-    pub(crate) fn fetched_all_known_keyloads(&self) -> bool {
-        self.keyload_cursor() >= self.timely_keyload_cursor().saturating_sub(1)
-    }
-
     pub(crate) fn jump_to_newest_known_cursor(&mut self, id: &Identifier) -> bool {
         self.state.id_store.jump_to_newest_known_cursor(id)
-    }
-
-    pub(crate) fn jump_to_timely_keyload_cursor(&mut self) -> bool {
-        self.state.id_store.insert_keyload_cursor(
-            self.state
-                .author_identifier
-                .expect("user should have the author's identifier by the time keyload cursors are managed"),
-            self.timely_keyload_cursor().saturating_sub(1),
-        )
     }
 
     pub fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
@@ -335,9 +327,12 @@ impl<T> User<T> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state
-            .id_store
-            .insert_keyload_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+        let cursor = preparsed.header().sequence();
+        if !self.is_snapshot_cursor(cursor) {
+            self.state
+                .id_store
+                .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+        }
 
         // Unwrap message
         let author_identifier = self.state.author_identifier.ok_or_else(|| {
@@ -367,11 +362,13 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.msg(), spongos);
 
         // Store message content into stores
-        for (subscriber, newest_known_cursor) in message.payload().content().subscribers() {
-            if self.should_store_cursor(subscriber) {
-                self.state
-                    .id_store
-                    .insert_newest_known_cursor(*subscriber.identifier(), *newest_known_cursor);
+        if message.payload().content().is_user_included() {
+            for (subscriber, newest_known_cursor) in message.payload().content().subscribers() {
+                if self.should_store_cursor(subscriber) {
+                    self.state
+                        .id_store
+                        .insert_newest_known_cursor(*subscriber.identifier(), *newest_known_cursor);
+                }
             }
         }
 
@@ -530,7 +527,7 @@ where
 
         // Generate stream address
         let stream_base_address = AppAddr::gen(self.identifier(), stream_idx);
-        let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), INIT_MESSAGE_NUM, &[]);
+        let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), INIT_MESSAGE_NUM);
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
         self.state.stream_address = Some(stream_address);
@@ -571,7 +568,7 @@ where
             .stream_address()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
 
-        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), SUB_MESSAGE_NUM, &[]);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -601,10 +598,6 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.app(), rel_address);
-        ensure!(
-            self.transport.recv_message(message_address).await.is_err(),
-            anyhow!("there's already a message with address '{}'", message_address)
-        );
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
@@ -622,7 +615,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor()?;
-        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor, &[]);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -642,10 +635,6 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.app(), rel_address);
-        ensure!(
-            self.transport.recv_message(message_address).await.is_err(),
-            anyhow!("there's already a message with address '{}'", message_address)
-        );
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
@@ -658,6 +647,7 @@ where
         &mut self,
         link_to: MsgId,
         subscribers: Subscribers,
+        discriminant: &'a [u8],
     ) -> Result<SendResponse<TSR>>
     where
         Subscribers: IntoIterator<Item = Permissioned<Identifier>>,
@@ -669,9 +659,14 @@ where
             .ok_or_else(|| anyhow!("before sending a keyload one must create a stream first"))?;
 
         // Update own's cursor
-        let new_cursor = max(self.next_keyload_cursor(), self.timely_keyload_cursor());
-        println!("Sending keyload {}", new_cursor);
-        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor, b"keyload");
+        let new_cursor = if discriminant == b"keyload" {
+            self.next_cursor()?
+        } else if discriminant == b"snapshot" {
+            self.timely_snapshot_cursor()
+        } else {
+            panic!("{:?} is not a valid discriminant", std::str::from_utf8(discriminant));
+        };
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
         let mut announcement_spongos = self
@@ -723,10 +718,11 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.app(), rel_address);
-        ensure!(
-            self.transport.recv_message(message_address).await.is_err(),
-            anyhow!("there's already a message with address '{}'", message_address)
-        );
+        // TODO: ENSURE CONSISTENCY OF THIS CHANCE
+        // ensure!(
+        //     self.transport.recv_message(message_address).await.is_err(),
+        //     anyhow!("there's already a message with address '{}'", message_address)
+        // );
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
@@ -737,7 +733,9 @@ where
                     .insert_newest_known_cursor(*subscriber.identifier(), newest_known_cursor);
             }
         }
-        self.state.id_store.insert_keyload_cursor(self.identifier(), new_cursor);
+        if discriminant == b"keyload" {
+            self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        }
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -747,6 +745,7 @@ where
             link_to,
             // Alas, must collect to release the &self immutable borrow
             self.subscribers().map(Permissioned::Read).collect::<Vec<_>>(),
+            b"keyload",
         )
         .await
     }
@@ -758,6 +757,19 @@ where
             self.subscribers()
                 .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
                 .collect::<Vec<_>>(),
+            b"keyload",
+        )
+        .await
+    }
+
+    pub async fn send_snapshot(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
+        self.send_keyload(
+            link_to,
+            // Alas, must collect to release the &self immutable borrow
+            self.subscribers()
+                .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
+                .collect::<Vec<_>>(),
+            b"snapshot",
         )
         .await
     }
@@ -779,7 +791,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor()?;
-        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor, &[]);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -803,10 +815,6 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.app(), rel_address);
-        ensure!(
-            self.transport.recv_message(message_address).await.is_err(),
-            anyhow!("there's already a message with address '{}'", message_address)
-        );
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
@@ -832,7 +840,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor()?;
-        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor, &[]);
+        let rel_address = MsgId::gen(stream_address.app(), self.identifier(), new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -855,10 +863,6 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.app(), rel_address);
-        ensure!(
-            self.transport.recv_message(message_address).await.is_err(),
-            anyhow!("there's already a message with address '{}'", message_address)
-        );
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores

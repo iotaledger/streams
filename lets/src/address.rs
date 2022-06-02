@@ -229,15 +229,11 @@ impl MsgId {
         Self(bytes)
     }
 
-    pub fn gen<T>(appaddr: AppAddr, identifier: Identifier, seq_num: usize, app_data: T) -> MsgId
-    where
-        T: AsRef<[u8]>,
-    {
+    pub fn gen(appaddr: AppAddr, identifier: Identifier, seq_num: usize) -> MsgId {
         let mut s = Spongos::<KeccakF1600>::init();
         s.absorb(appaddr);
         s.absorb(identifier);
         s.absorb(seq_num.to_be_bytes());
-        s.absorb(app_data);
         s.commit();
         s.squeeze()
     }
