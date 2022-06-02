@@ -97,11 +97,9 @@ impl<T> UserBuilder<T> {
     /// use streams::{id::Ed25519, transport::tangle, User};
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
-    /// let author_seed = "author_secure_seed";
     /// let psk1 = Psk::from_seed(b"Psk1");
     /// let psk2 = Psk::from_seed(b"Psk2");
     /// let user = User::builder()
-    ///     .with_identity(Ed25519::from_seed(author_seed))
     ///     .with_default_transport::<tangle::Client>()
     ///     .await?
     ///     .with_psk(psk1.to_pskid(), psk1)
