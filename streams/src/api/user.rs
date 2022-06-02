@@ -33,7 +33,7 @@ use spongos::{
 // Local
 use crate::{
     api::{
-        key_store::KeyStore, message::Message, messages::Messages, send_response::SendResponse,
+        cursor_store::CursorStore, message::Message, messages::Messages, send_response::SendResponse,
         user_builder::UserBuilder,
     },
     message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
@@ -56,10 +56,13 @@ struct State {
     author_identifier: Option<Identifier>,
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
-    id_store: KeyStore,
+    cursor_store: CursorStore,
 
     /// Mapping of trusted pre shared keys and identifiers
     psk_store: HashMap<PskId, Psk>,
+
+    /// Mapping of exchange keys and identifiers
+    exchange_keys: HashMap<Identifier, x25519::PublicKey>,
 
     spongos_store: HashMap<MsgId, Spongos>,
 }
@@ -81,22 +84,24 @@ impl<T> User<T> {
     where
         Psks: IntoIterator<Item = (PskId, Psk)>,
     {
-        let mut id_store = KeyStore::new();
+        let cursor_store = CursorStore::new();
         let mut psk_store = HashMap::new();
+        let mut exchange_keys = HashMap::new();
 
         // Store any pre shared keys
         psks.into_iter().for_each(|(pskid, psk)| {
             psk_store.insert(pskid, psk);
         });
 
-        id_store.insert_key(user_id.to_identifier(), user_id._ke_sk().public_key());
+        exchange_keys.insert(user_id.to_identifier(), user_id._ke_sk().public_key());
 
         Self {
             transport,
             state: State {
                 user_id,
-                id_store,
+                cursor_store,
                 psk_store,
+                exchange_keys,
                 spongos_store: Default::default(),
                 stream_address: None,
                 author_identifier: None,
@@ -111,7 +116,7 @@ impl<T> User<T> {
 
     /// User's cursor
     fn cursor(&self) -> Option<usize> {
-        self.state.id_store.get_cursor(&self.identifier())
+        self.state.cursor_store.get_cursor(&self.identifier())
     }
     fn next_cursor(&self) -> Result<usize> {
         self.cursor()
@@ -131,29 +136,32 @@ impl<T> User<T> {
     }
 
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + '_ {
-        self.state.id_store.cursors()
+        self.state.cursor_store.cursors()
     }
 
     pub fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
-        self.state.id_store.subscribers()
+        self.state.exchange_keys.keys().copied()
     }
 
     fn should_store_cursor(&self, subscriber: &Permissioned<Identifier>) -> bool {
-        let no_tracked_cursor = !self.state.id_store.is_cursor_tracked(subscriber.identifier());
+        let no_tracked_cursor = !self.state.cursor_store.is_cursor_tracked(subscriber.identifier());
         !subscriber.is_readonly() && no_tracked_cursor
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        self.state.id_store.insert_key(
-            subscriber,
-            subscriber
-                ._ke_pk()
-                .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
-        )
+        self.state
+            .exchange_keys
+            .insert(
+                subscriber,
+                subscriber
+                    ._ke_pk()
+                    .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
+            )
+            .is_none()
     }
 
     pub fn remove_subscriber(&mut self, id: Identifier) -> bool {
-        self.state.id_store.remove(&id)
+        self.state.cursor_store.remove(&id) | self.state.exchange_keys.remove(&id).is_some()
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
@@ -192,7 +200,7 @@ impl<T> User<T> {
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
-            .id_store
+            .cursor_store
             .insert_cursor(preparsed.header().publisher(), INIT_MESSAGE_NUM);
 
         // Unwrap message
@@ -205,7 +213,7 @@ impl<T> User<T> {
         // Store message content into stores
         let author_id = message.payload().content().author_id();
         let author_ke_pk = message.payload().content().author_ke_pk();
-        self.state.id_store.insert_key(author_id, author_ke_pk);
+        self.state.exchange_keys.insert(author_id, author_ke_pk);
         self.state.stream_address = Some(address);
         self.state.author_identifier = Some(author_id);
 
@@ -237,7 +245,7 @@ impl<T> User<T> {
         // Store message content into stores
         let subscriber_identifier = message.payload().content().subscriber_identifier();
         let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
-        self.state.id_store.insert_key(subscriber_identifier, subscriber_ke_pk);
+        self.state.exchange_keys.insert(subscriber_identifier, subscriber_ke_pk);
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -273,7 +281,7 @@ impl<T> User<T> {
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
-            .id_store
+            .cursor_store
             .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
@@ -306,7 +314,7 @@ impl<T> User<T> {
         for subscriber in &message.payload().content().subscribers {
             if self.should_store_cursor(subscriber) {
                 self.state
-                    .id_store
+                    .cursor_store
                     .insert_cursor(*subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
@@ -319,7 +327,7 @@ impl<T> User<T> {
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
-            .id_store
+            .cursor_store
             .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
@@ -350,7 +358,7 @@ impl<T> User<T> {
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
-            .id_store
+            .cursor_store
             .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
 
         // Unwrap message
@@ -486,7 +494,9 @@ where
         // If message has been sent successfully, commit message to stores
         self.state.stream_address = Some(stream_address);
         self.state.author_identifier = Some(self.identifier());
-        self.state.id_store.insert_cursor(self.identifier(), INIT_MESSAGE_NUM);
+        self.state
+            .cursor_store
+            .insert_cursor(self.identifier(), INIT_MESSAGE_NUM);
         self.state.spongos_store.insert(stream_address.relative(), spongos);
         Ok(SendResponse::new(stream_address, send_response))
     }
@@ -512,7 +522,7 @@ where
         let author_ke_pk = self
             .state
             .author_identifier
-            .and_then(|author_id| self.state.id_store.get_key(&author_id))
+            .and_then(|author_id| self.state.exchange_keys.get(&author_id))
             .expect("a user that already have an stream address must know the author identifier");
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
@@ -576,7 +586,7 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.cursor_store.insert_cursor(self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -618,8 +628,8 @@ where
                 Ok((
                     subscriber,
                     self.state
-                        .id_store
-                        .get_key(subscriber.identifier())
+                        .exchange_keys
+                        .get(subscriber.identifier())
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
                 ))
             })
@@ -661,11 +671,11 @@ where
         for subscriber in subscribers {
             if self.should_store_cursor(&subscriber) {
                 self.state
-                    .id_store
+                    .cursor_store
                     .insert_cursor(*subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
-        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.cursor_store.insert_cursor(self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -745,7 +755,7 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.cursor_store.insert_cursor(self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -797,7 +807,7 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.id_store.insert_cursor(self.identifier(), new_cursor);
+        self.state.cursor_store.insert_cursor(self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -816,18 +826,18 @@ impl ContentSizeof<State> for sizeof::Context {
             self.mask(address)?.mask(spongos)?;
         }
 
-        let cursors = user_state.id_store.cursors();
+        let cursors = user_state.cursor_store.cursors();
         let amount_cursors = cursors.len();
         self.mask(Size::new(amount_cursors))?;
         for (subscriber, cursor) in cursors {
             self.mask(&subscriber)?.mask(Size::new(cursor))?;
         }
 
-        let keys = user_state.id_store.keys();
+        let keys = &user_state.exchange_keys;
         let amount_keys = keys.len();
         self.mask(Size::new(amount_keys))?;
         for (subscriber, ke_pk) in keys {
-            self.mask(&subscriber)?.mask(&ke_pk)?;
+            self.mask(subscriber)?.mask(ke_pk)?;
         }
 
         let psks = user_state.psk_store.iter();
@@ -854,18 +864,18 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
             self.mask(address)?.mask(spongos)?;
         }
 
-        let cursors = user_state.id_store.cursors();
+        let cursors = user_state.cursor_store.cursors();
         let amount_cursors = cursors.len();
         self.mask(Size::new(amount_cursors))?;
         for (subscriber, cursor) in cursors {
             self.mask(&subscriber)?.mask(Size::new(cursor))?;
         }
 
-        let keys = user_state.id_store.keys();
+        let keys = &user_state.exchange_keys;
         let amount_keys = keys.len();
         self.mask(Size::new(amount_keys))?;
         for (subscriber, ke_pk) in keys {
-            self.mask(&subscriber)?.mask(&ke_pk)?;
+            self.mask(subscriber)?.mask(ke_pk)?;
         }
 
         let psks = user_state.psk_store.iter();
@@ -901,7 +911,7 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
             let mut subscriber = Identifier::default();
             let mut cursor = Size::default();
             self.mask(&mut subscriber)?.mask(&mut cursor)?;
-            user_state.id_store.insert_cursor(subscriber, cursor.inner());
+            user_state.cursor_store.insert_cursor(subscriber, cursor.inner());
         }
 
         let mut amount_keys = Size::default();
@@ -910,7 +920,7 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
             let mut subscriber = Identifier::default();
             let mut key = x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]);
             self.mask(&mut subscriber)?.mask(&mut key)?;
-            user_state.id_store.insert_key(subscriber, key);
+            user_state.exchange_keys.insert(subscriber, key);
         }
 
         let mut amount_psks = Size::default();
@@ -933,7 +943,7 @@ impl<T> Debug for User<T> {
             f,
             "\n* identifier: <{}>\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
             self.identifier(),
-            self.state.id_store,
+            self.state.cursor_store,
             self.state
                 .psk_store
                 .keys()
