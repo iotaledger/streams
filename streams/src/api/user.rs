@@ -1057,7 +1057,7 @@ impl ContentSizeof<State> for sizeof::Context {
             }
         }
 
-        let keys = user_state.exchange_keys.iter().map(|(id, xkey)| (id, xkey));
+        let keys = &user_state.exchange_keys;
         let amount_keys = keys.len();
         self.mask(Size::new(amount_keys))?;
         for (subscriber, ke_pk) in keys {
@@ -1108,7 +1108,7 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
             }
         }
 
-        let keys = user_state.exchange_keys.iter().map(|(id, xkey)| (id, xkey));
+        let keys = &user_state.exchange_keys;
         let amount_keys = keys.len();
         self.mask(Size::new(amount_keys))?;
         for (subscriber, ke_pk) in keys {
