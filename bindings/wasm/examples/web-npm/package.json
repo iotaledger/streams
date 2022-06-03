@@ -1,0 +1,26 @@
+{
+  "name": "@iota/streams-web-example",
+  "version": "1.2.1",
+  "description": "WASM binding for the IOTA streams library",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iotaledger/streams.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "start": "webpack-dev-server --open"
+  },
+  "license": "(MIT OR Apache-2.0)",
+  "bugs": {
+    "url": "https://github.com/rustwasm/create-wasm-webpack-app/issues"
+  },
+  "homepage": "https://github.com/rustwasm/create-wasm-webpack-app#readme",
+  "devDependencies": {
+    "@iota/streams": "^1.2.1",
+    "copy-webpack-plugin": "^8.1.0",
+    "webpack": "^5.30.0",
+    "webpack-cli": "^4.9.2",
+    "webpack-dev-server": "^4.7.4"
+  }
+}
