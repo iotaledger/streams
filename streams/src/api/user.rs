@@ -122,7 +122,7 @@ impl<T> User<T> {
     }
 
     /// User Identity
-    pub fn identity(&self) -> Result<&Identity> {
+    fn identity(&self) -> Result<&Identity> {
         self.state
             .user_id
             .as_ref()
