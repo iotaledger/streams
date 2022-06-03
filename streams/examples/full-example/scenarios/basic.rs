@@ -25,6 +25,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut author = User::builder()
         .with_identity(Ed25519::from_seed(author_seed))
         .with_transport(transport.clone())
+        .with_psk(psk.to_pskid(), psk)
         .build()?;
 
     let mut subscriber_a = User::builder()
@@ -36,7 +37,6 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_transport(transport.clone())
         .build()?;
     let mut subscriber_c = User::builder()
-        .with_identity(Ed25519::from_seed("SUBSCRIBERC9SEED"))
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
         .build()?;
@@ -54,9 +54,6 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Subscriber B", &subscriber_b);
     subscriber_c.receive_message(announcement.address()).await?;
     print_user("Subscriber C", &subscriber_c);
-
-    println!("> Author stores the PSK used by Subscriber C");
-    author.add_psk(psk);
 
     println!("> Subscriber A sends subscription");
     let subscription_a_as_a = subscriber_a.subscribe(announcement.address().relative()).await?;
@@ -326,10 +323,10 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Statelessly recover users rereading the stream");
     let mut new_author = User::builder()
         .with_identity(Ed25519::from_seed(author_seed))
+        .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
         .build()?;
     // OOB data must be recovered manually
-    new_author.add_psk(psk);
     new_author.add_subscriber(subscriber_b.identifier()?);
     new_author.receive_message(announcement.address()).await?;
     new_author.receive_message(subscription_a_as_a.address()).await?;
@@ -360,7 +357,6 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     subscriber_b = new_subscriber_b;
 
     let mut new_subscriber_c = User::builder()
-        .with_identity(Ed25519::from_seed("SUBSCRIBERC9SEED"))
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
         .build()?;
