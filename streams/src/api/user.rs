@@ -238,11 +238,9 @@ impl<T> User<T> {
         // If the topic of the announcement is not base branch the author cursor needs to be iterated
         // on the base branch
         if !is_base_branch {
-            self.state.branch_store.insert_cursor(
-                &self.base_branch().clone(),
-                publisher,
-                preparsed.header().sequence(),
-            );
+            self.state
+                .branch_store
+                .insert_cursor(&self.state.base_branch, publisher, preparsed.header().sequence());
         }
 
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
@@ -262,15 +260,17 @@ impl<T> User<T> {
         // Store message content into stores
         let author_id = message.payload().content().author_id();
         let author_ke_pk = message.payload().content().author_ke_pk();
-        if is_base_branch {
-            self.state.exchange_keys.insert(author_id, author_ke_pk);
-            self.state.base_branch = topic.clone();
-            self.state.stream_address = Some(address);
-        }
+
         // Update branch links
         self.set_anchor(&topic, address.relative());
         self.set_latest_link(&topic, address.relative());
         self.state.author_identifier = Some(author_id);
+
+        if is_base_branch {
+            self.state.exchange_keys.insert(author_id, author_ke_pk);
+            self.state.base_branch = topic;
+            self.state.stream_address = Some(address);
+        }
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -334,9 +334,6 @@ impl<T> User<T> {
     }
 
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // Retrieve the topic from header
-        let topic = preparsed.header().topic().clone();
-
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
@@ -377,17 +374,19 @@ impl<T> User<T> {
 
         // Store message content into stores
         for subscriber in &message.payload().content().subscribers {
-            if self.should_store_cursor(&topic, subscriber) {
-                self.state
-                    .branch_store
-                    .insert_cursor(&topic, *subscriber.identifier(), INIT_MESSAGE_NUM);
+            if self.should_store_cursor(&message.header().topic, subscriber) {
+                self.state.branch_store.insert_cursor(
+                    &message.header().topic,
+                    *subscriber.identifier(),
+                    INIT_MESSAGE_NUM,
+                );
             }
         }
 
         // Have to make message before setting branch links due to immutable borrow in keyload::unwrap
         let final_message = Message::from_lets_message(address, message);
         // Update branch links
-        self.set_latest_link(&topic, address.relative());
+        self.set_latest_link(&final_message.header().topic, address.relative());
         Ok(final_message)
     }
 
@@ -1242,7 +1241,7 @@ impl<T> Debug for User<T> {
 /// considered equal
 impl<T> PartialEq for User<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.state.eq(&other.state)
+        self.state == other.state
     }
 }
 
