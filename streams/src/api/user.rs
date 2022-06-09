@@ -71,7 +71,7 @@ struct State {
 
     spongos_store: HashMap<MsgId, Spongos>,
 
-    base_topic: Topic,
+    base_branch: Topic,
 }
 
 pub struct User<T> {
@@ -111,7 +111,7 @@ impl<T> User<T> {
                 spongos_store: Default::default(),
                 stream_address: None,
                 author_identifier: None,
-                base_topic: Default::default(),
+                base_branch: Default::default(),
             },
         }
     }
@@ -133,7 +133,7 @@ impl<T> User<T> {
     }
 
     pub(crate) fn base_branch(&self) -> &Topic {
-        &self.state.base_topic
+        &self.state.base_branch
     }
 
     pub(crate) fn stream_address(&self) -> Option<Address> {
@@ -264,7 +264,7 @@ impl<T> User<T> {
         let author_ke_pk = message.payload().content().author_ke_pk();
         if is_base_branch {
             self.state.exchange_keys.insert(author_id, author_ke_pk);
-            self.state.base_topic = topic.clone();
+            self.state.base_branch = topic.clone();
             self.state.stream_address = Some(address);
         }
         // Update branch links
@@ -567,7 +567,7 @@ where
         // Commit Author Identifier and Stream Address to store
         self.state.stream_address = Some(stream_address);
         self.state.author_identifier = Some(self.identifier());
-        self.state.base_topic = topic.clone();
+        self.state.base_branch = topic.clone();
 
         // Insert the base branch into store
         self.state.branch_store.new_branch(topic.clone());
@@ -1034,7 +1034,7 @@ impl ContentSizeof<State> for sizeof::Context {
         self.mask(&user_state.user_id)?
             .mask(Maybe::new(user_state.stream_address.as_ref()))?
             .mask(Maybe::new(user_state.author_identifier.as_ref()))?
-            .mask(&user_state.base_topic)?;
+            .mask(&user_state.base_branch)?;
 
         let amount_spongos = user_state.spongos_store.len();
         self.mask(Size::new(amount_spongos))?;
@@ -1095,7 +1095,7 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
         self.mask(&user_state.user_id)?
             .mask(Maybe::new(user_state.stream_address.as_ref()))?
             .mask(Maybe::new(user_state.author_identifier.as_ref()))?
-            .mask(&user_state.base_topic)?;
+            .mask(&user_state.base_branch)?;
 
         let amount_spongos = user_state.spongos_store.len();
         self.mask(Size::new(amount_spongos))?;
@@ -1156,7 +1156,7 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
         self.mask(&mut user_state.user_id)?
             .mask(Maybe::new(&mut user_state.stream_address))?
             .mask(Maybe::new(&mut user_state.author_identifier))?
-            .mask(&mut user_state.base_topic)?;
+            .mask(&mut user_state.base_branch)?;
 
         let mut amount_spongos = Size::default();
         self.mask(&mut amount_spongos)?;
