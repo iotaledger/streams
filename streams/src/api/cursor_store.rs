@@ -32,7 +32,7 @@ impl CursorStore {
     }
 
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + Clone + '_ {
-        self.0.iter().map(|(identifier, cursor)| (*identifier, *cursor))
+        self.0.iter().map(|(identifier, cursor)| (identifier.clone(), *cursor))
     }
 
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {

@@ -381,9 +381,9 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> The rest of subscribers also manually unsubscribe Subscriber A");
     // Manual unsubscription assumes an exchange of identifiers at application level
-    subscriber_b.remove_subscriber(subscriber_a.identifier());
+    subscriber_b.remove_subscriber(&subscriber_a.identifier());
     print_user("Subscriber B", &subscriber_b);
-    subscriber_c.remove_subscriber(subscriber_a.identifier());
+    subscriber_c.remove_subscriber(&subscriber_a.identifier());
     print_user("Subscriber C", &subscriber_c);
 
     println!("> ~Subscriber B sends unsubscription~ [CURRENTLY BROKEN]");
@@ -400,11 +400,11 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     // assert_eq!(subscriber_c.sync().await?, 1);
     // print_user("Subscriber C", &subscriber_c);
     println!("> Alternative: users manually unsubscribe Subscriber B");
-    author.remove_subscriber(subscriber_b.identifier());
+    author.remove_subscriber(&subscriber_b.identifier());
     print_user("Author", &author);
-    subscriber_a.remove_subscriber(subscriber_b.identifier());
+    subscriber_a.remove_subscriber(&subscriber_b.identifier());
     print_user("Subscriber A", &subscriber_a);
-    subscriber_c.remove_subscriber(subscriber_b.identifier());
+    subscriber_c.remove_subscriber(&subscriber_b.identifier());
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Author removes PSK");

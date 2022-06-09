@@ -140,7 +140,7 @@ impl<T> User<T> {
     }
 
     pub fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
-        self.state.exchange_keys.keys().copied()
+        self.state.exchange_keys.keys().cloned()
     }
 
     fn should_store_cursor(&self, subscriber: &Permissioned<Identifier>) -> bool {
@@ -152,7 +152,7 @@ impl<T> User<T> {
         self.state
             .exchange_keys
             .insert(
-                subscriber,
+                subscriber.clone(),
                 subscriber
                     ._ke_pk()
                     .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
@@ -160,8 +160,8 @@ impl<T> User<T> {
             .is_none()
     }
 
-    pub fn remove_subscriber(&mut self, id: Identifier) -> bool {
-        self.state.cursor_store.remove(&id) | self.state.exchange_keys.remove(&id).is_some()
+    pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
+        self.state.cursor_store.remove(id) | self.state.exchange_keys.remove(id).is_some()
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
@@ -201,7 +201,7 @@ impl<T> User<T> {
         // handling the message
         self.state
             .cursor_store
-            .insert_cursor(preparsed.header().publisher(), INIT_MESSAGE_NUM);
+            .insert_cursor(preparsed.header().publisher().clone(), INIT_MESSAGE_NUM);
 
         // Unwrap message
         let announcement = announcement::Unwrap::default();
@@ -211,9 +211,10 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        let author_id = message.payload().content().author_id();
-        let author_ke_pk = message.payload().content().author_ke_pk();
-        self.state.exchange_keys.insert(author_id, author_ke_pk);
+        let content = message.payload().content();
+        let author_id = content.clone().author_id();
+        let author_ke_pk = content.clone().author_ke_pk();
+        self.state.exchange_keys.insert(author_id.clone(), author_ke_pk);
         self.state.stream_address = Some(address);
         self.state.author_identifier = Some(author_id);
 
@@ -245,7 +246,9 @@ impl<T> User<T> {
         // Store message content into stores
         let subscriber_identifier = message.payload().content().subscriber_identifier();
         let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
-        self.state.exchange_keys.insert(subscriber_identifier, subscriber_ke_pk);
+        self.state
+            .exchange_keys
+            .insert(subscriber_identifier.clone(), subscriber_ke_pk);
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -282,10 +285,10 @@ impl<T> User<T> {
         // handling the message
         self.state
             .cursor_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+            .insert_cursor(preparsed.header().publisher().clone(), preparsed.header().sequence());
 
         // Unwrap message
-        let author_identifier = self.state.author_identifier.ok_or_else(|| {
+        let author_identifier = self.state.author_identifier.as_ref().ok_or_else(|| {
             anyhow!("before receiving keyloads one must have received the announcement of a stream first")
         })?;
         let stream_address = self
@@ -302,7 +305,7 @@ impl<T> User<T> {
         let keyload = keyload::Unwrap::new(
             &mut announcement_spongos,
             &self.state.user_id,
-            author_identifier,
+            author_identifier.clone(),
             &self.state.psk_store,
         );
         let (message, spongos) = preparsed.unwrap(keyload).await?;
@@ -315,7 +318,7 @@ impl<T> User<T> {
             if self.should_store_cursor(subscriber) {
                 self.state
                     .cursor_store
-                    .insert_cursor(*subscriber.identifier(), INIT_MESSAGE_NUM);
+                    .insert_cursor(subscriber.identifier().clone(), INIT_MESSAGE_NUM);
             }
         }
 
@@ -328,7 +331,7 @@ impl<T> User<T> {
         // handling the message
         self.state
             .cursor_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+            .insert_cursor(preparsed.header().publisher().clone(), preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -359,7 +362,7 @@ impl<T> User<T> {
         // handling the message
         self.state
             .cursor_store
-            .insert_cursor(preparsed.header().publisher(), preparsed.header().sequence());
+            .insert_cursor(preparsed.header().publisher().clone(), preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -522,6 +525,7 @@ where
         let author_ke_pk = self
             .state
             .author_identifier
+            .as_ref()
             .and_then(|author_id| self.state.exchange_keys.get(&author_id))
             .expect("a user that already have an stream address must know the author identifier");
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
@@ -626,7 +630,7 @@ where
             .into_iter()
             .map(|subscriber| {
                 Ok((
-                    subscriber,
+                    subscriber.clone(),
                     self.state
                         .exchange_keys
                         .get(subscriber.identifier())
@@ -672,7 +676,7 @@ where
             if self.should_store_cursor(&subscriber) {
                 self.state
                     .cursor_store
-                    .insert_cursor(*subscriber.identifier(), INIT_MESSAGE_NUM);
+                    .insert_cursor(subscriber.identifier().clone(), INIT_MESSAGE_NUM);
             }
         }
         self.state.cursor_store.insert_cursor(self.identifier(), new_cursor);

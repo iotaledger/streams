@@ -79,7 +79,7 @@ where
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Unwrap {
     author_id: Identifier,
     // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY

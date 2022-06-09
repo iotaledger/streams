@@ -97,8 +97,8 @@ impl<'a> Unwrap<'a> {
         }
     }
 
-    pub(crate) fn subscriber_identifier(&self) -> Identifier {
-        self.subscriber_id
+    pub(crate) fn subscriber_identifier(&self) -> &Identifier {
+        &self.subscriber_id
     }
 }
 

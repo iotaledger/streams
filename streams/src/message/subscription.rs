@@ -122,8 +122,8 @@ impl<'a> Unwrap<'a> {
         }
     }
 
-    pub(crate) fn subscriber_identifier(&self) -> Identifier {
-        self.subscriber_identifier
+    pub(crate) fn subscriber_identifier(&self) -> &Identifier {
+        &self.subscriber_identifier
     }
 
     // #[deprecated = "to be removed once ke is encapsulated within identity"]
