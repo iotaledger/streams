@@ -60,7 +60,6 @@ use crate::api::{
 /// let mut author = User::builder()
 ///     .with_identity(Ed25519::from_seed(author_seed))
 ///     .with_transport(author_transport)
-///     .with_topic("BASE_BRANCH")?
 /// #     .with_transport(test_author_transport)
 ///     .build()?;
 ///
@@ -74,7 +73,7 @@ use crate::api::{
 ///     .with_transport(subscriber_transport)
 ///     .build()?;
 ///
-/// let announcement = author.create_stream().await?;
+/// let announcement = author.create_stream("BASE_BRANCH").await?;
 /// subscriber.receive_message(announcement.address()).await?;
 /// let first_packet = author
 ///     .send_signed_packet("BASE_BRANCH", b"public payload", b"masked payload")
@@ -393,10 +392,9 @@ mod tests {
         let transport = Rc::new(RefCell::new(bucket::Client::new()));
         let mut author = User::builder()
             .with_identity(Ed25519::from_seed("author"))
-            .with_topic("BASE_BRANCH")?
             .with_transport(transport.clone())
             .build()?;
-        let announcement = author.create_stream().await?;
+        let announcement = author.create_stream("BASE_BRANCH").await?;
         let subscriber =
             subscriber_fixture("subscriber", &mut author, announcement.address(), transport.clone()).await?;
         Ok((author, subscriber, announcement.address(), transport))

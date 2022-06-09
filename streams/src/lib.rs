@@ -21,11 +21,10 @@
 //! let mut author = User::builder()
 //!     .with_identity(Ed25519::from_seed("A cryptographically secure seed"))
 //!     .with_transport(transport)
-//!     .with_topic("BASE_BRANCH")?
 //! #     .with_transport(test_transport)
 //!     .build()?;
 //!
-//! let announcement = author.create_stream().await?;
+//! let announcement = author.create_stream("BASE_BRANCH").await?;
 //! # Ok(())
 //! # }
 //! ```

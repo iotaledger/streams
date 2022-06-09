@@ -197,14 +197,12 @@ impl<T> UserBuilder<T> {
     /// # let transport = test_transport.clone();
     /// # let mut author = User::builder()
     /// #     .with_identity(Ed25519::from_seed(author_seed))
-    /// #     .with_topic("BASE_BRANCH")?
     /// #     .with_transport(transport.clone())
     /// #     .build()?;
-    /// # let announcement_address = author.create_stream().await?.address();
+    /// # let announcement_address = author.create_stream("BASE_BRANCH").await?.address();
     ///
     /// let author = User::builder()
     ///     .with_identity(Ed25519::from_seed(author_seed))
-    ///     .with_topic("BASE_BRANCH")?
     ///     .with_transport(transport)
     ///     .recover(announcement_address)
     ///     .await?;
