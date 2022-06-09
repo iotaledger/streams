@@ -212,11 +212,9 @@ impl<T> User<T> {
 
         // Store message content into stores
         let content = message.payload().content();
-        let author_id = content.clone().author_id();
-        let author_ke_pk = content.clone().author_ke_pk();
-        self.state.exchange_keys.insert(author_id.clone(), author_ke_pk);
+        self.state.exchange_keys.insert(content.author_id().clone(), content.author_ke_pk().clone());
         self.state.stream_address = Some(address);
-        self.state.author_identifier = Some(author_id);
+        self.state.author_identifier = Some(content.author_id().clone());
 
         Ok(Message::from_lets_message(address, message))
     }

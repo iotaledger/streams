@@ -242,7 +242,7 @@ pub struct Orphan {
 impl From<announcement::Unwrap> for MessageContent {
     fn from(announce: announcement::Unwrap) -> Self {
         Self::Announcement(Announcement {
-            author_identifier: announce.author_id(),
+            author_identifier: announce.author_id().clone(),
         })
     }
 }
