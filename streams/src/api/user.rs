@@ -34,12 +34,14 @@ use spongos::{
 // Local
 use crate::{
     api::{
-        cursor_store::BranchStore, message::Message, messages::Messages, send_response::SendResponse,
+        cursor_store::{BranchStore, CursorStore},
+        message::Message,
+        messages::Messages,
+        send_response::SendResponse,
         user_builder::UserBuilder,
     },
     message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
 };
-use crate::api::cursor_store::CursorStore;
 
 const ANN_MESSAGE_NUM: usize = 0; // Announcement is always the first message of authors
 const SUB_MESSAGE_NUM: usize = 0; // Subscription is always the first message of subscribers
@@ -189,12 +191,14 @@ impl<T> User<T> {
         self.state.psk_store.remove(&pskid).is_some()
     }
 
-    /// Sets the anchor message link for a specified branch. If the branch does not exist, it is created
+    /// Sets the anchor message link for a specified branch. If the branch does not exist, it is
+    /// created
     fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<CursorStore> {
         self.state.branch_store.set_anchor(topic, anchor)
     }
 
-    /// Sets the latest message link for a specified branch. If the branch does not exist, it is created
+    /// Sets the latest message link for a specified branch. If the branch does not exist, it is
+    /// created
     fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<CursorStore> {
         self.state.branch_store.set_latest_link(topic, latest_link)
     }
@@ -644,15 +648,11 @@ where
         // Get base branch topic
         let base_branch = self.base_branch().clone();
         // Link message to channel announcement
-        let link_to = self.get_anchor(&base_branch)
-            .expect(&format!("No anchor found in branch <{}>", base_branch));
+        let link_to = self
+            .get_anchor(&base_branch)
+            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", base_branch))?;
 
-        let rel_address = MsgId::gen(
-            stream_address.base(),
-            self.identifier(),
-            &base_branch,
-            SUB_MESSAGE_NUM,
-        );
+        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), &base_branch, SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -708,17 +708,13 @@ where
         // Get base branch topic
         let base_branch = self.base_branch().clone();
         // Link message to channel announcement
-        let link_to = self.get_anchor(&base_branch)
-            .expect(&format!("No anchor found in branch <{}>", base_branch));
+        let link_to = self
+            .get_anchor(&base_branch)
+            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", base_branch))?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&base_branch)?;
-        let rel_address = MsgId::gen(
-            stream_address.base(),
-            self.identifier(),
-            &base_branch,
-            new_cursor,
-        );
+        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), &base_branch, new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -776,8 +772,9 @@ where
         // Check Topic
         let topic = topic.into();
         // Link message to anchor in branch
-        let link_to = self.get_anchor(&topic)
-            .expect(&format!("No anchor found in branch <{}>", topic));
+        let link_to = self
+            .get_anchor(&topic)
+            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -910,8 +907,9 @@ where
         // Check Topic
         let topic = topic.into();
         // Link message to latest message in branch
-        let link_to = self.get_latest_link(&topic)
-            .expect(&format!("No latest link found for branch <{}>", topic));
+        let link_to = self
+            .get_latest_link(&topic)
+            .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -979,8 +977,9 @@ where
         // Check Topic
         let topic = topic.into();
         // Link message to latest message in branch
-        let link_to = self.get_latest_link(&topic)
-            .expect(&format!("No latest link found for branch <{}>", topic));
+        let link_to = self
+            .get_latest_link(&topic)
+            .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -1049,10 +1048,14 @@ impl ContentSizeof<State> for sizeof::Context {
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state.branch_store.get_anchor(topic)
-                .expect(&format!("No anchor found in branch <{}>", topic));
-            let latest_link = user_state.branch_store.get_latest_link(topic)
-                .expect(&format!("No latest link found for branch <{}>", topic));
+            let anchor = user_state
+                .branch_store
+                .get_anchor(topic)
+                .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
+            let latest_link = user_state
+                .branch_store
+                .get_latest_link(topic)
+                .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
             self.mask(&anchor)?.mask(&latest_link)?;
 
             let cursors: Vec<(Topic, Identifier, usize)> = user_state
@@ -1106,10 +1109,14 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state.branch_store.get_anchor(topic)
-                .expect(&format!("No anchor found in branch <{}>", topic));
-            let latest_link = user_state.branch_store.get_latest_link(topic)
-                .expect(&format!("No latest link found for branch <{}>", topic));
+            let anchor = user_state
+                .branch_store
+                .get_anchor(topic)
+                .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
+            let latest_link = user_state
+                .branch_store
+                .get_latest_link(topic)
+                .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
             self.mask(&anchor)?.mask(&latest_link)?;
 
             let cursors: Vec<(Topic, Identifier, usize)> = user_state

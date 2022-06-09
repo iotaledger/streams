@@ -53,47 +53,49 @@ impl BranchStore {
 
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> Option<usize> {
         if let Some(branch) = self.0.get_mut(topic) {
-            return branch.cursors.insert(id, cursor)
+            return branch.cursors.insert(id, cursor);
         }
         None
     }
 
     pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<CursorStore> {
-        match self.0.get_mut(topic){
+        match self.0.get_mut(topic) {
             Some(branch) => {
                 branch.anchor = anchor;
                 None
-            },
+            }
             None => {
-                let branch = CursorStore { anchor, ..Default::default() };
+                let branch = CursorStore {
+                    anchor,
+                    ..Default::default()
+                };
                 self.0.insert(topic.clone(), branch)
             }
         }
     }
 
     pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<CursorStore> {
-        match self.0.get_mut(topic){
+        match self.0.get_mut(topic) {
             Some(branch) => {
                 branch.latest_link = latest_link;
                 None
-            },
+            }
             None => {
-                let branch = CursorStore { latest_link, ..Default::default() };
+                let branch = CursorStore {
+                    latest_link,
+                    ..Default::default()
+                };
                 self.0.insert(topic.clone(), branch)
             }
         }
     }
 
     pub(crate) fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
-        self.0
-            .get(topic)
-            .map(|branch| branch.anchor)
+        self.0.get(topic).map(|branch| branch.anchor)
     }
 
     pub(crate) fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
-        self.0
-            .get(topic)
-            .map(|branch| branch.latest_link)
+        self.0.get(topic).map(|branch| branch.latest_link)
     }
 }
 
