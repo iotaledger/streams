@@ -124,7 +124,6 @@ impl fmt::Debug for BranchStore {
         for (topic, branch) in &self.0 {
             writeln!(f, "{:?} => \n{:?}", topic, branch)?;
         }
-        }
         Ok(())
     }
 }
