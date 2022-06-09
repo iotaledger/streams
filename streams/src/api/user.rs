@@ -39,6 +39,7 @@ use crate::{
     },
     message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
 };
+use crate::api::cursor_store::CursorStore;
 
 const ANN_MESSAGE_NUM: usize = 0; // Announcement is always the first message of authors
 const SUB_MESSAGE_NUM: usize = 0; // Subscription is always the first message of subscribers
@@ -188,20 +189,22 @@ impl<T> User<T> {
         self.state.psk_store.remove(&pskid).is_some()
     }
 
-    fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
+    /// Sets the anchor message link for a specified branch. If the branch does not exist, it is created
+    fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<CursorStore> {
         self.state.branch_store.set_anchor(topic, anchor)
     }
 
-    fn set_latest_link(&mut self, topic: &Topic, latest_link: Address) -> Result<()> {
+    /// Sets the latest message link for a specified branch. If the branch does not exist, it is created
+    fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<CursorStore> {
         self.state.branch_store.set_latest_link(topic, latest_link)
     }
 
-    fn get_anchor(&self, topic: &Topic) -> Result<MsgId> {
-        self.state.branch_store.get_anchor(topic).map(|a| a.relative())
+    fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
+        self.state.branch_store.get_anchor(topic)
     }
 
-    fn get_latest_link(&self, topic: &Topic) -> Result<MsgId> {
-        self.state.branch_store.get_latest_link(topic).map(|a| a.relative())
+    fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
+        self.state.branch_store.get_latest_link(topic)
     }
 
     pub(crate) async fn handle_message(&mut self, address: Address, msg: TransportMessage) -> Result<Message> {
@@ -261,8 +264,8 @@ impl<T> User<T> {
             self.state.stream_address = Some(address);
         }
         // Update branch links
-        self.set_anchor(&topic, address)?;
-        self.set_latest_link(&topic, address)?;
+        self.set_anchor(&topic, address.relative());
+        self.set_latest_link(&topic, address.relative());
         self.state.author_identifier = Some(author_id);
 
         Ok(Message::from_lets_message(address, message))
@@ -380,7 +383,7 @@ impl<T> User<T> {
         // Have to make message before setting branch links due to immutable borrow in keyload::unwrap
         let final_message = Message::from_lets_message(address, message);
         // Update branch links
-        self.set_latest_link(&topic, address)?;
+        self.set_latest_link(&topic, address.relative());
         Ok(final_message)
     }
 
@@ -416,7 +419,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        self.set_latest_link(&topic, address)?;
+        self.set_latest_link(&topic, address.relative());
         Ok(Message::from_lets_message(address, message))
     }
 
@@ -452,7 +455,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        self.set_latest_link(&topic, address)?;
+        self.set_latest_link(&topic, address.relative());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -578,17 +581,17 @@ where
 
         // Check Topic
         let topic: Topic = topic.into();
-        let base_topic = self.base_branch().clone();
-        let is_base_branch = topic.eq(&base_topic);
+        let base_branch = self.base_branch().clone();
+        let is_base_branch = topic.eq(&base_branch);
 
         // Update own's cursor
         let (user_cursor, address, topic) = if is_base_branch {
-            (ANN_MESSAGE_NUM, stream_address, base_topic.clone())
+            (ANN_MESSAGE_NUM, stream_address, base_branch.clone())
         } else {
             let cursor = self
-                .next_cursor(&base_topic)
+                .next_cursor(&base_branch)
                 .map_err(|_| anyhow!("No cursor found in base branch"))?;
-            let msgid = MsgId::gen(stream_address.base(), self.identifier(), &base_topic, cursor);
+            let msgid = MsgId::gen(stream_address.base(), self.identifier(), &base_branch, cursor);
             let address = Address::new(stream_address.base(), msgid);
             (cursor, address, topic)
         };
@@ -617,7 +620,7 @@ where
             self.state.branch_store.new_branch(topic.clone());
             self.state
                 .branch_store
-                .insert_cursor(&base_topic, self.identifier(), self.next_cursor(&base_topic)?);
+                .insert_cursor(&base_branch, self.identifier(), self.next_cursor(&base_branch)?);
         }
 
         // If message has been sent successfully, commit message to stores
@@ -627,8 +630,8 @@ where
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Update branch links
-        self.set_anchor(&topic, address)?;
-        self.set_latest_link(&topic, address)?;
+        self.set_anchor(&topic, address.relative());
+        self.set_latest_link(&topic, address.relative());
         Ok(SendResponse::new(address, send_response))
     }
 
@@ -641,7 +644,8 @@ where
         // Get base branch topic
         let base_branch = self.base_branch().clone();
         // Link message to channel announcement
-        let link_to = self.get_anchor(&base_branch)?;
+        let link_to = self.get_anchor(&base_branch)
+            .expect(&format!("No anchor found in branch <{}>", base_branch));
 
         let rel_address = MsgId::gen(
             stream_address.base(),
@@ -704,7 +708,8 @@ where
         // Get base branch topic
         let base_branch = self.base_branch().clone();
         // Link message to channel announcement
-        let link_to = self.get_anchor(&base_branch)?;
+        let link_to = self.get_anchor(&base_branch)
+            .expect(&format!("No anchor found in branch <{}>", base_branch));
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&base_branch)?;
@@ -771,7 +776,8 @@ where
         // Check Topic
         let topic = topic.into();
         // Link message to anchor in branch
-        let link_to = self.get_anchor(&topic)?;
+        let link_to = self.get_anchor(&topic)
+            .expect(&format!("No anchor found in branch <{}>", topic));
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -848,7 +854,7 @@ where
             .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
-        self.set_latest_link(&topic, message_address)?;
+        self.set_latest_link(&topic, message_address.relative());
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -904,7 +910,8 @@ where
         // Check Topic
         let topic = topic.into();
         // Link message to latest message in branch
-        let link_to = self.get_latest_link(&topic)?;
+        let link_to = self.get_latest_link(&topic)
+            .expect(&format!("No latest link found for branch <{}>", topic));
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -949,7 +956,7 @@ where
             .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
-        self.set_latest_link(&topic, message_address)?;
+        self.set_latest_link(&topic, message_address.relative());
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -972,7 +979,8 @@ where
         // Check Topic
         let topic = topic.into();
         // Link message to latest message in branch
-        let link_to = self.get_latest_link(&topic)?;
+        let link_to = self.get_latest_link(&topic)
+            .expect(&format!("No latest link found for branch <{}>", topic));
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
@@ -1016,7 +1024,7 @@ where
             .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
-        self.set_latest_link(&topic, message_address)?;
+        self.set_latest_link(&topic, rel_address);
         Ok(SendResponse::new(message_address, send_response))
     }
 }
@@ -1041,8 +1049,10 @@ impl ContentSizeof<State> for sizeof::Context {
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state.branch_store.get_anchor(topic)?;
-            let latest_link = user_state.branch_store.get_latest_link(topic)?;
+            let anchor = user_state.branch_store.get_anchor(topic)
+                .expect(&format!("No anchor found in branch <{}>", topic));
+            let latest_link = user_state.branch_store.get_latest_link(topic)
+                .expect(&format!("No latest link found for branch <{}>", topic));
             self.mask(&anchor)?.mask(&latest_link)?;
 
             let cursors: Vec<(Topic, Identifier, usize)> = user_state
@@ -1096,8 +1106,10 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state.branch_store.get_anchor(topic)?;
-            let latest_link = user_state.branch_store.get_latest_link(topic)?;
+            let anchor = user_state.branch_store.get_anchor(topic)
+                .expect(&format!("No anchor found in branch <{}>", topic));
+            let latest_link = user_state.branch_store.get_latest_link(topic)
+                .expect(&format!("No latest link found for branch <{}>", topic));
             self.mask(&anchor)?.mask(&latest_link)?;
 
             let cursors: Vec<(Topic, Identifier, usize)> = user_state
@@ -1154,17 +1166,12 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
         for _ in 0..amount_topics.inner() {
             let mut topic = Topic::default();
             self.mask(&mut topic)?;
-            let mut anchor = Address::default();
-            let mut latest_link = Address::default();
+            let mut anchor = MsgId::default();
+            let mut latest_link = MsgId::default();
             self.mask(&mut anchor)?.mask(&mut latest_link)?;
 
-            // If the topic has not been registered yet in store, add it
-            if user_state.branch_store.get_anchor(&topic).is_err() {
-                user_state.branch_store.new_branch(topic.clone());
-            }
-
-            user_state.branch_store.set_anchor(&topic, anchor)?;
-            user_state.branch_store.set_latest_link(&topic, latest_link)?;
+            user_state.branch_store.set_anchor(&topic, anchor);
+            user_state.branch_store.set_latest_link(&topic, latest_link);
 
             let mut amount_cursors = Size::default();
             self.mask(&mut amount_cursors)?;

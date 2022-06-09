@@ -1,5 +1,4 @@
 // Rust
-use anyhow::{anyhow, Result};
 use core::fmt;
 
 // 3rd-party
@@ -8,7 +7,7 @@ use hashbrown::HashMap;
 // IOTA
 
 // Streams
-use lets::{address::Address, id::Identifier, message::Topic};
+use lets::{address::MsgId, id::Identifier, message::Topic};
 
 // Local
 
@@ -52,37 +51,48 @@ impl BranchStore {
         })
     }
 
-    pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> bool {
-        self.0
-            .get_mut(topic)
-            .map_or(false, |branch| branch.cursors.insert(id, cursor).is_none())
+    pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> Option<usize> {
+        if let Some(branch) = self.0.get_mut(topic) {
+            return branch.cursors.insert(id, cursor)
+        }
+        None
     }
 
-    pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
-        self.0
-            .get_mut(topic)
-            .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
-            .map(|branch| branch.anchor = anchor)
+    pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<CursorStore> {
+        match self.0.get_mut(topic){
+            Some(branch) => {
+                branch.anchor = anchor;
+                None
+            },
+            None => {
+                let branch = CursorStore { anchor, ..Default::default() };
+                self.0.insert(topic.clone(), branch)
+            }
+        }
     }
 
-    pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: Address) -> Result<()> {
-        self.0
-            .get_mut(topic)
-            .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
-            .map(|branch| branch.latest_link = latest_link)
+    pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<CursorStore> {
+        match self.0.get_mut(topic){
+            Some(branch) => {
+                branch.latest_link = latest_link;
+                None
+            },
+            None => {
+                let branch = CursorStore { latest_link, ..Default::default() };
+                self.0.insert(topic.clone(), branch)
+            }
+        }
     }
 
-    pub(crate) fn get_anchor(&self, topic: &Topic) -> Result<Address> {
+    pub(crate) fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
         self.0
             .get(topic)
-            .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
             .map(|branch| branch.anchor)
     }
 
-    pub(crate) fn get_latest_link(&self, topic: &Topic) -> Result<Address> {
+    pub(crate) fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
         self.0
             .get(topic)
-            .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
             .map(|branch| branch.latest_link)
     }
 }
@@ -90,14 +100,14 @@ impl BranchStore {
 #[derive(Clone, PartialEq, Eq, Default)]
 pub(crate) struct CursorStore {
     cursors: HashMap<Identifier, usize>,
-    anchor: Address,
-    latest_link: Address,
+    anchor: MsgId,
+    latest_link: MsgId,
 }
 
 impl fmt::Debug for CursorStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "\t* anchor: {}", self.anchor)?;
-        writeln!(f, "\t* latest link: {}", self.latest_link.relative())?;
+        writeln!(f, "\t* latest link: {}", self.latest_link)?;
         writeln!(f, "\t* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
             writeln!(f, "\t\t{:?} => {}", id, cursor)?;
