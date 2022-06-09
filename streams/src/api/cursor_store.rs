@@ -109,8 +109,9 @@ impl fmt::Debug for CursorStore {
 impl fmt::Debug for BranchStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "* branches:")?;
-        for topic in self.topics() {
-            writeln!(f, "{:?} => \n{:?}", topic, self.0.get(topic).unwrap())?;
+        for (topic, branch) in &self.0 {
+            writeln!(f, "{:?} => \n{:?}", topic, branch)?;
+        }
         }
         Ok(())
     }
