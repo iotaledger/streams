@@ -60,9 +60,8 @@ where
 }
 
 impl Bytes<&mut Vec<u8>> {
-    pub(crate) fn resize(&mut self, new_size: usize) -> anyhow::Result<()> {
-        self.0.resize(new_size, 0);
-        Ok(())
+    pub(crate) fn resize(&mut self, new_size: usize) {
+        self.0.resize(new_size, 0)
     }
 }
 
