@@ -1,7 +1,6 @@
 use core::{fmt, iter::FromIterator};
 
 use alloc::{string::String, vec::Vec};
-use anyhow::anyhow;
 
 /// Variable-size array of bytes, the size is not known at compile time and is encoded in trinary
 /// representation.
@@ -61,12 +60,7 @@ where
 }
 
 impl Bytes<&mut Vec<u8>> {
-    // Return an error if size exceeds u32 max size to avoid panic
-    // TODO: Remove anyhow error and replace with no_std compatible error handling
     pub(crate) fn resize(&mut self, new_size: usize) -> anyhow::Result<()> {
-        if new_size > u32::MAX as usize {
-            return Err(anyhow!("{} exceeds maximum available space for Byte resize", new_size));
-        }
         self.0.resize(new_size, 0);
         Ok(())
     }

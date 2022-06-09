@@ -463,13 +463,15 @@ impl<T> User<T> {
     {
         let mut ctx = sizeof::Context::new();
         ctx.sizeof(&self.state).await?;
-        let buf_size = ctx.finalize();
+        let buf_size = ctx.finalize() + 32; // State + Mac Size
 
         let mut buf = vec![0; buf_size];
 
         let mut ctx = wrap::Context::new(&mut buf[..]);
         let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
-        ctx.absorb(External::new(&NBytes::new(key)))?;
+        ctx.absorb(External::new(&NBytes::new(key)))?
+            .commit()?
+            .squeeze(&Mac::new(32))?;
         ctx.wrap(&mut self.state).await?;
         assert!(
             ctx.stream().is_empty(),
@@ -487,7 +489,9 @@ impl<T> User<T> {
     {
         let mut ctx = unwrap::Context::new(backup.as_ref());
         let key: [u8; 32] = SpongosRng::<KeccakF1600>::new(pwd).gen();
-        ctx.absorb(External::new(&NBytes::new(key)))?;
+        ctx.absorb(External::new(&NBytes::new(key)))?
+            .commit()?
+            .squeeze(&Mac::new(32))?;
         let mut state = State::default();
         ctx.unwrap(&mut state).await?;
         Ok(User { transport, state })
@@ -549,8 +553,8 @@ where
         let topic = topic.into();
 
         // Generate stream address
-        let stream_base_address = AppAddr::gen(self.identifier(), topic.clone());
-        let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), topic.clone(), INIT_MESSAGE_NUM);
+        let stream_base_address = AppAddr::gen(self.identifier(), &topic);
+        let stream_rel_address = MsgId::gen(stream_base_address, self.identifier(), &topic, INIT_MESSAGE_NUM);
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
         // Commit Author Identifier and Stream Address to store
@@ -584,7 +588,7 @@ where
             let cursor = self
                 .next_cursor(&base_topic)
                 .map_err(|_| anyhow!("No cursor found in base branch"))?;
-            let msgid = MsgId::gen(stream_address.base(), self.identifier(), base_topic.clone(), cursor);
+            let msgid = MsgId::gen(stream_address.base(), self.identifier(), &base_topic, cursor);
             let address = Address::new(stream_address.base(), msgid);
             (cursor, address, topic)
         };
@@ -642,7 +646,7 @@ where
         let rel_address = MsgId::gen(
             stream_address.base(),
             self.identifier(),
-            base_branch.clone(),
+            &base_branch,
             SUB_MESSAGE_NUM,
         );
 
@@ -707,7 +711,7 @@ where
         let rel_address = MsgId::gen(
             stream_address.base(),
             self.identifier(),
-            base_branch.clone(),
+            &base_branch,
             new_cursor,
         );
 
@@ -771,7 +775,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), topic.clone(), new_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), &topic, new_cursor);
 
         // Prepare HDF and PCF
         let mut linked_msg_spongos = self
@@ -904,7 +908,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), topic.clone(), new_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), &topic, new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -972,7 +976,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
-        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), topic.clone(), new_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), self.identifier(), &topic, new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
