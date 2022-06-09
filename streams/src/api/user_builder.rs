@@ -1,6 +1,5 @@
 // Rust
 use alloc::{boxed::Box, vec::Vec};
-use core::convert::TryInto;
 
 // 3rd-party
 use anyhow::{anyhow, Result};
@@ -12,7 +11,7 @@ use async_trait::async_trait;
 use lets::{
     address::Address,
     id::{Identity, Psk, PskId},
-    message::{Topic, TransportMessage},
+    message::TransportMessage,
     transport::Transport,
 };
 
@@ -23,7 +22,6 @@ use crate::api::user::User;
 pub struct UserBuilder<T> {
     /// Base Identity that will be used to Identifier a Streams User
     id: Option<Identity>,
-    topic: Option<Topic>,
     /// Transport Client instance
     transport: Option<T>,
     /// Pre Shared Keys
@@ -34,7 +32,6 @@ impl<T> Default for UserBuilder<T> {
     fn default() -> Self {
         UserBuilder {
             id: None,
-            topic: None,
             transport: None,
             psks: Default::default(),
         }
@@ -71,7 +68,6 @@ impl<T> UserBuilder<T> {
     {
         UserBuilder {
             transport: Some(transport),
-            topic: self.topic,
             id: self.id,
             psks: self.psks,
         }
@@ -86,7 +82,6 @@ impl<T> UserBuilder<T> {
         // bound T: DefaultTransport for all transports
         Ok(UserBuilder {
             transport: Some(NewTransport::try_default().await?),
-            topic: self.topic,
             id: self.id,
             psks: self.psks,
         })
@@ -122,16 +117,6 @@ impl<T> UserBuilder<T> {
     pub fn with_psk(mut self, pskid: PskId, psk: Psk) -> Self {
         self.psks.push((pskid, psk));
         self
-    }
-
-    /// Insert a topic to be used in the channel creation
-    pub fn with_topic<Top>(mut self, topic: Top) -> Result<Self>
-    where
-        Top: AsRef<[u8]>,
-    {
-        let topic = topic.as_ref().try_into()?;
-        self.topic = Some(topic);
-        Ok(self)
     }
 
     /// Build a [`User`] instance using the Builder parameters.
@@ -173,9 +158,7 @@ impl<T> UserBuilder<T> {
             .transport
             .ok_or_else(|| anyhow!("transport not specified, cannot build User without Transport"))?;
 
-        let topic = self.topic.unwrap_or_default();
-
-        Ok(User::new(id, topic, self.psks, transport))
+        Ok(User::new(id, self.psks, transport))
     }
 
     /// Recover a user instance from the builder parameters.

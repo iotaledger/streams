@@ -2,8 +2,10 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use core::{convert::TryFrom, fmt::Formatter};
-use core::convert::TryInto;
+use core::{
+    convert::{TryFrom, TryInto},
+    fmt::Formatter,
+};
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Mask},

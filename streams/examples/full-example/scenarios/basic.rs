@@ -26,7 +26,6 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut author = User::builder()
         .with_identity(Ed25519::from_seed(author_seed))
         .with_transport(transport.clone())
-        .with_topic(b"BASE_BRANCH")?
         .build()?;
 
     let mut subscriber_a = User::builder()
@@ -45,7 +44,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Author creates stream and sends its announcement");
     // Start at index 1, because we can. Will error if its already in use
-    let announcement = author.create_stream().await?;
+    let announcement = author.create_stream("BASE_BRANCH").await?;
     print_send_result(&announcement);
     print_user("Author", &author);
 
@@ -359,7 +358,6 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut new_author = User::builder()
         .with_identity(Ed25519::from_seed(author_seed))
         .with_transport(transport.clone())
-        .with_topic(b"BASE_BRANCH")?
         .build()?;
     // OOB data must be recovered manually
     new_author.add_psk(psk);

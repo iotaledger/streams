@@ -28,64 +28,60 @@ impl BranchStore {
         self.0.keys()
     }
 
-    pub(crate) fn branch_exists(&self, topic: &Topic) -> bool {
-        self.0.get(topic).is_some()
-    }
-
     pub(crate) fn is_cursor_tracked(&self, topic: &Topic, id: &Identifier) -> bool {
-        self.0.get(topic)
+        self.0
+            .get(topic)
             .map_or(false, |branch| branch.cursors.contains_key(id))
     }
 
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
-        let removals = self.0.values_mut().flat_map(|branch| { branch.cursors.remove(id) });
+        let removals = self.0.values_mut().flat_map(|branch| branch.cursors.remove(id));
         removals.count() > 0
     }
 
-    pub(crate) fn move_branch(&mut self, old_topic: &Topic, new_topic: &Topic) -> bool {
-        let old_branch = self.0.remove(old_topic);
-        old_branch.map_or(false, |key_store| self.0.insert(new_topic.clone(), key_store).is_none())
-    }
-
     pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
-        self.0.get(topic)
-            .and_then(|branch| branch.cursors.get(id).copied())
+        self.0.get(topic).and_then(|branch| branch.cursors.get(id).copied())
     }
 
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (Topic, Identifier, usize)> + Clone + '_ {
-        self.0.iter()
-            .flat_map(|(topic, branch)|
-                branch.cursors.iter()
-                    .map(move |(id, cursor)| (topic.clone(), *id, *cursor))
-                    .into_iter()
-            )
+        self.0.iter().flat_map(|(topic, branch)| {
+            branch
+                .cursors
+                .iter()
+                .map(move |(id, cursor)| (topic.clone(), *id, *cursor))
+        })
     }
 
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> bool {
-        self.0.get_mut(topic)
+        self.0
+            .get_mut(topic)
             .map_or(false, |branch| branch.cursors.insert(id, cursor).is_none())
     }
 
     pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
-        self.0.get_mut(topic)
+        self.0
+            .get_mut(topic)
             .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
             .map(|branch| branch.anchor = anchor)
     }
 
     pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: Address) -> Result<()> {
-        self.0.get_mut(topic)
+        self.0
+            .get_mut(topic)
             .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
             .map(|branch| branch.latest_link = latest_link)
     }
 
     pub(crate) fn get_anchor(&self, topic: &Topic) -> Result<Address> {
-        self.0.get(topic)
+        self.0
+            .get(topic)
             .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
             .map(|branch| branch.anchor)
     }
 
     pub(crate) fn get_latest_link(&self, topic: &Topic) -> Result<Address> {
-        self.0.get(topic)
+        self.0
+            .get(topic)
             .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
             .map(|branch| branch.latest_link)
     }

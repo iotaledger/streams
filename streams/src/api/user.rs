@@ -84,33 +84,31 @@ impl User<()> {
 }
 
 impl<T> User<T> {
-    pub(crate) fn new<Psks>(user_id: Identity, base_topic: Topic, psks: Psks, transport: T) -> Self
+    pub(crate) fn new<Psks>(user_id: Identity, psks: Psks, transport: T) -> Self
     where
         Psks: IntoIterator<Item = (PskId, Psk)>,
     {
-        let mut cursor_store = BranchStore::new();
-        cursor_store.new_branch(base_topic.clone());
-
-        let mut exchange_keys = HashMap::new();
         let mut psk_store = HashMap::new();
         // Store any pre shared keys
         psks.into_iter().for_each(|(pskid, psk)| {
             psk_store.insert(pskid, psk);
         });
 
+        let mut exchange_keys = HashMap::new();
+        // Store user exchange key
         exchange_keys.insert(user_id.to_identifier(), user_id._ke_sk().public_key());
 
         Self {
             transport,
             state: State {
                 user_id,
-                branch_store: cursor_store,
+                branch_store: BranchStore::new(),
                 psk_store,
                 exchange_keys,
                 spongos_store: Default::default(),
                 stream_address: None,
                 author_identifier: None,
-                base_topic,
+                base_topic: Default::default(),
             },
         }
     }
@@ -131,8 +129,8 @@ impl<T> User<T> {
             .ok_or_else(|| anyhow!("User is not a publisher"))
     }
 
-    pub(crate) fn base_branch(&self) -> Topic {
-        self.state.base_topic.clone()
+    pub(crate) fn base_branch(&self) -> &Topic {
+        &self.state.base_topic
     }
 
     pub(crate) fn stream_address(&self) -> Option<Address> {
@@ -227,20 +225,17 @@ impl<T> User<T> {
         let publisher = preparsed.header().publisher();
         let is_base_branch = self.state.stream_address.is_none();
 
-        // If the topic of the announcement is not base branch, a new branch must be added to store
-        // and the author cursor needs to be iterated on the base branch
-        if !is_base_branch {
-            self.state.branch_store.new_branch(topic.clone());
-            self.state
-                .branch_store
-                .insert_cursor(&self.base_branch(), publisher, preparsed.header().sequence());
-        }
+        // Insert new branch into store
+        self.state.branch_store.new_branch(topic.clone());
 
-        // The user may have already stored a base branch with a default topic. If the topic provided in the
-        // announcement is not default, but is the base branch, remove the old branch and place a new branch
-        // into store to replace it
-        if is_base_branch && !topic.eq(&Topic::default()) {
-            self.state.branch_store.move_branch(&Topic::default(), &topic);
+        // If the topic of the announcement is not base branch the author cursor needs to be iterated
+        // on the base branch
+        if !is_base_branch {
+            self.state.branch_store.insert_cursor(
+                &self.base_branch().clone(),
+                publisher,
+                preparsed.header().sequence(),
+            );
         }
 
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
@@ -541,7 +536,7 @@ where
     T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TSR>,
 {
     /// Prepare channel Announcement message.
-    pub async fn create_stream(&mut self) -> Result<SendResponse<TSR>> {
+    pub async fn create_stream<Top: Into<Topic>>(&mut self, topic: Top) -> Result<SendResponse<TSR>> {
         // Check conditions
         if let Some(appaddr) = self.stream_address() {
             bail!(
@@ -551,7 +546,7 @@ where
         }
 
         // Convert topic
-        let topic = self.base_branch();
+        let topic = topic.into();
 
         // Generate stream address
         let stream_base_address = AppAddr::gen(self.identifier(), topic.clone());
@@ -562,6 +557,9 @@ where
         self.state.stream_address = Some(stream_address);
         self.state.author_identifier = Some(self.identifier());
         self.state.base_topic = topic.clone();
+
+        // Insert the base branch into store
+        self.state.branch_store.new_branch(topic.clone());
 
         // Create Base Branch
         self.new_branch(topic).await
@@ -576,7 +574,7 @@ where
 
         // Check Topic
         let topic: Topic = topic.into();
-        let base_topic = self.base_branch();
+        let base_topic = self.base_branch().clone();
         let is_base_branch = topic.eq(&base_topic);
 
         // Update own's cursor
@@ -637,7 +635,7 @@ where
             .stream_address()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
         // Get base branch topic
-        let base_branch = self.base_branch();
+        let base_branch = self.base_branch().clone();
         // Link message to channel announcement
         let link_to = self.get_anchor(&base_branch)?;
 
@@ -700,7 +698,7 @@ where
             anyhow!("before sending a subscription one must receive the announcement of a stream first")
         })?;
         // Get base branch topic
-        let base_branch = self.base_branch();
+        let base_branch = self.base_branch().clone();
         // Link message to channel announcement
         let link_to = self.get_anchor(&base_branch)?;
 
@@ -1043,8 +1041,10 @@ impl ContentSizeof<State> for sizeof::Context {
             let latest_link = user_state.branch_store.get_latest_link(topic)?;
             self.mask(&anchor)?.mask(&latest_link)?;
 
-            let cursors: Vec<(Topic, Identifier, usize)> = user_state.branch_store.cursors()
-                .filter(|(t, _,_)| t.eq(&topic))
+            let cursors: Vec<(Topic, Identifier, usize)> = user_state
+                .branch_store
+                .cursors()
+                .filter(|(t, _, _)| t.eq(topic))
                 .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
@@ -1096,8 +1096,10 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
             let latest_link = user_state.branch_store.get_latest_link(topic)?;
             self.mask(&anchor)?.mask(&latest_link)?;
 
-            let cursors: Vec<(Topic, Identifier, usize)> = user_state.branch_store.cursors()
-                .filter(|(t, _,_)| t.eq(&topic))
+            let cursors: Vec<(Topic, Identifier, usize)> = user_state
+                .branch_store
+                .cursors()
+                .filter(|(t, _, _)| t.eq(topic))
                 .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
