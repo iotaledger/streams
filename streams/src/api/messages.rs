@@ -127,7 +127,7 @@ type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 struct MessagesState<'a, T> {
     user: &'a mut User<T>,
-    ids_stack: Vec<(Identifier, Topic, usize)>,
+    ids_stack: Vec<(Topic, Identifier, usize)>,
     msg_queue: HashMap<MsgId, VecDeque<(MsgId, TransportMessage)>>,
     stage: VecDeque<(MsgId, TransportMessage)>,
     successful_round: bool,
@@ -197,24 +197,13 @@ impl<'a, T> MessagesState<'a, T> {
             }
         } else {
             // Stage is empty, populate it with some more messages
-            let (publisher, topic, cursor) = match self.ids_stack.pop() {
+            let (topic, publisher, cursor) = match self.ids_stack.pop() {
                 Some(id_cursor) => id_cursor,
                 None => {
                     // new round
                     self.successful_round = false;
-                    let mut publishers_cursors: Vec<(Identifier, Topic, usize)> = Vec::new();
-                    for topic in self.user.topics() {
-                        let cursors_set: Vec<(Identifier, Topic, usize)> = self
-                            .user
-                            .cursors(topic)
-                            .ok()?
-                            .map(|(id, cursor)| (id, topic.clone(), cursor))
-                            .collect();
-                        publishers_cursors.extend_from_slice(&cursors_set);
-                    }
-                    let next = publishers_cursors.pop()?;
-                    self.ids_stack = publishers_cursors;
-                    next
+                    self.ids_stack = self.user.cursors().collect();
+                    self.ids_stack.pop()?
                 }
             };
             let base_address = self.user.stream_address()?.base();

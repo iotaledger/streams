@@ -1,9 +1,6 @@
 // Rust
 use alloc::{boxed::Box, format, string::String, vec::Vec};
-use core::{
-    convert::TryInto,
-    fmt::{Debug, Formatter, Result as FormatResult},
-};
+use core::fmt::{Debug, Formatter, Result as FormatResult};
 
 // 3rd-party
 use anyhow::{anyhow, bail, ensure, Result};
@@ -61,7 +58,7 @@ struct State {
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no) mapped
     /// by branch topic Vec.
-    cursor_store: BranchStore,
+    branch_store: BranchStore,
 
     /// Mapping of trusted pre shared keys and identifiers
     psk_store: HashMap<PskId, Psk>,
@@ -107,7 +104,7 @@ impl<T> User<T> {
             transport,
             state: State {
                 user_id,
-                cursor_store,
+                branch_store: cursor_store,
                 psk_store,
                 exchange_keys,
                 spongos_store: Default::default(),
@@ -125,7 +122,7 @@ impl<T> User<T> {
 
     /// User's cursor
     fn cursor(&self, topic: &Topic) -> Option<usize> {
-        self.state.cursor_store.get_cursor(topic, &self.identifier())
+        self.state.branch_store.get_cursor(topic, &self.identifier())
     }
 
     fn next_cursor(&self, topic: &Topic) -> Result<usize> {
@@ -149,15 +146,12 @@ impl<T> User<T> {
         &mut self.transport
     }
 
-    pub(crate) fn topics(&self) -> Vec<&Topic> {
-        self.state.cursor_store.topics()
+    pub fn topics(&self) -> impl Iterator<Item = &Topic> + ExactSizeIterator {
+        self.state.branch_store.topics()
     }
 
-    pub(crate) fn cursors(
-        &self,
-        topic: &Topic,
-    ) -> Result<impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + '_> {
-        self.state.cursor_store.cursors(topic)
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Topic, Identifier, usize)> + '_ {
+        self.state.branch_store.cursors()
     }
 
     pub fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
@@ -167,7 +161,7 @@ impl<T> User<T> {
     fn should_store_cursor(&self, topic: &Topic, subscriber: &Permissioned<Identifier>) -> bool {
         let no_tracked_cursor = !self
             .state
-            .cursor_store
+            .branch_store
             .is_cursor_tracked(topic, subscriber.identifier());
         !subscriber.is_readonly() && no_tracked_cursor
     }
@@ -185,7 +179,7 @@ impl<T> User<T> {
     }
 
     pub fn remove_subscriber(&mut self, id: Identifier) -> bool {
-        self.state.cursor_store.remove_from_all(&id) | self.state.exchange_keys.remove(&id).is_some()
+        self.state.branch_store.remove(&id) | self.state.exchange_keys.remove(&id).is_some()
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
@@ -197,19 +191,19 @@ impl<T> User<T> {
     }
 
     fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
-        self.state.cursor_store.set_anchor(topic, anchor)
+        self.state.branch_store.set_anchor(topic, anchor)
     }
 
     fn set_latest_link(&mut self, topic: &Topic, latest_link: Address) -> Result<()> {
-        self.state.cursor_store.set_latest_link(topic, latest_link)
+        self.state.branch_store.set_latest_link(topic, latest_link)
     }
 
     fn get_anchor(&self, topic: &Topic) -> Result<MsgId> {
-        self.state.cursor_store.get_anchor(topic).map(|a| a.relative())
+        self.state.branch_store.get_anchor(topic).map(|a| a.relative())
     }
 
     fn get_latest_link(&self, topic: &Topic) -> Result<MsgId> {
-        self.state.cursor_store.get_latest_link(topic).map(|a| a.relative())
+        self.state.branch_store.get_latest_link(topic).map(|a| a.relative())
     }
 
     pub(crate) async fn handle_message(&mut self, address: Address, msg: TransportMessage) -> Result<Message> {
@@ -236,9 +230,9 @@ impl<T> User<T> {
         // If the topic of the announcement is not base branch, a new branch must be added to store
         // and the author cursor needs to be iterated on the base branch
         if !is_base_branch {
-            self.state.cursor_store.new_branch(topic.clone());
+            self.state.branch_store.new_branch(topic.clone());
             self.state
-                .cursor_store
+                .branch_store
                 .insert_cursor(&self.base_branch(), publisher, preparsed.header().sequence());
         }
 
@@ -246,14 +240,14 @@ impl<T> User<T> {
         // announcement is not default, but is the base branch, remove the old branch and place a new branch
         // into store to replace it
         if is_base_branch && !topic.eq(&Topic::default()) {
-            self.state.cursor_store.move_branch(&Topic::default(), &topic);
+            self.state.branch_store.move_branch(&Topic::default(), &topic);
         }
 
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
-            .cursor_store
+            .branch_store
             .insert_cursor(&topic, preparsed.header().publisher(), INIT_MESSAGE_NUM);
 
         // Unwrap message
@@ -344,7 +338,7 @@ impl<T> User<T> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
+        self.state.branch_store.insert_cursor(
             preparsed.header().topic(),
             preparsed.header().publisher(),
             preparsed.header().sequence(),
@@ -383,7 +377,7 @@ impl<T> User<T> {
         for subscriber in &message.payload().content().subscribers {
             if self.should_store_cursor(&topic, subscriber) {
                 self.state
-                    .cursor_store
+                    .branch_store
                     .insert_cursor(&topic, *subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
@@ -402,7 +396,7 @@ impl<T> User<T> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
+        self.state.branch_store.insert_cursor(
             preparsed.header().topic(),
             preparsed.header().publisher(),
             preparsed.header().sequence(),
@@ -438,7 +432,7 @@ impl<T> User<T> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
+        self.state.branch_store.insert_cursor(
             preparsed.header().topic(),
             preparsed.header().publisher(),
             preparsed.header().sequence(),
@@ -570,18 +564,18 @@ where
         self.state.base_topic = topic.clone();
 
         // Create Base Branch
-        self.new_branch(&topic).await
+        self.new_branch(topic).await
     }
 
     /// Prepare new branch Announcement message
-    pub async fn new_branch<Top: AsRef<[u8]>>(&mut self, topic: Top) -> Result<SendResponse<TSR>> {
+    pub async fn new_branch<Top: Into<Topic>>(&mut self, topic: Top) -> Result<SendResponse<TSR>> {
         // Check conditions
         let stream_address = self
             .stream_address()
             .ok_or_else(|| anyhow!("before starting a new branch, the stream must be created"))?;
 
         // Check Topic
-        let topic: Topic = topic.as_ref().try_into()?;
+        let topic: Topic = topic.into();
         let base_topic = self.base_branch();
         let is_base_branch = topic.eq(&base_topic);
 
@@ -618,15 +612,15 @@ where
 
         // If the branch has not been created yet, create it
         if !is_base_branch {
-            self.state.cursor_store.new_branch(topic.clone());
+            self.state.branch_store.new_branch(topic.clone());
             self.state
-                .cursor_store
+                .branch_store
                 .insert_cursor(&base_topic, self.identifier(), self.next_cursor(&base_topic)?);
         }
 
         // If message has been sent successfully, commit message to stores
         self.state
-            .cursor_store
+            .branch_store
             .insert_cursor(&topic, self.identifier(), INIT_MESSAGE_NUM);
         self.state.spongos_store.insert(address.relative(), spongos);
 
@@ -750,7 +744,7 @@ where
 
         // If message has been sent successfully, commit message to stores
         self.state
-            .cursor_store
+            .branch_store
             .insert_cursor(&base_branch, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
@@ -764,7 +758,7 @@ where
     ) -> Result<SendResponse<TSR>>
     where
         Subscribers: IntoIterator<Item = Permissioned<Identifier>> + Clone,
-        Top: AsRef<[u8]>,
+        Top: Into<Topic>,
         Psks: IntoIterator<Item = PskId>,
     {
         // Check conditions
@@ -773,7 +767,7 @@ where
             .ok_or_else(|| anyhow!("before sending a keyload one must create a stream first"))?;
 
         // Check Topic
-        let topic = topic.as_ref().try_into()?;
+        let topic = topic.into();
         // Link message to anchor in branch
         let link_to = self.get_anchor(&topic)?;
 
@@ -843,12 +837,12 @@ where
         for subscriber in subscribers {
             if self.should_store_cursor(&topic, &subscriber) {
                 self.state
-                    .cursor_store
+                    .branch_store
                     .insert_cursor(&topic, *subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
         self.state
-            .cursor_store
+            .branch_store
             .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
@@ -858,7 +852,7 @@ where
 
     pub async fn send_keyload_for_all<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
-        Top: AsRef<[u8]>,
+        Top: Into<Topic>,
     {
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
         let subscribers: Vec<Permissioned<Identifier>> = self.subscribers().map(Permissioned::Read).collect();
@@ -873,7 +867,7 @@ where
 
     pub async fn send_keyload_for_all_rw<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
-        Top: AsRef<[u8]>,
+        Top: Into<Topic>,
     {
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
         let subscribers: Vec<Permissioned<Identifier>> = self
@@ -898,7 +892,7 @@ where
     where
         M: AsRef<[u8]>,
         P: AsRef<[u8]>,
-        Top: AsRef<[u8]>,
+        Top: Into<Topic>,
     {
         // Check conditions
         let stream_address = self.stream_address().ok_or_else(|| {
@@ -906,7 +900,7 @@ where
         })?;
 
         // Check Topic
-        let topic = topic.as_ref().try_into()?;
+        let topic = topic.into();
         // Link message to latest message in branch
         let link_to = self.get_latest_link(&topic)?;
 
@@ -949,7 +943,7 @@ where
 
         // If message has been sent successfully, commit message to stores
         self.state
-            .cursor_store
+            .branch_store
             .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
@@ -966,7 +960,7 @@ where
     where
         M: AsRef<[u8]>,
         P: AsRef<[u8]>,
-        Top: AsRef<[u8]>,
+        Top: Into<Topic>,
     {
         // Check conditions
         let stream_address = self.stream_address().ok_or_else(|| {
@@ -974,7 +968,7 @@ where
         })?;
 
         // Check Topic
-        let topic = topic.as_ref().try_into()?;
+        let topic = topic.into();
         // Link message to latest message in branch
         let link_to = self.get_latest_link(&topic)?;
 
@@ -1016,7 +1010,7 @@ where
 
         // If message has been sent successfully, commit message to stores
         self.state
-            .cursor_store
+            .branch_store
             .insert_cursor(&topic, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
@@ -1039,20 +1033,22 @@ impl ContentSizeof<State> for sizeof::Context {
             self.mask(address)?.mask(spongos)?;
         }
 
-        let topics = user_state.cursor_store.topics();
+        let topics = user_state.branch_store.topics();
         let amount_topics = topics.len();
         self.mask(Size::new(amount_topics))?;
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state.cursor_store.get_anchor(topic)?;
-            let latest_link = user_state.cursor_store.get_latest_link(topic)?;
+            let anchor = user_state.branch_store.get_anchor(topic)?;
+            let latest_link = user_state.branch_store.get_latest_link(topic)?;
             self.mask(&anchor)?.mask(&latest_link)?;
 
-            let cursors = user_state.cursor_store.cursors(topic)?;
+            let cursors: Vec<(Topic, Identifier, usize)> = user_state.branch_store.cursors()
+                .filter(|(t, _,_)| t.eq(&topic))
+                .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
-            for (subscriber, cursor) in cursors {
+            for (_, subscriber, cursor) in cursors {
                 self.mask(&subscriber)?.mask(Size::new(cursor))?;
             }
         }
@@ -1090,20 +1086,22 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
             self.mask(address)?.mask(spongos)?;
         }
 
-        let topics = user_state.cursor_store.topics();
+        let topics = user_state.branch_store.topics();
         let amount_topics = topics.len();
         self.mask(Size::new(amount_topics))?;
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state.cursor_store.get_anchor(topic)?;
-            let latest_link = user_state.cursor_store.get_latest_link(topic)?;
+            let anchor = user_state.branch_store.get_anchor(topic)?;
+            let latest_link = user_state.branch_store.get_latest_link(topic)?;
             self.mask(&anchor)?.mask(&latest_link)?;
 
-            let cursors = user_state.cursor_store.cursors(topic)?;
+            let cursors: Vec<(Topic, Identifier, usize)> = user_state.branch_store.cursors()
+                .filter(|(t, _,_)| t.eq(&topic))
+                .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
-            for (subscriber, cursor) in cursors {
+            for (_, subscriber, cursor) in cursors {
                 self.mask(&subscriber)?.mask(Size::new(cursor))?;
             }
         }
@@ -1155,12 +1153,12 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
             self.mask(&mut anchor)?.mask(&mut latest_link)?;
 
             // If the topic has not been registered yet in store, add it
-            if !user_state.cursor_store.topics().contains(&&topic) {
-                user_state.cursor_store.new_branch(topic.clone());
+            if user_state.branch_store.get_anchor(&topic).is_err() {
+                user_state.branch_store.new_branch(topic.clone());
             }
 
-            user_state.cursor_store.set_anchor(&topic, anchor)?;
-            user_state.cursor_store.set_latest_link(&topic, latest_link)?;
+            user_state.branch_store.set_anchor(&topic, anchor)?;
+            user_state.branch_store.set_latest_link(&topic, latest_link)?;
 
             let mut amount_cursors = Size::default();
             self.mask(&mut amount_cursors)?;
@@ -1169,7 +1167,7 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
                 let mut cursor = Size::default();
                 self.mask(&mut subscriber)?.mask(&mut cursor)?;
                 user_state
-                    .cursor_store
+                    .branch_store
                     .insert_cursor(&topic, subscriber, cursor.inner());
             }
         }
@@ -1204,7 +1202,7 @@ impl<T> Debug for User<T> {
             "\n* identifier: <{}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
             self.identifier(),
             self.base_branch(),
-            self.state.cursor_store,
+            self.state.branch_store,
             self.state
                 .psk_store
                 .keys()

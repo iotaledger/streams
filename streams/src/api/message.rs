@@ -29,7 +29,7 @@ impl Message {
     {
         Message {
             address,
-            header: lets_message.header(),
+            header: lets_message.header().clone(),
             content: lets_message.into_payload().into_content().into(),
         }
     }
@@ -37,7 +37,7 @@ impl Message {
     pub(crate) fn orphan(address: Address, preparsed: PreparsedMessage) -> Self {
         Self {
             address,
-            header: preparsed.header(),
+            header: preparsed.header().clone(),
             content: MessageContent::Orphan(Orphan {
                 cursor: preparsed.cursor(),
                 message: preparsed.into_transport_msg(),
@@ -49,8 +49,8 @@ impl Message {
         self.address
     }
 
-    pub fn header(&self) -> HDF {
-        self.header.clone()
+    pub fn header(&self) -> &HDF {
+        &self.header
     }
 
     pub fn content(&self) -> &MessageContent {

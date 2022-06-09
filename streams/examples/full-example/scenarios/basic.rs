@@ -21,7 +21,7 @@ const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
 pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
     let psk = Psk::from_seed("A pre shared key");
-    let branch1_topic = b"BRANCH1";
+    let branch1_topic = "BRANCH1";
 
     let mut author = User::builder()
         .with_identity(Ed25519::from_seed(author_seed))
@@ -70,12 +70,12 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
 
     println!("> Author creates a new branch");
-    println!("Branch topic: {}", String::from_utf8(branch1_topic.to_vec())?);
+    println!("Branch topic: {}", branch1_topic);
     let branch_announcement = author.new_branch(branch1_topic).await?;
     print_send_result(&branch_announcement);
     print_user("Author", &author);
 
-    println!("> Author issues keyload for every user subscribed so far [SubscriberA, PSK] for Branch 1");
+    println!("> Author issues keyload for every user subscribed so far [SubscriberA, PSK] in Branch 1");
     let keyload_as_author = author.send_keyload_for_all(branch1_topic).await?;
     print_send_result(&keyload_as_author);
     print_user("Author", &author);

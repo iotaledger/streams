@@ -3,6 +3,7 @@ use alloc::{
     vec::Vec,
 };
 use core::{convert::TryFrom, fmt::Formatter};
+use core::convert::TryInto;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Mask},
@@ -27,10 +28,24 @@ impl From<&str> for Topic {
     }
 }
 
+impl From<String> for Topic {
+    fn from(t: String) -> Self {
+        Self(t)
+    }
+}
+
 impl TryFrom<&[u8]> for Topic {
     type Error = anyhow::Error;
     fn try_from(t: &[u8]) -> Result<Self, Self::Error> {
         let topic = String::from_utf8(t.to_vec())?;
+        Ok(Topic(topic))
+    }
+}
+
+impl TryFrom<Vec<u8>> for Topic {
+    type Error = anyhow::Error;
+    fn try_from(t: Vec<u8>) -> Result<Self, Self::Error> {
+        let topic = String::from_utf8(t)?;
         Ok(Topic(topic))
     }
 }
@@ -44,12 +59,6 @@ impl core::fmt::Display for Topic {
 impl AsRef<[u8]> for Topic {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
-    }
-}
-
-impl AsMut<Vec<u8>> for Topic {
-    fn as_mut(&mut self) -> &mut Vec<u8> {
-        unsafe { self.0.as_mut_vec() }
     }
 }
 
@@ -75,7 +84,9 @@ where
     IS: io::IStream,
 {
     fn mask(&mut self, topic: &mut Topic) -> anyhow::Result<&mut Self> {
-        self.mask(Bytes::new(topic.as_mut()))?;
+        let mut topic_bytes = topic.as_ref().to_vec();
+        self.mask(Bytes::new(&mut topic_bytes))?;
+        *topic = topic_bytes.try_into()?;
         Ok(self)
     }
 }

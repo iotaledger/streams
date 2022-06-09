@@ -40,8 +40,8 @@ impl<Payload> Message<Payload> {
         self
     }
 
-    pub fn header(&self) -> HDF {
-        self.header.clone()
+    pub fn header(&self) -> &HDF {
+        &self.header
     }
 
     pub fn payload(&self) -> &PCF<Payload> {

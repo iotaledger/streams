@@ -1,5 +1,4 @@
 // Rust
-use alloc::vec::Vec;
 use anyhow::{anyhow, Result};
 use core::fmt;
 
@@ -25,23 +24,22 @@ impl BranchStore {
         self.0.insert(topic, CursorStore::default()).is_none()
     }
 
-    pub(crate) fn topics(&self) -> Vec<&Topic> {
-        self.0.keys().collect()
+    pub(crate) fn topics(&self) -> impl Iterator<Item = &Topic> + ExactSizeIterator {
+        self.0.keys()
+    }
+
+    pub(crate) fn branch_exists(&self, topic: &Topic) -> bool {
+        self.0.get(topic).is_some()
     }
 
     pub(crate) fn is_cursor_tracked(&self, topic: &Topic, id: &Identifier) -> bool {
-        self.get_branch(topic)
+        self.0.get(topic)
             .map_or(false, |branch| branch.cursors.contains_key(id))
     }
 
-    pub(crate) fn remove_from_all(&mut self, id: &Identifier) -> bool {
-        let mut removed = false;
-        self.0.iter_mut().for_each(|(_topic, branch)| {
-            if branch.cursors.remove(id).is_some() {
-                removed = true
-            }
-        });
-        removed
+    pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
+        let removals = self.0.values_mut().flat_map(|branch| { branch.cursors.remove(id) });
+        removals.count() > 0
     }
 
     pub(crate) fn move_branch(&mut self, old_topic: &Topic, new_topic: &Topic) -> bool {
@@ -49,54 +47,51 @@ impl BranchStore {
         old_branch.map_or(false, |key_store| self.0.insert(new_topic.clone(), key_store).is_none())
     }
 
-    fn get_branch(&self, topic: &Topic) -> Result<&CursorStore> {
-        self.0.get(topic).ok_or_else(|| anyhow!("Branch not found in store"))
-    }
-
-    fn get_branch_mut(&mut self, topic: &Topic) -> Result<&mut CursorStore> {
-        self.0
-            .get_mut(topic)
-            .ok_or_else(|| anyhow!("Branch not found in store"))
-    }
-
     pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
-        self.get_branch(topic)
-            .ok()
+        self.0.get(topic)
             .and_then(|branch| branch.cursors.get(id).copied())
     }
 
-    pub(crate) fn cursors(
-        &self,
-        topic: &Topic,
-    ) -> Result<impl Iterator<Item = (Identifier, usize)> + ExactSizeIterator + Clone + '_> {
-        self.get_branch(topic)
-            .map(|branch| branch.cursors.iter().map(|(identifier, cursor)| (*identifier, *cursor)))
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Topic, Identifier, usize)> + Clone + '_ {
+        self.0.iter()
+            .flat_map(|(topic, branch)|
+                branch.cursors.iter()
+                    .map(move |(id, cursor)| (topic.clone(), *id, *cursor))
+                    .into_iter()
+            )
     }
 
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> bool {
-        self.get_branch_mut(topic)
+        self.0.get_mut(topic)
             .map_or(false, |branch| branch.cursors.insert(id, cursor).is_none())
     }
 
     pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: Address) -> Result<()> {
-        self.get_branch_mut(topic).map(|branch| branch.anchor = anchor)
+        self.0.get_mut(topic)
+            .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
+            .map(|branch| branch.anchor = anchor)
     }
 
     pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: Address) -> Result<()> {
-        self.get_branch_mut(topic)
+        self.0.get_mut(topic)
+            .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
             .map(|branch| branch.latest_link = latest_link)
     }
 
     pub(crate) fn get_anchor(&self, topic: &Topic) -> Result<Address> {
-        self.get_branch(topic).map(|branch| branch.anchor)
+        self.0.get(topic)
+            .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
+            .map(|branch| branch.anchor)
     }
 
     pub(crate) fn get_latest_link(&self, topic: &Topic) -> Result<Address> {
-        self.get_branch(topic).map(|branch| branch.latest_link)
+        self.0.get(topic)
+            .ok_or_else(|| anyhow!("No branch found for topic {}", topic))
+            .map(|branch| branch.latest_link)
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default)]
 pub(crate) struct CursorStore {
     cursors: HashMap<Identifier, usize>,
     anchor: Address,
@@ -109,7 +104,7 @@ impl fmt::Debug for CursorStore {
         writeln!(f, "\t* latest link: {}", self.latest_link.relative())?;
         writeln!(f, "\t* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
-            writeln!(f, "\t\t{} => {}", id, cursor)?;
+            writeln!(f, "\t\t{:?} => {}", id, cursor)?;
         }
         Ok(())
     }
@@ -119,19 +114,9 @@ impl fmt::Debug for BranchStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "* branches:")?;
         for topic in self.topics() {
-            writeln!(f, "{:?} => \n{:?}", topic, self.get_branch(topic).unwrap())?;
+            writeln!(f, "{:?} => \n{:?}", topic, self.0.get(topic).unwrap())?;
         }
         Ok(())
-    }
-}
-
-impl Default for CursorStore {
-    fn default() -> Self {
-        Self {
-            cursors: HashMap::new(),
-            anchor: Address::default(),
-            latest_link: Address::default(),
-        }
     }
 }
 
@@ -157,7 +142,7 @@ mod tests {
         branch_store.insert_cursor(&topic_1, identifier, 10);
         branch_store.insert_cursor(&topic_2, identifier, 20);
 
-        branch_store.remove_from_all(&identifier);
+        branch_store.remove(&identifier);
 
         assert!(!branch_store.is_cursor_tracked(&topic_1, &identifier));
         assert!(!branch_store.is_cursor_tracked(&topic_2, &identifier));

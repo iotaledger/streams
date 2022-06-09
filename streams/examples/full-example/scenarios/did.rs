@@ -35,7 +35,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     // Generate a simple PSK for storage by users
     let psk = Psk::from_seed("A pre shared key");
-    let branch1_topic = b"BRANCH1";
+    let branch1_topic = "BRANCH1";
 
     let mut author = User::builder()
         .with_identity(DID::PrivateKey(author_did_info))
