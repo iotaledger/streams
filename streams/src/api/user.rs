@@ -212,7 +212,9 @@ impl<T> User<T> {
 
         // Store message content into stores
         let content = message.payload().content();
-        self.state.exchange_keys.insert(content.author_id().clone(), content.author_ke_pk().clone());
+        self.state
+            .exchange_keys
+            .insert(content.author_id().clone(), content.author_ke_pk().clone());
         self.state.stream_address = Some(address);
         self.state.author_identifier = Some(content.author_id().clone());
 
