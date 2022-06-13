@@ -266,7 +266,9 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
                         Permissioned::Read(s)
                     }
                 })
-                .collect::<Vec<_>>(),
+                .collect::<Vec<_>>()
+                .iter()
+                .map(Permissioned::as_ref),
             [psk.to_pskid()],
         )
         .await?;

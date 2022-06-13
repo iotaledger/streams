@@ -86,7 +86,7 @@ impl<'a, Subscribers, Psks> Wrap<'a, Subscribers, Psks> {
         author_id: &'a Identity,
     ) -> Self
     where
-        Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
+        Subscribers: IntoIterator<Item = (Permissioned<&'a Identifier>, &'a x25519::PublicKey)>,
         Subscribers::IntoIter: ExactSizeIterator,
         Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
         Psks::IntoIter: ExactSizeIterator,
@@ -105,7 +105,7 @@ impl<'a, Subscribers, Psks> Wrap<'a, Subscribers, Psks> {
 #[async_trait(?Send)]
 impl<'a, Subscribers, Psks> message::ContentSizeof<Wrap<'a, Subscribers, Psks>> for sizeof::Context
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
+    Subscribers: IntoIterator<Item = (Permissioned<&'a Identifier>, &'a x25519::PublicKey)> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
     Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
     Psks::IntoIter: ExactSizeIterator,
@@ -143,7 +143,7 @@ where
 #[async_trait(?Send)]
 impl<'a, OS, Subscribers, Psks> message::ContentWrap<Wrap<'a, Subscribers, Psks>> for wrap::Context<OS>
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
+    Subscribers: IntoIterator<Item = (Permissioned<&'a Identifier>, &'a x25519::PublicKey)> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
     Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
     Psks::IntoIter: ExactSizeIterator,

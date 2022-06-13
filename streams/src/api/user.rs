@@ -143,7 +143,7 @@ impl<T> User<T> {
         self.state.exchange_keys.keys().cloned()
     }
 
-    fn should_store_cursor(&self, subscriber: &Permissioned<Identifier>) -> bool {
+    fn should_store_cursor(&self, subscriber: Permissioned<&Identifier>) -> bool {
         let no_tracked_cursor = !self.state.cursor_store.is_cursor_tracked(subscriber.identifier());
         !subscriber.is_readonly() && no_tracked_cursor
     }
@@ -315,7 +315,7 @@ impl<T> User<T> {
 
         // Store message content into stores
         for subscriber in &message.payload().content().subscribers {
-            if self.should_store_cursor(subscriber) {
+            if self.should_store_cursor(subscriber.as_ref()) {
                 self.state
                     .cursor_store
                     .insert_cursor(subscriber.identifier().clone(), INIT_MESSAGE_NUM);
@@ -602,7 +602,7 @@ where
         psk_ids: Psks,
     ) -> Result<SendResponse<TSR>>
     where
-        Subscribers: IntoIterator<Item = Permissioned<Identifier>> + Clone,
+        Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>>,
         Psks: IntoIterator<Item = PskId>,
     {
         // Check conditions
@@ -625,14 +625,13 @@ where
         let mut rng = StdRng::from_entropy();
         let encryption_key = rng.gen();
         let nonce = rng.gen();
+        let exchange_keys = &self.state.exchange_keys; // partial borrow to avoid borrowing the whole self within the closure
         let subscribers_with_keys = subscribers
-            .clone()
             .into_iter()
             .map(|subscriber| {
                 Ok((
-                    subscriber.clone(),
-                    self.state
-                        .exchange_keys
+                    subscriber,
+                    exchange_keys
                         .get(subscriber.identifier())
                         .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
                 ))
@@ -652,7 +651,7 @@ where
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut announcement_spongos,
-            &subscribers_with_keys,
+            subscribers_with_keys.iter().copied(),
             &psk_ids_with_psks,
             encryption_key,
             nonce,
@@ -672,11 +671,11 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        for subscriber in subscribers {
-            if self.should_store_cursor(&subscriber) {
+        for (subscriber, _) in subscribers_with_keys {
+            if self.should_store_cursor(subscriber) {
                 self.state
                     .cursor_store
-                    .insert_cursor(subscriber.identifier().clone(), INIT_MESSAGE_NUM);
+                    .insert_cursor((*subscriber.identifier()).clone(), INIT_MESSAGE_NUM);
             }
         }
         self.state.cursor_store.insert_cursor(self.identifier(), new_cursor);
@@ -690,7 +689,7 @@ where
         self.send_keyload(
             link_to,
             // Alas, must collect to release the &self immutable borrow
-            subscribers,
+            subscribers.iter().map(Permissioned::as_ref),
             psks,
         )
         .await
@@ -705,7 +704,7 @@ where
         self.send_keyload(
             link_to,
             // Alas, must collect to release the &self immutable borrow
-            subscribers,
+            subscribers.iter().map(Permissioned::as_ref),
             psks,
         )
         .await
