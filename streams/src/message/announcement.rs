@@ -110,6 +110,10 @@ impl Unwrap {
     pub(crate) fn author_ke_pk(&self) -> &x25519::PublicKey {
         &self.author_ke_pk
     }
+
+    pub fn into_parts(self) -> (Identifier, x25519::PublicKey) {
+        (self.author_id, self.author_ke_pk)
+    }
 }
 
 #[async_trait(?Send)]

@@ -16,6 +16,9 @@ pub trait OStream {
 
 /// Read
 pub trait IStream {
+    /// Ensure there are enough bytes left in stream for advancement
+    fn ensure_size(&self, n: usize) -> Result<()>;
+
     /// Try get n bytes from the stream, returning a slice to the buffer.
     fn try_advance(&mut self, n: usize) -> Result<&[u8]>;
 
@@ -50,8 +53,13 @@ where
 }
 
 impl IStream for &[u8] {
-    fn try_advance(&mut self, n: usize) -> Result<&[u8]> {
+    fn ensure_size(&self, n: usize) -> Result<()> {
         ensure!(n <= self.len(), StreamAllocationExceededIn(n, self.len()));
+        Ok(())
+    }
+
+    fn try_advance(&mut self, n: usize) -> Result<&[u8]> {
+        self.ensure_size(n)?;
         let (head, tail) = self.split_at(n);
         *self = tail;
         Ok(head)
@@ -66,6 +74,10 @@ impl<T> IStream for &mut T
 where
     T: IStream,
 {
+    fn ensure_size(&self, n: usize) -> Result<()> {
+        self.deref().ensure_size(n)
+    }
+
     fn try_advance(&mut self, n: usize) -> Result<&[u8]> {
         self.deref_mut().try_advance(n)
     }

@@ -18,7 +18,7 @@ use hashbrown::HashMap;
 use lets::{
     address::{Address, MsgId},
     id::Identifier,
-    message::{TransportMessage, HDF},
+    message::{Topic, TransportMessage, HDF},
     transport::Transport,
 };
 
@@ -73,17 +73,13 @@ use crate::api::{
 ///     .with_transport(subscriber_transport)
 ///     .build()?;
 ///
-/// let announcement = author.create_stream(1).await?;
+/// let announcement = author.create_stream("BASE_BRANCH").await?;
 /// subscriber.receive_message(announcement.address()).await?;
 /// let first_packet = author
-///     .send_signed_packet(announcement.address().relative(), b"public payload", b"masked payload")
+///     .send_signed_packet("BASE_BRANCH", b"public payload", b"masked payload")
 ///     .await?;
 /// let second_packet = author
-///     .send_signed_packet(
-///         first_packet.address().relative(),
-///         b"another public payload",
-///         b"another masked payload",
-///     )
+///     .send_signed_packet("BASE_BRANCH", b"another public payload", b"another masked payload")
 ///     .await?;
 ///
 /// #
@@ -130,7 +126,7 @@ type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 struct MessagesState<'a, T> {
     user: &'a mut User<T>,
-    ids_stack: Vec<(Identifier, usize)>,
+    ids_stack: Vec<(Topic, &'a Identifier, usize)>,
     msg_queue: HashMap<MsgId, VecDeque<(MsgId, TransportMessage)>>,
     stage: VecDeque<(MsgId, TransportMessage)>,
     successful_round: bool,
@@ -200,19 +196,17 @@ impl<'a, T> MessagesState<'a, T> {
             }
         } else {
             // Stage is empty, populate it with some more messages
-            let (publisher, cursor) = match self.ids_stack.pop() {
+            let (topic, publisher, cursor) = match self.ids_stack.pop() {
                 Some(id_cursor) => id_cursor,
                 None => {
                     // new round
                     self.successful_round = false;
-                    let mut publisher_cursors = self.user.cursors();
-                    let next = publisher_cursors.next()?;
-                    self.ids_stack = publisher_cursors.collect();
-                    next
+                    self.ids_stack = self.user.cursors().collect();
+                    self.ids_stack.pop()?
                 }
             };
             let base_address = self.user.stream_address()?.base();
-            let rel_address = MsgId::gen(base_address, publisher, cursor + 1);
+            let rel_address = MsgId::gen(base_address, &publisher, &topic, cursor + 1);
             let address = Address::new(base_address, rel_address);
             match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {
@@ -322,12 +316,12 @@ mod tests {
 
     use anyhow::Result;
 
-    use lets::{address::Address, id::Ed25519, transport::bucket};
+    use lets::{address::Address, id::Ed25519, message::Topic, transport::bucket};
 
     use crate::api::{
         message::{
             Message,
-            MessageContent::{Keyload, SignedPacket},
+            MessageContent::{Announcement, Keyload, SignedPacket},
         },
         user::User,
     };
@@ -339,34 +333,35 @@ mod tests {
         let p = b"payload";
         let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
 
-        let keyload_1 = author.send_keyload_for_all_rw(announcement_link.relative()).await?;
+        let branch_1 = Topic::from("Branch 1");
+        let branch_announcement = author.new_branch(branch_1.clone()).await?;
+        let keyload_1 = author.send_keyload_for_all_rw(branch_1.clone()).await?;
         subscriber1.sync().await?;
-        let packet_1 = subscriber1
-            .send_signed_packet(keyload_1.address().relative(), &p, &p)
-            .await?;
+        let _packet_1 = subscriber1.send_signed_packet(branch_1.clone(), &p, &p).await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress
         // through the next messages
-        let packet_2 = subscriber1
-            .send_signed_packet(packet_1.address().relative(), &p, &p)
-            .await?;
+        let _packet_2 = subscriber1.send_signed_packet(branch_1.clone(), &p, &p).await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
 
         author.sync().await?;
 
         // This packet has to wait in the `Messages::msg_queue` until `packet` is processed
-        let keyload_2 = author.send_keyload_for_all_rw(packet_2.address().relative()).await?;
+        let keyload_2 = author.send_keyload_for_all_rw(branch_1.clone()).await?;
 
         subscriber1.sync().await?;
-        let last_signed_packet = subscriber1
-            .send_signed_packet(keyload_2.address().relative(), &p, &p)
-            .await?;
+        let last_signed_packet = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
 
         let msgs = subscriber2.fetch_next_messages().await?;
-        assert_eq!(3, msgs.len()); // keyload_1, keyload_2 and last signed packet
+        assert_eq!(4, msgs.len()); // branch_announcement, keyload_1, keyload_2 and last signed packet
         assert!(matches!(
             msgs.as_slice(),
             &[
+                Message {
+                    address: address_0,
+                    content: Announcement(..),
+                    ..
+                },
                 Message {
                     address: address_1,
                     content: Keyload(..),
@@ -383,7 +378,8 @@ mod tests {
                     ..
                 }
             ]
-            if address_1 == keyload_1.address()
+            if address_0 == branch_announcement.address()
+            && address_1 == keyload_1.address()
             && address_2 == keyload_2.address()
             && address_3 == last_signed_packet.address()
         ));
@@ -398,7 +394,7 @@ mod tests {
             .with_identity(Ed25519::from_seed("author"))
             .with_transport(transport.clone())
             .build()?;
-        let announcement = author.create_stream(10).await?;
+        let announcement = author.create_stream("BASE_BRANCH").await?;
         let subscriber =
             subscriber_fixture("subscriber", &mut author, announcement.address(), transport.clone()).await?;
         Ok((author, subscriber, announcement.address(), transport))
@@ -415,7 +411,7 @@ mod tests {
             .with_transport(transport)
             .build()?;
         subscriber.receive_message(announcement_link).await?;
-        let subscription = subscriber.subscribe(announcement_link.relative()).await?;
+        let subscription = subscriber.subscribe().await?;
         author.receive_message(subscription.address()).await?;
         Ok(subscriber)
     }
