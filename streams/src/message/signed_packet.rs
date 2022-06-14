@@ -110,8 +110,8 @@ impl<'a> Unwrap<'a> {
         }
     }
 
-    pub(crate) fn publisher_identifier(&self) -> &Identifier {
-        &self.publisher_id
+    pub(crate) fn into_publisher_identifier(self) -> Identifier {
+        self.publisher_id
     }
 
     pub(crate) fn take_masked_payload(&mut self) -> Vec<u8> {

@@ -139,8 +139,8 @@ impl<T> User<T> {
         self.state.cursor_store.cursors()
     }
 
-    pub fn subscribers(&self) -> impl Iterator<Item = Identifier> + Clone + '_ {
-        self.state.exchange_keys.keys().cloned()
+    pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone + '_ {
+        self.state.exchange_keys.keys()
     }
 
     fn should_store_cursor(&self, subscriber: &Permissioned<Identifier>) -> bool {
@@ -149,15 +149,10 @@ impl<T> User<T> {
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        self.state
-            .exchange_keys
-            .insert(
-                subscriber.clone(),
-                subscriber
-                    ._ke_pk()
-                    .expect("subscriber must have an identifier from which an x25519 public key can be derived"),
-            )
-            .is_none()
+        let ke_pk = subscriber
+            ._ke_pk()
+            .expect("subscriber must have an identifier from which an x25519 public key can be derived");
+        self.state.exchange_keys.insert(subscriber, ke_pk).is_none()
     }
 
     pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
@@ -305,7 +300,7 @@ impl<T> User<T> {
         let keyload = keyload::Unwrap::new(
             &mut announcement_spongos,
             &self.state.user_id,
-            author_identifier.clone(),
+            author_identifier,
             &self.state.psk_store,
         );
         let (message, spongos) = preparsed.unwrap(keyload).await?;
@@ -686,7 +681,8 @@ where
 
     pub async fn send_keyload_for_all(&mut self, link_to: MsgId) -> Result<SendResponse<TSR>> {
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
-        let subscribers: Vec<Permissioned<Identifier>> = self.subscribers().map(Permissioned::Read).collect();
+        let subscribers: Vec<Permissioned<Identifier>> =
+            self.subscribers().map(|s| Permissioned::Read(s.clone())).collect();
         self.send_keyload(
             link_to,
             // Alas, must collect to release the &self immutable borrow
@@ -700,7 +696,7 @@ where
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
         let subscribers: Vec<Permissioned<Identifier>> = self
             .subscribers()
-            .map(|s| Permissioned::ReadWrite(s, PermissionDuration::Perpetual))
+            .map(|s| Permissioned::ReadWrite(s.clone(), PermissionDuration::Perpetual))
             .collect();
         self.send_keyload(
             link_to,

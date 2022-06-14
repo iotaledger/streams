@@ -27,20 +27,22 @@ impl Message {
     where
         Unwrap: Into<MessageContent>,
     {
+        let parts = lets_message.into_parts();
         Message {
             address,
-            header: lets_message.header().clone(),
-            content: lets_message.into_payload().into_content().into(),
+            header: parts.0,
+            content: parts.1.into_content().into(),
         }
     }
 
     pub(crate) fn orphan(address: Address, preparsed: PreparsedMessage) -> Self {
+        let parts = preparsed.into_parts();
         Self {
             address,
-            header: preparsed.header().clone(),
+            header: parts.0,
             content: MessageContent::Orphan(Orphan {
-                cursor: preparsed.cursor(),
-                message: preparsed.into_transport_msg(),
+                cursor: parts.3,
+                message: parts.1,
             }),
         }
     }
@@ -228,7 +230,7 @@ pub struct Unsubscription {
 }
 
 impl Unsubscription {
-    pub fn subscriber_identifier(self) -> Identifier {
+    pub fn into_subscriber_identifier(self) -> Identifier {
         self.subscriber_identifier
     }
 }
@@ -242,7 +244,7 @@ pub struct Orphan {
 impl From<announcement::Unwrap> for MessageContent {
     fn from(announce: announcement::Unwrap) -> Self {
         Self::Announcement(Announcement {
-            author_identifier: announce.author_id().clone(),
+            author_identifier: announce.into_author_id(),
         })
     }
 }
@@ -250,7 +252,7 @@ impl From<announcement::Unwrap> for MessageContent {
 impl<'a> From<subscription::Unwrap<'a>> for MessageContent {
     fn from(subscription: subscription::Unwrap<'a>) -> Self {
         Self::Subscription(Subscription {
-            subscriber_identifier: subscription.subscriber_identifier().clone(),
+            subscriber_identifier: subscription.into_subscriber_identifier(),
         })
     }
 }
@@ -266,10 +268,12 @@ impl<'a> From<keyload::Unwrap<'a>> for MessageContent {
 
 impl<'a> From<signed_packet::Unwrap<'a>> for MessageContent {
     fn from(mut signed_packet: signed_packet::Unwrap<'a>) -> Self {
+        let masked_payload = signed_packet.take_masked_payload();
+        let public_payload = signed_packet.take_public_payload();
         Self::SignedPacket(SignedPacket {
-            publisher_identifier: signed_packet.publisher_identifier().clone(),
-            masked_payload: signed_packet.take_masked_payload(),
-            public_payload: signed_packet.take_public_payload(),
+            publisher_identifier: signed_packet.into_publisher_identifier(),
+            masked_payload,
+            public_payload,
         })
     }
 }
@@ -284,9 +288,9 @@ impl<'a> From<tagged_packet::Unwrap<'a>> for MessageContent {
 }
 
 impl<'a> From<unsubscription::Unwrap<'a>> for MessageContent {
-    fn from(unsubscriptiokn: unsubscription::Unwrap<'a>) -> Self {
+    fn from(unsubscription: unsubscription::Unwrap<'a>) -> Self {
         Self::Unsubscription(Unsubscription {
-            subscriber_identifier: unsubscriptiokn.subscriber_identifier().clone(),
+            subscriber_identifier: unsubscription.into_subscriber_identifier(),
         })
     }
 }

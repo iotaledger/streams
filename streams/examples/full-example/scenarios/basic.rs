@@ -260,10 +260,10 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
             author
                 .subscribers()
                 .map(|s| {
-                    if s == subscriber_a.identifier() {
-                        Permissioned::ReadWrite(s, PermissionDuration::Perpetual)
+                    if s == &subscriber_a.identifier() {
+                        Permissioned::ReadWrite(s.clone(), PermissionDuration::Perpetual)
                     } else {
-                        Permissioned::Read(s)
+                        Permissioned::Read(s.clone())
                     }
                 })
                 .collect::<Vec<_>>(),
