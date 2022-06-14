@@ -12,15 +12,15 @@ use lets::{address::MsgId, id::Identifier, message::Topic};
 // Local
 
 #[derive(Default, Clone, PartialEq, Eq)]
-pub(crate) struct BranchStore(HashMap<Topic, CursorStore>);
+pub(crate) struct CursorStore(HashMap<Topic, InnerCursorStore>);
 
-impl BranchStore {
+impl CursorStore {
     pub(crate) fn new() -> Self {
         Default::default()
     }
 
     pub(crate) fn new_branch(&mut self, topic: Topic) -> bool {
-        self.0.insert(topic, CursorStore::default()).is_none()
+        self.0.insert(topic, InnerCursorStore::default()).is_none()
     }
 
     pub(crate) fn topics(&self) -> impl Iterator<Item = &Topic> + ExactSizeIterator {
@@ -58,14 +58,14 @@ impl BranchStore {
         None
     }
 
-    pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<CursorStore> {
+    pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<InnerCursorStore> {
         match self.0.get_mut(topic) {
             Some(branch) => {
                 branch.anchor = anchor;
                 None
             }
             None => {
-                let branch = CursorStore {
+                let branch = InnerCursorStore {
                     anchor,
                     ..Default::default()
                 };
@@ -74,14 +74,14 @@ impl BranchStore {
         }
     }
 
-    pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<CursorStore> {
+    pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
         match self.0.get_mut(topic) {
             Some(branch) => {
                 branch.latest_link = latest_link;
                 None
             }
             None => {
-                let branch = CursorStore {
+                let branch = InnerCursorStore {
                     latest_link,
                     ..Default::default()
                 };
@@ -100,13 +100,13 @@ impl BranchStore {
 }
 
 #[derive(Clone, PartialEq, Eq, Default)]
-pub(crate) struct CursorStore {
+pub(crate) struct InnerCursorStore {
     cursors: HashMap<Identifier, usize>,
     anchor: MsgId,
     latest_link: MsgId,
 }
 
-impl fmt::Debug for CursorStore {
+impl fmt::Debug for InnerCursorStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "\t* anchor: {}", self.anchor)?;
         writeln!(f, "\t* latest link: {}", self.latest_link)?;
@@ -118,7 +118,7 @@ impl fmt::Debug for CursorStore {
     }
 }
 
-impl fmt::Debug for BranchStore {
+impl fmt::Debug for CursorStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "* branches:")?;
         for (topic, branch) in &self.0 {
@@ -130,7 +130,7 @@ impl fmt::Debug for BranchStore {
 
 #[cfg(test)]
 mod tests {
-    use super::BranchStore;
+    use super::CursorStore;
     use alloc::string::ToString;
     use lets::{
         id::{Ed25519, Identity},
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn branch_store_can_remove_a_cursor_from_all_branches_at_once() {
-        let mut branch_store = BranchStore::new();
+        let mut branch_store = CursorStore::new();
         let identifier = Identity::Ed25519(Ed25519::from_seed("identifier 1")).to_identifier();
         let topic_1 = Topic::new("topic 1".to_string());
         let topic_2 = Topic::new("topic 2".to_string());
