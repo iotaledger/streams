@@ -199,7 +199,7 @@ impl<T> UserBuilder<T> {
     /// #     .with_identity(Ed25519::from_seed(author_seed))
     /// #     .with_transport(transport.clone())
     /// #     .build()?;
-    /// # let announcement_address = author.create_stream(2).await?.address();
+    /// # let announcement_address = author.create_stream("BASE_BRANCH").await?.address();
     ///
     /// let author = User::builder()
     ///     .with_identity(Ed25519::from_seed(author_seed))

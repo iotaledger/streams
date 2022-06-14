@@ -12,6 +12,8 @@ mod version;
 /// Linked Message with header already parsed
 mod preparsed;
 
+pub mod topic;
+
 mod message;
 
 pub use content::{
@@ -22,4 +24,5 @@ pub use hdf::HDF;
 pub use message::Message;
 pub use pcf::PCF;
 pub use preparsed::PreparsedMessage;
+pub use topic::Topic;
 pub use transport::TransportMessage;

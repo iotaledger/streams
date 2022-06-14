@@ -22,7 +22,7 @@ use spongos::{
 };
 
 // Local
-use crate::id::Identifier;
+use crate::{id::Identifier, message::Topic};
 
 /// Abstract representation of a Message Address
 ///
@@ -141,12 +141,14 @@ impl AppAddr {
         Self(bytes)
     }
 
-    pub fn gen(identifier: Identifier, app_idx: usize) -> AppAddr {
+    pub fn gen(identifier: Identifier, base_topic: &Topic) -> AppAddr {
         let mut addr = [0u8; 40];
         let id_bytes = identifier.as_bytes();
+        // Create spongos to squeeze topic into final 8 bytes
+        let squeezed_topic: [u8; 8] = Spongos::<KeccakF1600>::init().sponge(base_topic);
         assert_eq!(id_bytes.len(), 32, "identifier must be 32 bytes long");
         addr[..32].copy_from_slice(id_bytes);
-        addr[32..].copy_from_slice(&app_idx.to_be_bytes());
+        addr[32..].copy_from_slice(&squeezed_topic);
         Self::new(addr)
     }
 
@@ -229,10 +231,11 @@ impl MsgId {
         Self(bytes)
     }
 
-    pub fn gen(appaddr: AppAddr, identifier: Identifier, seq_num: usize) -> MsgId {
+    pub fn gen(appaddr: AppAddr, identifier: Identifier, topic: &Topic, seq_num: usize) -> MsgId {
         let mut s = Spongos::<KeccakF1600>::init();
         s.absorb(appaddr);
         s.absorb(identifier);
+        s.absorb(topic);
         s.absorb(seq_num.to_be_bytes());
         s.commit();
         s.squeeze()
