@@ -151,11 +151,11 @@ impl<T> User<T> {
         self.state.cursor_store.topics()
     }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Topic, &Identifier, usize)> {
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Identifier, usize)> + '_ {
         self.state.cursor_store.cursors()
     }
 
-    pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone {
+    pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone + '_ {
         self.state.exchange_keys.keys()
     }
 
@@ -1056,10 +1056,10 @@ impl ContentSizeof<State> for sizeof::Context {
                 .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
             self.mask(&anchor)?.mask(&latest_link)?;
 
-            let cursors: Vec<(Topic, &Identifier, usize)> = user_state
+            let cursors: Vec<(&Topic, &Identifier, usize)> = user_state
                 .cursor_store
                 .cursors()
-                .filter(|(t, _, _)| t.eq(topic))
+                .filter(|(t, _, _)| *t == topic)
                 .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
@@ -1117,10 +1117,10 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
                 .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
             self.mask(&anchor)?.mask(&latest_link)?;
 
-            let cursors: Vec<(Topic, &Identifier, usize)> = user_state
+            let cursors: Vec<(&Topic, &Identifier, usize)> = user_state
                 .cursor_store
                 .cursors()
-                .filter(|(t, _, _)| t.eq(topic))
+                .filter(|(t, _, _)| *t == topic)
                 .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;

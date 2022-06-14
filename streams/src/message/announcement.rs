@@ -111,7 +111,7 @@ impl Unwrap {
         &self.author_ke_pk
     }
 
-    pub fn into_parts(self) -> (Identifier, x25519::PublicKey) {
+    pub(crate) fn into_parts(self) -> (Identifier, x25519::PublicKey) {
         (self.author_id, self.author_ke_pk)
     }
 }
