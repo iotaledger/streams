@@ -100,6 +100,10 @@ impl<'a> Unwrap<'a> {
     pub(crate) fn subscriber_identifier(&self) -> &Identifier {
         &self.subscriber_id
     }
+
+    pub(crate) fn into_subscriber_identifier(self) -> Identifier {
+        self.subscriber_id
+    }
 }
 
 #[async_trait(?Send)]

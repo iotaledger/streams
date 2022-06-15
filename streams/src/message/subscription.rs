@@ -126,6 +126,10 @@ impl<'a> Unwrap<'a> {
         &self.subscriber_identifier
     }
 
+    pub(crate) fn into_subscriber_identifier(self) -> Identifier {
+        self.subscriber_identifier
+    }
+
     // #[deprecated = "to be removed once ke is encapsulated within identity"]
     pub(crate) fn subscriber_ke_pk(&self) -> x25519::PublicKey {
         self.subscriber_ke_pk

@@ -52,6 +52,10 @@ impl<Payload> Message<Payload> {
         self.payload
     }
 
+    pub fn into_parts(self) -> (HDF, PCF<Payload>) {
+        (self.header, self.payload)
+    }
+
     pub async fn wrap<F>(&mut self) -> Result<(TransportMessage, Spongos<F>)>
     where
         F: PRP + Default,

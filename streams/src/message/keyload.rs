@@ -186,7 +186,7 @@ pub(crate) struct Unwrap<'a> {
     pub(crate) subscribers: Vec<Permissioned<Identifier>>,
     pub(crate) psks: Vec<PskId>,
     psk_store: &'a HashMap<PskId, Psk>,
-    author_id: Identifier,
+    author_id: &'a Identifier,
     user_id: &'a Identity,
 }
 
@@ -194,7 +194,7 @@ impl<'a> Unwrap<'a> {
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
         user_id: &'a Identity,
-        author_id: Identifier,
+        author_id: &'a Identifier,
         psk_store: &'a HashMap<PskId, Psk>,
     ) -> Self {
         Self {
@@ -205,6 +205,10 @@ impl<'a> Unwrap<'a> {
             author_id,
             user_id,
         }
+    }
+
+    pub(crate) fn subscribers(&self) -> &[Permissioned<Identifier>] {
+        &self.subscribers
     }
 }
 

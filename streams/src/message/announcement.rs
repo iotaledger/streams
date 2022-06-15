@@ -102,9 +102,17 @@ impl Unwrap {
         &self.author_id
     }
 
+    pub(crate) fn into_author_id(self) -> Identifier {
+        self.author_id
+    }
+
     // #[deprecated = "to be removed once ke is encapsulated within identity"]
     pub(crate) fn author_ke_pk(&self) -> &x25519::PublicKey {
         &self.author_ke_pk
+    }
+
+    pub(crate) fn into_parts(self) -> (Identifier, x25519::PublicKey) {
+        (self.author_id, self.author_ke_pk)
     }
 }
 
