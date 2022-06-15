@@ -1,4 +1,5 @@
 use alloc::{
+    borrow::Cow,
     string::{String, ToString},
     vec::Vec,
 };
@@ -61,6 +62,18 @@ impl core::fmt::Display for Topic {
 impl AsRef<[u8]> for Topic {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl From<Topic> for Cow<'_, Topic> {
+    fn from(topic: Topic) -> Self {
+        Self::Owned(topic)
+    }
+}
+
+impl<'a> From<&'a Topic> for Cow<'a, Topic> {
+    fn from(topic: &'a Topic) -> Self {
+        Self::Borrowed(topic)
     }
 }
 

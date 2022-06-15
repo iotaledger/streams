@@ -1,5 +1,6 @@
 // Rust
 use core::fmt;
+use alloc::borrow::Cow;
 
 // 3rd-party
 use hashbrown::HashMap;
@@ -55,8 +56,12 @@ impl CursorStore {
         None
     }
 
-    pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<InnerCursorStore> {
-        match self.0.get_mut(topic) {
+    pub(crate) fn set_anchor<'a, T>(&mut self, topic: T, anchor: MsgId) -> Option<InnerCursorStore>
+    where
+        T: Into<Cow<'a, Topic>>,
+    {
+        let topic = topic.into();
+        match self.0.get_mut(&topic) {
             Some(branch) => {
                 branch.anchor = anchor;
                 None
@@ -66,13 +71,17 @@ impl CursorStore {
                     anchor,
                     ..Default::default()
                 };
-                self.0.insert(topic.clone(), branch)
+                self.0.insert(topic.into_owned(), branch)
             }
         }
     }
 
-    pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
-        match self.0.get_mut(topic) {
+    pub(crate) fn set_latest_link<'a, T>(&mut self, topic: T, latest_link: MsgId) -> Option<InnerCursorStore>
+    where
+        T: Into<Cow<'a, Topic>>,
+    {
+        let topic = topic.into();
+        match self.0.get_mut(&topic) {
             Some(branch) => {
                 branch.latest_link = latest_link;
                 None
@@ -82,7 +91,7 @@ impl CursorStore {
                     latest_link,
                     ..Default::default()
                 };
-                self.0.insert(topic.clone(), branch)
+                self.0.insert(topic.into_owned(), branch)
             }
         }
     }
