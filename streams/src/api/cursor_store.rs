@@ -1,6 +1,6 @@
 // Rust
-use core::fmt;
 use alloc::borrow::Cow;
+use core::fmt;
 
 // 3rd-party
 use hashbrown::HashMap;

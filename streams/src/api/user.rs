@@ -223,7 +223,7 @@ impl<T> User<T> {
     /// in the message.
     async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Check Topic
-        let topic = preparsed.header().topic().clone();
+        let topic = preparsed.header().topic();
         let publisher = preparsed.header().publisher();
         let is_base_branch = self.state.stream_address.is_none();
 
@@ -245,7 +245,7 @@ impl<T> User<T> {
         // handling the message
         self.state
             .cursor_store
-            .insert_cursor(&topic, publisher.clone(), INIT_MESSAGE_NUM);
+            .insert_cursor(topic, publisher.clone(), INIT_MESSAGE_NUM);
 
         // Unwrap message
         let announcement = announcement::Unwrap::default();
@@ -255,17 +255,18 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
+        let topic = message.header().topic();
         let author_id = message.payload().content().author_id();
         let author_ke_pk = message.payload().content().author_ke_pk();
 
         // Update branch links
-        self.set_anchor(&topic, address.relative());
-        self.set_latest_link(&topic, address.relative());
+        self.set_anchor(topic, address.relative());
+        self.set_latest_link(topic, address.relative());
         self.state.author_identifier = Some(author_id.clone());
 
         if is_base_branch {
             self.state.exchange_keys.insert(author_id.clone(), author_ke_pk.clone());
-            self.state.base_branch = topic;
+            self.state.base_branch = topic.clone();
             self.state.stream_address = Some(address);
         }
 
@@ -390,9 +391,6 @@ impl<T> User<T> {
     }
 
     async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // Retrieve the topic from header
-        let topic = preparsed.header().topic().clone();
-
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
@@ -421,14 +419,11 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        self.set_latest_link(&topic, address.relative());
+        self.set_latest_link(message.header().topic(), address.relative());
         Ok(Message::from_lets_message(address, message))
     }
 
     async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        // Retrieve the topic from header
-        let topic = preparsed.header().topic().clone();
-
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
@@ -457,7 +452,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        self.set_latest_link(&topic, address.relative());
+        self.set_latest_link(message.header().topic(), address.relative());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -583,19 +578,19 @@ where
 
         // Check Topic
         let topic: Topic = topic.into();
-        let base_branch = self.base_branch().clone();
-        let is_base_branch = topic.eq(&base_branch);
+        let base_branch = &self.state.base_branch;
+        let is_base_branch = topic.eq(base_branch);
 
         // Update own's cursor
         let (user_cursor, address, topic) = if is_base_branch {
-            (ANN_MESSAGE_NUM, stream_address, base_branch.clone())
+            (ANN_MESSAGE_NUM, stream_address, base_branch)
         } else {
             let cursor = self
-                .next_cursor(&base_branch)
+                .next_cursor(base_branch)
                 .map_err(|_| anyhow!("No cursor found in base branch"))?;
-            let msgid = MsgId::gen(stream_address.base(), &self.identifier(), &base_branch, cursor);
+            let msgid = MsgId::gen(stream_address.base(), &self.identifier(), base_branch, cursor);
             let address = Address::new(stream_address.base(), msgid);
-            (cursor, address, topic)
+            (cursor, address, &topic)
         };
 
         // Prepare HDF and PCF
@@ -622,18 +617,18 @@ where
             self.state.cursor_store.new_branch(topic.clone());
             self.state
                 .cursor_store
-                .insert_cursor(&base_branch, self.identifier(), self.next_cursor(&base_branch)?);
+                .insert_cursor(base_branch, self.identifier(), self.next_cursor(base_branch)?);
         }
 
         // If message has been sent successfully, commit message to stores
         self.state
             .cursor_store
-            .insert_cursor(&topic, self.identifier(), INIT_MESSAGE_NUM);
+            .insert_cursor(topic, self.identifier(), INIT_MESSAGE_NUM);
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Update branch links
-        self.set_anchor(&topic, address.relative());
-        self.set_latest_link(&topic, address.relative());
+        self.state.cursor_store.set_anchor(topic, address.relative());
+        self.state.cursor_store.set_latest_link(topic, address.relative());
         Ok(SendResponse::new(address, send_response))
     }
 
@@ -644,13 +639,13 @@ where
             .stream_address()
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
         // Get base branch topic
-        let base_branch = self.base_branch().clone();
+        let base_branch = &self.state.base_branch;
         // Link message to channel announcement
         let link_to = self
-            .get_anchor(&base_branch)
+            .get_anchor(base_branch)
             .ok_or_else(|| anyhow!("No anchor found in branch <{}>", base_branch))?;
 
-        let rel_address = MsgId::gen(stream_address.base(), &self.identifier(), &base_branch, SUB_MESSAGE_NUM);
+        let rel_address = MsgId::gen(stream_address.base(), &self.identifier(), base_branch, SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -665,7 +660,7 @@ where
             .state
             .author_identifier
             .as_ref()
-            .and_then(|author_id| self.state.exchange_keys.get(&author_id))
+            .and_then(|author_id| self.state.exchange_keys.get(author_id))
             .expect("a user that already have an stream address must know the author identifier");
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
@@ -677,7 +672,7 @@ where
             message_types::SUBSCRIPTION,
             SUB_MESSAGE_NUM,
             self.identifier(),
-            base_branch,
+            base_branch.clone(),
         )?
         .with_linked_msg_address(link_to);
 
@@ -705,15 +700,15 @@ where
             anyhow!("before sending a subscription one must receive the announcement of a stream first")
         })?;
         // Get base branch topic
-        let base_branch = self.base_branch().clone();
+        let base_branch = &self.state.base_branch;
         // Link message to channel announcement
         let link_to = self
-            .get_anchor(&base_branch)
+            .get_anchor(base_branch)
             .ok_or_else(|| anyhow!("No anchor found in branch <{}>", base_branch))?;
 
         // Update own's cursor
-        let new_cursor = self.next_cursor(&base_branch)?;
-        let rel_address = MsgId::gen(stream_address.base(), &self.identifier(), &base_branch, new_cursor);
+        let new_cursor = self.next_cursor(base_branch)?;
+        let rel_address = MsgId::gen(stream_address.base(), &self.identifier(), base_branch, new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -747,7 +742,7 @@ where
         // If message has been sent successfully, commit message to stores
         self.state
             .cursor_store
-            .insert_cursor(&base_branch, self.identifier(), new_cursor);
+            .insert_cursor(base_branch, self.identifier(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
