@@ -119,8 +119,8 @@ impl<T> User<T> {
     }
 
     /// User's identifier
-    pub fn identifier(&self) -> Result<Identifier> {
-        self.identity().map(|id| id.to_identifier())
+    pub fn identifier(&self) -> Option<Identifier> {
+        self.identity().ok().map(|id| id.to_identifier())
     }
 
     /// User Identity
@@ -134,7 +134,6 @@ impl<T> User<T> {
     /// User's cursor
     fn cursor(&self, topic: &Topic) -> Option<usize> {
         self.identifier()
-            .ok()
             .and_then(|id| self.state.cursor_store.get_cursor(topic, &id))
     }
 
@@ -567,8 +566,7 @@ where
             );
         }
         // Confirm user has identity
-        let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = self.identity()?.to_identifier();
         // Convert topic
         let topic = topic.into();
         // Generate stream address
@@ -615,12 +613,7 @@ where
         };
 
         // Prepare HDF and PCF
-        let header = HDF::new(
-            message_types::ANNOUNCEMENT,
-            user_cursor,
-            identifier,
-            topic.clone(),
-        )?;
+        let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, identifier, topic.clone())?;
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(user_id));
 
         // Wrap message
@@ -691,13 +684,8 @@ where
             user_id,
             author_ke_pk,
         ));
-        let header = HDF::new(
-            message_types::SUBSCRIPTION,
-            SUB_MESSAGE_NUM,
-            identifier,
-            base_branch,
-        )?
-        .with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::SUBSCRIPTION, SUB_MESSAGE_NUM, identifier, base_branch)?
+            .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, _spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -744,8 +732,7 @@ where
             .get(&link_to)
             .copied()
             .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?;
-        let content = PCF::new_final_frame()
-            .with_content(unsubscription::Wrap::new(&mut linked_msg_spongos, user_id));
+        let content = PCF::new_final_frame().with_content(unsubscription::Wrap::new(&mut linked_msg_spongos, user_id));
         let header = HDF::new(
             message_types::UNSUBSCRIPTION,
             new_cursor,
@@ -799,7 +786,7 @@ where
             .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
-        let rel_address = MsgId::gen(stream_address.base(), identifier, &topic,new_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), identifier, &topic, new_cursor);
 
         // Prepare HDF and PCF
         let mut linked_msg_spongos = self
@@ -845,8 +832,8 @@ where
             nonce,
             user_id,
         ));
-        let header = HDF::new(message_types::KEYLOAD, new_cursor, identifier, topic.clone())?
-            .with_linked_msg_address(link_to);
+        let header =
+            HDF::new(message_types::KEYLOAD, new_cursor, identifier, topic.clone())?.with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -867,9 +854,7 @@ where
                     .insert_cursor(&topic, *subscriber.identifier(), INIT_MESSAGE_NUM);
             }
         }
-        self.state
-            .cursor_store
-            .insert_cursor(&topic, identifier, new_cursor);
+        self.state.cursor_store.insert_cursor(&topic, identifier, new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address.relative());
@@ -950,13 +935,8 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(
-            message_types::SIGNED_PACKET,
-            new_cursor,
-            identifier,
-            topic.clone(),
-        )?
-        .with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::SIGNED_PACKET, new_cursor, identifier, topic.clone())?
+            .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -970,9 +950,7 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state
-            .cursor_store
-            .insert_cursor(&topic, identifier, new_cursor);
+        self.state.cursor_store.insert_cursor(&topic, identifier, new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address.relative());
@@ -1020,13 +998,8 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(
-            message_types::TAGGED_PACKET,
-            new_cursor,
-            identifier,
-            topic.clone(),
-        )?
-        .with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::TAGGED_PACKET, new_cursor, identifier, topic.clone())?
+            .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -1040,9 +1013,7 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state
-            .cursor_store
-            .insert_cursor(&topic, identifier, new_cursor);
+        self.state.cursor_store.insert_cursor(&topic, identifier, new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, rel_address);
