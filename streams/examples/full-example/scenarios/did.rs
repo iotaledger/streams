@@ -110,7 +110,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let second_keyload_as_author = author
         .send_keyload(
             branch1_topic,
-            [Permissioned::Read(subscription_b_as_author.header().publisher().clone())],
+            [Permissioned::Read(subscription_b_as_author.header().publisher())],
             [psk.to_pskid()],
         )
         .await?;

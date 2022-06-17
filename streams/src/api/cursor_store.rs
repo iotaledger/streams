@@ -43,12 +43,9 @@ impl CursorStore {
     }
 
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Identifier, usize)> + Clone + '_ {
-        self.0.iter().flat_map(|(topic, branch)| {
-            branch
-                .cursors
-                .iter()
-                .map(move |(id, cursor)| (topic, id, *cursor))
-        })
+        self.0
+            .iter()
+            .flat_map(|(topic, branch)| branch.cursors.iter().map(move |(id, cursor)| (topic, id, *cursor)))
     }
 
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> Option<usize> {
