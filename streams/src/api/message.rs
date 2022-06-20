@@ -9,11 +9,13 @@ use alloc::vec::Vec;
 use lets::{
     address::Address,
     id::{Identifier, Permissioned, PskId},
-    message::{Message as LetsMessage, PreparsedMessage, TransportMessage, HDF},
+    message::{Message as LetsMessage, PreparsedMessage, Topic, TransportMessage, HDF},
 };
 
 // Local
-use crate::message::{announcement, keyload, signed_packet, subscription, tagged_packet, unsubscription};
+use crate::message::{
+    announcement, branch_announcement, keyload, signed_packet, subscription, tagged_packet, unsubscription,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Message {
@@ -61,6 +63,10 @@ impl Message {
         matches!(self.content, MessageContent::Announcement { .. })
     }
 
+    pub fn is_branch_announcement(&self) -> bool {
+        matches!(self.content, MessageContent::BranchAnnouncement { .. })
+    }
+
     pub fn is_keyload(&self) -> bool {
         matches!(self.content, MessageContent::Keyload { .. })
     }
@@ -88,6 +94,14 @@ impl Message {
     pub fn as_announcement(&self) -> Option<&Announcement> {
         if let MessageContent::Announcement(announcement) = &self.content {
             Some(announcement)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_branch_announcement(&self) -> Option<&BranchAnnouncement> {
+        if let MessageContent::BranchAnnouncement(branch_announcement) = &self.content {
+            Some(branch_announcement)
         } else {
             None
         }
@@ -169,6 +183,7 @@ impl Message {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MessageContent {
     Announcement(Announcement),
+    BranchAnnouncement(BranchAnnouncement),
     Keyload(Keyload),
     SignedPacket(SignedPacket),
     TaggedPacket(TaggedPacket),
@@ -180,6 +195,12 @@ pub enum MessageContent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Announcement {
     pub author_identifier: Identifier,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct BranchAnnouncement {
+    pub topic: Topic,
+    pub previous_topic: Topic,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -243,6 +264,15 @@ impl From<announcement::Unwrap> for MessageContent {
     fn from(announce: announcement::Unwrap) -> Self {
         Self::Announcement(Announcement {
             author_identifier: announce.author_id(),
+        })
+    }
+}
+
+impl<'a> From<branch_announcement::Unwrap<'a>> for MessageContent {
+    fn from(branch_announcement: branch_announcement::Unwrap<'a>) -> Self {
+        Self::BranchAnnouncement(BranchAnnouncement {
+            topic: branch_announcement.new_topic().clone(),
+            previous_topic: branch_announcement.previous_topic().clone(),
         })
     }
 }
