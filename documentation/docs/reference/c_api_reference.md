@@ -1,4 +1,12 @@
-# Iota Streams C Bindings API Reference
+---
+description: API Reference for the C Binding of the IOTA Streams Library.
+image: /img/logo/wallet_light.png
+keywords:
+- C
+- reference
+- API reference
+---
+# C Bindings API Reference
 
 ### Author
 

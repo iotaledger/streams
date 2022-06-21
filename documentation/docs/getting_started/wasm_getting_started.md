@@ -1,4 +1,13 @@
-# Getting Started
+---
+description: Getting started with the official IOTA Client Library Wasm binding.
+image: /img/logo/iota_mark_light.png
+keywords:
+- wasm
+- npm
+- how-to
+---
+# Getting Started with Wasm
+
 Before building anything you'll need to make sure you have `npm` installed on your 
 machine.
 

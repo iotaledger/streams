@@ -27,13 +27,3 @@ More information about Chrysalis components is available at [documentation porta
 ## Joining the discussion
 
 If you want to get involved in discussions about this library, or you're looking for support, go to the #streams-discussion channel on [Discord](https://discord.iota.org).
-
-## What you will find here
-
-This documentation has five paths:
-
-1. The Overview: a detailed overview of the streams library.
-2. Libraries: all available programming languages and their resources.
-3. The Specification: detailed explanation requirements and functionality.
-4. Contribute: how you can work on the streams software.
-5. Get in touch: join the community and become part of the X-Team!
