@@ -26,20 +26,20 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_identity(Ed25519::from_seed(author_seed))
         .with_transport(transport.clone())
         .with_psk(psk.to_pskid(), psk)
-        .build()?;
+        .build();
 
     let mut subscriber_a = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     let mut subscriber_b = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     let mut subscriber_c = User::builder()
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
-        .build()?;
+        .build();
 
     println!("> Author creates stream and sends its announcement");
     // Start at index 1, because we can. Will error if its already in use
@@ -325,7 +325,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_identity(Ed25519::from_seed(author_seed))
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     // OOB data must be recovered manually
     new_author.add_subscriber(subscriber_b.identifier()?);
     new_author.receive_message(announcement.address()).await?;
@@ -338,7 +338,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut new_subscriber_a = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
 
     new_subscriber_a.receive_message(announcement.address()).await?;
     assert_eq!(new_subscriber_a.sync().await?, 6);
@@ -349,7 +349,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut new_subscriber_b = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     new_subscriber_b.receive_message(announcement.address()).await?;
     assert_eq!(new_subscriber_b.sync().await?, 5);
     print_user("Recovered Subscriber B", &new_subscriber_b);
@@ -359,7 +359,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut new_subscriber_c = User::builder()
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     new_subscriber_c.receive_message(announcement.address()).await?;
     assert_eq!(new_subscriber_c.sync().await?, 6);
     print_user("Recovered Subscriber C", &new_subscriber_c);

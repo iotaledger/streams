@@ -40,19 +40,19 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
         .with_identity(DID::PrivateKey(author_did_info))
         .with_transport(transport.clone())
         .with_psk(psk.to_pskid(), psk)
-        .build()?;
+        .build();
     let mut subscriber_a = User::builder()
         .with_identity(DID::PrivateKey(subscriber_did_info))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     let mut subscriber_b = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     let mut subscriber_c = User::builder()
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
-        .build()?;
+        .build();
 
     println!("> Author creates stream and sends its announcement");
     // Start at index 1, because we can. Will error if its already in use

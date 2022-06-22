@@ -22,7 +22,7 @@
 //!     .with_identity(Ed25519::from_seed("A cryptographically secure seed"))
 //!     .with_transport(transport)
 //! #     .with_transport(test_transport)
-//!     .build()?;
+//!     .build();
 //!
 //! let announcement = author.create_stream(1).await?;
 //! # Ok(())

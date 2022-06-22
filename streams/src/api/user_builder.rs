@@ -2,7 +2,7 @@
 use alloc::{boxed::Box, vec::Vec};
 
 // 3rd-party
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
@@ -23,16 +23,16 @@ pub struct UserBuilder<T> {
     /// Base Identity that will be used to Identifier a Streams User
     id: Option<Identity>,
     /// Transport Client instance
-    transport: Option<T>,
+    transport: T,
     /// Pre Shared Keys
     psks: Vec<(PskId, Psk)>,
 }
 
-impl<T> Default for UserBuilder<T> {
+impl Default for UserBuilder<()> {
     fn default() -> Self {
         UserBuilder {
             id: None,
-            transport: None,
+            transport: (),
             psks: Default::default(),
         }
     }
@@ -67,24 +67,24 @@ impl<T> UserBuilder<T> {
         NewTransport: for<'a> Transport<'a>,
     {
         UserBuilder {
-            transport: Some(transport),
+            transport,
             id: self.id,
             psks: self.psks,
         }
     }
 
     /// Use the default version of the Transport Client
-    pub async fn with_default_transport<NewTransport>(self) -> Result<UserBuilder<NewTransport>>
+    pub async fn with_default_transport<NewTransport>(self) -> UserBuilder<NewTransport>
     where
         NewTransport: for<'a> Transport<'a> + DefaultTransport,
     {
         // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke
         // bound T: DefaultTransport for all transports
-        Ok(UserBuilder {
-            transport: Some(NewTransport::try_default().await?),
+        UserBuilder {
+            transport: NewTransport::default().await,
             id: self.id,
             psks: self.psks,
-        })
+        }
     }
 
     /// Inject a new Pre Shared Key and Id into the User Builder
@@ -101,10 +101,10 @@ impl<T> UserBuilder<T> {
     /// let psk2 = Psk::from_seed(b"Psk2");
     /// let user = User::builder()
     ///     .with_default_transport::<tangle::Client>()
-    ///     .await?
+    ///     .await
     ///     .with_psk(psk1.to_pskid(), psk1)
     ///     .with_psk(psk2.to_pskid(), psk2)
-    ///     .build()?;
+    ///     .build();
     /// # Ok(())
     /// # }
     /// ```
@@ -116,7 +116,12 @@ impl<T> UserBuilder<T> {
         self.psks.push((pskid, psk));
         self
     }
+}
 
+impl<T> UserBuilder<T>
+where
+    T: for<'a> Transport<'a>,
+{
     /// Build a [`User`] instance using the Builder parameters.
     ///
     /// If a [`Transport`] is not provided the builder will use a default client
@@ -140,19 +145,15 @@ impl<T> UserBuilder<T> {
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
     ///     .with_default_transport::<tangle::Client>()
-    ///     .await?
+    ///     .await
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .build()?;
+    ///     .build();
     ///
     /// # Ok(())
     /// # }
     /// ```
-    pub fn build(self) -> Result<User<T>> {
-        let transport = self
-            .transport
-            .ok_or_else(|| anyhow!("transport not specified, cannot build User without Transport"))?;
-
-        Ok(User::new(self.id, self.psks, transport))
+    pub fn build(self) -> User<T> {
+        User::new(self.id, self.psks, self.transport)
     }
 
     /// Recover a user instance from the builder parameters.
@@ -192,7 +193,7 @@ impl<T> UserBuilder<T> {
     /// # let mut author = User::builder()
     /// #     .with_identity(Ed25519::from_seed(author_seed))
     /// #     .with_transport(transport.clone())
-    /// #     .build()?;
+    /// #     .build();
     /// # let announcement_address = author.create_stream(2).await?.address();
     ///
     /// let author = User::builder()
@@ -208,7 +209,7 @@ impl<T> UserBuilder<T> {
     where
         T: for<'a> Transport<'a, Msg = TransportMessage>,
     {
-        let mut user = self.build()?;
+        let mut user = self.build();
         user.receive_message(announcement).await?;
         user.sync().await?;
         Ok(user)
@@ -220,13 +221,15 @@ pub trait DefaultTransport
 where
     Self: Sized,
 {
-    async fn try_default() -> Result<Self>;
+    async fn default() -> Self;
 }
 
 #[async_trait(?Send)]
 #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
 impl<Message, SendResponse> DefaultTransport for lets::transport::tangle::Client<Message, SendResponse> {
-    async fn try_default() -> Result<Self> {
-        Self::for_node("https://chrysalis-nodes.iota.org").await
+    async fn default() -> Self {
+        // unwrap() is ok, as `tangle::Client::for_node()` only fails if the URL is syntactically incorrect,
+        // and we are certain it is
+        Self::for_node("https://chrysalis-nodes.iota.org").await.unwrap()
     }
 }
