@@ -191,8 +191,8 @@ pub struct Keyload {
 }
 
 impl Keyload {
-    pub fn includes_subscriber(&self, subscriber: Identifier) -> bool {
-        self.subscribers.iter().any(|s| s.identifier() == &subscriber)
+    pub fn includes_subscriber(&self, subscriber: &Identifier) -> bool {
+        self.subscribers.iter().any(|s| s.identifier() == subscriber)
     }
 
     pub fn includes_psk(&self, psk_id: &PskId) -> bool {

@@ -40,6 +40,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let mut author = User::builder()
         .with_identity(DID::PrivateKey(author_did_info))
         .with_transport(transport.clone())
+        .with_psk(psk.to_pskid(), psk)
         .build()?;
     let mut subscriber_a = User::builder()
         .with_identity(DID::PrivateKey(subscriber_did_info))
@@ -50,7 +51,6 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
         .with_transport(transport.clone())
         .build()?;
     let mut subscriber_c = User::builder()
-        .with_identity(Ed25519::from_seed("SUBSCRIBERC9SEED"))
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
         .build()?;
@@ -78,9 +78,6 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let subscription_b_as_b = subscriber_b.subscribe().await?;
     print_send_result(&subscription_b_as_b);
     print_user("Subscriber A", &subscriber_b);
-
-    println!("> Author stores the PSK used by Subscriber C");
-    author.add_psk(psk);
 
     println!("> Author reads subscription of subscribers A and B");
     let _subscription_a_as_author = author.receive_message(subscription_a_as_a.address()).await?;
