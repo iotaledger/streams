@@ -607,7 +607,12 @@ where
         };
 
         // Prepare HDF and PCF
-        let header = HDF::new(message_types::ANNOUNCEMENT, user_cursor, identifier.clone(), topic.clone())?;
+        let header = HDF::new(
+            message_types::ANNOUNCEMENT,
+            user_cursor,
+            identifier.clone(),
+            topic.clone(),
+        )?;
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(user_id));
 
         // Wrap message
@@ -679,8 +684,13 @@ where
             user_id,
             author_ke_pk,
         ));
-        let header = HDF::new(message_types::SUBSCRIPTION, SUB_MESSAGE_NUM, identifier.clone(), base_branch.clone())?
-            .with_linked_msg_address(link_to);
+        let header = HDF::new(
+            message_types::SUBSCRIPTION,
+            SUB_MESSAGE_NUM,
+            identifier.clone(),
+            base_branch.clone(),
+        )?
+        .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, _spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -826,8 +836,8 @@ where
             nonce,
             user_id,
         ));
-        let header =
-            HDF::new(message_types::KEYLOAD, new_cursor, identifier.clone(), topic.clone())?.with_linked_msg_address(link_to);
+        let header = HDF::new(message_types::KEYLOAD, new_cursor, identifier.clone(), topic.clone())?
+            .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -930,8 +940,13 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::SIGNED_PACKET, new_cursor, identifier.clone(), topic.clone())?
-            .with_linked_msg_address(link_to);
+        let header = HDF::new(
+            message_types::SIGNED_PACKET,
+            new_cursor,
+            identifier.clone(),
+            topic.clone(),
+        )?
+        .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -945,7 +960,9 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.cursor_store.insert_cursor(&topic, identifier.clone(), new_cursor);
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, identifier.clone(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address.relative());
@@ -993,8 +1010,13 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::TAGGED_PACKET, new_cursor, identifier.clone(), topic.clone())?
-            .with_linked_msg_address(link_to);
+        let header = HDF::new(
+            message_types::TAGGED_PACKET,
+            new_cursor,
+            identifier.clone(),
+            topic.clone(),
+        )?
+        .with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
