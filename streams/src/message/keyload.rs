@@ -187,13 +187,13 @@ pub(crate) struct Unwrap<'a> {
     pub(crate) psks: Vec<PskId>,
     psk_store: &'a HashMap<PskId, Psk>,
     author_id: Identifier,
-    user_id: &'a Identity,
+    user_id: Option<&'a Identity>,
 }
 
 impl<'a> Unwrap<'a> {
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
-        user_id: &'a Identity,
+        user_id: Option<&'a Identity>,
         author_id: Identifier,
         psk_store: &'a HashMap<PskId, Psk>,
     ) -> Self {
@@ -228,17 +228,19 @@ where
             let mut subscriber_id = Permissioned::<Identifier>::default();
             fork.mask(&mut subscriber_id)?;
 
-            if key.is_some() {
-                fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
-            } else if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
-                fork.decrypt(
-                    keyload.user_id,
-                    &keyload.user_id._ke_sk().to_bytes(),
-                    key.get_or_insert([0u8; KEY_SIZE]),
-                )
-                .await?;
+            if key.is_none() && keyload.user_id.is_some() {
+                let user_id = keyload.user_id.unwrap();
+                if subscriber_id.identifier() == &user_id.to_identifier() {
+                    fork.decrypt(
+                        user_id,
+                        &user_id._ke_sk().to_bytes(),
+                        key.get_or_insert([0u8; KEY_SIZE]),
+                    )
+                    .await?;
+                } else {
+                    fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
+                }
             } else {
-                // Key is meant for another subscriber, skip it
                 fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
             }
             keyload.subscribers.push(subscriber_id);
