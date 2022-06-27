@@ -327,11 +327,10 @@ mod tests {
     use crate::api::{
         message::{
             Message,
-            MessageContent::{Announcement, Keyload, SignedPacket},
+            MessageContent::{Announcement, BranchAnnouncement, Keyload, SignedPacket},
         },
         user::User,
     };
-    use crate::api::message::MessageContent::BranchAnnouncement;
 
     type Transport = Rc<RefCell<bucket::Client>>;
 
