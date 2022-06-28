@@ -119,7 +119,7 @@ where
         // Loop through provided identifiers, masking the shared key for each one
         for (subscriber, exchange_key) in subscribers {
             self.fork()
-                .mask(subscriber)?
+                .mask(&subscriber)?
                 .encrypt_sizeof(subscriber.identifier(), &exchange_key.to_bytes(), &keyload.key)
                 .await?;
         }
@@ -160,7 +160,7 @@ where
         // Loop through provided identifiers, masking the shared key for each one
         for (subscriber, exchange_key) in subscribers {
             self.fork()
-                .mask(subscriber)?
+                .mask(&subscriber)?
                 .encrypt(subscriber.identifier(), &exchange_key.to_bytes(), &keyload.key)
                 .await?;
         }
