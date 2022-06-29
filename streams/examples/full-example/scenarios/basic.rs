@@ -134,7 +134,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         keyload_as_a
             .as_keyload()
             .expect("expected keyload, found something else")
-            .includes_subscriber(subscriber_a_id)
+            .includes_subscriber(&subscriber_a_id)
     );
     let keyload_as_b = subscriber_b
         .messages()
@@ -146,7 +146,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         !keyload_as_b
             .as_keyload()
             .expect("expected keyload, found something else")
-            .includes_subscriber(subscriber_b_id)
+            .includes_subscriber(&subscriber_b_id)
     );
     let keyload_as_c = subscriber_c
         .messages()
@@ -214,7 +214,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     assert!(tagged_packet_as_b.is_none());
 
     println!("> Author manually subscribes subscriber B");
-    author.add_subscriber(subscriber_b_id);
+    author.add_subscriber(subscriber_b_id.clone());
     print_user("Author", &author);
 
     println!("> Author issues new keyload in the same branch to incorporate SubscriberB");
@@ -297,13 +297,15 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
             author
                 .subscribers()
                 .map(|s| {
-                    if s == subscriber_a_id {
-                        Permissioned::ReadWrite(s, PermissionDuration::Perpetual)
+                    if s == &subscriber_a_id {
+                        Permissioned::ReadWrite(s.clone(), PermissionDuration::Perpetual)
                     } else {
-                        Permissioned::Read(s)
+                        Permissioned::Read(s.clone())
                     }
                 })
-                .collect::<Vec<_>>(),
+                .collect::<Vec<_>>()
+                .iter()
+                .map(Permissioned::as_ref),
             [psk.to_pskid()],
         )
         .await?;
@@ -364,7 +366,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_transport(transport.clone())
         .build()?;
     // OOB data must be recovered manually
-    new_author.add_subscriber(subscriber_b_id);
+    new_author.add_subscriber(subscriber_b_id.clone());
     new_author.receive_message(announcement.address()).await?;
     new_author.receive_message(subscription_a_as_a.address()).await?;
     assert_eq!(new_author.sync().await?, 7);
@@ -414,9 +416,9 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> The rest of subscribers also manually unsubscribe Subscriber A");
     // Manual unsubscription assumes an exchange of identifiers at application level
-    subscriber_b.remove_subscriber(subscriber_a_id);
+    subscriber_b.remove_subscriber(&subscriber_a_id);
     print_user("Subscriber B", &subscriber_b);
-    subscriber_c.remove_subscriber(subscriber_a_id);
+    subscriber_c.remove_subscriber(&subscriber_a_id);
     print_user("Subscriber C", &subscriber_c);
 
     println!("> ~Subscriber B sends unsubscription~ [CURRENTLY BROKEN]");
@@ -433,11 +435,11 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     // assert_eq!(subscriber_c.sync().await?, 1);
     // print_user("Subscriber C", &subscriber_c);
     println!("> Alternative: users manually unsubscribe Subscriber B");
-    author.remove_subscriber(subscriber_b_id);
+    author.remove_subscriber(&subscriber_b_id);
     print_user("Author", &author);
-    subscriber_a.remove_subscriber(subscriber_b_id);
+    subscriber_a.remove_subscriber(&subscriber_b_id);
     print_user("Subscriber A", &subscriber_a);
-    subscriber_c.remove_subscriber(subscriber_b_id);
+    subscriber_c.remove_subscriber(&subscriber_b_id);
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Author removes PSK");

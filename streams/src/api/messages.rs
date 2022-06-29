@@ -53,7 +53,8 @@ use crate::api::{
 /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
-/// let author_transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+/// let author_transport: tangle::Client =
+///     tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
 /// #
 /// # let test_author_transport = test_transport.clone();
 /// #
@@ -64,7 +65,8 @@ use crate::api::{
 ///     .build()?;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-/// let subscriber_transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+/// let subscriber_transport: tangle::Client =
+///     tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
@@ -79,7 +81,11 @@ use crate::api::{
 ///     .send_signed_packet("BASE_BRANCH", b"public payload", b"masked payload")
 ///     .await?;
 /// let second_packet = author
-///     .send_signed_packet("BASE_BRANCH", b"another public payload", b"another masked payload")
+///     .send_signed_packet(
+///         "BASE_BRANCH",
+///         b"another public payload",
+///         b"another masked payload",
+///     )
 ///     .await?;
 ///
 /// #
@@ -201,13 +207,14 @@ impl<'a, T> MessagesState<'a, T> {
                 None => {
                     // new round
                     self.successful_round = false;
-                    self.ids_stack = self.user.cursors().collect();
+                    self.ids_stack = self.user.cursors().map(|(t, p, c)| (t.clone(), p.clone(), c)).collect();
                     self.ids_stack.pop()?
                 }
             };
             let base_address = self.user.stream_address()?.base();
-            let rel_address = MsgId::gen(base_address, publisher, &topic, cursor + 1);
+            let rel_address = MsgId::gen(base_address, &publisher, &topic, cursor + 1);
             let address = Address::new(base_address, rel_address);
+
             match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {
                     self.stage.push_back((address.relative(), msg));
