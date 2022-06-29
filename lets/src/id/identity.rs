@@ -162,7 +162,7 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
             Identity::DID(did_impl) => match did_impl {
                 DID::PrivateKey(info) => {
                     let hash = [0; 64];
-                    let key_fragment = info.key_fragment().as_bytes().to_vec();
+                    let key_fragment = info.signing_fragment().as_bytes().to_vec();
                     let signature = [0; 64];
                     self.absorb(Uint8::new(1))?
                         .absorb(Bytes::new(key_fragment))?
@@ -198,14 +198,14 @@ where
                 match did_impl {
                     DID::PrivateKey(info) => {
                         let mut hash = [0; 64];
-                        let key_fragment = info.key_fragment().as_bytes().to_vec();
+                        let key_fragment = info.signing_fragment().as_bytes().to_vec();
                         self.absorb(Uint8::new(1))?
                             .absorb(Bytes::new(key_fragment))?
                             .commit()?
                             .squeeze(External::new(&mut NBytes::new(&mut hash)))?;
 
                         let mut data = DataWrapper::new(&hash);
-                        let fragment = format!("#{}", info.key_fragment());
+                        let fragment = format!("#{}", info.signing_fragment());
                         // Join the DID identifier with the key fragment of the verification method
                         let method = info.did().clone().join(&fragment)?;
                         JcsEd25519::<DIDEd25519>::create_signature(

@@ -29,9 +29,9 @@ const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let did_client = DIDClient::new().await?;
     println!("> Making DID with method for the Author");
-    let author_did_info = make_did_info(&did_client, "auth_key").await?;
+    let author_did_info = make_did_info(&did_client, "auth_key", "signing_key").await?;
     println!("> Making another DID with method for a Subscriber");
-    let subscriber_did_info = make_did_info(&did_client, "sub_key").await?;
+    let subscriber_did_info = make_did_info(&did_client, "sub_key", "signing_key").await?;
 
     // Generate a simple PSK for storage by users
     let psk = Psk::from_seed("A pre shared key");
@@ -163,13 +163,13 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     Ok(())
 }
 
-async fn make_did_info(did_client: &DIDClient, fragment: &str) -> Result<DIDInfo> {
+async fn make_did_info(did_client: &DIDClient, key_fragment: &str, signing_fragment: &str) -> Result<DIDInfo> {
     // Create Keypair to act as base of identity
     let keypair = DIDKeyPair::new_ed25519()?;
     // Generate original DID document
     let mut document = IotaDocument::new(&keypair)?;
     // Sign document and publish to the tangle
-    document.sign_self(keypair.private(), document.default_signing_method()?.id().clone())?;
+    document.sign_self(keypair.private(), signing_fragment)?;
     let receipt = did_client.publish_document(&document).await?;
     let did = document.id().clone();
 
@@ -178,17 +178,17 @@ async fn make_did_info(did_client: &DIDClient, fragment: &str) -> Result<DIDInfo
         did.clone(),
         streams_method_keys.type_(),
         streams_method_keys.public(),
-        fragment,
+        key_fragment,
     )?;
     if document.insert_method(method, MethodScope::VerificationMethod).is_ok() {
         document.metadata.previous_message_id = *receipt.message_id();
         document.metadata.updated = Timestamp::now_utc();
-        document.sign_self(keypair.private(), document.default_signing_method()?.id().clone())?;
+        document.sign_self(keypair.private(), signing_fragment)?;
 
         let _update_receipt = did_client.publish_document(&document).await?;
     } else {
         return Err(anyhow!("Failed to update method"));
     }
 
-    Ok(DIDInfo::new(did, fragment.to_string(), streams_method_keys))
+    Ok(DIDInfo::new(did, key_fragment.to_string(),signing_fragment.to_string(), streams_method_keys))
 }

@@ -156,15 +156,17 @@ impl Default for DID {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DIDInfo {
     did: IotaDID,
-    key_fragment: String,
+    exchange_fragment: String,
+    signing_fragment: String,
     keypair: KeyPair,
 }
 
 impl DIDInfo {
-    pub fn new(did: IotaDID, key_fragment: String, keypair: identity::crypto::KeyPair) -> Self {
+    pub fn new(did: IotaDID, exchange_fragment: String, signing_fragment: String, keypair: identity::crypto::KeyPair) -> Self {
         Self {
             did,
-            key_fragment,
+            exchange_fragment,
+            signing_fragment,
             keypair: KeyPair(keypair),
         }
     }
@@ -172,8 +174,12 @@ impl DIDInfo {
         &self.did
     }
 
-    pub(crate) fn key_fragment(&self) -> &str {
-        &self.key_fragment
+    pub(crate) fn exchange_fragment(&self) -> &str {
+        &self.exchange_fragment
+    }
+
+    pub(crate) fn signing_fragment(&self) -> &str {
+        &self.signing_fragment
     }
 
     pub(crate) fn keypair(&self) -> &identity::crypto::KeyPair {
@@ -184,8 +190,12 @@ impl DIDInfo {
         &mut self.did
     }
 
-    fn key_fragment_mut(&mut self) -> &mut String {
-        &mut self.key_fragment
+    fn exchange_fragment_mut(&mut self) -> &mut String {
+        &mut self.exchange_fragment
+    }
+
+    fn signing_fragment_mut(&mut self) -> &mut String {
+        &mut self.signing_fragment
     }
 
     fn keypair_mut(&mut self) -> &mut identity::crypto::KeyPair {
@@ -240,7 +250,8 @@ impl Hash for KeyPair {
 impl Mask<&DID> for sizeof::Context {
     fn mask(&mut self, did: &DID) -> Result<&mut Self> {
         self.mask(Bytes::new(did.info().did().as_str()))?
-            .mask(Bytes::new(did.info().key_fragment()))?
+            .mask(Bytes::new(did.info().exchange_fragment()))?
+            .mask(Bytes::new(did.info().signing_fragment()))?
             .mask(NBytes::new(did.info().keypair().private()))
     }
 }
@@ -252,7 +263,8 @@ where
 {
     fn mask(&mut self, did: &DID) -> Result<&mut Self> {
         self.mask(Bytes::new(did.info().did().as_str()))?
-            .mask(Bytes::new(did.info().key_fragment()))?
+            .mask(Bytes::new(did.info().exchange_fragment()))?
+            .mask(Bytes::new(did.info().signing_fragment()))?
             .mask(NBytes::new(did.info().keypair().private()))
     }
 }
@@ -264,14 +276,17 @@ where
 {
     fn mask(&mut self, did: &mut DID) -> Result<&mut Self> {
         let mut did_bytes = Vec::new();
-        let mut fragment_bytes = Vec::new();
+        let mut exchange_fragment_bytes = Vec::new();
+        let mut signing_fragment_bytes = Vec::new();
         let mut private_key_bytes = [0; ed25519::SECRET_KEY_LENGTH];
         self.mask(Bytes::new(&mut did_bytes))?
-            .mask(Bytes::new(&mut fragment_bytes))?
+            .mask(Bytes::new(&mut exchange_fragment_bytes))?
+            .mask(Bytes::new(&mut signing_fragment_bytes))?
             .mask(NBytes::new(&mut private_key_bytes))?;
 
         *did.info_mut().did_mut() = core::str::from_utf8(&did_bytes)?.try_into()?;
-        *did.info_mut().key_fragment_mut() = String::from_utf8(fragment_bytes)?;
+        *did.info_mut().exchange_fragment_mut() = String::from_utf8(exchange_fragment_bytes)?;
+        *did.info_mut().signing_fragment_mut() = String::from_utf8(signing_fragment_bytes)?;
 
         let keypair = identity::crypto::KeyPair::try_from_ed25519_bytes(&private_key_bytes)
             .map_err(|e| anyhow!("error unmasking DID private key: {}", e))?;
