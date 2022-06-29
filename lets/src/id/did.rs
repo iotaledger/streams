@@ -15,11 +15,11 @@ use serde::Serialize;
 
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
-use identity::{
-    core::{decode_b58, encode_b58},
-    crypto::{SetSignature, Signature, TrySignature, TrySignatureMut},
+use identity_iota::{
+    core::BaseEncoding,
+    crypto::{SetSignature, Proof, GetSignature, GetSignatureMut, KeyType},
     did::{MethodUriType, TryMethod, DID as IdentityDID},
-    iota::IotaDID,
+    iota_core::IotaDID,
 };
 
 // Streams
@@ -44,7 +44,7 @@ impl DIDMethodId {
 
     pub(crate) fn from_did_unsafe(did: &IotaDID) -> Self {
         Self::new(
-            decode_b58(did.method_id())
+            BaseEncoding::decode_base58(did.method_id())
                 .expect("decoding DID method-id")
                 .try_into()
                 .expect("DID method-id vector should fit into a 32 Byte array"),
@@ -52,7 +52,7 @@ impl DIDMethodId {
     }
 
     pub(crate) fn try_to_did(&self) -> Result<IotaDID> {
-        let did_str = DID_CORE.to_string() + &encode_b58(self);
+        let did_str = DID_CORE.to_string() + &BaseEncoding::encode_base58(self);
         Ok(IotaDID::parse(did_str)?)
     }
 }
@@ -84,7 +84,7 @@ impl UpperHex for DIDMethodId {
 #[derive(Serialize)]
 pub(crate) struct DataWrapper<'a> {
     data: &'a [u8],
-    signature: Option<Signature>,
+    signature: Option<Proof>,
 }
 
 impl<'a> DataWrapper<'a> {
@@ -92,30 +92,30 @@ impl<'a> DataWrapper<'a> {
         Self { data, signature: None }
     }
 
-    pub(crate) fn with_signature(mut self, signature: Signature) -> Self {
+    pub(crate) fn with_signature(mut self, signature: Proof) -> Self {
         self.signature = Some(signature);
         self
     }
 
-    pub(crate) fn into_signature(self) -> Option<Signature> {
+    pub(crate) fn into_signature(self) -> Option<Proof> {
         self.signature
     }
 }
 
-impl<'a> TrySignature for DataWrapper<'a> {
-    fn signature(&self) -> Option<&Signature> {
+impl<'a> GetSignature for DataWrapper<'a> {
+    fn signature(&self) -> Option<&Proof> {
         self.signature.as_ref()
     }
 }
 
-impl<'a> TrySignatureMut for DataWrapper<'a> {
-    fn signature_mut(&mut self) -> Option<&mut Signature> {
+impl<'a> GetSignatureMut for DataWrapper<'a> {
+    fn signature_mut(&mut self) -> Option<&mut Proof> {
         self.signature.as_mut()
     }
 }
 
 impl<'a> SetSignature for DataWrapper<'a> {
-    fn set_signature(&mut self, signature: Signature) {
+    fn set_signature(&mut self, signature: Proof) {
         self.signature = Some(signature)
     }
 }
@@ -162,7 +162,7 @@ pub struct DIDInfo {
 }
 
 impl DIDInfo {
-    pub fn new(did: IotaDID, exchange_fragment: String, signing_fragment: String, keypair: identity::crypto::KeyPair) -> Self {
+    pub fn new(did: IotaDID, exchange_fragment: String, signing_fragment: String, keypair: identity_iota::crypto::KeyPair) -> Self {
         Self {
             did,
             exchange_fragment,
@@ -182,7 +182,7 @@ impl DIDInfo {
         &self.signing_fragment
     }
 
-    pub(crate) fn keypair(&self) -> &identity::crypto::KeyPair {
+    pub(crate) fn keypair(&self) -> &identity_iota::crypto::KeyPair {
         &self.keypair.0
     }
 
@@ -198,7 +198,7 @@ impl DIDInfo {
         &mut self.signing_fragment
     }
 
-    fn keypair_mut(&mut self) -> &mut identity::crypto::KeyPair {
+    fn keypair_mut(&mut self) -> &mut identity_iota::crypto::KeyPair {
         &mut self.keypair.0
     }
 
@@ -218,7 +218,7 @@ impl DIDInfo {
     }
 }
 
-struct KeyPair(identity::crypto::KeyPair);
+struct KeyPair(identity_iota::crypto::KeyPair);
 
 impl PartialEq for KeyPair {
     fn eq(&self, other: &Self) -> bool {
@@ -288,7 +288,7 @@ where
         *did.info_mut().exchange_fragment_mut() = String::from_utf8(exchange_fragment_bytes)?;
         *did.info_mut().signing_fragment_mut() = String::from_utf8(signing_fragment_bytes)?;
 
-        let keypair = identity::crypto::KeyPair::try_from_ed25519_bytes(&private_key_bytes)
+        let keypair = identity_iota::crypto::KeyPair::try_from_private_key_bytes(KeyType::Ed25519, &private_key_bytes)
             .map_err(|e| anyhow!("error unmasking DID private key: {}", e))?;
         *did.info_mut().keypair_mut() = keypair;
 

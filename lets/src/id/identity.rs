@@ -12,9 +12,9 @@ use async_trait::async_trait;
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 #[cfg(feature = "did")]
-use identity::{
-    core::decode_b58,
-    crypto::{Ed25519 as DIDEd25519, JcsEd25519, SignatureOptions, Signer},
+use identity_iota::{
+    core::BaseEncoding,
+    crypto::{Ed25519 as DIDEd25519, JcsEd25519, ProofOptions, Signer},
     did::DID as IdentityDID,
 };
 
@@ -212,9 +212,9 @@ where
                             &mut data,
                             method.to_string(),
                             info.keypair().private().as_ref(),
-                            SignatureOptions::new(),
+                            ProofOptions::new(),
                         )?;
-                        let signature = decode_b58(
+                        let signature = BaseEncoding::decode_base58(
                             &data
                                 .into_signature()
                                 .ok_or_else(|| {

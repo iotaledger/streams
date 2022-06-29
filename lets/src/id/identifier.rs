@@ -10,11 +10,12 @@ use async_trait::async_trait;
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 #[cfg(feature = "did")]
-use identity::{
-    core::encode_b58,
-    crypto::{Ed25519 as DIDEd25519, JcsEd25519, Named, Signature, SignatureValue},
+use identity_iota::{
+    core::BaseEncoding,
+    crypto::{Ed25519 as DIDEd25519, JcsEd25519, Named, Proof, ProofValue},
     did::{verifiable::VerifierOptions, DID as IdentityDID},
-    iota::{Client as DIDClient, IotaDID},
+    client::Client as DIDClient,
+    iota_core::IotaDID,
 };
 
 // Streams
@@ -235,8 +236,8 @@ where
                     );
 
                     let did_url = method_id.try_to_did()?.join(exchange_fragment)?;
-                    let mut signature = Signature::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
-                    signature.set_value(SignatureValue::Signature(encode_b58(&signature_bytes)));
+                    let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
+                    signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
 
                     let data = DataWrapper::new(&hash).with_signature(signature);
 
