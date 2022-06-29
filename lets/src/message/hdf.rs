@@ -110,8 +110,8 @@ impl HDF {
         self.payload_frame_count
     }
 
-    pub fn publisher(&self) -> Identifier {
-        self.publisher
+    pub fn publisher(&self) -> &Identifier {
+        &self.publisher
     }
 
     pub fn sequence(&self) -> usize {

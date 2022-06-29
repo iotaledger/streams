@@ -33,7 +33,7 @@ use spongos::{
 use crate::id::did::{DIDMethodId, DataWrapper};
 use crate::message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify};
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
     Ed25519(ed25519::PublicKey),
     #[cfg(feature = "did")]

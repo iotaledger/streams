@@ -141,7 +141,7 @@ impl AppAddr {
         Self(bytes)
     }
 
-    pub fn gen(identifier: Identifier, base_topic: &Topic) -> AppAddr {
+    pub fn gen(identifier: &Identifier, base_topic: &Topic) -> AppAddr {
         let mut addr = [0u8; 40];
         let id_bytes = identifier.as_bytes();
         // Create spongos to squeeze topic into final 8 bytes
@@ -231,7 +231,7 @@ impl MsgId {
         Self(bytes)
     }
 
-    pub fn gen(appaddr: AppAddr, identifier: Identifier, topic: &Topic, seq_num: usize) -> MsgId {
+    pub fn gen(appaddr: AppAddr, identifier: &Identifier, topic: &Topic, seq_num: usize) -> MsgId {
         let mut s = Spongos::<KeccakF1600>::init();
         s.absorb(appaddr);
         s.absorb(identifier);
