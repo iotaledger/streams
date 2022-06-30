@@ -223,25 +223,23 @@ where
             1 => match verifier {
                 Identifier::DID(url_info) => {
                     let mut hash = [0; 64];
-                    let mut exchange_fragment_bytes = Bytes::default();
                     let mut fragment_bytes = Bytes::default();
                     let mut signature_bytes = [0; 64];
 
-                    self.absorb(exchange_fragment_bytes.as_mut())?
-                        .absorb(fragment_bytes.as_mut())?
+                    self.absorb(fragment_bytes.as_mut())?
                         .commit()?
                         .squeeze(External::new(&mut NBytes::new(&mut hash)))?
                         .absorb(NBytes::new(&mut signature_bytes))?;
 
-                    let exchange_fragment = format!(
+                    let signing_fragment = format!(
                         "#{}",
-                        exchange_fragment_bytes
+                        fragment_bytes
                             .to_str()
                             .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
                     );
 
                     let did_url = IotaDID::parse(url_info.did().to_string())?
-                        .join(exchange_fragment)?;
+                        .join(signing_fragment)?;
                     let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
                     signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
 

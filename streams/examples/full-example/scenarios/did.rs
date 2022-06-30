@@ -168,13 +168,13 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     Ok(())
 }
 
-async fn make_did_info(did_client: &DIDClient, key_fragment: &str, exchange_fragment: &str, signing_fragment: &str) -> Result<DIDInfo> {
+async fn make_did_info(did_client: &DIDClient, signing_fragment: &str, exchange_fragment: &str, doc_signing_fragment: &str) -> Result<DIDInfo> {
     // Create Keypair to act as base of identity
     let keypair = DIDKeyPair::new(KeyType::Ed25519)?;
     // Generate original DID document
-    let mut document = IotaDocument::new(&keypair)?;
+    let mut document = IotaDocument::new_with_options(&keypair, None, Some(doc_signing_fragment))?;
     // Sign document and publish to the tangle
-    document.sign_self(keypair.private(), signing_fragment)?;
+    document.sign_self(keypair.private(), doc_signing_fragment)?;
     let receipt = did_client.publish_document(&document).await?;
     let did = document.id().clone();
 
@@ -184,7 +184,7 @@ async fn make_did_info(did_client: &DIDClient, key_fragment: &str, exchange_frag
         did.clone(),
         streams_signing_keys.type_(),
         streams_signing_keys.public(),
-        key_fragment,
+        signing_fragment,
     )?;
 
     // Create a second Keypair for key exchange method
@@ -200,13 +200,13 @@ async fn make_did_info(did_client: &DIDClient, key_fragment: &str, exchange_frag
         && document.insert_method(xmethod, MethodScope::key_agreement()).is_ok() {
         document.metadata.previous_message_id = *receipt.message_id();
         document.metadata.updated = Some(Timestamp::now_utc());
-        document.sign_self(keypair.private(), signing_fragment)?;
+        document.sign_self(keypair.private(), doc_signing_fragment)?;
 
         let _update_receipt = did_client.publish_document(&document).await?;
     } else {
         return Err(anyhow!("Failed to update method"));
     }
 
-    let url_info = DIDUrlInfo::new(did, CLIENT_URL, key_fragment, exchange_fragment);
+    let url_info = DIDUrlInfo::new(did, CLIENT_URL, exchange_fragment, signing_fragment);
     Ok(DIDInfo::new(url_info, streams_signing_keys, streams_exchange_keys))
 }

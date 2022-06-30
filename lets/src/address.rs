@@ -146,8 +146,12 @@ impl AppAddr {
         let id_bytes = identifier.as_bytes();
         // Create spongos to squeeze topic into final 8 bytes
         let squeezed_topic: [u8; 8] = Spongos::<KeccakF1600>::init().sponge(base_topic);
-        assert_eq!(id_bytes.len(), 32, "identifier must be 32 bytes long");
-        addr[..32].copy_from_slice(id_bytes);
+        if id_bytes.len() > 32 {
+            let squeezed_id: [u8; 32] = Spongos::<KeccakF1600>::init().sponge(id_bytes);
+            addr[..32].copy_from_slice(&squeezed_id)
+        } else {
+            addr[..32].copy_from_slice(id_bytes);
+        }
         addr[32..].copy_from_slice(&squeezed_topic);
         Self::new(addr)
     }
