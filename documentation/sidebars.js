@@ -71,11 +71,7 @@ module.exports = {
                         type: 'category',
                         label: 'Channels Protocol',
                         items: [
-                            {
-                                type: 'doc',
-                                id: 'key_concepts/channels_protocol/overview',
-                                label: 'Overview',
-                            },
+                                'key_concepts/channels_protocol/overview',
                             'key_concepts/channels_protocol/authors',
                             'key_concepts/channels_protocol/subscribers',
                             'key_concepts/channels_protocol/branching',

@@ -6,7 +6,7 @@ keywords:
 - reference
 - API reference
 ---
-# Wasm Bindings API Reference
+# Wasm Binding API Reference
 
 ## Contents 
 The API is spread out across three categories: 
