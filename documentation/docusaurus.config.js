@@ -10,13 +10,6 @@ module.exports = {
         routeBasePath: 'streams',
         sidebarPath: path.resolve(__dirname, 'sidebars.js'),
         editUrl: 'https://github.com/iotaledger/streams/edit/develop/documentation',
-        remarkPlugins: [require('remark-code-import'), require('remark-import-partial')],
-        versions: {
-          current: {
-            label: 'IOTA',
-            badge: true
-          },
-        },
       }
     ],
   ],
