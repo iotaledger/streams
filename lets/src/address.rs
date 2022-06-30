@@ -10,6 +10,7 @@ use core::{
 use anyhow::{anyhow, Result};
 
 // IOTA
+use crypto::hashes::{blake2b::Blake2b256, Digest};
 
 // Streams
 use spongos::{
@@ -85,6 +86,16 @@ impl Address {
 
     pub fn base(self) -> AppAddr {
         self.appaddr
+    }
+
+    /// Hash the content of the [`Address`] using `Blake2b256`
+    pub fn to_blake2b(self) -> [u8; 32] {
+        let hasher = Blake2b256::new();
+        hasher.chain(self.base()).chain(self.relative()).finalize().into()
+    }
+
+    pub fn to_msg_index(self) -> [u8; 32] {
+        self.to_blake2b()
     }
 }
 

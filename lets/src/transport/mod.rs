@@ -106,3 +106,6 @@ pub mod bucket;
 
 #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
 pub mod tangle;
+
+#[cfg(feature = "utangle-client")]
+pub mod utangle;
