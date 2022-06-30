@@ -19,7 +19,7 @@ use crate::GenericTransport;
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
-pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_seed: &str) -> Result<()> {
     let psk = Psk::from_seed("A pre shared key");
     let branch1_topic = "BRANCH1";
 

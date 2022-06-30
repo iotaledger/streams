@@ -1,7 +1,5 @@
 // Rust
 
-use std::{cell::RefCell, rc::Rc};
-
 // 3rd-arty
 use anyhow::{anyhow, Result};
 use textwrap::{fill, indent};
@@ -17,16 +15,17 @@ use identity::{
 // Streams
 use streams::{
     id::{DIDInfo, Ed25519, Permissioned, Psk, DID},
-    transport::tangle,
     User,
 };
+
+use crate::GenericTransport;
 
 use super::utils::{print_send_result, print_user};
 
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
-pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T) -> Result<()> {
     let did_client = DIDClient::new().await?;
     println!("> Making DID with method for the Author");
     let author_did_info = make_did_info(&did_client, "auth_key").await?;
