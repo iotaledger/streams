@@ -17,7 +17,7 @@ use identity_iota::{
 
 // Streams
 use streams::{
-    id::{DIDInfo, Ed25519, Permissioned, Psk, DID},
+    id::{DIDInfo, DIDUrlInfo, Ed25519, Permissioned, Psk, DID},
     transport::tangle,
     User,
 };
@@ -26,13 +26,17 @@ use super::utils::{print_send_result, print_user};
 
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
+const CLIENT_URL: &str = "https://chrysalis-nodes.iota.org";
 
 pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
-    let did_client = DIDClient::new().await?;
+    let did_client = DIDClient::builder()
+        .primary_node(CLIENT_URL, None, None)?
+        .build()
+        .await?;
     println!("> Making DID with method for the Author");
-    let author_did_info = make_did_info(&did_client, "auth_key", "signing_key").await?;
+    let author_did_info = make_did_info(&did_client, "auth_key", "auth_xkey", "signing_key").await?;
     println!("> Making another DID with method for a Subscriber");
-    let subscriber_did_info = make_did_info(&did_client, "sub_key", "signing_key").await?;
+    let subscriber_did_info = make_did_info(&did_client, "sub_key", "sub_xkey", "signing_key").await?;
 
     // Generate a simple PSK for storage by users
     let psk = Psk::from_seed("A pre shared key");
@@ -164,7 +168,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     Ok(())
 }
 
-async fn make_did_info(did_client: &DIDClient, key_fragment: &str, signing_fragment: &str) -> Result<DIDInfo> {
+async fn make_did_info(did_client: &DIDClient, key_fragment: &str, exchange_fragment: &str, signing_fragment: &str) -> Result<DIDInfo> {
     // Create Keypair to act as base of identity
     let keypair = DIDKeyPair::new(KeyType::Ed25519)?;
     // Generate original DID document
@@ -174,14 +178,26 @@ async fn make_did_info(did_client: &DIDClient, key_fragment: &str, signing_fragm
     let receipt = did_client.publish_document(&document).await?;
     let did = document.id().clone();
 
-    let streams_method_keys = DIDKeyPair::new(KeyType::Ed25519)?;
+    // Create a signature verification keypair and method
+    let streams_signing_keys = DIDKeyPair::new(KeyType::Ed25519)?;
     let method = IotaVerificationMethod::new(
         did.clone(),
-        streams_method_keys.type_(),
-        streams_method_keys.public(),
+        streams_signing_keys.type_(),
+        streams_signing_keys.public(),
         key_fragment,
     )?;
-    if document.insert_method(method, MethodScope::VerificationMethod).is_ok() {
+
+    // Create a second Keypair for key exchange method
+    let streams_exchange_keys = DIDKeyPair::new(KeyType::X25519)?;
+    let xmethod = IotaVerificationMethod::new(
+        did.clone(),
+        streams_exchange_keys.type_(),
+        streams_exchange_keys.public(),
+        exchange_fragment,
+    )?;
+
+    if document.insert_method(method, MethodScope::VerificationMethod).is_ok()
+        && document.insert_method(xmethod, MethodScope::key_agreement()).is_ok() {
         document.metadata.previous_message_id = *receipt.message_id();
         document.metadata.updated = Some(Timestamp::now_utc());
         document.sign_self(keypair.private(), signing_fragment)?;
@@ -191,5 +207,6 @@ async fn make_did_info(did_client: &DIDClient, key_fragment: &str, signing_fragm
         return Err(anyhow!("Failed to update method"));
     }
 
-    Ok(DIDInfo::new(did, key_fragment.to_string(),signing_fragment.to_string(), streams_method_keys))
+    let url_info = DIDUrlInfo::new(did, CLIENT_URL, key_fragment, exchange_fragment);
+    Ok(DIDInfo::new(url_info, streams_signing_keys, streams_exchange_keys))
 }

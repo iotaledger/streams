@@ -11,6 +11,7 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 
 // IOTA
 use crypto::keys::x25519;
+use crypto::keys::x25519::PublicKey;
 
 // Streams
 use lets::{
@@ -22,6 +23,7 @@ use lets::{
     },
     transport::Transport,
 };
+use lets::id::DIDUrlInfo;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Mask, Squeeze},
@@ -66,8 +68,8 @@ struct State {
     /// Mapping of trusted pre shared keys and identifiers
     psk_store: HashMap<PskId, Psk>,
 
-    /// Mapping of exchange keys and identifiers
-    exchange_keys: HashMap<Identifier, x25519::PublicKey>,
+    /// List of Subscribed Identifiers
+    subscribers: Vec<Identifier>,
 
     spongos_store: HashMap<MsgId, Spongos>,
 
@@ -92,7 +94,7 @@ impl<T> User<T> {
         Psks: IntoIterator<Item = (PskId, Psk)>,
     {
         let mut psk_store = HashMap::new();
-        let mut exchange_keys = HashMap::new();
+        let mut subscribers = Vec::new();
 
         // Store any pre shared keys
         psks.into_iter().for_each(|(pskid, psk)| {
@@ -100,7 +102,7 @@ impl<T> User<T> {
         });
 
         if let Some(id) = user_id.as_ref() {
-            exchange_keys.insert(id.to_identifier(), id._ke_sk().public_key());
+            subscribers.push(id.to_identifier());
         }
 
         Self {
@@ -109,7 +111,7 @@ impl<T> User<T> {
                 user_id,
                 cursor_store: CursorStore::new(),
                 psk_store,
-                exchange_keys,
+                subscribers,
                 spongos_store: Default::default(),
                 stream_address: None,
                 author_identifier: None,
@@ -154,6 +156,7 @@ impl<T> User<T> {
     pub fn transport(&self) -> &T {
         &self.transport
     }
+
     pub fn transport_mut(&mut self) -> &mut T {
         &mut self.transport
     }
@@ -167,7 +170,7 @@ impl<T> User<T> {
     }
 
     pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone + '_ {
-        self.state.exchange_keys.keys()
+        self.state.subscribers.iter()
     }
 
     fn should_store_cursor(&self, topic: &Topic, subscriber: Permissioned<&Identifier>) -> bool {
@@ -179,14 +182,22 @@ impl<T> User<T> {
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        let ke_pk = subscriber
-            ._ke_pk()
-            .expect("subscriber must have an identifier from which an x25519 public key can be derived");
-        self.state.exchange_keys.insert(subscriber, ke_pk).is_none()
+        if self.state.subscribers.contains(&subscriber) {
+            return false
+        }
+        self.state.subscribers.push(subscriber);
+        true
     }
 
     pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
-        self.state.cursor_store.remove(id) | self.state.exchange_keys.remove(id).is_some()
+        let removed_sub = match self.state.subscribers.iter().position(|i| i == id) {
+            Some(p) => {
+                self.state.subscribers.remove(p);
+                true
+            },
+            None => false
+        };
+        self.state.cursor_store.remove(id) | removed_sub
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
@@ -268,7 +279,6 @@ impl<T> User<T> {
         // Store message content into stores
         let topic = message.header().topic();
         let author_id = message.payload().content().author_id();
-        let author_ke_pk = message.payload().content().author_ke_pk();
 
         // Update branch links
         self.set_anchor(topic, address.relative());
@@ -276,7 +286,7 @@ impl<T> User<T> {
         self.state.author_identifier = Some(author_id.clone());
 
         if is_base_branch {
-            self.state.exchange_keys.insert(author_id.clone(), author_ke_pk.clone());
+            self.add_subscriber(author_id.clone());
             self.state.base_branch = topic.clone();
             self.state.stream_address = Some(address);
         }
@@ -309,10 +319,7 @@ impl<T> User<T> {
 
         // Store message content into stores
         let subscriber_identifier = message.payload().content().subscriber_identifier();
-        let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
-        self.state
-            .exchange_keys
-            .insert(subscriber_identifier.clone(), subscriber_ke_pk);
+        self.state.subscribers.push(subscriber_identifier.clone());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -676,13 +683,14 @@ where
             .state
             .author_identifier
             .as_ref()
-            .and_then(|author_id| self.state.exchange_keys.get(author_id))
-            .expect("a user that already have an stream address must know the author identifier");
+            .expect("a user that already have an stream address must know the author identifier")
+            ._ke_pk()
+            .await?;
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
             unsubscribe_key,
             user_id,
-            author_ke_pk,
+            &author_ke_pk,
         ));
         let header = HDF::new(
             message_types::SUBSCRIPTION,
@@ -772,7 +780,7 @@ where
         psk_ids: Psks,
     ) -> Result<SendResponse<TSR>>
     where
-        Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>>,
+        Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>> + Clone,
         Top: Into<Topic>,
         Psks: IntoIterator<Item = PskId>,
     {
@@ -804,18 +812,6 @@ where
         let mut rng = StdRng::from_entropy();
         let encryption_key = rng.gen();
         let nonce = rng.gen();
-        let exchange_keys = &self.state.exchange_keys; // partial borrow to avoid borrowing the whole self within the closure
-        let subscribers_with_keys = subscribers
-            .into_iter()
-            .map(|subscriber| {
-                Ok((
-                    subscriber,
-                    exchange_keys
-                        .get(subscriber.identifier())
-                        .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
-                ))
-            })
-            .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let psk_ids_with_psks = psk_ids
             .into_iter()
             .map(|pskid| {
@@ -830,7 +826,7 @@ where
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut linked_msg_spongos,
-            subscribers_with_keys.iter().copied(),
+            subscribers.clone().into_iter().collect::<Vec<_>>(),
             &psk_ids_with_psks,
             encryption_key,
             nonce,
@@ -851,7 +847,7 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        for (subscriber, _) in subscribers_with_keys {
+        for subscriber in subscribers {
             if self.should_store_cursor(&topic, subscriber) {
                 self.state
                     .cursor_store
@@ -1080,11 +1076,11 @@ impl ContentSizeof<State> for sizeof::Context {
             }
         }
 
-        let keys = &user_state.exchange_keys;
-        let amount_keys = keys.len();
-        self.mask(Size::new(amount_keys))?;
-        for (subscriber, ke_pk) in keys {
-            self.mask(subscriber)?.mask(ke_pk)?;
+        let subs = &user_state.subscribers;
+        let amount_subs = subs.len();
+        self.mask(Size::new(amount_subs))?;
+        for subscriber in subs {
+            self.mask(subscriber)?;
         }
 
         let psks = user_state.psk_store.iter();
@@ -1141,11 +1137,11 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
             }
         }
 
-        let keys = &user_state.exchange_keys;
-        let amount_keys = keys.len();
-        self.mask(Size::new(amount_keys))?;
-        for (subscriber, ke_pk) in keys {
-            self.mask(subscriber)?.mask(ke_pk)?;
+        let subs = &user_state.subscribers;
+        let amount_subs = subs.len();
+        self.mask(Size::new(amount_subs))?;
+        for subscriber in subs {
+            self.mask(subscriber)?;
         }
 
         let psks = user_state.psk_store.iter();
@@ -1202,13 +1198,12 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
             }
         }
 
-        let mut amount_keys = Size::default();
-        self.mask(&mut amount_keys)?;
-        for _ in 0..amount_keys.inner() {
+        let mut amount_subs = Size::default();
+        self.mask(&mut amount_subs)?;
+        for _ in 0..amount_subs.inner() {
             let mut subscriber = Identifier::default();
-            let mut key = x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]);
-            self.mask(&mut subscriber)?.mask(&mut key)?;
-            user_state.exchange_keys.insert(subscriber, key);
+            self.mask(&mut subscriber)?;
+            user_state.subscribers.push(subscriber);
         }
 
         let mut amount_psks = Size::default();

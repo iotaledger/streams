@@ -1,13 +1,9 @@
 // Rust
 use alloc::{
-    string::{String, ToString},
+    string::String,
     vec::Vec,
 };
-use core::{
-    convert::TryInto,
-    fmt::{LowerHex, UpperHex},
-    hash::Hash,
-};
+use core::hash::Hash;
 
 // 3rd-party
 use anyhow::{anyhow, Result};
@@ -16,8 +12,7 @@ use serde::Serialize;
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 use identity_iota::{
-    core::BaseEncoding,
-    crypto::{SetSignature, Proof, GetSignature, GetSignatureMut, KeyType},
+    crypto::{SetSignature, Proof, GetSignature, GetSignatureMut, KeyType, KeyPair as DIDKeyPair},
     did::{MethodUriType, TryMethod, DID as IdentityDID},
     iota_core::IotaDID,
 };
@@ -31,55 +26,6 @@ use spongos::{
     },
     PRP,
 };
-
-pub(crate) const DID_CORE: &str = "did:iota:";
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
-pub struct DIDMethodId([u8; 32]);
-
-impl DIDMethodId {
-    pub(crate) fn new(method_id_bytes: [u8; 32]) -> Self {
-        Self(method_id_bytes)
-    }
-
-    pub(crate) fn from_did_unsafe(did: &IotaDID) -> Self {
-        Self::new(
-            BaseEncoding::decode_base58(did.method_id())
-                .expect("decoding DID method-id")
-                .try_into()
-                .expect("DID method-id vector should fit into a 32 Byte array"),
-        )
-    }
-
-    pub(crate) fn try_to_did(&self) -> Result<IotaDID> {
-        let did_str = DID_CORE.to_string() + &BaseEncoding::encode_base58(self);
-        Ok(IotaDID::parse(did_str)?)
-    }
-}
-
-impl AsRef<[u8]> for DIDMethodId {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl AsMut<[u8]> for DIDMethodId {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-
-impl LowerHex for DIDMethodId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", hex::encode(self))
-    }
-}
-
-impl UpperHex for DIDMethodId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", hex::encode_upper(self))
-    }
-}
 
 #[derive(Serialize)]
 pub(crate) struct DataWrapper<'a> {
@@ -155,51 +101,55 @@ impl Default for DID {
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DIDInfo {
-    did: IotaDID,
+    url_info: DIDUrlInfo,
+    keypair: KeyPair,
+    exchange_keypair: KeyPair,
+}
+
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DIDUrlInfo {
+    did: String,
+    client_url: String,
     exchange_fragment: String,
     signing_fragment: String,
-    keypair: KeyPair,
 }
 
 impl DIDInfo {
-    pub fn new(did: IotaDID, exchange_fragment: String, signing_fragment: String, keypair: identity_iota::crypto::KeyPair) -> Self {
+    pub fn new(url_info: DIDUrlInfo, keypair: DIDKeyPair, exchange_keypair: DIDKeyPair) -> Self {
         Self {
-            did,
-            exchange_fragment,
-            signing_fragment,
+            url_info,
             keypair: KeyPair(keypair),
+            exchange_keypair: KeyPair(exchange_keypair)
         }
     }
-    pub(crate) fn did(&self) -> &IotaDID {
-        &self.did
+
+    pub fn url_info(&self) -> &DIDUrlInfo {
+        &self.url_info
     }
 
-    pub(crate) fn exchange_fragment(&self) -> &str {
-        &self.exchange_fragment
+    pub fn url_info_mut(&mut self) -> &mut DIDUrlInfo {
+        &mut self.url_info
     }
 
-    pub(crate) fn signing_fragment(&self) -> &str {
-        &self.signing_fragment
-    }
-
-    pub(crate) fn keypair(&self) -> &identity_iota::crypto::KeyPair {
+    pub(crate) fn keypair(&self) -> &DIDKeyPair {
         &self.keypair.0
     }
 
-    fn did_mut(&mut self) -> &mut IotaDID {
-        &mut self.did
-    }
-
-    fn exchange_fragment_mut(&mut self) -> &mut String {
-        &mut self.exchange_fragment
-    }
-
-    fn signing_fragment_mut(&mut self) -> &mut String {
-        &mut self.signing_fragment
-    }
-
-    fn keypair_mut(&mut self) -> &mut identity_iota::crypto::KeyPair {
+    fn keypair_mut(&mut self) -> &mut DIDKeyPair {
         &mut self.keypair.0
+    }
+
+    fn exchange_keypair(&self) -> &DIDKeyPair {
+        &self.exchange_keypair.0
+    }
+
+    fn exchange_keypair_mut(&mut self) -> &mut DIDKeyPair {
+        &mut self.exchange_keypair.0
+    }
+
+    pub(crate) fn exchange_key(&self) -> Result<x25519::SecretKey> {
+        x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref())
+            .map_err(|e| e.into())
     }
 
     pub(crate) fn sig_kp(&self) -> (ed25519::SecretKey, ed25519::PublicKey) {
@@ -217,6 +167,50 @@ impl DIDInfo {
         (key_exchange_secret_key, key_exchange_public_key)
     }
 }
+
+impl DIDUrlInfo {
+    pub fn new<T: Into<String>>(did: IotaDID, client_url: T, exchange_fragment: T, signing_fragment: T) -> Self {
+        Self {
+            did: did.into_string(),
+            client_url: client_url.into(),
+            exchange_fragment: exchange_fragment.into(),
+            signing_fragment: signing_fragment.into(),
+        }
+    }
+
+    pub(crate) fn did(&self) -> &str {
+        &self.did
+    }
+
+    pub(crate) fn client_url(&self) -> &str {
+        &self.client_url
+    }
+
+    pub(crate) fn exchange_fragment(&self) -> &str {
+        &self.exchange_fragment
+    }
+
+    pub(crate) fn signing_fragment(&self) -> &str {
+        &self.signing_fragment
+    }
+
+    pub(crate) fn did_mut(&mut self) -> &mut String {
+        &mut self.did
+    }
+
+    pub(crate) fn client_url_mut(&mut self) -> &mut String {
+        &mut self.client_url
+    }
+
+    pub(crate) fn exchange_fragment_mut(&mut self) -> &mut String {
+        &mut self.exchange_fragment
+    }
+
+    pub(crate) fn signing_fragment_mut(&mut self) -> &mut String {
+        &mut self.signing_fragment
+    }
+}
+
 
 struct KeyPair(identity_iota::crypto::KeyPair);
 
@@ -249,10 +243,9 @@ impl Hash for KeyPair {
 
 impl Mask<&DID> for sizeof::Context {
     fn mask(&mut self, did: &DID) -> Result<&mut Self> {
-        self.mask(Bytes::new(did.info().did().as_str()))?
-            .mask(Bytes::new(did.info().exchange_fragment()))?
-            .mask(Bytes::new(did.info().signing_fragment()))?
-            .mask(NBytes::new(did.info().keypair().private()))
+        self.mask(did.info().url_info())?
+            .mask(NBytes::new(did.info().keypair().private()))?
+            .mask(NBytes::new(did.info().exchange_keypair().private()))
     }
 }
 
@@ -262,10 +255,9 @@ where
     OS: io::OStream,
 {
     fn mask(&mut self, did: &DID) -> Result<&mut Self> {
-        self.mask(Bytes::new(did.info().did().as_str()))?
-            .mask(Bytes::new(did.info().exchange_fragment()))?
-            .mask(Bytes::new(did.info().signing_fragment()))?
-            .mask(NBytes::new(did.info().keypair().private()))
+        self.mask(did.info().url_info())?
+            .mask(NBytes::new(did.info().keypair().private()))?
+            .mask(NBytes::new(did.info().exchange_keypair().private()))
     }
 }
 
@@ -275,23 +267,67 @@ where
     IS: io::IStream,
 {
     fn mask(&mut self, did: &mut DID) -> Result<&mut Self> {
-        let mut did_bytes = Vec::new();
-        let mut exchange_fragment_bytes = Vec::new();
-        let mut signing_fragment_bytes = Vec::new();
+        let mut url_info = DIDUrlInfo::default();
         let mut private_key_bytes = [0; ed25519::SECRET_KEY_LENGTH];
-        self.mask(Bytes::new(&mut did_bytes))?
-            .mask(Bytes::new(&mut exchange_fragment_bytes))?
-            .mask(Bytes::new(&mut signing_fragment_bytes))?
-            .mask(NBytes::new(&mut private_key_bytes))?;
-
-        *did.info_mut().did_mut() = core::str::from_utf8(&did_bytes)?.try_into()?;
-        *did.info_mut().exchange_fragment_mut() = String::from_utf8(exchange_fragment_bytes)?;
-        *did.info_mut().signing_fragment_mut() = String::from_utf8(signing_fragment_bytes)?;
+        let mut exchange_private_key_bytes = [0; x25519::SECRET_KEY_LENGTH];
+        self.mask(&mut url_info)?
+            .mask(NBytes::new(&mut private_key_bytes))?
+            .mask(NBytes::new(&mut exchange_private_key_bytes))?;
 
         let keypair = identity_iota::crypto::KeyPair::try_from_private_key_bytes(KeyType::Ed25519, &private_key_bytes)
             .map_err(|e| anyhow!("error unmasking DID private key: {}", e))?;
+        let xkeypair = identity_iota::crypto::KeyPair::try_from_private_key_bytes(KeyType::X25519, &exchange_private_key_bytes)
+            .map_err(|e| anyhow!("error unmasking DID exchange private key: {}", e))?;
         *did.info_mut().keypair_mut() = keypair;
+        *did.info_mut().exchange_keypair_mut() = xkeypair;
 
+        Ok(self)
+    }
+}
+
+
+
+impl Mask<&DIDUrlInfo> for sizeof::Context {
+    fn mask(&mut self, url_info: &DIDUrlInfo) -> Result<&mut Self> {
+        self.mask(Bytes::new(url_info.did()))?
+            .mask(Bytes::new(url_info.client_url()))?
+            .mask(Bytes::new(url_info.exchange_fragment()))?
+            .mask(Bytes::new(url_info.signing_fragment()))
+    }
+}
+
+impl<OS, F> Mask<&DIDUrlInfo> for wrap::Context<OS, F>
+    where
+        F: PRP,
+        OS: io::OStream,
+{
+    fn mask(&mut self, url_info: &DIDUrlInfo) -> Result<&mut Self> {
+        self.mask(Bytes::new(url_info.did()))?
+            .mask(Bytes::new(url_info.client_url()))?
+            .mask(Bytes::new(url_info.exchange_fragment()))?
+            .mask(Bytes::new(url_info.signing_fragment()))
+    }
+}
+
+impl<IS, F> Mask<&mut DIDUrlInfo> for unwrap::Context<IS, F>
+    where
+        F: PRP,
+        IS: io::IStream,
+{
+    fn mask(&mut self, url_info: &mut DIDUrlInfo) -> Result<&mut Self> {
+        let mut did_bytes = Vec::new();
+        let mut client_url = Vec::new();
+        let mut exchange_fragment_bytes = Vec::new();
+        let mut signing_fragment_bytes = Vec::new();
+        self.mask(Bytes::new(&mut did_bytes))?
+            .mask(Bytes::new(&mut client_url))?
+            .mask(Bytes::new(&mut exchange_fragment_bytes))?
+            .mask(Bytes::new(&mut signing_fragment_bytes))?;
+
+        *url_info.did_mut() = String::from_utf8(did_bytes)?;
+        *url_info.client_url_mut() = String::from_utf8(client_url)?;
+        *url_info.exchange_fragment_mut() = String::from_utf8(exchange_fragment_bytes)?;
+        *url_info.signing_fragment_mut() = String::from_utf8(signing_fragment_bytes)?;
         Ok(self)
     }
 }

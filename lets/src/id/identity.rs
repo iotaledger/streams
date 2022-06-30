@@ -1,7 +1,7 @@
 // Rust
 use alloc::{boxed::Box, string::ToString};
 use core::{
-    convert::{AsRef, TryFrom},
+    convert::AsRef,
     hash::Hash,
 };
 
@@ -17,6 +17,7 @@ use identity_iota::{
     crypto::{Ed25519 as DIDEd25519, JcsEd25519, ProofOptions, Signer},
     did::DID as IdentityDID,
 };
+use identity_iota::iota_core::IotaDID;
 
 // IOTA-Streams
 use spongos::{
@@ -70,7 +71,7 @@ impl Identity {
         match self {
             Self::Ed25519(ed25519) => ed25519.inner().public_key().into(),
             #[cfg(feature = "did")]
-            Self::DID(did) => did.info().did().into(),
+            Self::DID(did) => did.info().url_info().into(),
         }
     }
 }
@@ -162,7 +163,7 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
             Identity::DID(did_impl) => match did_impl {
                 DID::PrivateKey(info) => {
                     let hash = [0; 64];
-                    let key_fragment = info.signing_fragment().as_bytes().to_vec();
+                    let key_fragment = info.url_info().signing_fragment().as_bytes().to_vec();
                     let signature = [0; 64];
                     self.absorb(Uint8::new(1))?
                         .absorb(Bytes::new(key_fragment))?
@@ -198,16 +199,16 @@ where
                 match did_impl {
                     DID::PrivateKey(info) => {
                         let mut hash = [0; 64];
-                        let key_fragment = info.signing_fragment().as_bytes().to_vec();
+                        let key_fragment = info.url_info().signing_fragment().as_bytes().to_vec();
                         self.absorb(Uint8::new(1))?
                             .absorb(Bytes::new(key_fragment))?
                             .commit()?
                             .squeeze(External::new(&mut NBytes::new(&mut hash)))?;
 
                         let mut data = DataWrapper::new(&hash);
-                        let fragment = format!("#{}", info.signing_fragment());
+                        let fragment = format!("#{}", info.url_info().signing_fragment());
                         // Join the DID identifier with the key fragment of the verification method
-                        let method = info.did().clone().join(&fragment)?;
+                        let method = IotaDID::parse(info.url_info().did())?.join(&fragment)?;
                         JcsEd25519::<DIDEd25519>::create_signature(
                             &mut data,
                             method.to_string(),
@@ -239,12 +240,13 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn decrypt(&mut self, _recipient: &Identity, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
+    async fn decrypt(&mut self, recipient: &Identity, key: &mut [u8]) -> Result<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introduction)
-        match <[u8; 32]>::try_from(exchange_key) {
-            Ok(byte_array) => self.x25519(&x25519::SecretKey::from_bytes(byte_array), NBytes::new(key)),
-            Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
+        match recipient {
+            Identity::Ed25519(kp) => self.x25519(&kp.inner().into(), NBytes::new(key)),
+            #[cfg(feature = "did")]
+            Identity::DID(did) => self.x25519(&did.info().exchange_key()?, NBytes::new(key))
         }
     }
 }

@@ -14,4 +14,4 @@ pub use psk::{Psk, PskId};
 mod did;
 
 #[cfg(feature = "did")]
-pub use did::{DIDInfo, DID};
+pub use did::{DIDInfo, DID, DIDUrlInfo};

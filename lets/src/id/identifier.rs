@@ -14,7 +14,7 @@ use identity_iota::{
     core::BaseEncoding,
     crypto::{Ed25519 as DIDEd25519, JcsEd25519, Named, Proof, ProofValue},
     did::{verifiable::VerifierOptions, DID as IdentityDID},
-    client::Client as DIDClient,
+    client::{Client as DIDClient, ResolvedIotaDocument},
     iota_core::IotaDID,
 };
 
@@ -31,14 +31,14 @@ use spongos::{
 
 // Local
 #[cfg(feature = "did")]
-use crate::id::did::{DIDMethodId, DataWrapper};
+use crate::id::did::{DIDUrlInfo, DataWrapper};
 use crate::message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify};
 
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
     Ed25519(ed25519::PublicKey),
     #[cfg(feature = "did")]
-    DID(DIDMethodId),
+    DID(DIDUrlInfo),
 }
 
 impl core::fmt::Debug for Identifier {
@@ -46,7 +46,7 @@ impl core::fmt::Debug for Identifier {
         match self {
             Self::Ed25519(arg0) => f.debug_tuple("Ed25519").field(&hex::encode(&arg0)).finish(),
             #[cfg(feature = "did")]
-            Self::DID(arg0) => f.debug_tuple("DID").field(&hex::encode(arg0)).finish(),
+            Self::DID(url_info) => f.debug_tuple("DID").field(&url_info.did().to_string()).finish(),
         }
     }
 }
@@ -57,7 +57,7 @@ impl Identifier {
         match self {
             Identifier::Ed25519(public_key) => public_key.as_slice(),
             #[cfg(feature = "did")]
-            Identifier::DID(did) => did.as_ref(),
+            Identifier::DID(url_info) => url_info.did().as_bytes(),
         }
     }
 
@@ -70,12 +70,18 @@ impl Identifier {
     }
 
     // #[deprecated = "to be removed once key-exchange is encapsulated within Identity"]
-    pub fn _ke_pk(&self) -> Option<x25519::PublicKey> {
-        Some(
-            self.public_key()?
-                .try_into()
-                .expect("failed to convert ed25519 public-key to x25519 public-key"),
-        )
+    pub async fn _ke_pk(&self) -> Result<x25519::PublicKey> {
+        match self {
+            Identifier::Ed25519(pk) => Ok(pk.try_into()?),
+            #[cfg(feature = "did")]
+            Identifier::DID(url_info) => {
+                let doc = resolve_document(url_info).await?;
+                let method = doc.document.resolve_method(url_info.exchange_fragment(), None)
+                    .expect("DID Method could not be resolved");
+                Ok(x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?)
+            }
+        }
+
     }
 
     pub fn is_ed25519(&self) -> bool {
@@ -97,9 +103,9 @@ impl From<ed25519::PublicKey> for Identifier {
 }
 
 #[cfg(feature = "did")]
-impl From<&IotaDID> for Identifier {
-    fn from(did: &IotaDID) -> Self {
-        Identifier::DID(DIDMethodId::from_did_unsafe(did))
+impl From<&DIDUrlInfo> for Identifier {
+    fn from(did: &DIDUrlInfo) -> Self {
+        Identifier::DID(did.clone())
     }
 }
 
@@ -136,9 +142,9 @@ impl Mask<&Identifier> for sizeof::Context {
                 Ok(self)
             }
             #[cfg(feature = "did")]
-            Identifier::DID(did) => {
+            Identifier::DID(url_info) => {
                 let oneof = Uint8::new(1);
-                self.mask(oneof)?.mask(NBytes::new(did))?;
+                self.mask(oneof)?.mask(url_info)?;
                 Ok(self)
             }
         }
@@ -158,9 +164,9 @@ where
                 Ok(self)
             }
             #[cfg(feature = "did")]
-            Identifier::DID(did) => {
+            Identifier::DID(url_info) => {
                 let oneof = Uint8::new(1);
-                self.mask(oneof)?.mask(NBytes::new(did))?;
+                self.mask(oneof)?.mask(url_info)?;
                 Ok(self)
             }
         }
@@ -183,10 +189,9 @@ where
             }
             #[cfg(feature = "did")]
             1 => {
-                let mut method_id = DIDMethodId::default();
-                self.mask(NBytes::new(&mut method_id))?;
-                let did = method_id.try_to_did()?;
-                *identifier = Identifier::DID(DIDMethodId::from_did_unsafe(&did));
+                let mut url_info = DIDUrlInfo::default();
+                self.mask(&mut url_info)?;
+                *identifier = Identifier::DID(url_info);
             }
             o => return Err(anyhow!("{} is not a valid identifier option", o)),
         }
@@ -216,7 +221,7 @@ where
             },
             #[cfg(feature = "did")]
             1 => match verifier {
-                Identifier::DID(method_id) => {
+                Identifier::DID(url_info) => {
                     let mut hash = [0; 64];
                     let mut exchange_fragment_bytes = Bytes::default();
                     let mut fragment_bytes = Bytes::default();
@@ -235,13 +240,14 @@ where
                             .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
                     );
 
-                    let did_url = method_id.try_to_did()?.join(exchange_fragment)?;
+                    let did_url = IotaDID::parse(url_info.did().to_string())?
+                        .join(exchange_fragment)?;
                     let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
                     signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
 
                     let data = DataWrapper::new(&hash).with_signature(signature);
 
-                    let doc = DIDClient::new().await?.read_document(did_url.did()).await?;
+                    let doc = resolve_document(&url_info).await?;
                     doc.document
                         .verify_data(&data, &VerifierOptions::new())
                         .map_err(|e| anyhow!("There was an issue validating the signature: {}", e))?;
@@ -257,12 +263,23 @@ where
 // TODO: Find a better way to represent this logic without the need for an additional trait
 #[async_trait(?Send)]
 impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
-    async fn encrypt_sizeof(&mut self, _recipient: &Identifier, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
+    async fn encrypt_sizeof(&mut self, recipient: &Identifier, key: &[u8]) -> Result<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introdution)
-        match <[u8; 32]>::try_from(exchange_key) {
-            Ok(slice) => self.x25519(&x25519::PublicKey::from(slice), NBytes::new(key)),
-            Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
+        match recipient {
+            Identifier::Ed25519(pk) => {
+                let xkey = x25519::PublicKey::try_from(pk)?;
+                self.x25519(&xkey, NBytes::new(key))
+            },
+            #[cfg(feature = "did")]
+            Identifier::DID(url_info) => {
+                let doc = resolve_document(url_info).await?;
+                let method = doc.document.resolve_method(url_info.exchange_fragment(), None)
+                    .expect("DID Method could not be resolved");
+                let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?;
+                self.x25519(&xkey, NBytes::new(key))
+
+            }
         }
     }
 }
@@ -273,12 +290,35 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    async fn encrypt(&mut self, _recipient: &Identifier, exchange_key: &[u8], key: &[u8]) -> Result<&mut Self> {
+    async fn encrypt(&mut self, recipient: &Identifier, key: &[u8]) -> Result<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introdution)
-        match <[u8; 32]>::try_from(exchange_key) {
-            Ok(byte_array) => self.x25519(&x25519::PublicKey::from(byte_array), NBytes::new(key)),
-            Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
+        match recipient {
+            Identifier::Ed25519(pk) => {
+                let xkey = x25519::PublicKey::try_from(pk)?;
+                self.x25519(&xkey, NBytes::new(key))
+            },
+            #[cfg(feature = "did")]
+            Identifier::DID(url_info) => {
+                let doc = resolve_document(url_info).await?;
+                let method = doc.document.resolve_method(url_info.exchange_fragment(), None)
+                    .expect("DID Method could not be resolved");
+                let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?;
+                self.x25519(&xkey, NBytes::new(key))
+
+            }
         }
     }
+}
+
+pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIotaDocument> {
+    let did_url = IotaDID::parse(url_info.did().to_string())?;
+    let doc = DIDClient::builder()
+        .network(did_url.network()?)
+        .primary_node(url_info.client_url(), None, None)?
+        .build()
+        .await?
+        .read_document(&did_url)
+        .await?;
+    Ok(doc)
 }
