@@ -64,19 +64,19 @@ module.exports = {
         },
         {
             type: 'category',
-            label: 'Key Concepts',
+            label: 'Explanations',
             items:
                 [
                     {
                         type: 'category',
                         label: 'Channels Protocol',
                         items: [
-                                'key_concepts/channels_protocol/overview',
-                            'key_concepts/channels_protocol/authors',
-                            'key_concepts/channels_protocol/subscribers',
-                            'key_concepts/channels_protocol/branching',
-                            'key_concepts/channels_protocol/keyloads',
-                            'key_concepts/channels_protocol/sequencing',
+                            'explanations/channels_protocol/overview',
+                            'explanations/channels_protocol/authors',
+                            'explanations/channels_protocol/subscribers',
+                            'explanations/channels_protocol/branching',
+                            'explanations/channels_protocol/keyloads',
+                            'explanations/channels_protocol/sequencing',
                         ],
                     }
                 ]
