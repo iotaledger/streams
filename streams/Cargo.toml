@@ -14,8 +14,10 @@ readme = "README.md"
 version = "0.1.2"
 
 [features]
-default = ["tangle-client", "did"]
+default = ["utangle-client"]
 did = ["lets/did"]
+# Enable re-export of uTangle transport client from LETS
+utangle-client = ["lets/utangle-client"]
 # Enable re-export of IOTA-Tangle transport client from LETS
 tangle-client = ["lets/tangle-client"]
 # Enable re-export of wasm-compatible IOTA-Tangle transport client from LETS (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`)
