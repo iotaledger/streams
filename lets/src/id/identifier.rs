@@ -61,14 +61,6 @@ impl Identifier {
         }
     }
 
-    fn public_key(&self) -> Option<&ed25519::PublicKey> {
-        if let Identifier::Ed25519(pk) = self {
-            Some(pk)
-        } else {
-            None
-        }
-    }
-
     // #[deprecated = "to be removed once key-exchange is encapsulated within Identity"]
     pub async fn _ke_pk(&self) -> Result<x25519::PublicKey> {
         match self {

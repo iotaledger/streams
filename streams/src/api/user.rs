@@ -10,8 +10,6 @@ use hashbrown::HashMap;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 // IOTA
-use crypto::keys::x25519;
-use crypto::keys::x25519::PublicKey;
 
 // Streams
 use lets::{
@@ -23,7 +21,6 @@ use lets::{
     },
     transport::Transport,
 };
-use lets::id::DIDUrlInfo;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Mask, Squeeze},

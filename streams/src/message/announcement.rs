@@ -23,7 +23,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
-use crypto::keys::x25519;
 
 // Streams
 use lets::{
@@ -32,7 +31,7 @@ use lets::{
 };
 use spongos::{
     ddml::{
-        commands::{sizeof, unwrap, wrap, Absorb, Commit, Mask},
+        commands::{sizeof, unwrap, wrap, Commit, Mask},
         io,
     },
     PRP,

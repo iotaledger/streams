@@ -44,7 +44,7 @@ use lets::{
 };
 use spongos::{
     ddml::{
-        commands::{sizeof, unwrap, wrap, Absorb, Join, Mask, X25519},
+        commands::{sizeof, unwrap, wrap, Join, Mask, X25519},
         io,
         types::NBytes,
     },
