@@ -11,6 +11,8 @@ use async_trait::async_trait;
 use crypto::{keys::x25519, signatures::ed25519};
 
 // Streams
+#[cfg(feature = "did")]
+use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze},
@@ -76,6 +78,14 @@ impl Identifier {
                     )),
                 }
             }
+        }
+    }
+
+    fn public_key(&self) -> Option<&ed25519::PublicKey> {
+        match self {
+            Identifier::Ed25519(pk) => Some(pk),
+            #[cfg(feature = "did")]
+            _ => None,
         }
     }
 

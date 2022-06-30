@@ -14,7 +14,7 @@ readme = "README.md"
 version = "0.1.2"
 
 [features]
-default = ["tangle-client"]
+default = ["utangle-client"]
 # Enable the IOTA-Tangle transport client (implies `std` features)
 tangle-client = ["iota-client/async", "futures", "iota-crypto/blake2b"]
 # Enable the wasm-compatible IOTA-Tangle transport client (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`. Implies `std` feature)
@@ -57,3 +57,4 @@ tokio = {version = "1.19.2", default-features = false}
 [[bench]]
 harness = false
 name = "tangle_clients"
+required-features = ["tangle-client", "utangle-client"]
