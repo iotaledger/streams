@@ -1,7 +1,5 @@
 // Rust
 
-use std::{cell::RefCell, rc::Rc};
-
 // 3rd-arty
 use anyhow::{anyhow, Result};
 use textwrap::{fill, indent};
@@ -25,6 +23,7 @@ use streams::{
     User,
 };
 
+use crate::GenericTransport;
 use super::utils::{print_send_result, print_user};
 
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
@@ -34,7 +33,7 @@ const CLIENT_URL: &str = "https://chrysalis-nodes.iota.org";
 const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
 
-pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T) -> Result<()> {
     let did_client = DIDClient::builder()
         .primary_node(CLIENT_URL, None, None)?
         .build()

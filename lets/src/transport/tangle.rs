@@ -135,7 +135,7 @@ mod tests {
                 msg.clone(),
             )
             .await?;
-            assert_eq!(msg, response);
+        assert_eq!(msg, response);
         Ok(())
     }
 }

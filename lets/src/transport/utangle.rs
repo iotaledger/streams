@@ -30,7 +30,7 @@ const NONCE_SIZE: usize = core::mem::size_of::<u64>();
 const LN_3: f64 = 1.098_612_288_668_109;
 
 #[derive(Debug)]
-pub struct Client<Message = TransportMessage, SendResponse = TransportMessage> {
+pub struct Client<Message = TransportMessage, SendResponse = Ignored> {
     node_url: String,
     client: reqwest::Client,
     _phantom: PhantomData<(Message, SendResponse)>,
@@ -218,6 +218,9 @@ struct IndexResponse {
     #[serde(rename = "messageIds")]
     message_ids: Vec<String>,
 }
+
+#[derive(Deserialize)]
+pub struct Ignored {}
 
 #[derive(Deserialize)]
 struct Response<T> {
