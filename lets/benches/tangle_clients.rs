@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 // 3rd-party
 use anyhow::Result;
 use chrono::Utc;
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use serde::Deserialize;
 
 // IOTA
@@ -40,9 +40,10 @@ where
 
 fn bench_clients(c: &mut Criterion) {
     let url = std::env::var("NODE_URL").unwrap_or_else(|_| String::from(DEFAULT_NODE));
-    let mut group = c.benchmark_group("Tangle Clients");
+    let mut group = c.benchmark_group("Send Message by Size");
     let runtime = tokio::runtime::Runtime::new().unwrap();
     for i in [32, 64, 128, 256, 512, 1024] {
+        group.throughput(Throughput::Bytes(i as u64));
         group.bench_with_input(BenchmarkId::new("iota.rs", i), &i, |b, payload_size| {
             b.iter_batched(
                 || runtime.block_on(tangle::Client::for_node(&url)).unwrap(),
