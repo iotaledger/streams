@@ -56,11 +56,11 @@ impl Default for Identity {
 
 impl Identity {
     // #[deprecated = "to be removed once key exchange is encapsulated within Identity"]
-    pub fn _ke_sk(&self) -> x25519::SecretKey {
+    pub fn _ke_sk(&self) -> Result<x25519::SecretKey> {
         match self {
-            Self::Ed25519(ed25519) => ed25519.inner().into(),
+            Self::Ed25519(ed25519) => Ok(ed25519.inner().into()),
             #[cfg(feature = "did")]
-            Self::DID(DID::PrivateKey(info)) => info.ke_kp().0,
+            Self::DID(DID::PrivateKey(info)) => Ok(info.exchange_key()?),
             #[cfg(feature = "did")]
             Self::DID(DID::Default) => unreachable!(),
             // TODO: Account implementation

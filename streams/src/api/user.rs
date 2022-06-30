@@ -309,7 +309,7 @@ impl<T> User<T> {
                 return Ok(Message::orphan(address, preparsed));
             }
         };
-        let user_ke_sk = &self.identity()?._ke_sk();
+        let user_ke_sk = &self.identity()?._ke_sk()?;
         let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
         let (message, _spongos) = preparsed.unwrap(subscription).await?;
 
@@ -1224,7 +1224,7 @@ impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
             f,
-            "\n* identifier: <{}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
+            "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
             self.identifier().unwrap_or_default(),
             self.base_branch(),
             self.state.cursor_store,

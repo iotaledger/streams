@@ -135,7 +135,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     print_send_result(&last_msg);
     print_user("Author", &author);
 
-    println!("> Subscriber C receives 8 messages:");
+    println!("> Subscriber C receives 9 messages:");
     let messages_as_c = subscriber_c.fetch_next_messages().await?;
     print_user("Subscriber C", &subscriber_c);
     for message in &messages_as_c {
@@ -143,9 +143,9 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
         println!("{}", indent(&fill(&format!("{:?}", message.content()), 140), "\t| "));
         println!("\t---");
     }
-    assert_eq!(8, messages_as_c.len());
+    assert_eq!(9, messages_as_c.len());
 
-    println!("> Subscriber B receives 8 messages:");
+    println!("> Subscriber B receives 9 messages:");
     let messages_as_b = subscriber_b.fetch_next_messages().await?;
     print_user("Subscriber B", &subscriber_b);
     for message in &messages_as_c {
@@ -153,12 +153,12 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
         println!("{}", indent(&fill(&format!("{:?}", message.content()), 140), "\t| "));
         println!("\t---");
     }
-    assert_eq!(8, messages_as_b.len());
+    assert_eq!(9, messages_as_b.len());
 
     println!("> Subscriber A receives 6 messages:");
     let messages_as_a = subscriber_a.fetch_next_messages().await?;
     print_user("Subscriber A", &subscriber_a);
-    for message in &messages_as_c {
+    for message in &messages_as_a {
         println!("\t{}", message.address());
         println!("{}", indent(&fill(&format!("{:?}", message.content()), 140), "\t| "));
         println!("\t---");

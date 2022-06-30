@@ -151,21 +151,6 @@ impl DIDInfo {
         x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref())
             .map_err(|e| e.into())
     }
-
-    pub(crate) fn sig_kp(&self) -> (ed25519::SecretKey, ed25519::PublicKey) {
-        let mut key_bytes = [0u8; ed25519::SECRET_KEY_LENGTH];
-        key_bytes.clone_from_slice(self.keypair().private().as_ref());
-        let signing_secret_key = ed25519::SecretKey::from_bytes(key_bytes);
-        let signing_public_key = signing_secret_key.public_key();
-        (signing_secret_key, signing_public_key)
-    }
-
-    pub(crate) fn ke_kp(&self) -> (x25519::SecretKey, x25519::PublicKey) {
-        let kp = self.sig_kp();
-        let key_exchange_secret_key = x25519::SecretKey::from(&kp.0);
-        let key_exchange_public_key = key_exchange_secret_key.public_key();
-        (key_exchange_secret_key, key_exchange_public_key)
-    }
 }
 
 impl DIDUrlInfo {
