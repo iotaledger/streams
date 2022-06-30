@@ -29,11 +29,21 @@ const NONCE_SIZE: usize = core::mem::size_of::<u64>();
 // See https://oeis.org/A002391.
 const LN_3: f64 = 1.098_612_288_668_109;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client<Message = TransportMessage, SendResponse = Ignored> {
     node_url: String,
     client: reqwest::Client,
     _phantom: PhantomData<(Message, SendResponse)>,
+}
+
+impl<M, S> Default for Client<M, S> {
+    fn default() -> Self {
+        Self {
+            node_url: String::from("https://chrysalis-nodes.iota.org"),
+            client: reqwest::Client::new(),
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<Message, SendResponse> Client<Message, SendResponse> {
