@@ -1,6 +1,0 @@
-{
-  label: "Streams",
-  to: "streams/welcome",
-  className: "icon-streams",
-  activeBaseRegex: 'streams/.*'
-},

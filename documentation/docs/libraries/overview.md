@@ -18,6 +18,6 @@ The `streams` library is currently available in the following languages:
 
 ## Getting Started
 
-The recommended approach to start your interactions with IOTA is to use a developer network. A public API load balancer is provided here: [api.lb-0.h.chrysalis-devnet.iota.cafe](api.lb-0.h.chrysalis-devnet.iota.cafe)
+The recommended approach to start your interactions with IOTA is to use a developer network. A public API load balancer is provided here: [https://api.lb-0.h.chrysalis-devnet.iota.cafe](https://api.lb-0.h.chrysalis-devnet.iota.cafe)
 
 The test network explorer is available at the [IOTA Tangle explorer](https://explorer.iota.org/devnet/).
