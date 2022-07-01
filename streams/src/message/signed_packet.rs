@@ -110,7 +110,7 @@ impl<'a> Unwrap<'a> {
         }
     }
 
-    pub(crate) fn publisher_identifier(&self) -> Identifier {
+    pub(crate) fn into_publisher_identifier(self) -> Identifier {
         self.publisher_id
     }
 

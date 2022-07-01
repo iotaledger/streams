@@ -201,13 +201,14 @@ impl<'a, T> MessagesState<'a, T> {
                 None => {
                     // new round
                     self.successful_round = false;
-                    self.ids_stack = self.user.cursors().collect();
+                    self.ids_stack = self.user.cursors().map(|(t, p, c)| (t.clone(), p.clone(), c)).collect();
                     self.ids_stack.pop()?
                 }
             };
             let base_address = self.user.stream_address()?.base();
-            let rel_address = MsgId::gen(base_address, publisher, &topic, cursor + 1);
+            let rel_address = MsgId::gen(base_address, &publisher, &topic, cursor + 1);
             let address = Address::new(base_address, rel_address);
+
             match self.user.transport_mut().recv_message(address).await {
                 Ok(msg) => {
                     self.stage.push_back((address.relative(), msg));

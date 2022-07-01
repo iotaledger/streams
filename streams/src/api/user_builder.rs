@@ -97,11 +97,9 @@ impl<T> UserBuilder<T> {
     /// use streams::{id::Ed25519, transport::tangle, User};
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
-    /// let author_seed = "author_secure_seed";
     /// let psk1 = Psk::from_seed(b"Psk1");
     /// let psk2 = Psk::from_seed(b"Psk2");
     /// let user = User::builder()
-    ///     .with_identity(Ed25519::from_seed(author_seed))
     ///     .with_default_transport::<tangle::Client>()
     ///     .await?
     ///     .with_psk(psk1.to_pskid(), psk1)
@@ -150,15 +148,11 @@ impl<T> UserBuilder<T> {
     /// # }
     /// ```
     pub fn build(self) -> Result<User<T>> {
-        let id = self
-            .id
-            .ok_or_else(|| anyhow!("user Identity not specified, cannot build User without Identity"))?;
-
         let transport = self
             .transport
             .ok_or_else(|| anyhow!("transport not specified, cannot build User without Transport"))?;
 
-        Ok(User::new(id, self.psks, transport))
+        Ok(User::new(self.id, self.psks, transport))
     }
 
     /// Recover a user instance from the builder parameters.

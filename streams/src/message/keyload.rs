@@ -86,7 +86,7 @@ impl<'a, Subscribers, Psks> Wrap<'a, Subscribers, Psks> {
         author_id: &'a Identity,
     ) -> Self
     where
-        Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
+        Subscribers: IntoIterator<Item = (Permissioned<&'a Identifier>, &'a x25519::PublicKey)>,
         Subscribers::IntoIter: ExactSizeIterator,
         Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
         Psks::IntoIter: ExactSizeIterator,
@@ -105,7 +105,7 @@ impl<'a, Subscribers, Psks> Wrap<'a, Subscribers, Psks> {
 #[async_trait(?Send)]
 impl<'a, Subscribers, Psks> message::ContentSizeof<Wrap<'a, Subscribers, Psks>> for sizeof::Context
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
+    Subscribers: IntoIterator<Item = (Permissioned<&'a Identifier>, &'a x25519::PublicKey)> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
     Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
     Psks::IntoIter: ExactSizeIterator,
@@ -119,7 +119,7 @@ where
         // Loop through provided identifiers, masking the shared key for each one
         for (subscriber, exchange_key) in subscribers {
             self.fork()
-                .mask(subscriber)?
+                .mask(&subscriber)?
                 .encrypt_sizeof(subscriber.identifier(), &exchange_key.to_bytes(), &keyload.key)
                 .await?;
         }
@@ -143,7 +143,7 @@ where
 #[async_trait(?Send)]
 impl<'a, OS, Subscribers, Psks> message::ContentWrap<Wrap<'a, Subscribers, Psks>> for wrap::Context<OS>
 where
-    Subscribers: IntoIterator<Item = &'a (Permissioned<Identifier>, &'a x25519::PublicKey)> + Clone,
+    Subscribers: IntoIterator<Item = (Permissioned<&'a Identifier>, &'a x25519::PublicKey)> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
     Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
     Psks::IntoIter: ExactSizeIterator,
@@ -160,7 +160,7 @@ where
         // Loop through provided identifiers, masking the shared key for each one
         for (subscriber, exchange_key) in subscribers {
             self.fork()
-                .mask(subscriber)?
+                .mask(&subscriber)?
                 .encrypt(subscriber.identifier(), &exchange_key.to_bytes(), &keyload.key)
                 .await?;
         }
@@ -186,15 +186,15 @@ pub(crate) struct Unwrap<'a> {
     pub(crate) subscribers: Vec<Permissioned<Identifier>>,
     pub(crate) psks: Vec<PskId>,
     psk_store: &'a HashMap<PskId, Psk>,
-    author_id: Identifier,
-    user_id: &'a Identity,
+    author_id: &'a Identifier,
+    user_id: Option<&'a Identity>,
 }
 
 impl<'a> Unwrap<'a> {
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
-        user_id: &'a Identity,
-        author_id: Identifier,
+        user_id: Option<&'a Identity>,
+        author_id: &'a Identifier,
         psk_store: &'a HashMap<PskId, Psk>,
     ) -> Self {
         Self {
@@ -205,6 +205,10 @@ impl<'a> Unwrap<'a> {
             author_id,
             user_id,
         }
+    }
+
+    pub(crate) fn subscribers(&self) -> &[Permissioned<Identifier>] {
+        &self.subscribers
     }
 }
 
@@ -228,17 +232,19 @@ where
             let mut subscriber_id = Permissioned::<Identifier>::default();
             fork.mask(&mut subscriber_id)?;
 
-            if key.is_some() {
-                fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
-            } else if subscriber_id.identifier() == &keyload.user_id.to_identifier() {
-                fork.decrypt(
-                    keyload.user_id,
-                    &keyload.user_id._ke_sk().to_bytes(),
-                    key.get_or_insert([0u8; KEY_SIZE]),
-                )
-                .await?;
+            if key.is_none() && keyload.user_id.is_some() {
+                let user_id = keyload.user_id.unwrap();
+                if subscriber_id.identifier() == &user_id.to_identifier() {
+                    fork.decrypt(
+                        user_id,
+                        &user_id._ke_sk().to_bytes(),
+                        key.get_or_insert([0u8; KEY_SIZE]),
+                    )
+                    .await?;
+                } else {
+                    fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
+                }
             } else {
-                // Key is meant for another subscriber, skip it
                 fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
             }
             keyload.subscribers.push(subscriber_id);

@@ -42,13 +42,10 @@ impl CursorStore {
         self.0.get(topic).and_then(|branch| branch.cursors.get(id).copied())
     }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (Topic, Identifier, usize)> + Clone + '_ {
-        self.0.iter().flat_map(|(topic, branch)| {
-            branch
-                .cursors
-                .iter()
-                .map(move |(id, cursor)| (topic.clone(), *id, *cursor))
-        })
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Identifier, usize)> + Clone + '_ {
+        self.0
+            .iter()
+            .flat_map(|(topic, branch)| branch.cursors.iter().map(move |(id, cursor)| (topic, id, *cursor)))
     }
 
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> Option<usize> {
@@ -147,8 +144,8 @@ mod tests {
         branch_store.new_branch(topic_1.clone());
         branch_store.new_branch(topic_2.clone());
 
-        branch_store.insert_cursor(&topic_1, identifier, 10);
-        branch_store.insert_cursor(&topic_2, identifier, 20);
+        branch_store.insert_cursor(&topic_1, identifier.clone(), 10);
+        branch_store.insert_cursor(&topic_2, identifier.clone(), 20);
 
         branch_store.remove(&identifier);
 

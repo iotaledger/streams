@@ -79,7 +79,7 @@ where
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Unwrap {
     author_id: Identifier,
     // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
@@ -98,13 +98,21 @@ impl Default for Unwrap {
 }
 
 impl Unwrap {
-    pub(crate) fn author_id(self) -> Identifier {
+    pub(crate) fn author_id(&self) -> &Identifier {
+        &self.author_id
+    }
+
+    pub(crate) fn into_author_id(self) -> Identifier {
         self.author_id
     }
 
     // #[deprecated = "to be removed once ke is encapsulated within identity"]
-    pub(crate) fn author_ke_pk(self) -> x25519::PublicKey {
-        self.author_ke_pk
+    pub(crate) fn author_ke_pk(&self) -> &x25519::PublicKey {
+        &self.author_ke_pk
+    }
+
+    pub(crate) fn into_parts(self) -> (Identifier, x25519::PublicKey) {
+        (self.author_id, self.author_ke_pk)
     }
 }
 
