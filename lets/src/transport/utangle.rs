@@ -264,7 +264,7 @@ mod tests {
             AppAddr::default(),
             MsgId::gen(
                 AppAddr::default(),
-                Identifier::default(),
+                &Identifier::default(),
                 &Topic::default(),
                 Utc::now().timestamp_millis() as usize,
             ),
