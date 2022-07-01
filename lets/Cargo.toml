@@ -47,7 +47,7 @@ futures = {version = "0.3.8", default-features = false, optional = true}
 identity = {git = "https://github.com/iotaledger/identity.rs", rev = "86edaad", default-features = false, features = ["async"], optional = true}
 iota-client = {version = "1.1.1", default-features = false, optional = true}
 parking_lot = {version = "0.11.2", default-features = false, optional = true}
-reqwest = {version = "0.11.11", optional = true, features = ["json"]}
+reqwest = {version = "0.11.11", optional = true, default-features = false, features = ["json", "rustls-tls"]}
 serde = {version = "1.0", default-features = false, features = ["derive"], optional = true}
 spin = {version = "0.9.2", default-features = false, features = ["mutex", "spin_mutex"], optional = true}
 rayon = {version = "1.5.3", default-features = false, optional = true}
