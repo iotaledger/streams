@@ -179,20 +179,22 @@ impl<T> User<T> {
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        if self.state.subscribers.contains(&subscriber) {
-            return false
+        match self.state.subscribers.binary_search(&subscriber) {
+            Ok(_) => false,
+            Err(pos) => {
+                self.state.subscribers.insert(pos, subscriber);
+                true
+            }
         }
-        self.state.subscribers.push(subscriber);
-        true
     }
 
     pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
-        let removed_sub = match self.state.subscribers.iter().position(|i| i == id) {
-            Some(p) => {
+        let removed_sub = match self.state.subscribers.binary_search(id) {
+            Ok(p) => {
                 self.state.subscribers.remove(p);
                 true
             },
-            None => false
+            Err(_) => false
         };
         self.state.cursor_store.remove(id) | removed_sub
     }
@@ -316,7 +318,7 @@ impl<T> User<T> {
 
         // Store message content into stores
         let subscriber_identifier = message.payload().content().subscriber_identifier();
-        self.state.subscribers.push(subscriber_identifier.clone());
+        self.add_subscriber(subscriber_identifier.clone());
 
         Ok(Message::from_lets_message(address, message))
     }
