@@ -31,16 +31,16 @@ impl<F> PreparsedMessage<F> {
         }
     }
 
-    pub fn header(&self) -> HDF {
-        self.header
+    pub fn header(&self) -> &HDF {
+        &self.header
     }
 
     pub fn transport_msg(&self) -> &TransportMessage {
         &self.transport_msg
     }
 
-    pub fn into_transport_msg(self) -> TransportMessage {
-        self.transport_msg
+    pub fn into_parts(self) -> (HDF, TransportMessage, Spongos<F>, usize) {
+        (self.header, self.transport_msg, self.spongos, self.cursor)
     }
 
     pub fn cursor(&self) -> usize {

@@ -1,7 +1,5 @@
 // Rust
 
-use std::{cell::RefCell, rc::Rc};
-
 // 3rd-arty
 use anyhow::{anyhow, Result};
 use textwrap::{fill, indent};
@@ -17,16 +15,17 @@ use identity::{
 // Streams
 use streams::{
     id::{DIDInfo, Ed25519, Permissioned, Psk, DID},
-    transport::tangle,
     User,
 };
+
+use crate::GenericTransport;
 
 use super::utils::{print_send_result, print_user};
 
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
-pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T) -> Result<()> {
     let did_client = DIDClient::new().await?;
     println!("> Making DID with method for the Author");
     let author_did_info = make_did_info(&did_client, "auth_key").await?;
@@ -35,6 +34,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     // Generate a simple PSK for storage by users
     let psk = Psk::from_seed("A pre shared key");
+    let branch1_topic = "BRANCH1";
 
     let mut author = User::builder()
         .with_identity(DID::PrivateKey(author_did_info))
@@ -56,7 +56,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     println!("> Author creates stream and sends its announcement");
     // Start at index 1, because we can. Will error if its already in use
-    let announcement = author.create_stream(1).await?;
+    let announcement = author.create_stream("BASE_BRANCH").await?;
     print_send_result(&announcement);
     print_user("Author", &author);
 
@@ -70,11 +70,11 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     // Predefine Subscriber A
     println!("> Subscribers A and B sends subscription");
-    let subscription_a_as_a = subscriber_a.subscribe(announcement.address().relative()).await?;
+    let subscription_a_as_a = subscriber_a.subscribe().await?;
     print_send_result(&subscription_a_as_a);
     print_user("Subscriber A", &subscriber_a);
 
-    let subscription_b_as_b = subscriber_b.subscribe(announcement.address().relative()).await?;
+    let subscription_b_as_b = subscriber_b.subscribe().await?;
     print_send_result(&subscription_b_as_b);
     print_user("Subscriber A", &subscriber_b);
 
@@ -83,16 +83,20 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let subscription_b_as_author = author.receive_message(subscription_b_as_b.address()).await?;
     print_user("Author", &author);
 
+    println!("> Author creates new branch");
+    let branch_announcement = author.new_branch(branch1_topic).await?;
+    print_send_result(&branch_announcement);
+    print_user("Author", &author);
+
     println!("> Author issues keyload for everybody [Subscriber A, Subscriber B, PSK]");
-    let first_keyload_as_author = author.send_keyload_for_all(announcement.address().relative()).await?;
+    let first_keyload_as_author = author.send_keyload_for_all(branch1_topic).await?;
     print_send_result(&first_keyload_as_author);
     print_user("Author", &author);
 
     println!("> Author sends 3 signed packets linked to the keyload");
-    let mut last_msg = first_keyload_as_author.clone();
     for _ in 0..3 {
-        last_msg = author
-            .send_signed_packet(last_msg.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        let last_msg = author
+            .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
             .await?;
         print_send_result(&last_msg);
     }
@@ -101,7 +105,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     println!("> Author issues new keyload for only Subscriber B and PSK");
     let second_keyload_as_author = author
         .send_keyload(
-            last_msg.address().relative(),
+            branch1_topic,
             [Permissioned::Read(subscription_b_as_author.header().publisher())],
             [psk.to_pskid()],
         )
@@ -110,10 +114,9 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     print_user("Author", &author);
 
     println!("> Author sends 2 more signed packets linked to the latest keyload");
-    let mut last_msg = second_keyload_as_author;
     for _ in 0..2 {
-        last_msg = author
-            .send_signed_packet(last_msg.address().relative(), PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        let last_msg = author
+            .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
             .await?;
         print_send_result(&last_msg);
     }
@@ -121,11 +124,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     println!("> Author sends 1 more signed packet linked to the first keyload");
     let last_msg = author
-        .send_signed_packet(
-            first_keyload_as_author.address().relative(),
-            PUBLIC_PAYLOAD,
-            MASKED_PAYLOAD,
-        )
+        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&last_msg);
     print_user("Author", &author);

@@ -1,5 +1,7 @@
 // Rust
-use alloc::{boxed::Box, string::ToString};
+use alloc::boxed::Box;
+#[cfg(feature = "did")]
+use alloc::string::ToString;
 use core::convert::{TryFrom, TryInto};
 use spongos::ddml::commands::X25519;
 
@@ -18,12 +20,14 @@ use identity::{
 };
 
 // Streams
+#[cfg(feature = "did")]
+use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze},
         io,
         modifiers::External,
-        types::{Bytes, NBytes, Uint8},
+        types::{NBytes, Uint8},
     },
     PRP,
 };
@@ -33,7 +37,7 @@ use spongos::{
 use crate::id::did::{DIDMethodId, DataWrapper};
 use crate::message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify};
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
     Ed25519(ed25519::PublicKey),
     #[cfg(feature = "did")]
@@ -61,10 +65,10 @@ impl Identifier {
     }
 
     fn public_key(&self) -> Option<&ed25519::PublicKey> {
-        if let Identifier::Ed25519(pk) = self {
-            Some(pk)
-        } else {
-            None
+        match self {
+            Identifier::Ed25519(pk) => Some(pk),
+            #[cfg(feature = "did")]
+            _ => None,
         }
     }
 
@@ -211,6 +215,7 @@ where
                         .ed25519(public_key, hash.as_ref())?;
                     Ok(self)
                 }
+                #[cfg(feature = "did")]
                 _ => Err(anyhow!("expected Identity type 'Ed25519', found something else")),
             },
             #[cfg(feature = "did")]

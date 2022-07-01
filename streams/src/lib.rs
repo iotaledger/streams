@@ -24,7 +24,7 @@
 //! #     .with_transport(test_transport)
 //!     .build();
 //!
-//! let announcement = author.create_stream(1).await?;
+//! let announcement = author.create_stream("BASE_BRANCH").await?;
 //! # Ok(())
 //! # }
 //! ```

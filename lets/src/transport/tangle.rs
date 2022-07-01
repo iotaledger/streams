@@ -14,7 +14,6 @@ use futures::{
 };
 
 // IOTA
-use crypto::hashes::{blake2b::Blake2b256, Digest};
 use iota_client::bee_message::{payload::Payload, Message as IotaMessage};
 
 // Streams
@@ -106,36 +105,37 @@ impl TryFrom<IotaMessage> for TransportMessage {
     }
 }
 
-impl Address {
-    /// Hash the content of the [`Address`] using `Blake2b256`
-    pub fn to_blake2b(self) -> [u8; 32] {
-        let hasher = Blake2b256::new();
-        hasher.chain(self.base()).chain(self.relative()).finalize().into()
-    }
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
 
-    /// An `Address` is used as index of the message over the Tangle. For that,
-    /// its content is hashed using [`Address::to_blake2b()`].
-    ///
-    /// ```
-    /// # use lets::address::Address;
-    /// #
-    /// # fn main() -> anyhow::Result<()> {
-    /// let address = Address::new([172; 40], [171; 12]);
-    /// assert_eq!(
-    ///     address.to_msg_index().as_ref(),
-    ///     &[
-    ///         44, 181, 155, 1, 109, 141, 169, 177, 209, 70, 226, 18, 190, 121, 40, 44, 90, 108, 159, 109, 241, 37, 30, 0,
-    ///         185, 80, 245, 59, 235, 75, 128, 97
-    ///     ],
-    /// );
-    /// assert_eq!(
-    ///     &format!("{}", hex::encode(address.to_msg_index())),
-    ///     "2cb59b016d8da9b1d146e212be79282c5a6c9f6df1251e00b950f53beb4b8061"
-    /// );
-    /// #   Ok(())
-    /// # }
-    /// ```
-    pub fn to_msg_index(self) -> [u8; 32] {
-        self.to_blake2b()
+    use crate::{
+        address::{Address, AppAddr, MsgId},
+        id::Identifier,
+        message::{Topic, TransportMessage},
+    };
+
+    use super::*;
+
+    #[tokio::test]
+    async fn send_message() -> Result<()> {
+        let mut client = Client::for_node("https://chrysalis-nodes.iota.org").await?;
+        let msg = TransportMessage::new(vec![12; 1024]);
+        let response: TransportMessage = client
+            .send_message(
+                Address::new(
+                    AppAddr::default(),
+                    MsgId::gen(
+                        AppAddr::default(),
+                        Identifier::default(),
+                        &Topic::default(),
+                        Utc::now().timestamp_millis() as usize,
+                    ),
+                ),
+                msg.clone(),
+            )
+            .await?;
+        assert_eq!(msg, response);
+        Ok(())
     }
 }

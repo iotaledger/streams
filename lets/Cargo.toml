@@ -14,11 +14,13 @@ readme = "README.md"
 version = "0.1.2"
 
 [features]
-default = ["tangle-client", "did"]
+default = ["utangle-client"]
 # Enable the IOTA-Tangle transport client (implies `std` features)
 tangle-client = ["iota-client/async", "futures", "iota-crypto/blake2b"]
 # Enable the wasm-compatible IOTA-Tangle transport client (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`. Implies `std` feature)
 tangle-client-wasm = ["iota-client/wasm", "futures"]
+# Enable the Streams-specific uTangle Client
+utangle-client = ["reqwest", "bee-ternary", "serde", "rayon", "iota-crypto/curl-p"]
 # Enable Iota Identity for use with Streams
 did = ["identity", "serde"]
 # # Enable synchronized transports using parking-lot
@@ -32,7 +34,7 @@ sync-spin = ["spin"]
 spongos = {path = "../spongos", default-features = false, features = ["osrng"]}
 
 # IOTA dependencies
-iota-crypto = {version = "0.9.1", default-features = false, features = ["x25519", "ed25519", "sha"]}
+iota-crypto = {version = "0.9.1", default-features = false, features = ["x25519", "ed25519", "sha", "blake2b"]}
 
 # 3rd-party dependencies
 anyhow = {version = "1.0", default-features = false}
@@ -40,9 +42,23 @@ async-trait = {version = "0.1", default-features = false}
 hex = {version = "0.4", default-features = false}
 
 # Optional dependencies
+bee-ternary = {version = "0.5.2", default-features = false, optional = true}
 futures = {version = "0.3.8", default-features = false, optional = true}
 identity = {git = "https://github.com/iotaledger/identity.rs", rev = "86edaad", default-features = false, features = ["async"], optional = true}
 iota-client = {version = "1.1.1", default-features = false, optional = true}
 parking_lot = {version = "0.11.2", default-features = false, optional = true}
+reqwest = {version = "0.11.11", optional = true, default-features = false, features = ["json", "rustls-tls"]}
 serde = {version = "1.0", default-features = false, features = ["derive"], optional = true}
 spin = {version = "0.9.2", default-features = false, features = ["mutex", "spin_mutex"], optional = true}
+rayon = {version = "1.5.3", default-features = false, optional = true}
+
+[dev-dependencies]
+chrono = {version = "0.4.19", default-features = false, features = ["clock"]}
+criterion = {version = "0.3.5", features = ["async_tokio", "html_reports"]}
+serde_json = {version = "1.0.81", default-features = false}
+tokio = {version = "1.19.2", default-features = false}
+
+[[bench]]
+harness = false
+name = "tangle_clients"
+required-features = ["tangle-client", "utangle-client"]

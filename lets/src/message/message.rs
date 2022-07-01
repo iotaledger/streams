@@ -19,7 +19,7 @@ use super::{
     transport::TransportMessage,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Default, Debug)]
 pub struct Message<Content> {
     header: HDF,
     payload: PCF<Content>,
@@ -40,8 +40,8 @@ impl<Payload> Message<Payload> {
         self
     }
 
-    pub fn header(&self) -> HDF {
-        self.header
+    pub fn header(&self) -> &HDF {
+        &self.header
     }
 
     pub fn payload(&self) -> &PCF<Payload> {
@@ -50,6 +50,10 @@ impl<Payload> Message<Payload> {
 
     pub fn into_payload(self) -> PCF<Payload> {
         self.payload
+    }
+
+    pub fn into_parts(self) -> (HDF, PCF<Payload>) {
+        (self.header, self.payload)
     }
 
     pub async fn wrap<F>(&mut self) -> Result<(TransportMessage, Spongos<F>)>
