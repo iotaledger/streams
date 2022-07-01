@@ -53,24 +53,21 @@ use crate::api::{
 /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
-/// let author_transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
 /// #
 /// # let test_author_transport = test_transport.clone();
 /// #
 /// let mut author = User::builder()
 ///     .with_identity(Ed25519::from_seed(author_seed))
-///     .with_transport(author_transport)
 /// #     .with_transport(test_author_transport)
 ///     .build();
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-/// let subscriber_transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
 /// let mut subscriber = User::builder()
 ///     .with_identity(Ed25519::from_seed(subscriber_seed))
-///     .with_transport(subscriber_transport)
+/// #    .with_transport(subscriber_transport)
 ///     .build();
 ///
 /// let announcement = author.create_stream("BASE_BRANCH").await?;
@@ -79,7 +76,11 @@ use crate::api::{
 ///     .send_signed_packet("BASE_BRANCH", b"public payload", b"masked payload")
 ///     .await?;
 /// let second_packet = author
-///     .send_signed_packet("BASE_BRANCH", b"another public payload", b"another masked payload")
+///     .send_signed_packet(
+///         "BASE_BRANCH",
+///         b"another public payload",
+///         b"another masked payload",
+///     )
 ///     .await?;
 ///
 /// #

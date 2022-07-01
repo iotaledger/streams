@@ -1,9 +1,8 @@
 // Rust
-use alloc::{boxed::Box, vec::Vec};
+use alloc::vec::Vec;
 
 // 3rd-party
 use anyhow::Result;
-use async_trait::async_trait;
 
 // IOTA
 
@@ -14,6 +13,9 @@ use lets::{
     message::TransportMessage,
     transport::Transport,
 };
+
+#[cfg(feature = "utangle-client")]
+use lets::transport::utangle;
 
 // Local
 use crate::api::user::User;
@@ -73,20 +75,6 @@ impl<T> UserBuilder<T> {
         }
     }
 
-    /// Use the default version of the Transport Client
-    pub async fn with_default_transport<NewTransport>(self) -> UserBuilder<NewTransport>
-    where
-        NewTransport: for<'a> Transport<'a> + DefaultTransport,
-    {
-        // Separated as a method instead of defaulting at the build method to avoid requiring the bespoke
-        // bound T: DefaultTransport for all transports
-        UserBuilder {
-            transport: NewTransport::default().await,
-            id: self.id,
-            psks: self.psks,
-        }
-    }
-
     /// Inject a new Pre Shared Key and Id into the User Builder
     ///
     /// # Examples
@@ -94,14 +82,12 @@ impl<T> UserBuilder<T> {
     /// ```
     /// # use anyhow::Result;
     /// use lets::id::Psk;
-    /// use streams::{id::Ed25519, transport::tangle, User};
+    /// use streams::{id::Ed25519, User};
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let psk1 = Psk::from_seed(b"Psk1");
     /// let psk2 = Psk::from_seed(b"Psk2");
     /// let user = User::builder()
-    ///     .with_default_transport::<tangle::Client>()
-    ///     .await
     ///     .with_psk(psk1.to_pskid(), psk1)
     ///     .with_psk(psk2.to_pskid(), psk2)
     ///     .build();
@@ -118,10 +104,7 @@ impl<T> UserBuilder<T> {
     }
 }
 
-impl<T> UserBuilder<T>
-where
-    T: for<'a> Transport<'a>,
-{
+impl<T> UserBuilder<T> {
     /// Build a [`User`] instance using the Builder parameters.
     ///
     /// If a [`Transport`] is not provided the builder will use a default client
@@ -137,23 +120,24 @@ where
     /// ## User from Ed25519
     /// ```
     /// # use anyhow::Result;
-    /// use streams::{id::Ed25519, transport::tangle, User};
+    /// use streams::{id::Ed25519, User};
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .with_default_transport::<tangle::Client>()
-    ///     .await
-    ///     .with_identity(Ed25519::from_seed(user_seed))
     ///     .build();
     ///
     /// # Ok(())
     /// # }
     /// ```
-    pub fn build(self) -> User<T> {
-        User::new(self.id, self.psks, self.transport)
+    pub fn build<Trans>(self) -> User<Trans>
+    where
+        T: IntoTransport<Trans>,
+        Trans: for<'a> Transport<'a>,
+    {
+        User::new(self.id, self.psks, self.transport.into())
     }
 
     /// Recover a user instance from the builder parameters.
@@ -187,7 +171,8 @@ where
     /// # async fn main() -> Result<()> {
     /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
     /// let author_seed = "author_secure_seed";
-    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+    /// let transport: tangle::Client =
+    ///     tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
     /// # let transport = test_transport.clone();
     /// # let mut author = User::builder()
@@ -205,9 +190,10 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn recover(self, announcement: Address) -> Result<User<T>>
+    pub async fn recover<Trans>(self, announcement: Address) -> Result<User<Trans>>
     where
-        T: for<'a> Transport<'a, Msg = TransportMessage>,
+        T: IntoTransport<Trans>,
+        Trans: for<'a> Transport<'a, Msg = TransportMessage>,
     {
         let mut user = self.build();
         user.receive_message(announcement).await?;
@@ -216,20 +202,25 @@ where
     }
 }
 
-#[async_trait(?Send)]
-pub trait DefaultTransport
+pub trait IntoTransport<T>
 where
-    Self: Sized,
+    T: for<'a> Transport<'a>,
 {
-    async fn default() -> Self;
+    fn into(self) -> T;
 }
 
-#[async_trait(?Send)]
-#[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
-impl<Message, SendResponse> DefaultTransport for lets::transport::tangle::Client<Message, SendResponse> {
-    async fn default() -> Self {
-        // unwrap() is ok, as `tangle::Client::for_node()` only fails if the URL is syntactically incorrect,
-        // and we are certain it is
-        Self::for_node("https://chrysalis-nodes.iota.org").await.unwrap()
+#[cfg(feature = "utangle-client")]
+impl IntoTransport<utangle::Client> for () {
+    fn into(self) -> utangle::Client {
+        utangle::Client::default()
+    }
+}
+
+impl<T> IntoTransport<T> for T
+where
+    T: for<'a> Transport<'a>,
+{
+    fn into(self) -> T {
+        self
     }
 }
