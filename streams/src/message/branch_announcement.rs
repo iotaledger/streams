@@ -48,11 +48,7 @@ pub(crate) struct Wrap<'a> {
 }
 
 impl<'a> Wrap<'a> {
-    pub(crate) fn new(
-        initial_state: &'a mut Spongos,
-        user_id: &'a Identity,
-        new_topic: &'a Topic,
-    ) -> Self {
+    pub(crate) fn new(initial_state: &'a mut Spongos, user_id: &'a Identity, new_topic: &'a Topic) -> Self {
         Self {
             initial_state,
             user_id,

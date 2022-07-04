@@ -206,9 +206,9 @@ impl<T> User<T> {
         self.state.cursor_store.set_latest_link(topic, latest_link)
     }
 
-    /*fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
-        self.state.cursor_store.get_anchor(topic)
-    }*/
+    // fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
+    // self.state.cursor_store.get_anchor(topic)
+    // }
 
     fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
         self.state.cursor_store.get_latest_link(topic)
@@ -301,13 +301,14 @@ impl<T> User<T> {
         // Insert new branch into store
         self.state.cursor_store.new_branch(new_topic.clone());
         // Collect permissions from previous branch and clone them into new branch
-        let prev_permissions = self.state.cursor_store.cursors()
+        let prev_permissions = self
+            .cursors()
             .filter(|cursor| cursor.0 == &prev_topic)
             .map(|(_, id, _)| id.clone())
             .collect::<Vec<Identifier>>();
-        prev_permissions.into_iter().for_each(|id| {
+        for id in prev_permissions {
             self.state.cursor_store.insert_cursor(new_topic, id, INIT_MESSAGE_NUM);
-        });
+        };
 
         // Update branch links
         self.set_latest_link(new_topic, address.relative());
@@ -376,7 +377,8 @@ impl<T> User<T> {
     }
 
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
-        let stream_address = self.stream_address()
+        let stream_address = self
+            .stream_address()
             .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
 
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
@@ -636,7 +638,11 @@ where
     }
 
     /// Prepare new branch Announcement message
-    pub async fn new_branch(&mut self, from_topic: impl Into<Topic>, to_topic: impl Into<Topic>) -> Result<SendResponse<TSR>> {
+    pub async fn new_branch(
+        &mut self,
+        from_topic: impl Into<Topic>,
+        to_topic: impl Into<Topic>,
+    ) -> Result<SendResponse<TSR>> {
         // Check conditions
         let stream_address = self
             .stream_address()
@@ -691,13 +697,14 @@ where
             .insert_cursor(&prev_topic, identifier.clone(), self.next_cursor(&prev_topic)?);
         self.state.spongos_store.insert(address.relative(), spongos);
         // Collect permissions from previous branch and clone them into new branch
-        let prev_permissions = self.state.cursor_store.cursors()
+        let prev_permissions = self
+            .cursors()
             .filter(|cursor| cursor.0 == &prev_topic)
-            .map(|(_, id, _)| (id.clone()))
+            .map(|(_, id, _)| id.clone())
             .collect::<Vec<Identifier>>();
-        prev_permissions.into_iter().for_each(|id| {
+        for id in prev_permissions {
             self.state.cursor_store.insert_cursor(&topic, id, INIT_MESSAGE_NUM);
-        });
+        };
 
         // Update branch links
         self.state.cursor_store.set_latest_link(&topic, address.relative());
