@@ -55,22 +55,6 @@ impl CursorStore {
         None
     }
 
-    pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<InnerCursorStore> {
-        match self.0.get_mut(topic) {
-            Some(branch) => {
-                branch.anchor = anchor;
-                None
-            }
-            None => {
-                let branch = InnerCursorStore {
-                    anchor,
-                    ..Default::default()
-                };
-                self.0.insert(topic.clone(), branch)
-            }
-        }
-    }
-
     pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
         match self.0.get_mut(topic) {
             Some(branch) => {
@@ -87,10 +71,6 @@ impl CursorStore {
         }
     }
 
-    pub(crate) fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
-        self.0.get(topic).map(|branch| branch.anchor)
-    }
-
     pub(crate) fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
         self.0.get(topic).map(|branch| branch.latest_link)
     }
@@ -99,13 +79,11 @@ impl CursorStore {
 #[derive(Clone, PartialEq, Eq, Default)]
 pub(crate) struct InnerCursorStore {
     cursors: HashMap<Identifier, usize>,
-    anchor: MsgId,
     latest_link: MsgId,
 }
 
 impl fmt::Debug for InnerCursorStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "\t* anchor: {}", self.anchor)?;
         writeln!(f, "\t* latest link: {}", self.latest_link)?;
         writeln!(f, "\t* cursors:")?;
         for (id, cursor) in self.cursors.iter() {

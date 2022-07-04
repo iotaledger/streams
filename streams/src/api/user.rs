@@ -200,21 +200,15 @@ impl<T> User<T> {
         self.state.psk_store.remove(&pskid).is_some()
     }
 
-    /// Sets the anchor message link for a specified branch. If the branch does not exist, it is
-    /// created
-    fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<InnerCursorStore> {
-        self.state.cursor_store.set_anchor(topic, anchor)
-    }
-
     /// Sets the latest message link for a specified branch. If the branch does not exist, it is
     /// created
     fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
         self.state.cursor_store.set_latest_link(topic, latest_link)
     }
 
-    fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
+    /*fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
         self.state.cursor_store.get_anchor(topic)
-    }
+    }*/
 
     fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
         self.state.cursor_store.get_latest_link(topic)
@@ -262,7 +256,6 @@ impl<T> User<T> {
         let author_ke_pk = *message.payload().content().author_ke_pk();
 
         // Update branch links
-        self.set_anchor(&topic, address.relative());
         self.set_latest_link(&topic, address.relative());
         self.state.author_identifier = Some(author_id.clone());
         self.state.exchange_keys.insert(author_id, author_ke_pk);
@@ -317,7 +310,6 @@ impl<T> User<T> {
         });
 
         // Update branch links
-        self.set_anchor(new_topic, address.relative());
         self.set_latest_link(new_topic, address.relative());
 
         Ok(Message::from_lets_message(address, message))
@@ -384,6 +376,9 @@ impl<T> User<T> {
     }
 
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        let stream_address = self.stream_address()
+            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
+
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
@@ -397,16 +392,10 @@ impl<T> User<T> {
         let author_identifier = self.state.author_identifier.as_ref().ok_or_else(|| {
             anyhow!("before receiving keyloads one must have received the announcement of a stream first")
         })?;
-        self.stream_address()
-            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
-        let prev_msg = preparsed
-            .header()
-            .linked_msg_address()
-            .ok_or_else(|| anyhow!("a keyload must have a previously linked message"))?;
         let mut announcement_spongos = self
             .state
             .spongos_store
-            .get(&prev_msg)
+            .get(&stream_address.relative())
             .copied()
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
@@ -636,7 +625,6 @@ where
         self.state.spongos_store.insert(stream_address.relative(), spongos);
 
         // Update branch links
-        self.set_anchor(&topic, stream_address.relative());
         self.set_latest_link(&topic, stream_address.relative());
 
         // Commit Author Identifier and Stream Address to store
@@ -712,7 +700,6 @@ where
         });
 
         // Update branch links
-        self.state.cursor_store.set_anchor(&topic, address.relative());
         self.state.cursor_store.set_latest_link(&topic, address.relative());
         Ok(SendResponse::new(address, send_response))
     }
@@ -729,10 +716,7 @@ where
         // Get base branch topic
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
-        let link_to = self
-            .get_anchor(base_branch)
-            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", base_branch))?;
-
+        let link_to = stream_address.relative();
         let rel_address = MsgId::gen(stream_address.base(), &identifier, base_branch, SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
@@ -794,8 +778,8 @@ where
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
         let link_to = self
-            .get_anchor(base_branch)
-            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", base_branch))?;
+            .get_latest_link(base_branch)
+            .ok_or_else(|| anyhow!("No latest link found in branch <{}>", base_branch))?;
 
         // Update own's cursor
         let new_cursor = self.next_cursor(base_branch)?;
@@ -857,19 +841,20 @@ where
         let identifier = user_id.to_identifier();
         // Check Topic
         let topic = topic.into();
-        // Link message to anchor in branch
+        // Link message to edge of branch
         let link_to = self
-            .get_anchor(&topic)
-            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
+            .get_latest_link(&topic)
+            .ok_or_else(|| anyhow!("No latest message found in branch <{}>", topic))?;
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
         let rel_address = MsgId::gen(stream_address.base(), &identifier, &topic, new_cursor);
 
         // Prepare HDF and PCF
-        let mut linked_msg_spongos = self
+        // All Keyload messages will attach to stream Announcement message spongos
+        let mut announcement_msg_spongos = self
             .state
             .spongos_store
-            .get(&link_to)
+            .get(&stream_address.relative())
             .copied()
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
@@ -901,7 +886,7 @@ where
             })
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
-            &mut linked_msg_spongos,
+            &mut announcement_msg_spongos,
             subscribers_with_keys.iter().copied(),
             &psk_ids_with_psks,
             encryption_key,
@@ -1130,15 +1115,11 @@ impl ContentSizeof<State> for sizeof::Context {
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state
-                .cursor_store
-                .get_anchor(topic)
-                .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
             let latest_link = user_state
                 .cursor_store
                 .get_latest_link(topic)
                 .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
-            self.mask(&anchor)?.mask(&latest_link)?;
+            self.mask(&latest_link)?;
 
             let cursors: Vec<(&Topic, &Identifier, usize)> = user_state
                 .cursor_store
@@ -1191,15 +1172,11 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state
-                .cursor_store
-                .get_anchor(topic)
-                .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
             let latest_link = user_state
                 .cursor_store
                 .get_latest_link(topic)
                 .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
-            self.mask(&anchor)?.mask(&latest_link)?;
+            self.mask(&latest_link)?;
 
             let cursors: Vec<(&Topic, &Identifier, usize)> = user_state
                 .cursor_store
@@ -1255,11 +1232,9 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
         for _ in 0..amount_topics.inner() {
             let mut topic = Topic::default();
             self.mask(&mut topic)?;
-            let mut anchor = MsgId::default();
             let mut latest_link = MsgId::default();
-            self.mask(&mut anchor)?.mask(&mut latest_link)?;
+            self.mask(&mut latest_link)?;
 
-            user_state.cursor_store.set_anchor(&topic, anchor);
             user_state.cursor_store.set_latest_link(&topic, latest_link);
 
             let mut amount_cursors = Size::default();
