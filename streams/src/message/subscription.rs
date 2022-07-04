@@ -124,7 +124,6 @@ impl<'a> Unwrap<'a> {
     pub(crate) fn into_subscriber_identifier(self) -> Identifier {
         self.subscriber_identifier
     }
-
 }
 
 #[async_trait(?Send)]

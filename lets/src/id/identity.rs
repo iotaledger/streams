@@ -1,9 +1,5 @@
 // Rust
-use alloc::{boxed::Box, string::ToString};
-use core::{
-    convert::AsRef,
-    hash::Hash,
-};
+use alloc::boxed::Box;
 
 // 3rd-party
 use anyhow::{anyhow, Result};
@@ -16,8 +12,8 @@ use identity_iota::{
     core::BaseEncoding,
     crypto::{Ed25519 as DIDEd25519, JcsEd25519, ProofOptions, Signer},
     did::DID as IdentityDID,
+    iota_core::IotaDID,
 };
-use identity_iota::iota_core::IotaDID;
 
 // IOTA-Streams
 use spongos::{
@@ -25,7 +21,7 @@ use spongos::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519 as Ed25519Command, Mask, Squeeze, X25519},
         io,
         modifiers::External,
-        types::{Bytes, NBytes, Uint8},
+        types::{NBytes, Uint8},
     },
     PRP,
 };
@@ -166,7 +162,7 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
                     let key_fragment = info.url_info().signing_fragment().as_bytes().to_vec();
                     let signature = [0; 64];
                     self.absorb(Uint8::new(1))?
-                        .absorb(Bytes::new(key_fragment))?
+                        .absorb(spongos::ddml::types::Bytes::new(key_fragment))?
                         .commit()?
                         .squeeze(External::new(&NBytes::new(&hash)))?
                         .absorb(NBytes::new(signature))
@@ -201,7 +197,7 @@ where
                         let mut hash = [0; 64];
                         let key_fragment = info.url_info().signing_fragment().as_bytes().to_vec();
                         self.absorb(Uint8::new(1))?
-                            .absorb(Bytes::new(key_fragment))?
+                            .absorb(spongos::ddml::types::Bytes::new(key_fragment))?
                             .commit()?
                             .squeeze(External::new(&mut NBytes::new(&mut hash)))?;
 
@@ -211,7 +207,7 @@ where
                         let method = IotaDID::parse(info.url_info().did())?.join(&fragment)?;
                         JcsEd25519::<DIDEd25519>::create_signature(
                             &mut data,
-                            method.to_string(),
+                            method,
                             info.keypair().private().as_ref(),
                             ProofOptions::new(),
                         )?;
@@ -246,7 +242,7 @@ where
         match recipient {
             Identity::Ed25519(kp) => self.x25519(&kp.inner().into(), NBytes::new(key)),
             #[cfg(feature = "did")]
-            Identity::DID(did) => self.x25519(&did.info().exchange_key()?, NBytes::new(key))
+            Identity::DID(did) => self.x25519(&did.info().exchange_key()?, NBytes::new(key)),
         }
     }
 }

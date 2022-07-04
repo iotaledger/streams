@@ -193,8 +193,8 @@ impl<T> User<T> {
             Ok(p) => {
                 self.state.subscribers.remove(p);
                 true
-            },
-            Err(_) => false
+            }
+            Err(_) => false,
         };
         self.state.cursor_store.remove(id) | removed_sub
     }

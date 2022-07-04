@@ -1,8 +1,5 @@
 // Rust
-use alloc::{
-    string::String,
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 use core::hash::Hash;
 
 // 3rd-party
@@ -12,7 +9,7 @@ use serde::Serialize;
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 use identity_iota::{
-    crypto::{SetSignature, Proof, GetSignature, GetSignatureMut, KeyType, KeyPair as DIDKeyPair},
+    crypto::{GetSignature, GetSignatureMut, KeyPair as DIDKeyPair, KeyType, Proof, SetSignature},
     did::{MethodUriType, TryMethod, DID as IdentityDID},
     iota_core::IotaDID,
 };
@@ -119,7 +116,7 @@ impl DIDInfo {
         Self {
             url_info,
             keypair: KeyPair(keypair),
-            exchange_keypair: KeyPair(exchange_keypair)
+            exchange_keypair: KeyPair(exchange_keypair),
         }
     }
 
@@ -148,8 +145,7 @@ impl DIDInfo {
     }
 
     pub(crate) fn exchange_key(&self) -> Result<x25519::SecretKey> {
-        x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref())
-            .map_err(|e| e.into())
+        x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref()).map_err(|e| e.into())
     }
 }
 
@@ -195,7 +191,6 @@ impl DIDUrlInfo {
         &mut self.signing_fragment
     }
 }
-
 
 struct KeyPair(identity_iota::crypto::KeyPair);
 
@@ -259,9 +254,9 @@ where
             .mask(NBytes::new(&mut private_key_bytes))?
             .mask(NBytes::new(&mut exchange_private_key_bytes))?;
 
-        let keypair = identity_iota::crypto::KeyPair::try_from_private_key_bytes(KeyType::Ed25519, &private_key_bytes)
+        let keypair = DIDKeyPair::try_from_private_key_bytes(KeyType::Ed25519, &private_key_bytes)
             .map_err(|e| anyhow!("error unmasking DID private key: {}", e))?;
-        let xkeypair = identity_iota::crypto::KeyPair::try_from_private_key_bytes(KeyType::X25519, &exchange_private_key_bytes)
+        let xkeypair = DIDKeyPair::try_from_private_key_bytes(KeyType::X25519, &exchange_private_key_bytes)
             .map_err(|e| anyhow!("error unmasking DID exchange private key: {}", e))?;
         *did.info_mut().keypair_mut() = keypair;
         *did.info_mut().exchange_keypair_mut() = xkeypair;
@@ -269,8 +264,6 @@ where
         Ok(self)
     }
 }
-
-
 
 impl Mask<&DIDUrlInfo> for sizeof::Context {
     fn mask(&mut self, url_info: &DIDUrlInfo) -> Result<&mut Self> {
@@ -282,9 +275,9 @@ impl Mask<&DIDUrlInfo> for sizeof::Context {
 }
 
 impl<OS, F> Mask<&DIDUrlInfo> for wrap::Context<OS, F>
-    where
-        F: PRP,
-        OS: io::OStream,
+where
+    F: PRP,
+    OS: io::OStream,
 {
     fn mask(&mut self, url_info: &DIDUrlInfo) -> Result<&mut Self> {
         self.mask(Bytes::new(url_info.did()))?
@@ -295,9 +288,9 @@ impl<OS, F> Mask<&DIDUrlInfo> for wrap::Context<OS, F>
 }
 
 impl<IS, F> Mask<&mut DIDUrlInfo> for unwrap::Context<IS, F>
-    where
-        F: PRP,
-        IS: io::IStream,
+where
+    F: PRP,
+    IS: io::IStream,
 {
     fn mask(&mut self, url_info: &mut DIDUrlInfo) -> Result<&mut Self> {
         let mut did_bytes = Vec::new();

@@ -1,5 +1,5 @@
 // Rust
-use alloc::{boxed::Box, string::ToString};
+use alloc::boxed::Box;
 use core::convert::{TryFrom, TryInto};
 use spongos::ddml::commands::X25519;
 
@@ -13,8 +13,7 @@ use crypto::{keys::x25519, signatures::ed25519};
 use identity_iota::{
     core::BaseEncoding,
     crypto::{Ed25519 as DIDEd25519, JcsEd25519, Named, Proof, ProofValue},
-    did::{verifiable::VerifierOptions, DID as IdentityDID, MethodScope},
-    client::{Client as DIDClient, ResolvedIotaDocument},
+    did::{verifiable::VerifierOptions, MethodScope, DID as IdentityDID},
     iota_core::IotaDID,
 };
 
@@ -24,14 +23,14 @@ use spongos::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze},
         io,
         modifiers::External,
-        types::{Bytes, NBytes, Uint8},
+        types::{NBytes, Uint8},
     },
     PRP,
 };
 
 // Local
 #[cfg(feature = "did")]
-use crate::id::did::{DIDUrlInfo, DataWrapper};
+use crate::id::did::{resolve_document, DIDUrlInfo, DataWrapper};
 use crate::message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify};
 
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -46,7 +45,7 @@ impl core::fmt::Debug for Identifier {
         match self {
             Self::Ed25519(arg0) => f.debug_tuple("Ed25519").field(&hex::encode(&arg0)).finish(),
             #[cfg(feature = "did")]
-            Self::DID(url_info) => f.debug_tuple("DID").field(&url_info.did().to_string()).finish(),
+            Self::DID(url_info) => f.debug_tuple("DID").field(&url_info.did()).finish(),
         }
     }
 }
@@ -68,13 +67,13 @@ impl Identifier {
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
                 let doc = resolve_document(url_info).await?;
-                let method = doc.document
+                let method = doc
+                    .document
                     .resolve_method(url_info.exchange_fragment(), Some(MethodScope::key_agreement()))
                     .expect("DID Method could not be resolved");
                 Ok(x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?)
             }
         }
-
     }
 
     pub fn is_ed25519(&self) -> bool {
@@ -210,13 +209,14 @@ where
                         .ed25519(public_key, hash.as_ref())?;
                     Ok(self)
                 }
+                #[cfg(feature = "did")]
                 _ => Err(anyhow!("expected Identity type 'Ed25519', found something else")),
             },
             #[cfg(feature = "did")]
             1 => match verifier {
                 Identifier::DID(url_info) => {
                     let mut hash = [0; 64];
-                    let mut fragment_bytes = Bytes::default();
+                    let mut fragment_bytes = spongos::ddml::types::Bytes::default();
                     let mut signature_bytes = [0; 64];
 
                     self.absorb(fragment_bytes.as_mut())?
@@ -231,9 +231,8 @@ where
                             .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
                     );
 
-                    let did_url = IotaDID::parse(url_info.did().to_string())?
-                        .join(signing_fragment)?;
-                    let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url.to_string());
+                    let did_url = IotaDID::parse(url_info.did())?.join(signing_fragment)?;
+                    let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url);
                     signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
 
                     let data = DataWrapper::new(&hash).with_signature(signature);
@@ -261,15 +260,16 @@ impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
             Identifier::Ed25519(pk) => {
                 let xkey = x25519::PublicKey::try_from(pk)?;
                 self.x25519(&xkey, NBytes::new(key))
-            },
+            }
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
                 let doc = resolve_document(url_info).await?;
-                let method = doc.document.resolve_method(url_info.exchange_fragment(), None)
+                let method = doc
+                    .document
+                    .resolve_method(url_info.exchange_fragment(), None)
                     .expect("DID Method could not be resolved");
                 let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?;
                 self.x25519(&xkey, NBytes::new(key))
-
             }
         }
     }
@@ -288,28 +288,17 @@ where
             Identifier::Ed25519(pk) => {
                 let xkey = x25519::PublicKey::try_from(pk)?;
                 self.x25519(&xkey, NBytes::new(key))
-            },
+            }
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
                 let doc = resolve_document(url_info).await?;
-                let method = doc.document.resolve_method(url_info.exchange_fragment(), None)
+                let method = doc
+                    .document
+                    .resolve_method(url_info.exchange_fragment(), None)
                     .expect("DID Method could not be resolved");
                 let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?;
                 self.x25519(&xkey, NBytes::new(key))
-
             }
         }
     }
-}
-
-pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIotaDocument> {
-    let did_url = IotaDID::parse(url_info.did().to_string())?;
-    let doc = DIDClient::builder()
-        .network(did_url.network()?)
-        .primary_node(url_info.client_url(), None, None)?
-        .build()
-        .await?
-        .read_document(&did_url)
-        .await?;
-    Ok(doc)
 }

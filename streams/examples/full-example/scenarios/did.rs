@@ -9,15 +9,18 @@ use textwrap::{fill, indent};
 // IOTA
 use identity_iota::{
     core::Timestamp,
-    did::MethodScope,
     crypto::KeyType,
+    did::MethodScope,
     iota_core::IotaVerificationMethod,
     prelude::{Client as DIDClient, IotaDocument, KeyPair as DIDKeyPair},
 };
 
 // Streams
 use streams::{
-    id::{DIDInfo, DIDUrlInfo, Ed25519, Permissioned, Psk, DID},
+    id::{
+        did::{DIDInfo, DIDUrlInfo, DID},
+        Ed25519, Permissioned, Psk,
+    },
     transport::tangle,
     User,
 };
@@ -168,7 +171,12 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     Ok(())
 }
 
-async fn make_did_info(did_client: &DIDClient, signing_fragment: &str, exchange_fragment: &str, doc_signing_fragment: &str) -> Result<DIDInfo> {
+async fn make_did_info(
+    did_client: &DIDClient,
+    signing_fragment: &str,
+    exchange_fragment: &str,
+    doc_signing_fragment: &str,
+) -> Result<DIDInfo> {
     // Create Keypair to act as base of identity
     let keypair = DIDKeyPair::new(KeyType::Ed25519)?;
     // Generate original DID document
@@ -197,7 +205,8 @@ async fn make_did_info(did_client: &DIDClient, signing_fragment: &str, exchange_
     )?;
 
     if document.insert_method(method, MethodScope::VerificationMethod).is_ok()
-        && document.insert_method(xmethod, MethodScope::key_agreement()).is_ok() {
+        && document.insert_method(xmethod, MethodScope::key_agreement()).is_ok()
+    {
         document.metadata.previous_message_id = *receipt.message_id();
         document.metadata.updated = Some(Timestamp::now_utc());
         document.sign_self(keypair.private(), doc_signing_fragment)?;

@@ -161,7 +161,7 @@ where
         for subscriber in subscribers {
             self.fork()
                 .mask(subscriber)?
-                .encrypt(subscriber.identifier(),  &keyload.key)
+                .encrypt(subscriber.identifier(), &keyload.key)
                 .await?;
         }
         self.absorb(n_psks)?;
@@ -235,8 +235,7 @@ where
             if key.is_none() && keyload.user_id.is_some() {
                 let user_id = keyload.user_id.unwrap();
                 if subscriber_id.identifier() == &user_id.to_identifier() {
-                    fork.decrypt(user_id, key.get_or_insert([0u8; KEY_SIZE]))
-                    .await?;
+                    fork.decrypt(user_id, key.get_or_insert([0u8; KEY_SIZE])).await?;
                 } else {
                     fork.drop(KEY_SIZE + x25519::PUBLIC_KEY_LENGTH)?;
                 }

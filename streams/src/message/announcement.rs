@@ -82,9 +82,7 @@ pub(crate) struct Unwrap {
 impl Default for Unwrap {
     fn default() -> Self {
         let author_id = Default::default();
-        Self {
-            author_id,
-        }
+        Self { author_id }
     }
 }
 
