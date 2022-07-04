@@ -202,7 +202,6 @@ pub struct Announcement {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BranchAnnouncement {
     pub topic: Topic,
-    pub previous_topic: Topic,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -273,8 +272,7 @@ impl From<announcement::Unwrap> for MessageContent {
 impl<'a> From<branch_announcement::Unwrap<'a>> for MessageContent {
     fn from(branch_announcement: branch_announcement::Unwrap<'a>) -> Self {
         Self::BranchAnnouncement(BranchAnnouncement {
-            topic: branch_announcement.new_topic().clone(),
-            previous_topic: branch_announcement.previous_topic().clone(),
+            topic: branch_announcement.into_new_topic(),
         })
     }
 }

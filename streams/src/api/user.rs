@@ -274,18 +274,16 @@ impl<T> User<T> {
 
     async fn handle_branch_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Retrieve header values
-        let topic = preparsed.header().topic().clone();
+        let prev_topic = preparsed.header().topic().clone();
         let publisher = preparsed.header().publisher().clone();
         let cursor = preparsed.header().sequence();
 
-        // Insert new branch into store
-        self.state.cursor_store.new_branch(topic.clone());
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
             .cursor_store
-            .insert_cursor(&topic, publisher.clone(), INIT_MESSAGE_NUM);
+            .insert_cursor(&prev_topic, publisher.clone(), cursor);
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -304,15 +302,23 @@ impl<T> User<T> {
         let branch_announcement = branch_announcement::Unwrap::new(&mut linked_msg_spongos);
         let (message, spongos) = preparsed.unwrap(branch_announcement).await?;
 
-        let previous_topic = message.payload().content().previous_topic();
+        let new_topic = message.payload().content().new_topic();
         // Store spongos
         self.state.spongos_store.insert(address.relative(), spongos);
-        // Store updated cursor for publisher on previous branch
-        self.state.cursor_store.insert_cursor(previous_topic, publisher, cursor);
+        // Insert new branch into store
+        self.state.cursor_store.new_branch(new_topic.clone());
+        // Collect permissions from previous branch and clone them into new branch
+        let prev_permissions = self.state.cursor_store.cursors()
+            .filter(|cursor| cursor.0 == &prev_topic)
+            .map(|(_, id, _)| id.clone())
+            .collect::<Vec<Identifier>>();
+        prev_permissions.into_iter().for_each(|id| {
+            self.state.cursor_store.insert_cursor(new_topic, id, INIT_MESSAGE_NUM);
+        });
 
         // Update branch links
-        self.set_anchor(&topic, address.relative());
-        self.set_latest_link(&topic, address.relative());
+        self.set_anchor(new_topic, address.relative());
+        self.set_latest_link(new_topic, address.relative());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -642,7 +648,7 @@ where
     }
 
     /// Prepare new branch Announcement message
-    pub async fn new_branch<Top: Into<Topic>>(&mut self, from_topic: Top, to_topic: Top) -> Result<SendResponse<TSR>> {
+    pub async fn new_branch(&mut self, from_topic: impl Into<Topic>, to_topic: impl Into<Topic>) -> Result<SendResponse<TSR>> {
         // Check conditions
         let stream_address = self
             .stream_address()
@@ -676,14 +682,13 @@ where
             message_types::BRANCH_ANNOUNCEMENT,
             user_cursor,
             identifier.clone(),
-            topic.clone(),
+            prev_topic.clone(),
         )?
         .with_linked_msg_address(link_to);
         let content = PCF::new_final_frame().with_content(branch_announcement::Wrap::new(
             &mut linked_msg_spongos,
             user_id,
             &topic,
-            &prev_topic,
         ));
 
         // Wrap message
@@ -696,10 +701,15 @@ where
         self.state
             .cursor_store
             .insert_cursor(&prev_topic, identifier.clone(), self.next_cursor(&prev_topic)?);
-        self.state
-            .cursor_store
-            .insert_cursor(&topic, identifier.clone(), INIT_MESSAGE_NUM);
         self.state.spongos_store.insert(address.relative(), spongos);
+        // Collect permissions from previous branch and clone them into new branch
+        let prev_permissions = self.state.cursor_store.cursors()
+            .filter(|cursor| cursor.0 == &prev_topic)
+            .map(|(_, id, _)| (id.clone()))
+            .collect::<Vec<Identifier>>();
+        prev_permissions.into_iter().for_each(|id| {
+            self.state.cursor_store.insert_cursor(&topic, id, INIT_MESSAGE_NUM);
+        });
 
         // Update branch links
         self.state.cursor_store.set_anchor(&topic, address.relative());

@@ -45,7 +45,6 @@ pub(crate) struct Wrap<'a> {
     initial_state: &'a mut Spongos,
     user_id: &'a Identity,
     new_topic: &'a Topic,
-    previous_topic: &'a Topic,
 }
 
 impl<'a> Wrap<'a> {
@@ -53,13 +52,11 @@ impl<'a> Wrap<'a> {
         initial_state: &'a mut Spongos,
         user_id: &'a Identity,
         new_topic: &'a Topic,
-        previous_topic: &'a Topic,
     ) -> Self {
         Self {
             initial_state,
             user_id,
             new_topic,
-            previous_topic,
         }
     }
 }
@@ -69,7 +66,6 @@ impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
         self.mask(&announcement.user_id.to_identifier())?
             .mask(announcement.new_topic)?
-            .mask(announcement.previous_topic)?
             .sign_sizeof(announcement.user_id)
             .await?
             .commit()?;
@@ -86,7 +82,6 @@ where
         self.join(announcement.initial_state)?
             .mask(&announcement.user_id.to_identifier())?
             .mask(announcement.new_topic)?
-            .mask(announcement.previous_topic)?
             .sign(announcement.user_id)
             .await?
             .commit()?;
@@ -97,7 +92,6 @@ where
 pub(crate) struct Unwrap<'a> {
     initial_state: &'a mut Spongos,
     new_topic: Topic,
-    previous_topic: Topic,
 }
 
 impl<'a> Unwrap<'a> {
@@ -105,7 +99,6 @@ impl<'a> Unwrap<'a> {
         Self {
             initial_state,
             new_topic: Topic::default(),
-            previous_topic: Topic::default(),
         }
     }
 
@@ -113,8 +106,8 @@ impl<'a> Unwrap<'a> {
         &self.new_topic
     }
 
-    pub(crate) fn previous_topic(&self) -> &Topic {
-        &self.previous_topic
+    pub(crate) fn into_new_topic(self) -> Topic {
+        self.new_topic
     }
 }
 
@@ -128,7 +121,6 @@ where
         self.join(announcement.initial_state)?
             .mask(&mut author_id)?
             .mask(&mut announcement.new_topic)?
-            .mask(&mut announcement.previous_topic)?
             .verify(&author_id)
             .await?
             .commit()?;
