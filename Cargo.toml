@@ -83,12 +83,13 @@ iota-streams-ddml = {version = "0.1.2", path = "iota-streams-ddml", default-feat
 
 [dev-dependencies]
 criterion = {version = "0.3.5", features = ["async_tokio", "html_reports"]}
-goose = {version = "0.16.0", default-features = false, features = ["rustls-tls"]}
+goose = {version = "=0.16.0", default-features = false, features = ["rustls-tls"]}
 iota-client = {version = "1.1.1"}
 rand = {version = "0.7.3"}
 tokio = {version = "1.15.0"}
 anyhow = {version = "1.0.57"}
 futures = {version = "0.3.17"}
+gumdrop = {version = "0.8.1"}
 
 [profile.release]
 incremental = true

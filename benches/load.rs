@@ -5,6 +5,7 @@ use std::time::{
 
 use futures::TryStreamExt;
 use goose::{
+    config::GooseConfiguration,
     metrics::{
         GooseMetric,
         GooseRawRequest,
@@ -12,6 +13,7 @@ use goose::{
     },
     prelude::*,
 };
+use gumdrop::Options;
 use rand::{
     distributions::Alphanumeric,
     Rng,
@@ -32,7 +34,7 @@ use iota_streams::{
 
 #[tokio::main]
 async fn main() -> Result<(), GooseError> {
-    GooseAttack::initialize()?
+    custom_initialization()?
         // In this example, we only create a single scenario, named "WebsiteUser".
         .register_scenario(
             scenario!("Load Testing Hornet node with Streams")
@@ -50,12 +52,11 @@ async fn main() -> Result<(), GooseError> {
                     transaction!(publish_signed_packet)
                         .set_name("publish signed packet")
                         .set_sequence(2),
-                )
-                // .register_transaction(
-                //     transaction!(read_signed_packet)
-                //         .set_name("read signed packet")
-                //         .set_sequence(3),
-                // ),
+                ), /* .register_transaction(
+                    *     transaction!(read_signed_packet)
+                    *         .set_name("read signed packet")
+                    *         .set_sequence(3),
+                    * ), */
         )
         .execute()
         .await?;
@@ -328,4 +329,52 @@ async fn read_signed_packet(user: &mut GooseUser) -> TransactionResult {
     }
 
     Ok(())
+}
+
+fn custom_initialization() -> Result<GooseAttack, GooseError> {
+    // HACK: SAME AS GOOSE INITIALIZATION BUT IGNORING --bench PARAMETER PUT BY CARGO BENCH
+    use std::{
+        env::args,
+        process::exit,
+    };
+
+    let args = args().collect::<Vec<_>>();
+
+    // CHANGE IS HERE
+    let opts = GooseConfiguration::parse_args(&args[1..args.len() - 1], Default::default()).unwrap_or_else(|e| {
+        eprintln!("{}: {}", args[0], e);
+        exit(2);
+    });
+
+    if opts.help_requested() {
+        let mut command = &opts as &dyn Options;
+        let mut command_str = String::new();
+
+        loop {
+            if let Some(new_command) = command.command() {
+                command = new_command;
+
+                if let Some(name) = new_command.command_name() {
+                    command_str.push(' ');
+                    command_str.push_str(name);
+                }
+            } else {
+                break;
+            }
+        }
+
+        eprintln!("Usage: {}{} [OPTIONS]", args[0], command_str);
+        eprintln!();
+        eprintln!("{}", command.self_usage());
+
+        if let Some(cmds) = command.self_command_list() {
+            eprintln!();
+            eprintln!("Available commands:");
+            eprintln!("{}", cmds);
+        }
+
+        exit(0);
+    }
+
+    GooseAttack::initialize_with_config(opts)
 }

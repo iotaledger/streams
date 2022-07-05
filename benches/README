@@ -1,1 +1,18 @@
+# Bechmarks
 
+## Load test
+The load test is built with Goose, using Streams as the HTTP client instead of the Goose's internal one. To run it, execute the following command:
+```bash
+cargo bench --workspace --bench load -- --host <http(s)://NODE_URL> --report-file streams-load-report.html --run-time 2m --running-metrics 10  --users 300 --hatch-rate 10
+```
+
+the test should report the metrics live on the console every 10 seconds. After 2 minutes, the test finishes and the report can be found in the `streams-load-report.html` file.
+
+## MPS Benchmark
+The MPS benchmark is built with Criterion. To run it, execute the following command:
+```bash
+NODE_URL=<http(s)://NODE_URL> cargo bench --workspace --bench mps -- --sample-size 30
+./streams-mps --bench --sample-size 30
+``` 
+
+The benchmark performs various tests, and reports the results live after each one. At the end, the report is available at `target/criterion/report/index.html`
