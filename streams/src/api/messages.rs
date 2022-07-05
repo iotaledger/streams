@@ -328,7 +328,7 @@ mod tests {
     use crate::api::{
         message::{
             Message,
-            MessageContent::{Announcement, BranchAnnouncement, Keyload, SignedPacket},
+            MessageContent::{BranchAnnouncement, Keyload, SignedPacket},
         },
         user::User,
     };

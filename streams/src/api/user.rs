@@ -206,10 +206,6 @@ impl<T> User<T> {
         self.state.cursor_store.set_latest_link(topic, latest_link)
     }
 
-    // fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
-    // self.state.cursor_store.get_anchor(topic)
-    // }
-
     fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
         self.state.cursor_store.get_latest_link(topic)
     }
@@ -308,7 +304,7 @@ impl<T> User<T> {
             .collect::<Vec<Identifier>>();
         for id in prev_permissions {
             self.state.cursor_store.insert_cursor(new_topic, id, INIT_MESSAGE_NUM);
-        };
+        }
 
         // Update branch links
         self.set_latest_link(new_topic, address.relative());
@@ -391,9 +387,8 @@ impl<T> User<T> {
         );
 
         // Unwrap message
-        let author_identifier = self.state.author_identifier.as_ref().ok_or_else(|| {
-            anyhow!("before receiving keyloads one must have received the announcement of a stream first")
-        })?;
+        // Ok to unwrap since an author identifier is set at the same time as the stream address
+        let author_identifier = self.state.author_identifier.as_ref().unwrap();
         let mut announcement_spongos = self
             .state
             .spongos_store
@@ -704,7 +699,7 @@ where
             .collect::<Vec<Identifier>>();
         for id in prev_permissions {
             self.state.cursor_store.insert_cursor(&topic, id, INIT_MESSAGE_NUM);
-        };
+        }
 
         // Update branch links
         self.state.cursor_store.set_latest_link(&topic, address.relative());
