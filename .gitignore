@@ -8,3 +8,4 @@
 .project
 .env
 .DS_Store
+*.lock
