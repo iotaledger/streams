@@ -41,7 +41,7 @@ hex = {version = "0.4", default-features = false}
 
 # Optional dependencies
 futures = {version = "0.3.8", default-features = false, optional = true}
-identity_iota = {git = "https://github.com/iotaledger/identity.rs", branch = "fix/update-stronghold-dependency", default-features = false, optional = true}
+identity_iota = {git = "https://github.com/iotaledger/identity.rs", rev = "d3920c2", default-features = false, optional = true}
 iota-client = {version = "1.1.1", default-features = false, optional = true}
 parking_lot = {version = "0.11.2", default-features = false, optional = true}
 serde = {version = "1.0", default-features = false, features = ["derive"], optional = true}
