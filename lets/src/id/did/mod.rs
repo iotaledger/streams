@@ -23,4 +23,3 @@ mod did;
 pub use did::{DIDInfo, DIDUrlInfo, DID};
 
 pub(crate) use did::DataWrapper;
-

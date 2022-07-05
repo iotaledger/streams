@@ -9,8 +9,12 @@ use serde::Serialize;
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 use identity_iota::{
-    crypto::{GetSignature, GetSignatureMut, KeyPair as DIDKeyPair, KeyType, Proof, SetSignature},
-    did::{MethodUriType, TryMethod, DID as IdentityDID},
+    core::BaseEncoding,
+    crypto::{
+        Ed25519 as DIDEd25519, GetSignature, GetSignatureMut, JcsEd25519, KeyPair as DIDKeyPair, KeyType, Named, Proof,
+        ProofValue, SetSignature,
+    },
+    did::{verifiable::VerifierOptions, MethodUriType, TryMethod, DID as IdentityDID},
     iota_core::IotaDID,
 };
 
@@ -103,7 +107,7 @@ pub struct DIDInfo {
     exchange_keypair: KeyPair,
 }
 
-#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DIDUrlInfo {
     did: String,
     client_url: String,
@@ -157,6 +161,21 @@ impl DIDUrlInfo {
             exchange_fragment: exchange_fragment.into(),
             signing_fragment: signing_fragment.into(),
         }
+    }
+
+    pub(crate) async fn verify(&self, signing_fragment: &str, signature_bytes: &[u8], hash: &[u8]) -> Result<()> {
+        let did_url = IotaDID::parse(self.did())?.join(signing_fragment)?;
+        let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url);
+        signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
+
+        let data = DataWrapper::new(&hash).with_signature(signature);
+
+        let doc = super::resolve_document(&self).await?;
+        doc.document
+            .verify_data(&data, &VerifierOptions::new())
+            .map_err(|e| anyhow!("There was an issue validating the signature: {}", e))?;
+
+        Ok(())
     }
 
     pub(crate) fn did(&self) -> &str {

@@ -9,13 +9,9 @@ use async_trait::async_trait;
 
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
+
 #[cfg(feature = "did")]
-use identity_iota::{
-    core::BaseEncoding,
-    crypto::{Ed25519 as DIDEd25519, JcsEd25519, Named, Proof, ProofValue},
-    did::{verifiable::VerifierOptions, MethodScope, DID as IdentityDID},
-    iota_core::IotaDID,
-};
+use identity_iota::did::MethodScope;
 
 // Streams
 use spongos::{
@@ -30,7 +26,7 @@ use spongos::{
 
 // Local
 #[cfg(feature = "did")]
-use crate::id::did::{resolve_document, DIDUrlInfo, DataWrapper};
+use crate::id::did::{resolve_document, DIDUrlInfo};
 use crate::message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify};
 
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -231,16 +227,7 @@ where
                             .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
                     );
 
-                    let did_url = IotaDID::parse(url_info.did())?.join(signing_fragment)?;
-                    let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url);
-                    signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
-
-                    let data = DataWrapper::new(&hash).with_signature(signature);
-
-                    let doc = resolve_document(&url_info).await?;
-                    doc.document
-                        .verify_data(&data, &VerifierOptions::new())
-                        .map_err(|e| anyhow!("There was an issue validating the signature: {}", e))?;
+                    url_info.verify(&signing_fragment, &signature_bytes, &hash).await?;
                     Ok(self)
                 }
                 _ => Err(anyhow!("expected Identity type 'DID', found something else")),
