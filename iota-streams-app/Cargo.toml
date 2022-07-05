@@ -31,7 +31,7 @@ iota-streams-ddml = { version = "0.1.2", path = "../iota-streams-ddml", default-
 hex = { version = "0.4", default-features = false, optional = false }
 
 # Dependencies for "client" feature
-iota-client = { version = "1.1.1", default-features = false, optional = true }
+iota-client = { version = "=1.1.1", default-features = false, optional = true }
 futures = { version = "0.3.8", default-features = false, features = ["executor"], optional = true }
 
 cstr_core = { version = "0.2.2", default-features = false, features = ["alloc"] }
