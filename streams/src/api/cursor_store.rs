@@ -8,6 +8,7 @@ use hashbrown::HashMap;
 
 // Streams
 use lets::{address::MsgId, id::Identifier, message::Topic};
+use lets::id::Permissioned;
 
 // Local
 
@@ -27,32 +28,77 @@ impl CursorStore {
         self.0.keys()
     }
 
-    pub(crate) fn is_cursor_tracked(&self, topic: &Topic, id: &Identifier) -> bool {
-        self.0
-            .get(topic)
-            .map_or(false, |branch| branch.cursors.contains_key(id))
-    }
-
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
-        let removals = self.0.values_mut().flat_map(|branch| branch.cursors.remove(id));
+        let removals = self.0.values_mut().flat_map(|branch| {
+            branch
+                .cursors
+                .iter()
+                .find(|(p, _)| p.identifier() == id)
+                .and_then(|(perm, _)| Some(perm.clone()))
+                .and_then(|perm| branch.cursors.remove(&perm))
+        });
         removals.count() > 0
     }
 
-    pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
-        self.0.get(topic).and_then(|branch| branch.cursors.get(id).copied())
+    pub(crate) fn get_permission(&self, topic: &Topic, id: &Identifier) -> Option<&Permissioned<Identifier>> {
+        self.0
+            .get(topic)
+            .and_then(|branch|
+                branch
+                    .cursors
+                    .iter()
+                    .find(|c| c.0.identifier() == id)
+                    .and_then(|(perm, _)| Some(perm))
+            )
     }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Identifier, usize)> + Clone + '_ {
+    /*pub(crate) fn change_permission(&mut self, topic: &Topic, permission: &Permissioned<Identifier>) -> bool {
+        self.0
+            .get_mut(topic)
+            .and_then(|branch| {
+                if let Some((stored_perm, stored_cursor)) = branch
+                    .cursors
+                    .iter()
+                    .find(|c| c.0.identifier() == permission.identifier())
+                    .and_then(|(perm, cursor)| Some((perm.clone(), cursor.clone())))
+                {
+                    branch.cursors.remove(&stored_perm);
+                    branch.cursors.insert(permission.clone(), stored_cursor)
+                } else {
+                    None
+                }
+            })
+            .is_some()
+    }*/
+
+    pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
+        self.0.get(topic).and_then(|branch|
+            branch
+                .cursors
+                .iter()
+                .find(|c| c.0.identifier() == id)
+                .map(|(_, cursor)| cursor)
+                .copied()
+        )
+    }
+
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Permissioned<Identifier>, usize)> + Clone + '_ {
         self.0
             .iter()
             .flat_map(|(topic, branch)| branch.cursors.iter().map(move |(id, cursor)| (topic, id, *cursor)))
     }
 
-    pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> Option<usize> {
-        if let Some(branch) = self.0.get_mut(topic) {
-            return branch.cursors.insert(id, cursor);
+    pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Permissioned<Identifier>, cursor: usize) -> Option<usize> {
+        let mut removed = false;
+        // If new permission does not match old permission, remove old permission before inserting
+        if let Some(perm) = self.get_permission(topic, id.identifier()) {
+            if perm != &id {
+                removed = self.remove(id.identifier());
+            }
         }
-        None
+
+        self.0.get_mut(topic)
+            .and_then(|branch| branch.cursors.insert(id, cursor))
     }
 
     pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
@@ -78,7 +124,7 @@ impl CursorStore {
 
 #[derive(Clone, PartialEq, Eq, Default)]
 pub(crate) struct InnerCursorStore {
-    cursors: HashMap<Identifier, usize>,
+    cursors: HashMap<Permissioned<Identifier>, usize>,
     latest_link: MsgId,
 }
 

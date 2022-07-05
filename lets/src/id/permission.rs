@@ -114,6 +114,20 @@ impl<Identifier> Permissioned<Identifier> {
     pub fn is_readonly(&self) -> bool {
         matches!(self, Permissioned::Read(..))
     }
+
+    pub fn is_admin(&self) -> bool {
+        matches!(self, Permissioned::Admin(..))
+    }
+}
+
+impl Permissioned<&Identifier>{
+    pub fn take(self) -> Permissioned<Identifier> {
+        match self {
+            Permissioned::Read(id) => Permissioned::Read(id.clone()),
+            Permissioned::ReadWrite(id, duration) => Permissioned::ReadWrite(id.clone(), duration.clone()),
+            Permissioned::Admin(id) => Permissioned::Admin(id.clone()),
+        }
+    }
 }
 
 impl<Identifier> AsRef<Identifier> for Permissioned<Identifier> {
@@ -137,48 +151,48 @@ where
     }
 }
 
-impl Mask<&Permissioned<&Identifier>> for sizeof::Context {
-    fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
+impl Mask<&Permissioned<Identifier>> for sizeof::Context {
+    fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
         match permission {
             Permissioned::Read(identifier) => {
                 let oneof = Uint8::new(0);
-                self.mask(oneof)?.mask(*identifier)?;
+                self.mask(oneof)?.mask(identifier)?;
                 Ok(self)
             }
             Permissioned::ReadWrite(identifier, duration) => {
                 let oneof = Uint8::new(1);
-                self.mask(oneof)?.mask(duration)?.mask(*identifier)?;
+                self.mask(oneof)?.mask(duration)?.mask(identifier)?;
                 Ok(self)
             }
             Permissioned::Admin(identifier) => {
                 let oneof = Uint8::new(2);
-                self.mask(oneof)?.mask(*identifier)?;
+                self.mask(oneof)?.mask(identifier)?;
                 Ok(self)
             }
         }
     }
 }
 
-impl<OS, F> Mask<&Permissioned<&Identifier>> for wrap::Context<OS, F>
+impl<OS, F> Mask<&Permissioned<Identifier>> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
+    fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
         match permission {
             Permissioned::Read(identifier) => {
                 let oneof = Uint8::new(0);
-                self.mask(oneof)?.mask(*identifier)?;
+                self.mask(oneof)?.mask(identifier)?;
                 Ok(self)
             }
             Permissioned::ReadWrite(identifier, duration) => {
                 let oneof = Uint8::new(1);
-                self.mask(oneof)?.mask(duration)?.mask(*identifier)?;
+                self.mask(oneof)?.mask(duration)?.mask(identifier)?;
                 Ok(self)
             }
             Permissioned::Admin(identifier) => {
                 let oneof = Uint8::new(2);
-                self.mask(oneof)?.mask(*identifier)?;
+                self.mask(oneof)?.mask(identifier)?;
                 Ok(self)
             }
         }
@@ -213,5 +227,21 @@ where
             o => return Err(anyhow!("{} is not a valid permission option", o)),
         }
         Ok(self)
+    }
+}
+
+impl Mask<&Permissioned<&Identifier>> for sizeof::Context {
+    fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
+        self.mask(&permission.take())
+    }
+}
+
+impl<OS, F> Mask<&Permissioned<&Identifier>> for wrap::Context<OS, F>
+    where
+        F: PRP,
+        OS: io::OStream,
+{
+    fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
+        self.mask(&permission.take())
     }
 }
