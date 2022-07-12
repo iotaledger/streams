@@ -88,12 +88,15 @@ impl CursorStore {
             .flat_map(|(topic, branch)| branch.cursors.iter().map(move |(id, cursor)| (topic, id, *cursor)))
     }
 
+    pub(crate) fn cursors_by_topic(&self, topic: &Topic) -> Option<impl Iterator<Item = (&Permissioned<Identifier>, &usize)>> {
+        self.0.get(topic).map(|inner| inner.cursors.iter())
+    }
+
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Permissioned<Identifier>, cursor: usize) -> Option<usize> {
-        let mut removed = false;
         // If new permission does not match old permission, remove old permission before inserting
         if let Some(perm) = self.get_permission(topic, id.identifier()) {
             if perm != &id {
-                removed = self.remove(id.identifier());
+                self.remove(id.identifier());
             }
         }
 

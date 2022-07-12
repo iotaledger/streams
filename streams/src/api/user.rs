@@ -177,6 +177,13 @@ impl<T> User<T> {
         self.state.cursor_store.cursors()
     }
 
+    fn cursors_by_topic(&self, topic: &Topic) -> Result<impl Iterator<Item = (&Permissioned<Identifier>, &usize)>> {
+        self.state
+            .cursor_store
+            .cursors_by_topic(topic)
+            .ok_or_else(|| anyhow!("previous topic {} not found in store", topic))
+    }
+
     pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone + '_ {
         self.state.exchange_keys.keys()
     }
@@ -211,10 +218,6 @@ impl<T> User<T> {
     fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
         self.state.cursor_store.set_latest_link(topic, latest_link)
     }
-
-    // fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
-    // self.state.cursor_store.get_anchor(topic)
-    // }
 
     fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
         self.state.cursor_store.get_latest_link(topic)
@@ -311,9 +314,8 @@ impl<T> User<T> {
         self.state.cursor_store.new_branch(new_topic.clone());
         // Collect permissions from previous branch and clone them into new branch
         let prev_permissions = self
-            .cursors()
-            .filter(|cursor| cursor.0 == &prev_topic)
-            .map(|(_, id, _)| id.clone())
+            .cursors_by_topic(&prev_topic)?
+            .map(|(id, _)| id.clone())
             .collect::<Vec<Permissioned<Identifier>>>();
         for id in prev_permissions {
             self.state.cursor_store.insert_cursor(new_topic, id, INIT_MESSAGE_NUM);
@@ -408,10 +410,8 @@ impl<T> User<T> {
         );
 
         // Unwrap message
-        let author_identifier = self.state.author_identifier.as_ref().ok_or_else(|| {
-            anyhow!("before receiving keyloads one must have received the announcement of a stream first")
-        })?
-            .clone();
+        // Ok to unwrap since an author identifier is set at the same time as the stream address
+        let author_identifier = self.state.author_identifier.as_ref().unwrap();
         let mut announcement_spongos = self
             .state
             .spongos_store
@@ -760,7 +760,7 @@ where
             .collect::<Vec<Permissioned<Identifier>>>();
         for id in prev_permissions {
             self.state.cursor_store.insert_cursor(&topic, id, INIT_MESSAGE_NUM);
-        };
+        }
 
         // Update branch links
         self.state.cursor_store.set_latest_link(&topic, address.relative());
