@@ -48,6 +48,10 @@ impl CursorStore {
             .flat_map(|(topic, branch)| branch.cursors.iter().map(move |(id, cursor)| (topic, id, *cursor)))
     }
 
+    pub(crate) fn cursors_by_topic(&self, topic: &Topic) -> Option<impl Iterator<Item = (&Identifier, &usize)>> {
+        self.0.get(topic).map(|inner| inner.cursors.iter())
+    }
+
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> Option<usize> {
         if let Some(branch) = self.0.get_mut(topic) {
             return branch.cursors.insert(id, cursor);

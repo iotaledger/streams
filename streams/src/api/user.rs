@@ -169,6 +169,13 @@ impl<T> User<T> {
         self.state.cursor_store.cursors()
     }
 
+    fn cursors_by_topic(&self, topic: &Topic) -> Result<impl Iterator<Item = (&Identifier, &usize)>> {
+        self.state
+            .cursor_store
+            .cursors_by_topic(topic)
+            .ok_or_else(|| anyhow!("previous topic {} not found in store", topic))
+    }
+
     pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone + '_ {
         self.state.exchange_keys.keys()
     }
@@ -298,9 +305,8 @@ impl<T> User<T> {
         self.state.cursor_store.new_branch(new_topic.clone());
         // Collect permissions from previous branch and clone them into new branch
         let prev_permissions = self
-            .cursors()
-            .filter(|cursor| cursor.0 == &prev_topic)
-            .map(|(_, id, _)| id.clone())
+            .cursors_by_topic(&prev_topic)?
+            .map(|(id, _)| id.clone())
             .collect::<Vec<Identifier>>();
         for id in prev_permissions {
             self.state.cursor_store.insert_cursor(new_topic, id, INIT_MESSAGE_NUM);
