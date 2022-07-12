@@ -135,11 +135,8 @@ impl<T> User<T> {
     }
 
     pub fn permission(&self, topic: impl Into<Topic>) -> Option<&Permissioned<Identifier>> {
-        self.identifier().and_then(|id| self
-            .state
-            .cursor_store
-            .get_permission(&topic.into(), &id)
-        )
+        self.identifier()
+            .and_then(|id| self.state.cursor_store.get_permission(&topic.into(), &id))
     }
 
     /// User's cursor
@@ -283,12 +280,13 @@ impl<T> User<T> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        let permission = self.state.cursor_store.get_permission(&prev_topic, &publisher)
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&prev_topic, &publisher)
             .ok_or_else(|| anyhow!("branch announcement received from user that is not stored as a publisher"))?
             .clone();
-        self.state
-            .cursor_store
-            .insert_cursor(&prev_topic, permission, cursor);
+        self.state.cursor_store.insert_cursor(&prev_topic, permission, cursor);
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -395,10 +393,14 @@ impl<T> User<T> {
         let topic = preparsed.header().topic().clone();
         let publisher = preparsed.header().publisher().clone();
         // Confirm keyload came from administrator
-        if !self.state.cursor_store.get_permission(&topic, &publisher)
+        if !self
+            .state
+            .cursor_store
+            .get_permission(&topic, &publisher)
             .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?
-            .is_admin() {
-            return Err(anyhow!("received keyload message from a user without admin privileges"))
+            .is_admin()
+        {
+            return Err(anyhow!("received keyload message from a user without admin privileges"));
         }
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
@@ -423,7 +425,7 @@ impl<T> User<T> {
         let keyload = keyload::Unwrap::new(
             &mut announcement_spongos,
             self.state.user_id.as_ref(),
-            &author_identifier,
+            author_identifier,
             &self.state.psk_store,
         );
         let (message, spongos) = preparsed.unwrap(keyload).await?;
@@ -442,13 +444,11 @@ impl<T> User<T> {
             .collect();
 
         for (_, perm, cursor) in stored_subscribers {
-            if subscribers
+            if !subscribers
                 .iter()
-                .find(|p| perm.identifier() == author_identifier || p.identifier() == perm.identifier())
-                .is_none()
+                .any(|p| perm.identifier() == author_identifier || p.identifier() == perm.identifier())
             {
-                self
-                    .state
+                self.state
                     .cursor_store
                     .insert_cursor(&topic, Permissioned::Read(perm.identifier().clone()), cursor);
             }
@@ -457,11 +457,9 @@ impl<T> User<T> {
         // Store message content into stores
         for subscriber in subscribers {
             if self.should_store_cursor(&topic, subscriber.as_ref()) {
-                self.state.cursor_store.insert_cursor(
-                    message.header().topic(),
-                    subscriber.clone(),
-                    INIT_MESSAGE_NUM,
-                );
+                self.state
+                    .cursor_store
+                    .insert_cursor(message.header().topic(), subscriber.clone(), INIT_MESSAGE_NUM);
             }
         }
 
@@ -475,17 +473,18 @@ impl<T> User<T> {
     async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         let topic = preparsed.header().topic();
         let publisher = preparsed.header().publisher();
-        let permission = self.state.cursor_store.get_permission(topic, publisher)
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(topic, publisher)
             .expect("Publisher does not have a stored cursor on the provided branch")
             .clone();
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
-            topic,
-            permission,
-            preparsed.header().sequence(),
-        );
+        self.state
+            .cursor_store
+            .insert_cursor(topic, permission, preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -513,17 +512,18 @@ impl<T> User<T> {
     async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         let topic = preparsed.header().topic();
         let publisher = preparsed.header().publisher();
-        let permission = self.state.cursor_store.get_permission(topic, publisher)
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(topic, publisher)
             .expect("Publisher does not have a stored cursor on the provided branch")
             .clone();
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
-            topic,
-            permission,
-            preparsed.header().sequence(),
-        );
+        self.state
+            .cursor_store
+            .insert_cursor(topic, permission, preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -705,10 +705,13 @@ where
         let topic: Topic = to_topic.into();
         let prev_topic: Topic = from_topic.into();
         // Check Permission
-        let permission = self.state.cursor_store.get_permission(&prev_topic, &identifier)
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&prev_topic, &identifier)
             .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
         if permission.is_readonly() {
-            return Err(anyhow!("user has read only permissions for this branch"))
+            return Err(anyhow!("user has read only permissions for this branch"));
         }
         let link_to = self
             .get_latest_link(&prev_topic)
@@ -749,9 +752,11 @@ where
         // If message has been sent successfully, create the new branch in store
         self.state.cursor_store.new_branch(topic.clone());
         // Commit message to stores and update cursors
-        self.state
-            .cursor_store
-            .insert_cursor(&prev_topic, Permissioned::Admin(identifier.clone()), self.next_cursor(&prev_topic)?);
+        self.state.cursor_store.insert_cursor(
+            &prev_topic,
+            Permissioned::Admin(identifier.clone()),
+            self.next_cursor(&prev_topic)?,
+        );
         self.state.spongos_store.insert(address.relative(), spongos);
         // Collect permissions from previous branch and clone them into new branch
         let prev_permissions = self
@@ -907,10 +912,13 @@ where
         // Check Topic
         let topic = topic.into();
         // Check Permission
-        let permission = self.state.cursor_store.get_permission(&topic, &identifier)
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&topic, &identifier)
             .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
         if !permission.is_admin() {
-            return Err(anyhow!("user does not have admin permissions for this branch"))
+            return Err(anyhow!("user does not have admin permissions for this branch"));
         }
         // Link message to edge of branch
         let link_to = self
@@ -986,7 +994,9 @@ where
                     .insert_cursor(&topic, subscriber.take(), INIT_MESSAGE_NUM);
             }
         }
-        self.state.cursor_store.insert_cursor(&topic, Permissioned::Admin(identifier), new_cursor);
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, Permissioned::Admin(identifier), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address.relative());
@@ -1047,11 +1057,14 @@ where
         // Check Topic
         let topic = topic.into();
         // Check Permission
-        let permission = self.state.cursor_store.get_permission(&topic, &identifier)
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&topic, &identifier)
             .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?
             .clone();
         if permission.is_readonly() {
-            return Err(anyhow!("user has read only permissions for this branch"))
+            return Err(anyhow!("user has read only permissions for this branch"));
         }
         // Link message to latest message in branch
         let link_to = self
@@ -1124,11 +1137,14 @@ where
         // Check Topic
         let topic = topic.into();
         // Check Permission
-        let permission = self.state.cursor_store.get_permission(&topic, &identifier)
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&topic, &identifier)
             .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?
             .clone();
         if permission.is_readonly() {
-            return Err(anyhow!("user has read only permissions for this branch"))
+            return Err(anyhow!("user has read only permissions for this branch"));
         }
         // Link message to latest message in branch
         let link_to = self
@@ -1172,7 +1188,9 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.cursor_store.insert_cursor(&topic, permission.clone(), new_cursor);
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, permission.clone(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, rel_address);

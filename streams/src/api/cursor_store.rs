@@ -7,8 +7,11 @@ use hashbrown::HashMap;
 // IOTA
 
 // Streams
-use lets::{address::MsgId, id::Identifier, message::Topic};
-use lets::id::Permissioned;
+use lets::{
+    address::MsgId,
+    id::{Identifier, Permissioned},
+    message::Topic,
+};
 
 // Local
 
@@ -34,33 +37,31 @@ impl CursorStore {
                 .cursors
                 .iter()
                 .find(|(p, _)| p.identifier() == id)
-                .and_then(|(perm, _)| Some(perm.clone()))
+                .map(|(perm, _)| perm.clone())
                 .and_then(|perm| branch.cursors.remove(&perm))
         });
         removals.count() > 0
     }
 
     pub(crate) fn get_permission(&self, topic: &Topic, id: &Identifier) -> Option<&Permissioned<Identifier>> {
-        self.0
-            .get(topic)
-            .and_then(|branch|
-                branch
-                    .cursors
-                    .iter()
-                    .find(|c| c.0.identifier() == id)
-                    .and_then(|(perm, _)| Some(perm))
-            )
+        self.0.get(topic).and_then(|branch| {
+            branch
+                .cursors
+                .iter()
+                .find(|c| c.0.identifier() == id)
+                .map(|(perm, _)| perm)
+        })
     }
 
     pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
-        self.0.get(topic).and_then(|branch|
+        self.0.get(topic).and_then(|branch| {
             branch
                 .cursors
                 .iter()
                 .find(|c| c.0.identifier() == id)
                 .map(|(_, cursor)| cursor)
                 .copied()
-        )
+        })
     }
 
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Permissioned<Identifier>, usize)> + Clone + '_ {
@@ -69,25 +70,36 @@ impl CursorStore {
             .flat_map(|(topic, branch)| branch.cursors.iter().map(move |(id, cursor)| (topic, id, *cursor)))
     }
 
-    pub(crate) fn cursors_by_topic(&self, topic: &Topic) -> Option<impl Iterator<Item = (&Permissioned<Identifier>, &usize)>> {
+    pub(crate) fn cursors_by_topic(
+        &self,
+        topic: &Topic,
+    ) -> Option<impl Iterator<Item = (&Permissioned<Identifier>, &usize)>> {
         self.0.get(topic).map(|inner| inner.cursors.iter())
     }
 
-    pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Permissioned<Identifier>, cursor: usize) -> Option<usize> {
-        // If new permission does not match old permission, remove old permission before inserting, and keep old cursor
+    pub(crate) fn insert_cursor(
+        &mut self,
+        topic: &Topic,
+        id: Permissioned<Identifier>,
+        cursor: usize,
+    ) -> Option<usize> {
+        // If new permission does not match old permission, remove old permission before inserting, and keep
+        // old cursor
         let cursor = match self.get_permission(topic, id.identifier()) {
-            Some(perm) =>
+            Some(perm) => {
                 if perm != &id {
                     let old_cursor = self.get_cursor(topic, id.identifier()).unwrap();
                     self.remove(id.identifier());
                     old_cursor
                 } else {
                     cursor
-                },
-            None => cursor
+                }
+            }
+            None => cursor,
         };
 
-        self.0.get_mut(topic)
+        self.0
+            .get_mut(topic)
             .and_then(|branch| branch.cursors.insert(id, cursor))
     }
 

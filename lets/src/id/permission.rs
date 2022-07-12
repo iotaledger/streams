@@ -120,11 +120,11 @@ impl<Identifier> Permissioned<Identifier> {
     }
 }
 
-impl Permissioned<&Identifier>{
+impl Permissioned<&Identifier> {
     pub fn take(self) -> Permissioned<Identifier> {
         match self {
             Permissioned::Read(id) => Permissioned::Read(id.clone()),
-            Permissioned::ReadWrite(id, duration) => Permissioned::ReadWrite(id.clone(), duration.clone()),
+            Permissioned::ReadWrite(id, duration) => Permissioned::ReadWrite(id.clone(), duration),
             Permissioned::Admin(id) => Permissioned::Admin(id.clone()),
         }
     }
@@ -237,9 +237,9 @@ impl Mask<&Permissioned<&Identifier>> for sizeof::Context {
 }
 
 impl<OS, F> Mask<&Permissioned<&Identifier>> for wrap::Context<OS, F>
-    where
-        F: PRP,
-        OS: io::OStream,
+where
+    F: PRP,
+    OS: io::OStream,
 {
     fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
         self.mask(&permission.take())

@@ -17,11 +17,10 @@ use hashbrown::HashMap;
 // Streams
 use lets::{
     address::{Address, MsgId},
-    id::Identifier,
+    id::{Identifier, Permissioned},
     message::{Topic, TransportMessage, HDF},
     transport::Transport,
 };
-use lets::id::Permissioned;
 
 // Local
 use crate::api::{

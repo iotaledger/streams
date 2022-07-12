@@ -523,7 +523,9 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
     assert!(author.add_subscriber(subscriber_a_id.clone()));
     let subscriber_a_admin_permission = Permissioned::Admin(&subscriber_a_id);
-    author.send_keyload(BRANCH1, vec![subscriber_a_admin_permission], vec![]).await?;
+    author
+        .send_keyload(BRANCH1, vec![subscriber_a_admin_permission], vec![])
+        .await?;
     print_user("Author", &author);
 
     println!("> Subscriber A receives keyload");
@@ -538,7 +540,11 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         last_msg_as_a.content()
     );
     assert!(
-        last_msg_as_a.as_keyload().unwrap().subscribers.contains(&subscriber_a_admin_permission.take()),
+        last_msg_as_a
+            .as_keyload()
+            .unwrap()
+            .subscribers
+            .contains(&subscriber_a_admin_permission.take()),
         "Subscriber A expected that they would be included with admin privileges in keyload"
     );
 
@@ -558,7 +564,8 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     );
     println!("> Subscriber A confirming they still have Admin privileges in new branch");
     assert!(
-        subscriber_a.permission(BRANCH2)
+        subscriber_a
+            .permission(BRANCH2)
             .expect("Subscriber A should have a permission stored for new branch")
             .is_admin(),
         "Subscriber A expected to still have Admin privileges in new branch"
