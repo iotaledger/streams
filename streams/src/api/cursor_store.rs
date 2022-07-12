@@ -52,25 +52,6 @@ impl CursorStore {
             )
     }
 
-    /*pub(crate) fn change_permission(&mut self, topic: &Topic, permission: &Permissioned<Identifier>) -> bool {
-        self.0
-            .get_mut(topic)
-            .and_then(|branch| {
-                if let Some((stored_perm, stored_cursor)) = branch
-                    .cursors
-                    .iter()
-                    .find(|c| c.0.identifier() == permission.identifier())
-                    .and_then(|(perm, cursor)| Some((perm.clone(), cursor.clone())))
-                {
-                    branch.cursors.remove(&stored_perm);
-                    branch.cursors.insert(permission.clone(), stored_cursor)
-                } else {
-                    None
-                }
-            })
-            .is_some()
-    }*/
-
     pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
         self.0.get(topic).and_then(|branch|
             branch
@@ -93,12 +74,18 @@ impl CursorStore {
     }
 
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Permissioned<Identifier>, cursor: usize) -> Option<usize> {
-        // If new permission does not match old permission, remove old permission before inserting
-        if let Some(perm) = self.get_permission(topic, id.identifier()) {
-            if perm != &id {
-                self.remove(id.identifier());
-            }
-        }
+        // If new permission does not match old permission, remove old permission before inserting, and keep old cursor
+        let cursor = match self.get_permission(topic, id.identifier()) {
+            Some(perm) =>
+                if perm != &id {
+                    let old_cursor = self.get_cursor(topic, id.identifier()).unwrap();
+                    self.remove(id.identifier());
+                    old_cursor
+                } else {
+                    cursor
+                },
+            None => cursor
+        };
 
         self.0.get_mut(topic)
             .and_then(|branch| branch.cursors.insert(id, cursor))

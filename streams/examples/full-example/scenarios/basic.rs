@@ -527,7 +527,6 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
 
     println!("> Subscriber A receives keyload");
-    print_user("Subscriber A", &subscriber_a);
     let next_messages = subscriber_a.fetch_next_messages().await?;
     print_user("Subscriber A", &subscriber_a);
     let last_msg_as_a = next_messages
@@ -545,6 +544,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Author creates a new branch");
     author.new_branch(BRANCH1, BRANCH2).await?;
+    print_user("Author", &author);
     println!("> Subscriber A receives branch announcement");
     let next_messages = subscriber_a.fetch_next_messages().await?;
     print_user("Subscriber A", &subscriber_a);

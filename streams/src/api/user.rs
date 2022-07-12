@@ -202,7 +202,7 @@ impl<T> User<T> {
     }
 
     pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
-        self.state.cursor_store.remove(id) | self.state.exchange_keys.remove(id).is_some()
+        self.state.exchange_keys.remove(id).is_some()
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
@@ -444,7 +444,8 @@ impl<T> User<T> {
         for (_, perm, cursor) in stored_subscribers {
             if subscribers
                 .iter()
-                .find(|p| p.identifier() == perm.identifier()).is_none()
+                .find(|p| perm.identifier() == author_identifier || p.identifier() == perm.identifier())
+                .is_none()
             {
                 self
                     .state
