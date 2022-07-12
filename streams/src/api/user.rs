@@ -134,9 +134,9 @@ impl<T> User<T> {
             .ok_or_else(|| anyhow!("User does not have a stored identity"))
     }
 
-    pub fn permission(&self, topic: impl Into<Topic>) -> Option<&Permissioned<Identifier>> {
+    pub fn permission(&self, topic: &Topic) -> Option<&Permissioned<Identifier>> {
         self.identifier()
-            .and_then(|id| self.state.cursor_store.get_permission(&topic.into(), &id))
+            .and_then(|id| self.state.cursor_store.get_permission(topic, &id))
     }
 
     /// User's cursor
@@ -913,9 +913,7 @@ where
         let topic = topic.into();
         // Check Permission
         let permission = self
-            .state
-            .cursor_store
-            .get_permission(&topic, &identifier)
+            .permission(&topic)
             .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
         if !permission.is_admin() {
             return Err(anyhow!("user does not have admin permissions for this branch"));
@@ -1005,11 +1003,26 @@ where
 
     pub async fn send_keyload_for_all<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
-        Top: Into<Topic>,
+        Top: Into<Topic> + Clone,
     {
+        let topic = topic.into();
+        let permission = self
+            .permission(&topic)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
+        if !permission.is_admin() {
+            return Err(anyhow!("user does not have admin permissions for this branch"));
+        }
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
-        let subscribers: Vec<Permissioned<Identifier>> =
-            self.subscribers().map(|s| Permissioned::Read(s.clone())).collect();
+        let subscribers: Vec<Permissioned<Identifier>> = self
+            .subscribers()
+            .map(|s| {
+                if s == permission.identifier() {
+                    Permissioned::Admin(s.clone())
+                } else {
+                    Permissioned::Read(s.clone())
+                }
+            })
+            .collect();
         self.send_keyload(
             topic,
             // Alas, must collect to release the &self immutable borrow
@@ -1021,12 +1034,25 @@ where
 
     pub async fn send_keyload_for_all_rw<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
-        Top: Into<Topic>,
+        Top: Into<Topic> + Clone,
     {
+        let topic = topic.into();
+        let permission = self
+            .permission(&topic)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
+        if !permission.is_admin() {
+            return Err(anyhow!("user does not have admin permissions for this branch"));
+        }
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
         let subscribers: Vec<Permissioned<Identifier>> = self
             .subscribers()
-            .map(|s| Permissioned::ReadWrite(s.clone(), PermissionDuration::Perpetual))
+            .map(|s| {
+                if s == permission.identifier() {
+                    Permissioned::Admin(s.clone())
+                } else {
+                    Permissioned::ReadWrite(s.clone(), PermissionDuration::Perpetual)
+                }
+            })
             .collect();
         self.send_keyload(
             topic,

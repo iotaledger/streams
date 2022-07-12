@@ -156,7 +156,7 @@ mod tests {
     use super::CursorStore;
     use alloc::string::ToString;
     use lets::{
-        id::{Ed25519, Identity},
+        id::{Ed25519, Identity, PermissionDuration, Permissioned},
         message::Topic,
     };
 
@@ -164,18 +164,19 @@ mod tests {
     fn branch_store_can_remove_a_cursor_from_all_branches_at_once() {
         let mut branch_store = CursorStore::new();
         let identifier = Identity::Ed25519(Ed25519::from_seed("identifier 1")).to_identifier();
+        let permission = Permissioned::ReadWrite(identifier.clone(), PermissionDuration::Perpetual);
         let topic_1 = Topic::new("topic 1".to_string());
         let topic_2 = Topic::new("topic 2".to_string());
 
         branch_store.new_branch(topic_1.clone());
         branch_store.new_branch(topic_2.clone());
 
-        branch_store.insert_cursor(&topic_1, identifier.clone(), 10);
-        branch_store.insert_cursor(&topic_2, identifier.clone(), 20);
+        branch_store.insert_cursor(&topic_1, permission.clone(), 10);
+        branch_store.insert_cursor(&topic_2, permission.clone(), 20);
 
         branch_store.remove(&identifier);
 
-        assert!(!branch_store.is_cursor_tracked(&topic_1, &identifier));
-        assert!(!branch_store.is_cursor_tracked(&topic_2, &identifier));
+        assert!(branch_store.get_cursor(&topic_1, &identifier).is_none());
+        assert!(branch_store.get_cursor(&topic_2, &identifier).is_none());
     }
 }

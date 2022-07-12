@@ -565,7 +565,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Subscriber A confirming they still have Admin privileges in new branch");
     assert!(
         subscriber_a
-            .permission(BRANCH2)
+            .permission(&BRANCH2.into())
             .expect("Subscriber A should have a permission stored for new branch")
             .is_admin(),
         "Subscriber A expected to still have Admin privileges in new branch"
