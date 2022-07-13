@@ -48,27 +48,15 @@ impl CursorStore {
             .flat_map(|(topic, branch)| branch.cursors.iter().map(move |(id, cursor)| (topic, id, *cursor)))
     }
 
+    pub(crate) fn cursors_by_topic(&self, topic: &Topic) -> Option<impl Iterator<Item = (&Identifier, &usize)>> {
+        self.0.get(topic).map(|inner| inner.cursors.iter())
+    }
+
     pub(crate) fn insert_cursor(&mut self, topic: &Topic, id: Identifier, cursor: usize) -> Option<usize> {
         if let Some(branch) = self.0.get_mut(topic) {
             return branch.cursors.insert(id, cursor);
         }
         None
-    }
-
-    pub(crate) fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<InnerCursorStore> {
-        match self.0.get_mut(topic) {
-            Some(branch) => {
-                branch.anchor = anchor;
-                None
-            }
-            None => {
-                let branch = InnerCursorStore {
-                    anchor,
-                    ..Default::default()
-                };
-                self.0.insert(topic.clone(), branch)
-            }
-        }
     }
 
     pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
@@ -87,10 +75,6 @@ impl CursorStore {
         }
     }
 
-    pub(crate) fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
-        self.0.get(topic).map(|branch| branch.anchor)
-    }
-
     pub(crate) fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
         self.0.get(topic).map(|branch| branch.latest_link)
     }
@@ -99,13 +83,11 @@ impl CursorStore {
 #[derive(Clone, PartialEq, Eq, Default)]
 pub(crate) struct InnerCursorStore {
     cursors: HashMap<Identifier, usize>,
-    anchor: MsgId,
     latest_link: MsgId,
 }
 
 impl fmt::Debug for InnerCursorStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "\t* anchor: {}", self.anchor)?;
         writeln!(f, "\t* latest link: {}", self.latest_link)?;
         writeln!(f, "\t* cursors:")?;
         for (id, cursor) in self.cursors.iter() {
