@@ -31,6 +31,9 @@ const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 const CLIENT_URL: &str = "https://chrysalis-nodes.iota.org";
 
+const BASE_BRANCH: &str = "BASE_BRANCH";
+const BRANCH1: &str = "BRANCH1";
+
 pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     let did_client = DIDClient::builder()
         .primary_node(CLIENT_URL, None, None)?
@@ -43,7 +46,6 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     // Generate a simple PSK for storage by users
     let psk = Psk::from_seed("A pre shared key");
-    let branch1_topic = "BRANCH1";
 
     let mut author = User::builder()
         .with_identity(DID::PrivateKey(author_did_info))
@@ -65,7 +67,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     println!("> Author creates stream and sends its announcement");
     // Start at index 1, because we can. Will error if its already in use
-    let announcement = author.create_stream("BASE_BRANCH").await?;
+    let announcement = author.create_stream(BASE_BRANCH).await?;
     print_send_result(&announcement);
     print_user("Author", &author);
 
@@ -93,19 +95,19 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     print_user("Author", &author);
 
     println!("> Author creates new branch");
-    let branch_announcement = author.new_branch(branch1_topic).await?;
+    let branch_announcement = author.new_branch(BASE_BRANCH, BRANCH1).await?;
     print_send_result(&branch_announcement);
     print_user("Author", &author);
 
     println!("> Author issues keyload for everybody [Subscriber A, Subscriber B, PSK]");
-    let first_keyload_as_author = author.send_keyload_for_all(branch1_topic).await?;
+    let first_keyload_as_author = author.send_keyload_for_all(BRANCH1).await?;
     print_send_result(&first_keyload_as_author);
     print_user("Author", &author);
 
     println!("> Author sends 3 signed packets linked to the keyload");
     for _ in 0..3 {
         let last_msg = author
-            .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+            .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
             .await?;
         print_send_result(&last_msg);
     }
@@ -114,7 +116,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     println!("> Author issues new keyload for only Subscriber B and PSK");
     let second_keyload_as_author = author
         .send_keyload(
-            branch1_topic,
+            BRANCH1,
             [Permissioned::Read(subscription_b_as_author.header().publisher())],
             [psk.to_pskid()],
         )
@@ -125,7 +127,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     println!("> Author sends 2 more signed packets linked to the latest keyload");
     for _ in 0..2 {
         let last_msg = author
-            .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+            .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
             .await?;
         print_send_result(&last_msg);
     }
@@ -133,7 +135,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
 
     println!("> Author sends 1 more signed packet linked to the first keyload");
     let last_msg = author
-        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&last_msg);
     print_user("Author", &author);

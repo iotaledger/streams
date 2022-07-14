@@ -19,9 +19,11 @@ use crate::GenericTransport;
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
+const BASE_BRANCH: &str = "BASE_BRANCH";
+const BRANCH1: &str = "BRANCH1";
+
 pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
     let psk = Psk::from_seed("A pre shared key");
-    let branch1_topic = "BRANCH1";
 
     let mut author = User::builder()
         .with_identity(Ed25519::from_seed(author_seed))
@@ -43,14 +45,14 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .build()?;
 
     // Confirm that users have id's
-    let author_id = author.identifier().expect("author should have identifier");
+    let _author_id = author.identifier().expect("author should have identifier");
     let subscriber_a_id = subscriber_a.identifier().expect("subscriber A should have identifier");
     let subscriber_b_id = subscriber_b.identifier().expect("subscriber B should have identifier");
     assert!(subscriber_c.identifier().is_none());
 
     println!("> Author creates stream and sends its announcement");
     // Start at index 1, because we can. Will error if its already in use
-    let announcement = author.create_stream("BASE_BRANCH").await?;
+    let announcement = author.create_stream(BASE_BRANCH).await?;
     print_send_result(&announcement);
     print_user("Author", &author);
 
@@ -72,13 +74,13 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
 
     println!("> Author creates a new branch");
-    println!("Branch topic: {}", branch1_topic);
-    let branch_announcement = author.new_branch(branch1_topic).await?;
+    println!("Branch topic: {}", BRANCH1);
+    let branch_announcement = author.new_branch(BASE_BRANCH, BRANCH1).await?;
     print_send_result(&branch_announcement);
     print_user("Author", &author);
 
     println!("> Author issues keyload for every user subscribed so far [SubscriberA, PSK] in Branch 1");
-    let keyload_as_author = author.send_keyload_for_all(branch1_topic).await?;
+    let keyload_as_author = author.send_keyload_for_all(BRANCH1).await?;
     print_send_result(&keyload_as_author);
     print_user("Author", &author);
 
@@ -90,10 +92,10 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .expect("Subscriber A did not receive the expected branch announcement");
     assert!(
         branch_1_ann_as_a
-            .as_announcement()
-            .expect("expected announcement, found something else")
-            .author_identifier
-            .eq(&author_id)
+            .as_branch_announcement()
+            .expect("expected branch announcement, found something else")
+            .topic
+            .eq(&BRANCH1.into())
     );
     print_user("Subscriber A", &subscriber_a);
     let branch_1_ann_as_b = subscriber_b
@@ -103,10 +105,10 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .expect("Subscriber B did not receive the expected branch announcement");
     assert!(
         branch_1_ann_as_b
-            .as_announcement()
-            .expect("expected announcement, found something else")
-            .author_identifier
-            .eq(&author_id)
+            .as_branch_announcement()
+            .expect("expected branch announcement, found something else")
+            .topic
+            .eq(&BRANCH1.into())
     );
     print_user("Subscriber B", &subscriber_b);
     let branch_1_ann_as_c = subscriber_c
@@ -116,10 +118,10 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .expect("Subscriber C did not receive the expected branch announcement");
     assert!(
         branch_1_ann_as_c
-            .as_announcement()
-            .expect("expected announcement, found something else")
-            .author_identifier
-            .eq(&author_id)
+            .as_branch_announcement()
+            .expect("expected branch announcement, found something else")
+            .topic
+            .eq(&BRANCH1.into())
     );
     print_user("Subscriber C", &subscriber_c);
 
@@ -163,7 +165,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Author sends a tagged packet linked to the keyload");
     let tagged_packet_as_author = author
-        .send_tagged_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_tagged_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&tagged_packet_as_author);
     print_user("Author", &author);
@@ -218,13 +220,13 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
 
     println!("> Author issues new keyload in the same branch to incorporate SubscriberB");
-    let new_keyload_as_author = author.send_keyload_for_all(branch1_topic).await?;
+    let new_keyload_as_author = author.send_keyload_for_all(BRANCH1).await?;
     print_send_result(&new_keyload_as_author);
     print_user("Author", &author);
 
     println!("> Author sends a signed packet");
     let signed_packet_as_author = author
-        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&signed_packet_as_author);
     print_user("Author", &author);
@@ -269,7 +271,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .last()
         .expect("Subscriber C hasn't received any of the new messages");
     let result = subscriber_c
-        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await;
     assert!(
         result.is_err(),
@@ -279,7 +281,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Subscriber A attempts to send a signed packet (but he has readonly permission over the branch!)");
     let result = subscriber_a
-        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await;
     assert!(
         result.is_err(),
@@ -293,7 +295,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Author gives Subscriber A write permission");
     let new_keyload_as_author = author
         .send_keyload(
-            branch1_topic,
+            BRANCH1,
             author
                 .subscribers()
                 .map(|s| {
@@ -313,7 +315,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Subscriber A publishes signed packet");
     assert_eq!(subscriber_a.sync().await?, 1);
     let signed_packet_as_a = subscriber_a
-        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&signed_packet_as_a);
     print_user("Subscriber A", &subscriber_a);
@@ -447,12 +449,12 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Author", &author);
 
     println!("> Author issues a new keyload to remove all subscribers from the branch");
-    let last_keyload = author.send_keyload_for_all(branch1_topic).await?;
+    let last_keyload = author.send_keyload_for_all(BRANCH1).await?;
     print_send_result(&last_keyload);
     print_user("Author", &author);
     println!("> Author sends a new signed packet");
     let last_signed_packet = author
-        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&last_signed_packet);
     print_user("Author", &author);
@@ -496,12 +498,12 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Subscribers A and B try to send a signed packet");
     // TODO: THIS SHOULD FAIL ONCE PUBLISHERS ARE TRACKED BY BRANCH AND WE CAN "DEMOTE" SUBSCRIBERS
     let a_signed_packet = subscriber_a
-        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await?;
     print_send_result(&a_signed_packet);
     print_user("Subscriber A", &subscriber_a);
     let result = subscriber_b
-        .send_signed_packet(branch1_topic, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await;
     print_user("Subscriber B", &subscriber_b);
     assert!(result.is_err());

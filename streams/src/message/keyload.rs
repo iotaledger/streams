@@ -272,7 +272,7 @@ where
 
         if let Some(key) = key {
             self.absorb(External::new(&NBytes::new(&key)))?
-                .verify(&keyload.author_id)
+                .verify(keyload.author_id)
                 .await?;
         }
         self.commit()?;
