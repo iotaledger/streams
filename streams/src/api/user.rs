@@ -780,6 +780,7 @@ where
     ) -> Result<SendResponse<TSR>>
     where
         Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>> + Clone,
+        Subscribers::IntoIter: ExactSizeIterator,
         Top: Into<Topic>,
         Psks: IntoIterator<Item = PskId>,
     {
@@ -825,7 +826,7 @@ where
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut linked_msg_spongos,
-            subscribers.clone().into_iter().collect::<Vec<_>>(),
+            subscribers.clone(),
             &psk_ids_with_psks,
             encryption_key,
             nonce,
