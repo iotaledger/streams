@@ -22,7 +22,6 @@ impl<T> GenericTransport for T where
 {
 }
 
-#[cfg(feature = "did")]
 async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     println!("## Running DID Test ##\n");
     let result = scenarios::did::example(transport).await;
@@ -78,7 +77,6 @@ async fn main_client() -> Result<()> {
         )));
 
     run_single_branch_test(transport.clone(), &new_seed()).await?;
-    #[cfg(feature = "did")]
     run_did_test(transport).await?;
     println!(
         "#############################################{}",

@@ -56,8 +56,8 @@ impl Identifier {
         }
     }
 
-    // #[deprecated = "to be removed once key-exchange is encapsulated within Identity"]
-    pub async fn _ke_pk(&self) -> Result<x25519::PublicKey> {
+    // Get the Public key part of the key exchange of the identifier
+    pub async fn ke_pk(&self) -> Result<x25519::PublicKey> {
         match self {
             Identifier::Ed25519(pk) => Ok(pk.try_into()?),
             #[cfg(feature = "did")]

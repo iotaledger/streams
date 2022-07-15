@@ -51,8 +51,8 @@ impl Default for Identity {
 }
 
 impl Identity {
-    // #[deprecated = "to be removed once key exchange is encapsulated within Identity"]
-    pub fn _ke_sk(&self) -> Result<x25519::SecretKey> {
+    // Get the Secret key part of the key exchange of the Identity
+    pub fn ke_sk(&self) -> Result<x25519::SecretKey> {
         match self {
             Self::Ed25519(ed25519) => Ok(ed25519.inner().into()),
             #[cfg(feature = "did")]

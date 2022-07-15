@@ -341,7 +341,7 @@ impl<T> User<T> {
                 return Ok(Message::orphan(address, preparsed));
             }
         };
-        let user_ke_sk = &self.identity()?._ke_sk()?;
+        let user_ke_sk = &self.identity()?.ke_sk()?;
         let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
         let (message, _spongos) = preparsed.unwrap(subscription).await?;
 
@@ -746,7 +746,7 @@ where
             .author_identifier
             .as_ref()
             .expect("a user that already have an stream address must know the author identifier")
-            ._ke_pk()
+            .ke_pk()
             .await?;
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
