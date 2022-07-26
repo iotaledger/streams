@@ -35,7 +35,7 @@
 //! ```
 // Rust
 use alloc::{boxed::Box, vec::Vec};
-use core::iter::IntoIterator;
+use core::{iter::IntoIterator, marker::PhantomData};
 
 // 3rd-party
 use anyhow::Result;
@@ -67,16 +67,20 @@ use spongos::{
 const NONCE_SIZE: usize = 16;
 const KEY_SIZE: usize = 32;
 
-pub(crate) struct Wrap<'a, Subscribers, Psks> {
+pub(crate) struct Wrap<'a, 'b, Subscribers, Psks> {
     initial_state: &'a mut Spongos,
     nonce: [u8; NONCE_SIZE],
     key: [u8; KEY_SIZE],
     subscribers: Subscribers,
     psks: Psks,
     author_id: &'a Identity,
+    // panthom subscriber's lifetime needed because we cannot add lifetime parameters to `ContentWrap` trait method.
+    // subscribers need a different lifetime because they are provided directly from downstream. They are not stored by
+    // the user instance thus they don't share its lifetime
+    subscribers_lifetime: PhantomData<&'b Identifier>,
 }
 
-impl<'a, Subscribers, Psks> Wrap<'a, Subscribers, Psks> {
+impl<'a, 'b, Subscribers, Psks> Wrap<'a, 'b, Subscribers, Psks> {
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
         subscribers: Subscribers,
@@ -86,7 +90,7 @@ impl<'a, Subscribers, Psks> Wrap<'a, Subscribers, Psks> {
         author_id: &'a Identity,
     ) -> Self
     where
-        Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>>,
+        Subscribers: IntoIterator<Item = Permissioned<&'b Identifier>>,
         Subscribers::IntoIter: ExactSizeIterator,
         Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
         Psks::IntoIter: ExactSizeIterator,
@@ -98,19 +102,20 @@ impl<'a, Subscribers, Psks> Wrap<'a, Subscribers, Psks> {
             key,
             nonce,
             author_id,
+            subscribers_lifetime: PhantomData,
         }
     }
 }
 
 #[async_trait(?Send)]
-impl<'a, Subscribers, Psks> message::ContentSizeof<Wrap<'a, Subscribers, Psks>> for sizeof::Context
+impl<'a, 'b, Subscribers, Psks> message::ContentSizeof<Wrap<'a, 'b, Subscribers, Psks>> for sizeof::Context
 where
-    Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>> + Clone,
+    Subscribers: IntoIterator<Item = Permissioned<&'b Identifier>> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
     Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
     Psks::IntoIter: ExactSizeIterator,
 {
-    async fn sizeof(&mut self, keyload: &Wrap<'a, Subscribers, Psks>) -> Result<&mut sizeof::Context> {
+    async fn sizeof(&mut self, keyload: &Wrap<'a, 'b, Subscribers, Psks>) -> Result<&mut sizeof::Context> {
         let subscribers = keyload.subscribers.clone().into_iter();
         let psks = keyload.psks.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());
@@ -141,15 +146,15 @@ where
 }
 
 #[async_trait(?Send)]
-impl<'a, OS, Subscribers, Psks> message::ContentWrap<Wrap<'a, Subscribers, Psks>> for wrap::Context<OS>
+impl<'a, 'b, OS, Subscribers, Psks> message::ContentWrap<Wrap<'a, 'b, Subscribers, Psks>> for wrap::Context<OS>
 where
-    Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>> + Clone,
+    Subscribers: IntoIterator<Item = Permissioned<&'b Identifier>> + Clone,
     Subscribers::IntoIter: ExactSizeIterator,
     Psks: IntoIterator<Item = &'a (PskId, &'a Psk)> + Clone,
     Psks::IntoIter: ExactSizeIterator,
     OS: io::OStream,
 {
-    async fn wrap(&mut self, keyload: &mut Wrap<'a, Subscribers, Psks>) -> Result<&mut Self> {
+    async fn wrap(&mut self, keyload: &mut Wrap<'a, 'b, Subscribers, Psks>) -> Result<&mut Self> {
         let subscribers = keyload.subscribers.clone().into_iter();
         let psks = keyload.psks.clone().into_iter();
         let n_subscribers = Size::new(subscribers.len());

@@ -843,6 +843,7 @@ where
     ) -> Result<SendResponse<TSR>>
     where
         Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>> + Clone,
+        Subscribers::IntoIter: ExactSizeIterator,
         Top: Into<Topic>,
         Psks: IntoIterator<Item = PskId>,
     {
