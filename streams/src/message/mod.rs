@@ -19,3 +19,5 @@ pub(crate) mod subscription;
 pub(crate) mod unsubscription;
 
 pub(crate) mod message_types;
+
+pub(crate) mod branch_announcement;

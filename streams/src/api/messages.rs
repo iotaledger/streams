@@ -323,12 +323,12 @@ mod tests {
 
     use anyhow::Result;
 
-    use lets::{address::Address, id::Ed25519, message::Topic, transport::bucket};
+    use lets::{address::Address, id::Ed25519, transport::bucket};
 
     use crate::api::{
         message::{
             Message,
-            MessageContent::{Announcement, Keyload, SignedPacket},
+            MessageContent::{BranchAnnouncement, Keyload, SignedPacket},
         },
         user::User,
     };
@@ -340,21 +340,21 @@ mod tests {
         let p = b"payload";
         let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
 
-        let branch_1 = Topic::from("Branch 1");
-        let branch_announcement = author.new_branch(branch_1.clone()).await?;
-        let keyload_1 = author.send_keyload_for_all_rw(branch_1.clone()).await?;
+        let branch_1 = "BRANCH_1";
+        let branch_announcement = author.new_branch("BASE_BRANCH", branch_1).await?;
+        let keyload_1 = author.send_keyload_for_all_rw(branch_1).await?;
         subscriber1.sync().await?;
-        let _packet_1 = subscriber1.send_signed_packet(branch_1.clone(), &p, &p).await?;
+        let _packet_1 = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress
         // through the next messages
-        let _packet_2 = subscriber1.send_signed_packet(branch_1.clone(), &p, &p).await?;
+        let _packet_2 = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
 
         author.sync().await?;
 
         // This packet has to wait in the `Messages::msg_queue` until `packet` is processed
-        let keyload_2 = author.send_keyload_for_all_rw(branch_1.clone()).await?;
+        let keyload_2 = author.send_keyload_for_all_rw(branch_1).await?;
 
         subscriber1.sync().await?;
         let last_signed_packet = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
@@ -366,7 +366,7 @@ mod tests {
             &[
                 Message {
                     address: address_0,
-                    content: Announcement(..),
+                    content: BranchAnnouncement(..),
                     ..
                 },
                 Message {

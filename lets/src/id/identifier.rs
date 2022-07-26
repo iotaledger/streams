@@ -10,9 +10,6 @@ use async_trait::async_trait;
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 
-#[cfg(feature = "did")]
-use identity_iota::did::MethodScope;
-
 // Streams
 use spongos::{
     ddml::{
@@ -56,8 +53,8 @@ impl Identifier {
         }
     }
 
-    // #[deprecated = "to be removed once key-exchange is encapsulated within Identity"]
-    pub async fn _ke_pk(&self) -> Result<x25519::PublicKey> {
+    // Get the Public key part of the key exchange of the identifier
+    pub async fn ke_pk(&self) -> Result<x25519::PublicKey> {
         match self {
             Identifier::Ed25519(pk) => Ok(pk.try_into()?),
             #[cfg(feature = "did")]
@@ -65,7 +62,10 @@ impl Identifier {
                 let doc = resolve_document(url_info).await?;
                 let method = doc
                     .document
-                    .resolve_method(url_info.exchange_fragment(), Some(MethodScope::key_agreement()))
+                    .resolve_method(
+                        url_info.exchange_fragment(),
+                        Some(identity_iota::did::MethodScope::key_agreement()),
+                    )
                     .expect("DID Method could not be resolved");
                 Ok(x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?)
             }
