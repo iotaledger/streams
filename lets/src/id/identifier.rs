@@ -38,7 +38,12 @@ impl core::fmt::Debug for Identifier {
         match self {
             Self::Ed25519(arg0) => f.debug_tuple("Ed25519").field(&hex::encode(&arg0)).finish(),
             #[cfg(feature = "did")]
-            Self::DID(url_info) => f.debug_tuple("DID").field(&url_info.did()).finish(),
+            Self::DID(url_info) => f
+                .debug_tuple("DID")
+                .field(&url_info.did())
+                .field(&url_info.exchange_fragment())
+                .field(&url_info.signing_fragment())
+                .finish(),
         }
     }
 }
@@ -49,7 +54,7 @@ impl Identifier {
         match self {
             Identifier::Ed25519(public_key) => public_key.as_slice(),
             #[cfg(feature = "did")]
-            Identifier::DID(url_info) => url_info.did().as_bytes(),
+            Identifier::DID(url_info) => url_info.as_ref(),
         }
     }
 
@@ -60,14 +65,16 @@ impl Identifier {
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
                 let doc = resolve_document(url_info).await?;
-                let method = doc
-                    .document
-                    .resolve_method(
-                        url_info.exchange_fragment(),
-                        Some(identity_iota::did::MethodScope::key_agreement()),
-                    )
-                    .expect("DID Method could not be resolved");
-                Ok(x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?)
+                match doc.document.resolve_method(
+                    url_info.exchange_fragment(),
+                    Some(identity_iota::did::MethodScope::key_agreement()),
+                ) {
+                    Some(e) => Ok(x25519::PublicKey::try_from_slice(&e.data().try_decode()?)?),
+                    None => Err(anyhow!(
+                        "DID Method fragment {} could not be resolved",
+                        url_info.exchange_fragment()
+                    )),
+                }
             }
         }
     }
@@ -87,13 +94,6 @@ impl Default for Identifier {
 impl From<ed25519::PublicKey> for Identifier {
     fn from(pk: ed25519::PublicKey) -> Self {
         Identifier::Ed25519(pk)
-    }
-}
-
-#[cfg(feature = "did")]
-impl From<&DIDUrlInfo> for Identifier {
-    fn from(did: &DIDUrlInfo) -> Self {
-        Identifier::DID(did.clone())
     }
 }
 

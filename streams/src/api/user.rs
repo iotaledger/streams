@@ -6,7 +6,7 @@ use core::fmt::{Debug, Formatter, Result as FormatResult};
 use anyhow::{anyhow, bail, ensure, Result};
 use async_trait::async_trait;
 use futures::{future, TryStreamExt};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 // IOTA
@@ -69,7 +69,7 @@ struct State {
     psk_store: HashMap<PskId, Psk>,
 
     /// List of Subscribed Identifiers
-    subscribers: Vec<Identifier>,
+    subscribers: HashSet<Identifier>,
 
     spongos_store: HashMap<MsgId, Spongos>,
 
@@ -94,16 +94,12 @@ impl<T> User<T> {
         Psks: IntoIterator<Item = (PskId, Psk)>,
     {
         let mut psk_store = HashMap::new();
-        let mut subscribers = Vec::new();
+        let subscribers = HashSet::new();
 
         // Store any pre shared keys
         psks.into_iter().for_each(|(pskid, psk)| {
             psk_store.insert(pskid, psk);
         });
-
-        if let Some(id) = user_id.as_ref() {
-            subscribers.push(id.to_identifier());
-        }
 
         Self {
             transport,
@@ -189,24 +185,12 @@ impl<T> User<T> {
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        match self.state.subscribers.binary_search(&subscriber) {
-            Ok(_) => false,
-            Err(pos) => {
-                self.state.subscribers.insert(pos, subscriber);
-                true
-            }
-        }
+        self.state.subscribers.insert(subscriber)
     }
 
     pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
-        let removed_sub = match self.state.subscribers.binary_search(id) {
-            Ok(p) => {
-                self.state.subscribers.remove(p);
-                true
-            }
-            Err(_) => false,
-        };
-        self.state.cursor_store.remove(id) | removed_sub
+        self.state.cursor_store.remove(id);
+        self.state.subscribers.remove(id)
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
@@ -1256,7 +1240,7 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
         for _ in 0..amount_subs.inner() {
             let mut subscriber = Identifier::default();
             self.mask(&mut subscriber)?;
-            user_state.subscribers.push(subscriber);
+            user_state.subscribers.insert(subscriber);
         }
 
         let mut amount_psks = Size::default();

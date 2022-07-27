@@ -90,6 +90,14 @@ impl DIDUrlInfo {
     }
 }
 
+impl AsRef<[u8]> for DIDUrlInfo {
+    fn as_ref(&self) -> &[u8] {
+        // TODO how to make a ref to all fields without permanently storing?
+        // For now we assume someone wont be using the same DID twice
+        self.did().as_bytes()
+    }
+}
+
 impl Mask<&DIDUrlInfo> for sizeof::Context {
     fn mask(&mut self, url_info: &DIDUrlInfo) -> Result<&mut Self> {
         self.mask(Bytes::new(url_info.did()))?

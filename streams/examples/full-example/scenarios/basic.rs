@@ -462,37 +462,31 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     println!("> Subscriber A can only read the last keyload");
     let next_messages = subscriber_a.fetch_next_messages().await?;
     print_user("Subscriber A", &subscriber_a);
-    let last_msg_as_a = next_messages
-        .last()
-        .expect("Subscriber A has not received the latest keyload");
     assert!(
-        last_msg_as_a.is_keyload(),
-        "Subscriber A expected the last message to be a keyload message, found {:?} instead",
-        last_msg_as_a.content()
+        !next_messages
+            .iter()
+            .any(|msg| msg.address() == last_signed_packet.address()),
+        "Subscriber A did not expect the latest signed message"
     );
 
     println!("> Subscriber B can only read the last keyload");
     let next_messages = subscriber_b.fetch_next_messages().await?;
     print_user("Subscriber B", &subscriber_b);
-    let last_msg_as_b = next_messages
-        .last()
-        .expect("Subscriber B has not received the latest keyload");
     assert!(
-        last_msg_as_b.is_keyload(),
-        "Subscriber B expected the last message to be a keyload message, found {:?} instead",
-        last_msg_as_b.content()
+        !next_messages
+            .iter()
+            .any(|msg| msg.address() == last_signed_packet.address()),
+        "Subscriber B did not expect the latest signed message"
     );
 
     println!("> Subscriber C can only read the last keyload");
     let next_messages = subscriber_c.fetch_next_messages().await?;
     print_user("Subscriber C", &subscriber_c);
-    let last_msg_as_c = next_messages
-        .last()
-        .expect("Subscriber C has not received the latest keyload");
     assert!(
-        last_msg_as_c.is_keyload(),
-        "Subscriber C expected the last message to be a keyload message, found {:?} instead",
-        last_msg_as_c.content()
+        !next_messages
+            .iter()
+            .any(|msg| msg.address() == last_signed_packet.address()),
+        "Subscriber C did not expect the latest signed message"
     );
 
     println!("> Subscribers A and B try to send a signed packet");

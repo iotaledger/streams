@@ -142,18 +142,11 @@ impl AppAddr {
     }
 
     pub fn gen(identifier: &Identifier, base_topic: &Topic) -> AppAddr {
-        let mut addr = [0u8; 40];
-        let id_bytes = identifier.as_bytes();
-        // Create spongos to squeeze topic into final 8 bytes
-        let squeezed_topic: [u8; 8] = Spongos::<KeccakF1600>::init().sponge(base_topic);
-        if id_bytes.len() > 32 {
-            let squeezed_id: [u8; 32] = Spongos::<KeccakF1600>::init().sponge(id_bytes);
-            addr[..32].copy_from_slice(&squeezed_id)
-        } else {
-            addr[..32].copy_from_slice(id_bytes);
-        }
-        addr[32..].copy_from_slice(&squeezed_topic);
-        Self::new(addr)
+        let mut spongos = Spongos::<KeccakF1600>::init();
+        spongos.absorb(base_topic);
+        spongos.absorb(identifier);
+        spongos.commit();
+        spongos.squeeze()
     }
 
     /// Get the hexadecimal representation of the appaddr

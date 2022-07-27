@@ -1,5 +1,4 @@
 // Rust
-use alloc::string::ToString;
 use core::hash::Hash;
 
 // 3rd-party
@@ -26,7 +25,7 @@ use spongos::{
 use crate::id::did::DIDUrlInfo;
 
 pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIotaDocument> {
-    let did_url = IotaDID::parse(url_info.did().to_string())?;
+    let did_url = IotaDID::parse(url_info.did())?;
     let doc = DIDClient::builder()
         .network(did_url.network()?)
         .primary_node(url_info.client_url(), None, None)?

@@ -67,7 +67,7 @@ impl Identity {
         match self {
             Self::Ed25519(ed25519) => ed25519.inner().public_key().into(),
             #[cfg(feature = "did")]
-            Self::DID(did) => did.info().url_info().into(),
+            Self::DID(did) => Identifier::DID(did.info().url_info().clone()),
         }
     }
 }
