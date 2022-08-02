@@ -4,10 +4,10 @@ use async_trait::async_trait;
 
 use spongos::{
     ddml::{
-        commands::{sizeof, unwrap, wrap, Absorb, Guard, Mask, Skip},
+        commands::{sizeof, unwrap, wrap, Absorb, Commit, Guard, Mask, Skip, Squeeze},
         io,
         modifiers::External,
-        types::{Maybe, NBytes, Size, Uint8},
+        types::{Mac, Maybe, NBytes, Size, Uint8},
     },
     PRP,
 };
@@ -21,6 +21,8 @@ use crate::{
         version::{HDF_ID, STREAMS_1_VER, UTF8},
     },
 };
+
+const MAC: Mac = Mac::new(32);
 
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -141,7 +143,9 @@ impl ContentSizeof<HDF> for sizeof::Context {
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
             .mask(&hdf.topic)?
             .mask(&hdf.publisher)?
-            .skip(Size::new(hdf.sequence))?;
+            .skip(Size::new(hdf.sequence))?
+            .commit()?
+            .squeeze(&MAC)?;
 
         Ok(self)
     }
@@ -178,7 +182,9 @@ where
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
             .mask(&hdf.topic)?
             .mask(&hdf.publisher)?
-            .skip(Size::new(hdf.sequence))?;
+            .skip(Size::new(hdf.sequence))?
+            .commit()?
+            .squeeze(&MAC)?;
 
         Ok(self)
     }
@@ -228,7 +234,9 @@ where
             .absorb(Maybe::new(&mut hdf.linked_msg_address))?
             .mask(&mut hdf.topic)?
             .mask(&mut hdf.publisher)?
-            .skip(&mut seq_num)?;
+            .skip(&mut seq_num)?
+            .commit()?
+            .squeeze(&MAC)?;
 
         hdf.encoding = encoding.inner();
         hdf.version = version.inner();
