@@ -31,10 +31,5 @@ If you want to get involved in discussions about this library, or if you are loo
 
 ## What You Will Find Here
 
-This documentation has five parts:
-
-1. [The Overview](documentation/docs/overview.md): a detailed overview of the streams library.
-2. [Libraries](documentation/docs/libraries): all available programming languages and their resources.
-3. [The Specification](documentation/docs/specs.md): detailed explanation requirements and functionality.
-4. [Contribute](documentation/docs/contribute.md): how you can work on the streams software.
-5. [Get in touch](documentation/docs/troubleshooting.md): join the community and become part of the X-Team!
+1. [Contribute](contribute.md): how you can work on the streams software.
+2. [Get in touch](troubleshooting.md): join the community and become part of the X-Team!
