@@ -28,8 +28,3 @@ For more information on our Chrysalis components, check out our [Chrysalis docum
 ## Joining the Discussion
 
 If you want to get involved in discussions about this library, or if you are looking for support, head to the [#streams-discussion](https://discord.com/channels/397872799483428865/436513763387244544) channel on [Discord](https://discord.iota.org).
-
-## What You Will Find Here
-
-1. [Contribute](contribute.md): how you can work on the streams software.
-2. [Get in touch](troubleshooting.md): join the community and become part of the X-Team!
