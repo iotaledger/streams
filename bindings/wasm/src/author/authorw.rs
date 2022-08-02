@@ -155,7 +155,7 @@ impl Author {
             .borrow_mut()
             .send_announce()
             .await
-            .map(|addr| UserResponse::new(addr.into(), None, None))
+            .map(|addr| UserResponse::new(addr.into(), None, MessageType::Announce, None))
             .into_js_result()
     }
 
@@ -165,7 +165,9 @@ impl Author {
             .borrow_mut()
             .send_keyload_for_everyone(link.as_inner())
             .await
-            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .map(|(link, seq_link)| {
+                UserResponse::new(link.into(), seq_link.map(Into::into), MessageType::Keyload, None)
+            })
             .into_js_result()
     }
 
@@ -178,7 +180,9 @@ impl Author {
             .borrow_mut()
             .send_keyload(link.as_inner(), &identifiers)
             .await
-            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .map(|(link, seq_link)| {
+                UserResponse::new(link.into(), seq_link.map(Into::into), MessageType::Keyload, None)
+            })
             .into_js_result()
     }
 
@@ -197,7 +201,9 @@ impl Author {
                 &Bytes(masked_payload.clone()),
             )
             .await
-            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .map(|(link, seq_link)| {
+                UserResponse::new(link.into(), seq_link.map(Into::into), MessageType::TaggedPacket, None)
+            })
             .into_js_result()
     }
 
@@ -212,7 +218,9 @@ impl Author {
             .borrow_mut()
             .send_signed_packet(link.as_inner(), &Bytes(public_payload), &Bytes(masked_payload))
             .await
-            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .map(|(link, seq_link)| {
+                UserResponse::new(link.into(), seq_link.map(Into::into), MessageType::SignedPacket, None)
+            })
             .into_js_result()
     }
 
@@ -241,7 +249,12 @@ impl Author {
             .receive_tagged_packet(link.as_inner())
             .await
             .map(|(pub_bytes, masked_bytes)| {
-                UserResponse::new(link, None, Some(Message::new(None, pub_bytes.0, masked_bytes.0)))
+                UserResponse::new(
+                    link,
+                    None,
+                    MessageType::TaggedPacket,
+                    Some(Message::new(None, pub_bytes.0, masked_bytes.0)),
+                )
             })
             .into_js_result()
     }
@@ -256,6 +269,7 @@ impl Author {
                 UserResponse::new(
                     link,
                     None,
+                    MessageType::SignedPacket,
                     Some(Message::new(
                         Some(public_key_to_string(&pk)),
                         pub_bytes.0,
@@ -435,7 +449,7 @@ impl Author {
 
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
         pskid_from_hex_str(&pskid_str)
-            .and_then(|pskid| self.author.borrow_mut().remove_psk(pskid).into())
+            .and_then(|pskid| self.author.borrow_mut().remove_psk(pskid))
             .into_js_result()
     }
 }

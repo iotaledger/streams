@@ -86,6 +86,7 @@ async function main() {
   console.log("\nAuthor fetching next messages");
   for (const msg of await auth.clone().fetchNextMsgs()) {
     console.log("Found a message...");
+    console.log("Message type: ", msg.messageType)
     console.log(
       "Public: ",
       from_bytes(msg.message.get_public_payload()),
