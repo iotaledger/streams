@@ -31,7 +31,7 @@ bee-rest-api = "=0.1.2"
 
 ## Basic Usage
 
-After adding the necessary projects and their dependencies, you can start using the Streams library. Below are two example scripts for both the [author](../explanations/authors) and the [subscriber](../explanations/subscribers). The author script will announce a channel and print the announcement link. The subscriber script handles the announcement to let subscribers know where to find the channel.
+After adding the necessary projects and their dependencies, you can start using the Streams library. Below are two example scripts for both the [author](../explanations/channels_protocol/authors) and the [subscriber](../explanations/channels_protocol/subscribers). The author script will announce a channel and print the announcement link. The subscriber script handles the announcement to let subscribers know where to find the channel.
  
 ### Author
 
@@ -89,7 +89,7 @@ async fn main() -> Result<()> {
 
 ## Next Steps
 
-Now you can start subscribing users to the channel and generating branches to specify access control for publishers and subscribers via [keyload](../explanations/keyloads) messages.   
+Now you can start subscribing users to the channel and generating branches to specify access control for publishers and subscribers via [keyload](../explanations/channels_protocol/keyloads) messages.   
 
 ### Subscription
 

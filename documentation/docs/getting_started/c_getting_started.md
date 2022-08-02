@@ -17,7 +17,7 @@ You can build a Streams API that is pulled into other languages using the C bind
 
 ## Prerequisites
 
-Before building anything, make sure you have [`cmake`]((https://cmake.org/)) installed on your machine.
+Before building anything, make sure you have [`cmake`](https://cmake.org/) installed on your machine.
 
 ## Build the Library
 
