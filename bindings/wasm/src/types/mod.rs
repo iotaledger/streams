@@ -322,13 +322,24 @@ pub fn get_message_content(msg: UnwrappedMessage) -> UserResponse {
         } => UserResponse::new(
             msg.link.into(),
             None,
+            MessageType::SignedPacket,
             Some(Message::new(Some(hex::encode(pk.to_bytes())), p.0, m.0)),
         ),
         MessageContent::TaggedPacket {
             public_payload: p,
             masked_payload: m,
-        } => UserResponse::new(msg.link.into(), None, Some(Message::new(None, p.0, m.0))),
-        _ => UserResponse::new(msg.link.into(), None, None),
+        } => UserResponse::new(
+            msg.link.into(),
+            None,
+            MessageType::TaggedPacket,
+            Some(Message::new(None, p.0, m.0)),
+        ),
+        MessageContent::Keyload => UserResponse::new(msg.link.into(), None, MessageType::Keyload, None),
+        MessageContent::Announce => UserResponse::new(msg.link.into(), None, MessageType::Announce, None),
+        MessageContent::Subscribe => UserResponse::new(msg.link.into(), None, MessageType::Subscribe, None),
+        MessageContent::Unsubscribe => UserResponse::new(msg.link.into(), None, MessageType::Unsubscribe, None),
+        MessageContent::Unreadable(..) => UserResponse::new(msg.link.into(), None, MessageType::Unreadable, None),
+        MessageContent::Sequence => UserResponse::new(msg.link.into(), None, MessageType::Sequence, None),
     }
 }
 
@@ -361,6 +372,7 @@ impl From<ChannelType> for ApiChannelType {
 pub struct UserResponse {
     link: Address,
     seq_link: Option<Address>,
+    message_type: MessageType,
     message: Option<Message>,
 }
 
@@ -524,6 +536,19 @@ mod public_keys_tests {
 }
 
 #[wasm_bindgen]
+#[derive(Clone, Copy)]
+pub enum MessageType {
+    SignedPacket = "signedPacket",
+    TaggedPacket = "taggedPacket",
+    Subscribe = "subscribe",
+    Unsubscribe = "unsubscribe",
+    Keyload = "keyload",
+    Announce = "announce",
+    Unreadable = "unreadable",
+    Sequence = "sequence",
+}
+
+#[wasm_bindgen]
 #[derive(Clone)]
 pub struct Message {
     identifier: Option<String>,
@@ -533,10 +558,6 @@ pub struct Message {
 
 #[wasm_bindgen]
 impl Message {
-    pub fn default() -> Message {
-        Self::new(None, Vec::new(), Vec::new())
-    }
-
     pub fn new(identifier: Option<String>, public_payload: Vec<u8>, masked_payload: Vec<u8>) -> Message {
         Message {
             identifier,
@@ -567,18 +588,25 @@ impl NextMsgAddress {
 
 #[wasm_bindgen]
 impl UserResponse {
-    pub fn new(link: Address, seq_link: Option<Address>, message: Option<Message>) -> Self {
+    pub fn new(link: Address, seq_link: Option<Address>, message_type: MessageType, message: Option<Message>) -> Self {
         UserResponse {
             link,
             seq_link,
+            message_type,
             message,
         }
     }
 
     #[wasm_bindgen(js_name = "fromStrings")]
-    pub fn from_strings(link: String, seq_link: Option<String>, message: Option<Message>) -> Result<UserResponse> {
+    pub fn from_strings(
+        link: String,
+        message_type: MessageType,
+        seq_link: Option<String>,
+        message: Option<Message>,
+    ) -> Result<UserResponse> {
         Ok(UserResponse {
             link: Address::from_str(&link).into_js_result()?,
+            message_type,
             seq_link: seq_link
                 .as_deref()
                 .map(Address::from_str)
@@ -600,6 +628,11 @@ impl UserResponse {
     #[wasm_bindgen(getter, js_name = "seqLink")]
     pub fn seq_link(&self) -> Option<Address> {
         self.seq_link
+    }
+
+    #[wasm_bindgen(getter, js_name = "messageType")]
+    pub fn message_type(&self) -> MessageType {
+        self.message_type
     }
 
     #[wasm_bindgen(getter)]
@@ -630,10 +663,7 @@ impl From<ApiDetails> for Details {
     fn from(details: ApiDetails) -> Self {
         Self {
             metadata: details.metadata.into(),
-            milestone: match details.milestone {
-                Some(ms) => Some(ms.into()),
-                None => None,
-            },
+            milestone: details.milestone.map(|ms| ms.into()),
         }
     }
 }
@@ -707,10 +737,7 @@ impl From<ApiMessageMetadata> for MessageMetadata {
             is_solid: metadata.is_solid,
             referenced_by_milestone_index: metadata.referenced_by_milestone_index,
             milestone_index: metadata.milestone_index,
-            ledger_inclusion_state: match metadata.ledger_inclusion_state {
-                None => None,
-                Some(inc) => Some(inc.into()),
-            },
+            ledger_inclusion_state: metadata.ledger_inclusion_state.map(|inc| inc.into()),
             conflict_reason: metadata.conflict_reason,
             should_promote: metadata.should_promote,
             should_reattach: metadata.should_reattach,

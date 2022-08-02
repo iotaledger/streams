@@ -6,35 +6,24 @@ The documentation is built using [Docusaurus 2](https://docusaurus.io/). The dep
 
 - [Node.js v14.14+](https://nodejs.org/en/)
 - [yarn](https://yarnpkg.com/getting-started/install)
-- `IOTA WIKI CLI` installed with npm
 
 ## Installation
 
 ```console
-npm i
-npm run setup
+yarn
 ```
 
-This command checks out a local copy of the wiki and creates links to the content.
+This command installs all necessary dependencies.
 
 ## Local Development
 
 ```console
-npm start
+yarn start
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+This command starts a local, wiki themed development server and opens up a browser window. Most changes are reflected live without having to restart the server.
 
-## Tear Down
-
-```console
-npm run clean
-```
-
-This command deletes the local wiki and local links.
-
-
-## Including .md file 
+## Including .md file
 
 ```console
 {@import <file path>}

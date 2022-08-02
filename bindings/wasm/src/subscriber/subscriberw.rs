@@ -165,7 +165,12 @@ impl Subscriber {
             .receive_tagged_packet(link.as_inner())
             .await
             .map(|(pub_bytes, masked_bytes)| {
-                UserResponse::new(link, None, Some(Message::new(None, pub_bytes.0, masked_bytes.0)))
+                UserResponse::new(
+                    link,
+                    None,
+                    MessageType::TaggedPacket,
+                    Some(Message::new(None, pub_bytes.0, masked_bytes.0)),
+                )
             })
             .into_js_result()
     }
@@ -180,6 +185,7 @@ impl Subscriber {
                 UserResponse::new(
                     link,
                     None,
+                    MessageType::SignedPacket,
                     Some(Message::new(
                         Some(public_key_to_string(&pk)),
                         pub_bytes.0,
@@ -224,7 +230,7 @@ impl Subscriber {
             .borrow_mut()
             .send_subscribe(link.as_inner())
             .await
-            .map(|link| UserResponse::new(link.into(), None, None))
+            .map(|link| UserResponse::new(link.into(), None, MessageType::Subscribe, None))
             .into_js_result()
     }
 
@@ -234,7 +240,7 @@ impl Subscriber {
             .borrow_mut()
             .send_unsubscribe(link.as_inner())
             .await
-            .map(|link| UserResponse::new(link.into(), None, None))
+            .map(|link| UserResponse::new(link.into(), None, MessageType::Unsubscribe, None))
             .into_js_result()
     }
 
@@ -249,7 +255,9 @@ impl Subscriber {
             .borrow_mut()
             .send_tagged_packet(link.as_inner(), &Bytes(public_payload), &Bytes(masked_payload))
             .await
-            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .map(|(link, seq_link)| {
+                UserResponse::new(link.into(), seq_link.map(Into::into), MessageType::TaggedPacket, None)
+            })
             .into_js_result()
     }
 
@@ -264,7 +272,9 @@ impl Subscriber {
             .borrow_mut()
             .send_signed_packet(link.as_inner(), &Bytes(public_payload), &Bytes(masked_payload))
             .await
-            .map(|(link, seq_link)| UserResponse::new(link.into(), seq_link.map(Into::into), None))
+            .map(|(link, seq_link)| {
+                UserResponse::new(link.into(), seq_link.map(Into::into), MessageType::SignedPacket, None)
+            })
             .into_js_result()
     }
 
@@ -400,7 +410,7 @@ impl Subscriber {
 
     pub fn remove_psk(&self, pskid_str: String) -> Result<()> {
         pskid_from_hex_str(&pskid_str)
-            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid).into())
+            .and_then(|pskid| self.subscriber.borrow_mut().remove_psk(pskid))
             .into_js_result()
     }
 }

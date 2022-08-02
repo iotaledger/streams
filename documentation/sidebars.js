@@ -10,106 +10,100 @@
  */
 
 module.exports = {
-  docs: [{
-    type: 'doc',
-    id: 'welcome',
-  },
-  {
-    type: 'doc',
-    id: 'overview',
-  },
-  {
-    type: 'doc',
-    id: 'getting_started',
-  },
-  {
-    type: 'category',
-    label: 'Libraries',
-    collapsed: false,
-    items: [{
-      type: 'doc',
-      id: 'libraries/overview',
-      label: 'Overview',
+    docs: [{
+        type: 'doc',
+        id: 'welcome',
     },
-    {
-      type: 'category',
-      label: 'Rust',
-      items: [
         {
-          type: 'doc',
-          id: 'libraries/rust/getting_started',
-          label: 'Getting Started',
+            type: 'category',
+            label: 'Getting Started',
+            items: [
+                {
+                    type: 'doc',
+                    id: 'getting_started/overview',
+                    label: 'Overview',
+                },
+                {
+                    type: 'doc',
+                    id: 'getting_started/rust_getting_started',
+                    label: 'Rust',
+                },
+                {
+                    type: 'doc',
+                    id: 'getting_started/wasm_getting_started',
+                    label: 'Wasm Binding',
+                },
+                {
+                    type: 'doc',
+                    id: 'getting_started/c_getting_started',
+                    label: 'C Binding',
+                },
+            ]
         },
         {
-          type: 'doc',
-          id: 'libraries/rust/examples',
-          label: 'Examples'
+            type: 'category',
+            label: 'How Tos',
+            items:
+                [
+                    {
+                        type: 'doc',
+                        id: 'how_tos/rust_how_tos',
+                        label: 'Rust',
+                    },
+                    {
+                        type: 'doc',
+                        id: 'how_tos/c_how_tos',
+                        label: 'C Binding',
+                    },
+                    {
+                        type: 'doc',
+                        id: 'how_tos/wasm_how_tos',
+                        label: 'Wasm Binding',
+                    }
+                ]
         },
         {
-          type: 'doc',
-          id: 'libraries/rust/api_reference',
-          label: 'API Reference'
-        },
-      ]
-    },
-    {
-      type: 'category',
-      label: 'Wasm',
-      items: [
-        {
-          type: 'doc',
-          id: 'libraries/wasm/getting_started',
-          label: 'Getting Started'
-        },
-        {
-          type: 'doc',
-          id: 'libraries/wasm/examples',
-          label: 'Examples'
-        },
-        {
-          type: 'doc',
-          id: 'libraries/wasm/api_reference',
-          label: 'API Reference'
-        },
-      ]
-    },
-    {
-      type: 'category',
-      label: 'C',
-      items: [
-        {
-          type: 'doc',
-          id: 'libraries/c/getting_started',
-          label: 'Getting Started'
+            type: 'category',
+            label: 'Explanations',
+            items:
+                [
+                    {
+                        type: 'category',
+                        label: 'Channels Protocol',
+                        items: [
+                            {
+                                type: 'doc',
+                                id: 'explanations/channels_protocol/overview',
+                                label: 'Overview',
+                            },
+                            'explanations/channels_protocol/authors',
+                            'explanations/channels_protocol/subscribers',
+                            'explanations/channels_protocol/branching',
+                            'explanations/channels_protocol/keyloads',
+                            'explanations/channels_protocol/sequencing',
+                        ],
+                    }
+                ]
         },
         {
-          type: 'doc',
-          id: 'libraries/c/examples',
-          label: 'Examples'
+            type: 'category',
+            label: 'Reference',
+            items: [
+                'reference/rust_api_reference',
+                'reference/c_api_reference',
+                'reference/wasm_api_reference',
+                'reference/specs',
+            ]
         },
         {
-          type: 'doc',
-          id: 'libraries/c/api_reference',
-          label: 'API Reference'
+            type: 'doc',
+            id: 'troubleshooting',
+            label: 'Troubleshooting'
         },
-      ]
-    }
+        {
+            type: 'doc',
+            id: 'contribute',
+            label: 'Contribute',
+        }
     ]
-  },
-  {
-    type: 'doc',
-    id: 'specs',
-    label: 'Specification',
-  },
-  {
-    type: 'doc',
-    id: 'troubleshooting',
-    label: 'Troubleshooting'
-  },
-  {
-    type: 'doc',
-    id: 'contribute',
-    label: 'Contribute',
-  }
-  ]
 };
