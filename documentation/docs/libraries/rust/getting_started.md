@@ -1,5 +1,15 @@
+---
+description: Getting started with Rust in IOTA Streams.
+image: /img/logo/iota_mark_light.png
+keywords:
+- api
+- Rust
+- getting started
+- reference
+---
 # Getting Started
-Streams requires an asynchronous runtime environment to be set, we suggest using [tokio](https://docs.rs/tokio/latest/tokio/). Streams also uses [anyhow](https://docs.rs/anyhow/latest/anyhow/) for error handling, so projects can use `anyhow::Result` and `anyhow::Error` for easier integration. 
+
+Streams requires that you set an asynchronous runtime environment. We suggest using [tokio](https://docs.rs/tokio/latest/tokio/). Streams also uses [anyhow](https://docs.rs/anyhow/latest/anyhow/) for error handling, so projects can use `anyhow::Result` and `anyhow::Error` for easier integration. 
 
 To create a new Rust project, run:
 
@@ -7,7 +17,7 @@ To create a new Rust project, run:
 cargo new PROJECT_NAME
 ```
 
-Create two of these Rust projects, one for the author and one for the subscriber, and add the following dependencies to both their `Cargo.toml` files:
+Create two Rust projects: one for the author and one for the subscriber, and add the following dependencies to both their `Cargo.toml` files:
 
 ```toml
 tokio = { version = "1.5.0", features = ["full"] }
@@ -20,12 +30,14 @@ bee-rest-api = "=0.1.2"
 ```
 
 ## Basic Usage
-With the needed projects and their dependencies added, we can start using the Streams library. Below are two example scripts for both the author and the subscriber. The author script will announce a channel and print the announcement link. The subscriber script handles the announcement to let the subscriber know where to find the channel.
+
+After adding the necessary projects and their dependencies, you can start using the Streams library. Below are two example scripts for both the [author](../../overview.md#authors) and the [subscriber](../../overview.md#subscribers). The author script will announce a channel and print the announcement link. The subscriber script handles the announcement to let subscribers know where to find the channel.
  
 ### Author
+
 Replace the seed of the author with a random string and run the script to get the announcement link.
 
-```
+```rust
 use anyhow::Result;
 use iota_streams::app_channels::api::tangle::{Author, ChannelType};
 use iota_streams::app::transport::tangle::client::Client;
@@ -48,9 +60,10 @@ async fn main() -> Result<()> {
 ```
 
 ### Subscriber
+
 Replace the seed of the subscriber with a random string, paste the announcement link from the author script above and run the script to let the subscriber find the channel.
 
-```
+```rust
 use anyhow::Result;
 use iota_streams::app_channels::api::tangle::{Address, Subscriber};
 use iota_streams::app::transport::tangle::client::Client;
@@ -75,13 +88,16 @@ async fn main() -> Result<()> {
 ```
 
 ## Next Steps
-Now we can begin subscribing users to the channel and generating branches to specify access control for publishers and subscribers via keyload messages.  
+
+Now you can start subscribing users to the channel and generating branches to specify access control for publishers and subscribers via [keyload](../../overview.md#keyloads) messages.   
 
 ### Subscription
-To subscribe to a channel, subscribers create a subscribe message that is linked to the channel announcement message. The link of this message should then be provided to the author. This allows the author to handle the subscription message and use the public key of the subscriber for access control and validation purposes.
+
+To subscribe to a channel, subscribers create a subscribe message linked to the channel announcement message. The message link should then be provided to the author. This allows the author to handle the subscription message and use the subscriber's public key for access control and validation purposes.
 
 #### Subscriber
-```
+
+```rust
 // Send subscription message
 let sub_link = subscriber.send_subscribe(&ann_link).await?;
 // Provide the link to the author
@@ -89,18 +105,22 @@ println!("{}", sub_link.to_string());
 ```
 
 #### Author
-```
+
+```rust
 // Process subscriber link 
 let sub_link = Address::from_str("SUBSCRIPTION_LINK")?;
 author.receive_subscribe(&sub_link).await?;
 ```
 
 ### Keyloads 
-Keyload messages are used as an access control mechanism for a branch. A random key is generated and masked within the message using the public keys or pre-shared keys included in them. This allows the author to specify which subscribers have access to which branches. There are two ways to send a keyload:
+
+Keyload messages are an access control mechanism for a branch. A random key is generated and masked within the message using its public keys or pre-shared keys. This allows the author to specify which subscribers have access to which branches. There are two ways to send a keyload:
+
 - Send a keyload including specific pre-shared keys or subscriber public keys.
 - Send a keyload including all pre-shared keys and subscriber public keys known to the author.
 
 Example: 
+
 ```
 // Send keyload including pre-shared key
 let psk = psk_from_seed("KEY_SEED".as_bytes());
@@ -115,10 +135,12 @@ author.send_keyload(&ann_link, &vec![subscriber_public_key.into()]).await?;
 author.send_keyload_for_everyone(&ann_link).await?;
 ```
 
-### Pre-shared keys 
-As an alternative to subscribing via public key exchange using subscribe messages, an author may specify access control through the use of a pre-shared key (PSK). A PSK is a 32 byte array containing a secret key, shared outside of the Streams instance, that can be used to specify access through a keyload message. If an author issues a keyload with a PSK included, and a subscriber reads this message with the same PSK stored within itself, then the subscriber can participate in the proceeding branch without being subscribed to the channel. 
+### Pre-shared Keys 
+
+As an alternative to subscribing via public key exchange using subscribe messages, an author may specify access control by adding a pre-shared key (PSK). A PSK is a 32-byte array containing a secret key, shared outside of the Streams instance, that can be used to specify access through a keyload message. Suppose an author issues a keyload with a PSK included, and a subscriber reads this message with the same PSK stored within itself. In that case, the subscriber can participate in the proceeding branch without being subscribed to the channel. 
 
 Example: 
+
 ```
 use iota_streams::app_channels::api::{psk_from_seed, pskid_from_psk};
 use rand::Rng;
