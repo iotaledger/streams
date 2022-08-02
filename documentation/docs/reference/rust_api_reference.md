@@ -1,4 +1,12 @@
-# API Reference
+---
+description: Rust API Reference for the IOTA Streams Library.
+image: /img/logo/wallet_light.png
+keywords:
+- Rust
+- reference
+- API reference
+---
+# Rust API Reference
 
 Users are broken down into two types: `Author` and `Subscriber`. An `Author` is the user 
 that generates the channel, accepts subscription requests and can perform access granting 

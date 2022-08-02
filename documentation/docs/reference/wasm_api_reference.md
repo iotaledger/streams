@@ -1,4 +1,12 @@
-# API Reference
+---
+description: API Reference for the Wasm Binding of the IOTA Streams Library.
+image: /img/logo/wallet_light.png
+keywords:
+- C
+- reference
+- API reference
+---
+# Wasm Bindings API Reference
 
 ## Contents 
 The API is spread out across three categories: 

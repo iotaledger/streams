@@ -10,9 +10,9 @@ keywords:
 - examples
 ---
 # Examples
-An overview example of the available api tools can be found [here](../../../../bindings/wasm/examples/node.js).
+An overview example of the available api tools can be found [here](../../../bindings/wasm/examples/node.js).
 The general API is simply an abstraction over the rust library, so the examples found 
-[here](../rust/examples.md) still apply (with some minor modifications, see: [api_reference](api_reference.md))
+[here](rust_how_tos.md) still apply (with some minor modifications, see: [api_reference](../reference/wasm_api_reference.md))
 
 ## Core Functionality
 

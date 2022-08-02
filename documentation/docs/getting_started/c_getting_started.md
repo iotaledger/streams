@@ -5,8 +5,10 @@ keywords:
 - C
 - cmake
 - std
+- how-to
 ---
-# Getting Started
+# Getting Started with C
+
 The C bindings allow for you to build a Streams API which can be pulled into other languages. 
 The streams instance underlying the bindings is built with the `sync-client` flag to 
 ensure a compatible client interface using the `iota.rs iota-client` crate. 

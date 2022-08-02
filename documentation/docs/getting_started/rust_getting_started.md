@@ -1,4 +1,14 @@
-# Getting Started
+---
+description: Getting started with the official IOTA Client Rust Library.
+image: /img/logo/iota_mark_light.png
+keywords:
+- rust
+- cargo
+- toml
+- how-to
+---
+# Getting Started with Rust 
+
 Streams requires an asynchronous runtime environment to be set, we suggest using [tokio](https://docs.rs/tokio/latest/tokio/). Streams also uses [anyhow](https://docs.rs/anyhow/latest/anyhow/) for error handling, so projects can use `anyhow::Result` and `anyhow::Error` for easier integration. 
 
 To create a new Rust project, run:
