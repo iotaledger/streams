@@ -7,14 +7,14 @@ const dist = path.resolve(__dirname, "dist");
 module.exports = {
   mode: "production",
   entry: {
-    index: "./examples/web.js"
+    index: "./web.js"
   },
   output: {
     path: dist,
     filename: "[name].js"
   },
   devServer: {
-    contentBase: dist,
+    static: dist,
   },
   plugins: [
     new CopyWebPlugin({
@@ -26,16 +26,11 @@ module.exports = {
     }),
 
     new WasmPackPlugin({
-      crateDirectory: __dirname,
+      crateDirectory: path.resolve(__dirname, "../.."),
+      outDir: "examples/web/pkg"
     }),
   ],
-  // Makes the output less verbose
-  stats: 'minimal',
-  // Removes the asset size warning
-  performance: {
-    hints: false,
-  },
   experiments: {
-    asyncWebAssembly: true
+    syncWebAssembly: true
   }
 };

@@ -1,7 +1,5 @@
-import("../pkg/index.js").then(async (streams) => {
+import("./pkg/index.js").then(async (streams) => {
   window.streams = streams;
-
-  console.log(streams);
   window.streams.to_bytes = to_bytes;
   window.streams.from_bytes = from_bytes;
 

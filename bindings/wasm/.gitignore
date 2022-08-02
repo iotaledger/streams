@@ -1,6 +1,6 @@
 /target
-
 node_modules
-web
-node
+/web
+/node
 pkg
+dist

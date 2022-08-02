@@ -3,12 +3,9 @@
 /act
 **/target/
 **/*.rs.bk
-*.lock
 *.rs~
-*.toml~
-*.md~
-book
 .vscode
 .project
 .env
 .DS_Store
+*.lock
