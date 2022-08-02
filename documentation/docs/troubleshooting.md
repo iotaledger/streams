@@ -8,16 +8,18 @@ keywords:
 - solution
 - discord
 - stackexchange
+- reference
 ---
 # Troubleshooting
 
-
 ## StackExchange
 
-> [https://iota.stackexchange.com](https://iota.stackexchange.com/)
+Feel free to access our [stackexchange](https://iota.stackexchange.com/).
 
-The IOTA StackExchange a a nice tool for developers to find answers for a problem. Just search your problem and find your answer! If there is no one, submit your question and share it in the discussion channel below.
+The IOTA StackExchange a helpful tool for developers to find answers to a problem. 
 
-## Joining the discussion
+## Questions, Answers, and Discussions
 
-If you want to get involved in discussions about this library, or you're looking for support, go to the #streams channel on [Discord](https://discord.iota.org).
+If you are unable to find the answer to your questions, submit and share them in our [streams channel](https://discord.com/channels/397872799483428865/436513763387244544). If you do not have a question but are interested in what we are doing, come join in our discussions!
+
+

@@ -13,36 +13,61 @@ The C bindings allow for you to build a Streams API which can be pulled into oth
 The streams instance underlying the bindings is built with the `sync-client` flag to 
 ensure a compatible client interface using the `iota.rs iota-client` crate. 
 
-Before building anything you'll need to make sure you have `cmake` installed on your 
-machine.
+You can build a Streams API that is pulled into other languages using the C bindings. The streams instance used for the bindings is built with the `sync-client` flag to ensure a compatible client interface using the `iota.rs iota-client` crate.
 
-To build the library, first make sure you're in the c directory:
-```
+## Prerequisites
+
+Before building anything, make sure you have [`cmake`](https://cmake.org/) installed on your machine.
+
+## Build the Library
+
+1. After you have cloned the [repository](https://github.com/iotaledger/streams/), move into the C directory:
+
+```bash
 cd bindings/c
-``` 
-Update the flags in the `CMakeLists.txt` and run ```cmake .``` to 
-prepare the installation files. 
+```
+2. Update the [flags](#options-for-cmakelliststxt) in the [`CMakeLists.txt` file](https://github.com/iotaledger/streams/blob/develop/bindings/c/CMakeLists.txt) and run the following command to prepare the installation files:
 
-#### Options for CMakeLlists.txt
-- `NO_STD`: Enable no_std build, without iota_client (when ON, `SYNC_CLIENT` isnt supported)
-- `SYNC_CLIENT`: Enable sync transport via iota_client, otherwise it's going to be Bucket which can only be used for tests
-- `STATIC`: Build static library when ON, otherwise dynamic library
-- `RELEASE`: Build in release or debug mode (when ON, builds release, when OFF, build debug)
+```bash
+cmake .
+```
+3. Build the library by running the following command:
 
-To build the library run:
+```bash
+make
+```
+This will generate a binary library you can include in a project. This can be either:
+
+- `iota_streams_c_static`.
+- `iota_streams_c.so` (Unix).
+- `iota_streams_c.dll` (Windows).
+
+An example of the header file can be found in [include/iota_streams/channels.h](https://github.com/iotaledger/streams/blob/develop/bindings/c/include/iota_streams/channels.h).
+### Options for CMakeLlists.txt
+
+- `NO_STD`: Enable no_std build without the iota_client. When ON, `SYNC_CLIENT` is not supported.
+- `SYNC_CLIENT`: Enable sync transport via the iota_client. When OFF, it will be Bucket which you can only use for tests.
+- `STATIC`: Build a static library when ON. When OFF, build a dynamic library.
+- `RELEASE`: Build in release or debug mode. When ON, builds release; when OFF, build in debug mode.
+
+To build the library, run:
+
 ```bash 
 make
 ```
 
-This generates a binary library to be included into a project. This can be either: 
+This generates a binary library that you can include in your projects. This can be either: 
+
 - `iota_streams_c_static`
 - `iota_streams_c.so` (Unix)
 - `iota_streams_c.dll` (Windows)
 
 An example of the header file can be found in `include/channels.h`.
 
-### Starting a Channel 
-Once the package has been built, you can pull it into a script file like so: 
+## Starting a Channel 
+
+Once you have [built](#build-the-library) the package, you can pull it into a script file:
+
 ```c
 #include "iota_streams/channels.h"
 #include <stdio.h>

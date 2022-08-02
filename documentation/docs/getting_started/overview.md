@@ -1,11 +1,12 @@
 ---
-description:   Choose your binding and get started with the Streams Library. 
+description: Choose your binding and get started with the Streams Library. 
 image: /img/logo/iota_mark_light.png
 keywords:
 - rust
 - wasm
 - c
 - IDE
+- reference
 ---
 # Getting Started
 
