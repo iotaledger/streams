@@ -16,18 +16,21 @@ module.exports = {
   devServer: {
     static: dist,
   },
+  performance: {
+    maxAssetSize: 3512000
+  },
   plugins: [
     new CopyWebPlugin({
       patterns: [
         {
-          from: path.resolve(__dirname, "static")
+          from: path.resolve(__dirname, "..", "web-static")
         }
       ]
     }),
 
     new WasmPackPlugin({
-      crateDirectory: path.resolve(__dirname, "../.."),
-      outDir: "examples/web/pkg"
+      crateDirectory: path.resolve(__dirname, "..", ".."),
+      outDir: path.resolve(__dirname, "..", "..", "web"),
     }),
   ],
   experiments: {

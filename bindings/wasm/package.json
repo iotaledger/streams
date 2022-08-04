@@ -11,16 +11,15 @@
   },
   "scripts": {
     "build:nodejs": "wasm-pack build --target nodejs --out-dir node && node ./build/node",
-    "build:web": "wasm-pack build --target web --out-dir web",
+    "build:web": "npm run build --prefix examples/web-local",
     "build": "npm run build:web && npm run build:nodejs",
     "pretest": "npm run build:nodejs",
     "prepublishOnly": "npm run build",
     "test": "mocha",
     "unittest": "wasm-pack test --node",
-    "serve": "webpack serve",
     "example:nodejs": "node examples/node.js",
     "example:nodets": "ts-node examples/node.ts",
-    "example:web": "cd examples/web && npm i && npm run start",
+    "example:web": "npm start --prefix examples/web-local",
     "doc:nodejs": "jsdoc -d node/jsdoc -c jsdoc-conf.json node"
   },
   "contributors": [
@@ -47,6 +46,7 @@
     "wasm-pack": "^0.10.0"
   },
   "dependencies": {
+    "@iota/streams-web-example": "file:examples/web-local",
     "node-fetch": "^2.6.0"
   }
 }

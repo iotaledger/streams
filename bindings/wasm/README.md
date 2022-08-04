@@ -9,12 +9,13 @@ npm install
 ```
 
 ## Browser example
+The web example is a self-containing module to show the minimal requirements.
+It is pointing at `web-local` by default (which uses the current streams repo to compile). 
+We also provide a `web-npm` example which uses the streams package on the npm registry.
 
 ```bash
-npm run serve
+npm run example:web
 ```
-
-Go to http://localhost:8080 and open your browser console to see the logs!
 
 ## NodeJS only example:
 
