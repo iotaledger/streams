@@ -153,23 +153,7 @@ where
 
 impl Mask<&Permissioned<Identifier>> for sizeof::Context {
     fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
-        match permission {
-            Permissioned::Read(identifier) => {
-                let oneof = Uint8::new(0);
-                self.mask(oneof)?.mask(identifier)?;
-                Ok(self)
-            }
-            Permissioned::ReadWrite(identifier, duration) => {
-                let oneof = Uint8::new(1);
-                self.mask(oneof)?.mask(duration)?.mask(identifier)?;
-                Ok(self)
-            }
-            Permissioned::Admin(identifier) => {
-                let oneof = Uint8::new(2);
-                self.mask(oneof)?.mask(identifier)?;
-                Ok(self)
-            }
-        }
+        self.mask(&permission.as_ref())
     }
 }
 
@@ -179,23 +163,7 @@ where
     OS: io::OStream,
 {
     fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
-        match permission {
-            Permissioned::Read(identifier) => {
-                let oneof = Uint8::new(0);
-                self.mask(oneof)?.mask(identifier)?;
-                Ok(self)
-            }
-            Permissioned::ReadWrite(identifier, duration) => {
-                let oneof = Uint8::new(1);
-                self.mask(oneof)?.mask(duration)?.mask(identifier)?;
-                Ok(self)
-            }
-            Permissioned::Admin(identifier) => {
-                let oneof = Uint8::new(2);
-                self.mask(oneof)?.mask(identifier)?;
-                Ok(self)
-            }
-        }
+        self.mask(&permission.as_ref())
     }
 }
 
@@ -232,7 +200,23 @@ where
 
 impl Mask<&Permissioned<&Identifier>> for sizeof::Context {
     fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
-        self.mask(&permission.take())
+        match permission {
+            Permissioned::Read(identifier) => {
+                let oneof = Uint8::new(0);
+                self.mask(oneof)?.mask(*identifier)?;
+                Ok(self)
+            }
+            Permissioned::ReadWrite(identifier, duration) => {
+                let oneof = Uint8::new(1);
+                self.mask(oneof)?.mask(duration)?.mask(*identifier)?;
+                Ok(self)
+            }
+            Permissioned::Admin(identifier) => {
+                let oneof = Uint8::new(2);
+                self.mask(oneof)?.mask(*identifier)?;
+                Ok(self)
+            }
+        }
     }
 }
 
@@ -242,6 +226,22 @@ where
     OS: io::OStream,
 {
     fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
-        self.mask(&permission.take())
+        match permission {
+            Permissioned::Read(identifier) => {
+                let oneof = Uint8::new(0);
+                self.mask(oneof)?.mask(*identifier)?;
+                Ok(self)
+            }
+            Permissioned::ReadWrite(identifier, duration) => {
+                let oneof = Uint8::new(1);
+                self.mask(oneof)?.mask(duration)?.mask(*identifier)?;
+                Ok(self)
+            }
+            Permissioned::Admin(identifier) => {
+                let oneof = Uint8::new(2);
+                self.mask(oneof)?.mask(*identifier)?;
+                Ok(self)
+            }
+        }
     }
 }

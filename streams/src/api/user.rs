@@ -187,7 +187,7 @@ impl<T> User<T> {
 
     fn should_store_cursor(&self, topic: &Topic, subscriber: Permissioned<&Identifier>) -> bool {
         let permission = self.state.cursor_store.get_permission(topic, subscriber.identifier());
-        let tracked_and_equal = permission.is_some() && permission == Some(&subscriber.take());
+        let tracked_and_equal = permission.is_some() && (permission.unwrap().as_ref() == subscriber);
         !subscriber.is_readonly() && !tracked_and_equal
     }
 
@@ -437,13 +437,12 @@ impl<T> User<T> {
 
         // If a branch admin does not include a user in the keyload, any further messages sent by
         // the user will not be received by the others, so remove them from the publisher pool
-        let stored_subscribers: Vec<(Topic, Permissioned<Identifier>, usize)> = self
-            .cursors()
-            .filter(|(t, _, _)| t == &&topic)
-            .map(|(t, perm, cursor)| (t.clone(), perm.clone(), cursor))
+        let stored_subscribers: Vec<(Permissioned<Identifier>, usize)> = self
+            .cursors_by_topic(&topic)?
+            .map(|(perm, cursor)| (perm.clone(), *cursor))
             .collect();
 
-        for (_, perm, cursor) in stored_subscribers {
+        for (perm, cursor) in stored_subscribers {
             if !subscribers
                 .iter()
                 .any(|p| perm.identifier() == author_identifier || p.identifier() == perm.identifier())
