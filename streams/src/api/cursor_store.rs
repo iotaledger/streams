@@ -10,25 +10,21 @@ use hashbrown::HashMap;
 use lets::{
     address::MsgId,
     id::{Identifier, Permissioned},
-    message::Topic,
+    message::{Topic, TopicHash},
 };
 
 // Local
 
 #[derive(Default, Clone, PartialEq, Eq)]
-pub(crate) struct CursorStore(HashMap<Topic, InnerCursorStore>);
+pub(crate) struct CursorStore(HashMap<TopicHash, InnerCursorStore>);
 
 impl CursorStore {
     pub(crate) fn new() -> Self {
         Default::default()
     }
 
-    pub(crate) fn new_branch(&mut self, topic: Topic) -> bool {
-        self.0.insert(topic, InnerCursorStore::default()).is_none()
-    }
-
-    pub(crate) fn topics(&self) -> impl Iterator<Item = &Topic> + ExactSizeIterator {
-        self.0.keys()
+    pub(crate) fn new_branch(&mut self, topic: &Topic) -> bool {
+        self.0.insert(topic.into(), InnerCursorStore::default()).is_none()
     }
 
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
@@ -44,7 +40,7 @@ impl CursorStore {
     }
 
     pub(crate) fn get_permission(&self, topic: &Topic, id: &Identifier) -> Option<&Permissioned<Identifier>> {
-        self.0.get(topic).and_then(|branch| {
+        self.0.get(&topic.into()).and_then(|branch| {
             branch
                 .cursors
                 .iter()
@@ -54,7 +50,7 @@ impl CursorStore {
     }
 
     pub(crate) fn get_cursor(&self, topic: &Topic, id: &Identifier) -> Option<usize> {
-        self.0.get(topic).and_then(|branch| {
+        self.0.get(&topic.into()).and_then(|branch| {
             branch
                 .cursors
                 .iter()
@@ -64,7 +60,7 @@ impl CursorStore {
         })
     }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Permissioned<Identifier>, usize)> + Clone + '_ {
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&TopicHash, &Permissioned<Identifier>, usize)> + Clone + '_ {
         self.0
             .iter()
             .flat_map(|(topic, branch)| branch.cursors.iter().map(move |(id, cursor)| (topic, id, *cursor)))
@@ -74,7 +70,7 @@ impl CursorStore {
         &self,
         topic: &Topic,
     ) -> Option<impl Iterator<Item = (&Permissioned<Identifier>, &usize)>> {
-        self.0.get(topic).map(|inner| inner.cursors.iter())
+        self.0.get(&topic.into()).map(|inner| inner.cursors.iter())
     }
 
     pub(crate) fn insert_cursor(
@@ -99,12 +95,12 @@ impl CursorStore {
         };
 
         self.0
-            .get_mut(topic)
+            .get_mut(&topic.into())
             .and_then(|branch| branch.cursors.insert(id, cursor))
     }
 
     pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
-        match self.0.get_mut(topic) {
+        match self.0.get_mut(&topic.into()) {
             Some(branch) => {
                 branch.latest_link = latest_link;
                 None
@@ -114,13 +110,13 @@ impl CursorStore {
                     latest_link,
                     ..Default::default()
                 };
-                self.0.insert(topic.clone(), branch)
+                self.0.insert(topic.into(), branch)
             }
         }
     }
 
     pub(crate) fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
-        self.0.get(topic).map(|branch| branch.latest_link)
+        self.0.get(&topic.into()).map(|branch| branch.latest_link)
     }
 }
 
@@ -168,8 +164,8 @@ mod tests {
         let topic_1 = Topic::new("topic 1".to_string());
         let topic_2 = Topic::new("topic 2".to_string());
 
-        branch_store.new_branch(topic_1.clone());
-        branch_store.new_branch(topic_2.clone());
+        branch_store.new_branch(&topic_1);
+        branch_store.new_branch(&topic_2);
 
         branch_store.insert_cursor(&topic_1, permission.clone(), 10);
         branch_store.insert_cursor(&topic_2, permission.clone(), 20);

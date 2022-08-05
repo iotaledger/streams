@@ -17,7 +17,7 @@ use crate::{
     id::Identifier,
     message::{
         content::{ContentSizeof, ContentUnwrap, ContentWrap},
-        topic::Topic,
+        topic::{Topic, TopicHash},
         version::{HDF_ID, STREAMS_1_VER, UTF8},
     },
 };
@@ -40,7 +40,7 @@ pub struct HDF {
     pub linked_msg_address: Option<MsgId>,
     pub sequence: usize,
     pub publisher: Identifier,
-    pub topic: Topic,
+    pub topic_hash: TopicHash,
 }
 
 impl Default for HDF {
@@ -55,13 +55,13 @@ impl Default for HDF {
             linked_msg_address: Default::default(),
             sequence: 0,
             publisher: Default::default(),
-            topic: Default::default(),
+            topic_hash: Default::default(),
         }
     }
 }
 
 impl HDF {
-    pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: Topic) -> Result<Self> {
+    pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: &Topic) -> Result<Self> {
         ensure!(
             message_type >> 4 == 0,
             anyhow!(
@@ -79,7 +79,7 @@ impl HDF {
             linked_msg_address: None,
             sequence,
             publisher,
-            topic,
+            topic_hash: topic.into(),
         })
     }
 
@@ -124,8 +124,8 @@ impl HDF {
         self.linked_msg_address
     }
 
-    pub fn topic(&self) -> &Topic {
-        &self.topic
+    pub fn topic_hash(&self) -> &TopicHash {
+        &self.topic_hash
     }
 }
 
@@ -141,7 +141,7 @@ impl ContentSizeof<HDF> for sizeof::Context {
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
-            .mask(&hdf.topic)?
+            .mask(&hdf.topic_hash)?
             .mask(&hdf.publisher)?
             .skip(Size::new(hdf.sequence))?
             .commit()?
@@ -180,7 +180,7 @@ where
             .absorb(Uint8::new(hdf.frame_type))?
             .skip(payload_frame_count)?
             .absorb(Maybe::new(hdf.linked_msg_address.as_ref()))?
-            .mask(&hdf.topic)?
+            .mask(&hdf.topic_hash)?
             .mask(&hdf.publisher)?
             .skip(Size::new(hdf.sequence))?
             .commit()?
@@ -232,7 +232,7 @@ where
                 anyhow!("first 2 bits of payload-frame-count are reserved"),
             )?
             .absorb(Maybe::new(&mut hdf.linked_msg_address))?
-            .mask(&mut hdf.topic)?
+            .mask(&mut hdf.topic_hash)?
             .mask(&mut hdf.publisher)?
             .skip(&mut seq_num)?
             .commit()?

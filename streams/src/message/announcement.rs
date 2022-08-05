@@ -28,7 +28,7 @@ use crypto::keys::x25519;
 // Streams
 use lets::{
     id::{Identifier, Identity},
-    message::{ContentSign, ContentSignSizeof, ContentSizeof, ContentUnwrap, ContentVerify, ContentWrap},
+    message::{ContentSign, ContentSignSizeof, ContentSizeof, ContentUnwrap, ContentVerify, ContentWrap, Topic},
 };
 use spongos::{
     ddml::{
@@ -42,11 +42,12 @@ use spongos::{
 
 pub(crate) struct Wrap<'a> {
     user_id: &'a Identity,
+    topic: &'a Topic,
 }
 
 impl<'a> Wrap<'a> {
-    pub(crate) fn new(user_id: &'a Identity) -> Self {
-        Self { user_id }
+    pub(crate) fn new(user_id: &'a Identity, topic: &'a Topic) -> Self {
+        Self { user_id, topic }
     }
 }
 
@@ -54,6 +55,7 @@ impl<'a> Wrap<'a> {
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
         self.mask(&announcement.user_id.to_identifier())?
+            .mask(announcement.topic)?
             // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
             .absorb(&announcement.user_id._ke_sk().public_key())?
             .sign_sizeof(announcement.user_id)
@@ -70,6 +72,7 @@ where
 {
     async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
         self.mask(&announcement.user_id.to_identifier())?
+            .mask(announcement.topic)?
             // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
             .absorb(&announcement.user_id._ke_sk().public_key())?
             .sign(announcement.user_id)
@@ -84,15 +87,18 @@ pub(crate) struct Unwrap {
     author_id: Identifier,
     // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
     author_ke_pk: x25519::PublicKey,
+    topic: Topic,
 }
 
 impl Default for Unwrap {
     fn default() -> Self {
         let author_id = Default::default();
         let author_ke_pk = x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]);
+        let topic = Default::default();
         Self {
             author_id,
             author_ke_pk,
+            topic,
         }
     }
 }
@@ -100,6 +106,10 @@ impl Default for Unwrap {
 impl Unwrap {
     pub(crate) fn author_id(&self) -> &Identifier {
         &self.author_id
+    }
+
+    pub(crate) fn topic(&self) -> &Topic {
+        &self.topic
     }
 
     pub(crate) fn into_author_id(self) -> Identifier {
@@ -120,6 +130,7 @@ where
 {
     async fn unwrap(&mut self, announcement: &mut Unwrap) -> Result<&mut Self> {
         self.mask(&mut announcement.author_id)?
+            .mask(&mut announcement.topic)?
             .absorb(&mut announcement.author_ke_pk)?
             .verify(&announcement.author_id)
             .await?
