@@ -544,7 +544,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
             .as_keyload()
             .unwrap()
             .subscribers
-            .contains(&subscriber_a_admin_permission.clone()),
+            .contains(&subscriber_a_admin_permission.take()),
         "Subscriber A expected that they would be included with admin privileges in keyload"
     );
 
