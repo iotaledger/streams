@@ -103,9 +103,14 @@ pub trait IntoMessages<Trans> {
 /// subscriber.receive_announcement(&announcement_link).await?;
 /// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
 /// author.receive_subscribe(&subscription_link).await?;
-/// let (keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
+/// let (keyload_link, sequence_link) =
+///     author.send_keyload_for_everyone(&announcement_link).await?;
 /// let (first_packet_link, sequence_link) = author
-///     .send_signed_packet(&keyload_link, &b"public payload".into(), &b"masked payload".into())
+///     .send_signed_packet(
+///         &keyload_link,
+///         &b"public payload".into(),
+///         &b"masked payload".into(),
+///     )
 ///     .await?;
 /// let (second_packet_link, sequence_link) = author
 ///     .send_signed_packet(
@@ -122,8 +127,14 @@ pub trait IntoMessages<Trans> {
 /// while let Some(msg) = messages.try_next().await? {
 ///     println!(
 ///         "New message!\n\tPublic: {}\n\tMasked: {}\n",
-///         msg.body.public_payload().and_then(Bytes::as_str).unwrap_or("None"),
-///         msg.body.masked_payload().and_then(Bytes::as_str).unwrap_or("None")
+///         msg.body
+///             .public_payload()
+///             .and_then(Bytes::as_str)
+///             .unwrap_or("None"),
+///         msg.body
+///             .masked_payload()
+///             .and_then(Bytes::as_str)
+///             .unwrap_or("None")
 ///     );
 /// #
 /// #   n += 1;
@@ -176,9 +187,14 @@ pub trait IntoMessages<Trans> {
 /// subscriber.receive_announcement(&announcement_link).await?;
 /// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
 /// author.receive_subscribe(&subscription_link).await?;
-/// let (keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
+/// let (keyload_link, sequence_link) =
+///     author.send_keyload_for_everyone(&announcement_link).await?;
 /// let (first_packet_link, sequence_link) = author
-///     .send_signed_packet(&keyload_link, &b"public payload".into(), &b"masked payload".into())
+///     .send_signed_packet(
+///         &keyload_link,
+///         &b"public payload".into(),
+///         &b"masked payload".into(),
+///     )
 ///     .await?;
 /// let (second_packet_link, sequence_link) = author
 ///     .send_signed_packet(
@@ -192,7 +208,11 @@ pub trait IntoMessages<Trans> {
 /// assert_eq!(
 ///     messages,
 ///     vec![
-///         UnwrappedMessage::new(keyload_link, announcement_link, MessageContent::new_keyload()),
+///         UnwrappedMessage::new(
+///             keyload_link,
+///             announcement_link,
+///             MessageContent::new_keyload()
+///         ),
 ///         UnwrappedMessage::new(
 ///             first_packet_link,
 ///             keyload_link,
@@ -453,9 +473,14 @@ pub trait IntoMessages<Trans> {
 /// let subscription_link = subscriber.send_subscribe(&announcement_link).await?;
 /// author.receive_subscribe(&subscription_link).await?;
 ///
-/// let (first_keyload_link, _sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
+/// let (first_keyload_link, _sequence_link) =
+///     author.send_keyload_for_everyone(&announcement_link).await?;
 /// let (tag_first_branch_link, _sequence_link) = author
-///     .send_signed_packet(&first_keyload_link, &Default::default(), &b"branch 1".into())
+///     .send_signed_packet(
+///         &first_keyload_link,
+///         &Default::default(),
+///         &b"branch 1".into(),
+///     )
 ///     .await?;
 /// let (first_packet_first_branch_link, _sequence_link) = author
 ///     .send_signed_packet(
@@ -472,9 +497,14 @@ pub trait IntoMessages<Trans> {
 ///     )
 ///     .await?;
 ///
-/// let (second_keyload_link, sequence_link) = author.send_keyload_for_everyone(&announcement_link).await?;
+/// let (second_keyload_link, sequence_link) =
+///     author.send_keyload_for_everyone(&announcement_link).await?;
 /// let (tag_second_branch_link, _sequence_link) = author
-///     .send_signed_packet(&second_keyload_link, &Default::default(), &b"branch 2".into())
+///     .send_signed_packet(
+///         &second_keyload_link,
+///         &Default::default(),
+///         &b"branch 2".into(),
+///     )
 ///     .await?;
 /// let (first_packet_second_branch_link, sequence_link) = author
 ///     .send_signed_packet(
@@ -512,7 +542,11 @@ pub trait IntoMessages<Trans> {
 ///         UnwrappedMessage::new(
 ///             first_packet_second_branch_link,
 ///             tag_second_branch_link,
-///             MessageContent::new_signed_packet(author.get_public_key().clone(), b"", b"masked payload in branch 2")
+///             MessageContent::new_signed_packet(
+///                 author.get_public_key().clone(),
+///                 b"",
+///                 b"masked payload in branch 2"
+///             )
 ///         ),
 ///         UnwrappedMessage::new(
 ///             second_packet_second_branch_link,
