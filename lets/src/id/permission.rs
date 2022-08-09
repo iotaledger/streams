@@ -120,9 +120,9 @@ impl<Identifier> Permissioned<Identifier> {
     }
 }
 
-impl Permissioned<&Identifier> {
-    pub fn take(self) -> Permissioned<Identifier> {
-        match self {
+impl From<Permissioned<&Identifier>> for Permissioned<Identifier> {
+    fn from(perm: Permissioned<&Identifier>) -> Self {
+        match perm {
             Permissioned::Read(id) => Permissioned::Read(id.clone()),
             Permissioned::ReadWrite(id, duration) => Permissioned::ReadWrite(id.clone(), duration),
             Permissioned::Admin(id) => Permissioned::Admin(id.clone()),

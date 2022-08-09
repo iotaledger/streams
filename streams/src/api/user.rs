@@ -988,7 +988,7 @@ where
             if self.should_store_cursor(&topic, subscriber) {
                 self.state
                     .cursor_store
-                    .insert_cursor(&topic, subscriber.take(), INIT_MESSAGE_NUM);
+                    .insert_cursor(&topic, subscriber.into(), INIT_MESSAGE_NUM);
             }
         }
         self.state
