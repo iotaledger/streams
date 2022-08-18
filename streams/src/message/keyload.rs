@@ -234,7 +234,7 @@ where
 
             if key.is_none() && keyload.user_id.is_some() {
                 let user_id = keyload.user_id.unwrap();
-                if subscriber_id.identifier() == &user_id.to_identifier() {
+                if subscriber_id.identifier() == user_id.identifier() {
                     fork.decrypt(
                         user_id,
                         &user_id._ke_sk().to_bytes(),

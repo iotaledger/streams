@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn branch_store_can_remove_a_cursor_from_all_branches_at_once() {
         let mut branch_store = CursorStore::new();
-        let identifier = Identity::Ed25519(Ed25519::from_seed("identifier 1")).to_identifier();
+        let identifier = Identity::Ed25519(Ed25519::from_seed("identifier 1")).identifier();
         let topic_1 = Topic::new("topic 1".to_string());
         let topic_2 = Topic::new("topic 2".to_string());
 

@@ -103,7 +103,7 @@ impl<T> User<T> {
         });
 
         if let Some(id) = user_id.as_ref() {
-            exchange_keys.insert(id.to_identifier(), id._ke_sk().public_key());
+            exchange_keys.insert(id.identifier().clone(), id._ke_sk().public_key());
         }
 
         Self {
@@ -122,8 +122,8 @@ impl<T> User<T> {
     }
 
     /// User's identifier
-    pub fn identifier(&self) -> Option<Identifier> {
-        self.identity().ok().map(|id| id.to_identifier())
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identity().ok().map(|id| id.identifier())
     }
 
     /// User Identity
@@ -591,8 +591,7 @@ where
             );
         }
         // Confirm user has identity
-        let identity = self.identity()?;
-        let identifier = identity.to_identifier();
+        let identifier = self.identity()?.identifier().clone();
         // Convert topic
         let topic = topic.into();
         // Generate stream address
@@ -604,10 +603,10 @@ where
         let header = HDF::new(
             message_types::ANNOUNCEMENT,
             ANN_MESSAGE_NUM,
-            identity.to_identifier(),
+            identifier.clone(),
             topic.clone(),
         )?;
-        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(identity));
+        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(self.identity()?));
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -632,7 +631,7 @@ where
 
         // Commit Author Identifier and Stream Address to store
         self.state.stream_address = Some(stream_address);
-        self.state.author_identifier = Some(identifier);
+        self.state.author_identifier = Some(identifier.clone());
         self.state.base_branch = topic.clone();
 
         Ok(SendResponse::new(stream_address, send_response))
@@ -649,8 +648,7 @@ where
             .stream_address()
             .ok_or_else(|| anyhow!("before starting a new branch, the stream must be created"))?;
         // Confirm user has identity
-        let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = self.identity()?.identifier().clone();
         // Check Topic
         let topic: Topic = to_topic.into();
         let prev_topic: Topic = from_topic.into();
@@ -682,7 +680,7 @@ where
         .with_linked_msg_address(link_to);
         let content = PCF::new_final_frame().with_content(branch_announcement::Wrap::new(
             &mut linked_msg_spongos,
-            user_id,
+            self.identity()?,
             &topic,
         ));
 
@@ -695,7 +693,7 @@ where
         // Commit message to stores and update cursors
         self.state
             .cursor_store
-            .insert_cursor(&prev_topic, identifier.clone(), self.next_cursor(&prev_topic)?);
+            .insert_cursor(&prev_topic, identifier, self.next_cursor(&prev_topic)?);
         self.state.spongos_store.insert(address.relative(), spongos);
         // Collect permissions from previous branch and clone them into new branch
         let prev_permissions = self
@@ -720,7 +718,7 @@ where
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
         // Confirm user has identity
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier();
         // Get base branch topic
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
@@ -781,7 +779,7 @@ where
         })?;
         // Confirm user has identity
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier().clone();
         // Get base branch topic
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
@@ -846,7 +844,7 @@ where
             .ok_or_else(|| anyhow!("before sending a keyload one must create a stream first"))?;
         // Confirm user has identity
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier().clone();
         // Check Topic
         let topic = topic.into();
         // Link message to edge of branch
@@ -980,7 +978,7 @@ where
             anyhow!("before sending a signed packet one must receive the announcement of a stream first")
         })?;
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier().clone();
         // Check Topic
         let topic = topic.into();
         // Link message to latest message in branch
@@ -1050,7 +1048,7 @@ where
             anyhow!("before sending a tagged packet one must receive the announcement of a stream first")
         })?;
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier().clone();
         // Check Topic
         let topic = topic.into();
         // Link message to latest message in branch
@@ -1283,9 +1281,9 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
 impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
-            f,
-            "\n* identifier: <{}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
-            self.identifier().unwrap_or_default(),
+            f,                  
+            "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
+            self.identifier(),
             self.base_branch(),
             self.state.cursor_store,
             self.state
