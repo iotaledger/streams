@@ -253,7 +253,7 @@ impl<T> User<T> {
 
         // Update branch links
         self.set_latest_link(&topic, address.relative());
-        self.state.author_identifier = Some(author_id.clone());
+        self.state.author_identifier = Some(author_id);
         self.state.base_branch = topic;
         self.state.stream_address = Some(address);
 

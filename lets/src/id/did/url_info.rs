@@ -47,9 +47,9 @@ impl DIDUrlInfo {
         let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url);
         signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
 
-        let data = DataWrapper::new(&hash).with_signature(signature);
+        let data = DataWrapper::new(hash).with_signature(signature);
 
-        let doc = super::resolve_document(&self).await?;
+        let doc = super::resolve_document(self).await?;
         doc.document
             .verify_data(&data, &VerifierOptions::new())
             .map_err(|e| anyhow!("There was an issue validating the signature: {}", e))?;
