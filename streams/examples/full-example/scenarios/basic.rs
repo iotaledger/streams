@@ -21,6 +21,7 @@ const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
 const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
+const BRANCH2: &str = "BRANCH2";
 
 pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
     let psk = Psk::from_seed("A pre shared key");
@@ -497,11 +498,11 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
 
     println!("> Subscribers A and B try to send a signed packet");
     // TODO: THIS SHOULD FAIL ONCE PUBLISHERS ARE TRACKED BY BRANCH AND WE CAN "DEMOTE" SUBSCRIBERS
-    let a_signed_packet = subscriber_a
+    let result = subscriber_a
         .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
-        .await?;
-    print_send_result(&a_signed_packet);
+        .await;
     print_user("Subscriber A", &subscriber_a);
+    assert!(result.is_err());
     let result = subscriber_b
         .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
         .await;
@@ -517,6 +518,58 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     print_user("Subscriber B", &subscriber_b);
     assert_eq!(subscriber_c.sync().await?, 0);
     print_user("Subscriber C", &subscriber_c);
+
+    println!("> Author adds Subscriber A again and grants them Admin privileges");
+    print_user("Author", &author);
+    assert!(author.add_subscriber(subscriber_a_id.clone()));
+    let subscriber_a_admin_permission = Permissioned::Admin(&subscriber_a_id);
+    author
+        .send_keyload(BRANCH1, vec![subscriber_a_admin_permission], vec![])
+        .await?;
+    print_user("Author", &author);
+
+    println!("> Subscriber A receives keyload");
+    let next_messages = subscriber_a.fetch_next_messages().await?;
+    print_user("Subscriber A", &subscriber_a);
+    let last_msg_as_a = next_messages
+        .last()
+        .expect("Subscriber A has not received the latest keyload");
+    assert!(
+        last_msg_as_a.is_keyload(),
+        "Subscriber A expected the last message to be a keyload message, found {:?} instead",
+        last_msg_as_a.content()
+    );
+    assert!(
+        last_msg_as_a
+            .as_keyload()
+            .unwrap()
+            .subscribers
+            .contains(&subscriber_a_admin_permission.into()),
+        "Subscriber A expected that they would be included with admin privileges in keyload"
+    );
+
+    println!("> Author creates a new branch");
+    author.new_branch(BRANCH1, BRANCH2).await?;
+    print_user("Author", &author);
+    println!("> Subscriber A receives branch announcement");
+    let next_messages = subscriber_a.fetch_next_messages().await?;
+    print_user("Subscriber A", &subscriber_a);
+    let last_msg_as_a = next_messages
+        .last()
+        .expect("Subscriber A has not received the latest branch announcement");
+    assert!(
+        last_msg_as_a.is_branch_announcement(),
+        "Subscriber A expected the last message to be a branch announcement message, found {:?} instead",
+        last_msg_as_a.content()
+    );
+    println!("> Subscriber A confirming they still have Admin privileges in new branch");
+    assert!(
+        subscriber_a
+            .permission(&BRANCH2.into())
+            .expect("Subscriber A should have a permission stored for new branch")
+            .is_admin(),
+        "Subscriber A expected to still have Admin privileges in new branch"
+    );
 
     Ok(())
 }
