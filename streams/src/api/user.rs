@@ -177,7 +177,7 @@ impl<T> User<T> {
         self.topics().find(|t| &TopicHash::from(*t) == hash).cloned()
     }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&TopicHash, &Permissioned<Identifier>, usize)> + '_ {
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Permissioned<Identifier>, usize)> + '_ {
         self.state.cursor_store.cursors()
     }
 
@@ -219,7 +219,7 @@ impl<T> User<T> {
 
     /// Sets the latest message link for a specified branch. If the branch does not exist, it is
     /// created
-    fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
+    fn set_latest_link(&mut self, topic: Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
         self.state.cursor_store.set_latest_link(topic, latest_link)
     }
 
@@ -253,7 +253,7 @@ impl<T> User<T> {
 
         let topic = message.payload().content().topic();
         // Insert new branch into store
-        self.state.cursor_store.new_branch(topic);
+        self.state.cursor_store.new_branch(topic.clone());
         self.state.topics.insert(topic.clone());
 
         // When handling an announcement it means that no cursors have been stored, as no topics are
@@ -270,7 +270,7 @@ impl<T> User<T> {
         let author_ke_pk = *message.payload().content().author_ke_pk();
 
         // Update branch links
-        self.set_latest_link(topic, address.relative());
+        self.set_latest_link(topic.clone(), address.relative());
         self.state.author_identifier = Some(author_id.clone());
         self.state.exchange_keys.insert(author_id, author_ke_pk);
         self.state.base_branch = topic.clone();
@@ -319,7 +319,7 @@ impl<T> User<T> {
         // Store spongos
         self.state.spongos_store.insert(address.relative(), spongos);
         // Insert new branch into store
-        self.state.cursor_store.new_branch(new_topic);
+        self.state.cursor_store.new_branch(new_topic.clone());
         self.state.topics.insert(new_topic.clone());
         // Collect permissions from previous branch and clone them into new branch
         let prev_permissions = self
@@ -331,7 +331,7 @@ impl<T> User<T> {
         }
 
         // Update branch links
-        self.set_latest_link(new_topic, address.relative());
+        self.set_latest_link(new_topic.clone(), address.relative());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -477,7 +477,7 @@ impl<T> User<T> {
         // Have to make message before setting branch links due to immutable borrow in keyload::unwrap
         let final_message = Message::from_lets_message(address, message);
         // Update branch links
-        self.set_latest_link(&topic, address.relative());
+        self.set_latest_link(topic, address.relative());
         Ok(final_message)
     }
 
@@ -520,7 +520,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        self.set_latest_link(&topic, address.relative());
+        self.set_latest_link(topic, address.relative());
         Ok(Message::from_lets_message(address, message))
     }
 
@@ -561,7 +561,7 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        self.set_latest_link(&topic, address.relative());
+        self.set_latest_link(topic, address.relative());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -687,7 +687,7 @@ where
         let send_response = self.transport.send_message(stream_address, transport_msg).await?;
 
         // If a message has been sent successfully, insert the base branch into store
-        self.state.cursor_store.new_branch(&topic);
+        self.state.cursor_store.new_branch(topic.clone());
         self.state.topics.insert(topic.clone());
         // Commit message to stores
         self.state
@@ -696,12 +696,12 @@ where
         self.state.spongos_store.insert(stream_address.relative(), spongos);
 
         // Update branch links
-        self.set_latest_link(&topic, stream_address.relative());
+        self.set_latest_link(topic.clone(), stream_address.relative());
 
         // Commit Author Identifier and Stream Address to store
         self.state.stream_address = Some(stream_address);
         self.state.author_identifier = Some(identifier);
-        self.state.base_branch = topic.clone();
+        self.state.base_branch = topic;
 
         Ok(SendResponse::new(stream_address, send_response))
     }
@@ -768,7 +768,7 @@ where
         let send_response = self.transport.send_message(address, transport_msg).await?;
 
         // If message has been sent successfully, create the new branch in store
-        self.state.cursor_store.new_branch(&topic);
+        self.state.cursor_store.new_branch(topic.clone());
         self.state.topics.insert(topic.clone());
         // Commit message to stores and update cursors
         self.state.cursor_store.insert_cursor(
@@ -779,16 +779,15 @@ where
         self.state.spongos_store.insert(address.relative(), spongos);
         // Collect permissions from previous branch and clone them into new branch
         let prev_permissions = self
-            .cursors()
-            .filter(|cursor| cursor.0 == &TopicHash::from(&prev_topic))
-            .map(|(_, id, _)| id.clone())
+            .cursors_by_topic(&prev_topic)?
+            .map(|(id, _)| id.clone())
             .collect::<Vec<Permissioned<Identifier>>>();
         for id in prev_permissions {
             self.state.cursor_store.insert_cursor(&topic, id, INIT_MESSAGE_NUM);
         }
 
         // Update branch links
-        self.state.cursor_store.set_latest_link(&topic, address.relative());
+        self.state.cursor_store.set_latest_link(topic, address.relative());
         Ok(SendResponse::new(address, send_response))
     }
 
@@ -1016,7 +1015,7 @@ where
             .insert_cursor(&topic, Permissioned::Admin(identifier), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
-        self.set_latest_link(&topic, message_address.relative());
+        self.set_latest_link(topic, message_address.relative());
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -1153,7 +1152,7 @@ where
             .insert_cursor(&topic, permission.clone(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
-        self.set_latest_link(&topic, message_address.relative());
+        self.set_latest_link(topic, message_address.relative());
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -1228,7 +1227,7 @@ where
             .insert_cursor(&topic, permission.clone(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
-        self.set_latest_link(&topic, rel_address);
+        self.set_latest_link(topic, rel_address);
         Ok(SendResponse::new(message_address, send_response))
     }
 }
@@ -1263,15 +1262,15 @@ impl ContentSizeof<State> for sizeof::Context {
                 .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
             self.mask(&latest_link)?;
 
-            let cursors: Vec<(&TopicHash, &Permissioned<Identifier>, usize)> = user_state
+            let cursors: Vec<(&Permissioned<Identifier>, &usize)> = user_state
                 .cursor_store
-                .cursors()
-                .filter(|(t, _, _)| *t == &topic.into())
+                .cursors_by_topic(topic)
+                .ok_or_else(|| anyhow!("No cursors found with topic <{}>", topic))?
                 .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
-            for (_, subscriber, cursor) in cursors {
-                self.mask(subscriber)?.mask(Size::new(cursor))?;
+            for (subscriber, cursor) in cursors {
+                self.mask(subscriber)?.mask(Size::new(*cursor))?;
             }
         }
 
@@ -1324,15 +1323,15 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
                 .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
             self.mask(&latest_link)?;
 
-            let cursors: Vec<(&TopicHash, &Permissioned<Identifier>, usize)> = user_state
+            let cursors: Vec<(&Permissioned<Identifier>, &usize)> = user_state
                 .cursor_store
-                .cursors()
-                .filter(|(t, _, _)| *t == &topic.into())
+                .cursors_by_topic(topic)
+                .ok_or_else(|| anyhow!("No curosrs found with topic <{}>", topic))?
                 .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
-            for (_, subscriber, cursor) in cursors {
-                self.mask(subscriber)?.mask(Size::new(cursor))?;
+            for (subscriber, cursor) in cursors {
+                self.mask(subscriber)?.mask(Size::new(*cursor))?;
             }
         }
 
@@ -1382,7 +1381,7 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
             self.mask(&mut latest_link)?;
 
             user_state.topics.insert(topic.clone());
-            user_state.cursor_store.set_latest_link(&topic, latest_link);
+            user_state.cursor_store.set_latest_link(topic.clone(), latest_link);
 
             let mut amount_cursors = Size::default();
             self.mask(&mut amount_cursors)?;

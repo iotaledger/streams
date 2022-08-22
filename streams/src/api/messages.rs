@@ -18,7 +18,7 @@ use hashbrown::HashMap;
 use lets::{
     address::{Address, MsgId},
     id::{Identifier, Permissioned},
-    message::{Topic, TopicHash, TransportMessage, HDF},
+    message::{Topic, TransportMessage, HDF},
     transport::Transport,
 };
 
@@ -132,7 +132,7 @@ type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 struct MessagesState<'a, T> {
     user: &'a mut User<T>,
-    ids_stack: Vec<(TopicHash, Permissioned<Identifier>, usize)>,
+    ids_stack: Vec<(Topic, Permissioned<Identifier>, usize)>,
     msg_queue: HashMap<MsgId, VecDeque<(MsgId, TransportMessage)>>,
     stage: VecDeque<(MsgId, TransportMessage)>,
     successful_round: bool,
@@ -202,7 +202,7 @@ impl<'a, T> MessagesState<'a, T> {
             }
         } else {
             // Stage is empty, populate it with some more messages
-            let (topic_hash, publisher, cursor) = match self.ids_stack.pop() {
+            let (topic, publisher, cursor) = match self.ids_stack.pop() {
                 Some(id_cursor) => id_cursor,
                 None => {
                     // new round
@@ -217,7 +217,6 @@ impl<'a, T> MessagesState<'a, T> {
                 }
             };
             let base_address = self.user.stream_address()?.base();
-            let topic = self.user.topic_by_hash(&topic_hash)?;
             let rel_address = MsgId::gen(base_address, publisher.identifier(), &topic, cursor + 1);
             let address = Address::new(base_address, rel_address);
 
