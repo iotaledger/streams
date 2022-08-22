@@ -417,11 +417,9 @@ impl<T> User<T> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
-            &topic,
-            Permissioned::Admin(publisher),
-            preparsed.header().sequence(),
-        );
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, Permissioned::Admin(publisher), preparsed.header().sequence());
 
         // Unwrap message
         // Ok to unwrap since an author identifier is set at the same time as the stream address
@@ -495,11 +493,9 @@ impl<T> User<T> {
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
-            &topic,
-            permission,
-            preparsed.header().sequence(),
-        );
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, permission, preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
