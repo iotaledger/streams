@@ -192,8 +192,7 @@ impl<T> User<T> {
     }
 
     pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
-        self.state.subscribers.remove(id);
-        self.state.exchange_keys.remove(id).is_some()
+        self.state.subscribers.remove(id)
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {

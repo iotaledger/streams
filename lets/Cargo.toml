@@ -20,7 +20,7 @@ tangle-client = ["iota-client/async", "futures", "iota-crypto/blake2b"]
 # Enable the wasm-compatible IOTA-Tangle transport client (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`. Implies `std` feature)
 tangle-client-wasm = ["iota-client/wasm", "futures"]
 # Enable Iota Identity for use with Streams
-did = ["identity", "serde"]
+did = ["identity_iota", "serde"]
 
 [dependencies]
 # Local dependencies
