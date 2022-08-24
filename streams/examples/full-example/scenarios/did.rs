@@ -160,7 +160,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     }
     assert_eq!(9, messages_as_b.len());
 
-    println!("> Subscriber A receives 6 messages:");
+    println!("> Subscriber A receives 7 messages:");
     let messages_as_a = subscriber_a.fetch_next_messages().await?;
     print_user("Subscriber A", &subscriber_a);
     for message in &messages_as_a {
