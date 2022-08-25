@@ -431,9 +431,8 @@ impl<T> User<T> {
             .collect();
 
         for (perm, cursor) in stored_subscribers {
-            if !subscribers
-                .iter()
-                .any(|p| perm.identifier() == author_identifier || p.identifier() == perm.identifier())
+            if !(perm.identifier() == author_identifier
+                || subscribers.iter().any(|p| p.identifier() == perm.identifier()))
             {
                 self.state
                     .cursor_store
