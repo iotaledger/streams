@@ -7,16 +7,20 @@ use anyhow::{anyhow, Result};
 use textwrap::{fill, indent};
 
 // IOTA
-use identity::{
+use identity_iota::{
     core::Timestamp,
+    crypto::KeyType,
     did::MethodScope,
-    iota::IotaVerificationMethod,
+    iota_core::IotaVerificationMethod,
     prelude::{Client as DIDClient, IotaDocument, KeyPair as DIDKeyPair},
 };
 
 // Streams
 use streams::{
-    id::{DIDInfo, Ed25519, Permissioned, Psk, DID},
+    id::{
+        did::{DIDInfo, DIDUrlInfo, DID},
+        Ed25519, Permissioned, Psk,
+    },
     transport::tangle,
     User,
 };
@@ -25,16 +29,20 @@ use super::utils::{print_send_result, print_user};
 
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
+const CLIENT_URL: &str = "https://chrysalis-nodes.iota.org";
 
 const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
 
 pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
-    let did_client = DIDClient::new().await?;
+    let did_client = DIDClient::builder()
+        .primary_node(CLIENT_URL, None, None)?
+        .build()
+        .await?;
     println!("> Making DID with method for the Author");
-    let author_did_info = make_did_info(&did_client, "auth_key").await?;
+    let author_did_info = make_did_info(&did_client, "auth_key", "auth_xkey", "signing_key").await?;
     println!("> Making another DID with method for a Subscriber");
-    let subscriber_did_info = make_did_info(&did_client, "sub_key").await?;
+    let subscriber_did_info = make_did_info(&did_client, "sub_key", "sub_xkey", "signing_key").await?;
 
     // Generate a simple PSK for storage by users
     let psk = Psk::from_seed("A pre shared key");
@@ -155,7 +163,7 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     println!("> Subscriber A receives 7 messages:");
     let messages_as_a = subscriber_a.fetch_next_messages().await?;
     print_user("Subscriber A", &subscriber_a);
-    for message in &messages_as_c {
+    for message in &messages_as_a {
         println!("\t{}", message.address());
         println!("{}", indent(&fill(&format!("{:?}", message.content()), 140), "\t| "));
         println!("\t---");
@@ -165,32 +173,51 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     Ok(())
 }
 
-async fn make_did_info(did_client: &DIDClient, fragment: &str) -> Result<DIDInfo> {
+async fn make_did_info(
+    did_client: &DIDClient,
+    signing_fragment: &str,
+    exchange_fragment: &str,
+    doc_signing_fragment: &str,
+) -> Result<DIDInfo> {
     // Create Keypair to act as base of identity
-    let keypair = DIDKeyPair::new_ed25519()?;
+    let keypair = DIDKeyPair::new(KeyType::Ed25519)?;
     // Generate original DID document
-    let mut document = IotaDocument::new(&keypair)?;
+    let mut document = IotaDocument::new_with_options(&keypair, None, Some(doc_signing_fragment))?;
     // Sign document and publish to the tangle
-    document.sign_self(keypair.private(), document.default_signing_method()?.id().clone())?;
+    document.sign_self(keypair.private(), doc_signing_fragment)?;
     let receipt = did_client.publish_document(&document).await?;
     let did = document.id().clone();
 
-    let streams_method_keys = DIDKeyPair::new_ed25519()?;
+    // Create a signature verification keypair and method
+    let streams_signing_keys = DIDKeyPair::new(KeyType::Ed25519)?;
     let method = IotaVerificationMethod::new(
         did.clone(),
-        streams_method_keys.type_(),
-        streams_method_keys.public(),
-        fragment,
+        streams_signing_keys.type_(),
+        streams_signing_keys.public(),
+        signing_fragment,
     )?;
-    if document.insert_method(method, MethodScope::VerificationMethod).is_ok() {
+
+    // Create a second Keypair for key exchange method
+    let streams_exchange_keys = DIDKeyPair::new(KeyType::X25519)?;
+    let xmethod = IotaVerificationMethod::new(
+        did.clone(),
+        streams_exchange_keys.type_(),
+        streams_exchange_keys.public(),
+        exchange_fragment,
+    )?;
+
+    if document.insert_method(method, MethodScope::VerificationMethod).is_ok()
+        && document.insert_method(xmethod, MethodScope::key_agreement()).is_ok()
+    {
         document.metadata.previous_message_id = *receipt.message_id();
-        document.metadata.updated = Timestamp::now_utc();
-        document.sign_self(keypair.private(), document.default_signing_method()?.id().clone())?;
+        document.metadata.updated = Some(Timestamp::now_utc());
+        document.sign_self(keypair.private(), doc_signing_fragment)?;
 
         let _update_receipt = did_client.publish_document(&document).await?;
     } else {
         return Err(anyhow!("Failed to update method"));
     }
 
-    Ok(DIDInfo::new(did, fragment.to_string(), streams_method_keys))
+    let url_info = DIDUrlInfo::new(did, CLIENT_URL, exchange_fragment, signing_fragment);
+    Ok(DIDInfo::new(url_info, streams_signing_keys, streams_exchange_keys))
 }
