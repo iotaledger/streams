@@ -87,10 +87,7 @@ impl Default for Unwrap {
     fn default() -> Self {
         let author_id = Default::default();
         let topic = Default::default();
-        Self {
-            author_id,
-            topic,
-        }
+        Self { author_id, topic }
     }
 }
 
