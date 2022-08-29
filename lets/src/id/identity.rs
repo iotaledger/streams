@@ -1,6 +1,10 @@
 // Rust
 use alloc::{boxed::Box, string::ToString};
-use core::{convert::{AsRef, TryFrom}, hash::Hash, ops::Deref};
+use core::{
+    convert::{AsRef, TryFrom},
+    hash::Hash,
+    ops::Deref,
+};
 
 // 3rd-party
 use anyhow::{anyhow, Result};
@@ -38,7 +42,7 @@ use crate::{
 #[allow(clippy::large_enum_variant)]
 pub struct Identity {
     identitykind: IdentityKind,
-    identifier: Identifier
+    identifier: Identifier,
 }
 
 impl Default for Identity {
@@ -52,7 +56,7 @@ impl Identity {
         let identifier = identitykind.to_identifier();
         Self {
             identitykind,
-            identifier
+            identifier,
         }
     }
 

@@ -1401,7 +1401,7 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
 impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
-            f,                  
+            f,
             "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
             self.identifier(),
             self.base_branch(),
