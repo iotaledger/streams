@@ -1,10 +1,6 @@
 // Rust
 use alloc::boxed::Box;
-use core::{
-    convert::AsRef,
-    hash::Hash,
-    ops::Deref,
-};
+use core::{convert::AsRef, hash::Hash, ops::Deref};
 
 // 3rd-party
 use anyhow::{anyhow, Result};
