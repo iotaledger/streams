@@ -6,5 +6,7 @@ members = [
   "streams",
 ]
 
+resolver = "2"
+
 [profile.dev]
 incremental = true

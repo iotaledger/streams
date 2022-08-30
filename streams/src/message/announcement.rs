@@ -23,7 +23,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
-use crypto::keys::x25519;
 
 // Streams
 use lets::{
@@ -32,7 +31,7 @@ use lets::{
 };
 use spongos::{
     ddml::{
-        commands::{sizeof, unwrap, wrap, Absorb, Commit, Mask},
+        commands::{sizeof, unwrap, wrap, Commit, Mask},
         io,
     },
     PRP,
@@ -54,8 +53,6 @@ impl<'a> Wrap<'a> {
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
         self.mask(announcement.user_id.identifier())?
-            // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
-            .absorb(&announcement.user_id._ke_sk().public_key())?
             .sign_sizeof(announcement.user_id)
             .await?
             .commit()?;
@@ -70,8 +67,6 @@ where
 {
     async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
         self.mask(announcement.user_id.identifier())?
-            // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
-            .absorb(&announcement.user_id._ke_sk().public_key())?
             .sign(announcement.user_id)
             .await?
             .commit()?;
@@ -82,18 +77,12 @@ where
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Unwrap {
     author_id: Identifier,
-    // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
-    author_ke_pk: x25519::PublicKey,
 }
 
 impl Default for Unwrap {
     fn default() -> Self {
         let author_id = Default::default();
-        let author_ke_pk = x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]);
-        Self {
-            author_id,
-            author_ke_pk,
-        }
+        Self { author_id }
     }
 }
 
@@ -105,11 +94,6 @@ impl Unwrap {
     pub(crate) fn into_author_id(self) -> Identifier {
         self.author_id
     }
-
-    // #[deprecated = "to be removed once ke is encapsulated within identity"]
-    pub(crate) fn author_ke_pk(&self) -> &x25519::PublicKey {
-        &self.author_ke_pk
-    }
 }
 
 #[async_trait(?Send)]
@@ -120,7 +104,6 @@ where
 {
     async fn unwrap(&mut self, announcement: &mut Unwrap) -> Result<&mut Self> {
         self.mask(&mut announcement.author_id)?
-            .absorb(&mut announcement.author_ke_pk)?
             .verify(&announcement.author_id)
             .await?
             .commit()?;

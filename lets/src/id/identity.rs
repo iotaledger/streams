@@ -1,7 +1,7 @@
 // Rust
-use alloc::{boxed::Box, string::ToString};
+use alloc::boxed::Box;
 use core::{
-    convert::{AsRef, TryFrom},
+    convert::AsRef,
     hash::Hash,
     ops::Deref,
 };
@@ -13,10 +13,11 @@ use async_trait::async_trait;
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 #[cfg(feature = "did")]
-use identity::{
-    core::decode_b58,
-    crypto::{Ed25519 as DIDEd25519, JcsEd25519, SignatureOptions, Signer},
+use identity_iota::{
+    core::BaseEncoding,
+    crypto::{Ed25519 as DIDEd25519, JcsEd25519, ProofOptions, Signer},
     did::DID as IdentityDID,
+    iota_core::IotaDID,
 };
 
 // IOTA-Streams
@@ -25,7 +26,7 @@ use spongos::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519 as Ed25519Command, Mask, Squeeze, X25519},
         io,
         modifiers::External,
-        types::{Bytes, NBytes, Uint8},
+        types::{NBytes, Uint8},
     },
     PRP,
 };
@@ -108,12 +109,12 @@ impl Default for IdentityKind {
 }
 
 impl IdentityKind {
-    // #[deprecated = "to be removed once key exchange is encapsulated within IdentityKind"]
-    pub fn _ke_sk(&self) -> x25519::SecretKey {
+    // Get the Secret key part of the key exchange of the Identity
+    pub fn ke_sk(&self) -> Result<x25519::SecretKey> {
         match self {
-            Self::Ed25519(ed25519) => ed25519.inner().into(),
+            Self::Ed25519(ed25519) => Ok(ed25519.inner().into()),
             #[cfg(feature = "did")]
-            Self::DID(DID::PrivateKey(info)) => info.ke_kp().0,
+            Self::DID(DID::PrivateKey(info)) => Ok(info.exchange_key()?),
             #[cfg(feature = "did")]
             Self::DID(DID::Default) => unreachable!(),
             // TODO: Account implementation
@@ -124,7 +125,7 @@ impl IdentityKind {
         match self {
             Self::Ed25519(ed25519) => ed25519.inner().public_key().into(),
             #[cfg(feature = "did")]
-            Self::DID(did) => did.info().did().into(),
+            Self::DID(did) => Identifier::DID(did.info().url_info().clone()),
         }
     }
 }
@@ -198,10 +199,10 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
             IdentityKind::DID(did_impl) => match did_impl {
                 DID::PrivateKey(info) => {
                     let hash = [0; 64];
-                    let key_fragment = info.key_fragment().as_bytes().to_vec();
+                    let key_fragment = info.url_info().signing_fragment().as_bytes().to_vec();
                     let signature = [0; 64];
                     self.absorb(Uint8::new(1))?
-                        .absorb(Bytes::new(key_fragment))?
+                        .absorb(spongos::ddml::types::Bytes::new(key_fragment))?
                         .commit()?
                         .squeeze(External::new(&NBytes::new(&hash)))?
                         .absorb(NBytes::new(signature))
@@ -234,23 +235,23 @@ where
                 match did_impl {
                     DID::PrivateKey(info) => {
                         let mut hash = [0; 64];
-                        let key_fragment = info.key_fragment().as_bytes().to_vec();
+                        let key_fragment = info.url_info().signing_fragment().as_bytes().to_vec();
                         self.absorb(Uint8::new(1))?
-                            .absorb(Bytes::new(key_fragment))?
+                            .absorb(spongos::ddml::types::Bytes::new(key_fragment))?
                             .commit()?
                             .squeeze(External::new(&mut NBytes::new(&mut hash)))?;
 
                         let mut data = DataWrapper::new(&hash);
-                        let fragment = format!("#{}", info.key_fragment());
+                        let fragment = format!("#{}", info.url_info().signing_fragment());
                         // Join the DID identifier with the key fragment of the verification method
-                        let method = info.did().clone().join(&fragment)?;
+                        let method = IotaDID::parse(info.url_info().did())?.join(&fragment)?;
                         JcsEd25519::<DIDEd25519>::create_signature(
                             &mut data,
-                            method.to_string(),
+                            method,
                             info.keypair().private().as_ref(),
-                            SignatureOptions::new(),
+                            ProofOptions::new(),
                         )?;
-                        let signature = decode_b58(
+                        let signature = BaseEncoding::decode_base58(
                             &data
                                 .into_signature()
                                 .ok_or_else(|| {
@@ -270,17 +271,18 @@ where
 }
 
 #[async_trait(?Send)]
-impl<IS, F> ContentDecrypt<IdentityKind> for unwrap::Context<IS, F>
+impl<IS, F> ContentDecrypt<Identity> for unwrap::Context<IS, F>
 where
     F: PRP,
     IS: io::IStream,
 {
-    async fn decrypt(&mut self, _recipient: &IdentityKind, exchange_key: &[u8], key: &mut [u8]) -> Result<&mut Self> {
-        // TODO: Replace with separate logic for EdPubKey and DID instances (pending IdentityKind xkey
+    async fn decrypt(&mut self, recipient: &Identity, key: &mut [u8]) -> Result<&mut Self> {
+        // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introduction)
-        match <[u8; 32]>::try_from(exchange_key) {
-            Ok(byte_array) => self.x25519(&x25519::SecretKey::from_bytes(byte_array), NBytes::new(key)),
-            Err(e) => Err(anyhow!("Invalid x25519 key: {}", e)),
+        match &recipient.identitykind {
+            IdentityKind::Ed25519(kp) => self.x25519(&kp.inner().into(), NBytes::new(key)),
+            #[cfg(feature = "did")]
+            IdentityKind::DID(did) => self.x25519(&did.info().exchange_key()?, NBytes::new(key)),
         }
     }
 }

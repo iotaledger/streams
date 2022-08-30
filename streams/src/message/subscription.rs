@@ -44,7 +44,7 @@ use lets::{
 };
 use spongos::{
     ddml::{
-        commands::{sizeof, unwrap, wrap, Absorb, Join, Mask, X25519},
+        commands::{sizeof, unwrap, wrap, Join, Mask, X25519},
         io,
         types::NBytes,
     },
@@ -79,7 +79,6 @@ impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, subscription: &Wrap<'a>) -> Result<&mut Self> {
         self.x25519(subscription.author_ke_pk, NBytes::new(subscription.unsubscribe_key))?
             .mask(subscription.subscriber_id.identifier())?
-            .absorb(&subscription.subscriber_id._ke_sk().public_key())?
             .sign_sizeof(subscription.subscriber_id)
             .await?;
         Ok(self)
@@ -95,7 +94,6 @@ where
         self.join(subscription.initial_state)?
             .x25519(subscription.author_ke_pk, NBytes::new(subscription.unsubscribe_key))?
             .mask(subscription.subscriber_id.identifier())?
-            .absorb(&subscription.subscriber_id._ke_sk().public_key())?
             .sign(subscription.subscriber_id)
             .await?;
         Ok(self)
@@ -106,8 +104,6 @@ pub(crate) struct Unwrap<'a> {
     initial_state: &'a mut Spongos,
     unsubscribe_key: [u8; 32],
     subscriber_identifier: Identifier,
-    // TODO: REMOVE ONCE KE IS ENCAPSULATED WITHIN IDENTITY
-    subscriber_ke_pk: x25519::PublicKey,
     author_ke_sk: &'a x25519::SecretKey,
 }
 
@@ -117,7 +113,6 @@ impl<'a> Unwrap<'a> {
             initial_state,
             unsubscribe_key: Default::default(),
             subscriber_identifier: Default::default(),
-            subscriber_ke_pk: x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]),
             author_ke_sk,
         }
     }
@@ -128,11 +123,6 @@ impl<'a> Unwrap<'a> {
 
     pub(crate) fn into_subscriber_identifier(self) -> Identifier {
         self.subscriber_identifier
-    }
-
-    // #[deprecated = "to be removed once ke is encapsulated within identity"]
-    pub(crate) fn subscriber_ke_pk(&self) -> x25519::PublicKey {
-        self.subscriber_ke_pk
     }
 }
 
@@ -148,7 +138,6 @@ where
                 NBytes::new(&mut subscription.unsubscribe_key),
             )?
             .mask(&mut subscription.subscriber_identifier)?
-            .absorb(&mut subscription.subscriber_ke_pk)?
             .verify(&subscription.subscriber_identifier)
             .await?;
         Ok(self)
