@@ -25,7 +25,7 @@ including that public key in the keyload message.
 
 ### Pre-Shared Keys
 
-A predefined key shared amongst users by other means then the subscription process above. These keys can be used to provide access restrictions to a stream
+A predefined key shared amongst users by other means than the subscription process above. These keys can be used to provide access restrictions to a stream
 without the need for a subscription process.
 
 :::note
