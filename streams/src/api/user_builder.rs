@@ -26,6 +26,8 @@ pub struct UserBuilder<T> {
     transport: Option<T>,
     /// Pre Shared Keys
     psks: Vec<(PskId, Psk)>,
+    /// Spongos Storage Type
+    lean: bool,
 }
 
 impl<T> Default for UserBuilder<T> {
@@ -34,6 +36,7 @@ impl<T> Default for UserBuilder<T> {
             id: None,
             transport: None,
             psks: Default::default(),
+            lean: false,
         }
     }
 }
@@ -58,6 +61,12 @@ impl<T> UserBuilder<T> {
         self
     }
 
+    /// Set the User Builder lean state to true
+    pub fn lean(mut self) -> Self {
+        self.lean = true;
+        self
+    }
+
     /// Inject Transport Client instance into the User Builder
     ///
     /// # Arguments
@@ -70,6 +79,7 @@ impl<T> UserBuilder<T> {
             transport: Some(transport),
             id: self.id,
             psks: self.psks,
+            lean: self.lean,
         }
     }
 
@@ -84,6 +94,7 @@ impl<T> UserBuilder<T> {
             transport: Some(NewTransport::try_default().await?),
             id: self.id,
             psks: self.psks,
+            lean: self.lean,
         })
     }
 
@@ -152,7 +163,7 @@ impl<T> UserBuilder<T> {
             .transport
             .ok_or_else(|| anyhow!("transport not specified, cannot build User without Transport"))?;
 
-        Ok(User::new(self.id, self.psks, transport))
+        Ok(User::new(self.id, self.psks, transport, self.lean))
     }
 
     /// Recover a user instance from the builder parameters.
@@ -186,8 +197,7 @@ impl<T> UserBuilder<T> {
     /// # async fn main() -> Result<()> {
     /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
     /// let author_seed = "author_secure_seed";
-    /// let transport: tangle::Client =
-    ///     tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
     /// # let transport = test_transport.clone();
     /// # let mut author = User::builder()
