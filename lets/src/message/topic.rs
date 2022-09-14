@@ -23,6 +23,10 @@ impl Topic {
     pub fn new(t: String) -> Self {
         Self(t)
     }
+
+    pub fn str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl From<&str> for Topic {

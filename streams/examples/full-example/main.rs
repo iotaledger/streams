@@ -42,6 +42,16 @@ async fn run_single_branch_test<T: GenericTransport>(transport: T, seed: &str) -
     result
 }
 
+async fn run_filter_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+    println!("## Running filter test with seed: {} ##\n", seed);
+    let result = scenarios::filter::example(transport, seed).await;
+    match &result {
+        Err(err) => eprintln!("Error in filter test: {:?}", err),
+        Ok(_) => println!("\n## Filter Test completed successfully!! ##\n"),
+    };
+    result
+}
+
 async fn main_pure() -> Result<()> {
     println!("\n");
     println!("###########################################");
@@ -55,6 +65,7 @@ async fn main_pure() -> Result<()> {
     let transport = Rc::new(RefCell::new(transport));
 
     run_single_branch_test(transport.clone(), "PURESEEDA").await?;
+    run_filter_branch_test(transport.clone(), "PURESEEDB").await?;
     println!("################################################");
     println!("Done running pure tests without accessing Tangle");
     println!("################################################");
@@ -77,6 +88,7 @@ async fn main_client() -> Result<()> {
         )));
 
     run_single_branch_test(transport.clone(), &new_seed()).await?;
+    run_filter_branch_test(transport.clone(), &new_seed()).await?;
     run_did_test(transport).await?;
     println!(
         "#############################################{}",

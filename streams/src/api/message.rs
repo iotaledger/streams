@@ -61,6 +61,10 @@ impl Message {
         &self.content
     }
 
+    pub fn topic(&self) -> &str {
+        self.header.topic().str()
+    }
+
     pub fn is_announcement(&self) -> bool {
         matches!(self.content, MessageContent::Announcement { .. })
     }
