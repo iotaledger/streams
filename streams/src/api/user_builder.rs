@@ -197,7 +197,8 @@ impl<T> UserBuilder<T> {
     /// # async fn main() -> Result<()> {
     /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
     /// let author_seed = "author_secure_seed";
-    /// let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+    /// let transport: tangle::Client =
+    ///     tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
     /// #
     /// # let transport = test_transport.clone();
     /// # let mut author = User::builder()
