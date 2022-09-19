@@ -1,6 +1,6 @@
 // Rust
 use alloc::boxed::Box;
-use core::{convert::TryFrom, hash::Hash};
+use core::hash::Hash;
 
 // 3rd-party
 use anyhow::{anyhow, Result};
@@ -17,8 +17,6 @@ use identity_iota::{
 };
 
 // IOTA-Streams
-#[cfg(feature = "did")]
-use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519 as Ed25519Command, Mask, Squeeze, X25519},

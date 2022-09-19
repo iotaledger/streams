@@ -23,8 +23,8 @@ use streams::{
     User,
 };
 
-use crate::GenericTransport;
 use super::utils::{print_send_result, print_user};
+use crate::GenericTransport;
 
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";

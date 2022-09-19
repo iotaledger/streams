@@ -91,39 +91,33 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
         .try_next()
         .await?
         .expect("Subscriber A did not receive the expected branch announcement");
-    assert!(
-        branch_1_ann_as_a
-            .as_branch_announcement()
-            .expect("expected branch announcement, found something else")
-            .topic
-            .eq(&BRANCH1.into())
-    );
+    assert!(branch_1_ann_as_a
+        .as_branch_announcement()
+        .expect("expected branch announcement, found something else")
+        .topic
+        .eq(&BRANCH1.into()));
     print_user("Subscriber A", &subscriber_a);
     let branch_1_ann_as_b = subscriber_b
         .messages()
         .try_next()
         .await?
         .expect("Subscriber B did not receive the expected branch announcement");
-    assert!(
-        branch_1_ann_as_b
-            .as_branch_announcement()
-            .expect("expected branch announcement, found something else")
-            .topic
-            .eq(&BRANCH1.into())
-    );
+    assert!(branch_1_ann_as_b
+        .as_branch_announcement()
+        .expect("expected branch announcement, found something else")
+        .topic
+        .eq(&BRANCH1.into()));
     print_user("Subscriber B", &subscriber_b);
     let branch_1_ann_as_c = subscriber_c
         .messages()
         .try_next()
         .await?
         .expect("Subscriber C did not receive the expected branch announcement");
-    assert!(
-        branch_1_ann_as_c
-            .as_branch_announcement()
-            .expect("expected branch announcement, found something else")
-            .topic
-            .eq(&BRANCH1.into())
-    );
+    assert!(branch_1_ann_as_c
+        .as_branch_announcement()
+        .expect("expected branch announcement, found something else")
+        .topic
+        .eq(&BRANCH1.into()));
     print_user("Subscriber C", &subscriber_c);
 
     println!("> Subscribers read the keyload");
@@ -133,36 +127,30 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
         .await?
         .expect("subscriber A did not receive the expected keyload");
     print_user("Subscriber A", &subscriber_a);
-    assert!(
-        keyload_as_a
-            .as_keyload()
-            .expect("expected keyload, found something else")
-            .includes_subscriber(&subscriber_a_id)
-    );
+    assert!(keyload_as_a
+        .as_keyload()
+        .expect("expected keyload, found something else")
+        .includes_subscriber(&subscriber_a_id));
     let keyload_as_b = subscriber_b
         .messages()
         .try_next()
         .await?
         .expect("subscriber B did not receive the expected keyload");
     print_user("Subscriber B", &subscriber_b);
-    assert!(
-        !keyload_as_b
-            .as_keyload()
-            .expect("expected keyload, found something else")
-            .includes_subscriber(&subscriber_b_id)
-    );
+    assert!(!keyload_as_b
+        .as_keyload()
+        .expect("expected keyload, found something else")
+        .includes_subscriber(&subscriber_b_id));
     let keyload_as_c = subscriber_c
         .messages()
         .try_next()
         .await?
         .expect("subscriber C did not receive the expected keyload");
     print_user("Subscriber C", &subscriber_c);
-    assert!(
-        keyload_as_c
-            .as_keyload()
-            .expect("expected keyload, found something else")
-            .includes_psk(&psk.to_pskid())
-    );
+    assert!(keyload_as_c
+        .as_keyload()
+        .expect("expected keyload, found something else")
+        .includes_psk(&psk.to_pskid()));
 
     println!("> Author sends a tagged packet linked to the keyload");
     let tagged_packet_as_author = author
