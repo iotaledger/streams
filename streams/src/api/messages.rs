@@ -81,11 +81,7 @@ use crate::api::{
 ///     .send_signed_packet("BASE_BRANCH", b"public payload", b"masked payload")
 ///     .await?;
 /// let second_packet = author
-///     .send_signed_packet(
-///         "BASE_BRANCH",
-///         b"another public payload",
-///         b"another masked payload",
-///     )
+///     .send_signed_packet("BASE_BRANCH", b"another public payload", b"another masked payload")
 ///     .await?;
 ///
 /// #

@@ -17,6 +17,8 @@ use identity_iota::{
 };
 
 // IOTA-Streams
+#[cfg(feature = "did")]
+use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519 as Ed25519Command, Mask, Squeeze, X25519},
