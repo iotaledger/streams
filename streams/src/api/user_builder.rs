@@ -138,7 +138,6 @@ impl<T> UserBuilder<T> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .with_identity(Ed25519::from_seed(user_seed))
     ///     .build();
     ///
     /// # Ok(())
@@ -150,7 +149,7 @@ impl<T> UserBuilder<T> {
         T: IntoTransport<Trans>,
         Trans: for<'a> Transport<'a>,
     {
-        User::new(self.id, self.psks, self.transport.into())
+        User::new(self.id, self.psks, self.transport.into(), self.lean)
     }
 
     /// Recover a user instance from the builder parameters.

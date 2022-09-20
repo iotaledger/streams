@@ -30,16 +30,16 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
         .with_identity(Identity::Ed25519(Ed25519::from_seed(author_seed)))
         .with_psk(psk.to_pskid(), psk)
         .lean()
-        .build()?;
+        .build();
     let mut fat_subscriber = User::builder()
         .with_transport(transport.clone())
         .with_psk(psk.to_pskid(), psk)
-        .build()?;
+        .build();
     let mut lean_subscriber = User::builder()
         .with_transport(transport)
         .with_psk(psk.to_pskid(), psk)
         .lean()
-        .build()?;
+        .build();
 
     println!("author creates channel");
     let announcement = author.create_stream(BASE_BRANCH).await?;
