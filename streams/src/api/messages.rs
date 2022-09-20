@@ -60,9 +60,8 @@ use crate::api::{
 /// #
 /// let mut author = User::builder()
 ///     .with_identity(Ed25519::from_seed(author_seed))
-///     .with_transport(author_transport)
 /// #     .with_transport(test_author_transport)
-///     .build()?;
+///     .build();
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
 /// let subscriber_transport: utangle::Client =
@@ -72,8 +71,8 @@ use crate::api::{
 /// #
 /// let mut subscriber = User::builder()
 ///     .with_identity(Ed25519::from_seed(subscriber_seed))
-///     .with_transport(subscriber_transport)
-///     .build()?;
+/// #    .with_transport(subscriber_transport)
+///     .build();
 ///
 /// let announcement = author.create_stream("BASE_BRANCH").await?;
 /// subscriber.receive_message(announcement.address()).await?;
@@ -405,7 +404,7 @@ mod tests {
         let mut author = User::builder()
             .with_identity(Ed25519::from_seed("author"))
             .with_transport(transport.clone())
-            .build()?;
+            .build();
         let announcement = author.create_stream("BASE_BRANCH").await?;
         let subscriber =
             subscriber_fixture("subscriber", &mut author, announcement.address(), transport.clone()).await?;
@@ -421,7 +420,7 @@ mod tests {
         let mut subscriber = User::builder()
             .with_identity(Ed25519::from_seed(seed))
             .with_transport(transport)
-            .build()?;
+            .build();
         subscriber.receive_message(announcement_link).await?;
         let subscription = subscriber.subscribe().await?;
         author.receive_message(subscription.address()).await?;
