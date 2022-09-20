@@ -88,8 +88,6 @@ impl<T> UserBuilder<T> {
     /// let psk1 = Psk::from_seed(b"Psk1");
     /// let psk2 = Psk::from_seed(b"Psk2");
     /// let user = User::builder()
-    ///     .with_default_transport::<utangle::Client>()
-    ///     .await?
     ///     .with_psk(psk1.to_pskid(), psk1)
     ///     .with_psk(psk2.to_pskid(), psk2)
     ///     .build();
@@ -129,10 +127,8 @@ impl<T> UserBuilder<T> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .with_default_transport::<utangle::Client>()
-    ///     .await?
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .build()?;
+    ///     .build();
     ///
     /// # Ok(())
     /// # }
@@ -226,13 +222,5 @@ where
 {
     fn into(self) -> T {
         self
-    }
-}
-
-#[async_trait(?Send)]
-#[cfg(feature = "utangle-client")]
-impl<Message, SendResponse> DefaultTransport for lets::transport::utangle::Client<Message, SendResponse> {
-    async fn try_default() -> Result<Self> {
-        Ok(Self::default())
     }
 }
