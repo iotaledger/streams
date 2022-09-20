@@ -85,7 +85,6 @@ impl<T> UserBuilder<T> {
         }
     }
 
-
     /// Inject a new Pre Shared Key and Id into the User Builder
     ///
     /// # Examples
