@@ -28,6 +28,8 @@ pub struct UserBuilder<T> {
     transport: T,
     /// Pre Shared Keys
     psks: Vec<(PskId, Psk)>,
+    /// Spongos Storage Type
+    lean: bool,
 }
 
 impl Default for UserBuilder<()> {
@@ -36,6 +38,7 @@ impl Default for UserBuilder<()> {
             id: None,
             transport: (),
             psks: Default::default(),
+            lean: false,
         }
     }
 }
@@ -60,6 +63,12 @@ impl<T> UserBuilder<T> {
         self
     }
 
+    /// Set the User Builder lean state to true
+    pub fn lean(mut self) -> Self {
+        self.lean = true;
+        self
+    }
+
     /// Inject Transport Client instance into the User Builder
     ///
     /// # Arguments
@@ -72,6 +81,7 @@ impl<T> UserBuilder<T> {
             transport,
             id: self.id,
             psks: self.psks,
+            lean: self.lean,
         }
     }
 
@@ -127,18 +137,18 @@ impl<T> UserBuilder<T> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .with_identity(Ed25519::from_seed(user_seed))
     ///     .build();
     ///
     /// # Ok(())
     /// # }
     /// ```
+
     pub fn build<Trans>(self) -> User<Trans>
     where
         T: IntoTransport<Trans>,
         Trans: for<'a> Transport<'a>,
     {
-        User::new(self.id, self.psks, self.transport.into())
+        User::new(self.id, self.psks, self.transport.into(), self.lean)
     }
 
     /// Recover a user instance from the builder parameters.

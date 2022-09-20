@@ -25,7 +25,7 @@ use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Mask, Squeeze},
         modifiers::External,
-        types::{Mac, Maybe, NBytes, Size},
+        types::{Mac, Maybe, NBytes, Size, Uint8},
     },
     KeccakF1600, Spongos, SpongosRng,
 };
@@ -75,6 +75,13 @@ struct State {
 
     base_branch: Topic,
 
+    /// Users' Spongos Storage configuration. If lean, only the announcement message and latest
+    /// branch message spongos state is stored. This reduces the overall size of the user
+    /// implementation over time. If not lean, all spongos states processed by the user will be
+    /// stored.
+    lean: bool,
+
+    /// List of known branch topics
     topics: HashSet<Topic>,
 }
 
@@ -91,7 +98,7 @@ impl User<()> {
 }
 
 impl<T> User<T> {
-    pub(crate) fn new<Psks>(user_id: Option<Identity>, psks: Psks, transport: T) -> Self
+    pub(crate) fn new<Psks>(user_id: Option<Identity>, psks: Psks, transport: T, lean: bool) -> Self
     where
         Psks: IntoIterator<Item = (PskId, Psk)>,
     {
@@ -114,6 +121,7 @@ impl<T> User<T> {
                 stream_address: None,
                 author_identifier: None,
                 base_branch: Default::default(),
+                lean,
                 topics: Default::default(),
             },
         }
@@ -173,6 +181,10 @@ impl<T> User<T> {
         self.topics().find(|t| &TopicHash::from(*t) == hash).cloned()
     }
 
+    fn lean(&self) -> bool {
+        self.state.lean
+    }
+
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Permissioned<Identifier>, usize)> + '_ {
         self.state.cursor_store.cursors()
     }
@@ -192,6 +204,18 @@ impl<T> User<T> {
         let permission = self.state.cursor_store.get_permission(topic, subscriber.identifier());
         let tracked_and_equal = permission.is_some() && (permission.unwrap().as_ref() == subscriber);
         !subscriber.is_readonly() && !tracked_and_equal
+    }
+
+    fn store_spongos(&mut self, msg_address: MsgId, spongos: Spongos, linked_msg_address: MsgId) {
+        let is_stream_address = self
+            .stream_address()
+            .map_or(false, |stream_address| stream_address.relative() == linked_msg_address);
+        // Do not remove announcement message from store
+        if self.lean() && !is_stream_address {
+            self.state.spongos_store.remove(&linked_msg_address);
+        }
+
+        self.state.spongos_store.insert(msg_address, spongos);
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
@@ -308,7 +332,7 @@ impl<T> User<T> {
 
         let new_topic = message.payload().content().new_topic();
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.store_spongos(address.relative(), spongos, linked_msg_address);
         // Insert new branch into store
         self.state.cursor_store.new_branch(new_topic.clone());
         self.state.topics.insert(new_topic.clone());
@@ -376,7 +400,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed.unwrap(unsubscription).await?;
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.store_spongos(address.relative(), spongos, linked_msg_address);
 
         // Store message content into stores
         self.remove_subscriber(message.payload().content().subscriber_identifier());
@@ -500,7 +524,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed.unwrap(signed_packet).await?;
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.store_spongos(address.relative(), spongos, linked_msg_address);
 
         // Store message content into stores
         self.set_latest_link(topic, address.relative());
@@ -541,7 +565,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed.unwrap(tagged_packet).await?;
 
         // Store spongos
-        self.state.spongos_store.insert(address.relative(), spongos);
+        self.store_spongos(address.relative(), spongos, linked_msg_address);
 
         // Store message content into stores
         self.set_latest_link(topic, address.relative());
@@ -889,7 +913,7 @@ where
         self.state
             .cursor_store
             .insert_cursor(base_branch, permission, new_cursor);
-        self.state.spongos_store.insert(rel_address, spongos);
+        self.store_spongos(rel_address, spongos, link_to);
         Ok(SendResponse::new(message_address, send_response))
     }
 
@@ -986,7 +1010,7 @@ where
         self.state
             .cursor_store
             .insert_cursor(&topic, Permissioned::Admin(identifier), new_cursor);
-        self.state.spongos_store.insert(rel_address, spongos);
+        self.store_spongos(rel_address, spongos, link_to);
         // Update Branch Links
         self.set_latest_link(topic, message_address.relative());
         Ok(SendResponse::new(message_address, send_response))
@@ -1123,7 +1147,7 @@ where
         self.state
             .cursor_store
             .insert_cursor(&topic, permission.clone(), new_cursor);
-        self.state.spongos_store.insert(rel_address, spongos);
+        self.store_spongos(rel_address, spongos, link_to);
         // Update Branch Links
         self.set_latest_link(topic, message_address.relative());
         Ok(SendResponse::new(message_address, send_response))
@@ -1198,7 +1222,7 @@ where
         self.state
             .cursor_store
             .insert_cursor(&topic, permission.clone(), new_cursor);
-        self.state.spongos_store.insert(rel_address, spongos);
+        self.store_spongos(rel_address, spongos, link_to);
         // Update Branch Links
         self.set_latest_link(topic, rel_address);
         Ok(SendResponse::new(message_address, send_response))
@@ -1261,6 +1285,9 @@ impl ContentSizeof<State> for sizeof::Context {
             self.mask(pskid)?.mask(psk)?;
         }
 
+        let lean = if user_state.lean { 1 } else { 0 };
+        self.mask(Uint8::new(lean))?;
+
         self.commit()?.squeeze(Mac::new(32))?;
         Ok(self)
     }
@@ -1321,6 +1348,9 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
         for (pskid, psk) in psks {
             self.mask(pskid)?.mask(psk)?;
         }
+
+        let lean = if user_state.lean { 1 } else { 0 };
+        self.mask(Uint8::new(lean))?;
 
         self.commit()?.squeeze(Mac::new(32))?;
         Ok(self)
@@ -1385,6 +1415,10 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
             user_state.psk_store.insert(pskid, psk);
         }
 
+        let mut lean = Uint8::new(0);
+        self.mask(&mut lean)?;
+        user_state.lean = lean.inner() == 1;
+
         self.commit()?.squeeze(Mac::new(32))?;
         Ok(self)
     }
@@ -1394,7 +1428,7 @@ impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
             f,
-            "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
+            "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n* lean: {}\n",
             self.identifier().unwrap_or_default(),
             self.base_branch(),
             self.state.cursor_store,
@@ -1407,7 +1441,8 @@ impl<T> Debug for User<T> {
                 .spongos_store
                 .keys()
                 .map(|key| format!("\t<{}>\n", key))
-                .collect::<String>()
+                .collect::<String>(),
+            self.state.lean
         )
     }
 }
