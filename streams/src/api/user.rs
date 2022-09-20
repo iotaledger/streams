@@ -6,11 +6,10 @@ use core::fmt::{Debug, Formatter, Result as FormatResult};
 use anyhow::{anyhow, bail, ensure, Result};
 use async_trait::async_trait;
 use futures::{future, TryStreamExt};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 // IOTA
-use crypto::keys::x25519;
 
 // Streams
 use lets::{
@@ -40,7 +39,10 @@ use crate::{
         send_response::SendResponse,
         user_builder::UserBuilder,
     },
-    message::{announcement, keyload, message_types, signed_packet, subscription, tagged_packet, unsubscription},
+    message::{
+        announcement, branch_announcement, keyload, message_types, signed_packet, subscription, tagged_packet,
+        unsubscription,
+    },
 };
 
 const ANN_MESSAGE_NUM: usize = 0; // Announcement is always the first message of authors
@@ -66,8 +68,8 @@ struct State {
     /// Mapping of trusted pre shared keys and identifiers
     psk_store: HashMap<PskId, Psk>,
 
-    /// Mapping of exchange keys and identifiers
-    exchange_keys: HashMap<Identifier, x25519::PublicKey>,
+    /// List of Subscribed Identifiers
+    subscribers: HashSet<Identifier>,
 
     spongos_store: HashMap<MsgId, Spongos>,
 
@@ -92,16 +94,12 @@ impl<T> User<T> {
         Psks: IntoIterator<Item = (PskId, Psk)>,
     {
         let mut psk_store = HashMap::new();
-        let mut exchange_keys = HashMap::new();
+        let subscribers = HashSet::new();
 
         // Store any pre shared keys
         psks.into_iter().for_each(|(pskid, psk)| {
             psk_store.insert(pskid, psk);
         });
-
-        if let Some(id) = user_id.as_ref() {
-            exchange_keys.insert(id.to_identifier(), id._ke_sk().public_key());
-        }
 
         Self {
             transport,
@@ -109,7 +107,7 @@ impl<T> User<T> {
                 user_id,
                 cursor_store: CursorStore::new(),
                 psk_store,
-                exchange_keys,
+                subscribers,
                 spongos_store: Default::default(),
                 stream_address: None,
                 author_identifier: None,
@@ -129,6 +127,11 @@ impl<T> User<T> {
             .user_id
             .as_ref()
             .ok_or_else(|| anyhow!("User does not have a stored identity"))
+    }
+
+    pub fn permission(&self, topic: &Topic) -> Option<&Permissioned<Identifier>> {
+        self.identifier()
+            .and_then(|id| self.state.cursor_store.get_permission(topic, &id))
     }
 
     /// User's cursor
@@ -154,6 +157,7 @@ impl<T> User<T> {
     pub fn transport(&self) -> &T {
         &self.transport
     }
+
     pub fn transport_mut(&mut self) -> &mut T {
         &mut self.transport
     }
@@ -162,31 +166,33 @@ impl<T> User<T> {
         self.state.cursor_store.topics()
     }
 
-    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Identifier, usize)> + '_ {
+    pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Permissioned<Identifier>, usize)> + '_ {
         self.state.cursor_store.cursors()
     }
 
+    fn cursors_by_topic(&self, topic: &Topic) -> Result<impl Iterator<Item = (&Permissioned<Identifier>, &usize)>> {
+        self.state
+            .cursor_store
+            .cursors_by_topic(topic)
+            .ok_or_else(|| anyhow!("previous topic {} not found in store", topic))
+    }
+
     pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone + '_ {
-        self.state.exchange_keys.keys()
+        self.state.subscribers.iter()
     }
 
     fn should_store_cursor(&self, topic: &Topic, subscriber: Permissioned<&Identifier>) -> bool {
-        let no_tracked_cursor = !self
-            .state
-            .cursor_store
-            .is_cursor_tracked(topic, subscriber.identifier());
-        !subscriber.is_readonly() && no_tracked_cursor
+        let permission = self.state.cursor_store.get_permission(topic, subscriber.identifier());
+        let tracked_and_equal = permission.is_some() && (permission.unwrap().as_ref() == subscriber);
+        !subscriber.is_readonly() && !tracked_and_equal
     }
 
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
-        let ke_pk = subscriber
-            ._ke_pk()
-            .expect("subscriber must have an identifier from which an x25519 public key can be derived");
-        self.state.exchange_keys.insert(subscriber, ke_pk).is_none()
+        self.state.subscribers.insert(subscriber)
     }
 
     pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
-        self.state.cursor_store.remove(id) | self.state.exchange_keys.remove(id).is_some()
+        self.state.subscribers.remove(id)
     }
 
     pub fn add_psk(&mut self, psk: Psk) -> bool {
@@ -197,20 +203,10 @@ impl<T> User<T> {
         self.state.psk_store.remove(&pskid).is_some()
     }
 
-    /// Sets the anchor message link for a specified branch. If the branch does not exist, it is
-    /// created
-    fn set_anchor(&mut self, topic: &Topic, anchor: MsgId) -> Option<InnerCursorStore> {
-        self.state.cursor_store.set_anchor(topic, anchor)
-    }
-
     /// Sets the latest message link for a specified branch. If the branch does not exist, it is
     /// created
     fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
         self.state.cursor_store.set_latest_link(topic, latest_link)
-    }
-
-    fn get_anchor(&self, topic: &Topic) -> Option<MsgId> {
-        self.state.cursor_store.get_anchor(topic)
     }
 
     fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
@@ -221,6 +217,7 @@ impl<T> User<T> {
         let preparsed = msg.parse_header().await?;
         match preparsed.header().message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
+            message_types::BRANCH_ANNOUNCEMENT => self.handle_branch_announcement(address, preparsed).await,
             message_types::SUBSCRIPTION => self.handle_subscription(address, preparsed).await,
             message_types::UNSUBSCRIPTION => self.handle_unsubscription(address, preparsed).await,
             message_types::KEYLOAD => self.handle_keyload(address, preparsed).await,
@@ -234,29 +231,17 @@ impl<T> User<T> {
     /// in the message.
     async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Check Topic
-        let topic = preparsed.header().topic();
-        let publisher = preparsed.header().publisher();
-        let is_base_branch = self.state.stream_address.is_none();
+        let topic = preparsed.header().topic().clone();
+        let publisher = preparsed.header().publisher().clone();
 
         // Insert new branch into store
         self.state.cursor_store.new_branch(topic.clone());
-
-        // If the topic of the announcement is not base branch the author cursor needs to be iterated
-        // on the base branch
-        if !is_base_branch {
-            self.state.cursor_store.insert_cursor(
-                &self.state.base_branch,
-                publisher.clone(),
-                preparsed.header().sequence(),
-            );
-        }
-
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state
             .cursor_store
-            .insert_cursor(topic, publisher.clone(), INIT_MESSAGE_NUM);
+            .insert_cursor(&topic, Permissioned::Admin(publisher), INIT_MESSAGE_NUM);
 
         // Unwrap message
         let announcement = announcement::Unwrap::default();
@@ -266,20 +251,67 @@ impl<T> User<T> {
         self.state.spongos_store.insert(address.relative(), spongos);
 
         // Store message content into stores
-        let topic = message.header().topic();
-        let author_id = message.payload().content().author_id();
-        let author_ke_pk = message.payload().content().author_ke_pk();
+        let author_id = message.payload().content().author_id().clone();
 
         // Update branch links
-        self.set_anchor(topic, address.relative());
-        self.set_latest_link(topic, address.relative());
-        self.state.author_identifier = Some(author_id.clone());
+        self.set_latest_link(&topic, address.relative());
+        self.state.author_identifier = Some(author_id);
+        self.state.base_branch = topic;
+        self.state.stream_address = Some(address);
 
-        if is_base_branch {
-            self.state.exchange_keys.insert(author_id.clone(), author_ke_pk.clone());
-            self.state.base_branch = topic.clone();
-            self.state.stream_address = Some(address);
+        Ok(Message::from_lets_message(address, message))
+    }
+
+    async fn handle_branch_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        // Retrieve header values
+        let prev_topic = preparsed.header().topic().clone();
+        let publisher = preparsed.header().publisher().clone();
+        let cursor = preparsed.header().sequence();
+
+        // From the point of view of cursor tracking, the message exists, regardless of the validity or
+        // accessibility to its content. Therefore we must update the cursor of the publisher before
+        // handling the message
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&prev_topic, &publisher)
+            .ok_or_else(|| anyhow!("branch announcement received from user that is not stored as a publisher"))?
+            .clone();
+        self.state.cursor_store.insert_cursor(&prev_topic, permission, cursor);
+
+        // Unwrap message
+        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
+            anyhow!(
+                "branch announcement messages must contain the address of the message they are linked to in the header"
+            )
+        })?;
+        let mut linked_msg_spongos = {
+            if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
+                // Spongos must be copied because wrapping mutates it
+                spongos
+            } else {
+                return Ok(Message::orphan(address, preparsed));
+            }
+        };
+        let branch_announcement = branch_announcement::Unwrap::new(&mut linked_msg_spongos);
+        let (message, spongos) = preparsed.unwrap(branch_announcement).await?;
+
+        let new_topic = message.payload().content().new_topic();
+        // Store spongos
+        self.state.spongos_store.insert(address.relative(), spongos);
+        // Insert new branch into store
+        self.state.cursor_store.new_branch(new_topic.clone());
+        // Collect permissions from previous branch and clone them into new branch
+        let prev_permissions = self
+            .cursors_by_topic(&prev_topic)?
+            .map(|(id, _)| id.clone())
+            .collect::<Vec<Permissioned<Identifier>>>();
+        for id in prev_permissions {
+            self.state.cursor_store.insert_cursor(new_topic, id, INIT_MESSAGE_NUM);
         }
+
+        // Update branch links
+        self.set_latest_link(new_topic, address.relative());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -299,7 +331,7 @@ impl<T> User<T> {
                 return Ok(Message::orphan(address, preparsed));
             }
         };
-        let user_ke_sk = &self.identity()?._ke_sk();
+        let user_ke_sk = &self.identity()?.ke_sk()?;
         let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
         let (message, _spongos) = preparsed.unwrap(subscription).await?;
 
@@ -309,10 +341,7 @@ impl<T> User<T> {
 
         // Store message content into stores
         let subscriber_identifier = message.payload().content().subscriber_identifier();
-        let subscriber_ke_pk = message.payload().content().subscriber_ke_pk();
-        self.state
-            .exchange_keys
-            .insert(subscriber_identifier.clone(), subscriber_ke_pk);
+        self.add_subscriber(subscriber_identifier.clone());
 
         Ok(Message::from_lets_message(address, message))
     }
@@ -345,29 +374,38 @@ impl<T> User<T> {
     }
 
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        let stream_address = self
+            .stream_address()
+            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
+
+        let topic = preparsed.header().topic().clone();
+        let publisher = preparsed.header().publisher().clone();
+        // Confirm keyload came from administrator
+        if !self
+            .state
+            .cursor_store
+            .get_permission(&topic, &publisher)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?
+            .is_admin()
+        {
+            return Err(anyhow!("received keyload message from a user without admin privileges"));
+        }
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
         self.state.cursor_store.insert_cursor(
             preparsed.header().topic(),
-            preparsed.header().publisher().clone(),
+            Permissioned::Admin(publisher),
             preparsed.header().sequence(),
         );
 
         // Unwrap message
-        let author_identifier = self.state.author_identifier.as_ref().ok_or_else(|| {
-            anyhow!("before receiving keyloads one must have received the announcement of a stream first")
-        })?;
-        self.stream_address()
-            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
-        let prev_msg = preparsed
-            .header()
-            .linked_msg_address()
-            .ok_or_else(|| anyhow!("a keyload must have a previously linked message"))?;
+        // Ok to unwrap since an author identifier is set at the same time as the stream address
+        let author_identifier = self.state.author_identifier.as_ref().unwrap();
         let mut announcement_spongos = self
             .state
             .spongos_store
-            .get(&prev_msg)
+            .get(&stream_address.relative())
             .copied()
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
@@ -383,14 +421,31 @@ impl<T> User<T> {
         // Store spongos
         self.state.spongos_store.insert(address.relative(), spongos);
 
+        let subscribers = message.payload().content().subscribers();
+
+        // If a branch admin does not include a user in the keyload, any further messages sent by
+        // the user will not be received by the others, so remove them from the publisher pool
+        let stored_subscribers: Vec<(Permissioned<Identifier>, usize)> = self
+            .cursors_by_topic(&topic)?
+            .map(|(perm, cursor)| (perm.clone(), *cursor))
+            .collect();
+
+        for (perm, cursor) in stored_subscribers {
+            if !(perm.identifier() == author_identifier
+                || subscribers.iter().any(|p| p.identifier() == perm.identifier()))
+            {
+                self.state
+                    .cursor_store
+                    .insert_cursor(&topic, Permissioned::Read(perm.identifier().clone()), cursor);
+            }
+        }
+
         // Store message content into stores
-        for subscriber in message.payload().content().subscribers() {
-            if self.should_store_cursor(message.header().topic(), subscriber.as_ref()) {
-                self.state.cursor_store.insert_cursor(
-                    message.header().topic(),
-                    subscriber.identifier().clone(),
-                    INIT_MESSAGE_NUM,
-                );
+        for subscriber in subscribers {
+            if self.should_store_cursor(&topic, subscriber.as_ref()) {
+                self.state
+                    .cursor_store
+                    .insert_cursor(message.header().topic(), subscriber.clone(), INIT_MESSAGE_NUM);
             }
         }
 
@@ -402,14 +457,20 @@ impl<T> User<T> {
     }
 
     async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        let topic = preparsed.header().topic();
+        let publisher = preparsed.header().publisher();
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(topic, publisher)
+            .expect("Publisher does not have a stored cursor on the provided branch")
+            .clone();
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
-            preparsed.header().topic(),
-            preparsed.header().publisher().clone(),
-            preparsed.header().sequence(),
-        );
+        self.state
+            .cursor_store
+            .insert_cursor(topic, permission, preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -435,14 +496,20 @@ impl<T> User<T> {
     }
 
     async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
+        let topic = preparsed.header().topic();
+        let publisher = preparsed.header().publisher();
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(topic, publisher)
+            .expect("Publisher does not have a stored cursor on the provided branch")
+            .clone();
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
         // handling the message
-        self.state.cursor_store.insert_cursor(
-            preparsed.header().topic(),
-            preparsed.header().publisher().clone(),
-            preparsed.header().sequence(),
-        );
+        self.state
+            .cursor_store
+            .insert_cursor(topic, permission, preparsed.header().sequence());
 
         // Unwrap message
         let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
@@ -560,7 +627,8 @@ where
             );
         }
         // Confirm user has identity
-        let identifier = self.identity()?.to_identifier();
+        let identity = self.identity()?;
+        let identifier = identity.to_identifier();
         // Convert topic
         let topic = topic.into();
         // Generate stream address
@@ -568,20 +636,50 @@ where
         let stream_rel_address = MsgId::gen(stream_base_address, &identifier, &topic, INIT_MESSAGE_NUM);
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
+        // Prepare HDF and PCF
+        let header = HDF::new(
+            message_types::ANNOUNCEMENT,
+            ANN_MESSAGE_NUM,
+            identity.to_identifier(),
+            topic.clone(),
+        )?;
+        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(identity));
+
+        // Wrap message
+        let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
+
+        // Attempt to send message
+        ensure!(
+            self.transport.recv_message(stream_address).await.is_err(),
+            anyhow!("stream with address '{}' already exists", stream_address)
+        );
+        let send_response = self.transport.send_message(stream_address, transport_msg).await?;
+
+        // If a message has been sent successfully, insert the base branch into store
+        self.state.cursor_store.new_branch(topic.clone());
+        // Commit message to stores
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, Permissioned::Admin(identifier.clone()), INIT_MESSAGE_NUM);
+        self.state.spongos_store.insert(stream_address.relative(), spongos);
+
+        // Update branch links
+        self.set_latest_link(&topic, stream_address.relative());
+
         // Commit Author Identifier and Stream Address to store
         self.state.stream_address = Some(stream_address);
         self.state.author_identifier = Some(identifier);
         self.state.base_branch = topic.clone();
 
-        // Insert the base branch into store
-        self.state.cursor_store.new_branch(topic.clone());
-
-        // Create Base Branch
-        self.new_branch(topic).await
+        Ok(SendResponse::new(stream_address, send_response))
     }
 
     /// Prepare new branch Announcement message
-    pub async fn new_branch<Top: Into<Topic>>(&mut self, topic: Top) -> Result<SendResponse<TSR>> {
+    pub async fn new_branch(
+        &mut self,
+        from_topic: impl Into<Topic>,
+        to_topic: impl Into<Topic>,
+    ) -> Result<SendResponse<TSR>> {
         // Check conditions
         let stream_address = self
             .stream_address()
@@ -590,58 +688,74 @@ where
         let user_id = self.identity()?;
         let identifier = user_id.to_identifier();
         // Check Topic
-        let topic: Topic = topic.into();
-        let base_branch = &self.state.base_branch;
-        let is_base_branch = topic.eq(base_branch);
+        let topic: Topic = to_topic.into();
+        let prev_topic: Topic = from_topic.into();
+        // Check Permission
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&prev_topic, &identifier)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
+        if permission.is_readonly() {
+            return Err(anyhow!("user has read only permissions for this branch"));
+        }
+        let link_to = self
+            .get_latest_link(&prev_topic)
+            .ok_or_else(|| anyhow!("No latest link found in branch <{}>", prev_topic))?;
 
         // Update own's cursor
-        let (user_cursor, address, topic) = if is_base_branch {
-            (ANN_MESSAGE_NUM, stream_address, base_branch)
-        } else {
-            let cursor = self
-                .next_cursor(base_branch)
-                .map_err(|_| anyhow!("No cursor found in base branch"))?;
-            let msgid = MsgId::gen(stream_address.base(), &identifier, &base_branch, cursor);
-            let address = Address::new(stream_address.base(), msgid);
-            (cursor, address, &topic)
-        };
+        let user_cursor = self
+            .next_cursor(&prev_topic)
+            .map_err(|_| anyhow!("No cursor found in base branch"))?;
+        let msgid = MsgId::gen(stream_address.base(), &identifier, &prev_topic, user_cursor);
+        let address = Address::new(stream_address.base(), msgid);
 
         // Prepare HDF and PCF
+        // Spongos must be copied because wrapping mutates it
+        let mut linked_msg_spongos = self
+            .state
+            .spongos_store
+            .get(&link_to)
+            .copied()
+            .ok_or_else(|| anyhow!("message '{}' not found in spongos store", link_to))?;
         let header = HDF::new(
-            message_types::ANNOUNCEMENT,
+            message_types::BRANCH_ANNOUNCEMENT,
             user_cursor,
             identifier.clone(),
-            topic.clone(),
-        )?;
-        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(user_id));
+            prev_topic.clone(),
+        )?
+        .with_linked_msg_address(link_to);
+        let content = PCF::new_final_frame().with_content(branch_announcement::Wrap::new(
+            &mut linked_msg_spongos,
+            user_id,
+            &topic,
+        ));
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
-
-        // Attempt to send message
-        ensure!(
-            self.transport.recv_message(address).await.is_err(),
-            anyhow!("stream with address '{}' already exists", address)
-        );
         let send_response = self.transport.send_message(address, transport_msg).await?;
 
-        // If the branch has not been created yet, create it
-        if !is_base_branch {
-            self.state.cursor_store.new_branch(topic.clone());
-            self.state
-                .cursor_store
-                .insert_cursor(&base_branch, identifier.clone(), self.next_cursor(&base_branch)?);
+        // If message has been sent successfully, create the new branch in store
+        self.state.cursor_store.new_branch(topic.clone());
+        // Commit message to stores and update cursors
+        self.state.cursor_store.insert_cursor(
+            &prev_topic,
+            Permissioned::Admin(identifier.clone()),
+            self.next_cursor(&prev_topic)?,
+        );
+        self.state.spongos_store.insert(address.relative(), spongos);
+        // Collect permissions from previous branch and clone them into new branch
+        let prev_permissions = self
+            .cursors()
+            .filter(|cursor| cursor.0 == &prev_topic)
+            .map(|(_, id, _)| id.clone())
+            .collect::<Vec<Permissioned<Identifier>>>();
+        for id in prev_permissions {
+            self.state.cursor_store.insert_cursor(&topic, id, INIT_MESSAGE_NUM);
         }
 
-        // If message has been sent successfully, commit message to stores
-        self.state
-            .cursor_store
-            .insert_cursor(&topic, identifier.clone(), INIT_MESSAGE_NUM);
-        self.state.spongos_store.insert(address.relative(), spongos);
-
         // Update branch links
-        self.state.cursor_store.set_anchor(topic, address.relative());
-        self.state.cursor_store.set_latest_link(topic, address.relative());
+        self.state.cursor_store.set_latest_link(&topic, address.relative());
         Ok(SendResponse::new(address, send_response))
     }
 
@@ -657,11 +771,8 @@ where
         // Get base branch topic
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
-        let link_to = self
-            .get_anchor(base_branch)
-            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", base_branch))?;
-
-        let rel_address = MsgId::gen(stream_address.base(), &identifier, &base_branch, SUB_MESSAGE_NUM);
+        let link_to = stream_address.relative();
+        let rel_address = MsgId::gen(stream_address.base(), &identifier, base_branch, SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -676,13 +787,14 @@ where
             .state
             .author_identifier
             .as_ref()
-            .and_then(|author_id| self.state.exchange_keys.get(author_id))
-            .expect("a user that already have an stream address must know the author identifier");
+            .expect("a user that already have an stream address must know the author identifier")
+            .ke_pk()
+            .await?;
         let content = PCF::new_final_frame().with_content(subscription::Wrap::new(
             &mut linked_msg_spongos,
             unsubscribe_key,
             user_id,
-            author_ke_pk,
+            &author_ke_pk,
         ));
         let header = HDF::new(
             message_types::SUBSCRIPTION,
@@ -722,12 +834,12 @@ where
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
         let link_to = self
-            .get_anchor(base_branch)
-            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", base_branch))?;
+            .get_latest_link(base_branch)
+            .ok_or_else(|| anyhow!("No latest link found in branch <{}>", base_branch))?;
 
         // Update own's cursor
-        let new_cursor = self.next_cursor(&base_branch)?;
-        let rel_address = MsgId::gen(stream_address.base(), &identifier, &base_branch, new_cursor);
+        let new_cursor = self.next_cursor(base_branch)?;
+        let rel_address = MsgId::gen(stream_address.base(), &identifier, base_branch, new_cursor);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -758,9 +870,10 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
+        let permission = Permissioned::Read(identifier);
         self.state
             .cursor_store
-            .insert_cursor(&base_branch, identifier, new_cursor);
+            .insert_cursor(base_branch, permission, new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         Ok(SendResponse::new(message_address, send_response))
     }
@@ -772,7 +885,8 @@ where
         psk_ids: Psks,
     ) -> Result<SendResponse<TSR>>
     where
-        Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>>,
+        Subscribers: IntoIterator<Item = Permissioned<&'a Identifier>> + Clone,
+        Subscribers::IntoIter: ExactSizeIterator,
         Top: Into<Topic>,
         Psks: IntoIterator<Item = PskId>,
     {
@@ -785,37 +899,33 @@ where
         let identifier = user_id.to_identifier();
         // Check Topic
         let topic = topic.into();
-        // Link message to anchor in branch
+        // Check Permission
+        let permission = self
+            .permission(&topic)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
+        if !permission.is_admin() {
+            return Err(anyhow!("user does not have admin permissions for this branch"));
+        }
+        // Link message to edge of branch
         let link_to = self
-            .get_anchor(&topic)
-            .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
+            .get_latest_link(&topic)
+            .ok_or_else(|| anyhow!("No latest message found in branch <{}>", topic))?;
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
         let rel_address = MsgId::gen(stream_address.base(), &identifier, &topic, new_cursor);
 
         // Prepare HDF and PCF
-        let mut linked_msg_spongos = self
+        // All Keyload messages will attach to stream Announcement message spongos
+        let mut announcement_msg_spongos = self
             .state
             .spongos_store
-            .get(&link_to)
+            .get(&stream_address.relative())
             .copied()
             .expect("a subscriber that has received an stream announcement must keep its spongos in store");
 
         let mut rng = StdRng::from_entropy();
         let encryption_key = rng.gen();
         let nonce = rng.gen();
-        let exchange_keys = &self.state.exchange_keys; // partial borrow to avoid borrowing the whole self within the closure
-        let subscribers_with_keys = subscribers
-            .into_iter()
-            .map(|subscriber| {
-                Ok((
-                    subscriber,
-                    exchange_keys
-                        .get(subscriber.identifier())
-                        .ok_or_else(|| anyhow!("unknown subscriber '{}'", subscriber.identifier()))?,
-                ))
-            })
-            .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let psk_ids_with_psks = psk_ids
             .into_iter()
             .map(|pskid| {
@@ -829,8 +939,8 @@ where
             })
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
-            &mut linked_msg_spongos,
-            subscribers_with_keys.iter().copied(),
+            &mut announcement_msg_spongos,
+            subscribers.clone().into_iter().collect::<Vec<_>>(),
             &psk_ids_with_psks,
             encryption_key,
             nonce,
@@ -851,14 +961,16 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        for (subscriber, _) in subscribers_with_keys {
+        for subscriber in subscribers {
             if self.should_store_cursor(&topic, subscriber) {
                 self.state
                     .cursor_store
-                    .insert_cursor(&topic, (*subscriber.identifier()).clone(), INIT_MESSAGE_NUM);
+                    .insert_cursor(&topic, subscriber.into(), INIT_MESSAGE_NUM);
             }
         }
-        self.state.cursor_store.insert_cursor(&topic, identifier, new_cursor);
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, Permissioned::Admin(identifier), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address.relative());
@@ -867,11 +979,26 @@ where
 
     pub async fn send_keyload_for_all<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
-        Top: Into<Topic>,
+        Top: Into<Topic> + Clone,
     {
+        let topic = topic.into();
+        let permission = self
+            .permission(&topic)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
+        if !permission.is_admin() {
+            return Err(anyhow!("user does not have admin permissions for this branch"));
+        }
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
-        let subscribers: Vec<Permissioned<Identifier>> =
-            self.subscribers().map(|s| Permissioned::Read(s.clone())).collect();
+        let subscribers: Vec<Permissioned<Identifier>> = self
+            .subscribers()
+            .map(|s| {
+                if s == permission.identifier() {
+                    Permissioned::Admin(s.clone())
+                } else {
+                    Permissioned::Read(s.clone())
+                }
+            })
+            .collect();
         self.send_keyload(
             topic,
             // Alas, must collect to release the &self immutable borrow
@@ -883,12 +1010,25 @@ where
 
     pub async fn send_keyload_for_all_rw<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
-        Top: Into<Topic>,
+        Top: Into<Topic> + Clone,
     {
+        let topic = topic.into();
+        let permission = self
+            .permission(&topic)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?;
+        if !permission.is_admin() {
+            return Err(anyhow!("user does not have admin permissions for this branch"));
+        }
         let psks: Vec<PskId> = self.state.psk_store.keys().copied().collect();
         let subscribers: Vec<Permissioned<Identifier>> = self
             .subscribers()
-            .map(|s| Permissioned::ReadWrite(s.clone(), PermissionDuration::Perpetual))
+            .map(|s| {
+                if s == permission.identifier() {
+                    Permissioned::Admin(s.clone())
+                } else {
+                    Permissioned::ReadWrite(s.clone(), PermissionDuration::Perpetual)
+                }
+            })
             .collect();
         self.send_keyload(
             topic,
@@ -918,6 +1058,16 @@ where
         let identifier = user_id.to_identifier();
         // Check Topic
         let topic = topic.into();
+        // Check Permission
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&topic, &identifier)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?
+            .clone();
+        if permission.is_readonly() {
+            return Err(anyhow!("user has read only permissions for this branch"));
+        }
         // Link message to latest message in branch
         let link_to = self
             .get_latest_link(&topic)
@@ -962,7 +1112,7 @@ where
         // If message has been sent successfully, commit message to stores
         self.state
             .cursor_store
-            .insert_cursor(&topic, identifier.clone(), new_cursor);
+            .insert_cursor(&topic, permission.clone(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, message_address.relative());
@@ -988,6 +1138,16 @@ where
         let identifier = user_id.to_identifier();
         // Check Topic
         let topic = topic.into();
+        // Check Permission
+        let permission = self
+            .state
+            .cursor_store
+            .get_permission(&topic, &identifier)
+            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?
+            .clone();
+        if permission.is_readonly() {
+            return Err(anyhow!("user has read only permissions for this branch"));
+        }
         // Link message to latest message in branch
         let link_to = self
             .get_latest_link(&topic)
@@ -1030,7 +1190,9 @@ where
         let send_response = self.transport.send_message(message_address, transport_msg).await?;
 
         // If message has been sent successfully, commit message to stores
-        self.state.cursor_store.insert_cursor(&topic, identifier, new_cursor);
+        self.state
+            .cursor_store
+            .insert_cursor(&topic, permission.clone(), new_cursor);
         self.state.spongos_store.insert(rel_address, spongos);
         // Update Branch Links
         self.set_latest_link(&topic, rel_address);
@@ -1058,17 +1220,13 @@ impl ContentSizeof<State> for sizeof::Context {
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state
-                .cursor_store
-                .get_anchor(topic)
-                .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
             let latest_link = user_state
                 .cursor_store
                 .get_latest_link(topic)
                 .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
-            self.mask(&anchor)?.mask(&latest_link)?;
+            self.mask(&latest_link)?;
 
-            let cursors: Vec<(&Topic, &Identifier, usize)> = user_state
+            let cursors: Vec<(&Topic, &Permissioned<Identifier>, usize)> = user_state
                 .cursor_store
                 .cursors()
                 .filter(|(t, _, _)| *t == topic)
@@ -1080,11 +1238,11 @@ impl ContentSizeof<State> for sizeof::Context {
             }
         }
 
-        let keys = &user_state.exchange_keys;
-        let amount_keys = keys.len();
-        self.mask(Size::new(amount_keys))?;
-        for (subscriber, ke_pk) in keys {
-            self.mask(subscriber)?.mask(ke_pk)?;
+        let subs = &user_state.subscribers;
+        let amount_subs = subs.len();
+        self.mask(Size::new(amount_subs))?;
+        for subscriber in subs {
+            self.mask(subscriber)?;
         }
 
         let psks = user_state.psk_store.iter();
@@ -1119,17 +1277,13 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
 
         for topic in topics {
             self.mask(topic)?;
-            let anchor = user_state
-                .cursor_store
-                .get_anchor(topic)
-                .ok_or_else(|| anyhow!("No anchor found in branch <{}>", topic))?;
             let latest_link = user_state
                 .cursor_store
                 .get_latest_link(topic)
                 .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
-            self.mask(&anchor)?.mask(&latest_link)?;
+            self.mask(&latest_link)?;
 
-            let cursors: Vec<(&Topic, &Identifier, usize)> = user_state
+            let cursors: Vec<(&Topic, &Permissioned<Identifier>, usize)> = user_state
                 .cursor_store
                 .cursors()
                 .filter(|(t, _, _)| *t == topic)
@@ -1141,11 +1295,11 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
             }
         }
 
-        let keys = &user_state.exchange_keys;
-        let amount_keys = keys.len();
-        self.mask(Size::new(amount_keys))?;
-        for (subscriber, ke_pk) in keys {
-            self.mask(subscriber)?.mask(ke_pk)?;
+        let subs = &user_state.subscribers;
+        let amount_subs = subs.len();
+        self.mask(Size::new(amount_subs))?;
+        for subscriber in subs {
+            self.mask(subscriber)?;
         }
 
         let psks = user_state.psk_store.iter();
@@ -1183,17 +1337,15 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
         for _ in 0..amount_topics.inner() {
             let mut topic = Topic::default();
             self.mask(&mut topic)?;
-            let mut anchor = MsgId::default();
             let mut latest_link = MsgId::default();
-            self.mask(&mut anchor)?.mask(&mut latest_link)?;
+            self.mask(&mut latest_link)?;
 
-            user_state.cursor_store.set_anchor(&topic, anchor);
             user_state.cursor_store.set_latest_link(&topic, latest_link);
 
             let mut amount_cursors = Size::default();
             self.mask(&mut amount_cursors)?;
             for _ in 0..amount_cursors.inner() {
-                let mut subscriber = Identifier::default();
+                let mut subscriber = Permissioned::default();
                 let mut cursor = Size::default();
                 self.mask(&mut subscriber)?.mask(&mut cursor)?;
                 user_state
@@ -1202,13 +1354,12 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
             }
         }
 
-        let mut amount_keys = Size::default();
-        self.mask(&mut amount_keys)?;
-        for _ in 0..amount_keys.inner() {
+        let mut amount_subs = Size::default();
+        self.mask(&mut amount_subs)?;
+        for _ in 0..amount_subs.inner() {
             let mut subscriber = Identifier::default();
-            let mut key = x25519::PublicKey::from_bytes([0; x25519::PUBLIC_KEY_LENGTH]);
-            self.mask(&mut subscriber)?.mask(&mut key)?;
-            user_state.exchange_keys.insert(subscriber, key);
+            self.mask(&mut subscriber)?;
+            user_state.subscribers.insert(subscriber);
         }
 
         let mut amount_psks = Size::default();
@@ -1229,7 +1380,7 @@ impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
             f,
-            "\n* identifier: <{}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
+            "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n",
             self.identifier().unwrap_or_default(),
             self.base_branch(),
             self.state.cursor_store,

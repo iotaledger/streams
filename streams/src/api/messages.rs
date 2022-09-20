@@ -17,7 +17,7 @@ use hashbrown::HashMap;
 // Streams
 use lets::{
     address::{Address, MsgId},
-    id::Identifier,
+    id::{Identifier, Permissioned},
     message::{Topic, TransportMessage, HDF},
     transport::Transport,
 };
@@ -41,7 +41,7 @@ use crate::api::{
 /// ```
 /// use futures::TryStreamExt;
 ///
-/// use streams::{id::Ed25519, transport::tangle, Address, User};
+/// use streams::{id::Ed25519, transport::utangle, Address, User};
 ///
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
@@ -53,6 +53,8 @@ use crate::api::{
 /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
+/// let author_transport: utangle::Client =
+///     utangle::Client::new("https://chrysalis-nodes.iota.org");
 /// #
 /// # let test_author_transport = test_transport.clone();
 /// #
@@ -62,6 +64,8 @@ use crate::api::{
 ///     .build();
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
+/// let subscriber_transport: utangle::Client =
+///     utangle::Client::new("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
@@ -127,7 +131,7 @@ type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 struct MessagesState<'a, T> {
     user: &'a mut User<T>,
-    ids_stack: Vec<(Topic, Identifier, usize)>,
+    ids_stack: Vec<(Topic, Permissioned<Identifier>, usize)>,
     msg_queue: HashMap<MsgId, VecDeque<(MsgId, TransportMessage)>>,
     stage: VecDeque<(MsgId, TransportMessage)>,
     successful_round: bool,
@@ -202,12 +206,17 @@ impl<'a, T> MessagesState<'a, T> {
                 None => {
                     // new round
                     self.successful_round = false;
-                    self.ids_stack = self.user.cursors().map(|(t, p, c)| (t.clone(), p.clone(), c)).collect();
+                    self.ids_stack = self
+                        .user
+                        .cursors()
+                        .filter(|(_, p, _)| !p.is_readonly())
+                        .map(|(t, p, c)| (t.clone(), p.clone(), c))
+                        .collect();
                     self.ids_stack.pop()?
                 }
             };
             let base_address = self.user.stream_address()?.base();
-            let rel_address = MsgId::gen(base_address, &publisher, &topic, cursor + 1);
+            let rel_address = MsgId::gen(base_address, publisher.identifier(), &topic, cursor + 1);
             let address = Address::new(base_address, rel_address);
 
             match self.user.transport_mut().recv_message(address).await {
@@ -318,12 +327,12 @@ mod tests {
 
     use anyhow::Result;
 
-    use lets::{address::Address, id::Ed25519, message::Topic, transport::bucket};
+    use lets::{address::Address, id::Ed25519, transport::bucket};
 
     use crate::api::{
         message::{
             Message,
-            MessageContent::{Announcement, Keyload, SignedPacket},
+            MessageContent::{BranchAnnouncement, Keyload, SignedPacket},
         },
         user::User,
     };
@@ -335,21 +344,21 @@ mod tests {
         let p = b"payload";
         let (mut author, mut subscriber1, announcement_link, transport) = author_subscriber_fixture().await?;
 
-        let branch_1 = Topic::from("Branch 1");
-        let branch_announcement = author.new_branch(branch_1.clone()).await?;
-        let keyload_1 = author.send_keyload_for_all_rw(branch_1.clone()).await?;
+        let branch_1 = "BRANCH_1";
+        let branch_announcement = author.new_branch("BASE_BRANCH", branch_1).await?;
+        let keyload_1 = author.send_keyload_for_all_rw(branch_1).await?;
         subscriber1.sync().await?;
-        let _packet_1 = subscriber1.send_signed_packet(branch_1.clone(), &p, &p).await?;
+        let _packet_1 = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
         // This packet will never be readable by subscriber2. However, she will still be able to progress
         // through the next messages
-        let _packet_2 = subscriber1.send_signed_packet(branch_1.clone(), &p, &p).await?;
+        let _packet_2 = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
 
         let mut subscriber2 = subscriber_fixture("subscriber2", &mut author, announcement_link, transport).await?;
 
         author.sync().await?;
 
         // This packet has to wait in the `Messages::msg_queue` until `packet` is processed
-        let keyload_2 = author.send_keyload_for_all_rw(branch_1.clone()).await?;
+        let keyload_2 = author.send_keyload_for_all_rw(branch_1).await?;
 
         subscriber1.sync().await?;
         let last_signed_packet = subscriber1.send_signed_packet(branch_1, &p, &p).await?;
@@ -361,7 +370,7 @@ mod tests {
             &[
                 Message {
                     address: address_0,
-                    content: Announcement(..),
+                    content: BranchAnnouncement(..),
                     ..
                 },
                 Message {

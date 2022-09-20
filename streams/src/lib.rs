@@ -9,14 +9,14 @@
 //! ```
 //! # use anyhow::Result;
 //! use streams::{
-//!     transport::tangle,
+//!     transport::utangle,
 //!     id::Ed25519,
 //!     User,
 //! };
 //! # use streams::transport::bucket;
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//! let transport: tangle::Client = tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+//! let transport: utangle::Client = utangle::Client::new("https://chrysalis-nodes.iota.org");
 //! # let test_transport = bucket::Client::new();
 //! let mut author = User::builder()
 //!     .with_identity(Ed25519::from_seed("A cryptographically secure seed"))

@@ -114,6 +114,20 @@ impl<Identifier> Permissioned<Identifier> {
     pub fn is_readonly(&self) -> bool {
         matches!(self, Permissioned::Read(..))
     }
+
+    pub fn is_admin(&self) -> bool {
+        matches!(self, Permissioned::Admin(..))
+    }
+}
+
+impl From<Permissioned<&Identifier>> for Permissioned<Identifier> {
+    fn from(perm: Permissioned<&Identifier>) -> Self {
+        match perm {
+            Permissioned::Read(id) => Permissioned::Read(id.clone()),
+            Permissioned::ReadWrite(id, duration) => Permissioned::ReadWrite(id.clone(), duration),
+            Permissioned::Admin(id) => Permissioned::Admin(id.clone()),
+        }
+    }
 }
 
 impl<Identifier> AsRef<Identifier> for Permissioned<Identifier> {
@@ -134,6 +148,53 @@ where
 {
     fn default() -> Self {
         Permissioned::Read(Identifier::default())
+    }
+}
+
+impl Mask<&Permissioned<Identifier>> for sizeof::Context {
+    fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
+        self.mask(&permission.as_ref())
+    }
+}
+
+impl<OS, F> Mask<&Permissioned<Identifier>> for wrap::Context<OS, F>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
+        self.mask(&permission.as_ref())
+    }
+}
+
+impl<IS, F> Mask<&mut Permissioned<Identifier>> for unwrap::Context<IS, F>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, permission: &mut Permissioned<Identifier>) -> Result<&mut Self> {
+        let mut oneof = Uint8::new(0);
+        self.mask(&mut oneof)?;
+        match oneof.inner() {
+            0 => {
+                let mut identifier = Identifier::default();
+                self.mask(&mut identifier)?;
+                *permission = Permissioned::Read(identifier);
+            }
+            1 => {
+                let mut identifier = Identifier::default();
+                let mut duration = PermissionDuration::default();
+                self.mask(&mut duration)?.mask(&mut identifier)?;
+                *permission = Permissioned::ReadWrite(identifier, duration);
+            }
+            2 => {
+                let mut identifier = Identifier::default();
+                self.mask(&mut identifier)?;
+                *permission = Permissioned::Admin(identifier);
+            }
+            o => return Err(anyhow!("{} is not a valid permission option", o)),
+        }
+        Ok(self)
     }
 }
 
@@ -182,36 +243,5 @@ where
                 Ok(self)
             }
         }
-    }
-}
-
-impl<IS, F> Mask<&mut Permissioned<Identifier>> for unwrap::Context<IS, F>
-where
-    F: PRP,
-    IS: io::IStream,
-{
-    fn mask(&mut self, permission: &mut Permissioned<Identifier>) -> Result<&mut Self> {
-        let mut oneof = Uint8::new(0);
-        self.mask(&mut oneof)?;
-        match oneof.inner() {
-            0 => {
-                let mut identifier = Identifier::default();
-                self.mask(&mut identifier)?;
-                *permission = Permissioned::Read(identifier);
-            }
-            1 => {
-                let mut identifier = Identifier::default();
-                let mut duration = PermissionDuration::default();
-                self.mask(&mut duration)?.mask(&mut identifier)?;
-                *permission = Permissioned::ReadWrite(identifier, duration);
-            }
-            2 => {
-                let mut identifier = Identifier::default();
-                self.mask(&mut identifier)?;
-                *permission = Permissioned::Admin(identifier);
-            }
-            o => return Err(anyhow!("{} is not a valid permission option", o)),
-        }
-        Ok(self)
     }
 }

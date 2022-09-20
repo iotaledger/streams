@@ -22,11 +22,7 @@ tangle-client-wasm = ["iota-client/wasm", "futures"]
 # Enable the Streams-specific uTangle Client
 utangle-client = ["reqwest", "bee-ternary", "serde", "rayon", "iota-crypto/curl-p"]
 # Enable Iota Identity for use with Streams
-did = ["identity", "serde"]
-# # Enable synchronized transports using parking-lot
-sync-parking-lot = ["parking_lot"]
-# # Enable synchronized transports using spin 
-sync-spin = ["spin"]
+did = ["identity_iota", "serde"]
 
 [dependencies]
 # Local dependencies
@@ -44,7 +40,7 @@ hex = {version = "0.4", default-features = false}
 # Optional dependencies
 bee-ternary = {version = "0.5.2", default-features = false, optional = true}
 futures = {version = "0.3.8", default-features = false, optional = true}
-identity = {git = "https://github.com/iotaledger/identity.rs", rev = "86edaad", default-features = false, features = ["async"], optional = true}
+identity_iota = {git = "https://github.com/iotaledger/identity.rs", rev = "d3920c2", default-features = false, optional = true}
 iota-client = {version = "1.1.1", default-features = false, optional = true}
 parking_lot = {version = "0.11.2", default-features = false, optional = true}
 reqwest = {version = "0.11.11", optional = true, default-features = false, features = ["json", "rustls-tls"]}
