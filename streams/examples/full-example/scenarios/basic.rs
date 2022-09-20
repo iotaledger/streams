@@ -23,7 +23,7 @@ const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
 const BRANCH2: &str = "BRANCH2";
 
-pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_seed: &str) -> Result<()> {
     let psk = Psk::from_seed("A pre shared key");
 
     let mut author = User::builder()
