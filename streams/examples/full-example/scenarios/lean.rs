@@ -22,7 +22,7 @@ const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
 const BRANCH2: &str = "BRANCH2";
 
-pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_seed: &str) -> Result<()> {
     let psk = Psk::from_seed("unique psk seed");
 
     let mut author = User::builder()
@@ -97,7 +97,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     Ok(())
 }
 
-async fn sync_subs<T: GenericTransport>(fat: &mut User<T>, lean: &mut User<T>) -> Result<()> {
+async fn sync_subs<SR, T: GenericTransport<SR>>(fat: &mut User<T>, lean: &mut User<T>) -> Result<()> {
     print!("\nsubscribers syncing...");
     fat.sync().await?;
     lean.sync().await?;
@@ -112,7 +112,7 @@ async fn sync_subs<T: GenericTransport>(fat: &mut User<T>, lean: &mut User<T>) -
     Ok(())
 }
 
-async fn retrieve_messages<T: GenericTransport, TSR>(
+async fn retrieve_messages<SR, T: GenericTransport<SR>, TSR>(
     fat_subscriber: &mut User<T>,
     lean_subscriber: &mut User<T>,
     first_message: SendResponse<TSR>,

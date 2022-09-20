@@ -40,7 +40,7 @@ async fn run_did_scenario<SR, T: GenericTransport<SR>>(transport: T) -> Result<(
     result
 }
 
-async fn run_lean_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+async fn run_lean_test<SR, T: GenericTransport<SR>>(transport: T, seed: &str) -> Result<()> {
     println!("## Running Lean State Test ##\n");
     let result = scenarios::lean::example(transport, seed).await;
     match &result {
@@ -50,7 +50,7 @@ async fn run_lean_test<T: GenericTransport>(transport: T, seed: &str) -> Result<
     result
 }
 
-async fn run_basic_scenario<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+async fn run_basic_scenario<SR, T: GenericTransport<SR>>(transport: T, seed: &str) -> Result<()> {
     println!("## Running single branch test with seed: {} ##\n", seed);
     let result = scenarios::basic::example(transport, seed).await;
     match &result {
