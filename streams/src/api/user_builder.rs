@@ -105,13 +105,13 @@ impl<T> UserBuilder<T> {
     /// ```
     /// # use anyhow::Result;
     /// use lets::id::Psk;
-    /// use streams::{id::Ed25519, transport::tangle, User};
+    /// use streams::{id::Ed25519, transport::utangle, User};
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let psk1 = Psk::from_seed(b"Psk1");
     /// let psk2 = Psk::from_seed(b"Psk2");
     /// let user = User::builder()
-    ///     .with_default_transport::<tangle::Client>()
+    ///     .with_default_transport::<utangle::Client>()
     ///     .await?
     ///     .with_psk(psk1.to_pskid(), psk1)
     ///     .with_psk(psk2.to_pskid(), psk2)
@@ -143,14 +143,14 @@ impl<T> UserBuilder<T> {
     /// ## User from Ed25519
     /// ```
     /// # use anyhow::Result;
-    /// use streams::{id::Ed25519, transport::tangle, User};
+    /// use streams::{id::Ed25519, transport::utangle, User};
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// let user_seed = "cryptographically-secure-random-user-seed";
     /// let mut user = User::builder()
     ///     .with_identity(Ed25519::from_seed(user_seed))
-    ///     .with_default_transport::<tangle::Client>()
+    ///     .with_default_transport::<utangle::Client>()
     ///     .await?
     ///     .with_identity(Ed25519::from_seed(user_seed))
     ///     .build()?;
@@ -191,14 +191,13 @@ impl<T> UserBuilder<T> {
     /// # use std::rc::Rc;
     /// # use anyhow::Result;
     /// # use streams::transport::bucket;
-    /// use streams::{id::Ed25519, transport::tangle, User};
+    /// use streams::{id::Ed25519, transport::utangle, User};
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
     /// let author_seed = "author_secure_seed";
-    /// let transport: tangle::Client =
-    ///     tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+    /// let transport: utangle::Client = utangle::Client::new("https://chrysalis-nodes.iota.org");
     /// #
     /// # let transport = test_transport.clone();
     /// # let mut author = User::builder()
@@ -240,5 +239,13 @@ where
 impl<Message, SendResponse> DefaultTransport for lets::transport::tangle::Client<Message, SendResponse> {
     async fn try_default() -> Result<Self> {
         Self::for_node("https://chrysalis-nodes.iota.org").await
+    }
+}
+
+#[async_trait(?Send)]
+#[cfg(feature = "utangle-client")]
+impl<Message, SendResponse> DefaultTransport for lets::transport::utangle::Client<Message, SendResponse> {
+    async fn try_default() -> Result<Self> {
+        Ok(Self::default())
     }
 }
