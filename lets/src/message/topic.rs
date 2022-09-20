@@ -11,9 +11,9 @@ use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Mask},
         io,
-        types::Bytes,
+        types::{Bytes, NBytes},
     },
-    PRP,
+    KeccakF1600, Spongos, PRP,
 };
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
@@ -108,6 +108,49 @@ where
         let mut topic_bytes = topic.as_ref().to_vec();
         self.mask(Bytes::new(&mut topic_bytes))?;
         *topic = topic_bytes.try_into()?;
+        Ok(self)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Debug, Default, Hash)]
+pub struct TopicHash([u8; 16]);
+
+impl From<&Topic> for TopicHash {
+    fn from(topic: &Topic) -> Self {
+        let topic_hash: [u8; 16] = Spongos::<KeccakF1600>::init().sponge(topic.as_ref());
+        Self(topic_hash)
+    }
+}
+
+impl AsRef<[u8]> for TopicHash {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl Mask<&TopicHash> for sizeof::Context {
+    fn mask(&mut self, topic_hash: &TopicHash) -> anyhow::Result<&mut Self> {
+        self.mask(NBytes::<[u8; 16]>::new(topic_hash.0))
+    }
+}
+
+impl<OS, F> Mask<&TopicHash> for wrap::Context<OS, F>
+where
+    F: PRP,
+    OS: io::OStream,
+{
+    fn mask(&mut self, topic_hash: &TopicHash) -> anyhow::Result<&mut Self> {
+        self.mask(NBytes::<[u8; 16]>::new(topic_hash.0))
+    }
+}
+
+impl<IS, F> Mask<&mut TopicHash> for unwrap::Context<IS, F>
+where
+    F: PRP,
+    IS: io::IStream,
+{
+    fn mask(&mut self, topic_hash: &mut TopicHash) -> anyhow::Result<&mut Self> {
+        self.mask(NBytes::<&mut [u8; 16]>::new(&mut topic_hash.0))?;
         Ok(self)
     }
 }

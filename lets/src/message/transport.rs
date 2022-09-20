@@ -17,7 +17,7 @@ use crate::message::{content::ContentUnwrap, hdf::HDF, preparsed::PreparsedMessa
 pub struct TransportMessage(Vec<u8>);
 
 impl TransportMessage {
-    pub(crate) fn new(body: Vec<u8>) -> Self {
+    pub fn new(body: Vec<u8>) -> Self {
         Self(body)
     }
 

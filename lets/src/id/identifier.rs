@@ -11,6 +11,8 @@ use async_trait::async_trait;
 use crypto::{keys::x25519, signatures::ed25519};
 
 // Streams
+#[cfg(feature = "did")]
+use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze},
@@ -61,7 +63,9 @@ impl Identifier {
     // Get the Public key part of the key exchange of the identifier
     pub async fn ke_pk(&self) -> Result<x25519::PublicKey> {
         match self {
-            Identifier::Ed25519(pk) => Ok(pk.try_into()?),
+            Identifier::Ed25519(pk) => Ok(pk
+                .try_into()
+                .expect("failed to convert ed25519 public-key to x25519 public-key")),
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
                 let doc = resolve_document(url_info).await?;
@@ -245,7 +249,8 @@ impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
         // introdution)
         match recipient {
             Identifier::Ed25519(pk) => {
-                let xkey = x25519::PublicKey::try_from(pk)?;
+                let xkey =
+                    x25519::PublicKey::try_from(pk).expect("failed to convert ed25519 public-key to x25519 public-key");
                 self.x25519(&xkey, NBytes::new(key))
             }
             #[cfg(feature = "did")]
@@ -273,7 +278,8 @@ where
         // introdution)
         match recipient {
             Identifier::Ed25519(pk) => {
-                let xkey = x25519::PublicKey::try_from(pk)?;
+                let xkey =
+                    x25519::PublicKey::try_from(pk).expect("failed to convert ed25519 public-key to x25519 public-key");
                 self.x25519(&xkey, NBytes::new(key))
             }
             #[cfg(feature = "did")]

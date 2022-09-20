@@ -1,7 +1,5 @@
 // Rust
 
-use std::{cell::RefCell, rc::Rc};
-
 // 3rd-arty
 use anyhow::{anyhow, Result};
 use textwrap::{fill, indent};
@@ -26,6 +24,7 @@ use streams::{
 };
 
 use super::utils::{print_send_result, print_user};
+use crate::GenericTransport;
 
 const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
 const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
@@ -34,7 +33,7 @@ const CLIENT_URL: &str = "https://chrysalis-nodes.iota.org";
 const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
 
-pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T) -> Result<()> {
     let did_client = DIDClient::builder()
         .primary_node(CLIENT_URL, None, None)?
         .build()
@@ -51,19 +50,19 @@ pub async fn example(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
         .with_identity(DID::PrivateKey(author_did_info))
         .with_transport(transport.clone())
         .with_psk(psk.to_pskid(), psk)
-        .build()?;
+        .build();
     let mut subscriber_a = User::builder()
         .with_identity(DID::PrivateKey(subscriber_did_info))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     let mut subscriber_b = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     let mut subscriber_c = User::builder()
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
-        .build()?;
+        .build();
 
     println!("> Author creates stream and sends its announcement");
     // Start at index 1, because we can. Will error if its already in use
