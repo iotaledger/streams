@@ -35,6 +35,7 @@ use crate::{
     api::{
         cursor_store::{CursorStore, InnerCursorStore},
         message::Message,
+        message_builder::MessageBuilder,
         messages::Messages,
         send_response::SendResponse,
         user_builder::UserBuilder,
@@ -1037,6 +1038,10 @@ where
             psks,
         )
         .await
+    }
+
+    pub fn message<P: Default>(&mut self) -> MessageBuilder<P, T> {
+        MessageBuilder::new(self)
     }
 
     pub async fn send_signed_packet<P, M, Top>(
