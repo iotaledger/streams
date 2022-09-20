@@ -41,7 +41,7 @@ use crate::api::{
 /// ```
 /// use futures::TryStreamExt;
 ///
-/// use streams::{id::Ed25519, transport::tangle, Address, User};
+/// use streams::{id::Ed25519, transport::utangle, Address, User};
 ///
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
@@ -53,8 +53,8 @@ use crate::api::{
 /// # let test_transport = Rc::new(RefCell::new(bucket::Client::new()));
 /// #
 /// let author_seed = "cryptographically-secure-random-author-seed";
-/// let author_transport: tangle::Client =
-///     tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+/// let author_transport: utangle::Client =
+///     utangle::Client::new("https://chrysalis-nodes.iota.org");
 /// #
 /// # let test_author_transport = test_transport.clone();
 /// #
@@ -65,8 +65,8 @@ use crate::api::{
 ///     .build()?;
 ///
 /// let subscriber_seed = "cryptographically-secure-random-subscriber-seed";
-/// let subscriber_transport: tangle::Client =
-///     tangle::Client::for_node("https://chrysalis-nodes.iota.org").await?;
+/// let subscriber_transport: utangle::Client =
+///     utangle::Client::new("https://chrysalis-nodes.iota.org");
 /// #
 /// # let subscriber_transport = test_transport.clone();
 /// #
