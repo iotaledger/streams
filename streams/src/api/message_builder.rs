@@ -88,9 +88,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     /// # let user_seed = "cryptographically-secure-random-user-seed";
     /// # let mut user = User::builder()
     /// #    .with_identity(Ed25519::from_seed(user_seed))
-    /// #    .with_default_transport::<bucket::Client>()
-    /// #    .await?
-    /// #    .build()?;
+    /// #    .build();
     /// #
     /// let topic = "Branch 1";
     /// # user.create_stream(topic).await?;
@@ -150,8 +148,7 @@ mod message_builder_tests {
         let mut user = User::builder()
             .with_transport(bucket::Client::new())
             .with_identity(Identity::Ed25519(Ed25519::from_seed("user seed")))
-            .build()
-            .unwrap();
+            .build();
 
         user.create_stream(BASE_BRANCH)
             .await
