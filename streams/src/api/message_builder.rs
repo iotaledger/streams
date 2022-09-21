@@ -89,6 +89,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     /// # let user_seed = "cryptographically-secure-random-user-seed";
     /// # let mut user = User::builder()
     /// #    .with_identity(Ed25519::from_seed(user_seed))
+    /// #    .with_transport(bucket::Client::new())
     /// #    .build();
     /// #
     /// let topic = "Branch 1";
@@ -138,7 +139,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
 mod message_builder_tests {
     use crate::{api::message_builder::MessageBuilder, User};
     use lets::{
-        id::{Ed25519, Identity},
+        id::Ed25519,
         message::Topic,
         transport::bucket,
     };
