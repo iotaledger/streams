@@ -116,7 +116,7 @@ async fn main_tangle_client() -> Result<()> {
     run_basic_scenario(transport.clone(), &new_seed()).await?;
     #[cfg(feature = "did")]
     run_did_scenario(transport.clone()).await?;
-    run_lean_test(transport, &new_seed()).await?;
+    run_lean_test(transport.clone(), &new_seed()).await?;
     run_filter_branch_test(transport.clone(), &new_seed()).await?;
     println!(
         "#####################################################{}",
