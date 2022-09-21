@@ -47,8 +47,14 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
 
     // Confirm that users have id's
     let _author_id = author.identifier().expect("author should have identifier");
-    let subscriber_a_id = subscriber_a.identifier().expect("subscriber A should have identifier");
-    let subscriber_b_id = subscriber_b.identifier().expect("subscriber B should have identifier");
+    let subscriber_a_id = subscriber_a
+        .identifier()
+        .expect("subscriber A should have identifier")
+        .clone();
+    let subscriber_b_id = subscriber_b
+        .identifier()
+        .expect("subscriber B should have identifier")
+        .clone();
     assert!(subscriber_c.identifier().is_none());
 
     println!("> Author creates stream and sends its announcement");

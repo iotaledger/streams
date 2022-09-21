@@ -128,8 +128,8 @@ impl<T> User<T> {
     }
 
     /// User's identifier
-    pub fn identifier(&self) -> Option<Identifier> {
-        self.identity().ok().map(|id| id.to_identifier())
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identity().ok().map(|id| id.identifier())
     }
 
     /// User Identity
@@ -665,8 +665,7 @@ where
             );
         }
         // Confirm user has identity
-        let identity = self.identity()?;
-        let identifier = identity.to_identifier();
+        let identifier = self.identity()?.identifier().clone();
         // Convert topic
         let topic = topic.into();
         // Generate stream address
@@ -675,13 +674,8 @@ where
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
         // Prepare HDF and PCF
-        let header = HDF::new(
-            message_types::ANNOUNCEMENT,
-            ANN_MESSAGE_NUM,
-            identity.to_identifier(),
-            &topic,
-        )?;
-        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(identity, &topic));
+        let header = HDF::new(message_types::ANNOUNCEMENT, ANN_MESSAGE_NUM, identifier.clone(), &topic)?;
+        let content = PCF::new_final_frame().with_content(announcement::Wrap::new(self.identity()?, &topic));
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -724,8 +718,7 @@ where
             .stream_address()
             .ok_or_else(|| anyhow!("before starting a new branch, the stream must be created"))?;
         // Confirm user has identity
-        let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = self.identity()?.identifier().clone();
         // Check Topic
         let topic: Topic = to_topic.into();
         let prev_topic: Topic = from_topic.into();
@@ -766,7 +759,7 @@ where
         .with_linked_msg_address(link_to);
         let content = PCF::new_final_frame().with_content(branch_announcement::Wrap::new(
             &mut linked_msg_spongos,
-            user_id,
+            self.identity()?,
             &topic,
         ));
 
@@ -806,7 +799,7 @@ where
             .ok_or_else(|| anyhow!("before subscribing one must receive the announcement of a stream first"))?;
         // Confirm user has identity
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier();
         // Get base branch topic
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
@@ -868,7 +861,7 @@ where
         })?;
         // Confirm user has identity
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier().clone();
         // Get base branch topic
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
@@ -935,7 +928,7 @@ where
             .ok_or_else(|| anyhow!("before sending a keyload one must create a stream first"))?;
         // Confirm user has identity
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier().clone();
         // Check Topic
         let topic = topic.into();
         // Check Permission
@@ -1094,7 +1087,7 @@ where
             anyhow!("before sending a signed packet one must receive the announcement of a stream first")
         })?;
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier().clone();
         // Check Topic
         let topic = topic.into();
         // Check Permission
@@ -1169,7 +1162,7 @@ where
             anyhow!("before sending a tagged packet one must receive the announcement of a stream first")
         })?;
         let user_id = self.identity()?;
-        let identifier = user_id.to_identifier();
+        let identifier = user_id.identifier().clone();
         // Check Topic
         let topic = topic.into();
         // Check Permission
@@ -1429,7 +1422,7 @@ impl<T> Debug for User<T> {
         write!(
             f,
             "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n* lean: {}\n",
-            self.identifier().unwrap_or_default(),
+            self.identifier(),
             self.base_branch(),
             self.state.cursor_store,
             self.state
