@@ -148,7 +148,7 @@ mod message_builder_tests {
     async fn make_user() -> User<bucket::Client> {
         let mut user = User::builder()
             .with_transport(bucket::Client::new())
-            .with_identity(Identity::Ed25519(Ed25519::from_seed("user seed")))
+            .with_identity(Ed25519::from_seed("user seed"))
             .build();
 
         user.create_stream(BASE_BRANCH).await.unwrap();
