@@ -24,5 +24,5 @@ pub use hdf::HDF;
 pub use message::Message;
 pub use pcf::PCF;
 pub use preparsed::PreparsedMessage;
-pub use topic::Topic;
+pub use topic::{Topic, TopicHash};
 pub use transport::TransportMessage;

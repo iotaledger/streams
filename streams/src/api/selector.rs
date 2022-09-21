@@ -4,7 +4,7 @@ use core::{fmt::Formatter, ops::Range};
 // IOTA
 
 // Streams
-use lets::{address::Address, id::Identifier, message::Topic};
+use lets::{address::Address, id::Identifier, message::TopicHash};
 
 use crate::Message;
 
@@ -12,7 +12,7 @@ use crate::Message;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Selector {
     Address(Address),
-    Topic(Topic),
+    Topic(TopicHash),
     Identifier(Identifier),
     Level(Range<usize>),
 }
@@ -35,7 +35,7 @@ impl Selector {
     pub fn is(&self, message: &Message) -> bool {
         match self {
             Selector::Address(address) => &message.address == address,
-            Selector::Topic(topic) => message.header().topic() == topic,
+            Selector::Topic(topic) => message.header().topic_hash() == topic,
             Selector::Identifier(identifier) => message.header().publisher() == identifier,
             Selector::Level(range) => range.contains(&message.header().sequence()),
         }

@@ -23,32 +23,38 @@ const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
 const BRANCH2: &str = "BRANCH2";
 
-pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_seed: &str) -> Result<()> {
     let psk = Psk::from_seed("A pre shared key");
 
     let mut author = User::builder()
         .with_identity(Ed25519::from_seed(author_seed))
         .with_transport(transport.clone())
         .with_psk(psk.to_pskid(), psk)
-        .build()?;
+        .build();
 
     let mut subscriber_a = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     let mut subscriber_b = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     let mut subscriber_c = User::builder()
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
-        .build()?;
+        .build();
 
     // Confirm that users have id's
     let _author_id = author.identifier().expect("author should have identifier");
-    let subscriber_a_id = subscriber_a.identifier().expect("subscriber A should have identifier");
-    let subscriber_b_id = subscriber_b.identifier().expect("subscriber B should have identifier");
+    let subscriber_a_id = subscriber_a
+        .identifier()
+        .expect("subscriber A should have identifier")
+        .clone();
+    let subscriber_b_id = subscriber_b
+        .identifier()
+        .expect("subscriber B should have identifier")
+        .clone();
     assert!(subscriber_c.identifier().is_none());
 
     println!("> Author creates stream and sends its announcement");
@@ -367,7 +373,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .with_identity(Ed25519::from_seed(author_seed))
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     // OOB data must be recovered manually
     new_author.add_subscriber(subscriber_b_id.clone());
     new_author.receive_message(announcement.address()).await?;
@@ -380,7 +386,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut new_subscriber_a = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
 
     new_subscriber_a.receive_message(announcement.address()).await?;
     assert_eq!(new_subscriber_a.sync().await?, 7);
@@ -391,7 +397,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut new_subscriber_b = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     new_subscriber_b.receive_message(announcement.address()).await?;
     assert_eq!(new_subscriber_b.sync().await?, 6);
     print_user("Recovered Subscriber B", &new_subscriber_b);
@@ -401,7 +407,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
     let mut new_subscriber_c = User::builder()
         .with_psk(psk.to_pskid(), psk)
         .with_transport(transport.clone())
-        .build()?;
+        .build();
     new_subscriber_c.receive_message(announcement.address()).await?;
     assert_eq!(new_subscriber_c.sync().await?, 7);
     print_user("Recovered Subscriber C", &new_subscriber_c);

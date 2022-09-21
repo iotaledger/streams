@@ -1,5 +1,6 @@
 // Rust
 use alloc::boxed::Box;
+use core::{hash::Hash, ops::Deref};
 
 // 3rd-party
 use anyhow::{anyhow, Result};
@@ -16,6 +17,8 @@ use identity_iota::{
 };
 
 // IOTA-Streams
+#[cfg(feature = "did")]
+use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519 as Ed25519Command, Mask, Squeeze, X25519},
@@ -36,13 +39,66 @@ use crate::{
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(clippy::large_enum_variant)]
-pub enum Identity {
+pub struct Identity {
+    identitykind: IdentityKind,
+    identifier: Identifier,
+}
+
+impl Default for Identity {
+    fn default() -> Self {
+        Identity::new(IdentityKind::default())
+    }
+}
+
+impl Identity {
+    pub fn new(identitykind: IdentityKind) -> Self {
+        let identifier = identitykind.to_identifier();
+        Self {
+            identitykind,
+            identifier,
+        }
+    }
+
+    pub fn identifier(&self) -> &Identifier {
+        &self.identifier
+    }
+}
+
+impl Deref for Identity {
+    type Target = IdentityKind;
+    fn deref(&self) -> &Self::Target {
+        &self.identitykind
+    }
+}
+
+impl From<IdentityKind> for Identity {
+    fn from(identitykind: IdentityKind) -> Self {
+        Self::new(identitykind)
+    }
+}
+
+impl From<Ed25519> for Identity {
+    fn from(ed25519: Ed25519) -> Self {
+        Self::new(IdentityKind::Ed25519(ed25519))
+    }
+}
+
+#[cfg(feature = "did")]
+impl From<DID> for Identity {
+    fn from(did: DID) -> Self {
+        Self::new(IdentityKind::DID(did))
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[allow(clippy::large_enum_variant)]
+pub enum IdentityKind {
     Ed25519(Ed25519),
     #[cfg(feature = "did")]
     DID(DID),
 }
 
-impl Default for Identity {
+impl Default for IdentityKind {
     fn default() -> Self {
         // unwrap is fine because we are using default
         let signing_private_key = ed25519::SecretKey::from_bytes([0; ed25519::SECRET_KEY_LENGTH]);
@@ -50,7 +106,7 @@ impl Default for Identity {
     }
 }
 
-impl Identity {
+impl IdentityKind {
     // Get the Secret key part of the key exchange of the Identity
     pub fn ke_sk(&self) -> Result<x25519::SecretKey> {
         match self {
@@ -72,31 +128,12 @@ impl Identity {
     }
 }
 
-impl From<Ed25519> for Identity {
-    fn from(ed25519: Ed25519) -> Self {
-        Self::Ed25519(ed25519)
-    }
-}
-
-#[cfg(feature = "did")]
-impl From<DID> for Identity {
-    fn from(did: DID) -> Self {
-        Self::DID(did)
-    }
-}
-
-impl From<Identity> for Identifier {
-    fn from(identity: Identity) -> Self {
-        identity.to_identifier()
-    }
-}
-
 impl Mask<&Identity> for sizeof::Context {
     fn mask(&mut self, identity: &Identity) -> Result<&mut Self> {
-        match identity {
-            Identity::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
+        match &identity.identitykind {
+            IdentityKind::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
             #[cfg(feature = "did")]
-            Identity::DID(did) => self.mask(Uint8::new(1))?.mask(did),
+            IdentityKind::DID(did) => self.mask(Uint8::new(1))?.mask(did),
         }
     }
 }
@@ -107,10 +144,10 @@ where
     OS: io::OStream,
 {
     fn mask(&mut self, identity: &Identity) -> Result<&mut Self> {
-        match identity {
-            Identity::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
+        match &identity.identitykind {
+            IdentityKind::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
             #[cfg(feature = "did")]
-            Identity::DID(did) => self.mask(Uint8::new(1))?.mask(did),
+            IdentityKind::DID(did) => self.mask(Uint8::new(1))?.mask(did),
         }
     }
 }
@@ -123,30 +160,31 @@ where
     fn mask(&mut self, identity: &mut Identity) -> Result<&mut Self> {
         let mut oneof = Uint8::default();
         self.mask(&mut oneof)?;
-        match oneof.inner() {
+        let identitykind = match oneof.inner() {
             0 => {
                 let mut ed25519_bytes = [0; ed25519::SECRET_KEY_LENGTH];
                 self.mask(NBytes::new(&mut ed25519_bytes))?;
-                *identity = Identity::Ed25519(ed25519::SecretKey::from_bytes(ed25519_bytes).into());
-                Ok(self)
+                IdentityKind::Ed25519(ed25519::SecretKey::from_bytes(ed25519_bytes).into())
             }
             #[cfg(feature = "did")]
             1 => {
                 let mut did = DID::default();
                 self.mask(&mut did)?;
-                *identity = Identity::DID(did);
-                Ok(self)
+                IdentityKind::DID(did)
             }
-            other => Err(anyhow!("'{}' is not a valid identity type", other)),
-        }
+            other => return Err(anyhow!("'{}' is not a valid identitykind type", other)),
+        };
+
+        *identity = Identity::new(identitykind);
+        Ok(self)
     }
 }
 
 #[async_trait(?Send)]
 impl ContentSignSizeof<Identity> for sizeof::Context {
     async fn sign_sizeof(&mut self, signer: &Identity) -> Result<&mut Self> {
-        match signer {
-            Identity::Ed25519(ed25519) => {
+        match &signer.identitykind {
+            IdentityKind::Ed25519(ed25519) => {
                 let hash = External::new(NBytes::new([0; 64]));
                 self.absorb(Uint8::new(0))?
                     .commit()?
@@ -156,7 +194,7 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
             }
 
             #[cfg(feature = "did")]
-            Identity::DID(did_impl) => match did_impl {
+            IdentityKind::DID(did_impl) => match did_impl {
                 DID::PrivateKey(info) => {
                     let hash = [0; 64];
                     let key_fragment = info.url_info().signing_fragment().as_bytes().to_vec();
@@ -174,14 +212,14 @@ impl ContentSignSizeof<Identity> for sizeof::Context {
 }
 
 #[async_trait(?Send)]
-impl<OS, F> ContentSign<Identity> for wrap::Context<OS, F>
+impl<OS, F> ContentSign<IdentityKind> for wrap::Context<OS, F>
 where
     F: PRP,
     OS: io::OStream,
 {
-    async fn sign(&mut self, signer: &Identity) -> Result<&mut Self> {
+    async fn sign(&mut self, signer: &IdentityKind) -> Result<&mut Self> {
         match signer {
-            Identity::Ed25519(ed25519) => {
+            IdentityKind::Ed25519(ed25519) => {
                 let mut hash = External::new(NBytes::new([0; 64]));
                 self.absorb(Uint8::new(0))?
                     .commit()?
@@ -191,7 +229,7 @@ where
             }
 
             #[cfg(feature = "did")]
-            Identity::DID(did_impl) => {
+            IdentityKind::DID(did_impl) => {
                 match did_impl {
                     DID::PrivateKey(info) => {
                         let mut hash = [0; 64];
@@ -239,10 +277,10 @@ where
     async fn decrypt(&mut self, recipient: &Identity, key: &mut [u8]) -> Result<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introduction)
-        match recipient {
-            Identity::Ed25519(kp) => self.x25519(&kp.inner().into(), NBytes::new(key)),
+        match &recipient.identitykind {
+            IdentityKind::Ed25519(kp) => self.x25519(&kp.inner().into(), NBytes::new(key)),
             #[cfg(feature = "did")]
-            Identity::DID(did) => self.x25519(&did.info().exchange_key()?, NBytes::new(key)),
+            IdentityKind::DID(did) => self.x25519(&did.info().exchange_key()?, NBytes::new(key)),
         }
     }
 }

@@ -9,20 +9,28 @@ use rand::Rng;
 
 // Streams
 use streams::{
-    transport::{bucket, tangle, Transport},
+    transport::{bucket, Transport},
     TransportMessage,
 };
 
+#[cfg(feature = "tangle-client")]
+use streams::transport::tangle;
+
+#[cfg(feature = "utangle-client")]
+use streams::transport::utangle;
+
 mod scenarios;
 
-trait GenericTransport: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone {}
+// #[derive(Deserialize)]
+// struct Ignored {}
 
-impl<T> GenericTransport for T where
-    T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TransportMessage> + Clone
-{
-}
+// impl TryFrom<Message
+trait GenericTransport<SR>: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = SR> + Clone {}
 
-async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
+impl<T, SR> GenericTransport<SR> for T where T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = SR> + Clone {}
+
+#[cfg(feature = "did")]
+async fn run_did_scenario<SR, T: GenericTransport<SR>>(transport: T) -> Result<()> {
     println!("## Running DID Test ##\n");
     let result = scenarios::did::example(transport).await;
     match &result {
@@ -32,7 +40,17 @@ async fn run_did_test(transport: Rc<RefCell<tangle::Client>>) -> Result<()> {
     result
 }
 
-async fn run_single_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+async fn run_lean_test<SR, T: GenericTransport<SR>>(transport: T, seed: &str) -> Result<()> {
+    println!("## Running Lean State Test ##\n");
+    let result = scenarios::lean::example(transport, seed).await;
+    match &result {
+        Err(err) => eprintln!("Error in Lean State test: {:?}", err),
+        Ok(_) => println!("\n## Lean State test completed successfully!! ##\n"),
+    }
+    result
+}
+
+async fn run_basic_scenario<SR, T: GenericTransport<SR>>(transport: T, seed: &str) -> Result<()> {
     println!("## Running single branch test with seed: {} ##\n", seed);
     let result = scenarios::basic::example(transport, seed).await;
     match &result {
@@ -42,7 +60,7 @@ async fn run_single_branch_test<T: GenericTransport>(transport: T, seed: &str) -
     result
 }
 
-async fn run_filter_branch_test<T: GenericTransport>(transport: T, seed: &str) -> Result<()> {
+async fn run_filter_branch_test<SR, T: GenericTransport<SR>>(transport: T, seed: &str) -> Result<()> {
     println!("## Running filter test with seed: {} ##\n", seed);
     let result = scenarios::filter::example(transport, seed).await;
     match &result {
@@ -64,39 +82,90 @@ async fn main_pure() -> Result<()> {
     // hence the Rc<RefCell<BucketTransport>>
     let transport = Rc::new(RefCell::new(transport));
 
-    run_single_branch_test(transport.clone(), "PURESEEDA").await?;
-    run_filter_branch_test(transport.clone(), "PURESEEDB").await?;
+    run_basic_scenario(transport.clone(), "PURESEEDA").await?;
+    run_lean_test(transport.clone(), "PURESEEDB").await?;
+    run_filter_branch_test(transport.clone(), "PURESEEDC").await?;
     println!("################################################");
     println!("Done running pure tests without accessing Tangle");
     println!("################################################");
     Ok(())
 }
 
-async fn main_client() -> Result<()> {
+#[cfg(feature = "tangle-client")]
+async fn main_tangle_client() -> Result<()> {
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
 
     println!("\n");
-    println!("########################################{}", "#".repeat(node_url.len()));
-    println!("Running tests accessing Tangle via node {}", &node_url);
-    println!("########################################{}", "#".repeat(node_url.len()));
+    println!(
+        "#####################################################{}",
+        "#".repeat(node_url.len())
+    );
+    println!("Running tests accessing Tangle with iota.rs via node {}", &node_url);
+    println!(
+        "#####################################################{}",
+        "#".repeat(node_url.len())
+    );
     println!("\n");
 
-    let transport =
+    let transport: Rc<RefCell<tangle::Client>> =
         Rc::new(RefCell::new(tangle::Client::for_node(&node_url).await.unwrap_or_else(
             |e| panic!("error connecting Tangle client to '{}': {}", node_url, e),
         )));
 
-    run_single_branch_test(transport.clone(), &new_seed()).await?;
+    run_basic_scenario(transport.clone(), &new_seed()).await?;
+    #[cfg(feature = "did")]
+    run_did_scenario(transport.clone()).await?;
+    run_lean_test(transport, &new_seed()).await?;
     run_filter_branch_test(transport.clone(), &new_seed()).await?;
-    run_did_test(transport).await?;
     println!(
-        "#############################################{}",
+        "#####################################################{}",
         "#".repeat(node_url.len())
     );
-    println!("Done running tests accessing Tangle via node {}", &node_url);
     println!(
-        "#############################################{}",
+        "Done running tests accessing Tangle with iota.rs via node {}",
+        &node_url
+    );
+    println!(
+        "#####################################################{}",
+        "#".repeat(node_url.len())
+    );
+    Ok(())
+}
+
+#[cfg(feature = "utangle-client")]
+async fn main_utangle_client() -> Result<()> {
+    // Parse env vars with a fallback
+    let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
+
+    println!("\n");
+    println!(
+        "#####################################################{}",
+        "#".repeat(node_url.len())
+    );
+    println!("Running tests accessing Tangle with uTangle via node {}", &node_url);
+    println!(
+        "#####################################################{}",
+        "#".repeat(node_url.len())
+    );
+    println!("\n");
+
+    let transport: Rc<RefCell<utangle::Client>> = Rc::new(RefCell::new(utangle::Client::new(&node_url)));
+
+    run_basic_scenario(transport.clone(), &new_seed()).await?;
+    #[cfg(feature = "did")]
+    run_did_scenario(transport.clone()).await?;
+    run_lean_test(transport, &new_seed()).await?;
+    println!(
+        "##########################################################{}",
+        "#".repeat(node_url.len())
+    );
+    println!(
+        "Done running tests accessing Tangle with uTangle via node {}",
+        &node_url
+    );
+    println!(
+        "##########################################################{}",
         "#".repeat(node_url.len())
     );
     Ok(())
@@ -117,7 +186,10 @@ async fn main() -> Result<()> {
     };
 
     match env::var("TRANSPORT").ok().as_deref() {
-        Some("tangle") => main_client().await,
+        #[cfg(feature = "utangle-client")]
+        Some("utangle") => main_utangle_client().await,
+        #[cfg(feature = "tangle-client")]
+        Some("tangle") => main_tangle_client().await,
         Some("bucket") | None => main_pure().await,
         Some(other) => panic!("Unexpected TRANSPORT '{}'", other),
     }

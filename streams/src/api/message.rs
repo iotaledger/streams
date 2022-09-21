@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use lets::{
     address::Address,
     id::{Identifier, Permissioned, PskId},
-    message::{Message as LetsMessage, PreparsedMessage, Topic, TransportMessage, HDF},
+    message::{Message as LetsMessage, PreparsedMessage, Topic, TopicHash, TransportMessage, HDF},
 };
 
 // Local
@@ -61,8 +61,8 @@ impl Message {
         &self.content
     }
 
-    pub fn topic(&self) -> &str {
-        self.header.topic().str()
+    pub fn topic_hash(&self) -> &TopicHash {
+        self.header.topic_hash()
     }
 
     pub fn is_announcement(&self) -> bool {

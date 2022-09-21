@@ -20,24 +20,24 @@ const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
 
-pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str) -> Result<()> {
+pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_seed: &str) -> Result<()> {
     let psk = Psk::from_seed("A pre shared key");
 
     let mut author = User::builder()
         .with_identity(Ed25519::from_seed(author_seed))
         .with_transport(transport.clone())
         .with_psk(psk.to_pskid(), psk)
-        .build()?;
+        .build();
 
     let mut subscriber_a = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERA9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
 
     let mut subscriber_b = User::builder()
         .with_identity(Ed25519::from_seed("SUBSCRIBERB9SEED"))
         .with_transport(transport.clone())
-        .build()?;
+        .build();
 
     let announcement = author.create_stream(BASE_BRANCH).await?;
     author.new_branch(BASE_BRANCH, BRANCH1).await?;
@@ -78,7 +78,7 @@ pub(crate) async fn example<T: GenericTransport>(transport: T, author_seed: &str
         .send_signed_packet(BRANCH1, &PUBLIC_PAYLOAD, &MASKED_PAYLOAD)
         .await?;
 
-    let selectors = vec![Selector::Identifier(subscriber_a.identifier().unwrap())];
+    let selectors = vec![Selector::Identifier(subscriber_a.identifier().unwrap().clone())];
     let msgs = subscriber_b.messages().from(&selectors).await;
 
     // Find only 1 message from Sub a, not the author message
