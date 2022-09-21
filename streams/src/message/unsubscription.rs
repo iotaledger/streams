@@ -61,7 +61,7 @@ impl<'a> Wrap<'a> {
 #[async_trait(?Send)]
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, unsubscription: &Wrap<'a>) -> Result<&mut Self> {
-        self.mask(&unsubscription.subscriber_id.to_identifier())?
+        self.mask(unsubscription.subscriber_id.identifier())?
             .commit()?
             .sign_sizeof(unsubscription.subscriber_id)
             .await?;
@@ -76,7 +76,7 @@ where
 {
     async fn wrap(&mut self, unsubscription: &mut Wrap<'a>) -> Result<&mut Self> {
         self.join(unsubscription.initial_state)?
-            .mask(&unsubscription.subscriber_id.to_identifier())?
+            .mask(unsubscription.subscriber_id.identifier())?
             .commit()?
             .sign(unsubscription.subscriber_id)
             .await?;

@@ -26,7 +26,7 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
 
     let mut author = User::builder()
         .with_transport(transport.clone())
-        .with_identity(Identity::Ed25519(Ed25519::from_seed(author_seed)))
+        .with_identity(Identity::from(Ed25519::from_seed(author_seed)))
         .with_psk(psk.to_pskid(), psk)
         .lean()
         .build();

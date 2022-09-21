@@ -67,7 +67,7 @@ impl<'a> Wrap<'a> {
 #[async_trait(?Send)]
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, signed_packet: &Wrap<'a>) -> Result<&mut Self> {
-        self.mask(&signed_packet.user_id.to_identifier())?
+        self.mask(signed_packet.user_id.identifier())?
             .absorb(Bytes::new(signed_packet.public_payload))?
             .mask(Bytes::new(signed_packet.masked_payload))?
             .sign_sizeof(signed_packet.user_id)
@@ -83,7 +83,7 @@ where
 {
     async fn wrap(&mut self, signed_packet: &mut Wrap<'a>) -> Result<&mut Self> {
         self.join(signed_packet.initial_state)?
-            .mask(&signed_packet.user_id.to_identifier())?
+            .mask(signed_packet.user_id.identifier())?
             .absorb(Bytes::new(signed_packet.public_payload))?
             .mask(Bytes::new(signed_packet.masked_payload))?
             .sign(signed_packet.user_id)
