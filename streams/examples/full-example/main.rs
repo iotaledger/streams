@@ -60,6 +60,16 @@ async fn run_basic_scenario<SR, T: GenericTransport<SR>>(transport: T, seed: &st
     result
 }
 
+async fn run_filter_branch_test<SR, T: GenericTransport<SR>>(transport: T, seed: &str) -> Result<()> {
+    println!("## Running filter test with seed: {} ##\n", seed);
+    let result = scenarios::filter::example(transport, seed).await;
+    match &result {
+        Err(err) => eprintln!("Error in filter test: {:?}", err),
+        Ok(_) => println!("\n## Filter Test completed successfully!! ##\n"),
+    };
+    result
+}
+
 async fn main_pure() -> Result<()> {
     println!("\n");
     println!("###########################################");
@@ -73,7 +83,8 @@ async fn main_pure() -> Result<()> {
     let transport = Rc::new(RefCell::new(transport));
 
     run_basic_scenario(transport.clone(), "PURESEEDA").await?;
-    run_lean_test(transport, "PURESEEDB").await?;
+    run_lean_test(transport.clone(), "PURESEEDB").await?;
+    run_filter_branch_test(transport.clone(), "PURESEEDC").await?;
     println!("################################################");
     println!("Done running pure tests without accessing Tangle");
     println!("################################################");
@@ -105,7 +116,8 @@ async fn main_tangle_client() -> Result<()> {
     run_basic_scenario(transport.clone(), &new_seed()).await?;
     #[cfg(feature = "did")]
     run_did_scenario(transport.clone()).await?;
-    run_lean_test(transport, &new_seed()).await?;
+    run_lean_test(transport.clone(), &new_seed()).await?;
+    run_filter_branch_test(transport.clone(), &new_seed()).await?;
     println!(
         "#####################################################{}",
         "#".repeat(node_url.len())

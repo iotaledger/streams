@@ -7,6 +7,8 @@ pub(crate) mod message;
 mod message_builder;
 /// Message Retrieval
 mod messages;
+/// Message Retrieval Filter Selector
+pub(crate) mod selector;
 /// Message Wrapper for Sent Messages
 pub(crate) mod send_response;
 /// User Client
