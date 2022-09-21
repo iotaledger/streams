@@ -674,12 +674,7 @@ where
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
         // Prepare HDF and PCF
-        let header = HDF::new(
-            message_types::ANNOUNCEMENT,
-            ANN_MESSAGE_NUM,
-            identifier.clone(),
-            &topic,
-        )?;
+        let header = HDF::new(message_types::ANNOUNCEMENT, ANN_MESSAGE_NUM, identifier.clone(), &topic)?;
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(self.identity()?, &topic));
 
         // Wrap message
