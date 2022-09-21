@@ -1,7 +1,9 @@
-use anyhow::{anyhow, Result};
-use lets::message::{Topic, TransportMessage};
-use lets::transport::Transport;
 use crate::{SendResponse, User};
+use anyhow::{anyhow, Result};
+use lets::{
+    message::{Topic, TransportMessage},
+    transport::Transport,
+};
 
 /// A builder for creating messages for transport
 pub struct MessageBuilder<'a, P, Trans> {
@@ -24,7 +26,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     /// * user - User Client that will send the message
     pub fn new(user: &'a mut User<Trans>) -> Self
     where
-        P: Default
+        P: Default,
     {
         let topic = user.base_branch().into();
         MessageBuilder {
@@ -32,7 +34,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
             private: true,
             signed: false,
             topic,
-            payload: P::default()
+            payload: P::default(),
         }
     }
 
@@ -71,7 +73,6 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
         self
     }
 
-
     /// Sends the message payload to the specified branch using the User Client. If the message is
     /// signed, the message will be sent as a Signed Packet, and if not, it will be sent as a
     /// Tagged Packet.
@@ -94,7 +95,8 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     /// # user.create_stream(topic).await?;
     /// let payload = "A Data Payload";
     ///
-    /// let message = user.message()
+    /// let message = user
+    ///     .message()
     ///     .with_topic(topic)
     ///     .with_payload(payload)
     ///     .signed()
@@ -107,14 +109,14 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     pub async fn send<TSR>(self) -> Result<SendResponse<TSR>>
     where
         P: AsRef<[u8]>,
-        Trans: for<'b> Transport<'b, Msg = TransportMessage, SendResponse = TSR>
+        Trans: for<'b> Transport<'b, Msg = TransportMessage, SendResponse = TSR>,
     {
         if self.payload.as_ref().is_empty() {
-            return Err(anyhow!("message payload cannot be empty"))
+            return Err(anyhow!("message payload cannot be empty"));
         }
 
         let mut public: &[u8] = &[];
-        let mut private: &[u8]= &[];
+        let mut private: &[u8] = &[];
 
         if self.private {
             private = self.payload.as_ref()
@@ -132,15 +134,14 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     }
 }
 
-
-
 #[cfg(test)]
 mod message_builder_tests {
-    use lets::id::{Ed25519, Identity};
-    use lets::message::Topic;
-    use crate::User;
-    use lets::transport::bucket;
-    use crate::api::message_builder::MessageBuilder;
+    use crate::{api::message_builder::MessageBuilder, User};
+    use lets::{
+        id::{Ed25519, Identity},
+        message::Topic,
+        transport::bucket,
+    };
 
     const BASE_BRANCH: &str = "Base Branch";
 
@@ -150,12 +151,9 @@ mod message_builder_tests {
             .with_identity(Identity::Ed25519(Ed25519::from_seed("user seed")))
             .build();
 
-        user.create_stream(BASE_BRANCH)
-            .await
-            .unwrap();
+        user.create_stream(BASE_BRANCH).await.unwrap();
 
         user
-
     }
 
     #[tokio::test]
@@ -167,10 +165,7 @@ mod message_builder_tests {
         let mut user = make_user().await;
         user.new_branch(BASE_BRANCH, topic).await.unwrap();
 
-        let str_message = MessageBuilder::new(&mut user)
-            .with_payload(payload)
-            .signed()
-            .public();
+        let str_message = MessageBuilder::new(&mut user).with_payload(payload).signed().public();
 
         assert!(!str_message.private);
         assert!(str_message.signed);
@@ -191,15 +186,12 @@ mod message_builder_tests {
     async fn empty_payload_message() {
         let mut user = make_user().await;
 
-        let message = user.message()
-            .with_payload(vec![])
-            .send()
-            .await;
+        let message = user.message().with_payload(vec![]).send().await;
 
         assert!(message.is_err());
     }
 
-        #[tokio::test]
+    #[tokio::test]
     async fn send_signed_messages() {
         let mut user = make_user().await;
         let priv_payload = "A Private Payload";
@@ -220,21 +212,35 @@ mod message_builder_tests {
             .await
             .unwrap();
 
-        let received_private_msg = user.receive_message(private_msg.address())
-            .await
-            .unwrap();
+        let received_private_msg = user.receive_message(private_msg.address()).await.unwrap();
 
-        let received_public_msg = user.receive_message(public_msg.address())
-            .await
-            .unwrap();
+        let received_public_msg = user.receive_message(public_msg.address()).await.unwrap();
 
         assert!(received_private_msg.is_signed_packet());
-        assert_eq!(received_private_msg.as_signed_packet().unwrap().masked_payload, priv_payload.as_bytes());
-        assert!(received_private_msg.as_signed_packet().unwrap().public_payload.is_empty());
+        assert_eq!(
+            received_private_msg.as_signed_packet().unwrap().masked_payload,
+            priv_payload.as_bytes()
+        );
+        assert!(
+            received_private_msg
+                .as_signed_packet()
+                .unwrap()
+                .public_payload
+                .is_empty()
+        );
 
         assert!(received_public_msg.is_signed_packet());
-        assert_eq!(received_public_msg.as_signed_packet().unwrap().public_payload, pub_payload.as_bytes());
-        assert!(received_public_msg.as_signed_packet().unwrap().masked_payload.is_empty());
+        assert_eq!(
+            received_public_msg.as_signed_packet().unwrap().public_payload,
+            pub_payload.as_bytes()
+        );
+        assert!(
+            received_public_msg
+                .as_signed_packet()
+                .unwrap()
+                .masked_payload
+                .is_empty()
+        );
     }
 
     #[tokio::test]
@@ -256,20 +262,34 @@ mod message_builder_tests {
             .await
             .unwrap();
 
-        let received_private_msg = user.receive_message(private_msg.address())
-            .await
-            .unwrap();
+        let received_private_msg = user.receive_message(private_msg.address()).await.unwrap();
 
-        let received_public_msg = user.receive_message(public_msg.address())
-            .await
-            .unwrap();
+        let received_public_msg = user.receive_message(public_msg.address()).await.unwrap();
 
         assert!(received_private_msg.is_tagged_packet());
-        assert_eq!(received_private_msg.as_tagged_packet().unwrap().masked_payload, priv_payload.as_bytes());
-        assert!(received_private_msg.as_tagged_packet().unwrap().public_payload.is_empty());
+        assert_eq!(
+            received_private_msg.as_tagged_packet().unwrap().masked_payload,
+            priv_payload.as_bytes()
+        );
+        assert!(
+            received_private_msg
+                .as_tagged_packet()
+                .unwrap()
+                .public_payload
+                .is_empty()
+        );
 
         assert!(received_public_msg.is_tagged_packet());
-        assert_eq!(received_public_msg.as_tagged_packet().unwrap().public_payload, pub_payload.as_bytes());
-        assert!(received_public_msg.as_tagged_packet().unwrap().masked_payload.is_empty());
+        assert_eq!(
+            received_public_msg.as_tagged_packet().unwrap().public_payload,
+            pub_payload.as_bytes()
+        );
+        assert!(
+            received_public_msg
+                .as_tagged_packet()
+                .unwrap()
+                .masked_payload
+                .is_empty()
+        );
     }
 }

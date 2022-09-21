@@ -47,36 +47,11 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
     lean_subscriber.receive_message(announcement.address()).await?;
 
     println!("author sends a few messages to the base branch");
-    let first_message = author
-        .message()
-        .with_payload(PAYLOAD)
-        .signed()
-        .send()
-        .await?;
-    let _second_message = author
-        .message()
-        .with_payload(PAYLOAD)
-        .signed()
-        .send()
-        .await?;
-    let middle_message = author
-        .message()
-        .with_payload(PAYLOAD)
-        .signed()
-        .send()
-        .await?;
-    let _third_message = author
-        .message()
-        .with_payload(PAYLOAD)
-        .signed()
-        .send()
-        .await?;
-    let last_message = author
-        .message()
-        .with_payload(PAYLOAD)
-        .signed()
-        .send()
-        .await?;
+    let first_message = author.message().with_payload(PAYLOAD).signed().send().await?;
+    let _second_message = author.message().with_payload(PAYLOAD).signed().send().await?;
+    let middle_message = author.message().with_payload(PAYLOAD).signed().send().await?;
+    let _third_message = author.message().with_payload(PAYLOAD).signed().send().await?;
+    let last_message = author.message().with_payload(PAYLOAD).signed().send().await?;
 
     // sync subscribers to retrieve all available messages
     sync_subs(&mut fat_subscriber, &mut lean_subscriber).await?;
