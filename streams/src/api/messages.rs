@@ -269,8 +269,8 @@ where
     ///
     /// Returns:
     ///
-    /// A vector of results.
-    pub async fn from(&mut self, selectors: &[Selector]) -> Vec<Result<Message>> {
+    /// A vector of Messages.
+    pub async fn from(&mut self, selectors: &[Selector]) -> Vec<Message> {
         StreamExt::filter(self, |x| match &x {
             Ok(m) => {
                 for selector in selectors {
@@ -282,6 +282,7 @@ where
             }
             Err(_) => future::ready(false),
         })
+        .map(|x| x.unwrap())
         .collect::<Vec<_>>()
         .await
     }
