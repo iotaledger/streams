@@ -27,10 +27,6 @@ impl CursorStore {
         self.0.insert(topic, InnerCursorStore::default()).is_none()
     }
 
-    pub(crate) fn topics(&self) -> impl Iterator<Item = &Topic> + ExactSizeIterator {
-        self.0.keys()
-    }
-
     pub(crate) fn remove(&mut self, id: &Identifier) -> bool {
         let removals = self.0.values_mut().flat_map(|branch| {
             branch
@@ -103,8 +99,8 @@ impl CursorStore {
             .and_then(|branch| branch.cursors.insert(id, cursor))
     }
 
-    pub(crate) fn set_latest_link(&mut self, topic: &Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
-        match self.0.get_mut(topic) {
+    pub(crate) fn set_latest_link(&mut self, topic: Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
+        match self.0.get_mut(&topic) {
             Some(branch) => {
                 branch.latest_link = latest_link;
                 None
@@ -114,7 +110,7 @@ impl CursorStore {
                     latest_link,
                     ..Default::default()
                 };
-                self.0.insert(topic.clone(), branch)
+                self.0.insert(topic, branch)
             }
         }
     }

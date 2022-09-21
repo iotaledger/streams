@@ -27,7 +27,7 @@ use async_trait::async_trait;
 // Streams
 use lets::{
     id::{Identifier, Identity},
-    message::{ContentSign, ContentSignSizeof, ContentSizeof, ContentUnwrap, ContentVerify, ContentWrap},
+    message::{ContentSign, ContentSignSizeof, ContentSizeof, ContentUnwrap, ContentVerify, ContentWrap, Topic},
 };
 use spongos::{
     ddml::{
@@ -41,11 +41,12 @@ use spongos::{
 
 pub(crate) struct Wrap<'a> {
     user_id: &'a Identity,
+    topic: &'a Topic,
 }
 
 impl<'a> Wrap<'a> {
-    pub(crate) fn new(user_id: &'a Identity) -> Self {
-        Self { user_id }
+    pub(crate) fn new(user_id: &'a Identity, topic: &'a Topic) -> Self {
+        Self { user_id, topic }
     }
 }
 
@@ -53,6 +54,7 @@ impl<'a> Wrap<'a> {
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
     async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
         self.mask(announcement.user_id.identifier())?
+            .mask(announcement.topic)?
             .sign_sizeof(announcement.user_id)
             .await?
             .commit()?;
@@ -67,6 +69,7 @@ where
 {
     async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
         self.mask(announcement.user_id.identifier())?
+            .mask(announcement.topic)?
             .sign(announcement.user_id)
             .await?
             .commit()?;
@@ -77,18 +80,24 @@ where
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Unwrap {
     author_id: Identifier,
+    topic: Topic,
 }
 
 impl Default for Unwrap {
     fn default() -> Self {
         let author_id = Default::default();
-        Self { author_id }
+        let topic = Default::default();
+        Self { author_id, topic }
     }
 }
 
 impl Unwrap {
     pub(crate) fn author_id(&self) -> &Identifier {
         &self.author_id
+    }
+
+    pub(crate) fn topic(&self) -> &Topic {
+        &self.topic
     }
 
     pub(crate) fn into_author_id(self) -> Identifier {
@@ -104,6 +113,7 @@ where
 {
     async fn unwrap(&mut self, announcement: &mut Unwrap) -> Result<&mut Self> {
         self.mask(&mut announcement.author_id)?
+            .mask(&mut announcement.topic)?
             .verify(&announcement.author_id)
             .await?
             .commit()?;
