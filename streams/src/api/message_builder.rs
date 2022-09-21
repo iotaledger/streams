@@ -138,11 +138,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
 #[cfg(test)]
 mod message_builder_tests {
     use crate::{api::message_builder::MessageBuilder, User};
-    use lets::{
-        id::Ed25519,
-        message::Topic,
-        transport::bucket,
-    };
+    use lets::{id::Ed25519, message::Topic, transport::bucket};
 
     const BASE_BRANCH: &str = "Base Branch";
 
