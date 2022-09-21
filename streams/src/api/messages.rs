@@ -25,6 +25,7 @@ use lets::{
 // Local
 use crate::api::{
     message::{Message, MessageContent, Orphan},
+    selector::Selector,
     user::User,
 };
 
@@ -255,6 +256,42 @@ where
         }))
     }
 
+    /// "Filter the stream of messages to only those that match the selectors, and return the result
+    /// as a vector."
+    /// A message is matched when at least one of the selectors is a match.
+    ///
+    /// Important to note is that the stream DISCARDS the messages that dont fit the criteria from
+    /// the selectors.
+    ///
+    /// Arguments:
+    ///
+    /// * `selectors`: A list of selectors to filter the messages by.
+    ///
+    /// Returns:
+    ///
+    /// A vector of Messages.
+    pub async fn from(&mut self, selectors: &[Selector]) -> Vec<Message> {
+        StreamExt::filter(self, |x| match &x {
+            Ok(m) => {
+                for selector in selectors {
+                    if selector.is(m) {
+                        return future::ready(true);
+                    }
+                }
+                future::ready(false)
+            }
+            Err(_) => future::ready(false),
+        })
+        .map(|x| x.unwrap())
+        .collect::<Vec<_>>()
+        .await
+    }
+
+    /// `next` is an async function that returns an Option of a Result of a Message
+    ///
+    /// Returns:
+    ///
+    /// A message
     pub async fn next(&mut self) -> Option<Result<Message>> {
         StreamExt::next(self).await
     }
@@ -394,6 +431,7 @@ mod tests {
             && address_2 == keyload_2.address()
             && address_3 == last_signed_packet.address()
         ));
+
         Ok(())
     }
 
