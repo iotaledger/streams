@@ -28,7 +28,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     where
         P: Default,
     {
-        let topic = user.base_branch().into();
+        let topic = user.base_branch().clone();
         MessageBuilder {
             user,
             private: true,
@@ -125,12 +125,10 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
             public = self.payload.as_ref()
         }
 
-        let user: &mut User<Trans> = self.user;
-        let topic = user.base_branch().clone();
         if self.signed {
-            user.send_signed_packet(&topic, public, private).await
+            self.user.send_signed_packet(self.topic, public, private).await
         } else {
-            user.send_tagged_packet(self.topic, public, private).await
+            self.user.send_tagged_packet(self.topic, public, private).await
         }
     }
 }

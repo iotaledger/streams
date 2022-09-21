@@ -25,12 +25,6 @@ impl Topic {
     }
 }
 
-impl From<&Topic> for Topic {
-    fn from(t: &Topic) -> Self {
-        t.clone()
-    }
-}
-
 impl From<&str> for Topic {
     fn from(t: &str) -> Self {
         Self(t.to_string())

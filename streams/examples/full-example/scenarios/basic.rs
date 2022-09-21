@@ -236,7 +236,11 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
 
     println!("> Author sends a signed packet");
     let signed_packet_as_author = author
-        .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .message()
+        .with_topic(BRANCH1)
+        .with_payload(PUBLIC_PAYLOAD)
+        .public()
+        .send()
         .await?;
     print_send_result(&signed_packet_as_author);
     print_user("Author", &author);
@@ -252,11 +256,11 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
             .expect("expected a message with public payload, found something else"),
         PUBLIC_PAYLOAD
     );
-    assert_eq!(
+    assert!(
         signed_packet_as_b
             .masked_payload()
-            .expect("expected a message with masked payload, found something else"),
-        MASKED_PAYLOAD
+            .expect("expected a message with masked payload, found something else")
+            .is_empty()
     );
 
     assert_eq!(author.sync().await?, 0);
