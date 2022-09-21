@@ -256,7 +256,20 @@ where
         }))
     }
 
-    /// Filtering a stream of messages.
+    /// "Filter the stream of messages to only those that match the selectors, and return the result
+    /// as a vector."
+    /// A message is matched when at least one of the selectors is a match.
+    ///
+    /// Important to note is that the stream DISCARDS the messages that dont fit the criteria from
+    /// the selectors.
+    ///
+    /// Arguments:
+    ///
+    /// * `selectors`: A list of selectors to filter the messages by.
+    ///
+    /// Returns:
+    ///
+    /// A vector of results.
     pub async fn from(&mut self, selectors: &[Selector]) -> Vec<Result<Message>> {
         StreamExt::filter(self, |x| match &x {
             Ok(m) => {
