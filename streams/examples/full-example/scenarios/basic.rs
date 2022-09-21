@@ -166,7 +166,10 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
 
     println!("> Author sends a tagged packet linked to the keyload");
     let tagged_packet_as_author = author
-        .send_tagged_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .message()
+        .with_topic(BRANCH1)
+        .with_payload(MASKED_PAYLOAD)
+        .send()
         .await?;
     print_send_result(&tagged_packet_as_author);
     print_user("Author", &author);
@@ -178,11 +181,11 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
         .await?
         .expect("subscriber A did not receive the tagged packet sent by Author");
     print_user("Subscriber A", &subscriber_a);
-    assert_eq!(
+    assert!(
         tagged_packet_as_a
             .public_payload()
-            .expect("expected a message with public payload, found something else"),
-        PUBLIC_PAYLOAD
+            .expect("expected a message with public payload, found something else")
+            .is_empty()
     );
     assert_eq!(
         tagged_packet_as_a
@@ -198,11 +201,11 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
         .await?
         .expect("subscriber C did not receive the tagged packet sent by subscriber A");
     print_user("Subscriber C", &subscriber_c);
-    assert_eq!(
+    assert!(
         tagged_packet_as_c
             .public_payload()
-            .expect("expected a message with public payload, found something else"),
-        PUBLIC_PAYLOAD
+            .expect("expected a message with public payload, found something else")
+            .is_empty()
     );
     assert_eq!(
         tagged_packet_as_c

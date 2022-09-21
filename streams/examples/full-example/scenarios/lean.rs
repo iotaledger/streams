@@ -15,8 +15,7 @@ use streams::{
 // Local
 use crate::GenericTransport;
 
-const PUBLIC_PAYLOAD: &[u8] = b"PUBLICPAYLOAD";
-const MASKED_PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
+const PAYLOAD: &[u8] = b"MASKEDPAYLOAD";
 
 const BASE_BRANCH: &str = "BASE_BRANCH";
 const BRANCH1: &str = "BRANCH1";
@@ -49,19 +48,34 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
 
     println!("author sends a few messages to the base branch");
     let first_message = author
-        .send_signed_packet(BASE_BRANCH, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .message()
+        .with_payload(PAYLOAD)
+        .signed()
+        .send()
         .await?;
     let _second_message = author
-        .send_signed_packet(BASE_BRANCH, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .message()
+        .with_payload(PAYLOAD)
+        .signed()
+        .send()
         .await?;
     let middle_message = author
-        .send_signed_packet(BASE_BRANCH, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .message()
+        .with_payload(PAYLOAD)
+        .signed()
+        .send()
         .await?;
     let _third_message = author
-        .send_signed_packet(BASE_BRANCH, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .message()
+        .with_payload(PAYLOAD)
+        .signed()
+        .send()
         .await?;
     let last_message = author
-        .send_signed_packet(BASE_BRANCH, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+        .message()
+        .with_payload(PAYLOAD)
+        .signed()
+        .send()
         .await?;
 
     // sync subscribers to retrieve all available messages
@@ -80,14 +94,22 @@ pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T, author_se
     author.new_branch(BASE_BRANCH, BRANCH1).await?;
     for _ in 0..20 {
         author
-            .send_signed_packet(BRANCH1, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+            .message()
+            .with_topic(BRANCH1)
+            .with_payload(PAYLOAD)
+            .signed()
+            .send()
             .await?;
     }
 
     author.new_branch(BASE_BRANCH, BRANCH2).await?;
     for _ in 0..20 {
         author
-            .send_signed_packet(BRANCH2, PUBLIC_PAYLOAD, MASKED_PAYLOAD)
+            .message()
+            .with_topic(BRANCH2)
+            .with_payload(PAYLOAD)
+            .signed()
+            .send()
             .await?;
     }
 
