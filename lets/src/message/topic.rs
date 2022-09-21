@@ -23,6 +23,10 @@ impl Topic {
     pub fn new(t: String) -> Self {
         Self(t)
     }
+
+    pub fn str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl From<&Topic> for Topic {
@@ -119,6 +123,12 @@ impl From<&Topic> for TopicHash {
     fn from(topic: &Topic) -> Self {
         let topic_hash: [u8; 16] = Spongos::<KeccakF1600>::init().sponge(topic.as_ref());
         Self(topic_hash)
+    }
+}
+
+impl From<&str> for TopicHash {
+    fn from(t: &str) -> Self {
+        TopicHash::from(&Topic::from(t))
     }
 }
 
