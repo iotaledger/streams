@@ -46,4 +46,5 @@ mod api;
 mod error;
 
 pub use api::{message::Message, selector::Selector, send_response::SendResponse, user::User};
+pub use error::{Error, Result};
 pub use lets::{address::Address, id, message::TransportMessage, transport};

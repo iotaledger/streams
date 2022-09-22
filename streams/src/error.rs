@@ -14,6 +14,8 @@ use core::any::Any;
 // Streams
 use lets::{address::Address, id::PskId, message::Topic};
 
+pub type Result<T> = core::result::Result<T, Error>;
+
 // Local
 
 /// Streams `Error`
@@ -37,6 +39,7 @@ use lets::{address::Address, id::PskId, message::Topic};
 /// - `CacheMiss`: the message could not be wrapped or unwrapped because the Spongos state of the
 ///   message it is linked to cannot be found in the cache. The operation can be attempted again as
 ///   is once the linked message is fetched
+#[derive(Debug)]
 pub enum Error {
     // TODO: REVISIT dyn Any (alternative: Generic E given by user, linked to the error of transport layer)
     Transport(Address, Box<dyn Any + Send + Sync>, &'static str),
@@ -50,7 +53,23 @@ pub enum Error {
     Fatal(String),
 }
 
-pub type Result2<T> = Result<T, Error>;
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        match &self {
+            Error::Transport(_, _, info) =>
+                write!(f, "{}", info),
+            Error::Data(_, info) =>
+                write!(f, "{}", info),
+            Error::CacheMiss(_, _, info) =>
+                write!(f, "{}", info),
+            Error::Unwrapping(_, info) =>
+                write!(f, "{}", info),
+            Error::Setup(info) | Error::Permission(info)  | Error::Fatal(info) =>
+                write!(f, "{}", info),
+            _ => write!(f, "{:?}", &self),
+        }
+    }
+}
 
 impl Error {
     pub(crate) fn no_cursor(topic: &Topic) -> Self {
