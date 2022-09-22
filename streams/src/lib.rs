@@ -43,6 +43,7 @@ mod message;
 
 /// [`User`] API.
 mod api;
+mod error;
 
 pub use api::{message::Message, selector::Selector, send_response::SendResponse, user::User};
 pub use lets::{address::Address, id, message::TransportMessage, transport};

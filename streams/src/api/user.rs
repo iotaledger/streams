@@ -675,7 +675,7 @@ where
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
         // Prepare HDF and PCF
-        let header = HDF::new(message_types::ANNOUNCEMENT, ANN_MESSAGE_NUM, identifier.clone(), &topic)?;
+        let header = HDF::new(message_types::ANNOUNCEMENT, ANN_MESSAGE_NUM, identifier.clone(), &topic);
         let content = PCF::new_final_frame().with_content(announcement::Wrap::new(self.identity()?, &topic));
 
         // Wrap message
@@ -756,7 +756,7 @@ where
             user_cursor,
             identifier.clone(),
             &prev_topic,
-        )?
+        )
         .with_linked_msg_address(link_to);
         let content = PCF::new_final_frame().with_content(branch_announcement::Wrap::new(
             &mut linked_msg_spongos,
@@ -834,7 +834,7 @@ where
             SUB_MESSAGE_NUM,
             identifier.clone(),
             base_branch,
-        )?
+        )
         .with_linked_msg_address(link_to);
 
         // Wrap message
@@ -888,7 +888,7 @@ where
             new_cursor,
             identifier.clone(),
             base_branch,
-        )?
+        )
         .with_linked_msg_address(link_to);
 
         // Wrap message
@@ -980,7 +980,7 @@ where
             user_id,
         ));
         let header =
-            HDF::new(message_types::KEYLOAD, new_cursor, identifier.clone(), &topic)?.with_linked_msg_address(link_to);
+            HDF::new(message_types::KEYLOAD, new_cursor, identifier.clone(), &topic).with_linked_msg_address(link_to);
 
         // Wrap message
         let (transport_msg, spongos) = LetsMessage::new(header, content).wrap().await?;
@@ -1127,7 +1127,7 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::SIGNED_PACKET, new_cursor, identifier.clone(), &topic)?
+        let header = HDF::new(message_types::SIGNED_PACKET, new_cursor, identifier.clone(), &topic)
             .with_linked_msg_address(link_to);
 
         // Wrap message
@@ -1202,7 +1202,7 @@ where
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
-        let header = HDF::new(message_types::TAGGED_PACKET, new_cursor, identifier.clone(), &topic)?
+        let header = HDF::new(message_types::TAGGED_PACKET, new_cursor, identifier.clone(), &topic)
             .with_linked_msg_address(link_to);
 
         // Wrap message

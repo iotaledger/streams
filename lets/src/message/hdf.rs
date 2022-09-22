@@ -61,15 +61,19 @@ impl Default for HDF {
 }
 
 impl HDF {
-    pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: &Topic) -> Result<Self> {
-        ensure!(
+
+    /// Create a new HDF
+    /// 
+    /// In debug builds, this constructor checks that the message_type fits the maximum size expected for this field (4 bits)
+    /// and panics if it exceeds it. In release builds, the check is not performed and the constructor won't panic, but only the
+    /// last 4 bits of the u8 will be considered when wrapping, without emiting an explicit error. 
+    pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: &Topic) -> Self {
+        debug_assert!(
             message_type >> 4 == 0,
-            anyhow!(
-                "invalid content-type '{}': content-type value cannot be greater than 4 bits",
-                message_type
-            )
+            "invalid content-type '{}': content-type value cannot be greater than 4 bits",
+            message_type
         );
-        Ok(Self {
+        Self {
             encoding: UTF8,
             version: STREAMS_1_VER,
             message_type,
@@ -80,7 +84,7 @@ impl HDF {
             sequence,
             publisher,
             topic_hash: topic.into(),
-        })
+        }
     }
 
     pub fn with_linked_msg_address(mut self, address: MsgId) -> Self {

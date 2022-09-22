@@ -1,6 +1,6 @@
 use core::{
     convert::{TryFrom, TryInto},
-    fmt::{LowerHex, UpperHex},
+    fmt::{LowerHex, UpperHex, Display},
 };
 
 use anyhow::{Error, Result};
@@ -91,6 +91,12 @@ impl TryFrom<&[u8]> for PskId {
 
     fn try_from(bytes: &[u8]) -> Result<Self> {
         Ok(PskId(bytes.try_into()?))
+    }
+}
+
+impl Display for PskId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        LowerHex::fmt(self, f)
     }
 }
 
