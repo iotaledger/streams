@@ -1,5 +1,4 @@
-use crate::{SendResponse, User};
-use anyhow::{anyhow, Result};
+use crate::{SendResponse, User, Result, Error};
 use lets::{
     message::{Topic, TransportMessage},
     transport::Transport,
@@ -113,7 +112,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
         Trans: for<'b> Transport<'b, Msg = TransportMessage, SendResponse = TSR>,
     {
         if self.payload.as_ref().is_empty() {
-            return Err(anyhow!("message payload cannot be empty"));
+            return Err(Error::PayloadEmpty);
         }
 
         let mut public: &[u8] = &[];

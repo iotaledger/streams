@@ -1,9 +1,6 @@
 // Rust
 use alloc::vec::Vec;
 
-// 3rd-party
-use anyhow::Result;
-
 // IOTA
 
 // Streams
@@ -18,7 +15,7 @@ use lets::{
 use lets::transport::utangle;
 
 // Local
-use crate::api::user::User;
+use crate::{Result, api::user::User};
 
 /// Builder instance for a Streams User
 pub struct UserBuilder<T> {

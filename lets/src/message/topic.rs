@@ -16,7 +16,7 @@ use spongos::{
     KeccakF1600, Spongos, PRP,
 };
 
-#[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Default, Hash, serde::Serialize)]
 pub struct Topic(String);
 
 impl Topic {
@@ -110,7 +110,7 @@ where
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Debug, Default, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Debug, Default, Hash, serde::Serialize)]
 pub struct TopicHash([u8; 16]);
 
 impl From<&Topic> for TopicHash {

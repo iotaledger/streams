@@ -3,7 +3,7 @@ use alloc::{boxed::Box, format, string::String, vec::Vec};
 use core::fmt::{Debug, Formatter, Result as FormatResult};
 
 // 3rd-party
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure};
 use async_trait::async_trait;
 use futures::{future, TryStreamExt};
 use hashbrown::{HashMap, HashSet};
@@ -32,6 +32,7 @@ use spongos::{
 
 // Local
 use crate::{
+    Result, Error,
     api::{
         cursor_store::{CursorStore, InnerCursorStore},
         message::Message,
@@ -130,15 +131,14 @@ impl<T> User<T> {
 
     /// User's identifier
     pub fn identifier(&self) -> Option<&Identifier> {
-        self.identity().ok().map(|id| id.identifier())
+        self.identity().map(|id| id.identifier())
     }
 
     /// User Identity
-    fn identity(&self) -> Result<&Identity> {
+    fn identity(&self) -> Option<&Identity> {
         self.state
             .user_id
             .as_ref()
-            .ok_or_else(|| anyhow!("User does not have a stored identity"))
     }
 
     pub fn permission(&self, topic: &Topic) -> Option<&Permissioned<Identifier>> {
@@ -155,7 +155,7 @@ impl<T> User<T> {
     fn next_cursor(&self, topic: &Topic) -> Result<usize> {
         self.cursor(topic)
             .map(|c| c + 1)
-            .ok_or_else(|| anyhow!("User is not a publisher"))
+            .ok_or(Error::NoCursor(topic.clone()))
     }
 
     pub(crate) fn base_branch(&self) -> &Topic {
@@ -194,7 +194,7 @@ impl<T> User<T> {
         self.state
             .cursor_store
             .cursors_by_topic(topic)
-            .ok_or_else(|| anyhow!("previous topic {} not found in store", topic))
+            .ok_or(Error::PreviousTopicNotFound(topic.clone()))
     }
 
     pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone + '_ {
@@ -246,7 +246,8 @@ impl<T> User<T> {
     }
 
     pub(crate) async fn handle_message(&mut self, address: Address, msg: TransportMessage) -> Result<Message> {
-        let preparsed = msg.parse_header().await?;
+        let preparsed = msg.parse_header().await.map_err(|e| Error::Unwrapping("header".into(), address.clone(), e))?;
+
         match preparsed.header().message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
             message_types::BRANCH_ANNOUNCEMENT => self.handle_branch_announcement(address, preparsed).await,
@@ -255,7 +256,7 @@ impl<T> User<T> {
             message_types::KEYLOAD => self.handle_keyload(address, preparsed).await,
             message_types::SIGNED_PACKET => self.handle_signed_packet(address, preparsed).await,
             message_types::TAGGED_PACKET => self.handle_tagged_packet(address, preparsed).await,
-            unknown => Err(anyhow!("unexpected message type {}", unknown)),
+            unknown => Err(Error::MessageTypeUnknown(unknown)),
         }
     }
 
@@ -267,7 +268,7 @@ impl<T> User<T> {
 
         // Unwrap message
         let announcement = announcement::Unwrap::default();
-        let (message, spongos) = preparsed.unwrap(announcement).await?;
+        let (message, spongos) = preparsed.unwrap(announcement).await.map_err(|e| Error::Unwrapping("announcement".into(), address.clone(), e))?;
 
         let topic = message.payload().content().topic();
         // Insert new branch into store
@@ -299,7 +300,8 @@ impl<T> User<T> {
         // Retrieve header values
         let prev_topic = self
             .topic_by_hash(preparsed.header().topic_hash())
-            .ok_or_else(|| anyhow!("No known topic that matches header topic"))?;
+            .ok_or(Error::UnknownTopic(*preparsed.header().topic_hash()))?;
+
         let publisher = preparsed.header().publisher().clone();
         let cursor = preparsed.header().sequence();
 
@@ -310,16 +312,12 @@ impl<T> User<T> {
             .state
             .cursor_store
             .get_permission(&prev_topic, &publisher)
-            .ok_or_else(|| anyhow!("branch announcement received from user that is not stored as a publisher"))?
+            .ok_or(Error::NoCursor(prev_topic))?
             .clone();
         self.state.cursor_store.insert_cursor(&prev_topic, permission, cursor);
 
         // Unwrap message
-        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
-            anyhow!(
-                "branch announcement messages must contain the address of the message they are linked to in the header"
-            )
-        })?;
+        let linked_msg_address = preparsed.header().linked_msg_address().ok_or(Error::NotLinked("branch announcement".into(), address.clone()))?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
                 // Spongos must be copied because wrapping mutates it
@@ -329,7 +327,7 @@ impl<T> User<T> {
             }
         };
         let branch_announcement = branch_announcement::Unwrap::new(&mut linked_msg_spongos);
-        let (message, spongos) = preparsed.unwrap(branch_announcement).await?;
+        let (message, spongos) = preparsed.unwrap(branch_announcement).await.map_err(|e| Error::Unwrapping("branch announcement".into(), address.clone(), e))?;
 
         let new_topic = message.payload().content().new_topic();
         // Store spongos
@@ -356,9 +354,7 @@ impl<T> User<T> {
         // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
 
         // Unwrap message
-        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
-            anyhow!("subscription messages must contain the address of the message they are linked to in the header")
-        })?;
+        let linked_msg_address = preparsed.header().linked_msg_address().ok_or(Error::NotLinked("subscription".into(), address.clone()))?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
                 // Spongos must be copied because wrapping mutates it
@@ -367,9 +363,10 @@ impl<T> User<T> {
                 return Ok(Message::orphan(address, preparsed));
             }
         };
-        let user_ke_sk = &self.identity()?.ke_sk()?;
+        let user_ke_sk = &self.identity()?.ke_sk().map_err(|_|Error::NoSecretKey)?;
+
         let subscription = subscription::Unwrap::new(&mut linked_msg_spongos, user_ke_sk);
-        let (message, _spongos) = preparsed.unwrap(subscription).await?;
+        let (message, _spongos) = preparsed.unwrap(subscription).await.map_err(|e| Error::Unwrapping("subscription".into(), address.clone(), e))?;
 
         // Store spongos
         // Subscription messages are never stored in spongos to maintain consistency about the view of the
@@ -386,9 +383,7 @@ impl<T> User<T> {
         // Cursor is not stored, as user is unsubscribing
 
         // Unwrap message
-        let linked_msg_address = preparsed.header().linked_msg_address().ok_or_else(|| {
-            anyhow!("signed packet messages must contain the address of the message they are linked to in the header")
-        })?;
+        let linked_msg_address = preparsed.header().linked_msg_address().ok_or(Error::NotLinked("signed".into(), address.clone()))?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address) {
                 // Spongos must be cloned because wrapping mutates it
@@ -398,7 +393,8 @@ impl<T> User<T> {
             }
         };
         let unsubscription = unsubscription::Unwrap::new(&mut linked_msg_spongos);
-        let (message, spongos) = preparsed.unwrap(unsubscription).await?;
+        let (message, spongos) = preparsed.unwrap(unsubscription).await.map_err(
+            |e| Error::Unwrapping("signed".into(), address.clone(), e))?;
 
         // Store spongos
         self.store_spongos(address.relative(), spongos, linked_msg_address);
@@ -412,20 +408,21 @@ impl<T> User<T> {
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         let stream_address = self
             .stream_address()
-            .ok_or_else(|| anyhow!("before handling a keyload one must have received a stream announcement first"))?;
+            .ok_or(Error::NoStream("handling a keyload".into()))?;
+
         let topic = self
             .topic_by_hash(preparsed.header().topic_hash())
-            .ok_or_else(|| anyhow!("No known topic that matches header topic"))?;
+            .ok_or(Error::UnknownTopic(*preparsed.header().topic_hash()))?;
         let publisher = preparsed.header().publisher().clone();
         // Confirm keyload came from administrator
         if !self
             .state
             .cursor_store
             .get_permission(&topic, &publisher)
-            .ok_or_else(|| anyhow!("user does not have a cursor stored for this branch"))?
+            .ok_or(Error::NoCursor(topic.clone()))?
             .is_admin()
         {
-            return Err(anyhow!("received keyload message from a user without admin privileges"));
+            return Err(Error::WrongRole("admin".into(), publisher, "receive keyload".into())); //WrongRole
         }
         // From the point of view of cursor tracking, the message exists, regardless of the validity or
         // accessibility to its content. Therefore we must update the cursor of the publisher before
@@ -451,7 +448,7 @@ impl<T> User<T> {
             author_identifier,
             &self.state.psk_store,
         );
-        let (message, spongos) = preparsed.unwrap(keyload).await?;
+        let (message, spongos) = preparsed.unwrap(keyload).await.map_err(|e| Error::Unwrapping("keyload".into(), address.clone(), e))?;
 
         // Store spongos
         self.state.spongos_store.insert(address.relative(), spongos);
