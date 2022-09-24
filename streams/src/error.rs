@@ -9,7 +9,7 @@ use core::fmt::{Debug, Display};
 
 // 3rd-party
 use serde::{ser::Serializer, Serialize};
-
+use thiserror_no_std::Error;
 // IOTA
 
 // Streams
@@ -17,7 +17,7 @@ use lets::{address::Address, id::{PskId, Identifier}, message::{Topic, TopicHash
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, thiserror::Error, Serialize)]
+#[derive(Debug, Error, Serialize)]
 /// Error type of the iota client crate.
 #[allow(clippy::large_enum_variant)]
 #[serde(tag = "type", content = "error")]
@@ -31,25 +31,25 @@ pub enum Error {
     #[error("the user does not have an identity, but needs one to {0}")]
     NoIdentity(String),
 
-    #[error("Missing role {0} for {1} in order to {2}")]
+    #[error("Missing role {0} for {1:?} in order to {2}")]
     WrongRole(String, Identifier, String),
 
-    #[error("user does not have a cursor in branch '{}'. This probably means the user does not have write permission over that branch")]
+    #[error("user does not have a cursor in branch '{0}'. This probably means the user does not have write permission over that branch")]
     NoCursor(Topic),
 
     #[error("previous topic {0} not found in store")]
     PreviousTopicNotFound(Topic),
 
+    #[error("Topic by has {0} is not known")]
+    UnknownTopic(TopicHash),
+
     #[error("unexpected message type {0}")]
     MessageTypeUnknown(u8),
 
-    #[error("Error unwrapping the message {0}. The message at address '{2}' could not be unwrapped: {3}")]
+    #[error("Error unwrapping the message {0}. The message at address '{1:#?}' could not be unwrapped: {2}")]
     Unwrapping(String, Address, anyhow::Error),
 
-    #[error("Error unwrapping the message {0}. The message at address '{2}' could not be unwrapped: {3}")]
-    UnknownTopic(TopicHash),
-
-    #[error("Message not linked. The {0} message at address '{1}' is not linked to any message. \
+    #[error("Message not linked. The {0} message at address '{1:#?}' is not linked to any message. \
 Any {0} message must be linked to a previous message by including the address of the previous message in the header")]
     NotLinked(String, Address),
 
@@ -59,8 +59,8 @@ Any {0} message must be linked to a previous message by including the address of
     #[error("not connected to a stream. A user must either create a stream or connect to an existing one before attempting to {0}")]
     NoStream(String),
 
-    /*#[error("branch announcement received from user that is not stored as a publisher")]
-    UnknownTopic(TopicHash),*/
+    #[error("Setup error: {0} for {1}")]
+    Setup(String, Address),
 
     #[error("{0}")]
     #[serde(serialize_with = "display_string")]
@@ -70,6 +70,17 @@ Any {0} message must be linked to a previous message by including the address of
     #[error("Internal error {0} Cause: {1}")]
     Wrapped(String, Box<Error>),
 
+    #[error("Internal spongos error: {0}")]
+    Spongos(anyhow::Error),
+
+    #[error("Transport error whilest doing {0} for address {1}: {2}")]
+    Transport(Address, String, anyhow::Error),
+
+    #[error("Failed getting messages for {0} due to {1}")]
+    Messages(String, anyhow::Error),
+
+    #[error("address already taken. The address '{1}' where the {0} message is being sent already contains some data, possibly spam")]
+    AddressUsed(String, Address),
     /*
     //////////
     // Generic
@@ -289,10 +300,6 @@ pub enum Error {
     Unwrapping(Address, String),
     Fatal(String),
 }
-
-    pub(crate) fn transport(op: &'static str, address: Address, error: Box<dyn Any + Send + Sync>) -> Self {
-        Self::Transport(address, error, op)
-    }
 
     pub(crate) fn topic_already_used(topic: Topic, address: Address) -> Self {
         Self::Data(

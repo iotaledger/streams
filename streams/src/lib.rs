@@ -30,6 +30,7 @@
 //! ```
 
 #![no_std]
+#![feature(async_closure)]
 
 // Uncomment to enable printing for development
 // #[macro_use]

@@ -40,7 +40,7 @@ hashbrown = {version = "0.12.0", default-features = false, features = ["ahash"]}
 rand = {version = "0.8.5", default-features = false}
 
 # Error
-thiserror = {version = "1", default-features = false}
+thiserror-no-std = {version = "2.0.2", default-features = false}
 serde = {version = "1", default-features = false}
 
 [dev-dependencies]

@@ -126,6 +126,12 @@ impl From<&str> for TopicHash {
     }
 }
 
+impl core::fmt::Display for TopicHash {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}", &self.0)
+    }
+}
+
 impl AsRef<[u8]> for TopicHash {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()

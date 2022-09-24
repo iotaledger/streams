@@ -9,6 +9,8 @@ use core::{
 // 3rd-party
 use anyhow::{anyhow, Result};
 
+use serde_big_array::BigArray;
+
 // IOTA
 use crypto::hashes::{blake2b::Blake2b256, Digest};
 
@@ -62,7 +64,7 @@ use crate::{id::Identifier, message::Topic};
 /// you can also use `{:x?}` or `{:#x?}` to render them as hexadecimal arrays.
 ///
 /// [Display]: #impl-Display
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash, serde::Serialize)]
 pub struct Address {
     appaddr: AppAddr,
     msgid: MsgId,
@@ -142,8 +144,11 @@ impl FromStr for Address {
 }
 
 /// 40 byte Application Instance identifier.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct AppAddr([u8; Self::SIZE]);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
+
+pub struct AppAddr(
+    #[serde(with = "BigArray")]
+    [u8; Self::SIZE]);
 
 impl AppAddr {
     const SIZE: usize = 40;
@@ -229,7 +234,7 @@ impl From<[u8; 40]> for AppAddr {
 }
 
 /// 12 byte Message Identifier unique within the same application.
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
 pub struct MsgId([u8; Self::SIZE]);
 
 impl MsgId {
