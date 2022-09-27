@@ -362,17 +362,15 @@ mod tests {
     use alloc::rc::Rc;
     use core::cell::RefCell;
 
-    use anyhow::Result;
-
     use lets::{address::Address, id::Ed25519, transport::bucket};
 
-    use crate::api::{
+    use crate::{api::{
         message::{
             Message,
             MessageContent::{BranchAnnouncement, Keyload, SignedPacket},
         },
         user::User,
-    };
+    }, Result};
 
     type Transport = Rc<RefCell<bucket::Client>>;
 

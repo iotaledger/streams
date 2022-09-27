@@ -2,8 +2,7 @@
 
 // Rust
 use alloc::{
-    boxed::Box,
-    string::{String, ToString},
+    string::{ToString},
 };
 use core::fmt::{Debug, Display};
 
@@ -13,74 +12,79 @@ use thiserror_no_std::Error;
 // IOTA
 
 // Streams
-use lets::{address::Address, id::{PskId, Identifier}, message::{Topic, TopicHash}};
+use lets::{address::{Address, MsgId}, id::{Identifier, PskId}, message::{Topic, TopicHash}};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, Error, Serialize)]
+#[derive(Debug, Error)]
 /// Error type of the iota client crate.
 #[allow(clippy::large_enum_variant)]
-#[serde(tag = "type", content = "error")]
+///#[serde(tag = "type", content = "error")]
 pub enum Error {
     //////////
     // Streams
     //////////
-    #[error("message payload cannot be empty")]
-    PayloadEmpty,
-
     #[error("the user does not have an identity, but needs one to {0}")]
-    NoIdentity(String),
+    NoIdentity(&'static str),
+
+    #[error("User identity contained no secret key")]
+    NoSecretKey,
+
+    #[error("Missing {0} for {1} in order to {2}")]
+    MissingUserData(&'static str, &'static str, &'static str),
 
     #[error("Missing role {0} for {1:?} in order to {2}")]
-    WrongRole(String, Identifier, String),
+    WrongRole(&'static str, Identifier, &'static str),
 
     #[error("user does not have a cursor in branch '{0}'. This probably means the user does not have write permission over that branch")]
     NoCursor(Topic),
 
-    #[error("previous topic {0} not found in store")]
-    PreviousTopicNotFound(Topic),
+    #[error("topic {0} not found in store")]
+    TopicNotFound(Topic),
 
-    #[error("Topic by has {0} is not known")]
+    #[error("Topic by hash {0} is not known")]
     UnknownTopic(TopicHash),
+
+    #[error("PSK by id {0} is not known")]
+    UnknownPsk(PskId),
+
+    #[error("A payload must be specified in order to send a message")]
+    PayloadEmpty,
 
     #[error("unexpected message type {0}")]
     MessageTypeUnknown(u8),
 
+    #[error("message '{0}' not found in {1}")]
+    MessageMissing(MsgId, &'static str),
+
     #[error("Error unwrapping the message {0}. The message at address '{1:#?}' could not be unwrapped: {2}")]
-    Unwrapping(String, Address, anyhow::Error),
+    Unwrapping(&'static str, Address, anyhow::Error),
 
     #[error("Message not linked. The {0} message at address '{1:#?}' is not linked to any message. \
 Any {0} message must be linked to a previous message by including the address of the previous message in the header")]
-    NotLinked(String, Address),
-
-    #[error("User identity contained no secret key")]
-    NoSecretKey,
+    NotLinked(&'static str, Address),
     
     #[error("not connected to a stream. A user must either create a stream or connect to an existing one before attempting to {0}")]
-    NoStream(String),
+    NoStream(&'static str),
 
-    #[error("Setup error: {0} for {1}")]
-    Setup(String, Address),
-
-    #[error("{0}")]
-    #[serde(serialize_with = "display_string")]
-    Other(Address),
+    #[error("Setup error: {0}")]
+    Setup(&'static str),
 
     /// Error when building tagged_data blocks
     #[error("Internal error {0} Cause: {1}")]
-    Wrapped(String, Box<Error>),
+    Wrapped(&'static str, anyhow::Error),
 
     #[error("Internal spongos error: {0}")]
     Spongos(anyhow::Error),
 
     #[error("Transport error whilest doing {0} for address {1}: {2}")]
-    Transport(Address, String, anyhow::Error),
+    Transport(Address, &'static str, anyhow::Error),
 
     #[error("Failed getting messages for {0} due to {1}")]
-    Messages(String, anyhow::Error),
+    Messages(&'static str, anyhow::Error),
 
     #[error("address already taken. The address '{1}' where the {0} message is being sent already contains some data, possibly spam")]
-    AddressUsed(String, Address),
+    AddressUsed(&'static str, Address),
     /*
     //////////
     // Generic
