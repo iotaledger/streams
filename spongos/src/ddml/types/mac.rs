@@ -7,10 +7,19 @@
 pub struct Mac(usize);
 
 impl Mac {
+    /// Creates a new `Mac` object for authentication of a specified length
+    ///
+    /// Arguments:
+    /// * `length`: The length of the `Mac`.
+    ///
+    /// Returns:
+    /// A new `Mac` struct.
     pub const fn new(length: usize) -> Self {
         Self(length)
     }
 
+    /// Returns:
+    /// The length of the `Mac`.
     pub(crate) fn length(&self) -> usize {
         self.0
     }
