@@ -28,6 +28,7 @@ use spongos::{
         types::{Mac, Maybe, NBytes, Size, Uint8},
     },
     KeccakF1600, Spongos, SpongosRng,
+    error::Result as SpongosResult,
 };
 
 // Local
@@ -1209,212 +1210,193 @@ where
 
 #[async_trait(?Send)]
 impl ContentSizeof<State> for sizeof::Context {
-    async fn sizeof(&mut self, user_state: &State) -> Result<&mut Self> {
-        let sizeof = || async {
-            self.mask(Maybe::new(user_state.user_id.as_ref()))?
-                .mask(Maybe::new(user_state.stream_address.as_ref()))?
-                .mask(Maybe::new(user_state.author_identifier.as_ref()))?
-                .mask(&user_state.base_branch)?;
+    async fn sizeof(&mut self, user_state: &State) -> SpongosResult<&mut Self> {
+        self.mask(Maybe::new(user_state.user_id.as_ref()))?
+            .mask(Maybe::new(user_state.stream_address.as_ref()))?
+            .mask(Maybe::new(user_state.author_identifier.as_ref()))?
+            .mask(&user_state.base_branch)?;
 
-            let amount_spongos = user_state.spongos_store.len();
-            self.mask(Size::new(amount_spongos))?;
-            for (address, spongos) in &user_state.spongos_store {
-                self.mask(address)?.mask(spongos)?;
-            }
-
-            // Only keep topics that exist in cursor store, any others serve no purpose
-            let topics = user_state
-                .topics
-                .iter()
-                .filter(|t| user_state.cursor_store.get_latest_link(*t).is_some());
-            let amount_topics = topics.clone().count();
-            self.mask(Size::new(amount_topics))?;
-
-            for topic in topics {
-                self.mask(topic)?;
-                let latest_link = user_state
-                    .cursor_store
-                    .get_latest_link(topic)
-                    .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
-                self.mask(&latest_link)?;
-
-                let cursors: Vec<(&Permissioned<Identifier>, &usize)> = user_state
-                    .cursor_store
-                    .cursors_by_topic(topic)
-                    .ok_or_else(|| anyhow!("No cursors found with topic <{}>", topic))?
-                    .collect();
-                let amount_cursors = cursors.len();
-                self.mask(Size::new(amount_cursors))?;
-                for (subscriber, cursor) in cursors {
-                    self.mask(subscriber)?.mask(Size::new(*cursor))?;
-                }
-            }
-
-            let subs = &user_state.subscribers;
-            let amount_subs = subs.len();
-            self.mask(Size::new(amount_subs))?;
-            for subscriber in subs {
-                self.mask(subscriber)?;
-            }
-
-            let psks = user_state.psk_store.iter();
-            let amount_psks = psks.len();
-            self.mask(Size::new(amount_psks))?;
-            for (pskid, psk) in psks {
-                self.mask(pskid)?.mask(psk)?;
-            }
-
-            let lean = if user_state.lean { 1 } else { 0 };
-            self.mask(Uint8::new(lean))?;
-
-            self.commit()?.squeeze(Mac::new(32))
-        };
-
-        match sizeof().await {
-            Ok(_) => Ok(self),
-            Err(e) => Err(Error::Spongos(e)),
+        let amount_spongos = user_state.spongos_store.len();
+        self.mask(Size::new(amount_spongos))?;
+        for (address, spongos) in &user_state.spongos_store {
+            self.mask(address)?.mask(spongos)?;
         }
+
+        // Only keep topics that exist in cursor store, any others serve no purpose
+        let topics = user_state
+            .topics
+            .iter()
+            .filter(|t| user_state.cursor_store.get_latest_link(*t).is_some());
+        let amount_topics = topics.clone().count();
+        self.mask(Size::new(amount_topics))?;
+
+        for topic in topics {
+            self.mask(topic)?;
+            let latest_link = user_state
+                .cursor_store
+                .get_latest_link(topic)
+                .ok_or(Error::MissingUserData("latest link", &format!("branch {}", topic), "calculate sizeof"))?;
+            self.mask(&latest_link)?;
+
+            let cursors: Vec<(&Permissioned<Identifier>, &usize)> = user_state
+                .cursor_store
+                .cursors_by_topic(topic)
+                .ok_or(Error::TopicNotFound(topic.clone()))?
+                .collect();
+            let amount_cursors = cursors.len();
+            self.mask(Size::new(amount_cursors))?;
+            for (subscriber, cursor) in cursors {
+                self.mask(subscriber)?.mask(Size::new(*cursor))?;
+            }
+        }
+
+        let subs = &user_state.subscribers;
+        let amount_subs = subs.len();
+        self.mask(Size::new(amount_subs))?;
+        for subscriber in subs {
+            self.mask(subscriber)?;
+        }
+
+        let psks = user_state.psk_store.iter();
+        let amount_psks = psks.len();
+        self.mask(Size::new(amount_psks))?;
+        for (pskid, psk) in psks {
+            self.mask(pskid)?.mask(psk)?;
+        }
+
+        let lean = if user_state.lean { 1 } else { 0 };
+        self.mask(Uint8::new(lean))?;
+
+        self.commit()?.squeeze(Mac::new(32))
     }
 }
 
 #[async_trait(?Send)]
 impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
-    async fn wrap(&mut self, user_state: &mut State) -> Result<&mut Self> {
-        let wrap = || async {
-            self.mask(Maybe::new(user_state.user_id.as_ref()))?
-                .mask(Maybe::new(user_state.stream_address.as_ref()))?
-                .mask(Maybe::new(user_state.author_identifier.as_ref()))?
-                .mask(&user_state.base_branch)?;
+    async fn wrap(&mut self, user_state: &mut State) -> SpongosResult<&mut Self> {
+        self.mask(Maybe::new(user_state.user_id.as_ref()))?
+            .mask(Maybe::new(user_state.stream_address.as_ref()))?
+            .mask(Maybe::new(user_state.author_identifier.as_ref()))?
+            .mask(&user_state.base_branch)?;
 
-            let amount_spongos = user_state.spongos_store.len();
-            self.mask(Size::new(amount_spongos))?;
-            for (address, spongos) in &user_state.spongos_store {
-                self.mask(address)?.mask(spongos)?;
-            }
-
-            // Only keep topics that exist in cursor store, any others serve no purpose
-            let topics = user_state
-                .topics
-                .iter()
-                .filter(|t| user_state.cursor_store.get_latest_link(*t).is_some());
-            let amount_topics = topics.clone().count();
-            self.mask(Size::new(amount_topics))?;
-
-            for topic in topics {
-                self.mask(topic)?;
-                let latest_link = user_state
-                    .cursor_store
-                    .get_latest_link(topic)
-                    .ok_or_else(|| anyhow!("No latest link found in branch <{}>", topic))?;
-                self.mask(&latest_link)?;
-
-                let cursors: Vec<(&Permissioned<Identifier>, &usize)> = user_state
-                    .cursor_store
-                    .cursors_by_topic(topic)
-                    .ok_or_else(|| anyhow!("No curosrs found with topic <{}>", topic))?
-                    .collect();
-                let amount_cursors = cursors.len();
-                self.mask(Size::new(amount_cursors))?;
-                for (subscriber, cursor) in cursors {
-                    self.mask(subscriber)?.mask(Size::new(*cursor))?;
-                }
-            }
-
-            let subs = &user_state.subscribers;
-            let amount_subs = subs.len();
-            self.mask(Size::new(amount_subs))?;
-            for subscriber in subs {
-                self.mask(subscriber)?;
-            }
-
-            let psks = user_state.psk_store.iter();
-            let amount_psks = psks.len();
-            self.mask(Size::new(amount_psks))?;
-            for (pskid, psk) in psks {
-                self.mask(pskid)?.mask(psk)?;
-            }
-
-            let lean = if user_state.lean { 1 } else { 0 };
-            self.mask(Uint8::new(lean))?;
-
-            self.commit()?.squeeze(Mac::new(32))
-        };
-        match wrap().await {
-            Ok(_) => Ok(self),
-            Err(e) => Err(Error::Spongos(e)),
+        let amount_spongos = user_state.spongos_store.len();
+        self.mask(Size::new(amount_spongos))?;
+        for (address, spongos) in &user_state.spongos_store {
+            self.mask(address)?.mask(spongos)?;
         }
+
+        // Only keep topics that exist in cursor store, any others serve no purpose
+        let topics = user_state
+            .topics
+            .iter()
+            .filter(|t| user_state.cursor_store.get_latest_link(*t).is_some());
+        let amount_topics = topics.clone().count();
+        self.mask(Size::new(amount_topics))?;
+
+        for topic in topics {
+            self.mask(topic)?;
+            let latest_link = user_state
+                .cursor_store
+                .get_latest_link(topic)
+                .ok_or(Error::MissingUserData("latest link", &format!("branch {}", topic), "wrap"))?;
+            self.mask(&latest_link)?;
+
+            let cursors: Vec<(&Permissioned<Identifier>, &usize)> = user_state
+                .cursor_store
+                .cursors_by_topic(topic)
+                .ok_or(Error::TopicNotFound(topic.clone()))?
+                .collect();
+            let amount_cursors = cursors.len();
+            self.mask(Size::new(amount_cursors))?;
+            for (subscriber, cursor) in cursors {
+                self.mask(subscriber)?.mask(Size::new(*cursor))?;
+            }
+        }
+
+        let subs = &user_state.subscribers;
+        let amount_subs = subs.len();
+        self.mask(Size::new(amount_subs))?;
+        for subscriber in subs {
+            self.mask(subscriber)?;
+        }
+
+        let psks = user_state.psk_store.iter();
+        let amount_psks = psks.len();
+        self.mask(Size::new(amount_psks))?;
+        for (pskid, psk) in psks {
+            self.mask(pskid)?.mask(psk)?;
+        }
+
+        let lean = if user_state.lean { 1 } else { 0 };
+        self.mask(Uint8::new(lean))?;
+
+        self.commit()?.squeeze(Mac::new(32))
     }
 }
 
 #[async_trait(?Send)]
 impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
-    async fn unwrap(&mut self, user_state: &mut State) -> Result<&mut Self> {
-        let unwrap = || async {
-            self.mask(Maybe::new(&mut user_state.user_id))?
-                .mask(Maybe::new(&mut user_state.stream_address))?
-                .mask(Maybe::new(&mut user_state.author_identifier))?
-                .mask(&mut user_state.base_branch)?;
+    async fn unwrap(&mut self, user_state: &mut State) -> SpongosResult<&mut Self> {
+        self.mask(Maybe::new(&mut user_state.user_id))?
+            .mask(Maybe::new(&mut user_state.stream_address))?
+            .mask(Maybe::new(&mut user_state.author_identifier))?
+            .mask(&mut user_state.base_branch)?;
 
-            let mut amount_spongos = Size::default();
-            self.mask(&mut amount_spongos)?;
-            for _ in 0..amount_spongos.inner() {
-                let mut address = MsgId::default();
-                let mut spongos = Spongos::default();
-                self.mask(&mut address)?.mask(&mut spongos)?;
-                user_state.spongos_store.insert(address, spongos);
-            }
-
-            let mut amount_topics = Size::default();
-            self.mask(&mut amount_topics)?;
-
-            for _ in 0..amount_topics.inner() {
-                let mut topic = Topic::default();
-                self.mask(&mut topic)?;
-                let mut latest_link = MsgId::default();
-                self.mask(&mut latest_link)?;
-
-                user_state.topics.insert(topic.clone());
-                user_state.cursor_store.set_latest_link(topic.clone(), latest_link);
-
-                let mut amount_cursors = Size::default();
-                self.mask(&mut amount_cursors)?;
-                for _ in 0..amount_cursors.inner() {
-                    let mut subscriber = Permissioned::default();
-                    let mut cursor = Size::default();
-                    self.mask(&mut subscriber)?.mask(&mut cursor)?;
-                    user_state
-                        .cursor_store
-                        .insert_cursor(&topic, subscriber, cursor.inner());
-                }
-            }
-
-            let mut amount_subs = Size::default();
-            self.mask(&mut amount_subs)?;
-            for _ in 0..amount_subs.inner() {
-                let mut subscriber = Identifier::default();
-                self.mask(&mut subscriber)?;
-                user_state.subscribers.insert(subscriber);
-            }
-
-            let mut amount_psks = Size::default();
-            self.mask(&mut amount_psks)?;
-            for _ in 0..amount_psks.inner() {
-                let mut pskid = PskId::default();
-                let mut psk = Psk::default();
-                self.mask(&mut pskid)?.mask(&mut psk)?;
-                user_state.psk_store.insert(pskid, psk);
-            }
-
-            let mut lean = Uint8::new(0);
-            self.mask(&mut lean)?;
-            user_state.lean = lean.inner() == 1;
-
-            self.commit()?.squeeze(Mac::new(32))
-        };
-        match unwrap().await {
-            Ok(_) => Ok(self),
-            Err(e) => Err(Error::Spongos(e)),
+        let mut amount_spongos = Size::default();
+        self.mask(&mut amount_spongos)?;
+        for _ in 0..amount_spongos.inner() {
+            let mut address = MsgId::default();
+            let mut spongos = Spongos::default();
+            self.mask(&mut address)?.mask(&mut spongos)?;
+            user_state.spongos_store.insert(address, spongos);
         }
+
+        let mut amount_topics = Size::default();
+        self.mask(&mut amount_topics)?;
+
+        for _ in 0..amount_topics.inner() {
+            let mut topic = Topic::default();
+            self.mask(&mut topic)?;
+            let mut latest_link = MsgId::default();
+            self.mask(&mut latest_link)?;
+
+            user_state.topics.insert(topic.clone());
+            user_state.cursor_store.set_latest_link(topic.clone(), latest_link);
+
+            let mut amount_cursors = Size::default();
+            self.mask(&mut amount_cursors)?;
+            for _ in 0..amount_cursors.inner() {
+                let mut subscriber = Permissioned::default();
+                let mut cursor = Size::default();
+                self.mask(&mut subscriber)?.mask(&mut cursor)?;
+                user_state
+                    .cursor_store
+                    .insert_cursor(&topic, subscriber, cursor.inner());
+            }
+        }
+
+        let mut amount_subs = Size::default();
+        self.mask(&mut amount_subs)?;
+        for _ in 0..amount_subs.inner() {
+            let mut subscriber = Identifier::default();
+            self.mask(&mut subscriber)?;
+            user_state.subscribers.insert(subscriber);
+        }
+
+        let mut amount_psks = Size::default();
+        self.mask(&mut amount_psks)?;
+        for _ in 0..amount_psks.inner() {
+            let mut pskid = PskId::default();
+            let mut psk = Psk::default();
+            self.mask(&mut pskid)?.mask(&mut psk)?;
+            user_state.psk_store.insert(pskid, psk);
+        }
+
+        let mut lean = Uint8::new(0);
+        self.mask(&mut lean)?;
+        user_state.lean = lean.inner() == 1;
+
+        self.commit()?.squeeze(Mac::new(32))
     }
 }
 

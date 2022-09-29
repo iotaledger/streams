@@ -1,13 +1,10 @@
 // Rust
-use alloc::string::String;
+use alloc::{string::String, boxed::Box};
 use core::{
     convert::TryInto,
     fmt::{self, Debug, Display, Formatter, LowerHex, UpperHex},
     str::FromStr,
 };
-
-// 3rd-party
-use anyhow::{anyhow, Result};
 
 use serde_big_array::BigArray;
 
@@ -22,10 +19,15 @@ use spongos::{
         types::NBytes,
     },
     KeccakF1600, Spongos, PRP,
+    error::Result as SpongosResult,
 };
 
 // Local
-use crate::{id::Identifier, message::Topic};
+use crate::{
+    error::{Error, Result},
+    id::Identifier,
+    message::Topic,
+};
 
 /// Abstract representation of a Message Address
 ///
@@ -120,24 +122,12 @@ impl Display for Address {
 ///
 /// [`Display`]: #impl-Display
 impl FromStr for Address {
-    type Err = anyhow::Error;
-    fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let (appaddr_str, msgid_str) = string.split_once(':').ok_or_else(|| {
-            anyhow!("Malformed address string: missing colon (':') separator between appaddr and msgid")
-        })?;
-        let appaddr = AppAddr::from_str(appaddr_str).map_err(|e| {
-            anyhow!(
-                "AppAddr is not encoded in hexadecimal or the encoding is incorrect: {}",
-                e
-            )
-        })?;
+    type Err = crate::error::Error;
+    fn from_str(string: &str) -> Result<Address> {
+        let (appaddr_str, msgid_str) = string.split_once(':').ok_or_else(|| Error::Malformed("address", ":"))?;
+        let appaddr = AppAddr::from_str(appaddr_str).map_err(|e| Error::Encoding("AppAddr", "hexadecimal", Box::new(e)))?;
 
-        let msgid = MsgId::from_str(msgid_str).map_err(|e| {
-            anyhow!(
-                "MsgId is not encoded in hexadecimal or the encoding is incorrect: {}",
-                e
-            )
-        })?;
+        let msgid = MsgId::from_str(msgid_str).map_err(|e| Error::Encoding("MsgId", "hexadecimal", Box::new(e)))?;
 
         Ok(Address { appaddr, msgid })
     }
@@ -146,9 +136,7 @@ impl FromStr for Address {
 /// 40 byte Application Instance identifier.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
 
-pub struct AppAddr(
-    #[serde(with = "BigArray")]
-    [u8; Self::SIZE]);
+pub struct AppAddr(#[serde(with = "BigArray")] [u8; Self::SIZE]);
 
 impl AppAddr {
     const SIZE: usize = 40;
@@ -183,16 +171,13 @@ impl Default for AppAddr {
 }
 
 impl FromStr for AppAddr {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    type Err = crate::error::Error;
+    fn from_str(s: &str) -> Result<Self> {
         let appaddr_bin = hex::decode(s)?;
-        appaddr_bin.try_into().map(Self).map_err(|e| {
-            anyhow!(
-                "AppAddr must be {} bytes long, but is {} bytes long instead",
-                Self::SIZE,
-                e.len()
-            )
-        })
+        appaddr_bin
+            .try_into()
+            .map(Self)
+            .map_err(|e| Error::InvalidSize("AppAddr", Self::SIZE, e.len().try_into().unwrap()))
     }
 }
 
@@ -266,16 +251,13 @@ impl MsgId {
 }
 
 impl FromStr for MsgId {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    type Err = crate::error::Error;
+    fn from_str(s: &str) -> Result<Self> {
         let msgid_bin = hex::decode(s)?;
-        msgid_bin.try_into().map(Self).map_err(|e| {
-            anyhow!(
-                "MsgId must be {} bytes long, but is {} bytes long instead",
-                Self::SIZE,
-                e.len()
-            )
-        })
+        msgid_bin
+            .try_into()
+            .map(Self)
+            .map_err(|e| Error::InvalidSize("MsgId", Self::SIZE, e.len().try_into().unwrap()))
     }
 }
 
@@ -317,7 +299,7 @@ impl From<[u8; 12]> for MsgId {
 }
 
 impl Absorb<&MsgId> for sizeof::Context {
-    fn absorb(&mut self, msgid: &MsgId) -> Result<&mut Self> {
+    fn absorb(&mut self, msgid: &MsgId) -> SpongosResult<&mut Self> {
         self.absorb(NBytes::new(msgid))
     }
 }
@@ -327,7 +309,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn absorb(&mut self, msgid: &MsgId) -> Result<&mut Self> {
+    fn absorb(&mut self, msgid: &MsgId) -> SpongosResult<&mut Self> {
         self.absorb(NBytes::new(msgid))
     }
 }
@@ -337,13 +319,13 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn absorb(&mut self, msgid: &mut MsgId) -> Result<&mut Self> {
+    fn absorb(&mut self, msgid: &mut MsgId) -> SpongosResult<&mut Self> {
         self.absorb(NBytes::new(msgid))
     }
 }
 
 impl Absorb<&AppAddr> for sizeof::Context {
-    fn absorb(&mut self, appaddr: &AppAddr) -> Result<&mut Self> {
+    fn absorb(&mut self, appaddr: &AppAddr) -> SpongosResult<&mut Self> {
         self.absorb(NBytes::new(appaddr))
     }
 }
@@ -353,7 +335,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn absorb(&mut self, appaddr: &AppAddr) -> Result<&mut Self> {
+    fn absorb(&mut self, appaddr: &AppAddr) -> SpongosResult<&mut Self> {
         self.absorb(NBytes::new(appaddr))
     }
 }
@@ -363,13 +345,13 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn absorb(&mut self, appaddr: &mut AppAddr) -> Result<&mut Self> {
+    fn absorb(&mut self, appaddr: &mut AppAddr) -> SpongosResult<&mut Self> {
         self.absorb(NBytes::new(appaddr))
     }
 }
 
 impl Absorb<&Address> for sizeof::Context {
-    fn absorb(&mut self, address: &Address) -> Result<&mut Self> {
+    fn absorb(&mut self, address: &Address) -> SpongosResult<&mut Self> {
         self.absorb(&address.appaddr)?.absorb(&address.msgid)
     }
 }
@@ -379,7 +361,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn absorb(&mut self, address: &Address) -> Result<&mut Self> {
+    fn absorb(&mut self, address: &Address) -> SpongosResult<&mut Self> {
         self.absorb(&address.appaddr)?.absorb(&address.msgid)
     }
 }
@@ -389,13 +371,13 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn absorb(&mut self, address: &mut Address) -> Result<&mut Self> {
+    fn absorb(&mut self, address: &mut Address) -> SpongosResult<&mut Self> {
         self.absorb(&mut address.appaddr)?.absorb(&mut address.msgid)
     }
 }
 
 impl Mask<&MsgId> for sizeof::Context {
-    fn mask(&mut self, msgid: &MsgId) -> Result<&mut Self> {
+    fn mask(&mut self, msgid: &MsgId) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(msgid))
     }
 }
@@ -405,7 +387,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, msgid: &MsgId) -> Result<&mut Self> {
+    fn mask(&mut self, msgid: &MsgId) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(msgid))
     }
 }
@@ -415,13 +397,13 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, msgid: &mut MsgId) -> Result<&mut Self> {
+    fn mask(&mut self, msgid: &mut MsgId) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(msgid))
     }
 }
 
 impl Mask<&AppAddr> for sizeof::Context {
-    fn mask(&mut self, appaddr: &AppAddr) -> Result<&mut Self> {
+    fn mask(&mut self, appaddr: &AppAddr) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(appaddr))
     }
 }
@@ -431,7 +413,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, appaddr: &AppAddr) -> Result<&mut Self> {
+    fn mask(&mut self, appaddr: &AppAddr) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(appaddr))
     }
 }
@@ -441,13 +423,13 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, appaddr: &mut AppAddr) -> Result<&mut Self> {
+    fn mask(&mut self, appaddr: &mut AppAddr) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(appaddr))
     }
 }
 
 impl Mask<&Address> for sizeof::Context {
-    fn mask(&mut self, address: &Address) -> Result<&mut Self> {
+    fn mask(&mut self, address: &Address) -> SpongosResult<&mut Self> {
         self.mask(&address.appaddr)?.mask(&address.msgid)
     }
 }
@@ -457,7 +439,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, address: &Address) -> Result<&mut Self> {
+    fn mask(&mut self, address: &Address) -> SpongosResult<&mut Self> {
         self.mask(&address.appaddr)?.mask(&address.msgid)
     }
 }
@@ -467,7 +449,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, address: &mut Address) -> Result<&mut Self> {
+    fn mask(&mut self, address: &mut Address) -> SpongosResult<&mut Self> {
         self.mask(&mut address.appaddr)?.mask(&mut address.msgid)
     }
 }

@@ -3,7 +3,6 @@ use alloc::boxed::Box;
 use core::{hash::Hash, ops::Deref};
 
 // 3rd-party
-use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
@@ -27,12 +26,17 @@ use spongos::{
         types::{NBytes, Uint8},
     },
     PRP,
+    error::{
+        Result as SpongosResult,
+        Error as SpongosError,
+    }
 };
 
 // Local
 #[cfg(feature = "did")]
 use crate::id::did::{DataWrapper, DID};
 use crate::{
+    error::{Result},
     id::{ed25519::Ed25519, identifier::Identifier},
     message::{ContentDecrypt, ContentSign, ContentSignSizeof},
 };
@@ -129,7 +133,7 @@ impl IdentityKind {
 }
 
 impl Mask<&Identity> for sizeof::Context {
-    fn mask(&mut self, identity: &Identity) -> Result<&mut Self> {
+    fn mask(&mut self, identity: &Identity) -> SpongosResult<&mut Self> {
         match &identity.identitykind {
             IdentityKind::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
             #[cfg(feature = "did")]
@@ -143,7 +147,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, identity: &Identity) -> Result<&mut Self> {
+    fn mask(&mut self, identity: &Identity) -> SpongosResult<&mut Self> {
         match &identity.identitykind {
             IdentityKind::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
             #[cfg(feature = "did")]
@@ -157,7 +161,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, identity: &mut Identity) -> Result<&mut Self> {
+    fn mask(&mut self, identity: &mut Identity) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::default();
         self.mask(&mut oneof)?;
         let identitykind = match oneof.inner() {
@@ -172,7 +176,7 @@ where
                 self.mask(&mut did)?;
                 IdentityKind::DID(did)
             }
-            other => return Err(anyhow!("'{}' is not a valid identitykind type", other)),
+            o => return Err(SpongosError::InvalidOption("identitykind", o)),
         };
 
         *identity = Identity::new(identitykind);
@@ -182,7 +186,7 @@ where
 
 #[async_trait(?Send)]
 impl ContentSignSizeof<Identity> for sizeof::Context {
-    async fn sign_sizeof(&mut self, signer: &Identity) -> Result<&mut Self> {
+    async fn sign_sizeof(&mut self, signer: &Identity) -> SpongosResult<&mut Self> {
         match &signer.identitykind {
             IdentityKind::Ed25519(ed25519) => {
                 let hash = External::new(NBytes::new([0; 64]));
@@ -217,7 +221,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    async fn sign(&mut self, signer: &IdentityKind) -> Result<&mut Self> {
+    async fn sign(&mut self, signer: &IdentityKind) -> SpongosResult<&mut Self> {
         match signer {
             IdentityKind::Ed25519(ed25519) => {
                 let mut hash = External::new(NBytes::new([0; 64]));
@@ -252,9 +256,7 @@ where
                         let signature = BaseEncoding::decode_base58(
                             &data
                                 .into_signature()
-                                .ok_or_else(|| {
-                                    anyhow!("there was an issue with calculating the signature, cannot wrap message")
-                                })?
+                                .ok_or(Error::Signature("calculating", "wrap message"))?
                                 .value()
                                 .as_str(),
                         )?;
@@ -274,7 +276,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn decrypt(&mut self, recipient: &Identity, key: &mut [u8]) -> Result<&mut Self> {
+    async fn decrypt(&mut self, recipient: &Identity, key: &mut [u8]) -> SpongosResult<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introduction)
         match &recipient.identitykind {

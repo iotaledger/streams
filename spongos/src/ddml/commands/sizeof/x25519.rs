@@ -1,9 +1,11 @@
-use anyhow::Result;
 use crypto::keys::x25519;
 
-use crate::ddml::{
-    commands::{sizeof::Context, X25519},
-    types::NBytes,
+use crate::{
+    ddml::{
+        commands::{sizeof::Context, X25519},
+        types::NBytes,
+    },
+    error::Result,
 };
 
 impl<'a, T: AsRef<[u8]>> X25519<&'a x25519::PublicKey, NBytes<T>> for Context {

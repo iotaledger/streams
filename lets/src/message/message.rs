@@ -1,8 +1,5 @@
 // Rust
 
-// 3rd-party
-use anyhow::Result;
-
 // IOTA
 
 // Streams
@@ -12,11 +9,14 @@ use spongos::{
 };
 
 // Local
-use super::{
-    content::{ContentSizeof, ContentWrap},
-    hdf::HDF,
-    pcf::PCF,
-    transport::TransportMessage,
+use crate::{
+    error::{Result},
+    message::{
+        content::{ContentSizeof, ContentWrap},
+        hdf::HDF,
+        pcf::PCF,
+        transport::TransportMessage,
+    },
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, Default, Debug)]

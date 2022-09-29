@@ -1,9 +1,6 @@
 // Rust
 use alloc::vec::Vec;
 
-// 3rd-party
-use anyhow::Result;
-
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 
@@ -18,7 +15,7 @@ use crate::{
         io,
         types::{Bytes, Maybe, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
-    error::Error::PublicKeyGenerationFailure,
+    error::{Error::PublicKeyGenerationFailure, Result},
 };
 
 struct MaskContext<'a, F, IS> {
@@ -114,7 +111,7 @@ impl<'a, F: PRP, IS: io::IStream> Mask<&'a mut ed25519::PublicKey> for Context<I
                 *public_key = pk;
                 Ok(self)
             }
-            Err(e) => Err(PublicKeyGenerationFailure.wrap(&e)),
+            Err(e) => Err(PublicKeyGenerationFailure(e)),
         }
     }
 }

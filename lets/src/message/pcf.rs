@@ -1,7 +1,6 @@
 use alloc::boxed::Box;
 use core::convert::{TryFrom, TryInto};
 
-use anyhow::{ensure, Result};
 use async_trait::async_trait;
 
 use spongos::{
@@ -11,11 +10,15 @@ use spongos::{
         types::{NBytes, Uint8},
     },
     PRP,
+    error::Result as SpongosResult
 };
 
-use crate::message::{
-    content::{ContentSizeof, ContentUnwrap, ContentWrap},
-    version::{FINAL_PCF_ID, INIT_PCF_ID, INTER_PCF_ID},
+use crate::{
+    error::{Result, Error},
+    message::{
+        content::{ContentSizeof, ContentUnwrap, ContentWrap},
+        version::{FINAL_PCF_ID, INIT_PCF_ID, INTER_PCF_ID},
+    },
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -106,7 +109,7 @@ impl<Content> ContentSizeof<PCF<Content>> for sizeof::Context
 where
     sizeof::Context: ContentSizeof<Content>,
 {
-    async fn sizeof(&mut self, pcf: &PCF<Content>) -> Result<&mut Self> {
+    async fn sizeof(&mut self, pcf: &PCF<Content>) -> SpongosResult<&mut Self> {
         self.absorb(Uint8::new(pcf.frame_type))?
             .skip(pcf.payload_frame_num)?
             .sizeof(&pcf.content)
@@ -122,7 +125,7 @@ where
     OS: io::OStream,
     Self: ContentWrap<Content>,
 {
-    async fn wrap(&mut self, pcf: &mut PCF<Content>) -> Result<&mut Self>
+    async fn wrap(&mut self, pcf: &mut PCF<Content>) -> SpongosResult<&mut Self>
     where
         Content: 'async_trait,
     {
@@ -141,7 +144,7 @@ where
     IS: io::IStream,
     unwrap::Context<IS, F>: ContentUnwrap<Content>,
 {
-    async fn unwrap(&mut self, pcf: &mut PCF<Content>) -> Result<&mut Self> {
+    async fn unwrap(&mut self, pcf: &mut PCF<Content>) -> SpongosResult<&mut Self> {
         let mut frame_type = Uint8::default();
         self.absorb(&mut frame_type)?
             .skip(&mut pcf.payload_frame_num)?
@@ -166,12 +169,10 @@ impl PayloadFrameNum {
     }
 
     fn validate(payload_frame_num: u32) -> Result<()> {
-        ensure!(
-            payload_frame_num >> 22 == 0,
-            "got '{}', but payload-frame-num value cannot be greater than 22 bits",
-            payload_frame_num
-        );
-        Ok(())
+        match payload_frame_num >> 22 == 0 {
+            true => Ok(()),
+            false => Err(Error::InvalidSize("payload-frame-num value at most" , 22, payload_frame_num.try_into().unwrap()))
+        }
     }
 
     fn to_inner(self) -> u32 {
@@ -180,7 +181,7 @@ impl PayloadFrameNum {
 }
 
 impl TryFrom<u32> for PayloadFrameNum {
-    type Error = anyhow::Error;
+    type Error = crate::error::Error;
 
     fn try_from(frame_num: u32) -> Result<Self> {
         Self::from_u32(frame_num)
@@ -209,7 +210,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn skip(&mut self, frame_num: PayloadFrameNum) -> Result<&mut Self> {
+    fn skip(&mut self, frame_num: PayloadFrameNum) -> SpongosResult<&mut Self> {
         self.skip(NBytes::from(frame_num))
     }
 }
@@ -218,7 +219,7 @@ impl<OS, F> Skip<&mut PayloadFrameNum> for unwrap::Context<OS, F>
 where
     Self: for<'a> Skip<NBytes<&'a mut [u8; 3]>>,
 {
-    fn skip(&mut self, frame_num: &mut PayloadFrameNum) -> Result<&mut Self> {
+    fn skip(&mut self, frame_num: &mut PayloadFrameNum) -> SpongosResult<&mut Self> {
         let mut bytes = NBytes::new([0u8; 3]);
         self.skip(bytes.as_mut())?;
         *frame_num = bytes.into();
@@ -227,7 +228,7 @@ where
 }
 
 impl Skip<PayloadFrameNum> for sizeof::Context {
-    fn skip(&mut self, frame_num: PayloadFrameNum) -> Result<&mut Self> {
+    fn skip(&mut self, frame_num: PayloadFrameNum) -> SpongosResult<&mut Self> {
         self.skip(NBytes::from(frame_num))
     }
 }

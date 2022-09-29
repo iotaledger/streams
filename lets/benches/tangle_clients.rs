@@ -74,11 +74,10 @@ fn bench_clients(c: &mut Criterion) {
 struct Ignore {}
 
 impl TryFrom<Message> for Ignore {
+    type Error = create::error::Error;
     fn try_from(_: Message) -> Result<Self, Self::Error> {
         Ok(Ignore {})
     }
-
-    type Error = anyhow::Error;
 }
 
 criterion_group!(benches, bench_clients);

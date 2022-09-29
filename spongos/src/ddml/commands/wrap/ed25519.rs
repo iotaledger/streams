@@ -1,11 +1,13 @@
-use anyhow::Result;
 use crypto::signatures::ed25519;
 
-use crate::ddml::{
-    commands::{wrap::Context, Ed25519},
-    io,
-    modifiers::External,
-    types::NBytes,
+use crate::{
+    ddml::{
+        commands::{wrap::Context, Ed25519},
+        io,
+        modifiers::External,
+        types::NBytes,
+    },
+    error::Result,
 };
 
 impl<F, OS: io::OStream> Ed25519<&ed25519::SecretKey, External<&NBytes<[u8; 64]>>> for Context<OS, F> {

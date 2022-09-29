@@ -1,9 +1,10 @@
-use anyhow::Result;
-
-use crate::ddml::{
-    commands::{sizeof::Context, Squeeze},
-    modifiers::External,
-    types::{Mac, NBytes},
+use crate::{
+    ddml::{
+        commands::{sizeof::Context, Squeeze},
+        modifiers::External,
+        types::{Mac, NBytes},
+    },
+    error::Result,
 };
 
 /// Mac is just like NBytes.

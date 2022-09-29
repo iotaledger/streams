@@ -1,9 +1,10 @@
-use anyhow::Result;
-
-use crate::ddml::{
-    commands::{sizeof::Context, Absorb},
-    modifiers::External,
-    types::{NBytes, Uint16, Uint32, Uint64, Uint8},
+use crate::{
+    ddml::{
+        commands::{sizeof::Context, Absorb},
+        modifiers::External,
+        types::{NBytes, Uint16, Uint32, Uint64, Uint8},
+    },
+    error::Result,
 };
 
 /// External values are not encoded in the stream.

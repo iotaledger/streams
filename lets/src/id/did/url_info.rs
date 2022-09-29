@@ -1,9 +1,6 @@
 // Rust
 use alloc::{string::String, vec::Vec};
 
-// 3rd-party
-use anyhow::{anyhow, Result};
-
 // IOTA
 use identity_iota::{
     core::BaseEncoding,
@@ -12,7 +9,10 @@ use identity_iota::{
     iota_core::IotaDID,
 };
 
-use crate::id::did::DataWrapper;
+use crate::{
+    error::{Error, Result},
+    id::did::DataWrapper,
+};
 
 // Streams
 use spongos::{

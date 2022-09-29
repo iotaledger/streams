@@ -1,8 +1,5 @@
 // Rust
 
-// 3rd-party
-use anyhow::{anyhow, Result};
-
 // IOTA
 
 // Streams
@@ -13,10 +10,16 @@ use spongos::{
         types::Uint8,
     },
     PRP,
+    error::{
+        Result as SpongosResult,
+        Error as SpongosError,
+    }
 };
 
 // Local
-use crate::id::identifier::Identifier;
+use crate::{
+    id::identifier::Identifier,
+};
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum PermissionDuration {
@@ -33,7 +36,7 @@ impl Default for PermissionDuration {
 }
 
 impl Mask<&PermissionDuration> for sizeof::Context {
-    fn mask(&mut self, duration: &PermissionDuration) -> Result<&mut Self> {
+    fn mask(&mut self, duration: &PermissionDuration) -> SpongosResult<&mut Self> {
         match duration {
             PermissionDuration::Perpetual => {
                 self.mask(Uint8::new(0))?;
@@ -49,7 +52,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, duration: &PermissionDuration) -> Result<&mut Self> {
+    fn mask(&mut self, duration: &PermissionDuration) -> SpongosResult<&mut Self> {
         match &duration {
             PermissionDuration::Perpetual => {
                 self.mask(Uint8::new(0))?;
@@ -65,7 +68,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, duration: &mut PermissionDuration) -> Result<&mut Self> {
+    fn mask(&mut self, duration: &mut PermissionDuration) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::new(0);
         self.mask(&mut oneof)?;
         match oneof.inner() {
@@ -73,7 +76,7 @@ where
                 *duration = PermissionDuration::Perpetual;
             }
             1 | 2 | 3 => todo!(),
-            o => return Err(anyhow!("{} is not a valid identifier option", o)),
+            o => return Err(SpongosError::InvalidOption("identifier", o)),
         }
         Ok(self)
     }
@@ -152,7 +155,7 @@ where
 }
 
 impl Mask<&Permissioned<Identifier>> for sizeof::Context {
-    fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
+    fn mask(&mut self, permission: &Permissioned<Identifier>) -> SpongosResult<&mut Self> {
         self.mask(&permission.as_ref())
     }
 }
@@ -162,7 +165,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, permission: &Permissioned<Identifier>) -> Result<&mut Self> {
+    fn mask(&mut self, permission: &Permissioned<Identifier>) -> SpongosResult<&mut Self> {
         self.mask(&permission.as_ref())
     }
 }
@@ -172,7 +175,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, permission: &mut Permissioned<Identifier>) -> Result<&mut Self> {
+    fn mask(&mut self, permission: &mut Permissioned<Identifier>) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::new(0);
         self.mask(&mut oneof)?;
         match oneof.inner() {
@@ -192,14 +195,14 @@ where
                 self.mask(&mut identifier)?;
                 *permission = Permissioned::Admin(identifier);
             }
-            o => return Err(anyhow!("{} is not a valid permission option", o)),
+            o => return Err(SpongosError::InvalidOption("permission", o)),
         }
         Ok(self)
     }
 }
 
 impl Mask<&Permissioned<&Identifier>> for sizeof::Context {
-    fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
+    fn mask(&mut self, permission: &Permissioned<&Identifier>) -> SpongosResult<&mut Self> {
         match permission {
             Permissioned::Read(identifier) => {
                 let oneof = Uint8::new(0);
@@ -225,7 +228,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, permission: &Permissioned<&Identifier>) -> Result<&mut Self> {
+    fn mask(&mut self, permission: &Permissioned<&Identifier>) -> SpongosResult<&mut Self> {
         match permission {
             Permissioned::Read(identifier) => {
                 let oneof = Uint8::new(0);

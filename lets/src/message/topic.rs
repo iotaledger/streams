@@ -14,7 +14,11 @@ use spongos::{
         types::{Bytes, NBytes},
     },
     KeccakF1600, Spongos, PRP,
+    error::Result as SpongosResult,
 };
+
+use crate::error::Result;
+
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash, serde::Serialize)]
 pub struct Topic(String);
@@ -42,16 +46,16 @@ impl From<String> for Topic {
 }
 
 impl TryFrom<&[u8]> for Topic {
-    type Error = anyhow::Error;
-    fn try_from(t: &[u8]) -> Result<Self, Self::Error> {
+    type Error = crate::error::Error;
+    fn try_from(t: &[u8]) -> Result<Self> {
         let topic = String::from_utf8(t.to_vec())?;
         Ok(Topic(topic))
     }
 }
 
 impl TryFrom<Vec<u8>> for Topic {
-    type Error = anyhow::Error;
-    fn try_from(t: Vec<u8>) -> Result<Self, Self::Error> {
+    type Error = crate::error::Error;
+    fn try_from(t: Vec<u8>) -> Result<Self> {
         let topic = String::from_utf8(t)?;
         Ok(Topic(topic))
     }
@@ -82,7 +86,7 @@ impl<'a> From<&'a Topic> for Cow<'a, Topic> {
 }
 
 impl Mask<&Topic> for sizeof::Context {
-    fn mask(&mut self, topic: &Topic) -> anyhow::Result<&mut Self> {
+    fn mask(&mut self, topic: &Topic) -> SpongosResult<&mut Self> {
         self.mask(Bytes::new(topic))
     }
 }
@@ -92,7 +96,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, topic: &Topic) -> anyhow::Result<&mut Self> {
+    fn mask(&mut self, topic: &Topic) -> SpongosResult<&mut Self> {
         self.mask(Bytes::new(topic))
     }
 }
@@ -102,10 +106,10 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, topic: &mut Topic) -> anyhow::Result<&mut Self> {
+    fn mask(&mut self, topic: &mut Topic) -> SpongosResult<&mut Self> {
         let mut topic_bytes = topic.as_ref().to_vec();
         self.mask(Bytes::new(&mut topic_bytes))?;
-        *topic = topic_bytes.try_into()?;
+        *topic = topic_bytes.try_into().map_err(|e| spongos::error::Error::BadMac)?;
         Ok(self)
     }
 }
@@ -139,7 +143,7 @@ impl AsRef<[u8]> for TopicHash {
 }
 
 impl Mask<&TopicHash> for sizeof::Context {
-    fn mask(&mut self, topic_hash: &TopicHash) -> anyhow::Result<&mut Self> {
+    fn mask(&mut self, topic_hash: &TopicHash) -> SpongosResult<&mut Self> {
         self.mask(NBytes::<[u8; 16]>::new(topic_hash.0))
     }
 }
@@ -149,7 +153,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, topic_hash: &TopicHash) -> anyhow::Result<&mut Self> {
+    fn mask(&mut self, topic_hash: &TopicHash) -> SpongosResult<&mut Self> {
         self.mask(NBytes::<[u8; 16]>::new(topic_hash.0))
     }
 }
@@ -159,7 +163,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, topic_hash: &mut TopicHash) -> anyhow::Result<&mut Self> {
+    fn mask(&mut self, topic_hash: &mut TopicHash) -> SpongosResult<&mut Self> {
         self.mask(NBytes::<&mut [u8; 16]>::new(&mut topic_hash.0))?;
         Ok(self)
     }

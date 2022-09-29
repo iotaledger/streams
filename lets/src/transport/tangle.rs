@@ -6,7 +6,6 @@ use core::{
 };
 
 // 3rd-party
-use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 use futures::{
     future::{ready, try_join_all},
@@ -19,7 +18,12 @@ use iota_client::bee_message::{payload::Payload, Message as IotaMessage};
 // Streams
 
 // Local
-use crate::{address::Address, message::TransportMessage, transport::Transport};
+use crate::{
+    address::Address,
+    error::{Error, Result},
+    message::TransportMessage,
+    transport::Transport,
+};
 
 #[derive(Debug)]
 pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(
@@ -93,7 +97,7 @@ where
 }
 
 impl TryFrom<IotaMessage> for TransportMessage {
-    type Error = anyhow::Error;
+    type Error = create::error::Error;
     fn try_from(message: IotaMessage) -> Result<Self> {
         if let Some(Payload::Indexation(indexation)) = message.payload() {
             Ok(Self::new(indexation.data().into()))

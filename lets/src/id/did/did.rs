@@ -1,9 +1,6 @@
 // Rust
 use core::hash::Hash;
 
-// 3rd-party
-use anyhow::{anyhow, Result};
-
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 use identity_iota::{
@@ -22,7 +19,10 @@ use spongos::{
     PRP,
 };
 
-use crate::id::did::DIDUrlInfo;
+use crate::{
+    error::{Error, Result},
+    id::did::DIDUrlInfo,
+};
 
 pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIotaDocument> {
     let did_url = IotaDID::parse(url_info.did())?;

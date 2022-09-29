@@ -1,6 +1,4 @@
 use core::convert::TryInto;
-
-use anyhow::{ensure, Result};
 use crypto::signatures::ed25519;
 
 use crate::{
@@ -10,7 +8,7 @@ use crate::{
         modifiers::External,
         types::NBytes,
     },
-    error::Error::SignatureMismatch,
+    error::{Error, Result},
 };
 
 impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, External<&'a NBytes<[u8; 64]>>> for Context<IS, F> {
@@ -21,9 +19,15 @@ impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, External<&'a NBytes
     ) -> Result<&mut Self> {
         let signature_bytes = self.stream.try_advance(ed25519::SIGNATURE_LENGTH)?;
         self.cursor += ed25519::SIGNATURE_LENGTH;
-        let signature = ed25519::Signature::from_bytes(signature_bytes.try_into()?);
+        let signature = ed25519::Signature::from_bytes(
+            signature_bytes
+                .try_into()?
+        );
         let is_valid = public_key.verify(&signature, hash.inner().as_slice());
-        ensure!(is_valid, SignatureMismatch);
-        Ok(self)
+
+        match is_valid {
+            true => Ok(self),
+            false => Err(Error::SignatureMismatch),
+        }
     }
 }

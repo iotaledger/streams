@@ -3,7 +3,6 @@ use alloc::{boxed::Box, rc::Rc, vec::Vec};
 use core::cell::RefCell;
 
 // 3rd-party
-use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 
 // IOTA
@@ -11,7 +10,10 @@ use async_trait::async_trait;
 // Streams
 
 // Local
-use crate::address::Address;
+use crate::{
+    address::Address,
+    error::{Result, Error},
+};
 
 /// Network transport abstraction.
 /// Parametrized by the type of message addresss.
@@ -34,10 +36,12 @@ pub trait Transport<'a> {
     async fn recv_message(&mut self, address: Address) -> Result<Self::Msg> {
         let mut msgs = self.recv_messages(address).await?;
         if let Some(msg) = msgs.pop() {
-            ensure!(msgs.is_empty(), "More than one message found with address {}", address);
-            Ok(msg)
+            match msgs.is_empty() {
+                true => Ok(msg),
+                false => Err(Error::AddressError("More than one found", address))
+            }
         } else {
-            Err(anyhow!("Message at address {} not found in transport", address))
+            Err(Error::AddressError("not found in transport", address))
         }
     }
 }

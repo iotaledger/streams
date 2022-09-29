@@ -4,7 +4,6 @@ use core::convert::{TryFrom, TryInto};
 use spongos::ddml::commands::X25519;
 
 // 3rd-party
-use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
@@ -21,12 +20,19 @@ use spongos::{
         types::{NBytes, Uint8},
     },
     PRP,
+    error::{
+        Result as SpongosResult,
+        Error as SpongosError,
+    }
 };
 
 // Local
 #[cfg(feature = "did")]
 use crate::id::did::{resolve_document, DIDUrlInfo};
-use crate::message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify};
+use crate::{
+    error::{Result},
+    message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify},
+};
 
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
@@ -108,25 +114,25 @@ impl AsRef<[u8]> for Identifier {
 }
 
 impl core::fmt::LowerHex for Identifier {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", hex::encode(self))
     }
 }
 
 impl core::fmt::UpperHex for Identifier {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", hex::encode_upper(self))
     }
 }
 
 impl core::fmt::Display for Identifier {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         core::fmt::LowerHex::fmt(self, f)
     }
 }
 
 impl Mask<&Identifier> for sizeof::Context {
-    fn mask(&mut self, identifier: &Identifier) -> Result<&mut Self> {
+    fn mask(&mut self, identifier: &Identifier) -> SpongosResult<&mut Self> {
         match identifier {
             Identifier::Ed25519(pk) => {
                 let oneof = Uint8::new(0);
@@ -148,7 +154,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, identifier: &Identifier) -> Result<&mut Self> {
+    fn mask(&mut self, identifier: &Identifier) -> SpongosResult<&mut Self> {
         match &identifier {
             Identifier::Ed25519(pk) => {
                 let oneof = Uint8::new(0);
@@ -170,7 +176,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, identifier: &mut Identifier) -> Result<&mut Self> {
+    fn mask(&mut self, identifier: &mut Identifier) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::new(0);
         self.mask(&mut oneof)?;
         match oneof.inner() {
@@ -185,7 +191,7 @@ where
                 self.mask(&mut url_info)?;
                 *identifier = Identifier::DID(url_info);
             }
-            o => return Err(anyhow!("{} is not a valid identifier option", o)),
+            o => return Err(SpongosError::InvalidOption("identifier", o)),
         }
         Ok(self)
     }
@@ -197,7 +203,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn verify(&mut self, verifier: &Identifier) -> Result<&mut Self> {
+    async fn verify(&mut self, verifier: &Identifier) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::default();
         self.absorb(&mut oneof)?;
         match oneof.inner() {
@@ -236,7 +242,7 @@ where
                 }
                 _ => Err(anyhow!("expected Identity type 'DID', found something else")),
             },
-            o => Err(anyhow!("{} is not a valid identity option", o)),
+            o => Err(SpongosError::InvalidOption("identity", o)),
         }
     }
 }
@@ -244,7 +250,7 @@ where
 // TODO: Find a better way to represent this logic without the need for an additional trait
 #[async_trait(?Send)]
 impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
-    async fn encrypt_sizeof(&mut self, recipient: &Identifier, key: &[u8]) -> Result<&mut Self> {
+    async fn encrypt_sizeof(&mut self, recipient: &Identifier, key: &[u8]) -> SpongosResult<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introdution)
         match recipient {
@@ -273,7 +279,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    async fn encrypt(&mut self, recipient: &Identifier, key: &[u8]) -> Result<&mut Self> {
+    async fn encrypt(&mut self, recipient: &Identifier, key: &[u8]) -> SpongosResult<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introdution)
         match recipient {

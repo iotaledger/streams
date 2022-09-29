@@ -21,7 +21,6 @@
 use alloc::boxed::Box;
 
 // 3rd-party
-use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
@@ -37,6 +36,7 @@ use spongos::{
         io,
     },
     Spongos,
+    Result as SpongosResult
 };
 
 // Local
@@ -59,7 +59,7 @@ impl<'a> Wrap<'a> {
 
 #[async_trait(?Send)]
 impl<'a> ContentSizeof<Wrap<'a>> for sizeof::Context {
-    async fn sizeof(&mut self, announcement: &Wrap<'a>) -> Result<&mut Self> {
+    async fn sizeof(&mut self, announcement: &Wrap<'a>) -> SpongosResult<&mut Self> {
         self.mask(announcement.user_id.identifier())?
             .mask(announcement.new_topic)?
             .sign_sizeof(announcement.user_id)
@@ -74,7 +74,7 @@ impl<'a, OS> ContentWrap<Wrap<'a>> for wrap::Context<OS>
 where
     OS: io::OStream,
 {
-    async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> Result<&mut Self> {
+    async fn wrap(&mut self, announcement: &mut Wrap<'a>) -> SpongosResult<&mut Self> {
         self.join(announcement.initial_state)?
             .mask(announcement.user_id.identifier())?
             .mask(announcement.new_topic)?
@@ -112,7 +112,7 @@ impl<'a, IS> ContentUnwrap<Unwrap<'a>> for unwrap::Context<IS>
 where
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, announcement: &mut Unwrap) -> Result<&mut Self> {
+    async fn unwrap(&mut self, announcement: &mut Unwrap) -> SpongosResult<&mut Self> {
         let mut author_id = Identifier::default();
         self.join(announcement.initial_state)?
             .mask(&mut author_id)?

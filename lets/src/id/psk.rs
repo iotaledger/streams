@@ -1,9 +1,7 @@
 use core::{
     convert::{TryFrom, TryInto},
-    fmt::{LowerHex, UpperHex, Display},
+    fmt::{Display, LowerHex, UpperHex},
 };
-
-use anyhow::{Error, Result};
 
 use spongos::{
     ddml::{
@@ -12,7 +10,10 @@ use spongos::{
         types::NBytes,
     },
     KeccakF1600, Spongos, PRP,
+    error::Result as SpongosResult,
 };
+
+use crate::error::{Error, Result};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Psk([u8; 32]);
@@ -113,8 +114,8 @@ impl UpperHex for PskId {
 }
 
 impl Mask<&PskId> for sizeof::Context {
-    fn mask(&mut self, pskid: &PskId) -> Result<&mut Self> {
-        self.mask(NBytes::new(pskid))
+    fn mask(&mut self, pskid: &PskId) -> SpongosResult<&mut Self> {
+        self.mask(NBytes::new(pskid)).into()
     }
 }
 
@@ -123,7 +124,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, pskid: &PskId) -> Result<&mut Self> {
+    fn mask(&mut self, pskid: &PskId) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(pskid))
     }
 }
@@ -133,13 +134,13 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, pskid: &mut PskId) -> Result<&mut Self> {
+    fn mask(&mut self, pskid: &mut PskId) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(pskid))
     }
 }
 
 impl Mask<&Psk> for sizeof::Context {
-    fn mask(&mut self, psk: &Psk) -> Result<&mut Self> {
+    fn mask(&mut self, psk: &Psk) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(psk))
     }
 }
@@ -149,7 +150,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, psk: &Psk) -> Result<&mut Self> {
+    fn mask(&mut self, psk: &Psk) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(psk))
     }
 }
@@ -159,7 +160,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, psk: &mut Psk) -> Result<&mut Self> {
+    fn mask(&mut self, psk: &mut Psk) -> SpongosResult<&mut Self> {
         self.mask(NBytes::new(psk))
     }
 }

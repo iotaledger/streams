@@ -1,8 +1,6 @@
 //! Implementation of command traits for unwrapping.
 use core::fmt;
 
-use anyhow::Result;
-
 use crate::{
     core::{
         prp::{keccak::KeccakF1600, PRP},
@@ -12,6 +10,7 @@ use crate::{
         io,
         types::{Size, Uint16, Uint32, Uint64, Uint8},
     },
+    error::Result,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]

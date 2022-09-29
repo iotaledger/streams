@@ -4,7 +4,6 @@
 use alloc::boxed::Box;
 
 // 3rd-party
-use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
@@ -12,6 +11,7 @@ use async_trait::async_trait;
 // Streams
 
 // Local
+use spongos::error::Result;
 
 #[async_trait(?Send)]
 pub trait ContentSizeof<T> {
