@@ -15,7 +15,7 @@ use lets::{
 use lets::transport::utangle;
 
 // Local
-use crate::{Result, api::user::User};
+use crate::{api::user::User, Result};
 
 /// Builder instance for a Streams User
 pub struct UserBuilder<T> {

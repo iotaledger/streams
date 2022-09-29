@@ -8,7 +8,7 @@ use spongos::{ddml::commands::unwrap, KeccakF1600, Spongos, PRP};
 
 // Local
 use crate::{
-    error::{Result},
+    error::Result,
     message::{content::ContentUnwrap, hdf::HDF, message::Message, pcf::PCF, transport::TransportMessage},
 };
 

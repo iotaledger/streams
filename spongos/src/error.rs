@@ -1,4 +1,7 @@
-use core::{fmt::{Debug, Display}, array::TryFromSliceError};
+use core::{
+    array::TryFromSliceError,
+    fmt::{Debug, Display},
+};
 
 use thiserror_no_std::Error;
 
@@ -40,6 +43,9 @@ pub enum Error {
     StreamAllocationExceededOut(usize, usize),
     #[error("Not enough space allocated for input stream (expected: {0}, found: {1})")]
     StreamAllocationExceededIn(usize, usize),
+
+    #[error("{0}")]
+    External(anyhow::Error),
 }
 
 impl Error {
@@ -57,3 +63,8 @@ impl From<TryFromSliceError> for Error {
     }
 }
 
+impl From<anyhow::Error> for Error {
+    fn from(error: anyhow::Error) -> Self {
+        Self::External(error)
+    }
+}

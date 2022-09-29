@@ -13,12 +13,11 @@ use spongos::{
         io,
         types::{Bytes, NBytes},
     },
-    KeccakF1600, Spongos, PRP,
     error::Result as SpongosResult,
+    KeccakF1600, Spongos, PRP,
 };
 
 use crate::error::Result;
-
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash, serde::Serialize)]
 pub struct Topic(String);

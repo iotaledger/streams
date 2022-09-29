@@ -38,7 +38,6 @@ use alloc::{boxed::Box, vec::Vec};
 use core::{iter::IntoIterator, marker::PhantomData};
 
 // 3rd-party
-use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
@@ -59,6 +58,7 @@ use spongos::{
         modifiers::External,
         types::{NBytes, Size},
     },
+    error::Result,
     Spongos,
 };
 

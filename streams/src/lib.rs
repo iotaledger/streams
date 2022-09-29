@@ -44,6 +44,8 @@ mod message;
 
 /// [`User`] API.
 mod api;
+
+/// Errors for Streams
 mod error;
 
 pub use api::{message::Message, selector::Selector, send_response::SendResponse, user::User};

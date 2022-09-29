@@ -11,7 +11,7 @@ use async_trait::async_trait;
 // Local
 use crate::{
     address::Address,
-    error::{Result, Error},
+    error::{Error, Result},
     message::TransportMessage,
     transport::Transport,
 };

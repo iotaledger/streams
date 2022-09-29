@@ -23,7 +23,7 @@ use crypto::hashes::{
 // Local
 use crate::{
     address::Address,
-    error::{Result, Error},
+    error::{Error, Result},
     message::TransportMessage,
     transport::Transport,
 };

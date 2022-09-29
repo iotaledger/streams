@@ -1,5 +1,5 @@
 // Rust
-use alloc::{string::String, boxed::Box};
+use alloc::{boxed::Box, string::String};
 use core::{
     convert::TryInto,
     fmt::{self, Debug, Display, Formatter, LowerHex, UpperHex},
@@ -18,8 +18,8 @@ use spongos::{
         io,
         types::NBytes,
     },
-    KeccakF1600, Spongos, PRP,
     error::Result as SpongosResult,
+    KeccakF1600, Spongos, PRP,
 };
 
 // Local
@@ -125,7 +125,8 @@ impl FromStr for Address {
     type Err = crate::error::Error;
     fn from_str(string: &str) -> Result<Address> {
         let (appaddr_str, msgid_str) = string.split_once(':').ok_or_else(|| Error::Malformed("address", ":"))?;
-        let appaddr = AppAddr::from_str(appaddr_str).map_err(|e| Error::Encoding("AppAddr", "hexadecimal", Box::new(e)))?;
+        let appaddr =
+            AppAddr::from_str(appaddr_str).map_err(|e| Error::Encoding("AppAddr", "hexadecimal", Box::new(e)))?;
 
         let msgid = MsgId::from_str(msgid_str).map_err(|e| Error::Encoding("MsgId", "hexadecimal", Box::new(e)))?;
 

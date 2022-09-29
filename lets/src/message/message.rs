@@ -10,7 +10,7 @@ use spongos::{
 
 // Local
 use crate::{
-    error::{Result},
+    error::Result,
     message::{
         content::{ContentSizeof, ContentWrap},
         hdf::HDF,

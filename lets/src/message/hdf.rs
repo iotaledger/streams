@@ -8,16 +8,13 @@ use spongos::{
         modifiers::External,
         types::{Mac, Maybe, NBytes, Size, Uint8},
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
-    error::{
-        Error as SpongosError,
-        Result as SpongosResult
-    },
 };
 
 use crate::{
     address::MsgId,
-    error::{Result, Error},
+    error::{Error, Result},
     id::Identifier,
     message::{
         content::{ContentSizeof, ContentUnwrap, ContentWrap},
@@ -101,8 +98,8 @@ impl HDF {
             true => {
                 self.payload_length = payload_length;
                 Ok(self)
-            },
-            false => Err(Error::InvalidSize("payload_length" , 10, payload_length.into()))
+            }
+            false => Err(Error::InvalidSize("payload_length", 10, payload_length.into())),
         }
     }
 
@@ -214,7 +211,10 @@ where
 
         self.absorb(&mut encoding)?
             .absorb(&mut version)?
-            .guard(version.inner() == STREAMS_1_VER, SpongosError::Version("Msg", version.inner()))?
+            .guard(
+                version.inner() == STREAMS_1_VER,
+                SpongosError::Version("Msg", version.inner()),
+            )?
             .skip(message_type_and_payload_length.as_mut())?
             .guard(
                 0 == message_type_and_payload_length[0] & 0b1100,

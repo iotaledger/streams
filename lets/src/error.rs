@@ -1,6 +1,6 @@
 //! Stream Errors
 
-use core::{fmt::Debug, array::TryFromSliceError};
+use core::{array::TryFromSliceError, fmt::Debug};
 
 use alloc::{boxed::Box, string::FromUtf8Error};
 
@@ -47,7 +47,6 @@ pub enum Error {
     #[error("nonce is not in the range {0} for target score: {1}")]
     Nonce(&'static str, f64),
 }
-
 
 impl From<SpongosError> for Error {
     fn from(error: SpongosError) -> Self {

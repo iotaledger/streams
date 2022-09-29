@@ -19,18 +19,15 @@ use spongos::{
         modifiers::External,
         types::{NBytes, Uint8},
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
-    error::{
-        Result as SpongosResult,
-        Error as SpongosError,
-    }
 };
 
 // Local
 #[cfg(feature = "did")]
 use crate::id::did::{resolve_document, DIDUrlInfo};
 use crate::{
-    error::{Result},
+    error::Result,
     message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify},
 };
 

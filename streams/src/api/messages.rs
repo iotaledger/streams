@@ -364,13 +364,16 @@ mod tests {
 
     use lets::{address::Address, id::Ed25519, transport::bucket};
 
-    use crate::{api::{
-        message::{
-            Message,
-            MessageContent::{BranchAnnouncement, Keyload, SignedPacket},
+    use crate::{
+        api::{
+            message::{
+                Message,
+                MessageContent::{BranchAnnouncement, Keyload, SignedPacket},
+            },
+            user::User,
         },
-        user::User,
-    }, Result};
+        Result,
+    };
 
     type Transport = Rc<RefCell<bucket::Client>>;
 

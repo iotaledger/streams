@@ -12,7 +12,7 @@ use async_trait::async_trait;
 // Local
 use crate::{
     address::Address,
-    error::{Result, Error},
+    error::{Error, Result},
 };
 
 /// Network transport abstraction.
@@ -38,7 +38,7 @@ pub trait Transport<'a> {
         if let Some(msg) = msgs.pop() {
             match msgs.is_empty() {
                 true => Ok(msg),
-                false => Err(Error::AddressError("More than one found", address))
+                false => Err(Error::AddressError("More than one found", address)),
             }
         } else {
             Err(Error::AddressError("not found in transport", address))

@@ -9,8 +9,8 @@ use spongos::{
         io,
         types::NBytes,
     },
-    KeccakF1600, Spongos, PRP,
     error::Result as SpongosResult,
+    KeccakF1600, Spongos, PRP,
 };
 
 use crate::error::{Error, Result};

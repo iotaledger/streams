@@ -25,18 +25,15 @@ use spongos::{
         modifiers::External,
         types::{NBytes, Uint8},
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
-    error::{
-        Result as SpongosResult,
-        Error as SpongosError,
-    }
 };
 
 // Local
 #[cfg(feature = "did")]
 use crate::id::did::{DataWrapper, DID};
 use crate::{
-    error::{Result},
+    error::Result,
     id::{ed25519::Ed25519, identifier::Identifier},
     message::{ContentDecrypt, ContentSign, ContentSignSizeof},
 };

@@ -9,17 +9,12 @@ use spongos::{
         io,
         types::Uint8,
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
-    error::{
-        Result as SpongosResult,
-        Error as SpongosError,
-    }
 };
 
 // Local
-use crate::{
-    id::identifier::Identifier,
-};
+use crate::id::identifier::Identifier;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum PermissionDuration {

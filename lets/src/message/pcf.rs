@@ -9,12 +9,12 @@ use spongos::{
         io,
         types::{NBytes, Uint8},
     },
+    error::Result as SpongosResult,
     PRP,
-    error::Result as SpongosResult
 };
 
 use crate::{
-    error::{Result, Error},
+    error::{Error, Result},
     message::{
         content::{ContentSizeof, ContentUnwrap, ContentWrap},
         version::{FINAL_PCF_ID, INIT_PCF_ID, INTER_PCF_ID},
@@ -171,7 +171,11 @@ impl PayloadFrameNum {
     fn validate(payload_frame_num: u32) -> Result<()> {
         match payload_frame_num >> 22 == 0 {
             true => Ok(()),
-            false => Err(Error::InvalidSize("payload-frame-num value at most" , 22, payload_frame_num.try_into().unwrap()))
+            false => Err(Error::InvalidSize(
+                "payload-frame-num value at most",
+                22,
+                payload_frame_num.try_into().unwrap(),
+            )),
         }
     }
 

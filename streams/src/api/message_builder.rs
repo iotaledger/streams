@@ -1,4 +1,4 @@
-use crate::{SendResponse, User, Result, Error};
+use crate::{Error, Result, SendResponse, User};
 use lets::{
     message::{Topic, TransportMessage},
     transport::Transport,
