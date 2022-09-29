@@ -6,7 +6,7 @@
 //!
 //! A number of traits can be implemented for a certain type -- Context.
 //! Context stores all related information needed to perform the command:
-//! IO buffer, Spongos state, private keys, trusted public keys, etc..
+//! IO buffer, and Spongos state.
 //!
 //! Trait methods take `&mut self` as input and return `Result<&mut Self>` as output
 //! which allows to use the same context in a chain of multiple commands.
@@ -25,28 +25,28 @@ use anyhow::Result;
 
 use crate::core::spongos::Spongos;
 
-/// Absorb command. Trinary representation of the field is absorbed into Spongos state.
-/// External fields are not encoded in the trinary stream. Non-trinary field is
+/// Absorb command. Binary representation of the field is absorbed into Spongos state.
+/// External fields are not encoded in the binary stream. Non-binary field is
 /// an input argument in Wrap command and an output argument in Unwrap command.
 pub trait Absorb<Type> {
     fn absorb(&mut self, field: Type) -> Result<&mut Self>;
 }
 
-/// Squeeze command. Trinary representation of the field is squeezed from Spongos state.
-/// The command supports fields of `tryte [n]` type (`NTryte`) and is usually used as
+/// Squeeze command. Binary stream of the field is squeezed from Spongos state.
+/// The command supports fields of `bytes[n]` type (`NByte`) and is usually used as
 /// MAC or externally stored hash value to be signed.
 pub trait Squeeze<Type> {
     fn squeeze(&mut self, field: Type) -> Result<&mut Self>;
 }
 
-/// Mask command. Trinary representation is encrypted in Wrap command and decrypted
+/// Mask command. Binary representation is encrypted in Wrap command and decrypted
 /// in Unwrap command using Spongos.
-/// Formatted fields (eg. of `size_t` type or `oneof`) are checked after decryption.
+/// Formatted fields are checked after decryption.
 pub trait Mask<Type> {
     fn mask(&mut self, field: Type) -> Result<&mut Self>;
 }
 
-/// Skip command. Trinary representation is just encoded/decoded and is not processed with Spongos.
+/// Skip command. Binary representation is just encoded/decoded and is not processed with Spongos.
 pub trait Skip<Type> {
     fn skip(&mut self, field: Type) -> Result<&mut Self>;
 }
@@ -68,17 +68,17 @@ pub trait X25519<ExchangeKey, EncryptionKey> {
     fn x25519(&mut self, exchange_key: ExchangeKey, encryption_key: EncryptionKey) -> Result<&mut Self>;
 }
 
-/// Fork command. Fork Spongos state and continue processing `cont` commands.
-/// After the fork is finished the resulting Spongos state is discarded and
-/// field processing continues using the saved current Spongos state.
+/// Fork command. Fork Spongos state and continue processing `Context` commands.
+/// After the fork is finished the resulting [`Spongos`] state is discarded and
+/// field processing continues using the saved current [`Spongos`] state.
 /// The trait can be implemented for functions `Fn(&mut self) -> Result<&mut Self>`.
 pub trait Fork<'a> {
     type Forked;
     fn fork(&'a mut self) -> Self::Forked;
 }
 
-/// Join command. Spongos state for the linked message is retrieved from the context
-/// and joined with the current Spongos state.
+/// Join command. [`Spongos`] state for the linked message is retrieved from the context
+/// and joined with the current [`Spongos`] state.
 ///
 /// Links are not absorbed and thus can be changed (even for different kinds of transport).
 /// Although it may be non-trivial to locate a link in the middle of a message,

@@ -6,6 +6,7 @@ use crate::ddml::{
     types::{Mac, NBytes},
 };
 
+/// Increases [`Context`] size by the number of bytes present in a [`Mac`] wrapper.
 /// Mac is just like NBytes.
 impl Squeeze<&Mac> for Context {
     fn squeeze(&mut self, mac: &Mac) -> Result<&mut Self> {
@@ -14,6 +15,7 @@ impl Squeeze<&Mac> for Context {
     }
 }
 
+/// Increases [`Context`] size by the number of bytes present in a [`Mac`] wrapper.
 /// Mac is just like NBytes.
 impl Squeeze<Mac> for Context {
     fn squeeze(&mut self, val: Mac) -> Result<&mut Self> {

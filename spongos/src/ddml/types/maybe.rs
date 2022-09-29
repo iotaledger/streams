@@ -1,7 +1,7 @@
-/// A DDML wrapper type for `Option` arguments, allowing them to be wrapped into and unwrapped from a
+/// A `DDML` wrapper type for `Option` arguments, allowing them to be wrapped into and unwrapped from a
 /// spongos stream. When being wrapped, if the `Option` is `Some(T)`, then a `1` is wrapped into the
 /// stream, followed by the object itself, otherwise a `0` is wrapped to represent `None`. Conversely,
-/// When unwrapping, the first byte of the streamm will be parsed, and if it is  a `1`, the argument
+/// When unwrapping, the first byte of the stream will be parsed, and if it is  a `1`, the argument
 /// is then unwrapped as well and returned as `Some(T)`. If the first byte is `0`, then the `Option`
 /// is returned as `None`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]

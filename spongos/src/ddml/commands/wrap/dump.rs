@@ -8,6 +8,7 @@ use crate::{
     },
 };
 
+/// Displays [`Context`] stream and spongos
 impl<F: PRP, OS: io::OStream> Dump for Context<OS, F> {
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {
         println!(

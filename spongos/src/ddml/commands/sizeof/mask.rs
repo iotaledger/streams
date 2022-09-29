@@ -62,10 +62,7 @@ impl<T: AsRef<[u8]>> Mask<NBytes<T>> for Context {
 
 /// Increases [`Context`] size by the number of bytes present in the provided [`Bytes`] wrapper.
 /// `Bytes<bytes[n]>` has variable size thus the size `n` is masked before the content bytes.
-impl<T> Mask<Bytes<T>> for Context
-where
-    T: AsRef<[u8]>,
-{
+impl<T: AsRef<[u8]>> Mask<Bytes<T>> for Context {
     fn mask(&mut self, bytes: Bytes<T>) -> Result<&mut Self> {
         let size = Size::new(bytes.len());
         self.mask(size)?;
@@ -91,10 +88,7 @@ impl Mask<&ed25519::PublicKey> for Context {
 }
 
 /// Increases [`Context`] size by the fixed size of a [`Spongos`] (CapacitySize + RateSize bytes).
-impl<F> Mask<&Spongos<F>> for Context
-where
-    F: PRP,
-{
+impl<F: PRP> Mask<&Spongos<F>> for Context {
     fn mask(&mut self, _spongos: &Spongos<F>) -> Result<&mut Self> {
         self.size += F::CapacitySize::USIZE + F::RateSize::USIZE;
         Ok(self)

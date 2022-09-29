@@ -6,8 +6,9 @@ pub struct Context {
     size: usize,
 }
 
+/// Context for determining required stream size for wrapping.
 impl Context {
-    /// Creates a new Context<F>.
+    /// Creates a new [Context<F>]([`Context`]).
     pub fn new() -> Self {
         Self { size: 0 }
     }

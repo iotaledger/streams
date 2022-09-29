@@ -13,16 +13,22 @@ use crate::{
     },
 };
 
+/// A helper struct wrapper for performing [`Mask`] operations with
 struct MaskContext<'a, F, OS> {
+    /// Internal [`Context`] that [`Mask`] operations will be conducted on
     ctx: &'a mut Context<OS, F>,
 }
 
+/// Create a new [`MaskContext`] from the provided [`Context`].
 impl<'a, F, OS> MaskContext<'a, F, OS> {
     fn new(ctx: &'a mut Context<OS, F>) -> Self {
         Self { ctx }
     }
 }
 
+
+/// Encrypts bytes into the [`Context`] spongos, and advances the stream by the provided bytes length,
+/// copying those bytes into the stream.
 impl<'a, F: PRP, OS: io::OStream> Wrap for MaskContext<'a, F, OS> {
     fn wrapn<T>(&mut self, bytes: T) -> Result<&mut Self>
     where
@@ -35,6 +41,7 @@ impl<'a, F: PRP, OS: io::OStream> Wrap for MaskContext<'a, F, OS> {
     }
 }
 
+/// Encrypts a single byte encoded [`Uint8`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Mask<Uint8> for Context<OS, F> {
     fn mask(&mut self, u: Uint8) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u8(u)?;
@@ -42,6 +49,7 @@ impl<F: PRP, OS: io::OStream> Mask<Uint8> for Context<OS, F> {
     }
 }
 
+/// Encrypts a two byte encoded [`Uint16`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Mask<Uint16> for Context<OS, F> {
     fn mask(&mut self, u: Uint16) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u16(u)?;
@@ -49,6 +57,7 @@ impl<F: PRP, OS: io::OStream> Mask<Uint16> for Context<OS, F> {
     }
 }
 
+/// Encrypts a four byte encoded [`Uint32`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Mask<Uint32> for Context<OS, F> {
     fn mask(&mut self, u: Uint32) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u32(u)?;
@@ -56,6 +65,7 @@ impl<F: PRP, OS: io::OStream> Mask<Uint32> for Context<OS, F> {
     }
 }
 
+/// Encrypts an eight byte encoded [`Uint64`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Mask<Uint64> for Context<OS, F> {
     fn mask(&mut self, u: Uint64) -> Result<&mut Self> {
         MaskContext::new(self).wrap_u64(u)?;
@@ -63,6 +73,7 @@ impl<F: PRP, OS: io::OStream> Mask<Uint64> for Context<OS, F> {
     }
 }
 
+/// Encrypts an `n` byte encoded [`Size`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Mask<Size> for Context<OS, F> {
     fn mask(&mut self, size: Size) -> Result<&mut Self> {
         MaskContext::new(self).wrap_size(size)?;
@@ -70,6 +81,8 @@ impl<F: PRP, OS: io::OStream> Mask<Size> for Context<OS, F> {
     }
 }
 
+/// Encrypts a variable sized [`NBytes`] wrapper into [`Context`].
+/// `NByte<bytes[n]>` is fixed-size and is encoded with `n` bytes.
 impl<F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<NBytes<T>> for Context<OS, F> {
     fn mask(&mut self, bytes: NBytes<T>) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(bytes)?;
@@ -77,6 +90,8 @@ impl<F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<NBytes<T>> for Context<OS, F>
     }
 }
 
+/// Encrypts a variable sized [`Bytes`] wrapper into [`Context`]. `Bytes<bytes[n]>` has variable size
+/// thus the size `n` is encoded before the content bytes are wrapped.
 impl<F: PRP, OS: io::OStream, T> Mask<Bytes<T>> for Context<OS, F>
 where
     T: AsRef<[u8]>,
@@ -88,6 +103,7 @@ where
     }
 }
 
+/// Encrypts an Ed25519 public key into [`Context`].
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<OS, F> {
     fn mask(&mut self, public_key: &'a x25519::PublicKey) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(public_key)?;
@@ -95,6 +111,7 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a x25519::PublicKey> for Context<OS, F>
     }
 }
 
+/// Encrypts an X25519 public key into [`Context`].
 impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<OS, F> {
     fn mask(&mut self, public_key: &'a ed25519::PublicKey) -> Result<&mut Self> {
         MaskContext::new(self).wrapn(public_key)?;
@@ -102,6 +119,7 @@ impl<'a, F: PRP, OS: io::OStream> Mask<&'a ed25519::PublicKey> for Context<OS, F
     }
 }
 
+/// Encrypts an explicit [`Spongos`] state into [`Context`].
 impl<OS, F> Mask<&Spongos<F>> for Context<OS, F>
 where
     F: PRP,
@@ -113,6 +131,9 @@ where
     }
 }
 
+/// Encrypts a [`Maybe`] wrapper for an `Option` into the [`Context`] size. If the `Option` is `Some`,
+/// a `Uint8(1)` value is encrypted first, followed by the content. If the `Option` is `None`, only a
+/// `Uint8(0)` is encrypted.
 impl<F, OS, T> Mask<Maybe<Option<T>>> for Context<OS, F>
 where
     Self: Mask<T> + Mask<Uint8>,

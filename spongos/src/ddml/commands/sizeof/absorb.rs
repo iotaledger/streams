@@ -49,10 +49,7 @@ impl Absorb<Size> for Context {
 
 /// Increases [`Context`] size by the number of bytes present in the provided [`Bytes`] wrapper.
 /// `Bytes<bytes[n]>` has variable size thus the size `n` is encoded before the content bytes.
-impl<T> Absorb<Bytes<T>> for Context
-where
-    T: AsRef<[u8]>,
-{
+impl<T: AsRef<[u8]>> Absorb<Bytes<T>> for Context {
     fn absorb(&mut self, bytes: Bytes<T>) -> Result<&mut Self> {
         let bytes_size = Size::new(bytes.len());
         self.absorb(bytes_size)?;

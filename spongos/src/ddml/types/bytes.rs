@@ -7,7 +7,7 @@ use alloc::{string::String, vec::Vec};
 pub struct Bytes<T = Vec<u8>>(T);
 
 impl<T> Bytes<T> {
-    /// Wraps a variable-size array of bytes for DDML operations
+    /// Wraps a variable-size array of bytes for `DDML` operations
     ///
     /// Arguments:
     /// * `bytes`: The byte array to be wrapped.

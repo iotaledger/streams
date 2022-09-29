@@ -1,6 +1,6 @@
 # IOTA Streams core layers
 
-## Trinary/binary operations
+## Binary operations
 ## Spongos basic operations
 ## Spongos-based pseudo-random generator
 ## Pre-shared keys

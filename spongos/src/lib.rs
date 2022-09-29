@@ -12,7 +12,9 @@ extern crate std;
 mod error;
 use error::Error;
 
+/// Core utility tools (spongos/prp/prng)
 mod core;
+/// A markup language toolset for encoding/decoding/encrypting/signing byte streams
 pub mod ddml;
 
 pub use crate::core::{

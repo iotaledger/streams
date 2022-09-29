@@ -1,5 +1,6 @@
 use crate::ddml::commands::{wrap::Context, Fork};
 
+/// Copy context for looped [`Context`] encryption operations
 impl<'a, F, OS> Fork<'a> for Context<OS, F>
 where
     F: Clone,

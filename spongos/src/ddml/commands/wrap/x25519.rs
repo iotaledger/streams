@@ -13,6 +13,11 @@ use crate::{
 
 #[cfg(feature = "osrng")]
 use rand::{rngs::StdRng, SeedableRng};
+
+/// Generates a Diffie Hellman shared secret key for a specific remote public key. The ephemeral
+/// public key used to generate the shared secret is then absorbed into [`Context`] along with the
+/// shared secret as an [`External`] [`NBytes`] object. The [`Context`] is then committed, and the
+/// explicit key is encrypted into the byte stream.
 // X25519 wrap command requires randomly generating an x25519 keypair. Because of that, it can only
 // be compiled on architectures supported by `getrandom`.
 #[cfg(feature = "osrng")]

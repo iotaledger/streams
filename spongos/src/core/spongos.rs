@@ -47,6 +47,7 @@ fn equals(s: &[u8], x: &[u8]) -> bool {
 type Capacity<F> = GenericArray<u8, <F as PRP>::CapacitySize>;
 type Rate<F> = GenericArray<u8, <F as PRP>::RateSize>;
 
+/// State management for binary streams.
 #[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub struct Spongos<F = KeccakF1600> {
     /// Spongos transform together with its internal state.
@@ -60,26 +61,28 @@ impl<F> Spongos<F>
 where
     F: Default,
 {
-    /// Create a Spongos object, initialize state with zero trits.
+    /// Create a Spongos object, initialize state with zero bytes.
     pub fn init() -> Self {
         Self::init_with_state(F::default())
     }
 }
 
 impl<F> Spongos<F> {
-    /// Create a Spongos object with an explicit state.
+    /// Create a [`Spongos`] object with an explicit state.
     fn init_with_state(s: F) -> Self {
         Self { s, pos: 0 }
     }
 }
 
 impl<F: PRP> Spongos<F> {
+    /// Retrieves `n` bytes from outer, provided there are enough bytes to satisfy the request. If not
+    /// the outer position - `Ratesize` number of bytes are retrieved instead.
     fn outer_min_mut(&mut self, n: usize) -> &mut [u8] {
         let m = core::cmp::min(self.pos + n, F::RateSize::USIZE);
         &mut self.s.outer_mut()[self.pos..m]
     }
 
-    /// Update Spongos after processing the current piece of data of `n` trits.
+    /// Update [`Spongos`] after processing the current piece of data of `n` bytes.
     fn update(&mut self, n: usize) {
         self.pos += n;
         if F::RateSize::USIZE == self.pos {
@@ -87,7 +90,7 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    /// Absorb a slice into Spongos object.
+    /// Absorb a slice into [`Spongos`] object.
     pub fn absorb<T>(&mut self, xr: T)
     where
         T: AsRef<[u8]>,
@@ -102,7 +105,7 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    /// Squeeze a byte slice from Spongos object.
+    /// Squeeze a byte slice from [`Spongos`] object.
     pub(crate) fn squeeze_mut<T>(&mut self, mut yr: T)
     where
         T: AsMut<[u8]>,
@@ -117,7 +120,7 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    /// Squeeze a trit slice from Spongos object and compare.
+    /// Squeeze a byte slice from [`Spongos`] object and compare.
     pub(crate) fn squeeze_eq<T>(&mut self, yr: T) -> bool
     where
         T: AsRef<[u8]>,
@@ -134,6 +137,7 @@ impl<F: PRP> Spongos<F> {
         eq
     }
 
+    /// Squeezes a generic byte slice from [`Spongos`] object.
     pub fn squeeze<R>(&mut self) -> R
     where
         R: AsMut<[u8]> + Default,
@@ -143,6 +147,7 @@ impl<F: PRP> Spongos<F> {
         output
     }
 
+    /// Absorb bytes into [`Spongos`] and squeeze out a new byte slice.
     pub fn sponge<T, R>(&mut self, data: T) -> R
     where
         T: AsRef<[u8]>,
@@ -153,6 +158,7 @@ impl<F: PRP> Spongos<F> {
         r
     }
 
+    /// Absorb bytes into mutable [`Spongos`] and squeeze out a new byte slice.
     pub(crate) fn sponge_mut<T, R>(&mut self, data: T, r: R)
     where
         T: AsRef<[u8]>,
@@ -163,7 +169,7 @@ impl<F: PRP> Spongos<F> {
         self.squeeze_mut(r)
     }
 
-    /// Encrypt a byte slice with Spongos object.
+    /// Encrypt a byte slice with mutable [`Spongos`] object.
     /// Input and output slices must be non-overlapping.
     pub(crate) fn encrypt_mut<P, C>(&mut self, plain: P, mut cipher: C) -> Result<()>
     where
@@ -184,6 +190,8 @@ impl<F: PRP> Spongos<F> {
         Ok(())
     }
 
+    /// Encrypt a byte slice with [`Spongos`] object.
+    /// Input and output slices must be non-overlapping.
     pub fn encrypt<T>(&mut self, plain: &T) -> Result<T>
     where
         T: AsRef<[u8]> + AsMut<[u8]> + Default,
@@ -193,7 +201,7 @@ impl<F: PRP> Spongos<F> {
         Ok(cipher)
     }
 
-    /// Decrypt a byte slice with Spongos object.
+    /// Decrypt a byte slice with mutable [`Spongos`] object.
     /// Input and output slices must be non-overlapping.
     pub(crate) fn decrypt_mut<C, P>(&mut self, cipher: C, mut plain: P) -> Result<()>
     where
@@ -214,6 +222,8 @@ impl<F: PRP> Spongos<F> {
         Ok(())
     }
 
+    /// Decrypt a byte slice with [`Spongos`] object.
+    /// Input and output slices must be non-overlapping.
     pub fn decrypt<T>(&mut self, ciphertext: &T) -> Result<T>
     where
         T: AsRef<[u8]> + AsMut<[u8]> + Default,
@@ -235,12 +245,12 @@ impl<F: PRP> Spongos<F> {
         }
     }
 
-    /// Check whether spongos state is committed.
+    /// Check whether [`Spongos`] state is committed.
     pub fn is_committed(&self) -> bool {
         0 == self.pos
     }
 
-    /// Join two Spongos objects.
+    /// Join two [`Spongos`] objects.
     ///
     /// Joiner (self) absorbs data squeezed from joinee.
     /// Be aware that before squeezing the joinee, this is commited, its outer state is zeroed, and
@@ -279,7 +289,7 @@ impl<F> Spongos<F>
 where
     F: Clone,
 {
-    /// Fork Spongos object into a new one.
+    /// Fork [`Spongos`] object into a new one.
     /// Essentially this just creates a clone of self.
     pub(crate) fn fork(&self) -> Self {
         self.clone()

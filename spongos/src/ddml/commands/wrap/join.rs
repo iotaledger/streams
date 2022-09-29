@@ -5,6 +5,7 @@ use crate::{
     ddml::commands::{wrap::Context, Join},
 };
 
+/// Absorbs the given [`Spongos`] into the beginning of the current [`Context`] spongos.
 impl<F: PRP, OS> Join<F> for Context<OS, F> {
     fn join(&mut self, joinee: &mut Spongos<F>) -> Result<&mut Self> {
         self.spongos.join(joinee);
