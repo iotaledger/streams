@@ -1,5 +1,5 @@
-//! Streams message syntax version distinguished between incompatible changes in DDML
-//! syntax and/or rules of processing DDML messages. It usually means that a new
+//! Streams message syntax version distinguished between incompatible changes in `DDML`
+//! syntax and/or rules of processing `DDML` messages. It usually means that a new
 //! command or type is added, or command proceeds in a different manner than before.
 //! It can also signify changes in the `Header` message.
 //!
@@ -7,12 +7,12 @@
 //! in `Header.content_type` field or the Content Message should implicitly support
 //! versioning (ie. include `content_version` field for example).
 //!
-//! Streams message syntax version is indicated as the first tryte in the trinary encoded message.
+//! Streams message syntax version is indicated as the first byte in the binary encoded message.
 //!
 //! Backwards compatibility of the Streams implementations is welcome and not mandatory.
 
 /// Streams version number.
-pub(crate) const STREAMS_1_VER: u8 = 0;
+pub(crate) const STREAMS_1_VER: u8 = 1;
 
 /// Encoding Constants
 pub(crate) const UTF8: u8 = 0;

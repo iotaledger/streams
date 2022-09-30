@@ -64,11 +64,18 @@ use crate::{id::Identifier, message::Topic};
 /// [Display]: #impl-Display
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct Address {
+    /// The base address of the application
     appaddr: AppAddr,
+    /// The message ID of a specific message
     msgid: MsgId,
 }
 
 impl Address {
+    /// Creates a new `Address` from an `AppAddr` and a `MsgId`
+    ///
+    /// Arguments:
+    /// * `appaddr`: The base address of the application.
+    /// * `msgid`: The unique message ID
     pub fn new<A, M>(appaddr: A, msgid: M) -> Self
     where
         A: Into<AppAddr>,
@@ -80,10 +87,12 @@ impl Address {
         }
     }
 
+    /// Returns the address [Message Id](`MsgId`)
     pub fn relative(self) -> MsgId {
         self.msgid
     }
 
+    /// Returns the [Application Address](`AppAddr`)
     pub fn base(self) -> AppAddr {
         self.appaddr
     }
@@ -94,6 +103,7 @@ impl Address {
         hasher.chain(self.base()).chain(self.relative()).finalize().into()
     }
 
+    /// Hash the content of the [`Address`] using `Blake2b256`
     pub fn to_msg_index(self) -> [u8; 32] {
         self.to_blake2b()
     }

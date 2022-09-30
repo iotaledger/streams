@@ -21,6 +21,8 @@ use iota_client::bee_message::{payload::Payload, Message as IotaMessage};
 // Local
 use crate::{address::Address, message::TransportMessage, transport::Transport};
 
+/// A [`Transport`] Client for sending and retrieving binary messages from an `IOTA Tangle` node.
+/// This Client uses the [iota.rs](`https://github.com/iotaledger/iota.rs`) Client implementation.
 #[derive(Debug)]
 pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(
     iota_client::Client,
@@ -28,12 +30,15 @@ pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(
 );
 
 impl<Message, SendResponse> Client<Message, SendResponse> {
-    // Create an instance of Client with a ready client and its send options
+    /// Create an instance of [`Client`] with an  explicit client
     pub fn new(client: iota_client::Client) -> Self {
         Self(client, PhantomData)
     }
 
-    // Shortcut to create an instance of Client connecting to a node with default parameters
+    /// Shortcut to create an instance of [`Client`] connecting to a node with default parameters
+    ///
+    /// # Arguments
+    /// * `node_url`: URL endpoint for node operations
     pub async fn for_node(node_url: &str) -> Result<Client<Message, SendResponse>> {
         Ok(Self(
             iota_client::ClientBuilder::new()
@@ -45,10 +50,12 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
         ))
     }
 
+    /// Returns a reference to the `IOTA` [Client](`iota_client::Client`)
     pub fn client(&self) -> &iota_client::Client {
         &self.0
     }
 
+    /// Returns a mutable reference to the `IOTA` [Client](`iota_client::Client`)
     pub fn client_mut(&mut self) -> &mut iota_client::Client {
         &mut self.0
     }
@@ -63,6 +70,11 @@ where
     type Msg = Message;
     type SendResponse = SendResponse;
 
+    /// Sends a message indexed at the provided [`Address`] to the tangle.
+    ///
+    /// Arguments:
+    /// * `address`: The address of the message to send.
+    /// * `msg`: Message - The message to send.
     async fn send_message(&mut self, address: Address, msg: Message) -> Result<SendResponse>
     where
         Message: 'async_trait,
@@ -76,6 +88,11 @@ where
             .try_into()
     }
 
+    /// Retrieves a message indexed at the provided [`Address`] from the tangle. Errors if no messages
+    /// are found.
+    ///
+    /// Arguments:
+    /// * `address`: The address of the message to retrieve.
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
         let msg_ids = self.client().get_message().index(address.to_msg_index()).await?;
         ensure!(!msg_ids.is_empty(), "no message found at index '{}'", address);

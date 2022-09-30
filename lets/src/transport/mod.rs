@@ -47,7 +47,7 @@ impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
     type Msg = Tsp::Msg;
     type SendResponse = Tsp::SendResponse;
 
-    // Send a message.
+    /// Send a message.
     async fn send_message(&mut self, address: Address, msg: Tsp::Msg) -> Result<Tsp::SendResponse>
     where
         Self::Msg: 'async_trait,
@@ -55,7 +55,7 @@ impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
         self.borrow_mut().send_message(address, msg).await
     }
 
-    // Receive messages with default options.
+    /// Receive messages with default options.
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Tsp::Msg>> {
         self.borrow_mut().recv_messages(address).await
     }
