@@ -22,7 +22,7 @@ use iota_client::bee_message::{payload::Payload, Message as IotaMessage};
 use crate::{address::Address, message::TransportMessage, transport::Transport};
 
 /// A [`Transport`] Client for sending and retrieving binary messages from an `IOTA Tangle` node.
-/// This Client uses the [iota.rs](`https://github.com/iotaledger/iota.rs`) Client implementation.
+/// This Client uses the [iota.rs](https://github.com/iotaledger/iota.rs) Client implementation.
 #[derive(Debug)]
 pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(
     iota_client::Client,

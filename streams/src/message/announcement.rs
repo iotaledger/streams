@@ -1,14 +1,14 @@
-//! `Announce` message _wrapping_ and _unwrapping_.
+//! `Announcement` message _wrapping_ and _unwrapping_.
 //!
-//! The `Announce` message is the _genesis_ message of a Stream.
+//! The `Announcement` message is the _genesis_ message of a Stream.
 //!
-//! It announces the stream owner's identifier. The `Announce` message is similar to
+//! It announces the stream owner's identifier. The `Announcement` message is similar to
 //! a self-signed certificate in a conventional PKI.
 //!
 //! ```ddml
-//! message Announce {
-//!     absorb           u8     identifier[32];
-//!     absorb           u8     flags;
+//! message Announcement {
+//!     mask             u8     identifier;
+//!     mask             u8     topic;
 //!     commit;
 //!     squeeze          u8     hash[64];
 //!     ed25519(hash)           sig;
@@ -39,12 +39,20 @@ use spongos::{
 
 // Local
 
+/// A struct that holds references needed for announcement message encoding
 pub(crate) struct Wrap<'a> {
+    /// The [`Identity`] of the sender of the message
     user_id: &'a Identity,
+    /// The [`Topic`] of the base branch of the stream
     topic: &'a Topic,
 }
 
 impl<'a> Wrap<'a> {
+    /// Creates a new [`Wrap`] struct for an announcement message
+    ///
+    /// # Arguments
+    /// * `user_id`: The [`Identity`] of the sender
+    /// * `topic`: The base branch [`Topic`] for the stream
     pub(crate) fn new(user_id: &'a Identity, topic: &'a Topic) -> Self {
         Self { user_id, topic }
     }
@@ -77,9 +85,12 @@ where
     }
 }
 
+/// A struct that holds the placeholders needed for announcement message decoding
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Unwrap {
+    /// The public [`Identifier`] of the stream author
     author_id: Identifier,
+    /// The base branch [`Topic`] of the stream
     topic: Topic,
 }
 
@@ -92,14 +103,15 @@ impl Default for Unwrap {
 }
 
 impl Unwrap {
+    /// Returns a reference to the [`Identifier`] of the author.
     pub(crate) fn author_id(&self) -> &Identifier {
         &self.author_id
     }
-
+    /// Returns a reference to the base branch [`Topic`] of the stream.
     pub(crate) fn topic(&self) -> &Topic {
         &self.topic
     }
-
+    /// Consumes the [`Unwrap`], returning the [`Identifier`] of the author.
     pub(crate) fn into_author_id(self) -> Identifier {
         self.author_id
     }

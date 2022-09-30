@@ -4,9 +4,8 @@
 //!
 //! ```ddml
 //! message SignedPacket {
-//!     skip                link    msgid;
-//!     join(msgid);
-//!     absorb              u8      ed25519_pubkey[32];
+//!     join(spongos);
+//!     mask                u8      identifier;
 //!     absorb              uint    public_size;
 //!     absorb              u8      public_payload[public_size];
 //!     mask                uint    masked_size;
@@ -41,14 +40,26 @@ use spongos::{
 
 // Local
 
+/// A struct that holds references needed for signed packet message encoding
 pub(crate) struct Wrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// Payload slice that will not be masked
     public_payload: &'a [u8],
+    /// Payload slice that will be masked
     masked_payload: &'a [u8],
+    /// The [`Identity`] of the publisher
     user_id: &'a Identity,
 }
 
 impl<'a> Wrap<'a> {
+    /// Creates a new [`Wrap`] struct for a signed packet message
+    ///
+    /// # Arguments:
+    /// * `initial_state`: The initial [`Spongos`] state the message will be joined to
+    /// * `user_id`: The [`Identity`] of the publishing user.
+    /// * `public_payload`: A payload that will not be masked.
+    /// * `masked_payload`: A payload taht will be masked.
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
         user_id: &'a Identity,
@@ -92,15 +103,24 @@ where
     }
 }
 
+/// A struct that holds the placeholders needed for signed packet message decoding
 #[derive(PartialEq, Eq, Hash)]
 pub(crate) struct Unwrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// A payload that was not masked
     public_payload: Vec<u8>,
+    /// A payload that was masked
     masked_payload: Vec<u8>,
+    /// The [`Identifier`] of the publisher
     publisher_id: Identifier,
 }
 
 impl<'a> Unwrap<'a> {
+    /// Creates a new [`Unwrap`] struct for a signed packet message
+    ///
+    /// # Arguments
+    /// * `initial_state`: The base [`Spongos`] state that the message will be joined to
     pub(crate) fn new(initial_state: &'a mut Spongos) -> Self {
         Self {
             initial_state,
@@ -110,14 +130,17 @@ impl<'a> Unwrap<'a> {
         }
     }
 
+    /// Consumes the [`Unwrap`], returning the [`Identifier`] of the publisher
     pub(crate) fn into_publisher_identifier(self) -> Identifier {
         self.publisher_id
     }
 
+    /// Takes the payload that was masked from the [`Unwrap`]
     pub(crate) fn take_masked_payload(&mut self) -> Vec<u8> {
         core::mem::take(&mut self.masked_payload)
     }
 
+    /// Takes the payload that was not masked from the [`Unwrap`]
     pub(crate) fn take_public_payload(&mut self) -> Vec<u8> {
         core::mem::take(&mut self.public_payload)
     }

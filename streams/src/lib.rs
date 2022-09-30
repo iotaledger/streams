@@ -1,9 +1,9 @@
 //! High-level Implementation of Streams Channel Protocol.
 //!
-//! API functions can be found through the [User](api::tangle::User)
+//! API functions can be found through the [`User`]
 //!
 //! User implementations will require a Transport
-//! [Client](../streams_app/transport/tangle/client/struct.Client.html)
+//! [Client](`lets::transport::utangle::Client`)
 //!
 //! ## Starting a new Channel
 //! ```

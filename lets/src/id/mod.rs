@@ -13,5 +13,6 @@ pub use identifier::Identifier;
 pub use permission::{PermissionDuration, Permissioned};
 pub use psk::{Psk, PskId};
 
+/// Iota Identity functions and types
 #[cfg(feature = "did")]
 pub mod did;

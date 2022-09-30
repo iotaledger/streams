@@ -3,23 +3,13 @@
 //!
 //! ```ddml
 //! message Unsubscribe {
-//!     join link msgid;
-//!     absorb u8 ed25519pk[32];
+//!     join(spongos);
+//!     absorb                  u8      identifier;
 //!     commit;
-//!     squeeze external byte hash[32];
-//!     mssig(hash) sig;
+//!     squeeze external        u8      hash[64];
+//!     ed25519(hash)           u8      signature[64];
 //! }
 //! ```
-//!
-//! # Fields:
-//!
-//! * `msgid` -- link to the `Subscribe` message published by the subscriber.
-//!
-//! * `ed25519pk` -- subscriber's Ed25519 public key.
-//!
-//! * `hash` -- hash value to be signed.
-//!
-//! * `sig` -- message signature generated with the senders private key.
 // Rust
 use alloc::boxed::Box;
 
@@ -44,12 +34,20 @@ use spongos::{
 
 // Local
 
+/// A struct that holds references needed for unsubscription message encoding
 pub(crate) struct Wrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// The [`Identity`] of the subscriber
     subscriber_id: &'a Identity,
 }
 
 impl<'a> Wrap<'a> {
+    /// Creates a new [`Wrap`] struct for an unsubscription message
+    ///
+    /// # Arguments:
+    /// * `initial_state`: The initial [`Spongos`] state the message will be joined to
+    /// * `subscriber_id`: The [`Identity`] of the subscriber.
     pub(crate) fn new(initial_state: &'a mut Spongos, subscriber_id: &'a Identity) -> Self {
         Self {
             initial_state,
@@ -84,12 +82,19 @@ where
     }
 }
 
+/// A struct that holds the placeholders needed for unsubscription message decoding
 pub(crate) struct Unwrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// The [`Identifier`] of the subscriber
     subscriber_id: Identifier,
 }
 
 impl<'a> Unwrap<'a> {
+    /// Creates a new [`Unwrap`] struct for an unsubscription message
+    ///
+    /// # Arguments:
+    /// * `initial_state`: The initial [`Spongos`] state the message will be joined to
     pub(crate) fn new(initial_state: &'a mut Spongos) -> Self {
         Self {
             initial_state,
@@ -97,10 +102,12 @@ impl<'a> Unwrap<'a> {
         }
     }
 
+    /// Returns a reference to the [`Identifier`] of the subsriber
     pub(crate) fn subscriber_identifier(&self) -> &Identifier {
         &self.subscriber_id
     }
 
+    /// Consumes the [`Unwrap`], returning the [`Identifier`] of the subscriber
     pub(crate) fn into_subscriber_identifier(self) -> Identifier {
         self.subscriber_id
     }

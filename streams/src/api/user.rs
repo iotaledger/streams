@@ -237,7 +237,7 @@ impl<T> User<T> {
 
     /// Sets the latest message link for a specified branch. If the branch does not exist, it is
     /// created
-    fn set_latest_link(&mut self, topic: Topic, latest_link: MsgId) -> Option<InnerCursorStore> {
+    fn set_latest_link(&mut self, topic: Topic, latest_link: MsgId) {
         self.state.cursor_store.set_latest_link(topic, latest_link)
     }
 

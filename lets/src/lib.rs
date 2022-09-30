@@ -9,15 +9,6 @@
 //! A Streams Message must contain an `HDF` (Header) and `PCF` (Payload), and must be declared in `DDML`
 //! syntax in order to be processed correctly. Message internal processes follow `DDML` rules.
 
-//!
-//! # Channel Application
-//! Channel Application has evolved from previous versions of Streams. There are two
-//! roles: Author and Subscriber. Author is a channel instance owner capable of
-//! proving her identity by signing messages. Subscribers in this sense are anonymous
-//! as their public identity (Ed25519 public key) are not revealed publicly.
-//! Author can share session key information (Keyload) with a set of Subscribers.
-//! Author as well as allowed Subscribers can then interact privately and securely.
-
 #![allow(clippy::module_inception)]
 #![no_std]
 

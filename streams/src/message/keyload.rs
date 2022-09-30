@@ -1,32 +1,25 @@
 //! `Keyload` message _wrapping_ and _unwrapping_.
 //!
 //! The `Keyload` message is the means to securely exchange the encryption key of a branch with a
-//! set of subscribers.
+//! set of subscribers and pre shared keys.
 //!
 //! ```ddml
 //! message Keyload {
-//!     skip link msgid;
-//!     join(msgid);
+//!     join(spongos);
 //!     absorb                      u8  nonce[32];
-//!     absorb repeated(n):
+//!     absorb                      u8  size(n_subscribers);
+//!     repeated(n_subscribers):
 //!       fork;
-//!       match identifier:
-//!         EdPubKey:
-//!           mask                  u8  id_type(0);
-//!           mask                  u8  ed25519_pubkey[32];
-//!           x25519(pub/priv_key)  u8  x25519_pubkey[32];
-//!           commit;
-//!           mask                  u8  key[32];
-//!         PskId:
-//!           mask                  u8  id_type(1);          
-//!           mask                  u8  psk_id[16];
-//!           commit;
-//!           mask                  u8  key[32];
+//!       mask                      u8  permissioned;
+//!       x25519(pub/priv_key)      u8  x25519_pubkey[32];
+//!     absorb                      u8  size(n_psks);
+//!     repeated(n_psks):
+//!       fork;
+//!       mask                      u8  pskid[16];
+//!       absorb external           u8  psk[32];
 //!       commit;
-//!       squeeze external          u8  ids_hash[64];
+//!       mask                      u8  key[32];
 //!     absorb external             u8  key[32];
-//!     fork;
-//!     absorb external             u8  ids_hash[64];
 //!     commit;
 //!     squeeze external            u8  hash[64];
 //!     ed25519(hash)               u8  signature[64];
@@ -67,12 +60,19 @@ use spongos::{
 const NONCE_SIZE: usize = 16;
 const KEY_SIZE: usize = 32;
 
+/// A struct that holds references needed for keyload message encoding
 pub(crate) struct Wrap<'a, 'b, Subscribers, Psks> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// A unique nonce
     nonce: [u8; NONCE_SIZE],
+    /// A key that will be shared with intended subscribers
     key: [u8; KEY_SIZE],
+    /// An iterator of [`Permissioned`] subscribers to be included in the key exchange
     subscribers: Subscribers,
+    /// An iterator of [`Psks`] to mask the key with
     psks: Psks,
+    /// The [`Identity`] of the stream author
     author_id: &'a Identity,
     // panthom subscriber's lifetime needed because we cannot add lifetime parameters to `ContentWrap` trait method.
     // subscribers need a different lifetime because they are provided directly from downstream. They are not stored by
@@ -81,6 +81,15 @@ pub(crate) struct Wrap<'a, 'b, Subscribers, Psks> {
 }
 
 impl<'a, 'b, Subscribers, Psks> Wrap<'a, 'b, Subscribers, Psks> {
+    /// Creates a new [`Wrap`] struct for a keyload message
+    ///
+    /// # Arguments:
+    /// * `initial_state`: The initial [`Spongos`] state the message will be joined to
+    /// * `subscribers`: A list of permissioned subscribers for the branch.
+    /// * `psks`: A collection of pre-shared keys to be granted read access to the branch.
+    /// * `key`: The key used to encrypt the message.
+    /// * `nonce`: A random number that is used to ensure that the same message is not encrypted twice.
+    /// * `author_id`: The [`Identity`] of the author of the message.
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
         subscribers: Subscribers,
@@ -186,16 +195,29 @@ where
     }
 }
 
+/// A struct that holds the placeholders needed for keyload message decoding
 pub(crate) struct Unwrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// The permissions granted by the admin
     pub(crate) subscribers: Vec<Permissioned<Identifier>>,
+    /// Successfully found [`PskId`]'s in store
     pub(crate) psks: Vec<PskId>,
+    /// A reference to user stored [`PskId`] to [`Psk`] mapping
     psk_store: &'a HashMap<PskId, Psk>,
+    /// The [`Identifier`] of the admin
     author_id: &'a Identifier,
+    /// The [`Identity`] of the reader
     user_id: Option<&'a Identity>,
 }
 
 impl<'a> Unwrap<'a> {
+    /// Creates a new [`Unwrap`] struct for a keyload message
+    ///
+    /// # Arguments
+    /// * `initial_state`: The base [`Spongos`] state that the message will be joined to
+    /// * `user_id`: The optional [`Identity`] of the reading user
+    /// * `author_id`: The [`Identifier`] of the author of the stream
     pub(crate) fn new(
         initial_state: &'a mut Spongos,
         user_id: Option<&'a Identity>,
@@ -212,6 +234,7 @@ impl<'a> Unwrap<'a> {
         }
     }
 
+    /// Returns a reference to the list of granted [`Permissioned`] subscribers
     pub(crate) fn subscribers(&self) -> &[Permissioned<Identifier>] {
         &self.subscribers
     }

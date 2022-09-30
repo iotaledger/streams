@@ -6,7 +6,7 @@
 //!
 //! ```ddml
 //! message TaggedPacket {
-//!     join link msgid;
+//!     join(spongos);
 //!     absorb bytes public_payload;
 //!     mask bytes masked_payload;
 //!     commit;
@@ -35,15 +35,26 @@ use spongos::{
 
 // Local
 
+/// [`Mac`] for content verification
 const MAC: Mac = Mac::new(32);
 
+/// A struct that holds references needed for tagged packet message encoding
 pub(crate) struct Wrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// Payload slice that will not be masked
     public_payload: &'a [u8],
+    /// Payload slice that will be masked
     masked_payload: &'a [u8],
 }
 
 impl<'a> Wrap<'a> {
+    /// Creates a new [`Wrap`] struct for a tagged packet message
+    ///
+    /// # Arguments:
+    /// * `initial_state`: The initial [`Spongos`] state the message will be joined to
+    /// * `public_payload`: A payload that will not be masked.
+    /// * `masked_payload`: A payload taht will be masked.
     pub(crate) fn new(initial_state: &'a mut Spongos, public_payload: &'a [u8], masked_payload: &'a [u8]) -> Self {
         Self {
             initial_state,
@@ -79,13 +90,21 @@ where
     }
 }
 
+/// A struct that holds the placeholders needed for tagged packet message decoding
 pub(crate) struct Unwrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// A payload that was not masked
     public_payload: Vec<u8>,
+    /// A payload that was masked
     masked_payload: Vec<u8>,
 }
 
 impl<'a> Unwrap<'a> {
+    /// Creates a new [`Unwrap`] struct for a tagged packet message
+    ///
+    /// # Arguments
+    /// * `initial_state`: The base [`Spongos`] state that the message will be joined to
     pub(crate) fn new(initial_state: &'a mut Spongos) -> Self {
         Self {
             initial_state,
@@ -94,10 +113,12 @@ impl<'a> Unwrap<'a> {
         }
     }
 
+    /// Takes the payload that was masked from the [`Unwrap`]
     pub(crate) fn take_masked_payload(&mut self) -> Vec<u8> {
         core::mem::take(&mut self.masked_payload)
     }
 
+    /// Takes the payload that was not masked from the [`Unwrap`]
     pub(crate) fn take_public_payload(&mut self) -> Vec<u8> {
         core::mem::take(&mut self.public_payload)
     }

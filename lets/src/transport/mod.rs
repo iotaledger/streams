@@ -61,10 +61,11 @@ impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
     }
 }
 
+/// Localised mapping for tests and simulations
 pub mod bucket;
-
+/// `iota.rs` based tangle client
 #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
 pub mod tangle;
-
+/// Localised micro tangle client
 #[cfg(feature = "utangle-client")]
 pub mod utangle;
