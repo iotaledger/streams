@@ -18,16 +18,22 @@ use crate::message::{
     version::{FINAL_PCF_ID, INIT_PCF_ID, INTER_PCF_ID},
 };
 
+/// Payload Carrying Frame. Contains the body of a Streams message
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct PCF<Content> {
+    /// Identifies the type of message
     frame_type: u8,
+    /// Designates which frame of the message
     // 22-bit field
     payload_frame_num: PayloadFrameNum,
+    /// Payload of the message
     content: Content,
 }
 
+// All PCF's are Frame Number 1 right now since the increase in tangle payload space to 32kb
 impl PCF<()> {
+    /// Creates a default Initial Payload Carrying Frame
     pub fn new_init_frame() -> Self {
         Self {
             frame_type: INIT_PCF_ID,
@@ -36,6 +42,7 @@ impl PCF<()> {
         }
     }
 
+    /// Creates a default Intermediate Payload Carrying Frame
     pub fn new_inter_frame() -> Self {
         Self {
             frame_type: INTER_PCF_ID,
@@ -44,6 +51,7 @@ impl PCF<()> {
         }
     }
 
+    /// Creates a default Final Payload Carrying Frame
     pub fn new_final_frame() -> Self {
         Self {
             frame_type: FINAL_PCF_ID,
@@ -63,6 +71,12 @@ where
 }
 
 impl<Content> PCF<Content> {
+    /// Creates a new [`PCF`] from the provided frame type, frame number and payload
+    ///
+    /// # Arguments
+    /// * `frame_type`: Identifier for the type of message
+    /// * `payload_frame_num`: Frame position
+    /// * `content`: Payload of the message
     pub fn new(frame_type: u8, payload_frame_num: u32, content: Content) -> Result<Self> {
         Ok(Self {
             frame_type,
@@ -71,6 +85,10 @@ impl<Content> PCF<Content> {
         })
     }
 
+    /// Injects content into the payload space of the [`PCF`]
+    ///
+    /// # Arguments
+    /// * `content`: Payload of the message
     pub fn with_content<T>(self, content: T) -> PCF<T> {
         PCF {
             frame_type: self.frame_type,
@@ -79,23 +97,34 @@ impl<Content> PCF<Content> {
         }
     }
 
+    /// Replaces the content field of the [`PCF`]
+    ///
+    /// # Arguments
+    /// * `content`: New payload of the message
     pub(crate) fn change_content(&mut self, content: Content) {
         self.content = content;
     }
 
+    /// Returns a reference to the payload of the [`PCF`]
     pub fn content(&self) -> &Content {
         &self.content
     }
 
+    /// Returns the payload of the [`PCF`]
     pub fn into_content(self) -> Content {
         self.content
     }
 
+    /// Injects a payload frame number into the `payload_frame_num` field of the [`PCF`]
+    ///
+    /// # Arguments
+    /// * `payload_frame_num`: Frame number of the message content
     pub fn with_payload_frame_num(&mut self, payload_frame_num: u32) -> Result<&mut Self> {
         self.payload_frame_num = payload_frame_num.try_into()?;
         Ok(self)
     }
 
+    /// Returns the payload frame number of the message content
     pub fn payload_frame_num(&self) -> u32 {
         self.payload_frame_num.to_inner()
     }
@@ -152,6 +181,7 @@ where
     }
 }
 
+/// Frame number for sharded messages
 #[derive(Copy, Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct PayloadFrameNum(u32);
 

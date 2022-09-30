@@ -16,14 +16,20 @@ use spongos::{
     KeccakF1600, Spongos, PRP,
 };
 
+/// A wrapper around a `String` used for identifying a branch within a `Stream`
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
 pub struct Topic(String);
 
 impl Topic {
+    /// Create a new [`Topic`] wrapper for the provided `String`
+    ///
+    /// # Arguments
+    /// * `t`: A unique branch identifier
     pub fn new(t: String) -> Self {
         Self(t)
     }
 
+    /// Returns a reference to the inner branch identifier `String`
     pub fn str(&self) -> &str {
         &self.0
     }
@@ -110,6 +116,7 @@ where
     }
 }
 
+/// A 16 byte fixed size hash representation of a [`Topic`]
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Debug, Default, Hash)]
 pub struct TopicHash([u8; 16]);
 

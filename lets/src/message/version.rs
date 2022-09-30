@@ -17,7 +17,11 @@ pub(crate) const STREAMS_1_VER: u8 = 1;
 /// Encoding Constants
 pub(crate) const UTF8: u8 = 0;
 
+/// HDF Frame Identifier
 pub(crate) const HDF_ID: u8 = 4;
+/// Initial PCF Frame Identifier
 pub(crate) const INIT_PCF_ID: u8 = 5;
+/// Intermediate PCF Frame Identifier
 pub(crate) const INTER_PCF_ID: u8 = 12;
+/// Final PCF Frame Identifier
 pub(crate) const FINAL_PCF_ID: u8 = 14;

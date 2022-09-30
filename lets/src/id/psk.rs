@@ -14,14 +14,24 @@ use spongos::{
     KeccakF1600, Spongos, PRP,
 };
 
+/// A Pre-Shared Key for use in Read based permissioning
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Psk([u8; 32]);
 
 impl Psk {
+    /// Creates a new [`Psk`] wrapper around the provided bytes
+    ///
+    /// # Arguments
+    /// * `array`: Fixed-size 32 byte array
     pub fn new(array: [u8; 32]) -> Self {
         Self(array)
     }
 
+    /// Generates a new [`Psk`] by using [`Spongos`] to sponge the provided seed bytes into a fixed
+    /// 32 byte array, and wrapping it.
+    ///
+    /// # Arguments
+    /// * `seed`: A unique variable sized seed slice
     pub fn from_seed<T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
@@ -31,6 +41,7 @@ impl Psk {
         spongos.sponge(seed)
     }
 
+    /// Creates a [`PskId`] by using [`Spongos`] to sponge the [`Psk`] into a fixed 16 byte array
     pub fn to_pskid(self) -> PskId {
         let mut spongos = Spongos::<KeccakF1600>::init();
         spongos.absorb("PSKID");
@@ -58,14 +69,24 @@ impl TryFrom<&[u8]> for Psk {
     }
 }
 
+/// Identifier for a [`Psk`]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct PskId([u8; 16]);
 
 impl PskId {
+    /// Creates a new [`PskId`] wrapper around the provided bytes
+    ///
+    /// # Arguments
+    /// * `array`: Fixed-size 16 byte array
     pub fn new(array: [u8; 16]) -> Self {
         Self(array)
     }
 
+    /// Generates a new [`PskId`] by using [`Spongos`] to sponge the provided seed bytes into a fixed
+    /// 16 byte array, and wrapping it.
+    ///
+    /// # Arguments
+    /// * `seed`: A unique variable sized seed slice
     pub fn from_seed<T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
