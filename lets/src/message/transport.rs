@@ -30,7 +30,7 @@ impl TransportMessage {
         &self.0
     }
 
-    /// Returns the body of the message
+    /// Consumes the [`TransportMessage`], returning the body of the message
     pub(crate) fn into_body(self) -> Vec<u8> {
         self.0
     }

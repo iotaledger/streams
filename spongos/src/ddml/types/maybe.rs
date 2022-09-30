@@ -19,8 +19,7 @@ impl<T> Maybe<T> {
         Self(t)
     }
 
-    /// Returns:
-    /// The inner `Option` of the `Maybe` struct.
+    /// Consumes the [`Maybe`] wrapper, returning the inner `Option`.
     pub(crate) fn into_inner(self) -> T {
         self.0
     }

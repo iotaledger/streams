@@ -66,12 +66,12 @@ impl<Payload> Message<Payload> {
         &self.payload
     }
 
-    /// Returns the [`Message`] [payload](`PCF`)
+    /// Consumes the [`Message`], returning the [payload](`PCF`)
     pub fn into_payload(self) -> PCF<Payload> {
         self.payload
     }
 
-    /// Returns a tuple comprised of the [`Message`] [header](`HDF`) and [payload](`PCF`)
+    /// Consumes the [`Message`], returning a tuple comprised of the [header](`HDF`) and [payload](`PCF`)
     pub fn into_parts(self) -> (HDF, PCF<Payload>) {
         (self.header, self.payload)
     }

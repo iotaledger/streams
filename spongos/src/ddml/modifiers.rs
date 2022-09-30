@@ -13,7 +13,7 @@ impl<T> External<T> {
         Self(t)
     }
 
-    /// Returns a the inner object `T`.
+    /// Consumes the [`External`], returning the inner object `T`.
     pub(crate) fn into_inner(self) -> T {
         self.0
     }

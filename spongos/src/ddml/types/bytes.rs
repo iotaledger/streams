@@ -86,10 +86,7 @@ impl Bytes<&mut Vec<u8>> {
 }
 
 impl Bytes<Vec<u8>> {
-    /// Returns the internal `Vec<u8>` inside the `Bytes` wrapper
-    ///
-    /// Returns:
-    /// The underlying byte array
+    /// Consumes the [`Bytes`] wrapper, returning the internal `Vec<u8>`
     pub fn into_vec(self) -> Vec<u8> {
         self.0
     }

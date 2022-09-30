@@ -110,7 +110,7 @@ impl<Content> PCF<Content> {
         &self.content
     }
 
-    /// Returns the payload of the [`PCF`]
+    /// Consumes the [`PCF`], returning the payload content
     pub fn into_content(self) -> Content {
         self.content
     }

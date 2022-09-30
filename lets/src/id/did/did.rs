@@ -24,6 +24,10 @@ use spongos::{
 
 use crate::id::did::DIDUrlInfo;
 
+/// Fetch the `DID` document from the tangle
+///
+/// # Arguments
+/// * `url_info`: The document details
 pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIotaDocument> {
     let did_url = IotaDID::parse(url_info.did())?;
     let doc = DIDClient::builder()
@@ -36,14 +40,17 @@ pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIo
     Ok(doc)
 }
 
+/// Type of `DID` implementation
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DID {
     // TODO: Add DID Account implementation
+    /// Private Key based [`DIDInfo`], manually specifying key pairs
     PrivateKey(DIDInfo),
     Default,
 }
 
 impl DID {
+    /// Returns a reference to the [`DIDInfo`] if present
     pub(crate) fn info(&self) -> &DIDInfo {
         match self {
             Self::PrivateKey(did_info) => did_info,
@@ -51,6 +58,7 @@ impl DID {
         }
     }
 
+    /// Returns a mutable reference to the [`DIDInfo`] if present
     fn info_mut(&mut self) -> &mut DIDInfo {
         match self {
             Self::PrivateKey(did_info) => did_info,
@@ -109,14 +117,24 @@ where
     }
 }
 
+/// Details of a `DID` implementation
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DIDInfo {
+    /// Document retrieval information
     url_info: DIDUrlInfo,
+    /// Iota Identity based KeyPair for signatures
     keypair: KeyPair,
+    /// Iota Identity based KeyPair for key exchange
     exchange_keypair: KeyPair,
 }
 
 impl DIDInfo {
+    /// Creates a new [`DIDInfo`] wrapper around the provided details
+    ///
+    /// # Arguments
+    /// * `url_info`: Document retrieval information
+    /// * `keypair`: DID KeyPair for signatures
+    /// * `exchange_keypair`: DID KeyPair for key exchange
     pub fn new(url_info: DIDUrlInfo, keypair: DIDKeyPair, exchange_keypair: DIDKeyPair) -> Self {
         Self {
             url_info,
@@ -125,35 +143,43 @@ impl DIDInfo {
         }
     }
 
+    /// Returns a reference to the [`DIDUrlInfo`]
     pub fn url_info(&self) -> &DIDUrlInfo {
         &self.url_info
     }
 
+    /// Returns a mutable reference to the [`DIDUrlInfo`]
     pub fn url_info_mut(&mut self) -> &mut DIDUrlInfo {
         &mut self.url_info
     }
 
+    /// Returns a reference to the signature [`DIDKeyPair`]
     pub(crate) fn keypair(&self) -> &DIDKeyPair {
         &self.keypair.0
     }
 
+    /// Returns a mutable reference to the signature [`DIDKeyPair`]
     fn keypair_mut(&mut self) -> &mut DIDKeyPair {
         &mut self.keypair.0
     }
 
+    /// Returns a reference to the key exchange [`DIDKeyPair`]
     fn exchange_keypair(&self) -> &DIDKeyPair {
         &self.exchange_keypair.0
     }
 
+    /// Returns a mutable reference to the key exchange [`DIDKeyPair`]
     fn exchange_keypair_mut(&mut self) -> &mut DIDKeyPair {
         &mut self.exchange_keypair.0
     }
 
+    /// Converts key exchange [`DIDKeyPair`] into an [`x25519::SecretKey`] for native Streams operations
     pub(crate) fn exchange_key(&self) -> Result<x25519::SecretKey> {
         x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref()).map_err(|e| e.into())
     }
 }
 
+/// Wrapper for a `DID` based KeyPair
 struct KeyPair(identity_iota::crypto::KeyPair);
 
 impl PartialEq for KeyPair {
