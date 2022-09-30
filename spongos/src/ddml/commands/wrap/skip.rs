@@ -9,10 +9,13 @@ use crate::ddml::{
     types::{Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
 };
 
+/// A helper struct wrapper for performing [`Skip`] operations with
 struct SkipContext<'a, F, OS> {
+    /// Internal [`Context`] that [`Skip`] operations will be conducted on
     ctx: &'a mut Context<OS, F>,
 }
 
+/// Create a new [`SkipContext`] from the provided [`Context`].
 impl<'a, F, OS> SkipContext<'a, F, OS> {
     fn new(ctx: &'a mut Context<OS, F>) -> Self {
         Self { ctx }

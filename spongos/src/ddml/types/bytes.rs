@@ -11,41 +11,26 @@ impl<T> Bytes<T> {
     ///
     /// Arguments:
     /// * `bytes`: The byte array to be wrapped.
-    ///
-    /// Returns:
-    /// A new instance of the `Bytes` wrapper.
     pub fn new(bytes: T) -> Self {
         Self(bytes)
     }
 
     /// Returns a reference to the inner byte array.
-    ///
-    /// Returns:
-    /// Inner byte array reference.
     pub(crate) fn inner(&self) -> &T {
         &self.0
     }
 
     /// Returns a mutable reference to the inner byte array.
-    ///
-    /// Returns:
-    /// Mutable inner byte array reference.
     pub(crate) fn inner_mut(&mut self) -> &mut T {
         &mut self.0
     }
 
     /// Returns a new `Bytes` wrapper around a reference to the inner byte array
-    ///
-    /// Returns:
-    /// New `Bytes` object with referenced inner
     pub fn as_ref(&self) -> Bytes<&T> {
         Bytes::new(self.inner())
     }
 
     /// Returns a new `Bytes` wrapper around a mutable reference to the inner byte array
-    ///
-    /// Returns:
-    /// New `Bytes` object with referenced mutable inner
     pub fn as_mut(&mut self) -> Bytes<&mut T> {
         Bytes::new(self.inner_mut())
     }

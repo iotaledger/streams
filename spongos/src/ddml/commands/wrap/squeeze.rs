@@ -25,7 +25,7 @@ impl<F: PRP, OS: io::OStream> Squeeze<Mac> for Context<OS, F> {
     }
 }
 
-/// Squeeze [`Context`] into an [`NBytes`] length hash, using allocated space in context byte stream.
+/// Squeeze [`Context`] into an [`NBytes`] length hash.
 impl<'a, F: PRP, T: AsMut<[u8]>, OS> Squeeze<External<&'a mut NBytes<T>>> for Context<OS, F> {
     fn squeeze(&mut self, external_nbytes: External<&'a mut NBytes<T>>) -> Result<&mut Self> {
         self.spongos.squeeze_mut(external_nbytes);

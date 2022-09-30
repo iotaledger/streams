@@ -268,18 +268,22 @@ impl<F: PRP> Spongos<F> {
         self.absorb(x.as_ref());
     }
 
+    /// Returns a reference to the `PRP` outer state
     pub(crate) fn outer(&self) -> &Rate<F> {
         self.s.outer()
     }
 
+    /// Returns a reference to the `PRP` inner state
     pub(crate) fn inner(&self) -> &Capacity<F> {
         self.s.inner()
     }
 
+    /// Returns a mutable reference to the `PRP` outer state
     pub(crate) fn outer_mut(&mut self) -> &mut Rate<F> {
         self.s.outer_mut()
     }
 
+    /// Returns a mutable reference to the `PRP` inner state
     pub(crate) fn inner_mut(&mut self) -> &mut Capacity<F> {
         self.s.inner_mut()
     }

@@ -26,7 +26,7 @@ impl<'a, F, OS> AbsorbContext<'a, F, OS> {
     }
 }
 
-/// Absorbs bytes into the [`Context`] spongos, and advances the stream by the provided bytes length,
+/// Encode bytes into the [`Context`] spongos, and advances the stream by the provided bytes length,
 /// copying those bytes into the stream.
 impl<'a, F: PRP, OS: io::OStream> Wrap for AbsorbContext<'a, F, OS> {
     fn wrapn<T>(&mut self, bytes: T) -> Result<&mut Self>
@@ -80,8 +80,8 @@ impl<F: PRP, OS: io::OStream> Absorb<Size> for Context<OS, F> {
     }
 }
 
-/// Absorbs a variable sized [`NBytes`] wrapper into [`Context`].
-/// `NByte<bytes[n]>` is fixed-size and is encoded with `n` bytes.
+/// Absorbs a fixed sized [`NBytes`] wrapper into [`Context`]. `NBytes<bytes[n]>` is fixed-size and
+/// is encoded with `n` bytes.
 impl<F, T, OS> Absorb<NBytes<T>> for Context<OS, F>
 where
     F: PRP,
@@ -123,7 +123,7 @@ impl<'a, F: PRP, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<OS, 
     }
 }
 
-/// Absorbs a [`Maybe`] wrapper for an `Option` into the [`Context`] size. If the `Option` is `Some`,
+/// Absorbs a [`Maybe`] wrapper for an `Option` into the [`Context`] stream. If the `Option` is `Some`,
 /// a `Uint8(1)` value is absorbed first, followed by the content. If the `Option` is `None`, only a
 /// `Uint8(0)` is absorbed.
 impl<F, OS, T> Absorb<Maybe<Option<T>>> for Context<OS, F>

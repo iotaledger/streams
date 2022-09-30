@@ -95,7 +95,7 @@ impl<F: PRP> Mask<&Spongos<F>> for Context {
     }
 }
 
-/// Masks a [`Maybe`] wrapper for an `Option` into the ['Context'] size. If the `Option` is `Some`,
+/// Masks a [`Maybe`] wrapper for an `Option` into the [`Context`] size. If the `Option` is `Some`,
 /// a `Uint8(1)` value is masked first, followed by the content. If the `Option` is `None`, only a
 /// `Uint8(0)` is masked.
 impl<T> Mask<Maybe<Option<T>>> for Context

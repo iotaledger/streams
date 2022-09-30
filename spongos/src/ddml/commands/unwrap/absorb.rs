@@ -21,16 +21,21 @@ use crate::{
     error::Error::PublicKeyGenerationFailure,
 };
 
+/// A helper struct wrapper for performing [`Absorb`] operations with
 struct AbsorbContext<'a, F: PRP, IS: io::IStream> {
+    /// Internal [`Context`] that [`Absorb`] operations will be conducted on
     ctx: &'a mut Context<IS, F>,
 }
 
+/// Create a new [`AbsorbContext`] from the provided [`Context`].
 impl<'a, F: PRP, IS: io::IStream> AbsorbContext<'a, F, IS> {
     fn new(ctx: &'a mut Context<IS, F>) -> Self {
         Self { ctx }
     }
 }
 
+/// Retrieves bytes from [`Context`] stream and advances the read cursor. Then the `Context` [`Spongos`]
+/// is used to decode the stream slice.
 impl<F: PRP, IS: io::IStream> Unwrap for AbsorbContext<'_, F, IS> {
     fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self>
     where
@@ -45,6 +50,7 @@ impl<F: PRP, IS: io::IStream> Unwrap for AbsorbContext<'_, F, IS> {
     }
 }
 
+/// Reads a single byte encoded [`Uint8`] wrapper from [`Context`].
 impl<F: PRP, IS: io::IStream> Absorb<&mut Uint8> for Context<IS, F> {
     fn absorb(&mut self, u: &mut Uint8) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_u8(u)?;
@@ -52,6 +58,7 @@ impl<F: PRP, IS: io::IStream> Absorb<&mut Uint8> for Context<IS, F> {
     }
 }
 
+/// Reads a two byte encoded [`Uint16`] wrapper from [`Context`].
 impl<F: PRP, IS: io::IStream> Absorb<&mut Uint16> for Context<IS, F> {
     fn absorb(&mut self, u: &mut Uint16) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_u16(u)?;
@@ -59,6 +66,7 @@ impl<F: PRP, IS: io::IStream> Absorb<&mut Uint16> for Context<IS, F> {
     }
 }
 
+/// Reads a four byte encoded [`Uint32`] wrapper from [`Context`].
 impl<F: PRP, IS: io::IStream> Absorb<&mut Uint32> for Context<IS, F> {
     fn absorb(&mut self, u: &mut Uint32) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_u32(u)?;
@@ -66,6 +74,7 @@ impl<F: PRP, IS: io::IStream> Absorb<&mut Uint32> for Context<IS, F> {
     }
 }
 
+/// Reads an eight byte encoded [`Uint64`] wrapper from [`Context`].
 impl<F: PRP, IS: io::IStream> Absorb<&mut Uint64> for Context<IS, F> {
     fn absorb(&mut self, u: &mut Uint64) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_u64(u)?;
@@ -73,6 +82,7 @@ impl<F: PRP, IS: io::IStream> Absorb<&mut Uint64> for Context<IS, F> {
     }
 }
 
+/// Reads an `n` byte encoded [`Size`] wrapper from [`Context`].
 impl<F: PRP, IS: io::IStream> Absorb<&mut Size> for Context<IS, F> {
     fn absorb(&mut self, size: &mut Size) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrap_size(size)?;
@@ -80,6 +90,8 @@ impl<F: PRP, IS: io::IStream> Absorb<&mut Size> for Context<IS, F> {
     }
 }
 
+/// Reads a fixed sized [`NBytes`] wrapper from [`Context`]. `NBytes<bytes[n]>` is fixed-size and is
+/// encoded with `n` bytes.
 impl<F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<NBytes<T>> for Context<IS, F> {
     fn absorb(&mut self, nbytes: NBytes<T>) -> Result<&mut Self> {
         AbsorbContext::new(self).unwrapn(nbytes)?;
@@ -87,6 +99,8 @@ impl<F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<NBytes<T>> for Context<IS, 
     }
 }
 
+/// Reads a variable sized [`Bytes`] wrapper from [`Context`]. `Bytes<bytes[n]>` does not have a known
+/// size, so first the [`Size`] `n` has to be decoded, and then `n` bytes are decoded.
 impl<F: PRP, IS: io::IStream> Absorb<Bytes<&mut Vec<u8>>> for Context<IS, F> {
     fn absorb(&mut self, mut bytes: Bytes<&mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
@@ -98,6 +112,7 @@ impl<F: PRP, IS: io::IStream> Absorb<Bytes<&mut Vec<u8>>> for Context<IS, F> {
     }
 }
 
+/// Reads an Ed25519 public key from [`Context`].
 impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context<IS, F> {
     fn absorb(&mut self, public_key: &'a mut ed25519::PublicKey) -> Result<&mut Self> {
         let mut bytes = [0u8; ed25519::PUBLIC_KEY_LENGTH];
@@ -112,6 +127,7 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context
     }
 }
 
+/// Reads an X25519 public key from [`Context`].
 impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<IS, F> {
     fn absorb(&mut self, public_key: &'a mut x25519::PublicKey) -> Result<&mut Self> {
         let mut bytes = [0u8; x25519::PUBLIC_KEY_LENGTH];
@@ -121,6 +137,9 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<
     }
 }
 
+/// Reads a [`Maybe`] wrapper for an `Option` from the [`Context`] stream. If the first `Uint8` decoded
+/// is a `Uint8(1)`, then the `Option` is a `Some(T)`, and the content `T` is decoded next. If it is a
+/// `Uint8(0)`, then the `Option` is a `None`.
 impl<'a, F, IS, T> Absorb<Maybe<&'a mut Option<T>>> for Context<IS, F>
 where
     for<'b> Self: Absorb<&'b mut T> + Absorb<&'b mut Uint8>,

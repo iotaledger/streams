@@ -9,12 +9,20 @@ use super::{
 type Nonce = [u8; 16];
 type Key = [u8; 32];
 
+/// Spongos-based psuedo-random number generator.
 pub struct SpongosRng<F = KeccakF1600> {
+    /// Inner [`Spongos`] state
     spongos: Spongos<F>,
     nonce: Nonce,
 }
 
 impl<F> SpongosRng<F> {
+    /// Creates a new [`SpongosRng`] from an explicit byte array. A new [`Spongos`] object is created,
+    /// and is used to sponge the seed into a new [`Key`]. This `Key` is then used as a seed to generate
+    /// a new [`SpongosRng`].
+    ///
+    /// # Arguments
+    /// * `seed`: A unique byte array
     pub fn new<T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
@@ -25,10 +33,12 @@ impl<F> SpongosRng<F> {
         Self::from_seed(key)
     }
 
+    /// Creates a new [`SpongosRng`] from an explicit [`Spongos`] state and [`Nonce`].
     fn from_spongos(prng: Spongos<F>, nonce: Nonce) -> Self {
         Self { spongos: prng, nonce }
     }
 
+    /// Increments the inner nonce
     fn inc(&mut self) {
         for i in self.nonce.iter_mut() {
             let (r, has_wrapped) = i.overflowing_add(1);

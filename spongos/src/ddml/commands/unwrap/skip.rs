@@ -13,16 +13,21 @@ use crate::ddml::{
     io,
     types::{Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
 };
+
+/// A helper struct wrapper for performing [`Skip`] operations with
 struct SkipContext<'a, F, IS> {
+    /// Internal [`Context`] that [`Skip`] operations will be conducted on
     ctx: &'a mut Context<IS, F>,
 }
 
+/// Create a new [`SkipContext`] from the provided [`Context`].
 impl<'a, F, IS: io::IStream> SkipContext<'a, F, IS> {
     fn new(ctx: &'a mut Context<IS, F>) -> Self {
         Self { ctx }
     }
 }
 
+/// Read `n` bytes from the [`Context`] stream without using spongos operations
 impl<'a, F, IS: io::IStream> Unwrap for SkipContext<'a, F, IS> {
     fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self>
     where
