@@ -1,8 +1,6 @@
-use core::{
-    array::TryFromSliceError,
-    fmt::{Debug, Display},
-};
+use core::{array::TryFromSliceError, fmt::Debug};
 
+use alloc::string::String;
 use thiserror_no_std::Error;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -27,6 +25,9 @@ pub enum Error {
     #[error("Integrity violation. Bad MAC")]
     BadMac,
 
+    #[error("Failed to \"{0}\" for {1}. Reason: {2}")]
+    InvalidAction(&'static str, String, String),
+
     #[error("{1} is not a valid {0} option")]
     InvalidOption(&'static str, u8),
 
@@ -46,15 +47,6 @@ pub enum Error {
 
     #[error("{0}")]
     External(anyhow::Error),
-}
-
-impl Error {
-    pub(crate) fn wrap<T>(&self, src: &T) -> anyhow::Error
-    where
-        T: Display + Debug,
-    {
-        anyhow::anyhow!("\n\tStreams Error: {}\n\t\tCause: {:?}", self, src)
-    }
 }
 
 impl From<TryFromSliceError> for Error {

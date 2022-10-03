@@ -1,9 +1,10 @@
 //! Stream Errors
 
+// Rust
 use core::{array::TryFromSliceError, fmt::Debug};
+use alloc::{boxed::Box, string::{FromUtf8Error, String}};
 
-use alloc::{boxed::Box, string::FromUtf8Error};
-
+// 3rd-party
 use hex::FromHexError;
 use thiserror_no_std::Error;
 // IOTA
@@ -18,17 +19,14 @@ pub type Result<T> = core::result::Result<T, Error>;
 /// Error type of the iota client crate.
 #[allow(clippy::large_enum_variant)]
 pub enum Error {
-    #[error("Malformed {0} string: missing '{1}'")]
-    Malformed(&'static str, &'static str),
+    #[error("Malformed {0}: missing '{1}' for {2}")]
+    Malformed(&'static str, &'static str, String),
 
     #[error("{0} is not encoded in {1} or the encoding is incorrect: {2:?}")]
     Encoding(&'static str, &'static str, Box<Error>),
 
     #[error("{0} must be {1} bytes long, but is {2} bytes long instead")]
     InvalidSize(&'static str, usize, u64),
-
-    #[error("Invalid {0} type. Found '{1}', expected '{2}'")]
-    InvalidType(&'static str, usize, u8),
 
     #[error("there was an issue with {0} the signature, cannot {1}")]
     Signature(&'static str, &'static str),
@@ -40,9 +38,16 @@ pub enum Error {
     External(anyhow::Error),
 
     /// Transport
+    
+    #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
+    #[error("Iota client error for {0}: {1}")]
+    IotaClient(&'static str, iota_client::Error),
 
     #[error("Transport error for address {1}: {0}")]
     AddressError(&'static str, Address),
+
+    #[error("message '{0}' not found in {1}")]
+    MessageMissing(Address, &'static str),
 
     #[error("nonce is not in the range {0} for target score: {1}")]
     Nonce(&'static str, f64),

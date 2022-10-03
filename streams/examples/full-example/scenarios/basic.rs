@@ -1,7 +1,6 @@
 // Rust
 
 // 3rd-party
-use anyhow::Result;
 use futures::TryStreamExt;
 
 // IOTA
@@ -9,7 +8,7 @@ use futures::TryStreamExt;
 // Streams
 use streams::{
     id::{Ed25519, PermissionDuration, Permissioned, Psk},
-    User,
+    User, Result,
 };
 
 // Local

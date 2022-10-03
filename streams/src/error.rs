@@ -1,14 +1,9 @@
 //! Stream Errors
 
 // Rust
-use alloc::string::{FromUtf8Error, ToString};
-use core::{
-    array::TryFromSliceError,
-    fmt::{Debug, Display},
-};
+use core::{array::TryFromSliceError, fmt::Debug};
 
 // 3rd-party
-use serde::{ser::Serializer, Serialize};
 use thiserror_no_std::Error;
 // IOTA
 
@@ -91,7 +86,7 @@ Any {0} message must be linked to a previous message by including the address of
     Messages(&'static str, anyhow::Error),
 
     #[error(
-        "address already taken. The address '{1}' where the {0} message is being sent already contains some data, possibly spam"
+        "address already taken for. The address '{1}' where the {0} message is being sent already contains some data, possibly spam."
     )]
     AddressUsed(&'static str, Address),
 
@@ -133,11 +128,3 @@ impl From<anyhow::Error> for Error {
     }
 }
 
-/// Use this to serialize Error variants that implements Debug but not Serialize
-fn display_string<T, S>(value: &T, serializer: S) -> core::result::Result<S::Ok, S::Error>
-where
-    T: Display,
-    S: Serializer,
-{
-    value.to_string().serialize(serializer)
-}

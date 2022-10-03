@@ -115,7 +115,7 @@ impl UpperHex for PskId {
 
 impl Mask<&PskId> for sizeof::Context {
     fn mask(&mut self, pskid: &PskId) -> SpongosResult<&mut Self> {
-        self.mask(NBytes::new(pskid)).into()
+        self.mask(NBytes::new(pskid))
     }
 }
 

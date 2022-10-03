@@ -1,7 +1,6 @@
 // Rust
 
 // 3rd-party
-use anyhow::Result;
 use lets::id::Identity;
 
 // IOTA
@@ -9,7 +8,7 @@ use lets::id::Identity;
 // Streams
 use streams::{
     id::{Ed25519, Psk},
-    SendResponse, User,
+    SendResponse, User, Result,
 };
 
 // Local

@@ -1,14 +1,11 @@
 // Rust
 
-// 3rd-party
-use anyhow::Result;
-
 // IOTA
 
 // Streams
 use streams::{
     id::{Ed25519, Psk},
-    Selector, User,
+    Selector, User, Result,
 };
 
 // Local

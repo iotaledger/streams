@@ -1,5 +1,11 @@
 // Rust
-use alloc::{boxed::Box, format, string::String, vec::Vec};
+use alloc::{
+    borrow::ToOwned,
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::fmt::{Debug, Formatter, Result as FormatResult};
 
 // 3rd-party
@@ -26,7 +32,7 @@ use spongos::{
         modifiers::External,
         types::{Mac, Maybe, NBytes, Size, Uint8},
     },
-    error::Result as SpongosResult,
+    error::{Error as SpongosError, Result as SpongosResult},
     KeccakF1600, Spongos, SpongosRng,
 };
 
@@ -141,13 +147,13 @@ impl<T> User<T> {
 
     pub fn permission(&self, topic: &Topic) -> Option<&Permissioned<Identifier>> {
         self.identifier()
-            .and_then(|id| self.state.cursor_store.get_permission(topic, &id))
+            .and_then(|id| self.state.cursor_store.get_permission(topic, id))
     }
 
     /// User's cursor
     fn cursor(&self, topic: &Topic) -> Option<usize> {
         self.identifier()
-            .and_then(|id| self.state.cursor_store.get_cursor(topic, &id))
+            .and_then(|id| self.state.cursor_store.get_cursor(topic, id))
     }
 
     fn next_cursor(&self, topic: &Topic) -> Result<usize> {
@@ -245,7 +251,7 @@ impl<T> User<T> {
         let preparsed = msg
             .parse_header()
             .await
-            .map_err(|e| Error::Unwrapping("header", address.clone(), e))?;
+            .map_err(|e| Error::Unwrapping("header", address, e))?;
 
         match preparsed.header().message_type() {
             message_types::ANNOUNCEMENT => self.handle_announcement(address, preparsed).await,
@@ -270,7 +276,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed
             .unwrap(announcement)
             .await
-            .map_err(|e| Error::Unwrapping("announcement", address.clone(), e))?;
+            .map_err(|e| Error::Unwrapping("announcement", address, e))?;
 
         let topic = message.payload().content().topic();
         // Insert new branch into store
@@ -322,7 +328,7 @@ impl<T> User<T> {
         let linked_msg_address = preparsed
             .header()
             .linked_msg_address()
-            .ok_or(Error::NotLinked("branch announcement", address.clone()))?;
+            .ok_or(Error::NotLinked("branch announcement", address))?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
                 // Spongos must be copied because wrapping mutates it
@@ -335,7 +341,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed
             .unwrap(branch_announcement)
             .await
-            .map_err(|e| Error::Unwrapping("branch announcement", address.clone(), e))?;
+            .map_err(|e| Error::Unwrapping("branch announcement", address, e))?;
 
         let new_topic = message.payload().content().new_topic();
         // Store spongos
@@ -365,7 +371,7 @@ impl<T> User<T> {
         let linked_msg_address = preparsed
             .header()
             .linked_msg_address()
-            .ok_or(Error::NotLinked("subscription", address.clone()))?;
+            .ok_or(Error::NotLinked("subscription", address))?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
                 // Spongos must be copied because wrapping mutates it
@@ -384,7 +390,7 @@ impl<T> User<T> {
         let (message, _spongos) = preparsed
             .unwrap(subscription)
             .await
-            .map_err(|e| Error::Unwrapping("subscription", address.clone(), e))?;
+            .map_err(|e| Error::Unwrapping("subscription", address, e))?;
 
         // Store spongos
         // Subscription messages are never stored in spongos to maintain consistency about the view of the
@@ -404,7 +410,7 @@ impl<T> User<T> {
         let linked_msg_address = preparsed
             .header()
             .linked_msg_address()
-            .ok_or(Error::NotLinked("unsubscribe", address.clone()))?;
+            .ok_or(Error::NotLinked("unsubscribe", address))?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address) {
                 // Spongos must be cloned because wrapping mutates it
@@ -417,7 +423,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed
             .unwrap(unsubscription)
             .await
-            .map_err(|e| Error::Unwrapping("unsubscribe", address.clone(), e))?;
+            .map_err(|e| Error::Unwrapping("unsubscribe", address, e))?;
 
         // Store spongos
         self.store_spongos(address.relative(), spongos, linked_msg_address);
@@ -472,7 +478,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed
             .unwrap(keyload)
             .await
-            .map_err(|e| Error::Unwrapping("keyload", address.clone(), e))?;
+            .map_err(|e| Error::Unwrapping("keyload", address, e))?;
 
         // Store spongos
         self.state.spongos_store.insert(address.relative(), spongos);
@@ -534,7 +540,7 @@ impl<T> User<T> {
         let linked_msg_address = preparsed
             .header()
             .linked_msg_address()
-            .ok_or(Error::NotLinked("signed", address.clone()))?;
+            .ok_or(Error::NotLinked("signed", address))?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
                 // Spongos must be copied because wrapping mutates it
@@ -547,7 +553,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed
             .unwrap(signed_packet)
             .await
-            .map_err(|e| Error::Unwrapping("signed packet", address.clone(), e))?;
+            .map_err(|e| Error::Unwrapping("signed packet", address, e))?;
 
         // Store spongos
         self.store_spongos(address.relative(), spongos, linked_msg_address);
@@ -579,7 +585,7 @@ impl<T> User<T> {
         let linked_msg_address = preparsed
             .header()
             .linked_msg_address()
-            .ok_or(Error::NotLinked("tagged", address.clone()))?;
+            .ok_or(Error::NotLinked("tagged", address))?;
         let mut linked_msg_spongos = {
             if let Some(spongos) = self.state.spongos_store.get(&linked_msg_address).copied() {
                 // Spongos must be copied because wrapping mutates it
@@ -592,7 +598,7 @@ impl<T> User<T> {
         let (message, spongos) = preparsed
             .unwrap(tagged_packet)
             .await
-            .map_err(|e| Error::Unwrapping("tagged packet", address.clone(), e))?;
+            .map_err(|e| Error::Unwrapping("tagged packet", address, e))?;
 
         // Store spongos
         self.store_spongos(address.relative(), spongos, linked_msg_address);
@@ -705,7 +711,7 @@ where
     /// Prepare channel Announcement message.
     pub async fn create_stream<Top: Into<Topic>>(&mut self, topic: Top) -> Result<SendResponse<TSR>> {
         // Check conditions
-        if let Some(appaddr) = self.stream_address() {
+        if self.stream_address().is_some() {
             return Err(Error::Setup(
                 "Cannot create a channel, user is already registered to channel",
             ));
@@ -730,10 +736,10 @@ where
             .map_err(|e| Error::Wrapped("wrap announce", e))?;
 
         // Attempt to send message
-        self.transport
-            .recv_message(stream_address)
-            .await
-            .map_err(|e| Error::AddressUsed("announce", stream_address))?;
+        if !self.transport.recv_message(stream_address).await.is_err(){
+            return Err(Error::Setup("Cannot create a channel, announce address already in use"));
+        }
+
         let send_response = self
             .transport
             .send_message(stream_address, transport_msg)
@@ -821,10 +827,11 @@ where
             .wrap()
             .await
             .map_err(|e| Error::Wrapped("wrap new branch", e))?;
-        self.transport
-            .recv_message(address)
-            .await
-            .map_err(|e| Error::AddressUsed("new branch", address))?;
+
+        if !self.transport.recv_message(address).await.is_err(){
+            return Err(Error::AddressUsed("new branch", address));
+        }
+
         let send_response = self
             .transport
             .send_message(address, transport_msg)
@@ -868,7 +875,7 @@ where
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
         let link_to = stream_address.relative();
-        let rel_address = MsgId::gen(stream_address.base(), &identifier, base_branch, SUB_MESSAGE_NUM);
+        let rel_address = MsgId::gen(stream_address.base(), identifier, base_branch, SUB_MESSAGE_NUM);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -910,15 +917,18 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        self.transport
-            .recv_message(message_address)
-            .await
-            .map_err(|e| Error::AddressUsed("subscribe", message_address))?;
+
+        // Attempt to send message
+        let has_msg = self.transport.recv_message(message_address).await;
+        if !has_msg.is_err(){
+            return Err(Error::AddressUsed("subscribe", message_address));
+        }
+
         let send_response = self
             .transport
             .send_message(message_address, transport_msg)
             .await
-            .map_err(|e| Error::Transport(stream_address, "send subscribe message", e))?;
+            .map_err(|e| Error::Transport(message_address, "send subscribe message", e))?;
 
         // If message has been sent successfully, commit message to stores
         // - Subscription messages are not stored in the cursor store
@@ -971,10 +981,10 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        self.transport
-            .recv_message(message_address)
-            .await
-            .map_err(|e| Error::AddressUsed("unsubscribe", message_address))?;
+        if self.transport.recv_message(message_address).await.is_err(){
+            return Err(Error::AddressUsed("unsubscribe", message_address));
+        }
+
         let send_response = self
             .transport
             .send_message(message_address, transport_msg)
@@ -1045,7 +1055,7 @@ where
                     self.state
                         .psk_store
                         .get(&pskid)
-                        .ok_or_else(|| Error::UnknownPsk(pskid))?,
+                        .ok_or( Error::UnknownPsk(pskid))?,
                 ))
             })
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
@@ -1068,10 +1078,10 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        self.transport
-            .recv_message(message_address)
-            .await
-            .map_err(|e| Error::AddressUsed("keyload", message_address))?;
+        if !self.transport.recv_message(message_address).await.is_err(){
+            return Err(Error::AddressUsed("keyload", message_address));
+        }
+
         let send_response = self
             .transport
             .send_message(message_address, transport_msg)
@@ -1216,7 +1226,7 @@ where
 
         let content = PCF::new_final_frame().with_content(signed_packet::Wrap::new(
             &mut linked_msg_spongos,
-            user_id.clone(),
+            &(*user_id),
             public_payload.as_ref(),
             masked_payload.as_ref(),
         ));
@@ -1231,10 +1241,9 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        self.transport
-            .recv_message(message_address)
-            .await
-            .map_err(|e| Error::AddressUsed("signed packet", message_address))?;
+        if !self.transport.recv_message(message_address).await.is_err(){
+            return Err(Error::AddressUsed("signed packet", message_address));
+        }
         let send_response = self
             .transport
             .send_message(message_address, transport_msg)
@@ -1316,10 +1325,9 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        self.transport
-            .recv_message(message_address)
-            .await
-            .map_err(|e| Error::AddressUsed("tagged packet", message_address))?;
+        if !self.transport.recv_message(message_address).await.is_err(){
+            return Err(Error::AddressUsed("tagged packet", message_address));
+        }
         let send_response = self
             .transport
             .send_message(message_address, transport_msg)
@@ -1355,7 +1363,7 @@ impl ContentSizeof<State> for sizeof::Context {
         let topics = user_state
             .topics
             .iter()
-            .filter(|t| user_state.cursor_store.get_latest_link(*t).is_some());
+            .filter(|t| user_state.cursor_store.get_latest_link(t).is_some());
         let amount_topics = topics.clone().count();
         self.mask(Size::new(amount_topics))?;
 
@@ -1364,17 +1372,21 @@ impl ContentSizeof<State> for sizeof::Context {
             let latest_link = user_state
                 .cursor_store
                 .get_latest_link(topic)
-                .ok_or(Error::MissingUserData(
-                    "latest link",
-                    &format!("branch {}", topic),
-                    "calculate sizeof",
+                .ok_or(SpongosError::InvalidAction(
+                    "calculate sizeof for topic latest link",
+                    topic.to_string(),
+                    "No Cursor".to_owned(),
                 ))?;
             self.mask(&latest_link)?;
 
             let cursors: Vec<(&Permissioned<Identifier>, &usize)> = user_state
                 .cursor_store
                 .cursors_by_topic(topic)
-                .ok_or(Error::TopicNotFound(topic.clone()))?
+                .ok_or(SpongosError::InvalidAction(
+                    "get cursor for topic",
+                    topic.to_string(),
+                    "No Cursor".to_owned(),
+                ))?
                 .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
@@ -1422,7 +1434,7 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
         let topics = user_state
             .topics
             .iter()
-            .filter(|t| user_state.cursor_store.get_latest_link(*t).is_some());
+            .filter(|t| user_state.cursor_store.get_latest_link(t).is_some());
         let amount_topics = topics.clone().count();
         self.mask(Size::new(amount_topics))?;
 
@@ -1431,17 +1443,21 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
             let latest_link = user_state
                 .cursor_store
                 .get_latest_link(topic)
-                .ok_or(Error::MissingUserData(
-                    "latest link",
-                    &format!("branch {}", topic),
-                    "wrap",
+                .ok_or(SpongosError::InvalidAction(
+                    "get latest link topic for wrap",
+                    topic.to_string(),
+                    "No latest link".to_owned(),
                 ))?;
             self.mask(&latest_link)?;
 
             let cursors: Vec<(&Permissioned<Identifier>, &usize)> = user_state
                 .cursor_store
                 .cursors_by_topic(topic)
-                .ok_or(Error::TopicNotFound(topic.clone()))?
+                .ok_or(SpongosError::InvalidAction(
+                    "get cursor for topic",
+                    topic.to_string(),
+                    "No cursor found".to_owned(),
+                ))?
                 .collect();
             let amount_cursors = cursors.len();
             self.mask(Size::new(amount_cursors))?;
