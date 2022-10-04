@@ -10,8 +10,6 @@ use async_trait::async_trait;
 use crypto::{keys::x25519, signatures::ed25519};
 
 // Streams
-#[cfg(feature = "did")]
-use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze},
@@ -25,9 +23,13 @@ use spongos::{
 
 // Local
 #[cfg(feature = "did")]
-use crate::id::did::{resolve_document, DIDUrlInfo};
 use crate::{
-    error::Result,
+    alloc::string::ToString,
+    id::did::{resolve_document, DIDUrlInfo},
+};
+
+use crate::{
+    error::{Error, Result},
     message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify},
 };
 
@@ -76,11 +78,16 @@ impl Identifier {
                     url_info.exchange_fragment(),
                     Some(identity_iota::did::MethodScope::key_agreement()),
                 ) {
-                    Some(e) => Ok(x25519::PublicKey::try_from_slice(&e.data().try_decode()?)?),
-                    None => Err(anyhow!(
-                        "DID Method fragment {} could not be resolved",
-                        url_info.exchange_fragment()
-                    )),
+                    Some(e) => {
+                        Ok(
+                            x25519::PublicKey::try_from_slice( &e.data().try_decode().map_err(|e| Error::did("try_decode", e))?)
+                                .map_err(|e| Error::Crypto("x25519::PublicKey try_from_slice", e))?)
+                    },
+                    None => Err(Error::did("when creating public key", alloc::format!(
+                            "DID Method fragment {} could not be resolved",
+                            url_info.exchange_fragment()
+                        ))
+                    ),
                 }
             }
         }
@@ -213,7 +220,7 @@ where
                     Ok(self)
                 }
                 #[cfg(feature = "did")]
-                _ => Err(anyhow!("expected Identity type 'Ed25519', found something else")),
+                o => Err(SpongosError::InvalidAction("verify data", o.to_string(), verifier.to_string())),
             },
             #[cfg(feature = "did")]
             1 => match verifier {
@@ -231,13 +238,13 @@ where
                         "#{}",
                         fragment_bytes
                             .to_str()
-                            .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
+                            .ok_or(SpongosError::Context("ContentVerify", SpongosError::InvalidAction("make signing_fragment", verifier.to_string(), "Fragment bytes cant be converted to string".to_string()).to_string()))?
                     );
 
-                    url_info.verify(&signing_fragment, &signature_bytes, &hash).await?;
+                    url_info.verify(&signing_fragment, &signature_bytes, &hash).await.map_err(|e| SpongosError::Context("ContentVerify", e.to_string()))?;
                     Ok(self)
                 }
-                _ => Err(anyhow!("expected Identity type 'DID', found something else")),
+                o => Err(SpongosError::InvalidAction("verify data", o.to_string(), verifier.to_string())),
             },
             o => Err(SpongosError::InvalidOption("identity", o)),
         }
@@ -258,12 +265,15 @@ impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
             }
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
-                let doc = resolve_document(url_info).await?;
+                let doc = resolve_document(url_info).await
+                    .map_err(|e| SpongosError::Context("ContentEncryptSizeOf", e.to_string()))?;
                 let method = doc
                     .document
                     .resolve_method(url_info.exchange_fragment(), None)
                     .expect("DID Method could not be resolved");
-                let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?;
+                    let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()
+                    .map_err(|e| SpongosError::Context("ContentEncrypt try_decode", e.to_string()))?)
+                    .map_err(|e| SpongosError::Context("ContentEncrypt x25519::PublicKey try_from_slice", e.to_string()))?;
                 self.x25519(&xkey, NBytes::new(key))
             }
         }
@@ -287,12 +297,16 @@ where
             }
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
-                let doc = resolve_document(url_info).await?;
+                let doc = resolve_document(url_info).await
+                    .map_err(|e| SpongosError::Context("ContentEncrypt", e.to_string()))?;
+
                 let method = doc
                     .document
                     .resolve_method(url_info.exchange_fragment(), None)
                     .expect("DID Method could not be resolved");
-                let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?;
+                let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()
+                    .map_err(|e| SpongosError::Context("ContentEncrypt try_decode", e.to_string()))?)
+                    .map_err(|e| SpongosError::Context("ContentEncrypt x25519::PublicKey try_from_slice", e.to_string()))?;
                 self.x25519(&xkey, NBytes::new(key))
             }
         }

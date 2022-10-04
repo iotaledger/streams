@@ -12,6 +12,7 @@ use identity_iota::{
 use crate::{
     error::{Error, Result},
     id::did::DataWrapper,
+    alloc::string::ToString
 };
 
 // Streams
@@ -22,6 +23,10 @@ use spongos::{
         types::Bytes,
     },
     PRP,
+    error::{
+        Result as SpongosResult,
+        Error as SpongosError,
+    }
 };
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -43,7 +48,7 @@ impl DIDUrlInfo {
     }
 
     pub(crate) async fn verify(&self, signing_fragment: &str, signature_bytes: &[u8], hash: &[u8]) -> Result<()> {
-        let did_url = IotaDID::parse(self.did())?.join(signing_fragment)?;
+        let did_url = IotaDID::parse(self.did()).map_err(|e| Error::did("parse did", e))?.join(signing_fragment).map_err(|e| Error::did("join did", e))?;
         let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url);
         signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
 
@@ -52,7 +57,7 @@ impl DIDUrlInfo {
         let doc = super::resolve_document(self).await?;
         doc.document
             .verify_data(&data, &VerifierOptions::new())
-            .map_err(|e| anyhow!("There was an issue validating the signature: {}", e))?;
+            .map_err(|e| Error::did("verify data from document", e))?;
 
         Ok(())
     }
@@ -99,7 +104,7 @@ impl AsRef<[u8]> for DIDUrlInfo {
 }
 
 impl Mask<&DIDUrlInfo> for sizeof::Context {
-    fn mask(&mut self, url_info: &DIDUrlInfo) -> Result<&mut Self> {
+    fn mask(&mut self, url_info: &DIDUrlInfo) -> SpongosResult<&mut Self> {
         self.mask(Bytes::new(url_info.did()))?
             .mask(Bytes::new(url_info.client_url()))?
             .mask(Bytes::new(url_info.exchange_fragment()))?
@@ -112,7 +117,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, url_info: &DIDUrlInfo) -> Result<&mut Self> {
+    fn mask(&mut self, url_info: &DIDUrlInfo) -> SpongosResult<&mut Self> {
         self.mask(Bytes::new(url_info.did()))?
             .mask(Bytes::new(url_info.client_url()))?
             .mask(Bytes::new(url_info.exchange_fragment()))?
@@ -125,7 +130,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, url_info: &mut DIDUrlInfo) -> Result<&mut Self> {
+    fn mask(&mut self, url_info: &mut DIDUrlInfo) -> SpongosResult<&mut Self> {
         let mut did_bytes = Vec::new();
         let mut client_url = Vec::new();
         let mut exchange_fragment_bytes = Vec::new();
@@ -135,10 +140,14 @@ where
             .mask(Bytes::new(&mut exchange_fragment_bytes))?
             .mask(Bytes::new(&mut signing_fragment_bytes))?;
 
-        *url_info.did_mut() = String::from_utf8(did_bytes)?;
-        *url_info.client_url_mut() = String::from_utf8(client_url)?;
-        *url_info.exchange_fragment_mut() = String::from_utf8(exchange_fragment_bytes)?;
-        *url_info.signing_fragment_mut() = String::from_utf8(signing_fragment_bytes)?;
+        let utf = |e: alloc::string::FromUtf8Error| {
+            SpongosError::Context("Mask DIDUrlInfo", Error::from(e).to_string())
+        };
+
+        *url_info.did_mut() = String::from_utf8(did_bytes).map_err(utf)?;
+        *url_info.client_url_mut() = String::from_utf8(client_url).map_err(utf)?;
+        *url_info.exchange_fragment_mut() = String::from_utf8(exchange_fragment_bytes).map_err(utf)?;
+        *url_info.signing_fragment_mut() = String::from_utf8(signing_fragment_bytes).map_err(utf)?;
         Ok(self)
     }
 }

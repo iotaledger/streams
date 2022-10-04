@@ -45,6 +45,10 @@ pub enum Error {
     #[error("Not enough space allocated for input stream (expected: {0}, found: {1})")]
     StreamAllocationExceededIn(usize, usize),
 
+    #[error("Generating context {0} failed due to {1}")]
+    Context(&'static str, String),
+
+
     #[error("{0}")]
     External(anyhow::Error),
 }

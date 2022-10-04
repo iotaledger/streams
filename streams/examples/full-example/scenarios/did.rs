@@ -1,7 +1,6 @@
 // Rust
 
 // 3rd-arty
-use anyhow::{anyhow, Result};
 use textwrap::{fill, indent};
 
 // IOTA
@@ -20,7 +19,7 @@ use streams::{
         Ed25519, Permissioned, Psk,
     },
     transport::tangle,
-    User,
+    User, Result,
 };
 
 use super::utils::{print_send_result, print_user};

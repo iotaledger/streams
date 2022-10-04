@@ -16,6 +16,65 @@ use crate::address::Address;
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
+#[cfg(feature = "did")]
+pub enum IdentityError {
+    #[error("Malformed {0}")]
+    Core(identity_iota::core::Error),
+    #[error("Malformed {0}")]
+    Error(identity_iota::did::Error),
+    #[error("Malformed {0}")]
+    DIDError(identity_iota::did::DIDError),
+    #[error("Malformed {0}")]
+    IotaCore(identity_iota::iota_core::Error),
+    #[error("Malformed {0}")]
+    IotaClient(identity_iota::client::Error),
+    #[error("Malformed {0}")]
+    Other(String)
+}
+
+#[cfg(feature = "did")]
+impl From<identity_iota::core::Error> for IdentityError {
+    fn from(error: identity_iota::core::Error) -> Self {
+        Self::Core(error)
+    }
+}
+
+#[cfg(feature = "did")]
+impl From<identity_iota::did::Error> for IdentityError {
+    fn from(error: identity_iota::did::Error) -> Self {
+        Self::Error(error)
+    }
+}
+
+#[cfg(feature = "did")]
+impl From<identity_iota::did::DIDError> for IdentityError {
+    fn from(error: identity_iota::did::DIDError) -> Self {
+        Self::DIDError(error)
+    }
+}
+
+#[cfg(feature = "did")]
+impl From<identity_iota::iota_core::Error> for IdentityError {
+    fn from(error: identity_iota::iota_core::Error) -> Self {
+        Self::IotaCore(error)
+    }
+}
+
+#[cfg(feature = "did")]
+impl From<identity_iota::client::Error> for IdentityError {
+    fn from(error: identity_iota::client::Error) -> Self {
+        Self::IotaClient(error)
+    }
+}
+
+#[cfg(feature = "did")]
+impl From<String> for IdentityError {
+    fn from(error: String) -> Self {
+        Self::Other(error)
+    }
+}
+
+#[derive(Debug, Error)]
 /// Error type of the iota client crate.
 #[allow(clippy::large_enum_variant)]
 pub enum Error {
@@ -31,8 +90,15 @@ pub enum Error {
     #[error("there was an issue with {0} the signature, cannot {1}")]
     Signature(&'static str, &'static str),
 
+    #[cfg(feature = "did")]
+    #[error("Encountered did issue {0}; Error: {1}")]
+    Did(&'static str, IdentityError),
+
     #[error("Internal Spongos error: {0}")]
     Spongos(SpongosError),
+
+    #[error("Crypto error whilest doing {0}: {1}")]
+    Crypto(&'static str, crypto::Error),
 
     #[error("External error: {0:?}")]
     External(anyhow::Error),
@@ -53,11 +119,25 @@ pub enum Error {
     Nonce(&'static str, f64),
 }
 
+impl Error {
+    #[cfg(feature = "did")]
+    pub fn did<T: Into<IdentityError>>(did: &'static str, e: T) -> Self {
+        Self::Did(did, e.into())
+    }
+}
+
 impl From<SpongosError> for Error {
     fn from(error: SpongosError) -> Self {
         Self::Spongos(error)
     }
 }
+
+impl From<FromUtf8Error> for Error {
+    fn from(error: FromUtf8Error) -> Self {
+        Self::Encoding("string", "utf8", Box::new(Self::External(error.into())))
+    }
+}
+
 
 impl From<FromHexError> for Error {
     fn from(error: FromHexError) -> Self {
@@ -73,12 +153,6 @@ impl From<reqwest::Error> for Error {
 
 impl From<TryFromSliceError> for Error {
     fn from(error: TryFromSliceError) -> Self {
-        Self::External(error.into())
-    }
-}
-
-impl From<FromUtf8Error> for Error {
-    fn from(error: FromUtf8Error) -> Self {
         Self::External(error.into())
     }
 }

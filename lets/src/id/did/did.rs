@@ -17,22 +17,27 @@ use spongos::{
         types::NBytes,
     },
     PRP,
+    error::{
+        Result as SpongosResult,
+        Error as SpongosError,
+    },
 };
 
 use crate::{
+    alloc::string::ToString,
     error::{Error, Result},
     id::did::DIDUrlInfo,
 };
 
 pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIotaDocument> {
-    let did_url = IotaDID::parse(url_info.did())?;
+    let did_url = IotaDID::parse(url_info.did()).map_err(|e| Error::did("parse did", e))?;
     let doc = DIDClient::builder()
-        .network(did_url.network()?)
-        .primary_node(url_info.client_url(), None, None)?
+        .network(did_url.network().map_err(|e| Error::did("DIDClient network", e))?)
+        .primary_node(url_info.client_url(), None, None).map_err(|e| Error::did("DIDClient set primary_node", e))?
         .build()
-        .await?
+        .await.map_err(|e| Error::did("DIDClient build", e))?
         .read_document(&did_url)
-        .await?;
+        .await.map_err(|e| Error::did("DIDClient read_doc", e))?;
     Ok(doc)
 }
 
@@ -66,7 +71,7 @@ impl Default for DID {
 }
 
 impl Mask<&DID> for sizeof::Context {
-    fn mask(&mut self, did: &DID) -> Result<&mut Self> {
+    fn mask(&mut self, did: &DID) -> SpongosResult<&mut Self> {
         self.mask(did.info().url_info())?
             .mask(NBytes::new(did.info().keypair().private()))?
             .mask(NBytes::new(did.info().exchange_keypair().private()))
@@ -78,7 +83,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, did: &DID) -> Result<&mut Self> {
+    fn mask(&mut self, did: &DID) -> SpongosResult<&mut Self> {
         self.mask(did.info().url_info())?
             .mask(NBytes::new(did.info().keypair().private()))?
             .mask(NBytes::new(did.info().exchange_keypair().private()))
@@ -90,7 +95,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, did: &mut DID) -> Result<&mut Self> {
+    fn mask(&mut self, did: &mut DID) -> SpongosResult<&mut Self> {
         let mut url_info = DIDUrlInfo::default();
         let mut private_key_bytes = [0; ed25519::SECRET_KEY_LENGTH];
         let mut exchange_private_key_bytes = [0; x25519::SECRET_KEY_LENGTH];
@@ -99,9 +104,9 @@ where
             .mask(NBytes::new(&mut exchange_private_key_bytes))?;
 
         let keypair = DIDKeyPair::try_from_private_key_bytes(KeyType::Ed25519, &private_key_bytes)
-            .map_err(|e| anyhow!("error unmasking DID private key: {}", e))?;
+            .map_err(|e| SpongosError::Context("Mask", Error::did("unmasking DID private key", e).to_string()))?;
         let xkeypair = DIDKeyPair::try_from_private_key_bytes(KeyType::X25519, &exchange_private_key_bytes)
-            .map_err(|e| anyhow!("error unmasking DID exchange private key: {}", e))?;
+            .map_err(|e| SpongosError::Context("Mask", Error::did("unmasking DID exchange private key", e).to_string()))?;
         *did.info_mut().keypair_mut() = keypair;
         *did.info_mut().exchange_keypair_mut() = xkeypair;
 
@@ -150,7 +155,8 @@ impl DIDInfo {
     }
 
     pub(crate) fn exchange_key(&self) -> Result<x25519::SecretKey> {
-        x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref()).map_err(|e| e.into())
+        x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref())
+            .map_err(|e| Error::Crypto("exchange_key from kepair", e))
     }
 }
 

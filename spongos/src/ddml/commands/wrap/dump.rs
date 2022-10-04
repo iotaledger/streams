@@ -1,11 +1,10 @@
-use anyhow::Result;
-
 use crate::{
     core::prp::PRP,
     ddml::{
         commands::{wrap::Context, Dump},
         io,
     },
+    error::Result
 };
 
 impl<F: PRP, OS: io::OStream> Dump for Context<OS, F> {

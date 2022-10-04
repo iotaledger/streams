@@ -1,7 +1,6 @@
 use alloc::vec::Vec;
 use core::borrow::BorrowMut;
 
-use anyhow::Result;
 use crypto::{keys::x25519, signatures::ed25519};
 use generic_array::{typenum::U64, GenericArray};
 use rand::{distributions::Standard, Rng};
@@ -16,6 +15,7 @@ use crate::{
         modifiers::External,
         types::{Bytes, Mac, NBytes, Size, Uint8},
     },
+    error::Result
 };
 
 fn absorb_mask_u8<F>() -> Result<()>
