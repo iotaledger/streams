@@ -121,7 +121,7 @@ use crate::api::{
 /// any method from [`StreamExt`] and [`TryStreamExt`] polling for new messages.
 ///
 /// Being a [`futures::Stream`] that fetches data from an external source, it's naturally defined as
-/// a [`futures::TryStream`], which means it returns a [`Result`] wrapping the [`UnwrappedMessage`].
+/// a [`futures::TryStream`], which means it returns a [`Result`] wrapping the `UnwrappedMessage`.
 /// In the event of a network failure, [`Messages::next()`] will return `Err`. It is strongly
 /// suggested that, when suitable, use the methods in [`futures::TryStreamExt`] to make the
 /// error-handling much more ergonomic (with the use of `?`) and shortcircuit the

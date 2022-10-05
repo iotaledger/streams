@@ -31,11 +31,10 @@ impl Size {
         d
     }
 
-
     /// Encodes inner `usize` into a byte array.
     ///
     /// Arguments:
-    /// * `codec`: a function for encoding bytes to a [`Context`] stream
+    /// * `codec`: a function for encoding bytes to a [`Spongos`] stream
     pub(crate) fn encode(&self, mut codec: impl FnMut(u8) -> Result<()>) -> Result<()> {
         let d = self.num_bytes();
         for s in (0..d).rev() {
@@ -48,7 +47,7 @@ impl Size {
     /// Decodes inner `usize` from a byte array.
     ///
     /// Arguments:
-    /// * `codec`: a function for decoding bytes from a [`Context`] stream
+    /// * `codec`: a function for decoding bytes from a [`Spongos`] stream
     pub(crate) fn decode(mut codec: impl FnMut(&mut u8) -> Result<()>, mut num_bytes: u8) -> Result<Self> {
         let mut result = 0usize;
         while 0 < num_bytes {

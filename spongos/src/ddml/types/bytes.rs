@@ -2,7 +2,8 @@ use core::{fmt, iter::FromIterator};
 
 use alloc::{string::String, vec::Vec};
 
-/// Variable-size array of bytes wrapper for `DDML` operations, the size is not known at compile time.
+/// Variable-size array of bytes wrapper for `DDML` operations, the size is not known at compile
+/// time.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Bytes<T = Vec<u8>>(T);
 
@@ -43,7 +44,7 @@ where
     /// Attempts to convert the Bytes into a str
     ///
     /// If the Bytes are valid UTF8, this method returns `Some(str)`, otherwise returns `None`
-    /// This is the borrowed alternative of the owned [`Bytes::into_string()`].
+    /// This is the borrowed alternative of the owned [`Bytes::to_string()`].
     pub fn to_str(&self) -> Option<&str> {
         core::str::from_utf8(self.0.as_ref()).ok()
     }
@@ -94,7 +95,7 @@ impl Bytes<Vec<u8>> {
     /// Attempts to convert the Bytes into a String
     ///
     /// If the Bytes are valid UTF8, this method returns `Some(String)`, otherwise returns `None`
-    /// This is the owned alternative of the borrowed [`Bytes::as_str()`].
+    /// This is the owned alternative of the borrowed [`Bytes::to_str()`].
     pub fn to_string(self) -> Option<String> {
         String::from_utf8(self.0).ok()
     }

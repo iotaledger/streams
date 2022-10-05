@@ -6,7 +6,8 @@ use crate::ddml::{
     types::{Bytes, Maybe, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
 };
 
-/// Increases [`Context`] size by 1 byte, representing the number of encoded bytes for all Uint8 values.
+/// Increases [`Context`] size by 1 byte, representing the number of encoded bytes for all Uint8
+/// values.
 impl Absorb<Uint8> for Context {
     fn absorb(&mut self, _u: Uint8) -> Result<&mut Self> {
         self.size += 1;
@@ -14,7 +15,8 @@ impl Absorb<Uint8> for Context {
     }
 }
 
-/// Increases [`Context`] size by 2 bytes, representing the number of encoded bytes for all Uint16 values.
+/// Increases [`Context`] size by 2 bytes, representing the number of encoded bytes for all Uint16
+/// values.
 impl Absorb<Uint16> for Context {
     fn absorb(&mut self, _u: Uint16) -> Result<&mut Self> {
         self.size += 2;
@@ -22,7 +24,8 @@ impl Absorb<Uint16> for Context {
     }
 }
 
-/// Increases [`Context`] size by 4 bytes, representing the number of encoded bytes for all Uint32 values.
+/// Increases [`Context`] size by 4 bytes, representing the number of encoded bytes for all Uint32
+/// values.
 impl Absorb<Uint32> for Context {
     fn absorb(&mut self, _u: Uint32) -> Result<&mut Self> {
         self.size += 4;
@@ -30,7 +33,8 @@ impl Absorb<Uint32> for Context {
     }
 }
 
-/// Increases [`Context`] size by 8 bytes, representing the number of encoded bytes for all Uint64 values.
+/// Increases [`Context`] size by 8 bytes, representing the number of encoded bytes for all Uint64
+/// values.
 impl Absorb<Uint64> for Context {
     fn absorb(&mut self, _u: Uint64) -> Result<&mut Self> {
         self.size += 8;
@@ -83,9 +87,9 @@ impl Absorb<&x25519::PublicKey> for Context {
     }
 }
 
-/// Absorbs a [`Maybe`] wrapper for an `Option` into the [`Context`] size. If the `Option` is `Some`,
-/// a `Uint8(1)` value is absorbed first, followed by the content. If the `Option` is `None`, only a
-/// `Uint8(0)` is absorbed.
+/// Absorbs a [`Maybe`] wrapper for an `Option` into the [`Context`] size. If the `Option` is
+/// `Some`, a `Uint8(1)` value is absorbed first, followed by the content. If the `Option` is
+/// `None`, only a `Uint8(0)` is absorbed.
 impl<T> Absorb<Maybe<Option<T>>> for Context
 where
     Self: Absorb<T>,

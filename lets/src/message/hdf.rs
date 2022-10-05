@@ -40,9 +40,9 @@ pub struct HDF {
     /// Length of the payload of the message (can be set to 0)
     // payload length is 10 bits
     payload_length: u16,
-    /// Frame type of [`PCF`] for the message
+    /// Frame type of [`crate::message::PCF`] for the message
     frame_type: u8,
-    /// Number of [`PCF`] messages to expect for full message
+    /// Number of [`crate::message::PCF`] messages to expect for full message
     // frame count is 22 bits
     payload_frame_count: u32,
     /// Link to previous message in Stream

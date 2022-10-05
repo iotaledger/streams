@@ -82,8 +82,8 @@ impl PskId {
         Self(array)
     }
 
-    /// Generates a new [`PskId`] by using [`Spongos`] to sponge the provided seed bytes into a fixed
-    /// 16 byte array, and wrapping it.
+    /// Generates a new [`PskId`] by using [`Spongos`] to sponge the provided seed bytes into a
+    /// fixed 16 byte array, and wrapping it.
     ///
     /// # Arguments
     /// * `seed`: A unique variable sized seed slice

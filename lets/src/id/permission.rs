@@ -115,7 +115,8 @@ impl<Identifier> Permissioned<Identifier> {
         }
     }
 
-    /// Returns a new [`Permissioned`] wrapper for a reference to the inner values of the current [`Permissioned`].
+    /// Returns a new [`Permissioned`] wrapper for a reference to the inner values of the current
+    /// [`Permissioned`].
     pub fn as_ref(&self) -> Permissioned<&Identifier> {
         match self {
             Self::Read(id) => Permissioned::Read(id),

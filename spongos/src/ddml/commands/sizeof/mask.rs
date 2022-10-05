@@ -10,7 +10,8 @@ use crate::{
     },
 };
 
-/// Increases [`Context`] size by 1 byte, representing the number of masking bytes for all Uint8 values.
+/// Increases [`Context`] size by 1 byte, representing the number of masking bytes for all Uint8
+/// values.
 impl Mask<Uint8> for Context {
     fn mask(&mut self, _val: Uint8) -> Result<&mut Self> {
         self.size += 1;
@@ -18,7 +19,8 @@ impl Mask<Uint8> for Context {
     }
 }
 
-/// Increases [`Context`] size by 2 bytes, representing the number of masking bytes for all Uint16 values.
+/// Increases [`Context`] size by 2 bytes, representing the number of masking bytes for all Uint16
+/// values.
 impl Mask<Uint16> for Context {
     fn mask(&mut self, _val: Uint16) -> Result<&mut Self> {
         self.size += 2;
@@ -26,7 +28,8 @@ impl Mask<Uint16> for Context {
     }
 }
 
-/// Increases [`Context`] size by 4 bytes, representing the number of masking bytes for all Uint32 values.
+/// Increases [`Context`] size by 4 bytes, representing the number of masking bytes for all Uint32
+/// values.
 impl Mask<Uint32> for Context {
     fn mask(&mut self, _val: Uint32) -> Result<&mut Self> {
         self.size += 4;
@@ -34,7 +37,8 @@ impl Mask<Uint32> for Context {
     }
 }
 
-/// Increases [`Context`] size by 8 bytes, representing the number of masking bytes for all Uint64 values.
+/// Increases [`Context`] size by 8 bytes, representing the number of masking bytes for all Uint64
+/// values.
 impl Mask<Uint64> for Context {
     fn mask(&mut self, _val: Uint64) -> Result<&mut Self> {
         self.size += 8;

@@ -95,10 +95,10 @@ impl IStream for &[u8] {
         Ok(())
     }
 
-
-    /// The first thing the function does is call `ensure_size` to make sure there are enough bytes in
-    /// the buffer. If there aren't, it returns an error. Next the stream is split at the advancement
-    /// value, returning the head of that split, and replacing self with the remainder of the slice.
+    /// The first thing the function does is call `ensure_size` to make sure there are enough bytes
+    /// in the buffer. If there aren't, it returns an error. Next the stream is split at the
+    /// advancement value, returning the head of that split, and replacing self with the
+    /// remainder of the slice.
     ///
     /// Arguments:
     /// * `n`: The number of bytes to advance the cursor by.
@@ -138,9 +138,10 @@ where
         self.deref().ensure_size(n)
     }
 
-    /// The first thing the function does is call `ensure_size` to make sure there are enough bytes in
-    /// the buffer. If there aren't, it returns an error. Next the stream is split at the advancement
-    /// value, returning the head of that split, and replacing self with the remainder of the slice.
+    /// The first thing the function does is call `ensure_size` to make sure there are enough bytes
+    /// in the buffer. If there aren't, it returns an error. Next the stream is split at the
+    /// advancement value, returning the head of that split, and replacing self with the
+    /// remainder of the slice.
     ///
     /// Arguments:
     /// * `n`: The number of bytes to advance the cursor by.

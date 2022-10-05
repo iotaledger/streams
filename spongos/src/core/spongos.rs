@@ -75,8 +75,8 @@ impl<F> Spongos<F> {
 }
 
 impl<F: PRP> Spongos<F> {
-    /// Retrieves `n` bytes from outer, provided there are enough bytes to satisfy the request. If not
-    /// the outer position - `Ratesize` number of bytes are retrieved instead.
+    /// Retrieves `n` bytes from outer, provided there are enough bytes to satisfy the request. If
+    /// not the outer position - `Ratesize` number of bytes are retrieved instead.
     fn outer_min_mut(&mut self, n: usize) -> &mut [u8] {
         let m = core::cmp::min(self.pos + n, F::RateSize::USIZE);
         &mut self.s.outer_mut()[self.pos..m]

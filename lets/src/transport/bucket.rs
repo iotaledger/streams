@@ -45,7 +45,6 @@ where
     type Msg = Msg;
     type SendResponse = Msg;
 
-
     /// If the address is not in the bucket, add it and return the message.
     ///
     /// Arguments:

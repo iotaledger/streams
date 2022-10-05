@@ -44,5 +44,13 @@ mod message;
 /// [`User`] API.
 mod api;
 
-pub use api::{message::Message, selector::Selector, send_response::SendResponse, user::User};
+pub use api::{
+    message::{Message, MessageContent},
+    message_builder::MessageBuilder,
+    messages::Messages,
+    selector::Selector,
+    send_response::SendResponse,
+    user::User,
+    user_builder::UserBuilder,
+};
 pub use lets::{address::Address, id, message::TransportMessage, transport};

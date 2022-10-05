@@ -88,7 +88,8 @@ impl<'a, 'b, Subscribers, Psks> Wrap<'a, 'b, Subscribers, Psks> {
     /// * `subscribers`: A list of permissioned subscribers for the branch.
     /// * `psks`: A collection of pre-shared keys to be granted read access to the branch.
     /// * `key`: The key used to encrypt the message.
-    /// * `nonce`: A random number that is used to ensure that the same message is not encrypted twice.
+    /// * `nonce`: A random number that is used to ensure that the same message is not encrypted
+    ///   twice.
     /// * `author_id`: The [`Identity`] of the author of the message.
     pub(crate) fn new(
         initial_state: &'a mut Spongos,

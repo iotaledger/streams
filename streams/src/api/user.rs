@@ -214,8 +214,8 @@ impl<T> User<T> {
         self.state.topics.iter()
     }
 
-    /// Iterates through known topics, returning the [`Topic`] that matches the [`TopicHash`] provided
-    /// if any
+    /// Iterates through known topics, returning the [`Topic`] that matches the [`TopicHash`]
+    /// provided if any
     ///
     /// # Arguments
     /// * `hash`: The [`TopicHash`] from a message header
@@ -235,8 +235,8 @@ impl<T> User<T> {
     }
 
     /// Returns an iterator over a [`Topic`] mapped branch in [`CursorStore`], producing tuples of
-    /// [`Permissioned`][`Identifier`] and a cursor. Used to carry permissions forward through branch
-    /// declarations. Returns an error if the [`Topic`] is not found in store.
+    /// [`Permissioned`][`Identifier`] and a cursor. Used to carry permissions forward through
+    /// branch declarations. Returns an error if the [`Topic`] is not found in store.
     ///
     /// # Arguments
     /// * `topic`: The [`Topic`] of the branch to fetch cursors for
@@ -252,9 +252,9 @@ impl<T> User<T> {
         self.state.subscribers.iter()
     }
 
-    /// If the subscriber is not readonly and the [`Permissioned`] is not tracked or the [`Permissioned`]
-    /// is tracked and not equal to the provided subscriber [`Permissioned`], then the cursor should
-    /// be stored.
+    /// If the subscriber is not readonly and the [`Permissioned`] is not tracked or the
+    /// [`Permissioned`] is tracked and not equal to the provided subscriber [`Permissioned`],
+    /// then the cursor should be stored.
     ///
     /// # Arguments:
     /// * `topic`: The topic of the branch to be stored in.
@@ -300,7 +300,8 @@ impl<T> User<T> {
         self.state.psk_store.insert(psk.to_pskid(), psk).is_none()
     }
 
-    /// Remove a [`Psk`] from state by its [identifier](`PskId`). Returns true if the [`Psk`] was present.
+    /// Remove a [`Psk`] from state by its [identifier](`PskId`). Returns true if the [`Psk`] was
+    /// present.
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
         self.state.psk_store.remove(&pskid).is_some()
     }
@@ -342,7 +343,8 @@ impl<T> User<T> {
         }
     }
 
-    /// Processes an announcement message, binding a [`User`] to the stream announced in the message.
+    /// Processes an announcement message, binding a [`User`] to the stream announced in the
+    /// message.
     ///
     /// # Arguments:
     /// * `address`: The [`Address`] of the message to be processed
@@ -380,7 +382,6 @@ impl<T> User<T> {
 
         Ok(Message::from_lets_message(address, message))
     }
-
 
     /// Processes a branch announcement message, creating a new branch in [`CursorStore`], carrying
     /// over mapped permissions and cursors from the previous branch.
@@ -480,7 +481,8 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
-    /// Processes a [`User`] unsubscription message, removing the subscriber [`Identifier`] from store.
+    /// Processes a [`User`] unsubscription message, removing the subscriber [`Identifier`] from
+    /// store.
     ///
     /// # Arguments:
     /// * `address`: The [`Address`] of the message to be processed
@@ -512,9 +514,9 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
-    /// Processes a keyload message, updating store to include the contained list of [permissions](`Permissioned`).
-    /// All keyload messages are linked to the announcement message to ensure they can always be
-    /// read by a [`User`] that can sequence up to it.
+    /// Processes a keyload message, updating store to include the contained list of
+    /// [permissions](`Permissioned`). All keyload messages are linked to the announcement
+    /// message to ensure they can always be read by a [`User`] that can sequence up to it.
     ///
     /// # Arguments:
     /// * `address`: The [`Address`] of the message to be processed
@@ -695,7 +697,8 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
-    /// Creates an encrypted, serialised representation of a [`User`] `State` for backup and recovery.
+    /// Creates an encrypted, serialised representation of a [`User`] `State` for backup and
+    /// recovery.
     ///
     /// # Arguments
     /// * `pwd`: The password to encrypt the `State` with
@@ -1244,8 +1247,9 @@ where
         MessageBuilder::new(self)
     }
 
-    /// Create and send a new Signed Packet message to the specified branch. The message will contain
-    /// a masked and an unmasked payload. The message will be signed by the [`User`] [`Identity`] keys.
+    /// Create and send a new Signed Packet message to the specified branch. The message will
+    /// contain a masked and an unmasked payload. The message will be signed by the [`User`]
+    /// [`Identity`] keys.
     ///
     /// # Arguments
     /// * `topic`: The [`Topic`] of the branch to send the message to.
@@ -1326,8 +1330,8 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
-    /// Create and send a new Tagged Packet message to the specified branch. The message will contain
-    /// a masked and an unmasked payload.
+    /// Create and send a new Tagged Packet message to the specified branch. The message will
+    /// contain a masked and an unmasked payload.
     ///
     /// # Arguments
     /// * `topic`: The [`Topic`] of the branch to send the message to.

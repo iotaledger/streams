@@ -17,8 +17,6 @@ use identity_iota::{
 };
 
 // IOTA-Streams
-#[cfg(feature = "did")]
-use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519 as Ed25519Command, Mask, Squeeze, X25519},
@@ -37,8 +35,8 @@ use crate::{
     message::{ContentDecrypt, ContentSign, ContentSignSizeof},
 };
 
-/// Wrapper around [`Identifier`], specifying which type of [`Identity`] is being used. An [`Identity`]
-/// is the foundation of message sending and verification.
+/// Wrapper around [`Identifier`], specifying which type of [`Identity`] is being used. An
+/// [`Identity`] is the foundation of message sending and verification.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(clippy::large_enum_variant)]
 pub struct Identity {
@@ -55,7 +53,7 @@ impl Default for Identity {
 }
 
 impl Identity {
-    /// Create a new [`Identity`] from the provided [`IdentityKind`] wrapper
+    /// Create a new [`Identity`] from the provided `IdentityKind` wrapper
     ///
     /// # Arguments
     /// * `identity_kind`: A wrapper containing [`Identity`] details

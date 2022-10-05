@@ -123,9 +123,9 @@ impl<'a, F: PRP, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<OS, 
     }
 }
 
-/// Absorbs a [`Maybe`] wrapper for an `Option` into the [`Context`] stream. If the `Option` is `Some`,
-/// a `Uint8(1)` value is absorbed first, followed by the content. If the `Option` is `None`, only a
-/// `Uint8(0)` is absorbed.
+/// Absorbs a [`Maybe`] wrapper for an `Option` into the [`Context`] stream. If the `Option` is
+/// `Some`, a `Uint8(1)` value is absorbed first, followed by the content. If the `Option` is
+/// `None`, only a `Uint8(0)` is absorbed.
 impl<F, OS, T> Absorb<Maybe<Option<T>>> for Context<OS, F>
 where
     Self: Absorb<T> + Absorb<Uint8>,

@@ -173,7 +173,8 @@ impl DIDInfo {
         &mut self.exchange_keypair.0
     }
 
-    /// Converts key exchange [`DIDKeyPair`] into an [`x25519::SecretKey`] for native Streams operations
+    /// Converts key exchange [`DIDKeyPair`] into an [`x25519::SecretKey`] for native Streams
+    /// operations
     pub(crate) fn exchange_key(&self) -> Result<x25519::SecretKey> {
         x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref()).map_err(|e| e.into())
     }

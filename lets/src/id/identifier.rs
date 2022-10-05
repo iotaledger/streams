@@ -11,8 +11,6 @@ use async_trait::async_trait;
 use crypto::{keys::x25519, signatures::ed25519};
 
 // Streams
-#[cfg(feature = "did")]
-use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze},
@@ -202,10 +200,11 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    /// Verifies the signature of the message based on the type of [`Identifier`] of the signing user.
-    /// If the sender [`Identifier`] is of type [`Identifier::Ed25519`], then the public key is used
-    /// to verify the message signature. If it is of type [`Identifier::DID`], then the `DID` document
-    /// is retrieved and the signature is verified using the appropriately tagged `Verification Method`.
+    /// Verifies the signature of the message based on the type of [`Identifier`] of the signing
+    /// user. If the sender [`Identifier`] is of type [`Identifier::Ed25519`], then the public
+    /// key is used to verify the message signature. If it is of type [`Identifier::DID`], then
+    /// the `DID` document is retrieved and the signature is verified using the appropriately
+    /// tagged `Verification Method`.
     ///
     /// Arguments:
     /// * `verifier`: The [`Identifier`] of the signer.

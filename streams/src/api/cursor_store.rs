@@ -53,7 +53,8 @@ impl CursorStore {
         removals.count() > 0
     }
 
-    /// Given a [`Topic`] and an [`Identifier`], return the [`Permissioned`] [`Identifier`] if it exists
+    /// Given a [`Topic`] and an [`Identifier`], return the [`Permissioned`] [`Identifier`] if it
+    /// exists
     ///
     /// Arguments:
     /// * `topic`: The [`Topic`] of the branch that the cursor is stored in.
@@ -111,9 +112,9 @@ impl CursorStore {
         self.0.get(topic).map(|inner| inner.cursors.iter())
     }
 
-    /// If the [`Permissioned`] [`Identifier`] is already in the map, and the permission is different,
-    /// remove the old permission and keep the old cursor. Otherwise, insert the new permission and
-    /// cursor
+    /// If the [`Permissioned`] [`Identifier`] is already in the map, and the permission is
+    /// different, remove the old permission and keep the old cursor. Otherwise, insert the new
+    /// permission and cursor
     ///
     /// Arguments:
     /// * `topic`: The [`Topic`] of the branch that the cursor is stored in.

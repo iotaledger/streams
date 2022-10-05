@@ -165,8 +165,8 @@ where
         Ok(response)
     }
 
-    /// Retrieves a message indexed at the provided [`Address`] from the tangle. Errors if no messages
-    /// are found.
+    /// Retrieves a message indexed at the provided [`Address`] from the tangle. Errors if no
+    /// messages are found.
     ///
     /// Arguments:
     /// * `address`: The address of the message to retrieve.

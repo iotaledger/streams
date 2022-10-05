@@ -34,8 +34,8 @@ impl<'a, F: PRP, IS: io::IStream> AbsorbContext<'a, F, IS> {
     }
 }
 
-/// Retrieves bytes from [`Context`] stream and advances the read cursor. Then the `Context` [`Spongos`]
-/// is used to decode the stream slice.
+/// Retrieves bytes from [`Context`] stream and advances the read cursor. Then the `Context`
+/// [`Spongos`] is used to decode the stream slice.
 impl<F: PRP, IS: io::IStream> Unwrap for AbsorbContext<'_, F, IS> {
     fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self>
     where
@@ -99,8 +99,8 @@ impl<F: PRP, T: AsMut<[u8]>, IS: io::IStream> Absorb<NBytes<T>> for Context<IS, 
     }
 }
 
-/// Reads a variable sized [`Bytes`] wrapper from [`Context`]. `Bytes<bytes[n]>` does not have a known
-/// size, so first the [`Size`] `n` has to be decoded, and then `n` bytes are decoded.
+/// Reads a variable sized [`Bytes`] wrapper from [`Context`]. `Bytes<bytes[n]>` does not have a
+/// known size, so first the [`Size`] `n` has to be decoded, and then `n` bytes are decoded.
 impl<F: PRP, IS: io::IStream> Absorb<Bytes<&mut Vec<u8>>> for Context<IS, F> {
     fn absorb(&mut self, mut bytes: Bytes<&mut Vec<u8>>) -> Result<&mut Self> {
         let mut size = Size::default();
@@ -137,9 +137,9 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut x25519::PublicKey> for Context<
     }
 }
 
-/// Reads a [`Maybe`] wrapper for an `Option` from the [`Context`] stream. If the first `Uint8` decoded
-/// is a `Uint8(1)`, then the `Option` is a `Some(T)`, and the content `T` is decoded next. If it is a
-/// `Uint8(0)`, then the `Option` is a `None`.
+/// Reads a [`Maybe`] wrapper for an `Option` from the [`Context`] stream. If the first `Uint8`
+/// decoded is a `Uint8(1)`, then the `Option` is a `Some(T)`, and the content `T` is decoded next.
+/// If it is a `Uint8(0)`, then the `Option` is a `None`.
 impl<'a, F, IS, T> Absorb<Maybe<&'a mut Option<T>>> for Context<IS, F>
 where
     for<'b> Self: Absorb<&'b mut T> + Absorb<&'b mut Uint8>,

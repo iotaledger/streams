@@ -53,8 +53,8 @@ impl<F> PreparsedMessage<F> {
         &self.transport_msg
     }
 
-    /// Consumes the [`PreparsedMessage`], returning a tuple containing the message `HDF`, raw `TransportMessage` and
-    /// read position cursor
+    /// Consumes the [`PreparsedMessage`], returning a tuple containing the message `HDF`, raw
+    /// `TransportMessage` and read position cursor
     pub fn into_parts(self) -> (HDF, TransportMessage, Spongos<F>, usize) {
         (self.header, self.transport_msg, self.spongos, self.cursor)
     }

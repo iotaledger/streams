@@ -37,7 +37,8 @@ pub trait ContentSignSizeof<T> {
     async fn sign_sizeof(&mut self, ctx: &T) -> Result<&mut Self>;
 }
 
-/// Used to sign the `Context` `Spongos` state hash and encode the signature into the `Context` stream
+/// Used to sign the `Context` `Spongos` state hash and encode the signature into the `Context`
+/// stream
 #[async_trait(?Send)]
 pub trait ContentSign<T> {
     async fn sign(&mut self, signer: &T) -> Result<&mut Self>;
@@ -49,7 +50,8 @@ pub trait ContentVerify<T> {
     async fn verify(&mut self, verifier: &T) -> Result<&mut Self>;
 }
 
-/// Used to determine the encoding size of the encryption operation for a key slice for recipient `T`
+/// Used to determine the encoding size of the encryption operation for a key slice for recipient
+/// `T`
 #[async_trait(?Send)]
 pub trait ContentEncryptSizeOf<T> {
     async fn encrypt_sizeof(&mut self, recipient: &T, key: &[u8]) -> Result<&mut Self>;

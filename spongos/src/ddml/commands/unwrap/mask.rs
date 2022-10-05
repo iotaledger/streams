@@ -34,8 +34,8 @@ impl<'a, F: PRP, IS: io::IStream> MaskContext<'a, F, IS> {
     }
 }
 
-/// Decrypts bytes from the [`Context`] spongos, and advances the stream by the provided bytes length,
-/// copying those bytes into the stream.
+/// Decrypts bytes from the [`Context`] spongos, and advances the stream by the provided bytes
+/// length, copying those bytes into the stream.
 impl<F: PRP, IS: io::IStream> Unwrap for MaskContext<'_, F, IS> {
     fn unwrapn<T>(&mut self, mut bytes: T) -> Result<&mut Self>
     where
@@ -150,8 +150,8 @@ where
 }
 
 /// Decrypts a [`Maybe`] wrapper for an `Option` from the [`Context`] stream. If the first `Uint8`
-/// decrypted is a `Uint8(1)`, then the `Option` is a `Some(T)`, and the content `T` is decrypted next.
-/// If it is a `Uint8(0)`, then the `Option` is a `None`.
+/// decrypted is a `Uint8(1)`, then the `Option` is a `Some(T)`, and the content `T` is decrypted
+/// next. If it is a `Uint8(0)`, then the `Option` is a `None`.
 impl<'a, F, IS, T> Mask<Maybe<&'a mut Option<T>>> for Context<IS, F>
 where
     for<'b> Self: Mask<&'b mut T> + Mask<&'b mut Uint8>,

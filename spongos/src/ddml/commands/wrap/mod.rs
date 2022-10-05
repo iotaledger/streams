@@ -30,8 +30,8 @@ impl<OS, F> Context<OS, F> {
         }
     }
 
-    /// Creates a new [`Context`] from a provided write stream and [`Spongos`] state. Used for forking
-    /// `DDML` operations. This allows for a copy of an existing [`Context`] to be used.
+    /// Creates a new [`Context`] from a provided write stream and [`Spongos`] state. Used for
+    /// forking `DDML` operations. This allows for a copy of an existing [`Context`] to be used.
     pub(crate) fn new_with_spongos(stream: OS, spongos: Spongos<F>) -> Self {
         Self { spongos, stream }
     }
@@ -57,7 +57,7 @@ impl<OS, F> Context<OS, F> {
 }
 
 /// Helper trait for wrapping (encoding/absorbing) uint8s.
-/// Base trait for encoding binary data into an [`OStream`]
+/// Base trait for encoding binary data into an [OStream](`crate::ddml::io::OStream`)
 ///
 /// The different commands that write data to the output stream implement
 /// this trait to perform their particular cryptographic processing while

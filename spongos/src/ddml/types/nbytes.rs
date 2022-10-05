@@ -97,8 +97,8 @@ impl<T> rand::distributions::Distribution<NBytes<T>> for rand::distributions::St
 where
     T: AsMut<[u8]> + Default,
 {
-    /// Create a randomized array for a specific object type. A default of that object will be generated
-    /// and filled with random bytes before being returned.
+    /// Create a randomized array for a specific object type. A default of that object will be
+    /// generated and filled with random bytes before being returned.
     ///
     /// Arguments:
     /// * `rng`: The random number generator to use.

@@ -38,8 +38,8 @@ impl TransportMessage {
 
 impl TransportMessage {
     /// Creates a new [`unwrap::Context`] for the message body and decodes the [`HDF`].
-    /// The remaining context [`Spongos`] and cursor position are then  wrapped with the [`HDF`] into
-    /// a [`PreparsedMessage`] for content processing and returned.
+    /// The remaining context [`spongos::Spongos`] and cursor position are then  wrapped with the
+    /// [`HDF`] into a [`PreparsedMessage`] for content processing and returned.
     pub async fn parse_header<F>(self) -> Result<PreparsedMessage<F>>
     where
         F: PRP + Default,

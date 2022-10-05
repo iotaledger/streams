@@ -27,11 +27,10 @@ use crate::{id::Identifier, message::Topic};
 
 /// Abstract representation of a Message Address
 ///
-/// An `Address` is comprised of 2 distinct parts: the application address
-/// ([`Address::appaddr`]) and the message identifier ([`Address::msgid`]). The
-/// application address is unique per application and is common in the `Address`
-/// of all messages published in it. The message identifier is produced
-/// pseudo-randomly out of the publisher's identifier and the message's sequence
+/// An `Address` is comprised of 2 distinct parts: the [application address](`AppAddr`)
+/// and the [message identifier](`MsgId`). The application address is unique per application
+/// and is common in the `Address` of all messages published in it. The message identifier
+/// is produced pseudo-randomly out of the publisher's identifier and the message's sequence
 /// number
 ///
 /// ## exchangeable encoding

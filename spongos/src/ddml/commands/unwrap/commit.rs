@@ -5,7 +5,7 @@ use crate::{
     ddml::commands::{unwrap::Context, Commit},
 };
 
-/// Commit [`Spongos`] state.
+/// Commit [Spongos](`crate::core::spongos::Spongos`) state.
 impl<F: PRP, IS> Commit for Context<IS, F> {
     fn commit(&mut self) -> Result<&mut Self> {
         self.spongos.commit();

@@ -17,9 +17,9 @@ pub struct SpongosRng<F = KeccakF1600> {
 }
 
 impl<F> SpongosRng<F> {
-    /// Creates a new [`SpongosRng`] from an explicit byte array. A new [`Spongos`] object is created,
-    /// and is used to sponge the seed into a new [`Key`]. This `Key` is then used as a seed to generate
-    /// a new [`SpongosRng`].
+    /// Creates a new [`SpongosRng`] from an explicit byte array. A new [`Spongos`] object is
+    /// created, and is used to sponge the seed into a new `Key`. This `Key` is then used as a
+    /// seed to generate a new [`SpongosRng`].
     ///
     /// # Arguments
     /// * `seed`: A unique byte array

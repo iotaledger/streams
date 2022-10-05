@@ -90,47 +90,47 @@ impl Message {
         self.header.topic_hash()
     }
 
-    /// Returns true if the message is a [`MessageContent::Announcement`]
+    /// Returns true if the message is a [`MessageContent`]`::Announcement`
     pub fn is_announcement(&self) -> bool {
         matches!(self.content, MessageContent::Announcement { .. })
     }
 
-    /// Returns true if the message is a [`MessageContent::BranchAnnouncement`]
+    /// Returns true if the message is a [`MessageContent`]`::BranchAnnouncement`
     pub fn is_branch_announcement(&self) -> bool {
         matches!(self.content, MessageContent::BranchAnnouncement { .. })
     }
 
-    /// Returns true if the message is a [`MessageContent::Keyload`]
+    /// Returns true if the message is a [`MessageContent`]`::Keyload`
     pub fn is_keyload(&self) -> bool {
         matches!(self.content, MessageContent::Keyload { .. })
     }
 
-    /// Returns true if the message is a [`MessageContent::SignedPacket`]
+    /// Returns true if the message is a [`MessageContent`]`::SignedPacket`
     pub fn is_signed_packet(&self) -> bool {
         matches!(self.content, MessageContent::SignedPacket { .. })
     }
 
-    /// Returns true if the message is a [`MessageContent::TaggedPacket`]
+    /// Returns true if the message is a [`MessageContent`]`::TaggedPacket`
     pub fn is_tagged_packet(&self) -> bool {
         matches!(self.content, MessageContent::TaggedPacket { .. })
     }
 
-    /// Returns true if the message is a [`MessageContent::Subscription`]
+    /// Returns true if the message is a [`MessageContent`]`::Subscription`
     pub fn is_subscription(&self) -> bool {
         matches!(self.content, MessageContent::Subscription { .. })
     }
 
-    /// Returns true if the message is a [`MessageContent::Unsubscription`]
+    /// Returns true if the message is a [`MessageContent`]`::Unsubscription`
     pub fn is_unsubscription(&self) -> bool {
         matches!(self.content, MessageContent::Unsubscription { .. })
     }
 
-    /// Returns true if the message is a [`MessageContent::Orphan`]
+    /// Returns true if the message is a [`MessageContent`]`::Orphan`
     pub fn is_orphan(&self) -> bool {
         matches!(self.content, MessageContent::Orphan { .. })
     }
 
-    /// If the message is an [`Announcement`] return it as one
+    /// If the message is an `Announcement` return it as one
     pub fn as_announcement(&self) -> Option<&Announcement> {
         if let MessageContent::Announcement(announcement) = &self.content {
             Some(announcement)
@@ -139,7 +139,7 @@ impl Message {
         }
     }
 
-    /// If the message is a [`BranchAnnouncement`] return it as one
+    /// If the message is a `BranchAnnouncement` return it as one
     pub fn as_branch_announcement(&self) -> Option<&BranchAnnouncement> {
         if let MessageContent::BranchAnnouncement(branch_announcement) = &self.content {
             Some(branch_announcement)
@@ -148,7 +148,7 @@ impl Message {
         }
     }
 
-    /// If the message is a [`Keyload`] return it as one
+    /// If the message is a `Keyload` return it as one
     pub fn as_keyload(&self) -> Option<&Keyload> {
         if let MessageContent::Keyload(keyload) = &self.content {
             Some(keyload)
@@ -157,7 +157,7 @@ impl Message {
         }
     }
 
-    /// If the message is a [`SignedPacket`] return it as one
+    /// If the message is a `SignedPacket` return it as one
     pub fn as_signed_packet(&self) -> Option<&SignedPacket> {
         if let MessageContent::SignedPacket(signed_packet) = &self.content {
             Some(signed_packet)
@@ -166,7 +166,7 @@ impl Message {
         }
     }
 
-    /// If the message is a [`TaggedPacket`] return it as one
+    /// If the message is a `TaggedPacket` return it as one
     pub fn as_tagged_packet(&self) -> Option<&TaggedPacket> {
         if let MessageContent::TaggedPacket(tagged_packet) = &self.content {
             Some(tagged_packet)
@@ -175,7 +175,7 @@ impl Message {
         }
     }
 
-    /// If the message is a [`Subscription`] return it as one
+    /// If the message is a `Subscription` return it as one
     pub fn as_subscription(&self) -> Option<&Subscription> {
         if let MessageContent::Subscription(subscription) = &self.content {
             Some(subscription)
@@ -184,7 +184,7 @@ impl Message {
         }
     }
 
-    /// If the message is a [`Unsubscription`] return it as one
+    /// If the message is a `Unsubscription` return it as one
     pub fn as_unsubscription(&self) -> Option<&Unsubscription> {
         if let MessageContent::Unsubscription(unsubscription) = &self.content {
             Some(unsubscription)
@@ -193,7 +193,7 @@ impl Message {
         }
     }
 
-    /// If the message is an [`Orphan`] return it as one
+    /// If the message is an `Orphan` return it as one
     pub fn as_orphan(&self) -> Option<&Orphan> {
         if let MessageContent::Orphan(orphan) = &self.content {
             Some(orphan)
@@ -204,7 +204,7 @@ impl Message {
 
     /// Get the public payload of the message
     ///
-    /// If the message is a [MessageContent::TaggedPacket] or [MessageContent::SignedPacket]
+    /// If the message is a [`MessageContent`]`::TaggedPacket` or [`MessageContent`]`::SignedPacket`
     /// it returns `Some(payload)`, otherwise returns `None`.  
     pub fn public_payload(&self) -> Option<&[u8]> {
         match &self.content {
@@ -216,7 +216,7 @@ impl Message {
 
     /// Get the masked payload of the message
     ///
-    /// If the message is a [MessageContent::TaggedPacket] or [MessageContent::SignedPacket]
+    /// If the message is a [`MessageContent`]`::TaggedPacket` or [`MessageContent`]`::SignedPacket`
     /// it returns `Some(payload)`, otherwise returns `None`.  
     pub fn masked_payload(&self) -> Option<&[u8]> {
         match &self.content {

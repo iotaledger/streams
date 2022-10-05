@@ -26,9 +26,8 @@ impl<'a, F, OS> MaskContext<'a, F, OS> {
     }
 }
 
-
-/// Encrypts bytes into the [`Context`] spongos, and advances the stream by the provided bytes length,
-/// copying those bytes into the stream.
+/// Encrypts bytes into the [`Context`] spongos, and advances the stream by the provided bytes
+/// length, copying those bytes into the stream.
 impl<'a, F: PRP, OS: io::OStream> Wrap for MaskContext<'a, F, OS> {
     fn wrapn<T>(&mut self, bytes: T) -> Result<&mut Self>
     where
@@ -90,8 +89,8 @@ impl<F: PRP, T: AsRef<[u8]>, OS: io::OStream> Mask<NBytes<T>> for Context<OS, F>
     }
 }
 
-/// Encrypts a variable sized [`Bytes`] wrapper into [`Context`]. `Bytes<bytes[n]>` has variable size
-/// thus the size `n` is encoded before the content bytes are wrapped.
+/// Encrypts a variable sized [`Bytes`] wrapper into [`Context`]. `Bytes<bytes[n]>` has variable
+/// size thus the size `n` is encoded before the content bytes are wrapped.
 impl<F: PRP, OS: io::OStream, T> Mask<Bytes<T>> for Context<OS, F>
 where
     T: AsRef<[u8]>,
@@ -131,9 +130,9 @@ where
     }
 }
 
-/// Encrypts a [`Maybe`] wrapper for an `Option` into the [`Context`] size. If the `Option` is `Some`,
-/// a `Uint8(1)` value is encrypted first, followed by the content. If the `Option` is `None`, only a
-/// `Uint8(0)` is encrypted.
+/// Encrypts a [`Maybe`] wrapper for an `Option` into the [`Context`] size. If the `Option` is
+/// `Some`, a `Uint8(1)` value is encrypted first, followed by the content. If the `Option` is
+/// `None`, only a `Uint8(0)` is encrypted.
 impl<F, OS, T> Mask<Maybe<Option<T>>> for Context<OS, F>
 where
     Self: Mask<T> + Mask<Uint8>,
