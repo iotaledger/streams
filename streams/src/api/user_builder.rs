@@ -20,15 +20,15 @@ use lets::transport::utangle;
 // Local
 use crate::api::user::User;
 
-/// Builder instance for a Streams User
+/// Builder instance for a Streams [`User`].
 pub struct UserBuilder<T> {
-    /// Base Identity that will be used to Identifier a Streams User
+    /// Base [`Identity`] that will be used to identify a Streams [`User`]
     id: Option<Identity>,
-    /// Transport Client instance
+    /// [`Transport`] Client instance.
     transport: T,
-    /// Pre Shared Keys
+    /// Pre Shared Keys.
     psks: Vec<(PskId, Psk)>,
-    /// Spongos Storage Type
+    /// Spongos Storage Type.
     lean: bool,
 }
 
@@ -51,10 +51,10 @@ impl UserBuilder<()> {
 }
 
 impl<T> UserBuilder<T> {
-    /// Inject Base Identity into the User Builder
+    /// Inject Base [`Identity`] into the [`User`] Builder.
     ///
     /// # Arguments
-    /// * `id` - UserIdentity to be used for base identification of the Streams User
+    /// * `id` - [`Identity`] to be used for base identification of the Streams User
     pub fn with_identity<I>(mut self, id: I) -> Self
     where
         I: Into<Identity>,
@@ -69,7 +69,7 @@ impl<T> UserBuilder<T> {
         self
     }
 
-    /// Inject Transport Client instance into the User Builder
+    /// Inject [`Transport`] Client instance into the User Builder
     ///
     /// # Arguments
     /// * `transport` - Transport Client to be used by the Streams User
@@ -117,14 +117,9 @@ impl<T> UserBuilder<T> {
 impl<T> UserBuilder<T> {
     /// Build a [`User`] instance using the Builder parameters.
     ///
-    /// If a [`Transport`] is not provided the builder will use a default client
-    /// ([`Client`](streams_app::transport::tangle::client::Client) at <https://chrysalis-nodes.iota.org>
-    /// if the `tangle` feature is enabled,
-    /// [`BucketTransport`](streams_app::transport::BucketTransport) if not)
-    ///
-    /// # Errors
-    /// This function will error out if the [`UserIdentity`] parameter is missing, as this makes up
-    /// the essence of a [`User`] and is required for any use case.
+    /// If a [`Transport`] is not provided the builder will use a default client.
+    /// (Default [Client](`utangle::Client`) pointed at <https://chrysalis-nodes.iota.org> if the
+    /// `tangle` feature is enabled, [`BucketTransport`](lets::transport::bucket::Client) if not)
     ///
     /// # Examples
     /// ## User from Ed25519

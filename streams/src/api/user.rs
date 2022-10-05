@@ -50,55 +50,73 @@ const ANN_MESSAGE_NUM: usize = 0; // Announcement is always the first message of
 const SUB_MESSAGE_NUM: usize = 0; // Subscription is always the first message of subscribers
 const INIT_MESSAGE_NUM: usize = 1; // First non-reserved message number
 
+/// The state of a user, mapping publisher cursors and link states for message processing.
 #[derive(PartialEq, Eq, Default)]
 struct State {
-    /// Users' Identity information, contains keys and logic for signing and verification
+    /// Users' [`Identity`] information, contains keys and logic for signing and verification.
     user_id: Option<Identity>,
 
-    /// Address of the stream announcement message
+    /// [`Address`] of the stream announcement message.
     ///
     /// None if channel is not created or user is not subscribed.
     stream_address: Option<Address>,
 
+    /// [`Identifier`] of the channel author.
+    ///
+    /// NOne if channel is not created or user is not subscribed.
     author_identifier: Option<Identifier>,
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no) mapped
     /// by branch topic Vec.
     cursor_store: CursorStore,
 
-    /// Mapping of trusted pre shared keys and identifiers
+    /// Mapping of trusted pre shared keys and identifiers.
     psk_store: HashMap<PskId, Psk>,
 
-    /// List of Subscribed Identifiers
+    /// List of Subscribed [Identifiers](`Identiier`).
     subscribers: HashSet<Identifier>,
 
+    /// Mapping of message links ([`MsgId`]) and [`Spongos`] states. Messages are built from the
+    /// [`Spongos`] state of a previous message. If the state for a link is not stored, then a
+    /// message cannot be formed or processed.
     spongos_store: HashMap<MsgId, Spongos>,
 
     base_branch: Topic,
 
-    /// Users' Spongos Storage configuration. If lean, only the announcement message and latest
+    /// Users' [`Spongos`] Storage configuration. If lean, only the announcement message and latest
     /// branch message spongos state is stored. This reduces the overall size of the user
     /// implementation over time. If not lean, all spongos states processed by the user will be
     /// stored.
     lean: bool,
 
-    /// List of known branch topics
+    /// List of known branch topics.
     topics: HashSet<Topic>,
 }
 
+/// Public `API` Client for participation in a `Streams` channel.
 pub struct User<T> {
+    /// A transport client for sending and receiving messages.
     transport: T,
-
+    /// The internal [state](`State`) of the user, containing message state mappings and publisher
+    /// cursors for message processing.
     state: State,
 }
 
 impl User<()> {
+    /// Creates a new [`UserBuilder`] instance.
     pub fn builder() -> UserBuilder<()> {
         UserBuilder::new()
     }
 }
 
 impl<T> User<T> {
+    /// Creates a new [`User`] with the provided configurations.
+    ///
+    /// # Arguments
+    /// * `user_id`: The user's [`Identity`]. This is used to sign messages.
+    /// * `psks`: A list of pre shared keys.
+    /// * `transport`: The transport to use for sending and receiving messages.
+    /// * `lean`: If true, the client will store only required message states.
     pub(crate) fn new<Psks>(user_id: Option<Identity>, psks: Psks, transport: T, lean: bool) -> Self
     where
         Psks: IntoIterator<Item = (PskId, Psk)>,
@@ -128,12 +146,12 @@ impl<T> User<T> {
         }
     }
 
-    /// User's identifier
+    /// Returns a reference to the [User's](`User`) [`Identifier`] if any.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identity().ok().map(|id| id.identifier())
     }
 
-    /// User Identity
+    /// Returns a reference to the [User's](`User`) [`Identity`] if any.
     fn identity(&self) -> Result<&Identity> {
         self.state
             .user_id
@@ -141,55 +159,87 @@ impl<T> User<T> {
             .ok_or_else(|| anyhow!("User does not have a stored identity"))
     }
 
+    /// Returns a reference to the [User's](`User`) [permission](`Permissioned`) for a given branch
+    /// if any
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch to check
     pub fn permission(&self, topic: &Topic) -> Option<&Permissioned<Identifier>> {
         self.identifier()
             .and_then(|id| self.state.cursor_store.get_permission(topic, &id))
     }
 
-    /// User's cursor
+    /// Returns the [User's](`User`) cursor for a given branch if any
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch to check
     fn cursor(&self, topic: &Topic) -> Option<usize> {
         self.identifier()
             .and_then(|id| self.state.cursor_store.get_cursor(topic, &id))
     }
 
+    /// Returns the [User's](`User`) next cursor for a given branch. Errors if there is
+    /// no cursor present for the [`User`] in [`CursorStore`].
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch to check
     fn next_cursor(&self, topic: &Topic) -> Result<usize> {
         self.cursor(topic)
             .map(|c| c + 1)
             .ok_or_else(|| anyhow!("User is not a publisher"))
     }
 
-    pub(crate) fn base_branch(&self) -> &Topic {
+    /// Returns a reference to the base branch [`Topic`] for the stream.
+    pub fn base_branch(&self) -> &Topic {
         &self.state.base_branch
     }
 
-    pub(crate) fn stream_address(&self) -> Option<Address> {
+    /// Returns a reference to the announcement message [`Address`] for the stream if any.
+    pub fn stream_address(&self) -> Option<Address> {
         self.state.stream_address
     }
 
+    /// Returns a reference to the [`User`] transport client.
     pub fn transport(&self) -> &T {
         &self.transport
     }
 
+    /// Returns a mutable reference to the [`User`] transport client.
     pub fn transport_mut(&mut self) -> &mut T {
         &mut self.transport
     }
 
+    /// Returns an iterator over all known branch [topics](`Topic`)
     pub fn topics(&self) -> impl Iterator<Item = &Topic> + ExactSizeIterator {
         self.state.topics.iter()
     }
 
+    /// Iterates through known topics, returning the [`Topic`] that matches the [`TopicHash`] provided
+    /// if any
+    ///
+    /// # Arguments
+    /// * `hash`: The [`TopicHash`] from a message header
     pub(crate) fn topic_by_hash(&self, hash: &TopicHash) -> Option<Topic> {
         self.topics().find(|t| &TopicHash::from(*t) == hash).cloned()
     }
 
+    /// Returns true if [`User`] lean state configuration is true
     fn lean(&self) -> bool {
         self.state.lean
     }
 
+    /// Returns an iterator over [`CursorStore`], producing tuples of [`Topic`], [`Permissioned`]
+    /// [`Identifier`], and the cursor. Used by [`Messages`] streams to find next messages.
     pub(crate) fn cursors(&self) -> impl Iterator<Item = (&Topic, &Permissioned<Identifier>, usize)> + '_ {
         self.state.cursor_store.cursors()
     }
 
+    /// Returns an iterator over a [`Topic`] mapped branch in [`CursorStore`], producing tuples of
+    /// [`Permissioned`][`Identifier`] and a cursor. Used to carry permissions forward through branch
+    /// declarations. Returns an error if the [`Topic`] is not found in store.
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch to fetch cursors for
     fn cursors_by_topic(&self, topic: &Topic) -> Result<impl Iterator<Item = (&Permissioned<Identifier>, &usize)>> {
         self.state
             .cursor_store
@@ -197,16 +247,32 @@ impl<T> User<T> {
             .ok_or_else(|| anyhow!("previous topic {} not found in store", topic))
     }
 
+    /// Returns an iterator over known subscriber [identifiers](`Identifier`)
     pub fn subscribers(&self) -> impl Iterator<Item = &Identifier> + Clone + '_ {
         self.state.subscribers.iter()
     }
 
-    fn should_store_cursor(&self, topic: &Topic, subscriber: Permissioned<&Identifier>) -> bool {
-        let permission = self.state.cursor_store.get_permission(topic, subscriber.identifier());
-        let tracked_and_equal = permission.is_some() && (permission.unwrap().as_ref() == subscriber);
-        !subscriber.is_readonly() && !tracked_and_equal
+    /// If the subscriber is not readonly and the [`Permissioned`] is not tracked or the [`Permissioned`]
+    /// is tracked and not equal to the provided subscriber [`Permissioned`], then the cursor should
+    /// be stored.
+    ///
+    /// # Arguments:
+    /// * `topic`: The topic of the branch to be stored in.
+    /// * `permission`: The [`Permissioned`] to check.
+    fn should_store_cursor(&self, topic: &Topic, permission: Permissioned<&Identifier>) -> bool {
+        let self_permission = self.state.cursor_store.get_permission(topic, permission.identifier());
+        let tracked_and_equal = self_permission.is_some() && (self_permission.unwrap().as_ref() == permission);
+        !permission.is_readonly() && !tracked_and_equal
     }
 
+    /// Store a new [`Spongos`] state. If the [`User`] lean state configuration is set to true, and
+    /// if the linked message is not the stream announcement message, remove the previous message
+    /// from store.
+    ///
+    /// # Arguments:
+    /// * `msg_address`: The [`Address`] of the message that we're storing the [`Spongos`] for.
+    /// * `spongos`: The [`Spongos`] state to be stored.
+    /// * `linked_msg_address`: The address of the message that the spongos is linked to.
     fn store_spongos(&mut self, msg_address: MsgId, spongos: Spongos, linked_msg_address: MsgId) {
         let is_stream_address = self
             .stream_address()
@@ -219,32 +285,49 @@ impl<T> User<T> {
         self.state.spongos_store.insert(msg_address, spongos);
     }
 
+    /// Store a new subscriber [`Identifier`] in state. Returns true if subscriber was not present.
     pub fn add_subscriber(&mut self, subscriber: Identifier) -> bool {
         self.state.subscribers.insert(subscriber)
     }
 
+    /// Remove a subscriber [`Identifier`] from state. Returns true if the subscriber was present.
     pub fn remove_subscriber(&mut self, id: &Identifier) -> bool {
         self.state.subscribers.remove(id)
     }
 
+    /// Store a new [Pre-Shared Key](`Psk`) in state. Returns true if [`Psk`] was not present.
     pub fn add_psk(&mut self, psk: Psk) -> bool {
         self.state.psk_store.insert(psk.to_pskid(), psk).is_none()
     }
 
+    /// Remove a [`Psk`] from state by its [identifier](`PskId`). Returns true if the [`Psk`] was present.
     pub fn remove_psk(&mut self, pskid: PskId) -> bool {
         self.state.psk_store.remove(&pskid).is_some()
     }
 
     /// Sets the latest message link for a specified branch. If the branch does not exist, it is
-    /// created
+    /// created.
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch
+    /// * `latest_link`: The [`MsgId`] link that will be set
     fn set_latest_link(&mut self, topic: Topic, latest_link: MsgId) {
         self.state.cursor_store.set_latest_link(topic, latest_link)
     }
 
+    /// Returns the latest [`MsgId`] link for a specified branch, if any
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch
     fn get_latest_link(&self, topic: &Topic) -> Option<MsgId> {
         self.state.cursor_store.get_latest_link(topic)
     }
 
+    /// Parse and process a [`TransportMessage`] dependent on its type.
+    ///
+    /// # Arguments
+    /// * `address`: The [`Address`] of the message to process
+    /// * `msg`: The raw [`TransportMessage`]
     pub(crate) async fn handle_message(&mut self, address: Address, msg: TransportMessage) -> Result<Message> {
         let preparsed = msg.parse_header().await?;
         match preparsed.header().message_type() {
@@ -259,8 +342,11 @@ impl<T> User<T> {
         }
     }
 
-    /// Bind Subscriber to the channel announced
-    /// in the message.
+    /// Processes an announcement message, binding a [`User`] to the stream announced in the message.
+    ///
+    /// # Arguments:
+    /// * `address`: The [`Address`] of the message to be processed
+    /// * `preparsed`: The [`PreparsedMessage`] to be processed
     async fn handle_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Check Topic
         let publisher = preparsed.header().publisher().clone();
@@ -295,6 +381,13 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
+
+    /// Processes a branch announcement message, creating a new branch in [`CursorStore`], carrying
+    /// over mapped permissions and cursors from the previous branch.
+    ///
+    /// # Arguments:
+    /// * `address`: The [`Address`] of the message to be processed
+    /// * `preparsed`: The [`PreparsedMessage`] to be processed
     async fn handle_branch_announcement(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Retrieve header values
         let prev_topic = self
@@ -352,6 +445,11 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
+    /// Processes a [`User`] subscription message, storing the subscriber [`Identifier`].
+    ///
+    /// # Arguments:
+    /// * `address`: The [`Address`] of the message to be processed
+    /// * `preparsed`: The [`PreparsedMessage`] to be processed
     async fn handle_subscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Cursor is not stored, as cursor is only tracked for subscribers with write permissions
 
@@ -382,6 +480,11 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
+    /// Processes a [`User`] unsubscription message, removing the subscriber [`Identifier`] from store.
+    ///
+    /// # Arguments:
+    /// * `address`: The [`Address`] of the message to be processed
+    /// * `preparsed`: The [`PreparsedMessage`] to be processed
     async fn handle_unsubscription(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         // Cursor is not stored, as user is unsubscribing
 
@@ -409,6 +512,13 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
+    /// Processes a keyload message, updating store to include the contained list of [permissions](`Permissioned`).
+    /// All keyload messages are linked to the announcement message to ensure they can always be
+    /// read by a [`User`] that can sequence up to it.
+    ///
+    /// # Arguments:
+    /// * `address`: The [`Address`] of the message to be processed
+    /// * `preparsed`: The [`PreparsedMessage`] to be processed
     async fn handle_keyload(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         let stream_address = self
             .stream_address()
@@ -491,6 +601,12 @@ impl<T> User<T> {
         Ok(final_message)
     }
 
+    /// Processes a signed packet message, retrieving the public and masked payloads, and verifying
+    /// the message signature against the publisher [`Identifier`].
+    ///
+    /// # Arguments:
+    /// * `address`: The [`Address`] of the message to be processed
+    /// * `preparsed`: The [`PreparsedMessage`] to be processed
     async fn handle_signed_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         let topic = self
             .topic_by_hash(preparsed.header().topic_hash())
@@ -532,6 +648,11 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
+    /// Processes a tagged packet message, retrieving the public and masked payloads.
+    ///
+    /// # Arguments:
+    /// * `address`: The [`Address`] of the message to be processed
+    /// * `preparsed`: The [`PreparsedMessage`] to be processed
     async fn handle_tagged_packet(&mut self, address: Address, preparsed: PreparsedMessage) -> Result<Message> {
         let topic = self
             .topic_by_hash(preparsed.header().topic_hash())
@@ -574,6 +695,10 @@ impl<T> User<T> {
         Ok(Message::from_lets_message(address, message))
     }
 
+    /// Creates an encrypted, serialised representation of a [`User`] `State` for backup and recovery.
+    ///
+    /// # Arguments
+    /// * `pwd`: The password to encrypt the `State` with
     pub async fn backup<P>(&mut self, pwd: P) -> Result<Vec<u8>>
     where
         P: AsRef<[u8]>,
@@ -599,6 +724,13 @@ impl<T> User<T> {
         Ok(buf)
     }
 
+    /// Restore a [`User`] from an encrypted binary stream using the provided password and transport
+    /// client.
+    ///
+    /// # Arguments
+    /// * `backup`: Encrypted binary stream of backed up `State`.
+    /// * `pwd`: The decryption password.
+    /// * `transport`: The transport client for sending and receiving messages.
     pub async fn restore<B, P>(backup: B, pwd: P, transport: T) -> Result<Self>
     where
         P: AsRef<[u8]>,
@@ -619,6 +751,10 @@ impl<T> User<T>
 where
     T: for<'a> Transport<'a, Msg = TransportMessage>,
 {
+    /// Receive a raw message packet using the internal [`Transport`] client
+    ///
+    /// # Arguments
+    /// * `address`: The [`Address`] of the message to be retrieved.
     pub async fn receive_message(&mut self, address: Address) -> Result<Message>
     where
         T: for<'a> Transport<'a, Msg = TransportMessage>,
@@ -656,7 +792,12 @@ impl<T, TSR> User<T>
 where
     T: for<'a> Transport<'a, Msg = TransportMessage, SendResponse = TSR>,
 {
-    /// Prepare channel Announcement message.
+    /// Create and send a stream Announcement message, anchoring the stream for others to attach to.
+    /// Errors if the [`User`] is already attached to a stream, or if the message already exists in
+    /// the transport layer.
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] that will be used for the base branch
     pub async fn create_stream<Top: Into<Topic>>(&mut self, topic: Top) -> Result<SendResponse<TSR>> {
         // Check conditions
         if let Some(appaddr) = self.stream_address() {
@@ -708,7 +849,12 @@ where
         Ok(SendResponse::new(stream_address, send_response))
     }
 
-    /// Prepare new branch Announcement message
+    /// Create and send a new Branch Announcement message, creating a new branch in `CursorStore`
+    /// with the previous branches permissions carried forward.
+    ///
+    /// # Arguments
+    /// * `from_topic`: The [`Topic`] of the branch to generate the new branch from.
+    /// * `to_topic`: The [`Topic`] of the new branch being created.
     pub async fn new_branch(
         &mut self,
         from_topic: impl Into<Topic>,
@@ -792,7 +938,8 @@ where
         Ok(SendResponse::new(address, send_response))
     }
 
-    /// Prepare Subscribe message.
+    /// Create and send a new Subscription message, awaiting the stream author's acceptance into the
+    /// stream.
     pub async fn subscribe(&mut self) -> Result<SendResponse<TSR>> {
         // Check conditions
         let stream_address = self
@@ -855,6 +1002,8 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
+    /// Create and send a new Unsubscription message, informing the stream author that this [`User`]
+    /// instance can be removed from the stream.
     pub async fn unsubscribe(&mut self) -> Result<SendResponse<TSR>> {
         // Check conditions
         let stream_address = self.stream_address().ok_or_else(|| {
@@ -911,6 +1060,14 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
+    /// Create and send a new Keyload message, updating the read/write permissions for a specified
+    /// branch. All keyload messages are linked to the announcement message to ensure they
+    /// can always be read by a [`User`] that can sequence up to it.
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch the permissions will be updated for.
+    /// * `subscribers`: The updated [`Permissioned`] list for the branch.
+    /// * `psk_ids`: A list of [Psk Id's](`PskId`) with read access for the branch.
     pub async fn send_keyload<'a, Subscribers, Psks, Top>(
         &mut self,
         topic: Top,
@@ -1010,6 +1167,11 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
+    /// Create and send a new Keyload message for all participants, updating the specified branch to
+    /// grant all known subscribers read permissions.
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch the permissions will be updated for.
     pub async fn send_keyload_for_all<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
         Top: Into<Topic> + Clone,
@@ -1041,6 +1203,11 @@ where
         .await
     }
 
+    /// Create and send a new Keyload message for all participants, updating the specified branch to
+    /// grant all known subscribers read and write permissions.
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch the permissions will be updated for.
     pub async fn send_keyload_for_all_rw<Top>(&mut self, topic: Top) -> Result<SendResponse<TSR>>
     where
         Top: Into<Topic> + Clone,
@@ -1072,10 +1239,18 @@ where
         .await
     }
 
+    /// Create a new [`MessageBuilder`] instance.
     pub fn message<P: Default>(&mut self) -> MessageBuilder<P, T> {
         MessageBuilder::new(self)
     }
 
+    /// Create and send a new Signed Packet message to the specified branch. The message will contain
+    /// a masked and an unmasked payload. The message will be signed by the [`User`] [`Identity`] keys.
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch to send the message to.
+    /// * `public_payload`: The unmasked payload of the message.
+    /// * `masked_payload`: The masked payload of the message.
     pub async fn send_signed_packet<P, M, Top>(
         &mut self,
         topic: Top,
@@ -1151,6 +1326,13 @@ where
         Ok(SendResponse::new(message_address, send_response))
     }
 
+    /// Create and send a new Tagged Packet message to the specified branch. The message will contain
+    /// a masked and an unmasked payload.
+    ///
+    /// # Arguments
+    /// * `topic`: The [`Topic`] of the branch to send the message to.
+    /// * `public_payload`: The unmasked payload of the message.
+    /// * `masked_payload`: The masked payload of the message.
     pub async fn send_tagged_packet<P, M, Top>(
         &mut self,
         topic: Top,
