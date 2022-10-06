@@ -1,7 +1,4 @@
-use core::{
-    convert::{TryFrom, TryInto},
-    fmt::{Display, LowerHex, UpperHex},
-};
+use core::fmt::{Display, LowerHex, UpperHex};
 
 use spongos::{
     ddml::{
@@ -12,8 +9,6 @@ use spongos::{
     error::Result as SpongosResult,
     KeccakF1600, Spongos, PRP,
 };
-
-use crate::error::{Error, Result};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Psk([u8; 32]);
@@ -51,14 +46,6 @@ impl AsMut<[u8]> for Psk {
     }
 }
 
-impl TryFrom<&[u8]> for Psk {
-    type Error = Error;
-
-    fn try_from(bytes: &[u8]) -> Result<Self> {
-        Ok(Psk(bytes.try_into()?))
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct PskId([u8; 16]);
 
@@ -84,14 +71,6 @@ impl AsRef<[u8]> for PskId {
 impl AsMut<[u8]> for PskId {
     fn as_mut(&mut self) -> &mut [u8] {
         &mut self.0
-    }
-}
-
-impl TryFrom<&[u8]> for PskId {
-    type Error = Error;
-
-    fn try_from(bytes: &[u8]) -> Result<Self> {
-        Ok(PskId(bytes.try_into()?))
     }
 }
 

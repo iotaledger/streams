@@ -25,11 +25,12 @@ use spongos::{
 #[cfg(feature = "did")]
 use crate::{
     alloc::string::ToString,
+    error::Error,
     id::did::{resolve_document, DIDUrlInfo},
 };
 
 use crate::{
-    error::{Error, Result},
+    error::Result,
     message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify},
 };
 
