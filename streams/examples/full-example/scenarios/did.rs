@@ -1,6 +1,7 @@
 // Rust
 
 // 3rd-arty
+use anyhow::anyhow;
 use textwrap::{fill, indent};
 
 // IOTA
@@ -18,8 +19,7 @@ use streams::{
         did::{DIDInfo, DIDUrlInfo, DID},
         Ed25519, Permissioned, Psk,
     },
-    transport::tangle,
-    User, Result,
+    Result, User,
 };
 
 use super::utils::{print_send_result, print_user};
@@ -34,9 +34,12 @@ const BRANCH1: &str = "BRANCH1";
 
 pub(crate) async fn example<SR, T: GenericTransport<SR>>(transport: T) -> Result<()> {
     let did_client = DIDClient::builder()
-        .primary_node(CLIENT_URL, None, None)?
+        .primary_node(CLIENT_URL, None, None)
+        .map_err(|e| anyhow!(e.to_string()))?
         .build()
-        .await?;
+        .await
+        .map_err(|e| anyhow!(e.to_string()))?;
+
     println!("> Making DID with method for the Author");
     let author_did_info = make_did_info(&did_client, "auth_key", "auth_xkey", "signing_key").await?;
     println!("> Making another DID with method for a Subscriber");
@@ -176,7 +179,7 @@ async fn make_did_info(
     signing_fragment: &str,
     exchange_fragment: &str,
     doc_signing_fragment: &str,
-) -> Result<DIDInfo> {
+) -> anyhow::Result<DIDInfo> {
     // Create Keypair to act as base of identity
     let keypair = DIDKeyPair::new(KeyType::Ed25519)?;
     // Generate original DID document
@@ -213,7 +216,7 @@ async fn make_did_info(
 
         let _update_receipt = did_client.publish_document(&document).await?;
     } else {
-        return Err(anyhow!("Failed to update method"));
+        return Err(anyhow::anyhow!("Failed to update method"));
     }
 
     let url_info = DIDUrlInfo::new(did, CLIENT_URL, exchange_fragment, signing_fragment);

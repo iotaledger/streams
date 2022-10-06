@@ -16,11 +16,8 @@ use spongos::{
         io,
         types::NBytes,
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
-    error::{
-        Result as SpongosResult,
-        Error as SpongosError,
-    },
 };
 
 use crate::{
@@ -33,11 +30,14 @@ pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIo
     let did_url = IotaDID::parse(url_info.did()).map_err(|e| Error::did("parse did", e))?;
     let doc = DIDClient::builder()
         .network(did_url.network().map_err(|e| Error::did("DIDClient network", e))?)
-        .primary_node(url_info.client_url(), None, None).map_err(|e| Error::did("DIDClient set primary_node", e))?
+        .primary_node(url_info.client_url(), None, None)
+        .map_err(|e| Error::did("DIDClient set primary_node", e))?
         .build()
-        .await.map_err(|e| Error::did("DIDClient build", e))?
+        .await
+        .map_err(|e| Error::did("DIDClient build", e))?
         .read_document(&did_url)
-        .await.map_err(|e| Error::did("DIDClient read_doc", e))?;
+        .await
+        .map_err(|e| Error::did("DIDClient read_doc", e))?;
     Ok(doc)
 }
 
@@ -105,8 +105,10 @@ where
 
         let keypair = DIDKeyPair::try_from_private_key_bytes(KeyType::Ed25519, &private_key_bytes)
             .map_err(|e| SpongosError::Context("Mask", Error::did("unmasking DID private key", e).to_string()))?;
-        let xkeypair = DIDKeyPair::try_from_private_key_bytes(KeyType::X25519, &exchange_private_key_bytes)
-            .map_err(|e| SpongosError::Context("Mask", Error::did("unmasking DID exchange private key", e).to_string()))?;
+        let xkeypair =
+            DIDKeyPair::try_from_private_key_bytes(KeyType::X25519, &exchange_private_key_bytes).map_err(|e| {
+                SpongosError::Context("Mask", Error::did("unmasking DID exchange private key", e).to_string())
+            })?;
         *did.info_mut().keypair_mut() = keypair;
         *did.info_mut().exchange_keypair_mut() = xkeypair;
 

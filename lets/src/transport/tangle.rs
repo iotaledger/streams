@@ -41,10 +41,12 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
     pub async fn for_node(node_url: &str) -> Result<Client<Message, SendResponse>> {
         Ok(Self(
             iota_client::ClientBuilder::new()
-                .with_node(node_url).map_err(|e|Error::IotaClient("building client", e))?
+                .with_node(node_url)
+                .map_err(|e| Error::IotaClient("building client", e))?
                 .with_local_pow(true)
                 .finish()
-                .await.map_err(|e| Error::External(e.into()))?,
+                .await
+                .map_err(|e| Error::External(e.into()))?,
             PhantomData,
         ))
     }
@@ -76,15 +78,21 @@ where
             .with_index(address.to_msg_index())
             .with_data(msg.into())
             .finish()
-            .await.map_err(|e| Error::IotaClient("sending message", e))?
+            .await
+            .map_err(|e| Error::IotaClient("sending message", e))?
             .try_into()
     }
 
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
-        let msg_ids = self.client().get_message().index(address.to_msg_index()).await.map_err(|e| Error::IotaClient("recv_messages", e))?;
+        let msg_ids = self
+            .client()
+            .get_message()
+            .index(address.to_msg_index())
+            .await
+            .map_err(|e| Error::IotaClient("recv_messages", e))?;
 
         if msg_ids.is_empty() {
-            return Err(Error::MessageMissing(address, "transport"))
+            return Err(Error::MessageMissing(address, "transport"));
         }
 
         let msgs = try_join_all(msg_ids.iter().map(|msg| {
@@ -105,7 +113,11 @@ impl TryFrom<IotaMessage> for TransportMessage {
         if let Some(Payload::Indexation(indexation)) = message.payload() {
             Ok(Self::new(indexation.data().into()))
         } else {
-            Err(Error::Malformed("payload from the Tangle", "IndexationPayload", alloc::string::ToString::to_string(&message.id().0)))
+            Err(Error::Malformed(
+                "payload from the Tangle",
+                "IndexationPayload",
+                alloc::string::ToString::to_string(&message.id().0),
+            ))
         }
     }
 }

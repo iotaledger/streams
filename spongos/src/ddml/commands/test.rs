@@ -15,7 +15,7 @@ use crate::{
         modifiers::External,
         types::{Bytes, Mac, NBytes, Size, Uint8},
     },
-    error::Result
+    error::Result,
 };
 
 fn absorb_mask_u8<F>() -> Result<()>

@@ -7,11 +7,10 @@
 //!
 //! ## Starting a new Channel
 //! ```
-//! # use anyhow::Result;
 //! use streams::{
 //!     transport::utangle,
 //!     id::Ed25519,
-//!     User,
+//!     User, Result
 //! };
 //! # use streams::transport::bucket;
 //! #[tokio::main]

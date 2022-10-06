@@ -80,8 +80,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     /// # Examples
     /// ## Send Signed Message
     /// ```
-    /// # use anyhow::Result;
-    /// # use streams::{id::Ed25519, transport::bucket, User};
+    /// # use streams::{id::Ed25519, transport::bucket, User, Result};
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {

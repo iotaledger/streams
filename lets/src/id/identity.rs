@@ -31,9 +31,9 @@ use spongos::{
 // Local
 #[cfg(feature = "did")]
 use crate::{
-    id::did::{DataWrapper, DID},
     alloc::string::ToString,
     error::Error,
+    id::did::{DataWrapper, DID},
 };
 
 use crate::{
@@ -250,22 +250,31 @@ where
                         let method = IotaDID::parse(info.url_info().did())
                             .map_err(|e| SpongosError::Context("ContentSign", Error::did("did parse", e).to_string()))?
                             .join(&fragment)
-                            .map_err(|e| SpongosError::Context("ContentSign", Error::did("join did fragments", e).to_string()))?;
+                            .map_err(|e| {
+                                SpongosError::Context("ContentSign", Error::did("join did fragments", e).to_string())
+                            })?;
 
                         JcsEd25519::<DIDEd25519>::create_signature(
                             &mut data,
                             method,
                             info.keypair().private().as_ref(),
                             ProofOptions::new(),
-                        ).map_err(|e| SpongosError::Context("ContentSign for create_signature on JcsEd25519", e.to_string()))?;
+                        )
+                        .map_err(|e| {
+                            SpongosError::Context("ContentSign for create_signature on JcsEd25519", e.to_string())
+                        })?;
 
                         let signature = BaseEncoding::decode_base58(
                             &data
                                 .into_signature()
-                                .ok_or(SpongosError::Context("ContentSign", "Missing did signature proof".to_string()))?
+                                .ok_or(SpongosError::Context(
+                                    "ContentSign",
+                                    "Missing did signature proof".to_string(),
+                                ))?
                                 .value()
                                 .as_str(),
-                        ).map_err(|e| SpongosError::Context("ContentSign", e.to_string()))?;
+                        )
+                        .map_err(|e| SpongosError::Context("ContentSign", e.to_string()))?;
                         self.absorb(NBytes::new(signature))
                     }
                     DID::Default => unreachable!(),
@@ -288,7 +297,12 @@ where
         match &recipient.identitykind {
             IdentityKind::Ed25519(kp) => self.x25519(&kp.inner().into(), NBytes::new(key)),
             #[cfg(feature = "did")]
-            IdentityKind::DID(did) => self.x25519(&did.info().exchange_key().map_err(|e| SpongosError::Context("ContentDecrypt", e.to_string()))?, NBytes::new(key)),
+            IdentityKind::DID(did) => self.x25519(
+                &did.info()
+                    .exchange_key()
+                    .map_err(|e| SpongosError::Context("ContentDecrypt", e.to_string()))?,
+                NBytes::new(key),
+            ),
         }
     }
 }

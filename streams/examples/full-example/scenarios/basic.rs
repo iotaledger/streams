@@ -8,7 +8,7 @@ use futures::TryStreamExt;
 // Streams
 use streams::{
     id::{Ed25519, PermissionDuration, Permissioned, Psk},
-    User, Result,
+    Result, User,
 };
 
 // Local

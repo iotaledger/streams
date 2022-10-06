@@ -9,7 +9,7 @@ use rand::Rng;
 // Streams
 use streams::{
     transport::{bucket, Transport},
-    TransportMessage, Result
+    Result, TransportMessage,
 };
 
 #[cfg(feature = "tangle-client")]

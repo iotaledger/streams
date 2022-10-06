@@ -171,9 +171,8 @@ impl<T> UserBuilder<T> {
     /// ```
     /// # use std::cell::RefCell;
     /// # use std::rc::Rc;
-    /// # use anyhow::Result;
     /// # use streams::transport::bucket;
-    /// use streams::{id::Ed25519, transport::utangle, User};
+    /// use streams::{id::Ed25519, transport::utangle, Result, User};
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {

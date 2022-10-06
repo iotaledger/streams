@@ -5,7 +5,7 @@
 // Streams
 use streams::{
     id::{Ed25519, Psk},
-    Selector, User, Result,
+    Result, Selector, User,
 };
 
 // Local

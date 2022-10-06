@@ -4,7 +4,7 @@ use crate::{
         commands::{wrap::Context, Dump},
         io,
     },
-    error::Result
+    error::Result,
 };
 
 impl<F: PRP, OS: io::OStream> Dump for Context<OS, F> {

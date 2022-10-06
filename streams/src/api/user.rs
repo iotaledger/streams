@@ -736,7 +736,7 @@ where
             .map_err(|e| Error::Wrapped("wrap announce", e))?;
 
         // Attempt to send message
-        if !self.transport.recv_message(stream_address).await.is_err(){
+        if !self.transport.recv_message(stream_address).await.is_err() {
             return Err(Error::Setup("Cannot create a channel, announce address already in use"));
         }
 
@@ -828,7 +828,7 @@ where
             .await
             .map_err(|e| Error::Wrapped("wrap new branch", e))?;
 
-        if !self.transport.recv_message(address).await.is_err(){
+        if !self.transport.recv_message(address).await.is_err() {
             return Err(Error::AddressUsed("new branch", address));
         }
 
@@ -920,7 +920,7 @@ where
 
         // Attempt to send message
         let has_msg = self.transport.recv_message(message_address).await;
-        if !has_msg.is_err(){
+        if !has_msg.is_err() {
             return Err(Error::AddressUsed("subscribe", message_address));
         }
 
@@ -981,7 +981,7 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        if self.transport.recv_message(message_address).await.is_err(){
+        if self.transport.recv_message(message_address).await.is_err() {
             return Err(Error::AddressUsed("unsubscribe", message_address));
         }
 
@@ -1049,15 +1049,7 @@ where
         let nonce = rng.gen();
         let psk_ids_with_psks = psk_ids
             .into_iter()
-            .map(|pskid| {
-                Ok((
-                    pskid,
-                    self.state
-                        .psk_store
-                        .get(&pskid)
-                        .ok_or( Error::UnknownPsk(pskid))?,
-                ))
-            })
+            .map(|pskid| Ok((pskid, self.state.psk_store.get(&pskid).ok_or(Error::UnknownPsk(pskid))?)))
             .collect::<Result<Vec<(_, _)>>>()?; // collect to handle possible error
         let content = PCF::new_final_frame().with_content(keyload::Wrap::new(
             &mut announcement_msg_spongos,
@@ -1078,7 +1070,7 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        if !self.transport.recv_message(message_address).await.is_err(){
+        if !self.transport.recv_message(message_address).await.is_err() {
             return Err(Error::AddressUsed("keyload", message_address));
         }
 
@@ -1241,7 +1233,7 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        if !self.transport.recv_message(message_address).await.is_err(){
+        if !self.transport.recv_message(message_address).await.is_err() {
             return Err(Error::AddressUsed("signed packet", message_address));
         }
         let send_response = self
@@ -1325,7 +1317,7 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        if !self.transport.recv_message(message_address).await.is_err(){
+        if !self.transport.recv_message(message_address).await.is_err() {
             return Err(Error::AddressUsed("tagged packet", message_address));
         }
         let send_response = self

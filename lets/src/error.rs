@@ -1,8 +1,11 @@
 //! Stream Errors
 
 // Rust
+use alloc::{
+    boxed::Box,
+    string::{FromUtf8Error, String},
+};
 use core::{array::TryFromSliceError, fmt::Debug};
-use alloc::{boxed::Box, string::{FromUtf8Error, String}};
 
 // 3rd-party
 use hex::FromHexError;
@@ -29,7 +32,7 @@ pub enum IdentityError {
     #[error("Malformed {0}")]
     IotaClient(identity_iota::client::Error),
     #[error("Malformed {0}")]
-    Other(String)
+    Other(String),
 }
 
 #[cfg(feature = "did")]
@@ -104,7 +107,7 @@ pub enum Error {
     External(anyhow::Error),
 
     /// Transport
-    
+
     #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
     #[error("Iota client error for {0}: {1}")]
     IotaClient(&'static str, iota_client::Error),
@@ -137,7 +140,6 @@ impl From<FromUtf8Error> for Error {
         Self::Encoding("string", "utf8", Box::new(Self::External(error.into())))
     }
 }
-
 
 impl From<FromHexError> for Error {
     fn from(error: FromHexError) -> Self {

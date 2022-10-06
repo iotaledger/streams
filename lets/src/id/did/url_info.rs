@@ -10,9 +10,9 @@ use identity_iota::{
 };
 
 use crate::{
+    alloc::string::ToString,
     error::{Error, Result},
     id::did::DataWrapper,
-    alloc::string::ToString
 };
 
 // Streams
@@ -22,11 +22,8 @@ use spongos::{
         io,
         types::Bytes,
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
-    error::{
-        Result as SpongosResult,
-        Error as SpongosError,
-    }
 };
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -48,7 +45,10 @@ impl DIDUrlInfo {
     }
 
     pub(crate) async fn verify(&self, signing_fragment: &str, signature_bytes: &[u8], hash: &[u8]) -> Result<()> {
-        let did_url = IotaDID::parse(self.did()).map_err(|e| Error::did("parse did", e))?.join(signing_fragment).map_err(|e| Error::did("join did", e))?;
+        let did_url = IotaDID::parse(self.did())
+            .map_err(|e| Error::did("parse did", e))?
+            .join(signing_fragment)
+            .map_err(|e| Error::did("join did", e))?;
         let mut signature = Proof::new(JcsEd25519::<DIDEd25519>::NAME, did_url);
         signature.set_value(ProofValue::Signature(BaseEncoding::encode_base58(&signature_bytes)));
 
@@ -140,9 +140,8 @@ where
             .mask(Bytes::new(&mut exchange_fragment_bytes))?
             .mask(Bytes::new(&mut signing_fragment_bytes))?;
 
-        let utf = |e: alloc::string::FromUtf8Error| {
-            SpongosError::Context("Mask DIDUrlInfo", Error::from(e).to_string())
-        };
+        let utf =
+            |e: alloc::string::FromUtf8Error| SpongosError::Context("Mask DIDUrlInfo", Error::from(e).to_string());
 
         *url_info.did_mut() = String::from_utf8(did_bytes).map_err(utf)?;
         *url_info.client_url_mut() = String::from_utf8(client_url).map_err(utf)?;

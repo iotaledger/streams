@@ -42,11 +42,10 @@ use crate::api::{
 /// ```
 /// use futures::TryStreamExt;
 ///
-/// use streams::{id::Ed25519, transport::utangle, Address, User};
+/// use streams::{id::Ed25519, transport::utangle, Address, Result, User};
 ///
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
-/// # use anyhow::Result;
 /// # use streams::transport::bucket;
 /// #
 /// # #[tokio::main]

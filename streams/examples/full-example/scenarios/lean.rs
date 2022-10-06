@@ -8,7 +8,7 @@ use lets::id::Identity;
 // Streams
 use streams::{
     id::{Ed25519, Psk},
-    SendResponse, User, Result,
+    Result, SendResponse, User,
 };
 
 // Local

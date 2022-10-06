@@ -1,5 +1,8 @@
 // Rust
-use alloc::{boxed::Box, string::{String, ToString}};
+use alloc::{
+    boxed::Box,
+    string::{String, ToString},
+};
 use core::{
     convert::TryInto,
     fmt::{self, Debug, Display, Formatter, LowerHex, UpperHex},
@@ -54,7 +57,7 @@ use crate::{
 ///     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:ffffffffffffffffffffffff"
 ///         .to_string(),
 /// );
-/// assert_eq!(address_str.parse::<Address>()?, address);
+/// assert_eq!(address_str.parse::<Address>().map_err(|e| anyhow::anyhow!(e.to_string()))?, address);
 /// #   Ok(())
 /// # }
 /// ```
@@ -124,7 +127,10 @@ impl Display for Address {
 impl FromStr for Address {
     type Err = crate::error::Error;
     fn from_str(string: &str) -> Result<Address> {
-        let (appaddr_str, msgid_str) = string.split_once(':').ok_or(Error::Malformed("address string", ":", string.to_string()))?;
+        let (appaddr_str, msgid_str) =
+            string
+                .split_once(':')
+                .ok_or(Error::Malformed("address string", ":", string.to_string()))?;
         let appaddr =
             AppAddr::from_str(appaddr_str).map_err(|e| Error::Encoding("AppAddr", "hexadecimal", Box::new(e)))?;
 

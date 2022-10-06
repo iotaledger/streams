@@ -127,4 +127,3 @@ impl From<anyhow::Error> for Error {
         Self::External(error)
     }
 }
-
