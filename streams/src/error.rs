@@ -27,7 +27,6 @@ pub enum Error {
     //////////
     // Streams
     //////////
-
     #[error(
         "address already taken for. The address '{1}' where the {0} message is being sent already contains some data, possibly spam."
     )]
@@ -81,7 +80,7 @@ Any {0} message must be linked to a previous message by including the address of
 
     #[error("PSK by id {0} is not known")]
     UnknownPsk(PskId),
-    
+
     #[error("Topic by hash {0} is not known")]
     UnknownTopic(TopicHash),
 
@@ -107,6 +106,8 @@ impl From<SpongosError> for Error {
         Self::Spongos(error)
     }
 }
+
+// Merge with Lets errors?
 
 impl From<TryFromSliceError> for Error {
     fn from(error: TryFromSliceError) -> Self {
