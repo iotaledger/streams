@@ -72,7 +72,7 @@ pub struct Address {
 impl Address {
     /// Creates a new `Address` from an `AppAddr` and a `MsgId`
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `appaddr`: The base address of the application.
     /// * `msgid`: The unique message ID
     pub fn new<A, M>(appaddr: A, msgid: M) -> Self

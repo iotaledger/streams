@@ -140,7 +140,7 @@ where
 
     /// Sends a message indexed at the provided [`Address`] to the tangle.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `address`: The address of the message.
     /// * `msg`: Message - The message to send.
     async fn send_message(&mut self, address: Address, msg: Message) -> Result<SendResponse>
@@ -168,7 +168,7 @@ where
     /// Retrieves a message indexed at the provided [`Address`] from the tangle. Errors if no
     /// messages are found.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `address`: The address of the message to retrieve.
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
         let path = "api/v1/messages";

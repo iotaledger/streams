@@ -9,7 +9,7 @@ pub struct Size(usize);
 impl Size {
     /// Create a [`Size`] wrapper for `DDML` operations
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `n`: the `usize` to be wrapped.
     pub fn new(n: usize) -> Self {
         Self(n)
@@ -33,7 +33,7 @@ impl Size {
 
     /// Encodes inner `usize` into a byte array.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `codec`: a function for encoding bytes to a [`Spongos`] stream
     pub(crate) fn encode(&self, mut codec: impl FnMut(u8) -> Result<()>) -> Result<()> {
         let d = self.num_bytes();
@@ -46,7 +46,7 @@ impl Size {
 
     /// Decodes inner `usize` from a byte array.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `codec`: a function for decoding bytes from a [`Spongos`] stream
     pub(crate) fn decode(mut codec: impl FnMut(&mut u8) -> Result<()>, mut num_bytes: u8) -> Result<Self> {
         let mut result = 0usize;

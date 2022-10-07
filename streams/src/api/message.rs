@@ -31,7 +31,7 @@ pub struct Message {
 impl Message {
     /// Creates a [`Message`] from a [`LetsMessage`] and the message [`Address`]
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `address`: The [`Address`] of the message.
     /// * `lets_message`: The raw message from transport
     ///
@@ -52,7 +52,7 @@ impl Message {
     /// Create a generic `Orphan` message, meaning that the previous link address does not match any
     /// spongos in store, and the message cannot be processed.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `address`: The [`Address`] of the message
     /// * `preparsed`: The [`PreparsedMessage`] that could not be processed
     ///

@@ -36,7 +36,7 @@ impl CursorStore {
     /// Remove the cursors with the given identifier from the tree, returning true if the cursor was
     /// found and removed.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `id`: The identifier to be removed from [`InnerCursorStore`].
     ///
     /// Returns:
@@ -56,7 +56,7 @@ impl CursorStore {
     /// Given a [`Topic`] and an [`Identifier`], return the [`Permissioned`] [`Identifier`] if it
     /// exists
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `topic`: The [`Topic`] of the branch that the cursor is stored in.
     /// * `id`: The identifier of the cursor to get.
     ///
@@ -74,7 +74,7 @@ impl CursorStore {
 
     /// Given a [`Topic`] and an [`Identifier`], return the cursor if it exists
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `topic`: The [`Topic`] of the branch that the cursor is stored in.
     /// * `id`: The identifier of the cursor to get.
     ///
@@ -100,7 +100,7 @@ impl CursorStore {
 
     /// Given a [`Topic`], return an iterator over the cursors for that topic, if any.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `topic`: The [`Topic`] of the branch that the cursor is stored in.
     ///
     /// Returns:
@@ -116,7 +116,7 @@ impl CursorStore {
     /// different, remove the old permission and keep the old cursor. Otherwise, insert the new
     /// permission and cursor
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `topic`: The [`Topic`] of the branch that the cursor is stored in.
     /// * `id`: The [`Permissioned`] [`Identifier`] that the cursor will be mapped to.
     /// * `cursor`: The publisher cursor to be stored.
@@ -152,7 +152,7 @@ impl CursorStore {
     /// If the [`Topic`] exists, update the latest_link, otherwise insert a new [`Topic`] with the
     /// latest_link.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `topic`: The [`Topic`] of the branch that the cursor is stored in.
     /// * `latest_link`: The latest link that was received for this topic.
     pub(crate) fn set_latest_link(&mut self, topic: Topic, latest_link: MsgId) {
@@ -172,7 +172,7 @@ impl CursorStore {
 
     /// Get the latest link for a topic, if it exists.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `topic`: The [`Topic`] of the message.
     ///
     /// Returns:

@@ -47,7 +47,7 @@ where
 
     /// If the address is not in the bucket, add it and return the message.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `addr`: Address - The address of the message to store.
     /// * `msg`: The message to store.
     ///
@@ -64,7 +64,7 @@ where
     /// Returns a vector of messages from the bucket, or an error if the bucket doesn't contain the
     /// address
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `address`: The address to retrieve messages from.
     ///
     /// Returns:

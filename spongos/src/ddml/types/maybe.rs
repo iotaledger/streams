@@ -10,7 +10,7 @@ pub struct Maybe<T>(T);
 impl<T> Maybe<T> {
     /// Creates a new `Maybe` struct wrapper for the provided `Option`
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `t`: The `Option` that will be wrapped.
     ///
     /// Returns:

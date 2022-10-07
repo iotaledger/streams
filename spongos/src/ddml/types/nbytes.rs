@@ -12,7 +12,7 @@ pub struct NBytes<T>(T);
 impl<T> NBytes<T> {
     /// Wraps a fixed-size array of bytes for `DDML` operations
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `bytes`: The byte array to be wrapped.
     pub fn new(t: T) -> Self {
         Self(t)
@@ -100,7 +100,7 @@ where
     /// Create a randomized array for a specific object type. A default of that object will be
     /// generated and filled with random bytes before being returned.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `rng`: The random number generator to use.
     ///
     /// Returns:

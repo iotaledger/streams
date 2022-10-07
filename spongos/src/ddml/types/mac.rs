@@ -9,7 +9,7 @@ pub struct Mac(usize);
 impl Mac {
     /// Creates a new `Mac` object for authentication of a specified length
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `length`: The length of the `Mac`.
     ///
     /// Returns:

@@ -32,7 +32,7 @@ impl OStream for &mut [u8] {
     /// stream by a given number of bytes, producing an error if the stream is shorter than the
     /// provided length.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `n`: The number of bytes to advance the stream by.
     ///
     /// Returns:
@@ -62,7 +62,7 @@ where
     /// stream by a given number of bytes, producing an error if the stream is shorter than the
     /// provided length.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `n`: The number of bytes to advance the stream by.
     ///
     /// Returns:
@@ -85,7 +85,7 @@ impl IStream for &[u8] {
     /// Ensure the input stream size is equal to or less than the number of bytes intended for
     /// allocation;
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `n`: the number of bytes we want to allocate
     ///
     /// Returns:
@@ -100,7 +100,7 @@ impl IStream for &[u8] {
     /// advancement value, returning the head of that split, and replacing self with the
     /// remainder of the slice.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `n`: The number of bytes to advance the cursor by.
     ///
     /// Returns:
@@ -129,7 +129,7 @@ where
     /// Ensure the input stream size is equal to or less than the number of bytes intended for
     /// allocation;
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `n`: the number of bytes we want to allocate
     ///
     /// Returns:
@@ -143,7 +143,7 @@ where
     /// advancement value, returning the head of that split, and replacing self with the
     /// remainder of the slice.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `n`: The number of bytes to advance the cursor by.
     ///
     /// Returns:

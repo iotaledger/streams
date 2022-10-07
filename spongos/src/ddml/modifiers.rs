@@ -7,7 +7,7 @@ pub struct External<T>(T);
 impl<T> External<T> {
     /// Wraps a variable-size object for modified `DDML` operations
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `t`: The object to encode/decode with modified behaviour.
     pub fn new(t: T) -> Self {
         Self(t)

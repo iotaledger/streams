@@ -10,7 +10,7 @@ pub struct Bytes<T = Vec<u8>>(T);
 impl<T> Bytes<T> {
     /// Wraps a variable-size array of bytes for `DDML` operations
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `bytes`: The byte array to be wrapped.
     pub fn new(bytes: T) -> Self {
         Self(bytes)

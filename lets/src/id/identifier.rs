@@ -206,7 +206,7 @@ where
     /// the `DID` document is retrieved and the signature is verified using the appropriately
     /// tagged `Verification Method`.
     ///
-    /// Arguments:
+    /// # Arguments
     /// * `verifier`: The [`Identifier`] of the signer.
     async fn verify(&mut self, verifier: &Identifier) -> Result<&mut Self> {
         let mut oneof = Uint8::default();

@@ -263,7 +263,7 @@ where
     /// Important to note is that the stream DISCARDS the messages that dont fit the criteria from
     /// the selectors.
     ///
-    /// Arguments:
+    /// # Arguments
     ///
     /// * `selectors`: A list of selectors to filter the messages by.
     ///
