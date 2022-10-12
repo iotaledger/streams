@@ -117,7 +117,7 @@ impl<T> UserBuilder<T> {
 impl<T> UserBuilder<T> {
     /// Build a [`User`] instance using the Builder parameters.
     ///
-    /// If a [`Transport`] is not provided the builder will use a default client.
+    /// If a [`Transport`] is not provided, the builder will use a default client.
     /// (Default [Client](`utangle::Client`) pointed at <https://chrysalis-nodes.iota.org> if the
     /// `tangle` feature is enabled, [`BucketTransport`](lets::transport::bucket::Client) if not)
     ///

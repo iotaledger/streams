@@ -54,6 +54,8 @@ const INIT_MESSAGE_NUM: usize = 1; // First non-reserved message number
 #[derive(PartialEq, Eq, Default)]
 struct State {
     /// Users' [`Identity`] information, contains keys and logic for signing and verification.
+    ///
+    /// None if the user is not created with an identity
     user_id: Option<Identity>,
 
     /// [`Address`] of the stream announcement message.
@@ -63,7 +65,7 @@ struct State {
 
     /// [`Identifier`] of the channel author.
     ///
-    /// NOne if channel is not created or user is not subscribed.
+    /// None if channel is not created or user is not subscribed.
     author_identifier: Option<Identifier>,
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no) mapped
@@ -73,7 +75,7 @@ struct State {
     /// Mapping of trusted pre shared keys and identifiers.
     psk_store: HashMap<PskId, Psk>,
 
-    /// List of Subscribed [Identifiers](`Identiier`).
+    /// List of Subscribed [Identifiers](`Identifier`).
     subscribers: HashSet<Identifier>,
 
     /// Mapping of message links ([`MsgId`]) and [`Spongos`] states. Messages are built from the
@@ -114,7 +116,7 @@ impl<T> User<T> {
     ///
     /// # Arguments
     /// * `user_id`: The user's [`Identity`]. This is used to sign messages.
-    /// * `psks`: A list of pre shared keys.
+    /// * `psks`: A list of trusted pre shared keys.
     /// * `transport`: The transport to use for sending and receiving messages.
     /// * `lean`: If true, the client will store only required message states.
     pub(crate) fn new<Psks>(user_id: Option<Identity>, psks: Psks, transport: T, lean: bool) -> Self

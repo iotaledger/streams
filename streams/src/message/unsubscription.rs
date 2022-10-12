@@ -102,7 +102,7 @@ impl<'a> Unwrap<'a> {
         }
     }
 
-    /// Returns a reference to the [`Identifier`] of the subsriber
+    /// Returns a reference to the [`Identifier`] of the subscriber
     pub(crate) fn subscriber_identifier(&self) -> &Identifier {
         &self.subscriber_id
     }

@@ -61,7 +61,7 @@ impl<F> Spongos<F>
 where
     F: Default,
 {
-    /// Create a Spongos object, initialize state with zero bytes.
+    /// Create a [`Spongos`] object, initialize state with zero bytes.
     pub fn init() -> Self {
         Self::init_with_state(F::default())
     }

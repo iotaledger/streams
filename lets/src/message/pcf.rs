@@ -24,7 +24,7 @@ use crate::message::{
 pub struct PCF<Content> {
     /// Identifies the type of message
     frame_type: u8,
-    /// Designates which frame of the message
+    /// Designates the position of this frame in the total message
     // 22-bit field
     payload_frame_num: PayloadFrameNum,
     /// Payload of the message

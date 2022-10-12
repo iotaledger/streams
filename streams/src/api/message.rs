@@ -17,7 +17,7 @@ use crate::message::{
     announcement, branch_announcement, keyload, signed_packet, subscription, tagged_packet, unsubscription,
 };
 
-/// A processed message return
+/// A processed Streams message
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Message {
     /// The [`Address`] of the message
@@ -309,7 +309,7 @@ pub struct Unsubscription {
 }
 
 impl Unsubscription {
-    /// Returns a reference to the subscriber [`Identifier`]
+    /// Consumes the Unsubscription and returns the the  [`Identifier`] of the subscriber
     pub fn into_subscriber_identifier(self) -> Identifier {
         self.subscriber_identifier
     }

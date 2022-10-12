@@ -17,7 +17,7 @@ use crate::message::{content::ContentUnwrap, hdf::HDF, preparsed::PreparsedMessa
 pub struct TransportMessage(Vec<u8>);
 
 impl TransportMessage {
-    /// Cretaes a new [`TransportMessage`] wrapper for the provided bytes
+    /// Creates a new [`TransportMessage`] wrapper for the provided bytes
     ///
     /// # Arguments
     /// * `body`: The body of the message
@@ -38,7 +38,7 @@ impl TransportMessage {
 
 impl TransportMessage {
     /// Creates a new [`unwrap::Context`] for the message body and decodes the [`HDF`].
-    /// The remaining context [`spongos::Spongos`] and cursor position are then  wrapped with the
+    /// The remaining context [`spongos::Spongos`] and cursor position are then wrapped with the
     /// [`HDF`] into a [`PreparsedMessage`] for content processing and returned.
     pub async fn parse_header<F>(self) -> Result<PreparsedMessage<F>>
     where

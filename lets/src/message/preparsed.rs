@@ -21,7 +21,7 @@ pub struct PreparsedMessage<F = KeccakF1600> {
     header: HDF,
     /// Spongos state for the `Context` of the pre-parsed message
     spongos: Spongos<F>,
-    /// Streaming position within `Context`, marking the end of the `HDF` and beginning of the `PCF`
+    /// Streaming position within `Context`, marking the end of the `HDF` and beginning of the `PCF`. Used in partial processing.
     cursor: usize,
 }
 

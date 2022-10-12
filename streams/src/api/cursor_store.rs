@@ -33,7 +33,7 @@ impl CursorStore {
         self.0.insert(topic, InnerCursorStore::default()).is_none()
     }
 
-    /// Remove the cursors with the given identifier from the tree, returning true if the cursor was
+    /// Remove the cursors with the given identifier from the map, returning true if the cursor was
     /// found and removed.
     ///
     /// # Arguments
