@@ -89,7 +89,7 @@ where
             .get_message()
             .index(address.to_msg_index())
             .await
-            .map_err(|e| Error::IotaClient("recv_messages", e))?;
+            .map_err(|e| Error::IotaClient("get messages by index", e))?;
 
         if msg_ids.is_empty() {
             return Err(Error::MessageMissing(address, "transport"));

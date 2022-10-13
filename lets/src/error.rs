@@ -78,14 +78,14 @@ impl From<String> for IdentityError {
 }
 
 #[derive(Debug, Error)]
-/// Error type of the iota client crate.
+/// Error type of the LETS crate.
 #[allow(clippy::large_enum_variant)]
 pub enum Error {
-    #[error("Crypto error whilest doing {0}: {1}")]
+    #[error("Crypto error hile attempting to {0}: {1}")]
     Crypto(&'static str, crypto::Error),
 
     #[cfg(feature = "did")]
-    #[error("Encountered did issue {0}; Error: {1}")]
+    #[error("Encountered DID error while trying to {0}; Error: {1}")]
     Did(&'static str, IdentityError),
 
     #[error("{0} is not encoded in {1} or the encoding is incorrect: {2:?}")]
@@ -100,7 +100,7 @@ pub enum Error {
     #[error("Malformed {0}: missing '{1}' for {2}")]
     Malformed(&'static str, &'static str, String),
 
-    #[error("there was an issue with {0} the signature, cannot {1}")]
+    #[error("There was an issue with {0} the signature, cannot {1}")]
     Signature(&'static str, &'static str),
 
     #[error("Internal Spongos error: {0}")]
@@ -118,8 +118,8 @@ pub enum Error {
     #[error("message '{0}' not found in {1}")]
     MessageMissing(Address, &'static str),
 
-    #[error("nonce is not in the range {0} for target score: {1}")]
-    Nonce(&'static str, f64),
+    #[error("Nonce is not in the range 0..u32::MAX range for target score: {0}")]
+    Nonce(f64),
 
     #[cfg(feature = "utangle-client")]
     #[error("Request HTTP error: {0}")]
@@ -131,6 +131,10 @@ impl Error {
     pub fn did<T: Into<IdentityError>>(did: &'static str, e: T) -> Self {
         Self::Did(did, e.into())
     }
+
+    pub fn utf(m: &'static str, error: FromUtf8Error) -> Self {
+        Self::Encoding(m, "utf8", Box::new(Self::External(error.into())))
+    }
 }
 
 impl From<SpongosError> for Error {
@@ -141,7 +145,7 @@ impl From<SpongosError> for Error {
 
 impl From<FromUtf8Error> for Error {
     fn from(error: FromUtf8Error) -> Self {
-        Self::Encoding("string", "utf8", Box::new(Self::External(error.into())))
+        Self::utf("string", error)
     }
 }
 

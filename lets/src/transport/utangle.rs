@@ -200,7 +200,7 @@ fn nonce(data: &[u8], target_score: f64) -> Result<u64> {
             }
             None
         })
-        .ok_or(Error::Nonce("0..u32::MAX range", target_score))
+        .ok_or(Error::Nonce(target_score))
 }
 
 #[derive(Deserialize)]

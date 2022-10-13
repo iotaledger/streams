@@ -688,7 +688,7 @@ where
         self.messages()
             .try_fold(0, |n, _| future::ok(n + 1))
             .await
-            .map_err(|e| Error::Messages("sync", e))
+            .map_err(Error::Messages)
     }
 
     /// Iteratively fetches all the pending messages from the transport
@@ -697,10 +697,7 @@ where
     /// method around the [`Messages`] stream. Check out its docs for more
     /// advanced usages.
     pub async fn fetch_next_messages(&mut self) -> Result<Vec<Message>> {
-        self.messages()
-            .try_collect()
-            .await
-            .map_err(|e| Error::Messages("fetch_next_messages", e))
+        self.messages().try_collect().await.map_err(Error::Messages)
     }
 }
 

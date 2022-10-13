@@ -6,6 +6,7 @@ use thiserror_no_std::Error;
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
+/// Error type of the Spongos crate.
 pub enum Error {
     //////////
     // Generic
@@ -16,7 +17,7 @@ pub enum Error {
     //////////
     // DDML Wrap/Unwrap
     //////////
-    #[error("here was an issue with the calculated signature, cannot unwrap message")]
+    #[error("There was an issue with the calculated signature, cannot unwrap message")]
     SignatureMismatch,
     #[error("Failure to generate ed25519 public key: {0:?}")]
     PublicKeyGenerationFailure(crypto::Error),
@@ -45,7 +46,7 @@ pub enum Error {
     #[error("Not enough space allocated for input stream (expected: {0}, found: {1})")]
     StreamAllocationExceededIn(usize, usize),
 
-    #[error("Generating context {0} failed due to {1}")]
+    #[error("Context failed to perform the message command \"{0}\"; Error: {1}")]
     Context(&'static str, String),
 
     #[error("{0}")]

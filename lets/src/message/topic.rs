@@ -17,7 +17,7 @@ use spongos::{
     KeccakF1600, Spongos, PRP,
 };
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash, serde::Serialize)]
 pub struct Topic(String);
@@ -108,9 +108,9 @@ where
     fn mask(&mut self, topic: &mut Topic) -> SpongosResult<&mut Self> {
         let mut topic_bytes = topic.as_ref().to_vec();
         self.mask(Bytes::new(&mut topic_bytes))?;
-        *topic = topic_bytes.try_into().map_err(|e: crate::error::Error| {
-            spongos::error::Error::InvalidAction("Topic", "".to_string(), e.to_string())
-        })?;
+        *topic = topic_bytes
+            .try_into()
+            .map_err(|e: crate::error::Error| spongos::error::Error::Context("Mask", e.to_string()))?;
         Ok(self)
     }
 }

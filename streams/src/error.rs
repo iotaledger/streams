@@ -20,49 +20,45 @@ use spongos::error::Error as SpongosError;
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
-/// Error type of the iota client crate.
+/// Error type of the streams crate.
 #[allow(clippy::large_enum_variant)]
-/// #[serde(tag = "type", content = "error")]
 pub enum Error {
     //////////
     // Streams
     //////////
     #[error(
-        "address already taken for. The address '{1}' where the {0} message is being sent already contains some data, possibly spam."
+        "Address already taken. The address '{1}' where the {0} message is being sent already contains some data, possibly spam."
     )]
     AddressUsed(&'static str, Address),
 
-    #[error("unexpected message type {0}")]
+    #[error("Unexpected message type {0}")]
     MessageTypeUnknown(u8),
 
-    #[error("message '{0}' not found in {1}")]
+    #[error("Message  '{0}' not found in {1}")]
     MessageMissing(MsgId, &'static str),
 
-    #[error("Failed getting messages for {0} due to {1}")]
-    Messages(&'static str, anyhow::Error),
-
-    #[error("Missing {0} for {1} in order to {2}")]
-    MissingUserData(&'static str, &'static str, &'static str),
+    #[error("Failed to get messages. Error: {0}")]
+    Messages(anyhow::Error),
 
     #[error(
-        "user does not have a cursor in branch '{0}'. This probably means the user does not have write permission over that branch"
+        "User does not have a cursor stored in branch '{0}'. This probably means the user does not have write permission within that branch"
     )]
     NoCursor(Topic),
 
-    #[error("the user does not have an identity, but needs one to {0}")]
+    #[error("User does not have an identity, but needs one to {0}")]
     NoIdentity(&'static str),
 
-    #[error("User identity contained no secret key")]
+    #[error("User identity contains no secret key")]
     NoSecretKey,
 
     #[error(
-        "not connected to a stream. A user must either create a stream or connect to an existing one before attempting to {0}"
+        "Not connected to a stream. A user must either create a stream or connect to an existing one before attempting to {0}"
     )]
     NoStream(&'static str),
 
     #[error(
-        "Message not linked. The {0} message at address '{1:#?}' is not linked to any message. \
-Any {0} message must be linked to a previous message by including the address of the previous message in the header"
+        "Message not linked. The {0} message at address '{1:#?}' is not linked to a previous message. \
+Any {0} message must be linked to a previous message by including the address of the existing message in the header"
     )]
     NotLinked(&'static str, Address),
 
@@ -72,10 +68,10 @@ Any {0} message must be linked to a previous message by including the address of
     #[error("Setup error: {0}")]
     Setup(&'static str),
 
-    #[error("topic {0} not found in store")]
+    #[error("Topic {0} not found in store")]
     TopicNotFound(Topic),
 
-    #[error("Transport error whilest doing {0} for address {1}: {2}")]
+    #[error("Transport error while trying to {0} for address {1}; Error: {2}")]
     Transport(Address, &'static str, LetsError),
 
     #[error("PSK by id {0} is not known")]

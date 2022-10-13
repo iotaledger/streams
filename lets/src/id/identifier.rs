@@ -82,9 +82,9 @@ impl Identifier {
                     Some(e) => Ok(x25519::PublicKey::try_from_slice(
                         &e.data().try_decode().map_err(|e| Error::did("try_decode", e))?,
                     )
-                    .map_err(|e| Error::Crypto("x25519::PublicKey try_from_slice", e))?),
+                    .map_err(|e| Error::Crypto("create the public key from slice", e))?),
                     None => Err(Error::did(
-                        "when creating public key",
+                        "get public key from key exchange",
                         alloc::format!(
                             "DID Method fragment {} could not be resolved",
                             url_info.exchange_fragment()

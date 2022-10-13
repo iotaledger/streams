@@ -140,13 +140,16 @@ where
             .mask(Bytes::new(&mut exchange_fragment_bytes))?
             .mask(Bytes::new(&mut signing_fragment_bytes))?;
 
-        let utf =
-            |e: alloc::string::FromUtf8Error| SpongosError::Context("Mask DIDUrlInfo", Error::from(e).to_string());
-
-        *url_info.did_mut() = String::from_utf8(did_bytes).map_err(utf)?;
-        *url_info.client_url_mut() = String::from_utf8(client_url).map_err(utf)?;
-        *url_info.exchange_fragment_mut() = String::from_utf8(exchange_fragment_bytes).map_err(utf)?;
-        *url_info.signing_fragment_mut() = String::from_utf8(signing_fragment_bytes).map_err(utf)?;
+        // Errors read as: "Context failed to perform the message command "Mask DIDUrlInfo"; Error: {TAG} is
+        // not encoded in utf8 or the encoding is incorrect: External error: {utf8Error}""
+        *url_info.did_mut() = String::from_utf8(did_bytes)
+            .map_err(|e| SpongosError::Context("Mask DIDUrlInfo", Error::utf("did", e).to_string()))?;
+        *url_info.client_url_mut() = String::from_utf8(client_url)
+            .map_err(|e| SpongosError::Context("Mask DIDUrlInfo", Error::utf("client url", e).to_string()))?;
+        *url_info.exchange_fragment_mut() = String::from_utf8(exchange_fragment_bytes)
+            .map_err(|e| SpongosError::Context("Mask DIDUrlInfo", Error::utf("exchange fragment", e).to_string()))?;
+        *url_info.signing_fragment_mut() = String::from_utf8(signing_fragment_bytes)
+            .map_err(|e| SpongosError::Context("Mask DIDUrlInfo", Error::utf("signing fragment", e).to_string()))?;
         Ok(self)
     }
 }

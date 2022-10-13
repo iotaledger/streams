@@ -27,17 +27,17 @@ use crate::{
 };
 
 pub(crate) async fn resolve_document(url_info: &DIDUrlInfo) -> Result<ResolvedIotaDocument> {
-    let did_url = IotaDID::parse(url_info.did()).map_err(|e| Error::did("parse did", e))?;
+    let did_url = IotaDID::parse(url_info.did()).map_err(|e| Error::did("parse did url", e))?;
     let doc = DIDClient::builder()
-        .network(did_url.network().map_err(|e| Error::did("DIDClient network", e))?)
+        .network(did_url.network().map_err(|e| Error::did("DIDClient set network", e))?)
         .primary_node(url_info.client_url(), None, None)
-        .map_err(|e| Error::did("DIDClient set primary_node", e))?
+        .map_err(|e| Error::did("DIDClient set primary node", e))?
         .build()
         .await
-        .map_err(|e| Error::did("DIDClient build", e))?
+        .map_err(|e| Error::did("build DID Client", e))?
         .read_document(&did_url)
         .await
-        .map_err(|e| Error::did("DIDClient read_doc", e))?;
+        .map_err(|e| Error::did("read DID document", e))?;
     Ok(doc)
 }
 
@@ -104,11 +104,9 @@ where
             .mask(NBytes::new(&mut exchange_private_key_bytes))?;
 
         let keypair = DIDKeyPair::try_from_private_key_bytes(KeyType::Ed25519, &private_key_bytes)
-            .map_err(|e| SpongosError::Context("Mask", Error::did("unmasking DID private key", e).to_string()))?;
-        let xkeypair =
-            DIDKeyPair::try_from_private_key_bytes(KeyType::X25519, &exchange_private_key_bytes).map_err(|e| {
-                SpongosError::Context("Mask", Error::did("unmasking DID exchange private key", e).to_string())
-            })?;
+            .map_err(|e| SpongosError::Context("Mask", Error::did("unmask DID private key", e).to_string()))?;
+        let xkeypair = DIDKeyPair::try_from_private_key_bytes(KeyType::X25519, &exchange_private_key_bytes)
+            .map_err(|e| SpongosError::Context("Mask", Error::did("unmask DID exchange private key", e).to_string()))?;
         *did.info_mut().keypair_mut() = keypair;
         *did.info_mut().exchange_keypair_mut() = xkeypair;
 
@@ -158,7 +156,7 @@ impl DIDInfo {
 
     pub(crate) fn exchange_key(&self) -> Result<x25519::SecretKey> {
         x25519::SecretKey::try_from_slice(self.exchange_keypair.0.private().as_ref())
-            .map_err(|e| Error::Crypto("exchange_key from kepair", e))
+            .map_err(|e| Error::Crypto("get the exchange_key from keypair", e))
     }
 }
 
