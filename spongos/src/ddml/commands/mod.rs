@@ -46,7 +46,8 @@ pub trait Mask<Type> {
     fn mask(&mut self, field: Type) -> Result<&mut Self>;
 }
 
-/// Skip command. Binary representation is just encoded/decoded and is not processed with [`Spongos`].
+/// Skip command. Binary representation is just encoded/decoded and is not processed with
+/// [`Spongos`].
 pub trait Skip<Type> {
     fn skip(&mut self, field: Type) -> Result<&mut Self>;
 }
