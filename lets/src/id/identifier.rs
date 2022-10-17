@@ -214,7 +214,6 @@ where
     F: PRP,
     IS: io::IStream,
 {
-
     /// Verifies the signature of the message based on the type of [`Identifier`] of the signing
     /// user. If the sender [`Identifier`] is of type [`Identifier::Ed25519`], then the public
     /// key is used to verify the message signature. If it is of type [`Identifier::DID`], then

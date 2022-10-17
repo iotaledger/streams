@@ -81,7 +81,7 @@ impl HDF {
     /// * `sequence`: Publisher sequence number
     /// * `publisher`: Publisher [`Identifier`]
     /// * `topic`: Reference to branch [`Topic`]
-    pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: &Topic) -> Result<Self> {
+    pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: &Topic) -> Self {
         debug_assert!(
             message_type >> 4 == 0,
             "invalid content-type '{}': content-type value cannot be greater than 4 bits",

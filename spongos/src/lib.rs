@@ -17,14 +17,13 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
-mod error;
+pub mod error;
 use error::Error;
 
 /// Core utility tools (spongos/prp/prng)
 mod core;
 /// A markup language toolset for encoding/decoding/encrypting/signing byte streams
 pub mod ddml;
-pub mod error;
 
 pub use crate::core::{
     prng::SpongosRng,

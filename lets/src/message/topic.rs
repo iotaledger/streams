@@ -17,7 +17,7 @@ use spongos::{
     KeccakF1600, Spongos, PRP,
 };
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 /// A wrapper around a `String` used for identifying a branch within a `Stream`
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash, serde::Serialize)]
