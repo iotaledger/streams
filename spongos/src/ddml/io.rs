@@ -1,9 +1,10 @@
 use alloc::string::String;
 use core::ops::{Deref, DerefMut};
 
-use anyhow::{ensure, Result};
-
-use crate::Error::{StreamAllocationExceededIn, StreamAllocationExceededOut};
+use crate::error::{
+    Error::{StreamAllocationExceededIn, StreamAllocationExceededOut},
+    Result,
+};
 
 /// Write
 pub trait OStream {
@@ -38,10 +39,14 @@ impl OStream for &mut [u8] {
     /// Returns:
     /// A mutable slice of the buffer.
     fn try_advance(&mut self, n: usize) -> Result<&mut [u8]> {
-        ensure!(n <= self.len(), StreamAllocationExceededOut(n, self.len()));
-        let (head, tail) = core::mem::take(self).split_at_mut(n);
-        *self = tail;
-        Ok(head)
+        match n <= self.len() {
+            true => {
+                let (head, tail) = core::mem::take(self).split_at_mut(n);
+                *self = tail;
+                Ok(head)
+            }
+            false => Err(StreamAllocationExceededOut(n, self.len())),
+        }
     }
 
     /// Returns a hexadecimal string representation of the bytes in the slice.
@@ -91,8 +96,10 @@ impl IStream for &[u8] {
     /// Returns:
     /// Ok if size does not exceed allocation, Error if it does
     fn ensure_size(&self, n: usize) -> Result<()> {
-        ensure!(n <= self.len(), StreamAllocationExceededIn(n, self.len()));
-        Ok(())
+        match n <= self.len() {
+            true => Ok(()),
+            false => Err(StreamAllocationExceededIn(n, self.len())),
+        }
     }
 
     /// The first thing the function does is call `ensure_size` to make sure there are enough bytes

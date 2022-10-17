@@ -1,8 +1,7 @@
-use anyhow::Result;
-
 use crate::{
     core::prp::PRP,
     ddml::commands::{unwrap::Context, Commit},
+    error::Result,
 };
 
 /// Commit [Spongos](`crate::core::spongos::Spongos`) state.

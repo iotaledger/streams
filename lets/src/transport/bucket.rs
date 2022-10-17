@@ -2,7 +2,6 @@
 use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
 // 3rd-party
-use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
@@ -10,7 +9,12 @@ use async_trait::async_trait;
 // Streams
 
 // Local
-use crate::{address::Address, message::TransportMessage, transport::Transport};
+use crate::{
+    address::Address,
+    error::{Error, Result},
+    message::TransportMessage,
+    transport::Transport,
+};
 
 /// [`BTreeMap`] wrapper client for testing purposes
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -73,6 +77,6 @@ where
         self.bucket
             .get(&address)
             .cloned()
-            .ok_or_else(|| anyhow!("No messages found at address {}", address))
+            .ok_or(Error::AddressError("No message found", address))
     }
 }

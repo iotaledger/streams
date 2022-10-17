@@ -1,4 +1,3 @@
-use anyhow::Result;
 use crypto::keys::x25519;
 
 use crate::{
@@ -9,6 +8,7 @@ use crate::{
         modifiers::External,
         types::NBytes,
     },
+    error::Result,
 };
 
 #[cfg(feature = "osrng")]

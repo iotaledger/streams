@@ -1,12 +1,13 @@
-use anyhow::Result;
-
-use crate::ddml::{
-    commands::{
-        wrap::{Context, Wrap},
-        Skip,
+use crate::{
+    ddml::{
+        commands::{
+            wrap::{Context, Wrap},
+            Skip,
+        },
+        io,
+        types::{Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
-    io,
-    types::{Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
+    error::Result,
 };
 
 /// A helper struct wrapper for performing [`Skip`] operations with

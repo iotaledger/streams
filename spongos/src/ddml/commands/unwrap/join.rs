@@ -1,8 +1,7 @@
-use anyhow::Result;
-
 use crate::{
     core::{prp::PRP, spongos::Spongos},
     ddml::commands::{unwrap::Context, Join},
+    error::Result,
 };
 
 /// Absorbs the provided [`Spongos`] into the beginning of the current [`Context`] spongos.

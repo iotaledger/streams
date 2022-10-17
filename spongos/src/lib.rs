@@ -24,6 +24,7 @@ use error::Error;
 mod core;
 /// A markup language toolset for encoding/decoding/encrypting/signing byte streams
 pub mod ddml;
+pub mod error;
 
 pub use crate::core::{
     prng::SpongosRng,

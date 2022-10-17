@@ -1,9 +1,6 @@
 // Rust
 use alloc::vec::Vec;
 
-// 3rd-party
-use anyhow::{bail, Result};
-
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 
@@ -18,7 +15,7 @@ use crate::{
         io,
         types::{Bytes, Maybe, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
-    error::Error::PublicKeyGenerationFailure,
+    error::{Error::PublicKeyGenerationFailure, Result},
 };
 
 /// A helper struct wrapper for performing [`Absorb`] operations with
@@ -122,7 +119,7 @@ impl<'a, F: PRP, IS: io::IStream> Absorb<&'a mut ed25519::PublicKey> for Context
                 *public_key = pk;
                 Ok(self)
             }
-            Err(_) => bail!(PublicKeyGenerationFailure),
+            Err(e) => Err(PublicKeyGenerationFailure(e)),
         }
     }
 }

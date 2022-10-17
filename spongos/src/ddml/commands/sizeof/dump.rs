@@ -1,6 +1,7 @@
-use anyhow::Result;
-
-use crate::ddml::commands::{sizeof::Context, Dump};
+use crate::{
+    ddml::commands::{sizeof::Context, Dump},
+    error::Result,
+};
 
 /// Displays context size
 impl Dump for Context {

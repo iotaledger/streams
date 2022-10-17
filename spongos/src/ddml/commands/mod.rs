@@ -21,9 +21,11 @@
 //! the buffer needed to wrap a message is implemented this way (see `sizeof` module).
 //!
 //! Command traits are implemented in modules `sizeof`, `wrap`, `unwrap`.
-use anyhow::Result;
 
-use crate::core::spongos::Spongos;
+use crate::{
+    core::spongos::Spongos,
+    error::{Error, Result},
+};
 
 /// Absorb command. Binary representation of the field is absorbed into Spongos state.
 /// External fields are not encoded in the binary stream. Non-binary field is
@@ -99,7 +101,7 @@ pub trait Repeated<I, F> {
 pub trait Guard {
     fn guard<E>(&mut self, cond: bool, err: E) -> Result<&mut Self>
     where
-        E: Into<anyhow::Error>;
+        E: Into<Error>;
 }
 
 /// Dump context info into stdout.

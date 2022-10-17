@@ -1,4 +1,3 @@
-use anyhow::Result;
 use crypto::{keys::x25519, signatures::ed25519};
 use generic_array::typenum::Unsigned;
 
@@ -8,6 +7,7 @@ use crate::{
         commands::{sizeof::Context, Mask},
         types::{Bytes, Maybe, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
+    error::Result,
 };
 
 /// Increases [`Context`] size by 1 byte, representing the number of masking bytes for all Uint8

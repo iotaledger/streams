@@ -1,4 +1,3 @@
-use anyhow::Result;
 use crypto::{keys::x25519, signatures::ed25519};
 
 use crate::{
@@ -8,6 +7,7 @@ use crate::{
         modifiers::External,
         types::{NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
+    error::Result,
 };
 
 /// Reads a single byte encoded `Uint8` from [Spongos](`crate::core::spongos::Spongos`) state but

@@ -1,9 +1,11 @@
-use anyhow::Result;
 use crypto::keys::x25519;
 
-use crate::ddml::{
-    commands::{sizeof::Context, X25519},
-    types::NBytes,
+use crate::{
+    ddml::{
+        commands::{sizeof::Context, X25519},
+        types::NBytes,
+    },
+    error::Result,
 };
 
 /// Increases [`Context`] size by the x25519 Public Key Length (32 Bytes) as well as the number of

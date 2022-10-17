@@ -1,5 +1,4 @@
 use alloc::boxed::Box;
-use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 
 use spongos::{
@@ -9,11 +8,13 @@ use spongos::{
         modifiers::External,
         types::{Mac, Maybe, NBytes, Size, Uint8},
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
 };
 
 use crate::{
     address::MsgId,
+    error::{Error, Result},
     id::Identifier,
     message::{
         content::{ContentSizeof, ContentUnwrap, ContentWrap},
@@ -81,14 +82,12 @@ impl HDF {
     /// * `publisher`: Publisher [`Identifier`]
     /// * `topic`: Reference to branch [`Topic`]
     pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: &Topic) -> Result<Self> {
-        ensure!(
+        debug_assert!(
             message_type >> 4 == 0,
-            anyhow!(
-                "invalid content-type '{}': content-type value cannot be greater than 4 bits",
-                message_type
-            )
+            "invalid content-type '{}': content-type value cannot be greater than 4 bits",
+            message_type
         );
-        Ok(Self {
+        Self {
             encoding: UTF8,
             version: STREAMS_1_VER,
             message_type,
@@ -99,7 +98,7 @@ impl HDF {
             sequence,
             publisher,
             topic_hash: topic.into(),
-        })
+        }
     }
 
     /// Injects a linked message address into the [`HDF`]
@@ -116,15 +115,13 @@ impl HDF {
     /// # Arguments
     /// * `payload_length`: The length of the payload
     pub fn with_payload_length(mut self, payload_length: u16) -> Result<Self> {
-        ensure!(
-            payload_length >> 10 == 0,
-            anyhow!(
-                "invalid payload_length '{}': payload length value cannot be larger than 10 bits",
-                payload_length
-            )
-        );
-        self.payload_length = payload_length;
-        Ok(self)
+        match payload_length >> 10 == 0 {
+            true => {
+                self.payload_length = payload_length;
+                Ok(self)
+            }
+            false => Err(Error::InvalidSize("payload_length", 10, payload_length.into())),
+        }
     }
 
     /// Returns the message type for the associated payload
@@ -165,7 +162,7 @@ impl HDF {
 
 #[async_trait(?Send)]
 impl ContentSizeof<HDF> for sizeof::Context {
-    async fn sizeof(&mut self, hdf: &HDF) -> Result<&mut Self> {
+    async fn sizeof(&mut self, hdf: &HDF) -> SpongosResult<&mut Self> {
         let message_type_and_payload_length = NBytes::<[u8; 2]>::default();
         let payload_frame_count = NBytes::<[u8; 3]>::default();
         self.absorb(Uint8::new(hdf.encoding))?
@@ -191,7 +188,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    async fn wrap(&mut self, hdf: &mut HDF) -> Result<&mut Self> {
+    async fn wrap(&mut self, hdf: &mut HDF) -> SpongosResult<&mut Self> {
         let message_type_and_payload_length = {
             let mut nbytes = NBytes::<[u8; 2]>::default();
             nbytes[0] = (hdf.message_type << 4) | ((hdf.payload_length >> 8) as u8 & 0b0011);
@@ -230,7 +227,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, mut hdf: &mut HDF) -> Result<&mut Self> {
+    async fn unwrap(&mut self, mut hdf: &mut HDF) -> SpongosResult<&mut Self> {
         let mut encoding = Uint8::default();
         let mut version = Uint8::default();
         // [message_type x 4][reserved x 2][payload_length x 2]
@@ -244,12 +241,12 @@ where
             .absorb(&mut version)?
             .guard(
                 version.inner() == STREAMS_1_VER,
-                anyhow!("Msg version '{}' not supported", version),
+                SpongosError::Version("Msg", version.inner()),
             )?
             .skip(message_type_and_payload_length.as_mut())?
             .guard(
                 0 == message_type_and_payload_length[0] & 0b1100,
-                anyhow!("bits 5 and 6 between content-type and payload-length are reserved"),
+                SpongosError::Reserved("bits 5 and 6 between content-type and payload-length"),
             )?
             .absorb(External::new(Uint8::new(
                 // Absorb only message_type
@@ -258,12 +255,12 @@ where
             .absorb(&mut frame_type)?
             .guard(
                 frame_type.inner() == HDF_ID,
-                anyhow!("Invalid message type. Found '{}', expected '{}'", frame_type, HDF_ID),
+                SpongosError::InvalidOption("message", frame_type.inner()),
             )?
             .skip(payload_frame_count_bytes.as_mut())?
             .guard(
                 0 == payload_frame_count_bytes[0] & 0b1100,
-                anyhow!("first 2 bits of payload-frame-count are reserved"),
+                SpongosError::Reserved("first 2 bits of payload-frame-count"),
             )?
             .absorb(Maybe::new(&mut hdf.linked_msg_address))?
             .mask(&mut hdf.topic_hash)?

@@ -31,3 +31,6 @@ pub mod transport;
 
 /// Identity based Signature/Verification utilities
 pub mod id;
+
+/// Errors specific for LETS
+pub mod error;

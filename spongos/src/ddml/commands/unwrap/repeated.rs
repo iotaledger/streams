@@ -1,6 +1,7 @@
-use anyhow::Result;
-
-use crate::ddml::commands::{unwrap::Context, Repeated};
+use crate::{
+    ddml::commands::{unwrap::Context, Repeated},
+    error::Result,
+};
 
 /// Repeat a provided function an explicitly dictated number of times.
 impl<C, F, IS> Repeated<usize, C> for Context<IS, F>

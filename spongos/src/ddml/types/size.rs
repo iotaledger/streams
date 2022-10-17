@@ -1,6 +1,6 @@
 use core::fmt;
 
-use anyhow::Result;
+use crate::error::Result;
 
 /// Integer size wrapper for `DDML` operations
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]

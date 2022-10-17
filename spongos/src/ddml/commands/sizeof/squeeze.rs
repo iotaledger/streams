@@ -1,9 +1,10 @@
-use anyhow::Result;
-
-use crate::ddml::{
-    commands::{sizeof::Context, Squeeze},
-    modifiers::External,
-    types::{Mac, NBytes},
+use crate::{
+    ddml::{
+        commands::{sizeof::Context, Squeeze},
+        modifiers::External,
+        types::{Mac, NBytes},
+    },
+    error::Result,
 };
 
 /// Increases [`Context`] size by the number of bytes present in a [`Mac`] wrapper.

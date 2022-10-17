@@ -1,8 +1,9 @@
 use core::iter;
 
-use anyhow::Result;
-
-use crate::ddml::commands::{wrap::Context, Repeated};
+use crate::{
+    ddml::commands::{wrap::Context, Repeated},
+    error::Result,
+};
 
 /// Repeat a provided function an explicitly dictated number of times.
 impl<I, C, F, OS> Repeated<I, C> for Context<OS, F>

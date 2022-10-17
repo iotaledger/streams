@@ -1,8 +1,9 @@
-use anyhow::Result;
-
-use crate::ddml::{
-    commands::{sizeof::Context, Skip},
-    types::{Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
+use crate::{
+    ddml::{
+        commands::{sizeof::Context, Skip},
+        types::{Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
+    },
+    error::Result,
 };
 
 /// Skipped values are just encoded and not wrapped.

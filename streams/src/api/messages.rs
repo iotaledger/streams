@@ -42,11 +42,10 @@ use crate::api::{
 /// ```
 /// use futures::TryStreamExt;
 ///
-/// use streams::{id::Ed25519, transport::utangle, Address, User};
+/// use streams::{id::Ed25519, transport::utangle, Address, Result, User};
 ///
 /// # use std::cell::RefCell;
 /// # use std::rc::Rc;
-/// # use anyhow::Result;
 /// # use streams::transport::bucket;
 /// #
 /// # #[tokio::main]
@@ -362,16 +361,17 @@ mod tests {
     use alloc::rc::Rc;
     use core::cell::RefCell;
 
-    use anyhow::Result;
-
     use lets::{address::Address, id::Ed25519, transport::bucket};
 
-    use crate::api::{
-        message::{
-            Message,
-            MessageContent::{BranchAnnouncement, Keyload, SignedPacket},
+    use crate::{
+        api::{
+            message::{
+                Message,
+                MessageContent::{BranchAnnouncement, Keyload, SignedPacket},
+            },
+            user::User,
         },
-        user::User,
+        Result,
     };
 
     type Transport = Rc<RefCell<bucket::Client>>;

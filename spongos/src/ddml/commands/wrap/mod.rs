@@ -1,5 +1,4 @@
 //! Implementation of command traits for wrapping.
-use anyhow::Result;
 
 use crate::{
     core::{
@@ -7,6 +6,7 @@ use crate::{
         spongos::Spongos,
     },
     ddml::types::{Size, Uint16, Uint32, Uint64, Uint8},
+    error::Result,
 };
 
 /// Wrapped state of message. Used to encode `DDML` variables to

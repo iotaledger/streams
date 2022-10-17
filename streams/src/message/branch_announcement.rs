@@ -21,7 +21,6 @@
 use alloc::boxed::Box;
 
 // 3rd-party
-use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
@@ -36,6 +35,7 @@ use spongos::{
         commands::{sizeof, unwrap, wrap, Commit, Join, Mask},
         io,
     },
+    error::Result,
     Spongos,
 };
 

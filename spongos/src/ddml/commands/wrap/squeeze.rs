@@ -1,5 +1,3 @@
-use anyhow::Result;
-
 use crate::{
     core::prp::PRP,
     ddml::{
@@ -8,6 +6,7 @@ use crate::{
         modifiers::External,
         types::{Mac, NBytes},
     },
+    error::Result,
 };
 
 /// Squeeze [`Context`] into a [`Mac`] length hash, using allocated space in context byte stream.

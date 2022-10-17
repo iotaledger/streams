@@ -1,11 +1,13 @@
-use anyhow::Result;
 use crypto::signatures::ed25519;
 
-use crate::ddml::{
-    commands::{wrap::Context, Ed25519},
-    io,
-    modifiers::External,
-    types::NBytes,
+use crate::{
+    ddml::{
+        commands::{wrap::Context, Ed25519},
+        io,
+        modifiers::External,
+        types::NBytes,
+    },
+    error::Result,
 };
 
 /// Uses the provided Ed25519 Secret Key to sign a hash. The signature is then absorbed into
