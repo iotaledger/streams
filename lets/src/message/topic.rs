@@ -17,7 +17,7 @@ use spongos::{
     KeccakF1600, Spongos, PRP,
 };
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash, serde::Serialize)]
 pub struct Topic(String);
