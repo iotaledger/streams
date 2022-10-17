@@ -9,11 +9,9 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
-mod error;
-use error::Error;
-
 mod core;
 pub mod ddml;
+pub mod error;
 
 pub use crate::core::{
     prng::SpongosRng,

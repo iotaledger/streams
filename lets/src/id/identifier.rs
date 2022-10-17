@@ -4,15 +4,12 @@ use core::convert::{TryFrom, TryInto};
 use spongos::ddml::commands::X25519;
 
 // 3rd-party
-use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
 
 // Streams
-#[cfg(feature = "did")]
-use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519, Mask, Squeeze},
@@ -20,13 +17,22 @@ use spongos::{
         modifiers::External,
         types::{NBytes, Uint8},
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
 };
 
 // Local
 #[cfg(feature = "did")]
-use crate::id::did::{resolve_document, DIDUrlInfo};
-use crate::message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify};
+use crate::{
+    alloc::string::ToString,
+    error::Error,
+    id::did::{resolve_document, DIDUrlInfo},
+};
+
+use crate::{
+    error::Result,
+    message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify},
+};
 
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
@@ -73,10 +79,16 @@ impl Identifier {
                     url_info.exchange_fragment(),
                     Some(identity_iota::did::MethodScope::key_agreement()),
                 ) {
-                    Some(e) => Ok(x25519::PublicKey::try_from_slice(&e.data().try_decode()?)?),
-                    None => Err(anyhow!(
-                        "DID Method fragment {} could not be resolved",
-                        url_info.exchange_fragment()
+                    Some(e) => Ok(x25519::PublicKey::try_from_slice(
+                        &e.data().try_decode().map_err(|e| Error::did("try_decode", e))?,
+                    )
+                    .map_err(|e| Error::Crypto("create the public key from slice", e))?),
+                    None => Err(Error::did(
+                        "get public key from key exchange",
+                        alloc::format!(
+                            "DID Method fragment {} could not be resolved",
+                            url_info.exchange_fragment()
+                        ),
                     )),
                 }
             }
@@ -108,25 +120,25 @@ impl AsRef<[u8]> for Identifier {
 }
 
 impl core::fmt::LowerHex for Identifier {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", hex::encode(self))
     }
 }
 
 impl core::fmt::UpperHex for Identifier {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", hex::encode_upper(self))
     }
 }
 
 impl core::fmt::Display for Identifier {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         core::fmt::LowerHex::fmt(self, f)
     }
 }
 
 impl Mask<&Identifier> for sizeof::Context {
-    fn mask(&mut self, identifier: &Identifier) -> Result<&mut Self> {
+    fn mask(&mut self, identifier: &Identifier) -> SpongosResult<&mut Self> {
         match identifier {
             Identifier::Ed25519(pk) => {
                 let oneof = Uint8::new(0);
@@ -148,7 +160,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, identifier: &Identifier) -> Result<&mut Self> {
+    fn mask(&mut self, identifier: &Identifier) -> SpongosResult<&mut Self> {
         match &identifier {
             Identifier::Ed25519(pk) => {
                 let oneof = Uint8::new(0);
@@ -170,7 +182,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, identifier: &mut Identifier) -> Result<&mut Self> {
+    fn mask(&mut self, identifier: &mut Identifier) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::new(0);
         self.mask(&mut oneof)?;
         match oneof.inner() {
@@ -185,7 +197,7 @@ where
                 self.mask(&mut url_info)?;
                 *identifier = Identifier::DID(url_info);
             }
-            o => return Err(anyhow!("{} is not a valid identifier option", o)),
+            o => return Err(SpongosError::InvalidOption("identifier", o)),
         }
         Ok(self)
     }
@@ -197,7 +209,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn verify(&mut self, verifier: &Identifier) -> Result<&mut Self> {
+    async fn verify(&mut self, verifier: &Identifier) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::default();
         self.absorb(&mut oneof)?;
         match oneof.inner() {
@@ -210,7 +222,11 @@ where
                     Ok(self)
                 }
                 #[cfg(feature = "did")]
-                _ => Err(anyhow!("expected Identity type 'Ed25519', found something else")),
+                o => Err(SpongosError::InvalidAction(
+                    "verify data",
+                    o.to_string(),
+                    verifier.to_string(),
+                )),
             },
             #[cfg(feature = "did")]
             1 => match verifier {
@@ -226,17 +242,30 @@ where
 
                     let signing_fragment = format!(
                         "#{}",
-                        fragment_bytes
-                            .to_str()
-                            .ok_or_else(|| anyhow!("fragment must be UTF8 encoded"))?
+                        fragment_bytes.to_str().ok_or(SpongosError::Context(
+                            "ContentVerify",
+                            SpongosError::InvalidAction(
+                                "make signing_fragment",
+                                verifier.to_string(),
+                                "Fragment bytes cant be converted to string".to_string()
+                            )
+                            .to_string()
+                        ))?
                     );
 
-                    url_info.verify(&signing_fragment, &signature_bytes, &hash).await?;
+                    url_info
+                        .verify(&signing_fragment, &signature_bytes, &hash)
+                        .await
+                        .map_err(|e| SpongosError::Context("ContentVerify", e.to_string()))?;
                     Ok(self)
                 }
-                _ => Err(anyhow!("expected Identity type 'DID', found something else")),
+                o => Err(SpongosError::InvalidAction(
+                    "verify data",
+                    o.to_string(),
+                    verifier.to_string(),
+                )),
             },
-            o => Err(anyhow!("{} is not a valid identity option", o)),
+            o => Err(SpongosError::InvalidOption("identity", o)),
         }
     }
 }
@@ -244,7 +273,7 @@ where
 // TODO: Find a better way to represent this logic without the need for an additional trait
 #[async_trait(?Send)]
 impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
-    async fn encrypt_sizeof(&mut self, recipient: &Identifier, key: &[u8]) -> Result<&mut Self> {
+    async fn encrypt_sizeof(&mut self, recipient: &Identifier, key: &[u8]) -> SpongosResult<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introdution)
         match recipient {
@@ -255,12 +284,20 @@ impl ContentEncryptSizeOf<Identifier> for sizeof::Context {
             }
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
-                let doc = resolve_document(url_info).await?;
+                let doc = resolve_document(url_info)
+                    .await
+                    .map_err(|e| SpongosError::Context("ContentEncryptSizeOf", e.to_string()))?;
                 let method = doc
                     .document
                     .resolve_method(url_info.exchange_fragment(), None)
                     .expect("DID Method could not be resolved");
-                let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?;
+                let xkey = x25519::PublicKey::try_from_slice(
+                    &method
+                        .data()
+                        .try_decode()
+                        .map_err(|e| SpongosError::Context("ContentEncrypt try_decode", e.to_string()))?,
+                )
+                .map_err(|e| SpongosError::Context("ContentEncrypt x25519::PublicKey try_from_slice", e.to_string()))?;
                 self.x25519(&xkey, NBytes::new(key))
             }
         }
@@ -273,7 +310,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    async fn encrypt(&mut self, recipient: &Identifier, key: &[u8]) -> Result<&mut Self> {
+    async fn encrypt(&mut self, recipient: &Identifier, key: &[u8]) -> SpongosResult<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introdution)
         match recipient {
@@ -284,12 +321,21 @@ where
             }
             #[cfg(feature = "did")]
             Identifier::DID(url_info) => {
-                let doc = resolve_document(url_info).await?;
+                let doc = resolve_document(url_info)
+                    .await
+                    .map_err(|e| SpongosError::Context("ContentEncrypt", e.to_string()))?;
+
                 let method = doc
                     .document
                     .resolve_method(url_info.exchange_fragment(), None)
                     .expect("DID Method could not be resolved");
-                let xkey = x25519::PublicKey::try_from_slice(&method.data().try_decode()?)?;
+                let xkey = x25519::PublicKey::try_from_slice(
+                    &method
+                        .data()
+                        .try_decode()
+                        .map_err(|e| SpongosError::Context("ContentEncrypt try_decode", e.to_string()))?,
+                )
+                .map_err(|e| SpongosError::Context("ContentEncrypt x25519::PublicKey try_from_slice", e.to_string()))?;
                 self.x25519(&xkey, NBytes::new(key))
             }
         }

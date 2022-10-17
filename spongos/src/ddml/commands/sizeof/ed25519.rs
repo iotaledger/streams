@@ -1,10 +1,12 @@
-use anyhow::Result;
 use crypto::signatures::ed25519;
 
-use crate::ddml::{
-    commands::{sizeof::Context, Ed25519},
-    modifiers::External,
-    types::NBytes,
+use crate::{
+    ddml::{
+        commands::{sizeof::Context, Ed25519},
+        modifiers::External,
+        types::NBytes,
+    },
+    error::Result,
 };
 
 /// Signature size is 64 bytes

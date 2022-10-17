@@ -6,7 +6,6 @@ use core::{
 };
 
 // 3rd-party
-use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize};
@@ -22,7 +21,12 @@ use crypto::hashes::{
 // Streams
 
 // Local
-use crate::{address::Address, message::TransportMessage, transport::Transport};
+use crate::{
+    address::Address,
+    error::{Error, Result},
+    message::TransportMessage,
+    transport::Transport,
+};
 
 const NONCE_SIZE: usize = core::mem::size_of::<u64>();
 // Precomputed natural logarithm of 3 for performance reasons.
@@ -115,7 +119,7 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
 #[async_trait(?Send)]
 impl<Message, SendResponse> Transport<'_> for Client<Message, SendResponse>
 where
-    Message: AsRef<[u8]> + TryFrom<TangleMessage, Error = anyhow::Error>,
+    Message: AsRef<[u8]> + TryFrom<TangleMessage, Error = crate::error::Error>,
     SendResponse: DeserializeOwned,
 {
     type Msg = Message;
@@ -158,7 +162,7 @@ where
             .data
             .message_ids
             .first()
-            .ok_or_else(|| anyhow!("No message found in address {}", address))?;
+            .ok_or(Error::AddressError("No message found", address))?;
         let msg: Response<TangleMessage> = self
             .client
             .get(format!("{}/{}/{}", self.node_url, path, msg_id))
@@ -196,7 +200,7 @@ fn nonce(data: &[u8], target_score: f64) -> Result<u64> {
             }
             None
         })
-        .ok_or_else(|| anyhow!("nonce is not in the 0..u32::MAX range"))
+        .ok_or(Error::Nonce(target_score))
 }
 
 #[derive(Deserialize)]
@@ -238,7 +242,7 @@ struct Response<T> {
 }
 
 impl TryFrom<TangleMessage> for TransportMessage {
-    type Error = anyhow::Error;
+    type Error = crate::error::Error;
     fn try_from(message: TangleMessage) -> Result<Self> {
         Ok(Self::new(hex::decode(message.payload.data)?))
     }

@@ -30,11 +30,13 @@ iota-crypto = {version = "0.9.1", default-features = false, features = ["ed25519
 
 # 3rd-party dependencies 
 digest = {version = "0.9", default-features = false}
-displaydoc = {version = "0.2", default-features = false}
 generic-array = {version = "0.14", default-features = false}
 hex = {version = "0.4", default-features = false}
 keccak = {version = "0.1", default-features = false}
 rand = {version = "0.8", default-features = false}
+
+# Error
+thiserror-no-std = {version = "2.0.2", default-features = false}
 
 # quarentine
 # anyhow is forcing spongos (and anything depending on it) to pull in libstd

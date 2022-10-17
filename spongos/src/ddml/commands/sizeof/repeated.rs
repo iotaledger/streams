@@ -1,8 +1,9 @@
 use core::iter;
 
-use anyhow::Result;
-
-use crate::ddml::commands::{sizeof::Context, Repeated};
+use crate::{
+    ddml::commands::{sizeof::Context, Repeated},
+    error::Result,
+};
 
 /// Repeated modifier. The actual number of repetitions must be wrapped
 /// (absorbed/masked/skipped) explicitly.

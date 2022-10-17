@@ -3,11 +3,11 @@ use alloc::boxed::Box;
 use core::{hash::Hash, ops::Deref};
 
 // 3rd-party
-use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 // IOTA
 use crypto::{keys::x25519, signatures::ed25519};
+
 #[cfg(feature = "did")]
 use identity_iota::{
     core::BaseEncoding,
@@ -17,8 +17,6 @@ use identity_iota::{
 };
 
 // IOTA-Streams
-#[cfg(feature = "did")]
-use spongos::ddml::types::Bytes;
 use spongos::{
     ddml::{
         commands::{sizeof, unwrap, wrap, Absorb, Commit, Ed25519 as Ed25519Command, Mask, Squeeze, X25519},
@@ -26,13 +24,20 @@ use spongos::{
         modifiers::External,
         types::{NBytes, Uint8},
     },
+    error::{Error as SpongosError, Result as SpongosResult},
     PRP,
 };
 
 // Local
 #[cfg(feature = "did")]
-use crate::id::did::{DataWrapper, DID};
 use crate::{
+    alloc::string::ToString,
+    error::Error,
+    id::did::{DataWrapper, DID},
+};
+
+use crate::{
+    error::Result,
     id::{ed25519::Ed25519, identifier::Identifier},
     message::{ContentDecrypt, ContentSign, ContentSignSizeof},
 };
@@ -129,7 +134,7 @@ impl IdentityKind {
 }
 
 impl Mask<&Identity> for sizeof::Context {
-    fn mask(&mut self, identity: &Identity) -> Result<&mut Self> {
+    fn mask(&mut self, identity: &Identity) -> SpongosResult<&mut Self> {
         match &identity.identitykind {
             IdentityKind::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
             #[cfg(feature = "did")]
@@ -143,7 +148,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    fn mask(&mut self, identity: &Identity) -> Result<&mut Self> {
+    fn mask(&mut self, identity: &Identity) -> SpongosResult<&mut Self> {
         match &identity.identitykind {
             IdentityKind::Ed25519(ed25519) => self.mask(Uint8::new(0))?.mask(NBytes::new(ed25519)),
             #[cfg(feature = "did")]
@@ -157,7 +162,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    fn mask(&mut self, identity: &mut Identity) -> Result<&mut Self> {
+    fn mask(&mut self, identity: &mut Identity) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::default();
         self.mask(&mut oneof)?;
         let identitykind = match oneof.inner() {
@@ -172,7 +177,7 @@ where
                 self.mask(&mut did)?;
                 IdentityKind::DID(did)
             }
-            other => return Err(anyhow!("'{}' is not a valid identitykind type", other)),
+            o => return Err(SpongosError::InvalidOption("identitykind", o)),
         };
 
         *identity = Identity::new(identitykind);
@@ -182,7 +187,7 @@ where
 
 #[async_trait(?Send)]
 impl ContentSignSizeof<Identity> for sizeof::Context {
-    async fn sign_sizeof(&mut self, signer: &Identity) -> Result<&mut Self> {
+    async fn sign_sizeof(&mut self, signer: &Identity) -> SpongosResult<&mut Self> {
         match &signer.identitykind {
             IdentityKind::Ed25519(ed25519) => {
                 let hash = External::new(NBytes::new([0; 64]));
@@ -217,7 +222,7 @@ where
     F: PRP,
     OS: io::OStream,
 {
-    async fn sign(&mut self, signer: &IdentityKind) -> Result<&mut Self> {
+    async fn sign(&mut self, signer: &IdentityKind) -> SpongosResult<&mut Self> {
         match signer {
             IdentityKind::Ed25519(ed25519) => {
                 let mut hash = External::new(NBytes::new([0; 64]));
@@ -242,22 +247,34 @@ where
                         let mut data = DataWrapper::new(&hash);
                         let fragment = format!("#{}", info.url_info().signing_fragment());
                         // Join the DID identifier with the key fragment of the verification method
-                        let method = IotaDID::parse(info.url_info().did())?.join(&fragment)?;
+                        let method = IotaDID::parse(info.url_info().did())
+                            .map_err(|e| SpongosError::Context("ContentSign", Error::did("did parse", e).to_string()))?
+                            .join(&fragment)
+                            .map_err(|e| {
+                                SpongosError::Context("ContentSign", Error::did("join did fragments", e).to_string())
+                            })?;
+
                         JcsEd25519::<DIDEd25519>::create_signature(
                             &mut data,
                             method,
                             info.keypair().private().as_ref(),
                             ProofOptions::new(),
-                        )?;
+                        )
+                        .map_err(|e| {
+                            SpongosError::Context("ContentSign for create_signature on JcsEd25519", e.to_string())
+                        })?;
+
                         let signature = BaseEncoding::decode_base58(
                             &data
                                 .into_signature()
-                                .ok_or_else(|| {
-                                    anyhow!("there was an issue with calculating the signature, cannot wrap message")
-                                })?
+                                .ok_or(SpongosError::Context(
+                                    "ContentSign",
+                                    "Missing did signature proof".to_string(),
+                                ))?
                                 .value()
                                 .as_str(),
-                        )?;
+                        )
+                        .map_err(|e| SpongosError::Context("ContentSign", e.to_string()))?;
                         self.absorb(NBytes::new(signature))
                     }
                     DID::Default => unreachable!(),
@@ -274,13 +291,18 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn decrypt(&mut self, recipient: &Identity, key: &mut [u8]) -> Result<&mut Self> {
+    async fn decrypt(&mut self, recipient: &Identity, key: &mut [u8]) -> SpongosResult<&mut Self> {
         // TODO: Replace with separate logic for EdPubKey and DID instances (pending Identity xkey
         // introduction)
         match &recipient.identitykind {
             IdentityKind::Ed25519(kp) => self.x25519(&kp.inner().into(), NBytes::new(key)),
             #[cfg(feature = "did")]
-            IdentityKind::DID(did) => self.x25519(&did.info().exchange_key()?, NBytes::new(key)),
+            IdentityKind::DID(did) => self.x25519(
+                &did.info()
+                    .exchange_key()
+                    .map_err(|e| SpongosError::Context("ContentDecrypt", e.to_string()))?,
+                NBytes::new(key),
+            ),
         }
     }
 }

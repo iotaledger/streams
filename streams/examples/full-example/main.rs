@@ -2,7 +2,6 @@
 use std::{cell::RefCell, env, rc::Rc};
 
 // 3rd-party
-use anyhow::Result;
 use rand::Rng;
 
 // IOTA
@@ -10,7 +9,7 @@ use rand::Rng;
 // Streams
 use streams::{
     transport::{bucket, Transport},
-    TransportMessage,
+    Result, TransportMessage,
 };
 
 #[cfg(feature = "tangle-client")]
@@ -44,7 +43,7 @@ async fn run_lean_test<SR, T: GenericTransport<SR>>(transport: T, seed: &str) ->
     println!("## Running Lean State Test ##\n");
     let result = scenarios::lean::example(transport, seed).await;
     match &result {
-        Err(err) => eprintln!("Error in Lean State test: {:?}", err),
+        Err(err) => eprintln!("Error in Lean State test: {}", err),
         Ok(_) => println!("\n## Lean State test completed successfully!! ##\n"),
     }
     result
@@ -54,7 +53,7 @@ async fn run_basic_scenario<SR, T: GenericTransport<SR>>(transport: T, seed: &st
     println!("## Running single branch test with seed: {} ##\n", seed);
     let result = scenarios::basic::example(transport, seed).await;
     match &result {
-        Err(err) => eprintln!("Error in Single Branch test: {:?}", err),
+        Err(err) => eprintln!("Error in Single Branch test: {}", err),
         Ok(_) => println!("\n## Single Branch Test completed successfully!! ##\n"),
     };
     result
@@ -64,7 +63,7 @@ async fn run_filter_branch_test<SR, T: GenericTransport<SR>>(transport: T, seed:
     println!("## Running filter test with seed: {} ##\n", seed);
     let result = scenarios::filter::example(transport, seed).await;
     match &result {
-        Err(err) => eprintln!("Error in filter test: {:?}", err),
+        Err(err) => eprintln!("Error in filter test: {}", err),
         Ok(_) => println!("\n## Filter Test completed successfully!! ##\n"),
     };
     result

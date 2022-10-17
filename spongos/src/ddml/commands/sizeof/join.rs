@@ -1,8 +1,7 @@
-use anyhow::Result;
-
 use crate::{
     core::spongos::Spongos,
     ddml::commands::{sizeof::Context, Join},
+    error::Result,
 };
 
 /// Join does not take any space in the binary stream.

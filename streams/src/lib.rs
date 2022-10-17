@@ -7,11 +7,10 @@
 //!
 //! ## Starting a new Channel
 //! ```
-//! # use anyhow::Result;
 //! use streams::{
 //!     transport::utangle,
 //!     id::Ed25519,
-//!     User,
+//!     User, Result
 //! };
 //! # use streams::transport::bucket;
 //! #[tokio::main]
@@ -44,5 +43,9 @@ mod message;
 /// [`User`] API.
 mod api;
 
+/// Errors for Streams
+mod error;
+
 pub use api::{message::Message, selector::Selector, send_response::SendResponse, user::User};
+pub use error::{Error, Result};
 pub use lets::{address::Address, id, message::TransportMessage, transport};

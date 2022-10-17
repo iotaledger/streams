@@ -1,5 +1,4 @@
-use crate::{SendResponse, User};
-use anyhow::{anyhow, Result};
+use crate::{Error, Result, SendResponse, User};
 use lets::{
     message::{Topic, TransportMessage},
     transport::Transport,
@@ -81,8 +80,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
     /// # Examples
     /// ## Send Signed Message
     /// ```
-    /// # use anyhow::Result;
-    /// # use streams::{id::Ed25519, transport::bucket, User};
+    /// # use streams::{id::Ed25519, transport::bucket, User, Result};
     /// #
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
@@ -113,7 +111,7 @@ impl<'a, P, Trans> MessageBuilder<'a, P, Trans> {
         Trans: for<'b> Transport<'b, Msg = TransportMessage, SendResponse = TSR>,
     {
         if self.payload.as_ref().is_empty() {
-            return Err(anyhow!("message payload cannot be empty"));
+            return Err(Error::PayloadEmpty);
         }
 
         let mut public: &[u8] = &[];

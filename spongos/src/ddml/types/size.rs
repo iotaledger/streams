@@ -1,6 +1,6 @@
 use core::fmt;
 
-use anyhow::Result;
+use crate::error::Result;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]
 pub struct Size(usize);

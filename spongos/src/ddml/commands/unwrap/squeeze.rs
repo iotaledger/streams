@@ -1,5 +1,3 @@
-use anyhow::{ensure, Result};
-
 use crate::{
     core::prp::PRP,
     ddml::{
@@ -8,11 +6,13 @@ use crate::{
         modifiers::External,
         types::{Mac, NBytes},
     },
-    error::Error::BadMac,
+    error::{Error::BadMac, Result},
 };
 impl<'a, F: PRP, IS: io::IStream> Squeeze<&'a Mac> for Context<IS, F> {
     fn squeeze(&mut self, val: &'a Mac) -> Result<&mut Self> {
-        ensure!(self.spongos.squeeze_eq(self.stream.try_advance(val.length())?), BadMac);
+        if !self.spongos.squeeze_eq(self.stream.try_advance(val.length())?) {
+            return Err(BadMac);
+        }
         self.cursor += val.length();
         Ok(self)
     }

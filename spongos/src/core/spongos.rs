@@ -1,6 +1,4 @@
 use core::{fmt, ops::Mul};
-
-use anyhow::{ensure, Result};
 use digest::Digest;
 use generic_array::{
     typenum::{Prod, Unsigned, U2},
@@ -8,7 +6,10 @@ use generic_array::{
 };
 
 use super::prp::PRP;
-use crate::{Error::LengthMismatch, KeccakF1600};
+use crate::{
+    error::{Error::LengthMismatch, Result},
+    KeccakF1600,
+};
 
 fn xor(s: &mut [u8], x: &[u8]) {
     for (si, xi) in s.iter_mut().zip(x.iter()) {
@@ -172,7 +173,11 @@ impl<F: PRP> Spongos<F> {
     {
         let mut plain = plain.as_ref();
         let mut cipher = cipher.as_mut();
-        ensure!(plain.len() == cipher.len(), LengthMismatch(plain.len(), cipher.len()));
+
+        if plain.len() != cipher.len() {
+            return Err(LengthMismatch(plain.len(), cipher.len()));
+        }
+
         while !plain.is_empty() {
             let spongos = self.outer_min_mut(plain.len());
             let n = spongos.len();
@@ -202,7 +207,11 @@ impl<F: PRP> Spongos<F> {
     {
         let mut cipher = cipher.as_ref();
         let mut plain = plain.as_mut();
-        ensure!(plain.len() == cipher.len(), LengthMismatch(plain.len(), cipher.len()));
+
+        if plain.len() != cipher.len() {
+            return Err(LengthMismatch(plain.len(), cipher.len()));
+        }
+
         while !plain.is_empty() {
             let spongos = self.outer_min_mut(cipher.len());
             let n = spongos.len();

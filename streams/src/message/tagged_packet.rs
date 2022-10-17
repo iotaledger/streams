@@ -17,7 +17,6 @@
 use alloc::{boxed::Box, vec::Vec};
 
 // 3rd-party
-use anyhow::Result;
 use async_trait::async_trait;
 
 // IOTA
@@ -30,6 +29,7 @@ use spongos::{
         io,
         types::{Bytes, Mac},
     },
+    error::Result,
     Spongos,
 };
 

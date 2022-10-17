@@ -1,17 +1,17 @@
 // Rust
 use alloc::vec::Vec;
 
-// 3rd-party
-use anyhow::Result;
-
 // Local
-use crate::ddml::{
-    commands::{
-        unwrap::{Context, Unwrap},
-        Skip,
+use crate::{
+    ddml::{
+        commands::{
+            unwrap::{Context, Unwrap},
+            Skip,
+        },
+        io,
+        types::{Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
     },
-    io,
-    types::{Bytes, NBytes, Size, Uint16, Uint32, Uint64, Uint8},
+    error::Result,
 };
 struct SkipContext<'a, F, IS> {
     ctx: &'a mut Context<IS, F>,

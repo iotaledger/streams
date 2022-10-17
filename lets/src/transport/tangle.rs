@@ -6,7 +6,6 @@ use core::{
 };
 
 // 3rd-party
-use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 use futures::{
     future::{ready, try_join_all},
@@ -19,7 +18,12 @@ use iota_client::bee_message::{payload::Payload, Message as IotaMessage};
 // Streams
 
 // Local
-use crate::{address::Address, message::TransportMessage, transport::Transport};
+use crate::{
+    address::Address,
+    error::{Error, Result},
+    message::TransportMessage,
+    transport::Transport,
+};
 
 #[derive(Debug)]
 pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(
@@ -37,10 +41,12 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
     pub async fn for_node(node_url: &str) -> Result<Client<Message, SendResponse>> {
         Ok(Self(
             iota_client::ClientBuilder::new()
-                .with_node(node_url)?
+                .with_node(node_url)
+                .map_err(|e| Error::IotaClient("building client", e))?
                 .with_local_pow(true)
                 .finish()
-                .await?,
+                .await
+                .map_err(|e| Error::External(e.into()))?,
             PhantomData,
         ))
     }
@@ -57,8 +63,8 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
 #[async_trait(?Send)]
 impl<Message, SendResponse> Transport<'_> for Client<Message, SendResponse>
 where
-    Message: Into<Vec<u8>> + TryFrom<IotaMessage, Error = anyhow::Error>,
-    SendResponse: TryFrom<IotaMessage, Error = anyhow::Error>,
+    Message: Into<Vec<u8>> + TryFrom<IotaMessage, Error = crate::error::Error>,
+    SendResponse: TryFrom<IotaMessage, Error = crate::error::Error>,
 {
     type Msg = Message;
     type SendResponse = SendResponse;
@@ -72,19 +78,28 @@ where
             .with_index(address.to_msg_index())
             .with_data(msg.into())
             .finish()
-            .await?
+            .await
+            .map_err(|e| Error::IotaClient("sending message", e))?
             .try_into()
     }
 
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
-        let msg_ids = self.client().get_message().index(address.to_msg_index()).await?;
-        ensure!(!msg_ids.is_empty(), "no message found at index '{}'", address);
+        let msg_ids = self
+            .client()
+            .get_message()
+            .index(address.to_msg_index())
+            .await
+            .map_err(|e| Error::IotaClient("get messages by index", e))?;
+
+        if msg_ids.is_empty() {
+            return Err(Error::MessageMissing(address, "transport"));
+        }
 
         let msgs = try_join_all(msg_ids.iter().map(|msg| {
             self.client()
                 .get_message()
                 .data(msg)
-                .map_err(Into::into)
+                .map_err(|e| Error::IotaClient("receiving message", e))
                 .and_then(|iota_message| ready(iota_message.try_into()))
         }))
         .await?;
@@ -93,13 +108,15 @@ where
 }
 
 impl TryFrom<IotaMessage> for TransportMessage {
-    type Error = anyhow::Error;
+    type Error = crate::error::Error;
     fn try_from(message: IotaMessage) -> Result<Self> {
         if let Some(Payload::Indexation(indexation)) = message.payload() {
             Ok(Self::new(indexation.data().into()))
         } else {
-            Err(anyhow!(
-                "expected an indexation payload from the Tangle, received something else"
+            Err(Error::Malformed(
+                "payload from the Tangle",
+                "IndexationPayload",
+                alloc::string::ToString::to_string(&message.id().0),
             ))
         }
     }
