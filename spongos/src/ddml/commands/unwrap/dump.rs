@@ -7,6 +7,7 @@ use crate::{
     error::Result,
 };
 
+/// Displays [`Context`] stream and spongos
 impl<F: PRP, IS: io::IStream> Dump for Context<IS, F> {
     fn dump<'a>(&mut self, args: core::fmt::Arguments<'a>) -> Result<&mut Self> {
         println!(

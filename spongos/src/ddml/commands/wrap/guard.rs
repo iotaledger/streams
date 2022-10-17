@@ -3,6 +3,7 @@ use crate::{
     error::{Error, Result},
 };
 
+/// Ensures that the provided condition is met
 impl<OS, F> Guard for Context<OS, F> {
     fn guard<E>(&mut self, cond: bool, err: E) -> Result<&mut Self>
     where

@@ -25,7 +25,7 @@ impl Selector {
     /// identifier. If the selector is a level, check if the message sequence is contained in
     /// the selector level
     ///
-    /// Arguments:
+    /// # Arguments
     ///
     /// * `message`: The message to check against the selector.
     ///

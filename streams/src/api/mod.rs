@@ -2,16 +2,16 @@
 mod cursor_store;
 
 /// Unwrapped Message Types
-pub(crate) mod message;
+pub mod message;
 /// Message builder for sending payloads
-mod message_builder;
+pub mod message_builder;
 /// Message Retrieval
-mod messages;
+pub mod messages;
 /// Message Retrieval Filter Selector
 pub(crate) mod selector;
 /// Message Wrapper for Sent Messages
 pub(crate) mod send_response;
 /// User Client
-pub(crate) mod user;
+pub mod user;
 /// User Client Builder
-pub(crate) mod user_builder;
+pub mod user_builder;

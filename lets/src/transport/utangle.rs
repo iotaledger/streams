@@ -33,9 +33,13 @@ const NONCE_SIZE: usize = core::mem::size_of::<u64>();
 // See https://oeis.org/A002391.
 const LN_3: f64 = 1.098_612_288_668_109;
 
+/// A [`Transport`] Client for sending and retrieving binary messages from an `IOTA Tangle` node.
+/// This Client uses a lightweight [reqwest](`reqwest::Client`) Client implementation.
 #[derive(Debug, Clone)]
 pub struct Client<Message = TransportMessage, SendResponse = Ignored> {
+    /// Node endpoint URL
     node_url: String,
+    /// HTTP Client
     client: reqwest::Client,
     _phantom: PhantomData<(Message, SendResponse)>,
 }
@@ -51,6 +55,10 @@ impl<M, S> Default for Client<M, S> {
 }
 
 impl<Message, SendResponse> Client<Message, SendResponse> {
+    /// Creates a new `uTangle` [`Client`] implementation from the provided URL
+    ///
+    /// # Arguments:
+    /// * `node_url`: Tangle node endpoint
     pub fn new<U>(node_url: U) -> Self
     where
         U: Into<String>,
@@ -62,6 +70,7 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
         }
     }
 
+    /// Returns basic network details from node request
     async fn get_network_info(&self) -> Result<NetworkInfo> {
         let network_info_path = "api/v1/info";
         let network_info: Response<NetworkInfo> = self
@@ -74,6 +83,7 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
         Ok(network_info.data)
     }
 
+    /// Returns [`Tips`] from node request
     async fn get_tips(&self) -> Result<Tips> {
         let tips_path = "api/v1/tips";
         let tips: Response<Tips> = self
@@ -86,6 +96,13 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
         Ok(tips.data)
     }
 
+    /// Serialise message contents into single byte array for sending
+    ///
+    /// # Arguments
+    /// * `network_info`: [`NetworkInfo`] response from node
+    /// * `tips`: [`Tips`] response from node
+    /// * `address`: Address of the message being sent
+    /// * `msg`: Payload bytes for the message
     fn pack_message(&self, network_info: NetworkInfo, tips: Tips, address: Address, msg: &[u8]) -> Result<Vec<u8>> {
         let mut message_bytes = Vec::new();
         // Network-ID
@@ -125,6 +142,11 @@ where
     type Msg = Message;
     type SendResponse = SendResponse;
 
+    /// Sends a message indexed at the provided [`Address`] to the tangle.
+    ///
+    /// # Arguments
+    /// * `address`: The address of the message.
+    /// * `msg`: Message - The message to send.
     async fn send_message(&mut self, address: Address, msg: Message) -> Result<SendResponse>
     where
         Message: 'async_trait,
@@ -147,6 +169,11 @@ where
         Ok(response)
     }
 
+    /// Retrieves a message indexed at the provided [`Address`] from the tangle. Errors if no
+    /// messages are found.
+    ///
+    /// # Arguments
+    /// * `address`: The address of the message to retrieve.
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
         let path = "api/v1/messages";
         let index_data: Response<IndexResponse> = self

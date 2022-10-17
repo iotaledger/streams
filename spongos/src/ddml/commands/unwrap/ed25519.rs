@@ -11,6 +11,7 @@ use crate::{
     error::{Error, Result},
 };
 
+/// Uses the provided Ed25519 Public Key to verify a signature hash.
 impl<'a, F, IS: io::IStream> Ed25519<&'a ed25519::PublicKey, External<&'a NBytes<[u8; 64]>>> for Context<IS, F> {
     fn ed25519(
         &mut self,
