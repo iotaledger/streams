@@ -34,11 +34,10 @@ use crate::{
 
 /// Abstract representation of a Message Address
 ///
-/// An `Address` is comprised of 2 distinct parts: the application address
-/// ([`Address::appaddr`]) and the message identifier ([`Address::msgid`]). The
-/// application address is unique per application and is common in the `Address`
-/// of all messages published in it. The message identifier is produced
-/// pseudo-randomly out of the publisher's identifier and the message's sequence
+/// An `Address` is comprised of 2 distinct parts: the [application address](`AppAddr`)
+/// and the [message identifier](`MsgId`). The application address is unique per application
+/// and is common in the `Address` of all messages published in it. The message identifier
+/// is produced pseudo-randomly out of the publisher's identifier and the message's sequence
 /// number
 ///
 /// ## exchangeable encoding
@@ -71,11 +70,18 @@ use crate::{
 /// [Display]: #impl-Display
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash, serde::Serialize)]
 pub struct Address {
+    /// The base address of the application
     appaddr: AppAddr,
+    /// The message ID of a specific message
     msgid: MsgId,
 }
 
 impl Address {
+    /// Creates a new `Address` from an `AppAddr` and a `MsgId`
+    ///
+    /// # Arguments
+    /// * `appaddr`: The base address of the application.
+    /// * `msgid`: The unique message ID
     pub fn new<A, M>(appaddr: A, msgid: M) -> Self
     where
         A: Into<AppAddr>,
@@ -87,10 +93,12 @@ impl Address {
         }
     }
 
+    /// Returns the address [Message Id](`MsgId`)
     pub fn relative(self) -> MsgId {
         self.msgid
     }
 
+    /// Returns the [Application Address](`AppAddr`)
     pub fn base(self) -> AppAddr {
         self.appaddr
     }
@@ -101,6 +109,7 @@ impl Address {
         hasher.chain(self.base()).chain(self.relative()).finalize().into()
     }
 
+    /// Hash the content of the [`Address`] using `Blake2b256`
     pub fn to_msg_index(self) -> [u8; 32] {
         self.to_blake2b()
     }

@@ -2,14 +2,14 @@
 //!
 //! The `BranchAnnounce` message creates a new branch in a Stream.
 //!
-//! It announces the topic for the new branch, as well as informs of the previous branch topic the
-//! new branch is being generated from.
+//! It announces the [`Topic`] for the new branch, as well as informs of the previous branch topic
+//! the new branch is being generated from.
 //!
 //! ```ddml
 //! message BranchAnnounce {
-//!     join(Spongos);
-//!     mask             u8     identifier[32];
-//!     mask             u8     topic;
+//!     join(spongos);
+//!     mask             u8     identifier;
+//!     mask             u8     new_topic;
 //!     mask             u8     previous_topic;
 //!     commit;
 //!     squeeze          u8     hash[64];
@@ -41,13 +41,23 @@ use spongos::{
 
 // Local
 
+/// A struct that holds references needed for branch announcement message encoding
 pub(crate) struct Wrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// The [`Identity`] of the publisher
     user_id: &'a Identity,
+    /// The new branch [`Topic`]
     new_topic: &'a Topic,
 }
 
 impl<'a> Wrap<'a> {
+    /// Creates a new [`Wrap`] struct for a branch announcement message
+    ///
+    /// # Arguments
+    /// * `initial_state`: The initial [`Spongos`] state the message will be joined to
+    /// * `user_id`: The [`Identity`] of the publisher
+    /// * `new_topic`: the new branch [`Topic`]
     pub(crate) fn new(initial_state: &'a mut Spongos, user_id: &'a Identity, new_topic: &'a Topic) -> Self {
         Self {
             initial_state,
@@ -85,12 +95,19 @@ where
     }
 }
 
+/// A struct that holds the placeholders needed for branch announcement message decoding
 pub(crate) struct Unwrap<'a> {
+    /// The base [`Spongos`] state that the message will be joined to
     initial_state: &'a mut Spongos,
+    /// The new branch [`Topic`]
     new_topic: Topic,
 }
 
 impl<'a> Unwrap<'a> {
+    /// Cretes a new [`Unwrap`] struct for a branch announcement message
+    ///
+    /// # Arguments
+    /// * `initial_state`: The initial [`Spongos`] state the message will be joined to
     pub(crate) fn new(initial_state: &'a mut Spongos) -> Self {
         Self {
             initial_state,
@@ -98,10 +115,12 @@ impl<'a> Unwrap<'a> {
         }
     }
 
+    /// Returns a refernce to the new branch [`Topic`]
     pub(crate) fn new_topic(&self) -> &Topic {
         &self.new_topic
     }
 
+    /// Consumes the [`Unwrap`], returning the new branch [`Topic`]
     pub(crate) fn into_new_topic(self) -> Topic {
         self.new_topic
     }

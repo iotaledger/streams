@@ -42,10 +42,14 @@ use crate::{
     message::{ContentDecrypt, ContentSign, ContentSignSizeof},
 };
 
+/// Wrapper around [`Identifier`], specifying which type of [`Identity`] is being used. An
+/// [`Identity`] is the foundation of message sending and verification.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(clippy::large_enum_variant)]
 pub struct Identity {
+    /// Type of User Identity
     identitykind: IdentityKind,
+    /// User Identifier
     identifier: Identifier,
 }
 
@@ -56,14 +60,19 @@ impl Default for Identity {
 }
 
 impl Identity {
-    pub fn new(identitykind: IdentityKind) -> Self {
-        let identifier = identitykind.to_identifier();
+    /// Create a new [`Identity`] from the provided `IdentityKind` wrapper
+    ///
+    /// # Arguments
+    /// * `identity_kind`: A wrapper containing [`Identity`] details
+    pub fn new(identity_kind: IdentityKind) -> Self {
+        let identifier = identity_kind.to_identifier();
         Self {
-            identitykind,
+            identitykind: identity_kind,
             identifier,
         }
     }
 
+    /// Returns a reference to the User [`Identifier`]
     pub fn identifier(&self) -> &Identifier {
         &self.identifier
     }
@@ -95,10 +104,13 @@ impl From<DID> for Identity {
     }
 }
 
+/// Wrapper for [`Identity`] details
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(clippy::large_enum_variant)]
 pub enum IdentityKind {
+    /// An Ed25519 type [`Identity`] using a private key
     Ed25519(Ed25519),
+    /// An IOTA `DID` type [`Identity`] using a `DID` document stored in the tangle
     #[cfg(feature = "did")]
     DID(DID),
 }
@@ -112,7 +124,7 @@ impl Default for IdentityKind {
 }
 
 impl IdentityKind {
-    // Get the Secret key part of the key exchange of the Identity
+    /// Returns the Secret key part of the key exchange of the Identity
     pub fn ke_sk(&self) -> Result<x25519::SecretKey> {
         match self {
             Self::Ed25519(ed25519) => Ok(ed25519.inner().into()),
@@ -124,6 +136,7 @@ impl IdentityKind {
         }
     }
 
+    /// Converts the [`IdentityKind`] instance into an [`Identifier`]
     pub fn to_identifier(&self) -> Identifier {
         match self {
             Self::Ed25519(ed25519) => ed25519.inner().public_key().into(),

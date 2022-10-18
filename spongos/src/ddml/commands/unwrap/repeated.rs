@@ -3,6 +3,7 @@ use crate::{
     error::Result,
 };
 
+/// Repeat a provided function an explicitly dictated number of times.
 impl<C, F, IS> Repeated<usize, C> for Context<IS, F>
 where
     C: for<'b> FnMut(&'b mut Self) -> Result<&'b mut Self>,

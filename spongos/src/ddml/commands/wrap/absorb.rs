@@ -12,16 +12,22 @@ use crate::{
     },
     error::Result,
 };
+
+/// A helper struct wrapper for performing [`Absorb`] operations with
 struct AbsorbContext<'a, F, OS> {
+    /// Internal [`Context`] that [`Absorb`] operations will be conducted on
     ctx: &'a mut Context<OS, F>,
 }
 
+/// Create a new [`AbsorbContext`] from the provided [`Context`].
 impl<'a, F, OS> AbsorbContext<'a, F, OS> {
     fn new(ctx: &'a mut Context<OS, F>) -> Self {
         Self { ctx }
     }
 }
 
+/// Encode bytes into the [`Context`] spongos, and advances the stream by the provided bytes length,
+/// copying those bytes into the stream.
 impl<'a, F: PRP, OS: io::OStream> Wrap for AbsorbContext<'a, F, OS> {
     fn wrapn<T>(&mut self, bytes: T) -> Result<&mut Self>
     where
@@ -34,6 +40,7 @@ impl<'a, F: PRP, OS: io::OStream> Wrap for AbsorbContext<'a, F, OS> {
     }
 }
 
+/// Absorbs a single byte encoded [`Uint8`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Absorb<Uint8> for Context<OS, F> {
     fn absorb(&mut self, u: Uint8) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_u8(u)?;
@@ -41,6 +48,7 @@ impl<F: PRP, OS: io::OStream> Absorb<Uint8> for Context<OS, F> {
     }
 }
 
+/// Absorbs a two byte encoded [`Uint16`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Absorb<Uint16> for Context<OS, F> {
     fn absorb(&mut self, u: Uint16) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_u16(u)?;
@@ -48,6 +56,7 @@ impl<F: PRP, OS: io::OStream> Absorb<Uint16> for Context<OS, F> {
     }
 }
 
+/// Absorbs a four byte encoded [`Uint32`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Absorb<Uint32> for Context<OS, F> {
     fn absorb(&mut self, u: Uint32) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_u32(u)?;
@@ -55,6 +64,7 @@ impl<F: PRP, OS: io::OStream> Absorb<Uint32> for Context<OS, F> {
     }
 }
 
+/// Absorbs an eight byte encoded [`Uint64`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Absorb<Uint64> for Context<OS, F> {
     fn absorb(&mut self, u: Uint64) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_u64(u)?;
@@ -62,6 +72,7 @@ impl<F: PRP, OS: io::OStream> Absorb<Uint64> for Context<OS, F> {
     }
 }
 
+/// Absorbs an `n` byte encoded [`Size`] wrapper into [`Context`].
 impl<F: PRP, OS: io::OStream> Absorb<Size> for Context<OS, F> {
     fn absorb(&mut self, size: Size) -> Result<&mut Self> {
         AbsorbContext::new(self).wrap_size(size)?;
@@ -69,6 +80,8 @@ impl<F: PRP, OS: io::OStream> Absorb<Size> for Context<OS, F> {
     }
 }
 
+/// Absorbs a fixed sized [`NBytes`] wrapper into [`Context`]. `NBytes<bytes[n]>` is fixed-size and
+/// is encoded with `n` bytes.
 impl<F, T, OS> Absorb<NBytes<T>> for Context<OS, F>
 where
     F: PRP,
@@ -81,6 +94,8 @@ where
     }
 }
 
+/// Absorbs a variable sized [`Bytes`] wrapper into [`Context`]. `Bytes<bytes[n]>` has variable size
+/// thus the size `n` is encoded before the content bytes are wrapped.
 impl<F: PRP, OS: io::OStream, T> Absorb<Bytes<T>> for Context<OS, F>
 where
     T: AsRef<[u8]>,
@@ -92,6 +107,7 @@ where
     }
 }
 
+/// Absorbs an Ed25519 public key into [`Context`].
 impl<'a, F: PRP, OS: io::OStream> Absorb<&'a ed25519::PublicKey> for Context<OS, F> {
     fn absorb(&mut self, public_key: &'a ed25519::PublicKey) -> Result<&mut Self> {
         AbsorbContext::new(self).wrapn(public_key)?;
@@ -99,6 +115,7 @@ impl<'a, F: PRP, OS: io::OStream> Absorb<&'a ed25519::PublicKey> for Context<OS,
     }
 }
 
+/// Absorbs an X25519 public key into [`Context`].
 impl<'a, F: PRP, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<OS, F> {
     fn absorb(&mut self, public_key: &'a x25519::PublicKey) -> Result<&mut Self> {
         AbsorbContext::new(self).wrapn(public_key)?;
@@ -106,6 +123,9 @@ impl<'a, F: PRP, OS: io::OStream> Absorb<&'a x25519::PublicKey> for Context<OS, 
     }
 }
 
+/// Absorbs a [`Maybe`] wrapper for an `Option` into the [`Context`] stream. If the `Option` is
+/// `Some`, a `Uint8(1)` value is absorbed first, followed by the content. If the `Option` is
+/// `None`, only a `Uint8(0)` is absorbed.
 impl<F, OS, T> Absorb<Maybe<Option<T>>> for Context<OS, F>
 where
     Self: Absorb<T> + Absorb<Uint8>,

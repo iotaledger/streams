@@ -11,13 +11,23 @@ use spongos::{KeccakF1600, SpongosRng};
 
 // Local
 
+/// Wrapper for [`ed25519::SecretKey`]
 pub struct Ed25519(ed25519::SecretKey);
 
 impl Ed25519 {
+    /// Creates a new [`Ed25519`] wrapper around the provided secret key
+    ///
+    /// # Arguments
+    /// * `secret`: The [`ed25519::SecretKey`] to be wrapped
     pub fn new(secret: ed25519::SecretKey) -> Self {
         Self(secret)
     }
 
+    /// Generates a new [`ed25519::SecretKey`] from a unique seed. The seed is used as a foundation
+    /// for a [`SpongosRng`] generated value that is then used as a seed for generating the key.
+    ///
+    /// # Arguments
+    /// * `seed`: Unique seed to generate secret key from
     pub fn from_seed<T>(seed: T) -> Self
     where
         T: AsRef<[u8]>,
@@ -27,6 +37,7 @@ impl Ed25519 {
         )))
     }
 
+    /// Returns a reference to the inner [`ed25519::SecretKey`]
     pub(crate) fn inner(&self) -> &ed25519::SecretKey {
         &self.0
     }

@@ -26,15 +26,27 @@ use spongos::{
     PRP,
 };
 
+/// `DID` Document details
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DIDUrlInfo {
+    /// `DID` string
     did: String,
+    /// URL of the node endpoint
     client_url: String,
+    /// Fragment label for exchange key method
     exchange_fragment: String,
+    /// Fragment label for signature key method
     signing_fragment: String,
 }
 
 impl DIDUrlInfo {
+    /// Creates a new [`DIDUrlInfo`] wrapper around the provided values
+    ///
+    /// # Arguments
+    /// * `did`: DID string
+    /// * `client_url`: Node endpoint URL
+    /// * `exchange_fragment`: Label for exchange key methods
+    /// * `signing_fragment`: Label for signature key methods
     pub fn new<T: Into<String>>(did: IotaDID, client_url: T, exchange_fragment: T, signing_fragment: T) -> Self {
         Self {
             did: did.into_string(),
@@ -44,6 +56,12 @@ impl DIDUrlInfo {
         }
     }
 
+    /// Authenticates a hash value and the associated signature using the publisher [`DIDUrlInfo`]
+    ///
+    /// # Arguments
+    /// * `signing_fragment`: Label for exchange key methods
+    /// * `signature_bytes`: Raw bytes for signature
+    /// * `hash`: Hash value used for signature
     pub(crate) async fn verify(&self, signing_fragment: &str, signature_bytes: &[u8], hash: &[u8]) -> Result<()> {
         let did_url = IotaDID::parse(self.did())
             .map_err(|e| Error::did("parse did", e))?
@@ -62,34 +80,42 @@ impl DIDUrlInfo {
         Ok(())
     }
 
+    /// Returns the `DID` string
     pub(crate) fn did(&self) -> &str {
         &self.did
     }
 
+    /// Returns the node endpoint URL string
     pub(crate) fn client_url(&self) -> &str {
         &self.client_url
     }
 
+    /// Returns the label for key exchange methods
     pub(crate) fn exchange_fragment(&self) -> &str {
         &self.exchange_fragment
     }
 
+    /// Returns the label for signature methods
     pub(crate) fn signing_fragment(&self) -> &str {
         &self.signing_fragment
     }
 
+    /// Returns a mutable reference to `DID` string
     pub(crate) fn did_mut(&mut self) -> &mut String {
         &mut self.did
     }
 
+    /// Returns a mutable reference to the node endoint URL string
     pub(crate) fn client_url_mut(&mut self) -> &mut String {
         &mut self.client_url
     }
 
+    /// Returns a mutable reference to the label for key exchange methods
     pub(crate) fn exchange_fragment_mut(&mut self) -> &mut String {
         &mut self.exchange_fragment
     }
 
+    /// Returns a mutable reference to the label for signature methods
     pub(crate) fn signing_fragment_mut(&mut self) -> &mut String {
         &mut self.signing_fragment
     }

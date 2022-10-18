@@ -18,6 +18,8 @@ pub(crate) mod subscription;
 /// Unsubscribe message.
 pub(crate) mod unsubscription;
 
+/// Message type constants
 pub(crate) mod message_types;
 
+/// BranchAnnouncement message.
 pub(crate) mod branch_announcement;
