@@ -1,5 +1,5 @@
 // Rust
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, vec::Vec, string::ToString};
 use core::{
     convert::{TryFrom, TryInto},
     marker::PhantomData, str::FromStr,
@@ -75,20 +75,22 @@ where
     where
         Message: 'async_trait,
     {
-        self.client()
+        let tag = prefix_hex::encode(address.to_msg_index());
+        let block = self.client()
             .block()
-            .with_tag(address.to_msg_index().to_vec())
+            .with_tag(tag.as_bytes().to_vec())
             .with_data(msg.into())
             .finish()
             .await
-            .map_err(|e| Error::IotaClient("sending message", e))?
-            .try_into()
+            .map_err(|e| Error::IotaClient("sending message", e))?;
+        let id = block.id();
+        let _id_str = id.to_string();
+        block.try_into()
     }
 
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
-        let output_ids = self.client().basic_output_ids(vec![
-            QueryParameter::Tag(alloc::string::String::from_utf8(address.to_msg_index().to_vec())?),
-        ]).await.map_err(|e| Error::IotaClient("get messages by index", e))?;
+        let tag = prefix_hex::encode(address.to_msg_index());
+        let output_ids = self.client().basic_output_ids(vec![QueryParameter::Tag(tag)]).await.map_err(|e| Error::IotaClient("get messages by index", e))?;
 
         if output_ids.is_empty() {
             return Err(Error::MessageMissing(address, "transport"));
@@ -121,7 +123,7 @@ impl TryFrom<Block> for TransportMessage {
         } else {
             Err(Error::Malformed(
                 "payload from the Tangle",
-                "IndexationPayload",
+                "TaggedDataPayload",
                 alloc::string::ToString::to_string(&message.id()),
             ))
         }
