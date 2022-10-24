@@ -1,8 +1,9 @@
 // Rust
-use alloc::{boxed::Box, vec::Vec, string::ToString};
+use alloc::{boxed::Box, string::ToString, vec::Vec};
 use core::{
     convert::{TryFrom, TryInto},
-    marker::PhantomData, str::FromStr,
+    marker::PhantomData,
+    str::FromStr,
 };
 
 // 3rd-party
@@ -13,10 +14,10 @@ use futures::{
 };
 
 // IOTA
-use iota_client::{block::{
-    Block,
-    payload::Payload, BlockId
-}, node_api::indexer::query_parameters::QueryParameter};
+use iota_client::{
+    block::{payload::Payload, Block, BlockId},
+    node_api::indexer::query_parameters::QueryParameter,
+};
 
 // Streams
 
@@ -76,7 +77,8 @@ where
         Message: 'async_trait,
     {
         let tag = prefix_hex::encode(address.to_msg_index());
-        let block = self.client()
+        let block = self
+            .client()
             .block()
             .with_tag(tag.as_bytes().to_vec())
             .with_data(msg.into())
@@ -90,7 +92,11 @@ where
 
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
         let tag = prefix_hex::encode(address.to_msg_index());
-        let output_ids = self.client().basic_output_ids(vec![QueryParameter::Tag(tag)]).await.map_err(|e| Error::IotaClient("get messages by index", e))?;
+        let output_ids = self
+            .client()
+            .basic_output_ids(vec![QueryParameter::Tag(tag)])
+            .await
+            .map_err(|e| Error::IotaClient("get messages by index", e))?;
 
         if output_ids.is_empty() {
             return Err(Error::MessageMissing(address, "transport"));
@@ -100,9 +106,14 @@ where
             self.client()
                 .get_output(output)
                 .map_err(|e| Error::IotaClient("receiving message", e))
-                .and_then(|output| ready(BlockId::from_str(&output.metadata.block_id)
-                .map_err(|e| Error::IotaClient("creating BlockId", e.into()))))
-        })).await?;
+                .and_then(|output| {
+                    ready(
+                        BlockId::from_str(&output.metadata.block_id)
+                            .map_err(|e| Error::IotaClient("creating BlockId", e.into())),
+                    )
+                })
+        }))
+        .await?;
 
         let msgs = try_join_all(outputs.iter().map(|blockid| {
             self.client()
