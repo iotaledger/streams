@@ -805,7 +805,7 @@ where
             .transport
             .recv_message(address)
             .await
-            .map_err(|e| Error::Transport(address, "recv_message", e))?;
+            .map_err(|e| Error::Transport(address, "receive message", e))?;
         self.handle_message(address, msg).await
     }
 
