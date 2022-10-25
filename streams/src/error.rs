@@ -71,7 +71,7 @@ Any {0} message must be linked to a previous message by including the address of
     #[error("Topic {0} not found in store")]
     TopicNotFound(Topic),
 
-    #[error("Transport error while trying to {0} for address {1}; Error: {2}")]
+    #[error("Transport error while trying to {1} for address {0}; Error: {2}")]
     Transport(Address, &'static str, LetsError),
 
     #[error("PSK by id {0} is not known")]
