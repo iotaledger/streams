@@ -5,6 +5,7 @@ use crate::{
     error::Result,
 };
 
+/// Repeat a provided function an explicitly dictated number of times.
 impl<I, C, F, OS> Repeated<I, C> for Context<OS, F>
 where
     I: iter::Iterator,

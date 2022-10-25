@@ -16,11 +16,16 @@ use spongos::{
 // Local
 use crate::id::identifier::Identifier;
 
+/// Duration with which a `ReadWrite` [`Permissioned`] will be valid for
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum PermissionDuration {
+    /// Indefinite `ReadWrite`
     Perpetual,
+    /// `ReadWrite` until the internal `Unix` timestamp elapses
     Unix(u64),
+    /// `ReadWrite` until the specified number of messages has been parsed from the branch
     NumBranchMsgs(u32),
+    /// `ReadWrite` until the specified number of messages has been parsed from the channel
     NumPublishedmsgs(u32),
 }
 
@@ -77,14 +82,20 @@ where
     }
 }
 
+/// Used to assign Read and Write access to branches within a Stream
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Permissioned<Identifier> {
+    /// Read Access for the assigned branch
     Read(Identifier),
+    /// Read and Write Access for the branch. May send packets within the [`PermissionDuration`].
     ReadWrite(Identifier, PermissionDuration),
+    /// Read, Write and Administrative privileges. Allows the User to send Keyloads to manage Read
+    /// and Write privileges for other members of the Stream
     Admin(Identifier),
 }
 
 impl<Identifier> Permissioned<Identifier> {
+    /// Returns a reference to the internal `Identifier` of the permission
     pub fn identifier(&self) -> &Identifier {
         match self {
             Permissioned::Read(id) => id,
@@ -93,6 +104,7 @@ impl<Identifier> Permissioned<Identifier> {
         }
     }
 
+    /// Returns a mutable reference to the internal `Identifier` of the permission
     pub fn identifier_mut(&mut self) -> &mut Identifier {
         match self {
             Permissioned::Read(id) => id,
@@ -101,6 +113,8 @@ impl<Identifier> Permissioned<Identifier> {
         }
     }
 
+    /// Returns a new [`Permissioned`] wrapper for a reference to the inner values of the current
+    /// [`Permissioned`].
     pub fn as_ref(&self) -> Permissioned<&Identifier> {
         match self {
             Self::Read(id) => Permissioned::Read(id),
@@ -109,10 +123,12 @@ impl<Identifier> Permissioned<Identifier> {
         }
     }
 
+    /// Returns if the [`Permissioned`] is [`Permissioned::Read`].
     pub fn is_readonly(&self) -> bool {
         matches!(self, Permissioned::Read(..))
     }
 
+    /// Returns if the [`Permissioned`] is [`Permissioned::Admin`].
     pub fn is_admin(&self) -> bool {
         matches!(self, Permissioned::Admin(..))
     }

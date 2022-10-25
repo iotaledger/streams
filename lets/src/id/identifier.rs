@@ -34,9 +34,12 @@ use crate::{
     message::{ContentEncrypt, ContentEncryptSizeOf, ContentVerify},
 };
 
+/// User Identification types
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
+    /// Ed25519 Keypair based identifier
     Ed25519(ed25519::PublicKey),
+    /// IOTA DID based identifier
     #[cfg(feature = "did")]
     DID(DIDUrlInfo),
 }
@@ -66,7 +69,8 @@ impl Identifier {
         }
     }
 
-    // Get the Public key part of the key exchange of the identifier
+    /// Converts the underlying Ed25519 Public Key from the [`Identifier`] into an X25519 Public Key
+    /// for key exchange.
     pub async fn ke_pk(&self) -> Result<x25519::PublicKey> {
         match self {
             Identifier::Ed25519(pk) => Ok(pk
@@ -95,6 +99,7 @@ impl Identifier {
         }
     }
 
+    /// Returns whether the [`Identifier`] type is Ed25519 or not
     pub fn is_ed25519(&self) -> bool {
         matches!(self, Self::Ed25519(_))
     }
@@ -209,6 +214,14 @@ where
     F: PRP,
     IS: io::IStream,
 {
+    /// Verifies the signature of the message based on the type of [`Identifier`] of the signing
+    /// user. If the sender [`Identifier`] is of type [`Identifier::Ed25519`], then the public
+    /// key is used to verify the message signature. If it is of type [`Identifier::DID`], then
+    /// the `DID` document is retrieved and the signature is verified using the appropriately
+    /// tagged `Verification Method`.
+    ///
+    /// # Arguments
+    /// * `verifier`: The [`Identifier`] of the signer.
     async fn verify(&mut self, verifier: &Identifier) -> SpongosResult<&mut Self> {
         let mut oneof = Uint8::default();
         self.absorb(&mut oneof)?;

@@ -1,9 +1,9 @@
 //! High-level Implementation of Streams Channel Protocol.
 //!
-//! API functions can be found through the [User](api::tangle::User)
+//! API functions can be found through the [`User`]
 //!
 //! User implementations will require a Transport
-//! [Client](../streams_app/transport/tangle/client/struct.Client.html)
+//! [Client](`lets::transport::utangle::Client`)
 //!
 //! ## Starting a new Channel
 //! ```
@@ -43,9 +43,18 @@ mod message;
 /// [`User`] API.
 mod api;
 
+pub use api::{
+    message::{Message, MessageContent},
+    message_builder::MessageBuilder,
+    messages::Messages,
+    selector::Selector,
+    send_response::SendResponse,
+    user::User,
+    user_builder::UserBuilder,
+};
+
 /// Errors for Streams
 mod error;
-
-pub use api::{message::Message, selector::Selector, send_response::SendResponse, user::User};
 pub use error::{Error, Result};
+
 pub use lets::{address::Address, id, message::TransportMessage, transport};

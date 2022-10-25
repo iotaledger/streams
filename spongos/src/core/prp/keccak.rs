@@ -5,12 +5,15 @@ use generic_array::{
 
 use super::PRP;
 
+/// A psuedo-random permutation implementing `Keccak-F[1600]`
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeccakF1600 {
+    /// Inner state for transformation
     state: [u64; 25],
 }
 
 impl KeccakF1600 {
+    /// Use `Keccak-F[1600]` sponge function on inner state
     fn permutation(&mut self) {
         keccak::f1600(&mut self.state);
     }

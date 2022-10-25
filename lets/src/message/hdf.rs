@@ -23,24 +23,36 @@ use crate::{
     },
 };
 
+/// [`Mac`] for content verification
 const MAC: Mac = Mac::new(32);
 
+/// The header of a `Streams` message
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct HDF {
+    /// Payload encoding
     encoding: u8,
+    /// Streams version
     pub version: u8,
+    /// Message type identifier
     // content type is 4 bits
     pub message_type: u8,
+    /// Length of the payload of the message (can be set to 0)
     // payload length is 10 bits
     payload_length: u16,
+    /// Frame type of [`crate::message::PCF`] for the message
     frame_type: u8,
+    /// Number of [`crate::message::PCF`] messages to expect for full message
     // frame count is 22 bits
     payload_frame_count: u32,
+    /// Link to previous message in Stream
     pub linked_msg_address: Option<MsgId>,
+    /// Publisher sequence number
     pub sequence: usize,
+    /// Publisher [`Identifier`]
     pub publisher: Identifier,
+    /// Hash of branch [`Topic`]
     pub topic_hash: TopicHash,
 }
 
@@ -62,12 +74,13 @@ impl Default for HDF {
 }
 
 impl HDF {
-    /// Create a new HDF
+    /// Create a new [`HDF`] from the provided values
     ///
-    /// In debug builds, this constructor checks that the message_type fits the maximum size
-    /// expected for this field (4 bits) and panics if it exceeds it. In release builds, the
-    /// check is not performed and the constructor won't panic, but only the last 4 bits of the
-    /// u8 will be considered when wrapping, without emiting an explicit error.
+    /// # Arguments
+    /// * `message_type`: Message type identifier
+    /// * `sequence`: Publisher sequence number
+    /// * `publisher`: Publisher [`Identifier`]
+    /// * `topic`: Reference to branch [`Topic`]
     pub fn new(message_type: u8, sequence: usize, publisher: Identifier, topic: &Topic) -> Self {
         debug_assert!(
             message_type >> 4 == 0,
@@ -88,11 +101,19 @@ impl HDF {
         }
     }
 
+    /// Injects a linked message address into the [`HDF`]
+    ///
+    /// # Arguments
+    /// * `address`: The [`MsgId`] of the previous message
     pub fn with_linked_msg_address(mut self, address: MsgId) -> Self {
         self.linked_msg_address = Some(address);
         self
     }
 
+    /// Injects a payload length into the [`HDF`]. Can be a maximum of 10 bits in size
+    ///
+    /// # Arguments
+    /// * `payload_length`: The length of the payload
     pub fn with_payload_length(mut self, payload_length: u16) -> Result<Self> {
         match payload_length >> 10 == 0 {
             true => {
@@ -103,30 +124,37 @@ impl HDF {
         }
     }
 
+    /// Returns the message type for the associated payload
     pub fn message_type(&self) -> u8 {
         self.message_type
     }
 
+    /// Returns the length of the associated payload
     pub fn payload_length(&self) -> u16 {
         self.payload_length
     }
 
+    /// Returns the frame count of the associated payload
     pub fn payload_frame_count(&self) -> u32 {
         self.payload_frame_count
     }
 
+    /// Returns a reference to the publisher [`Identifier`]
     pub fn publisher(&self) -> &Identifier {
         &self.publisher
     }
 
+    /// Returns the publisher sequence number
     pub fn sequence(&self) -> usize {
         self.sequence
     }
 
+    /// Returns an `Option` for the linked message [`MsgId`]
     pub fn linked_msg_address(&self) -> Option<MsgId> {
         self.linked_msg_address
     }
 
+    /// Returns a reference to the [`TopicHash`] representing a branch
     pub fn topic_hash(&self) -> &TopicHash {
         &self.topic_hash
     }
