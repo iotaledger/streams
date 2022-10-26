@@ -12,7 +12,7 @@ use core::{
 use serde_big_array::BigArray;
 
 // IOTA
-use crypto::hashes::{blake2b::Blake2b256, Digest};
+use crypto::hashes::{blake2b::Blake2b160, Digest};
 
 // Streams
 use spongos::{
@@ -103,14 +103,14 @@ impl Address {
         self.appaddr
     }
 
-    /// Hash the content of the [`Address`] using `Blake2b256`
-    pub fn to_blake2b(self) -> [u8; 32] {
-        let hasher = Blake2b256::new();
+    /// Hash the content of the [`Address`] using `Blake2b160`
+    pub fn to_blake2b(self) -> [u8; 20] {
+        let hasher = Blake2b160::new();
         hasher.chain(self.base()).chain(self.relative()).finalize().into()
     }
 
     /// Hash the content of the [`Address`] using `Blake2b256`
-    pub fn to_msg_index(self) -> [u8; 32] {
+    pub fn to_msg_index(self) -> [u8; 20] {
         self.to_blake2b()
     }
 }

@@ -1,8 +1,9 @@
 // Rust
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, string::ToString, vec::Vec};
 use core::{
     convert::{TryFrom, TryInto},
     marker::PhantomData,
+    str::FromStr,
 };
 
 // 3rd-party
@@ -13,7 +14,10 @@ use futures::{
 };
 
 // IOTA
-use iota_client::bee_message::{payload::Payload, Message as IotaMessage};
+use iota_client::{
+    block::{payload::Payload, Block, BlockId},
+    node_api::indexer::query_parameters::QueryParameter,
+};
 
 // Streams
 
@@ -50,7 +54,6 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
                 .map_err(|e| Error::IotaClient("building client", e))?
                 .with_local_pow(true)
                 .finish()
-                .await
                 .map_err(|e| Error::External(e.into()))?,
             PhantomData,
         ))
@@ -70,8 +73,8 @@ impl<Message, SendResponse> Client<Message, SendResponse> {
 #[async_trait(?Send)]
 impl<Message, SendResponse> Transport<'_> for Client<Message, SendResponse>
 where
-    Message: Into<Vec<u8>> + TryFrom<IotaMessage, Error = crate::error::Error>,
-    SendResponse: TryFrom<IotaMessage, Error = crate::error::Error>,
+    Message: Into<Vec<u8>> + TryFrom<Block, Error = crate::error::Error>,
+    SendResponse: TryFrom<Block, Error = crate::error::Error>,
 {
     type Msg = Message;
     type SendResponse = SendResponse;
@@ -85,14 +88,18 @@ where
     where
         Message: 'async_trait,
     {
-        self.client()
-            .message()
-            .with_index(address.to_msg_index())
+        let tag = prefix_hex::encode(address.to_msg_index());
+        let block = self
+            .client()
+            .block()
+            .with_tag(tag.as_bytes().to_vec())
             .with_data(msg.into())
             .finish()
             .await
-            .map_err(|e| Error::IotaClient("sending message", e))?
-            .try_into()
+            .map_err(|e| Error::IotaClient("sending message", e))?;
+        let id = block.id();
+        let _id_str = id.to_string();
+        block.try_into()
     }
 
     /// Retrieves a message indexed at the provided [`Address`] from the tangle. Errors if no
@@ -101,39 +108,51 @@ where
     /// # Arguments
     /// * `address`: The address of the message to retrieve.
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
-        let msg_ids = self
+        let tag = prefix_hex::encode(address.to_msg_index());
+        let output_ids = self
             .client()
-            .get_message()
-            .index(address.to_msg_index())
+            .basic_output_ids(vec![QueryParameter::Tag(tag)])
             .await
             .map_err(|e| Error::IotaClient("get messages by index", e))?;
 
-        if msg_ids.is_empty() {
+        if output_ids.is_empty() {
             return Err(Error::MessageMissing(address, "transport"));
         }
 
-        let msgs = try_join_all(msg_ids.iter().map(|msg| {
+        let outputs = try_join_all(output_ids.iter().map(|output| {
             self.client()
-                .get_message()
-                .data(msg)
+                .get_output(output)
                 .map_err(|e| Error::IotaClient("receiving message", e))
-                .and_then(|iota_message| ready(iota_message.try_into()))
+                .and_then(|output| {
+                    ready(
+                        BlockId::from_str(&output.metadata.block_id)
+                            .map_err(|e| Error::IotaClient("creating BlockId", e.into())),
+                    )
+                })
+        }))
+        .await?;
+
+        let msgs = try_join_all(outputs.iter().map(|blockid| {
+            self.client()
+                .get_block(blockid)
+                .map_err(|e| Error::IotaClient("get iota block by id", e))
+                .and_then(|msg| ready(msg.try_into()))
         }))
         .await?;
         Ok(msgs)
     }
 }
 
-impl TryFrom<IotaMessage> for TransportMessage {
+impl TryFrom<Block> for TransportMessage {
     type Error = crate::error::Error;
-    fn try_from(message: IotaMessage) -> Result<Self> {
-        if let Some(Payload::Indexation(indexation)) = message.payload() {
+    fn try_from(message: Block) -> Result<Self> {
+        if let Some(Payload::TaggedData(indexation)) = message.payload() {
             Ok(Self::new(indexation.data().into()))
         } else {
             Err(Error::Malformed(
                 "payload from the Tangle",
-                "IndexationPayload",
-                alloc::string::ToString::to_string(&message.id().0),
+                "TaggedDataPayload",
+                alloc::string::ToString::to_string(&message.id()),
             ))
         }
     }
