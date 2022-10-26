@@ -11,7 +11,7 @@ keywords = ["iota", "LETS Framework", "LETS", "Streams", "Communication Protocol
 license = "Apache-2.0/MIT"
 name = "lets"
 readme = "README.md"
-version = "0.1.2"
+version = "0.2.0"
 
 [features]
 default = ["utangle-client"]

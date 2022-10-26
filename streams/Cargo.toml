@@ -11,7 +11,7 @@ keywords = ["iota", "streams", "app", "channels", "pub-sub", "communication prot
 license = "Apache-2.0/MIT"
 name = "streams"
 readme = "README.md"
-version = "0.1.2"
+version = "0.2.0"
 
 [features]
 default = ["utangle-client"]

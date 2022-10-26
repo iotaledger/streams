@@ -19,7 +19,7 @@ use crate::{
     message::{
         content::{ContentSizeof, ContentUnwrap, ContentWrap},
         topic::{Topic, TopicHash},
-        version::{HDF_ID, STREAMS_1_VER, UTF8},
+        version::{HDF_ID, STREAMS_VER, UTF8},
     },
 };
 
@@ -60,7 +60,7 @@ impl Default for HDF {
     fn default() -> Self {
         Self {
             encoding: UTF8,
-            version: STREAMS_1_VER,
+            version: STREAMS_VER,
             message_type: 0,
             payload_length: 0,
             frame_type: HDF_ID,
@@ -89,7 +89,7 @@ impl HDF {
         );
         Self {
             encoding: UTF8,
-            version: STREAMS_1_VER,
+            version: STREAMS_VER,
             message_type,
             payload_length: 0,
             frame_type: HDF_ID,
@@ -240,7 +240,7 @@ where
         self.absorb(&mut encoding)?
             .absorb(&mut version)?
             .guard(
-                version.inner() == STREAMS_1_VER,
+                version.inner() == STREAMS_VER,
                 SpongosError::Version("Msg", version.inner()),
             )?
             .skip(message_type_and_payload_length.as_mut())?

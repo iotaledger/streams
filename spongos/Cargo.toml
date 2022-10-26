@@ -11,7 +11,7 @@ keywords = ["iota", "spongos", "streams", "encoding", "binary", "serialization"]
 license = "Apache-2.0/MIT"
 name = "spongos"
 readme = "README.md"
-version = "0.1.2"
+version = "0.2.0"
 
 [features]
 default = ["osrng"]

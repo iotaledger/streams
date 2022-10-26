@@ -12,7 +12,7 @@
 //! Backwards compatibility of the Streams implementations is welcome and not mandatory.
 
 /// Streams version number.
-pub(crate) const STREAMS_1_VER: u8 = 1;
+pub(crate) const STREAMS_VER: u8 = 2;
 
 /// Encoding Constants
 pub(crate) const UTF8: u8 = 0;
