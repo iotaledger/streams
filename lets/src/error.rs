@@ -161,3 +161,9 @@ impl From<reqwest::Error> for Error {
         Self::Request(error)
     }
 }
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}

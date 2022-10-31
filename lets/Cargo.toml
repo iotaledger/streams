@@ -15,6 +15,7 @@ version = "0.2.0"
 
 [features]
 default = ["utangle-client"]
+std = ["spongos/std"]
 # Enable the IOTA-Tangle transport client (implies `std` features)
 tangle-client = ["iota-client/async", "futures", "iota-crypto/blake2b"]
 # Enable the wasm-compatible IOTA-Tangle transport client (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`. Implies `std` feature)
