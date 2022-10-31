@@ -116,3 +116,9 @@ impl From<anyhow::Error> for Error {
         Self::External(error)
     }
 }
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
