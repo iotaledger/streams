@@ -170,7 +170,7 @@ impl AppAddr {
     }
 
     /// Get the hexadecimal representation of the appaddr
-    fn to_hex_string(self) -> String {
+    pub fn to_hex_string(self) -> String {
         hex::encode(self.0)
     }
 
