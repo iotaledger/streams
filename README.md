@@ -38,13 +38,9 @@ As a framework, Streams allows developers to build protocols for their specific 
 This process will be documented as the development progresses. However, since this crate is in an alpha stage of development it is still likely to change.
 
 At the moment, IOTA Streams includes the following crates:
-* [Channels Application](iota-streams-app-channels/README.md) featuring Channels Application.
-* [Core layers](iota-streams-core/README.md) featuring spongos automaton for sponge-based authenticated encryption, pre-shared keys, pseudo-random generator;
-* [Keccak for core layers](iota-streams-core-keccak/README.md) featuring Keccak-F[1600] as spongos transform;
-* [Curve25519 asymmetric crypto](iota-streams-core-edsig/README.md) featuring Ed25519 signature and X25519 key exchange;
+* [API layer](streams/README.md) featuring common Application definitions.
+* [Definition layer](lets/README.md) featuring Streams message definitions.
 * [DDML](iota-streams-ddml/README.md) featuring data definition and manipulation language for protocol messages;
-* [Application layer](iota-streams-app/README.md) common Application definitions.
-* [Bindings](bindings/c/README.md).
 
 ## Prerequisites
 To use IOTA Streams, you need the following:
@@ -78,7 +74,7 @@ Add the following to your `Cargo.toml` file:
 ```bash
 [dependencies]
 anyhow = { version = "1.0", default-features = false }
-iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "develop"}
+streams = { git = "https://github.com/iotaledger/streams", branch = "main" }
 ```
 
 **Local**
@@ -93,30 +89,38 @@ iota-streams = { git = "https://github.com/iotaledger/streams", branch  = "devel
 
     ```bash
     [dependencies]
-    iota-streams = { version = "0.1.2", path = "../streams" }
+    streams = { version = "2.0.0", path = "../streams" }
     ```
 
 ## Getting started
 
 After you've [installed the library](#installation), you can use it in your own Cargo project.
 
-For example, you may want to use the Channels protocol to create a new author and subscriber like so:
+For example, you may want to use Streams to create a new author and send a message like so:
 
-```
-use iota_streams::app_channels::api::tangle::{Author, Subscriber};
-use iota_streams::app::transport::tangle::PAYLOAD_BYTES;
-use iota_streams::app::transport::tangle::client::Client;
+```rust
+use streams::{
+    transport::utangle::Client,
+    id::Ed25519, User,
+};
 
 fn main() {
     let node = "http://localhost:14265";
-    let client = Client::new_from_url(node);
+    let transport: Client = Client::new(node);
 
-    let encoding = "utf-8";
-    let multi_branching_flag = true;
-
-    let mut author = Author::new("AUTHORSSEED", encoding, PAYLOAD_BYTES, multi_branching_flag, client);
+    let mut author = User::builder()
+        .with_transport(transport)
+        .with_identity(Ed25519::from_seed("AUTHORSSEED"))
+        .build();
     
-    let mut subscriber = Subscriber::new("MYSUBSCRIBERSECRETSTRING", encoding, PAYLOAD_BYTES, client);
+    let base_branch = "BASE_BRANCH";
+    let _announcement = author.create_stream(base_branch).await?;
+
+    let payload = b"PUBLICPAYLOAD";
+    // Create and send public message with payload (unencrypted)
+    let message = author.message().public().with_payload(*payload).send().await?;
+    // You can look this index up on a explorer
+    println!("message index: {}", hex::encode(message.address().to_msg_index()));
 }
 ```
 
@@ -132,9 +136,7 @@ cargo doc --open
 
 ## Examples
 
-We have an example in the [`examples` directory](examples/src/main.rs), which you can use as a reference when developing your own protocols with IOTA Streams.
-
-A `no_std` version can be found in [`iota-streams-app-channels-example` directory](iota-streams-app-channels-example/src/main.rs)
+We have an example in the [`examples` directory](streams/examples/full-example/main.rs), which you can use as a reference when developing your own protocols with IOTA Streams.
 
 ## Supporting the project
 
