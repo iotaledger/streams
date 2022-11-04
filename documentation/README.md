@@ -4,44 +4,29 @@ The documentation is built using [Docusaurus 2](https://docusaurus.io/). The dep
 
 ## Prerequisites
 
-- [Node.js v14.14+](https://nodejs.org/en/)
-- [yarn](https://yarnpkg.com/getting-started/install)
-- `IOTA WIKI CLI` installed with npm
+- [Node.js 16.10 or above](https://nodejs.org/en/download/).
+- [Modern Yarn](https://yarnpkg.com/getting-started/install) enabled by running `corepack enable`.
 
 ## Installation
 
 ```console
-npm i
-npm run setup
+yarn
 ```
 
-This command checks out a local copy of the wiki and creates links to the content.
+This command installs all necessary dependencies.
 
 ## Local Development
 
 ```console
-npm start
+yarn start
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+This command starts a local, wiki themed development server and opens up a browser window. Most changes are reflected live without having to restart the server.
 
-## Tear Down
+## Writing Documentation
 
-```console
-npm run clean
-```
+You can find guidance on writing documentation in [IOTA Wiki itself](https://wiki.iota.org/participate/contribute-to-wiki/welcome).
 
-This command deletes the local wiki and local links.
+## Default Documentation Structure
 
-
-## Including .md file 
-
-```console
-{@import <file path>}
-```
-
-Example:
-
-```console
-{@import ../../../../bindings/wasm/docs/api-reference.md}
-```
+This template provides you with a default documentation structure for your software project. To learn about different types of documentation, see the [reference](https://wiki.iota.org/participate/contribute-to-wiki/reference/structure/overview).
