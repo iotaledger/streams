@@ -26,74 +26,33 @@ module.exports = {
     type: 'category',
     label: 'Libraries',
     collapsed: false,
-    items: [{
-      type: 'doc',
-      id: 'libraries/overview',
-      label: 'Overview',
-    },
-    {
-      type: 'category',
-      label: 'Rust',
-      items: [
-        {
-          type: 'doc',
-          id: 'libraries/rust/getting_started',
-          label: 'Getting Started',
-        },
-        {
-          type: 'doc',
-          id: 'libraries/rust/examples',
-          label: 'Examples'
-        },
-        {
-          type: 'doc',
-          id: 'libraries/rust/api_reference',
-          label: 'API Reference'
-        },
-      ]
-    },
-    {
-      type: 'category',
-      label: 'Wasm',
-      items: [
-        {
-          type: 'doc',
-          id: 'libraries/wasm/getting_started',
-          label: 'Getting Started'
-        },
-        {
-          type: 'doc',
-          id: 'libraries/wasm/examples',
-          label: 'Examples'
-        },
-        {
-          type: 'doc',
-          id: 'libraries/wasm/api_reference',
-          label: 'API Reference'
-        },
-      ]
-    },
-    {
-      type: 'category',
-      label: 'C',
-      items: [
-        {
-          type: 'doc',
-          id: 'libraries/c/getting_started',
-          label: 'Getting Started'
-        },
-        {
-          type: 'doc',
-          id: 'libraries/c/examples',
-          label: 'Examples'
-        },
-        {
-          type: 'doc',
-          id: 'libraries/c/api_reference',
-          label: 'API Reference'
-        },
-      ]
-    }
+    items: [
+      {
+        type: 'doc',
+        id: 'libraries/overview',
+        label: 'Overview',
+      },
+      {
+        type: 'category',
+        label: 'Rust',
+        items: [
+          {
+            type: 'doc',
+            id: 'libraries/rust/getting_started',
+            label: 'Getting Started',
+          },
+          {
+            type: 'doc',
+            id: 'libraries/rust/examples',
+            label: 'Examples'
+          },
+          {
+            type: 'doc',
+            id: 'libraries/rust/api_reference',
+            label: 'API Reference'
+          },
+        ]
+      }
     ]
   },
   {
